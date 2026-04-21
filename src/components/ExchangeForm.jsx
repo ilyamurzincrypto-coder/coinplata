@@ -22,13 +22,16 @@ import {
   Lock,
   Unlock,
   UserPlus,
+  RefreshCw,
 } from "lucide-react";
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
+import CounterpartySelect from "./CounterpartySelect.jsx";
 import { CURRENCIES, BALANCES_BY_OFFICE, officeName } from "../store/data.js";
 import { useRates } from "../store/rates.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTransactions } from "../store/transactions.jsx";
+import { useAccounts } from "../store/accounts.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import {
   multiplyAmount,
@@ -47,6 +50,14 @@ const emptyOutput = (currency = "TRY") => ({
   manualRate: false,
   touched: false,
 });
+
+// Иконки для типов счетов (дублирует data.js ACCOUNT_TYPES.icon, но здесь локально для UI скорости)
+const ACCOUNT_TYPE_ICONS = {
+  bank: "🏦",
+  cash: "💵",
+  crypto: "🪙",
+  exchange: "📈",
+};
 
 // Нормализация initialData в state формы
 function initFromTx(tx) {
@@ -93,7 +104,8 @@ export default function ExchangeForm({
   const { t } = useTranslation();
   const { getRate } = useRates();
   const { currentUser, settings } = useAuth();
-  const { counterparties, addCounterparty } = useTransactions();
+  const { addCounterparty } = useTransactions();
+  const { accountsByOffice } = useAccounts();
 
   // --- state ---
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
@@ -105,7 +117,21 @@ export default function ExchangeForm({
   const [counterparty, setCounterparty] = useState(starter?.counterparty || "");
   const [referral, setReferral] = useState(starter?.referral || false);
   const [comment, setComment] = useState(starter?.comment || "");
+  const [accountId, setAccountId] = useState(initialData?.accountId || "");
   const [flash, setFlash] = useState(false);
+
+  // Список доступных счетов для пары (office, curIn)
+  const availableAccounts = useMemo(
+    () => accountsByOffice(currentOffice, { currency: curIn }),
+    [accountsByOffice, currentOffice, curIn]
+  );
+
+  // При смене валюты/офиса сбрасываем выбор если текущий account не подходит
+  useEffect(() => {
+    if (accountId && !availableAccounts.some((a) => a.id === accountId)) {
+      setAccountId("");
+    }
+  }, [availableAccounts, accountId]);
 
   // --- auto-fill rates / amounts ---
   useEffect(() => {
@@ -202,11 +228,32 @@ export default function ExchangeForm({
     );
   };
 
+  // --- remaining amount (в валюте curIn) ---
+  // Каждый output конвертируем обратно в curIn через его rate:
+  //   amount_in_curIn = output.amount / output.rate
+  // remaining = amtIn - sum(всех output'ов в curIn)
+  const remainingIn = useMemo(() => {
+    const inNum = parseFloat(amtIn) || 0;
+    if (inNum <= 0) return 0;
+    const consumed = outputs.reduce((sum, o) => {
+      const amt = parseFloat(o.amount) || 0;
+      const r = parseFloat(o.rate) || 0;
+      if (amt <= 0 || r <= 0) return sum;
+      // Идём в обратную сторону: сколько curIn соответствует данному output'у.
+      return sum + amt / r;
+    }, 0);
+    return inNum - consumed;
+  }, [amtIn, outputs]);
+
+  // Порог для float-ошибок
+  const EPS = 0.01;
+  const exceedsInput = remainingIn < -EPS;
+
   // --- validation ---
   const hasAllRates = outputs.every((o) => o.rate && parseFloat(o.rate) > 0);
   const hasAllAmounts = outputs.every((o) => o.amount && parseFloat(o.amount) > 0);
   const noSameCurrency = outputs.every((o) => o.currency !== curIn);
-  const canSubmit = amtIn && hasAllRates && hasAllAmounts && noSameCurrency;
+  const canSubmit = amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput;
 
   // --- submit ---
   const buildTx = () => {
@@ -252,6 +299,7 @@ export default function ExchangeForm({
       counterparty,
       referral,
       comment,
+      accountId,
     };
 
     if (mode === "edit" && initialData) {
@@ -291,6 +339,30 @@ export default function ExchangeForm({
     }
     return Math.round(p * 100) / 100;
   }, [effectiveFee, referral, amtIn, curIn, getRate, settings.referralPct, fee]);
+
+  // Reverse: меняет местами in и первый output. Используется в одно-выходном случае.
+  // При множественных outputs берём только первый (обратимость многостороннего обмена неоднозначна).
+  const handleReverse = () => {
+    const first = outputs[0];
+    if (!first) return;
+    const newCurIn = first.currency;
+    const newAmtIn = first.amount || "";
+    const newOutCurrency = curIn;
+    const newOutAmount = amtIn || "";
+    const autoRate = getRate(newCurIn, newOutCurrency);
+    setCurIn(newCurIn);
+    setAmtIn(newAmtIn);
+    setOutputs([
+      {
+        id: `o_rev_${Date.now()}`,
+        currency: newOutCurrency,
+        amount: newOutAmount,
+        rate: autoRate !== undefined ? String(autoRate) : (first.rate ? String(1 / parseFloat(first.rate)) : ""),
+        manualRate: autoRate === undefined,
+        touched: !!newOutAmount,
+      },
+    ]);
+  };
 
   const isEdit = mode === "edit";
 
@@ -333,6 +405,16 @@ export default function ExchangeForm({
               {t("you_received")}
             </span>
           </div>
+          <button
+            type="button"
+            onClick={handleReverse}
+            disabled={!amtIn || !outputs[0]?.amount}
+            title={t("reverse")}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed rounded-[8px] px-2 py-1 border border-transparent hover:border-slate-200 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            {t("reverse")}
+          </button>
         </div>
         <CurrencyTabs value={curIn} onChange={setCurIn} accent="emerald" />
         <div
@@ -360,6 +442,32 @@ export default function ExchangeForm({
             {fmt(BALANCES_BY_OFFICE[currentOffice]?.[curIn]?.amount || 0, curIn)} {curIn}
           </span>
         </div>
+
+        {/* Deposit to account — выбор конкретного счёта/кошелька */}
+        {availableAccounts.length > 0 && (
+          <div className="mt-2.5">
+            <div className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1.5">
+              Deposit to
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {availableAccounts.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => setAccountId(a.id === accountId ? "" : a.id)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold border transition-all ${
+                    a.id === accountId
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <span className="text-[13px]">{ACCOUNT_TYPE_ICONS[a.type] || "•"}</span>
+                  <span>{a.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Connector */}
@@ -451,6 +559,28 @@ export default function ExchangeForm({
           </button>
         </div>
 
+        {/* Remaining indicator — показываем только когда есть amtIn и outputs с суммами */}
+        {amtIn && outputs.some((o) => o.amount) && (
+          <div
+            className={`mb-3 flex items-center justify-between px-3 py-2 rounded-[10px] border text-[12px] tabular-nums transition-colors ${
+              exceedsInput
+                ? "bg-rose-50 border-rose-200 text-rose-800"
+                : Math.abs(remainingIn) < EPS
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-slate-50 border-slate-200 text-slate-700"
+            }`}
+          >
+            <span className="font-semibold">
+              {exceedsInput ? `⚠ ${t("exceeds_remaining")}` : t("remaining")}
+            </span>
+            <span className="font-bold">
+              {curSymbol(curIn)}
+              {fmt(Math.abs(remainingIn), curIn)} {curIn}
+              {exceedsInput && " over"}
+            </span>
+          </div>
+        )}
+
         <div className="space-y-3">
           {outputs.map((o, idx) => (
             <OutputRow
@@ -472,19 +602,7 @@ export default function ExchangeForm({
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide">
               {t("counterparty")}
             </label>
-            <input
-              type="text"
-              list="counterparty-list"
-              value={counterparty}
-              onChange={(e) => setCounterparty(e.target.value)}
-              placeholder={t("select_or_type")}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-slate-400"
-            />
-            <datalist id="counterparty-list">
-              {counterparties.map((c) => (
-                <option key={c.id} value={c.nickname} />
-              ))}
-            </datalist>
+            <CounterpartySelect value={counterparty} onChange={setCounterparty} />
           </div>
           <label className="flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors self-end">
             <input
@@ -578,6 +696,8 @@ export default function ExchangeForm({
               ? t("enter_exchange_rate")
               : !noSameCurrency
               ? t("currencies_must_differ")
+              : exceedsInput
+              ? t("exceeds_remaining")
               : t("complete_the_form")}
           </p>
         )}
@@ -608,7 +728,17 @@ function OutputRow({ output, index, canRemove, onUpdate, onRemove, onToggleManua
               <button
                 key={c}
                 type="button"
-                onClick={() => onUpdate({ currency: c, touched: false })}
+                onClick={() => {
+                  // Если output на auto-rate — сразу подтягиваем курс для новой пары.
+                  // Это нужно потому что useEffect зависит от [curIn, amtIn], но не от outputs,
+                  // поэтому смена output.currency сама по себе не триггерит пересчёт.
+                  const patch = { currency: c, touched: false };
+                  if (!o.manualRate) {
+                    const next = getRate(curIn, c);
+                    if (next !== undefined) patch.rate = String(next);
+                  }
+                  onUpdate(patch);
+                }}
                 className={`px-2 py-0.5 text-[11px] font-bold rounded-[6px] transition-all ${
                   o.currency === c
                     ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"

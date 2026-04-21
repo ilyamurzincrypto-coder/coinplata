@@ -45,13 +45,35 @@ export function RatesProvider({ children }) {
     setLastUpdated(new Date());
   }, []);
 
+  const deleteRate = useCallback((from, to) => {
+    setRates((prev) => {
+      const next = { ...prev };
+      delete next[rateKey(from, to)];
+      return next;
+    });
+    setLastUpdated(new Date());
+  }, []);
+
+  // Возвращает список [to, rate] для всех направлений от base
+  const ratesFromBase = useCallback(
+    (base) => {
+      const out = [];
+      Object.entries(rates).forEach(([key, value]) => {
+        const [from, to] = key.split("_");
+        if (from === base) out.push({ to, rate: value });
+      });
+      return out;
+    },
+    [rates]
+  );
+
   const updateMany = useCallback((patch) => {
     setRates((prev) => ({ ...prev, ...patch }));
     setLastUpdated(new Date());
   }, []);
 
   return (
-    <RatesContext.Provider value={{ rates, getRate, setRate, updateMany, lastUpdated }}>
+    <RatesContext.Provider value={{ rates, getRate, setRate, deleteRate, ratesFromBase, updateMany, lastUpdated }}>
       {children}
     </RatesContext.Provider>
   );

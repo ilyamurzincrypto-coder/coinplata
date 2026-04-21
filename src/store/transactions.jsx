@@ -20,14 +20,29 @@ export function TransactionsProvider({ children }) {
     );
   }, []);
 
-  const addCounterparty = useCallback((nickname) => {
-    if (!nickname) return;
+  // Принимает либо строку nickname (обратная совместимость),
+  // либо объект { nickname, name, telegram }. Возвращает созданного/существующего контрагента.
+  const addCounterparty = useCallback((input) => {
+    if (!input) return null;
+    const data = typeof input === "string"
+      ? { nickname: input, name: "", telegram: "" }
+      : { nickname: input.nickname || input.name || "", name: input.name || "", telegram: input.telegram || "" };
+    if (!data.nickname) return null;
+
+    let result = null;
     setCounterparties((prev) => {
-      if (prev.some((c) => c.nickname.toLowerCase() === nickname.toLowerCase())) {
+      const existing = prev.find(
+        (c) => c.nickname.toLowerCase() === data.nickname.toLowerCase()
+      );
+      if (existing) {
+        result = existing;
         return prev;
       }
-      return [...prev, { id: `cp_${Date.now()}`, nickname }];
+      const created = { id: `cp_${Date.now()}`, ...data };
+      result = created;
+      return [...prev, created];
     });
+    return result;
   }, []);
 
   return (

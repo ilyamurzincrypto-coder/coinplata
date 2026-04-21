@@ -11,27 +11,29 @@ export const CURRENCIES = ["USDT", "USD", "EUR", "TRY", "GBP"];
 
 export const TYPES = ["All", "IN", "OUT", "EXCHANGE"];
 
+// Баланс содержит: amount (сегодня), prevAmount (вчера), change (% изменение)
+// change сохранено для обратной совместимости; компоненты могут использовать prevAmount для абсолютной дельты.
 export const BALANCES_BY_OFFICE = {
   mark: {
-    USD: { amount: 48250, change: 1.2 },
-    USDT: { amount: 127430, change: -0.4 },
-    EUR: { amount: 19800, change: 0.3 },
-    TRY: { amount: 1842500, change: 2.8 },
-    GBP: { amount: 8400, change: 0.1 },
+    USD: { amount: 48250, prevAmount: 47678, change: 1.2 },
+    USDT: { amount: 127430, prevAmount: 127941, change: -0.4 },
+    EUR: { amount: 19800, prevAmount: 19741, change: 0.3 },
+    TRY: { amount: 1842500, prevAmount: 1792314, change: 2.8 },
+    GBP: { amount: 8400, prevAmount: 8392, change: 0.1 },
   },
   terra: {
-    USD: { amount: 22100, change: 0.6 },
-    USDT: { amount: 64800, change: 1.1 },
-    EUR: { amount: 8450, change: -0.2 },
-    TRY: { amount: 920300, change: 1.4 },
-    GBP: { amount: 3100, change: 0.0 },
+    USD: { amount: 22100, prevAmount: 21968, change: 0.6 },
+    USDT: { amount: 64800, prevAmount: 64094, change: 1.1 },
+    EUR: { amount: 8450, prevAmount: 8467, change: -0.2 },
+    TRY: { amount: 920300, prevAmount: 907587, change: 1.4 },
+    GBP: { amount: 3100, prevAmount: 3100, change: 0.0 },
   },
   ist: {
-    USD: { amount: 91500, change: -0.3 },
-    USDT: { amount: 204600, change: 2.1 },
-    EUR: { amount: 37200, change: 0.8 },
-    TRY: { amount: 3120000, change: 3.2 },
-    GBP: { amount: 15800, change: 0.4 },
+    USD: { amount: 91500, prevAmount: 91775, change: -0.3 },
+    USDT: { amount: 204600, prevAmount: 200391, change: 2.1 },
+    EUR: { amount: 37200, prevAmount: 36905, change: 0.8 },
+    TRY: { amount: 3120000, prevAmount: 3023255, change: 3.2 },
+    GBP: { amount: 15800, prevAmount: 15737, change: 0.4 },
   },
 };
 
@@ -103,18 +105,49 @@ export const SEED_TX = [
   },
 ];
 
+// Контрагенты теперь имеют nickname, name (полное имя для поиска) и telegram (@username).
+// nickname сохранён для обратной совместимости с полем tx.counterparty (string).
 export const SEED_COUNTERPARTIES = [
-  { id: "cp1", nickname: "CryptoHouse" },
-  { id: "cp2", nickname: "Murat Y." },
-  { id: "cp3", nickname: "Boris L." },
-  { id: "cp4", nickname: "Office deposit" },
+  { id: "cp1", nickname: "CryptoHouse", name: "Crypto House OTC", telegram: "@cryptohouse_otc" },
+  { id: "cp2", nickname: "Murat Y.", name: "Murat Yildiz", telegram: "@murat_y" },
+  { id: "cp3", nickname: "Boris L.", name: "Boris Levin", telegram: "@boris_lev" },
+  { id: "cp4", nickname: "Office deposit", name: "Office Safe", telegram: "" },
+];
+
+// Типы счетов — для иконок и группировки в UI
+export const ACCOUNT_TYPES = {
+  bank: { label: "Bank", icon: "🏦" },
+  cash: { label: "Cash", icon: "💵" },
+  crypto: { label: "Crypto", icon: "🪙" },
+  exchange: { label: "Exchange", icon: "📈" },
+};
+
+// Счета/кошельки. Каждый привязан к офису и валюте.
+// Если нужны мульти-валютные счета (banks с sub-accounts) — в будущей итерации.
+export const SEED_ACCOUNTS = [
+  // Mark Antalya
+  { id: "a_mark_cash_usd", officeId: "mark", type: "cash", currency: "USD", name: "Cash · Safe A", active: true },
+  { id: "a_mark_cash_try", officeId: "mark", type: "cash", currency: "TRY", name: "Cash · Safe A", active: true },
+  { id: "a_mark_bank_try", officeId: "mark", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true },
+  { id: "a_mark_crypto_usdt", officeId: "mark", type: "crypto", currency: "USDT", name: "TRC20 Main", active: true },
+  // Terra City
+  { id: "a_terra_cash_usd", officeId: "terra", type: "cash", currency: "USD", name: "Cash · Main", active: true },
+  { id: "a_terra_cash_try", officeId: "terra", type: "cash", currency: "TRY", name: "Cash · Main", active: true },
+  { id: "a_terra_crypto_usdt", officeId: "terra", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true },
+  // Istanbul
+  { id: "a_ist_bank_usd", officeId: "ist", type: "bank", currency: "USD", name: "Bank · İş Bankası", active: true },
+  { id: "a_ist_bank_try", officeId: "ist", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true },
+  { id: "a_ist_cash_eur", officeId: "ist", type: "cash", currency: "EUR", name: "Cash · Safe B", active: true },
+  { id: "a_ist_crypto_usdt", officeId: "ist", type: "crypto", currency: "USDT", name: "ERC20 Main", active: true },
+  { id: "a_ist_crypto_usdt2", officeId: "ist", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true },
 ];
 
 export const SEED_USERS = [
-  { id: "u_ay", name: "A. Yilmaz", initials: "AY", role: "manager" },
-  { id: "u_sk", name: "S. Kaya", initials: "SK", role: "manager" },
-  { id: "u_md", name: "M. Demir", initials: "MD", role: "manager" },
-  { id: "u_adm", name: "E. Kara", initials: "EK", role: "admin" },
+  { id: "u_ay", name: "A. Yilmaz", initials: "AY", role: "manager", email: "a.yilmaz@coinplata.io", active: true, createdAt: "2025-11-14" },
+  { id: "u_sk", name: "S. Kaya", initials: "SK", role: "manager", email: "s.kaya@coinplata.io", active: true, createdAt: "2025-12-02" },
+  { id: "u_md", name: "M. Demir", initials: "MD", role: "manager", email: "m.demir@coinplata.io", active: true, createdAt: "2026-01-08" },
+  { id: "u_adm", name: "E. Kara", initials: "EK", role: "admin", email: "e.kara@coinplata.io", active: true, createdAt: "2025-09-01" },
+  { id: "u_acc", name: "L. Özturk", initials: "LÖ", role: "accountant", email: "l.ozturk@coinplata.io", active: true, createdAt: "2025-10-20" },
 ];
 
 export const officeName = (id) => OFFICES.find((o) => o.id === id)?.name || id;

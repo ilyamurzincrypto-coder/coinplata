@@ -3,20 +3,26 @@ import React from "react";
 import { Globe } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import Select from "./ui/Select.jsx";
+import ProfileMenu from "./ProfileMenu.jsx";
 import { OFFICES } from "../store/data.js";
 import { useTranslation } from "../i18n/translations.jsx";
-import { useAuth } from "../store/auth.jsx";
+import { useCan } from "../store/permissions.jsx";
 
+// Каждая страница привязана к permission section.
+// "cashier" — всем доступен (если сотрудник активен).
 const NAV_PAGES = [
-  { id: "cashier", key: "nav_cashier" },
-  { id: "capital", key: "nav_capital" },
-  { id: "referrals", key: "nav_referrals" },
-  { id: "settings", key: "nav_settings" },
+  { id: "cashier", key: "nav_cashier", section: "transactions" },
+  { id: "capital", key: "nav_capital", section: "capital" },
+  { id: "clients", key: "nav_clients", section: "capital" },
+  { id: "referrals", key: "nav_referrals", section: "referrals" },
+  { id: "settings", key: "nav_settings", section: "settings" },
 ];
 
 export default function Header({ currentOffice, onOfficeChange, page, onPageChange }) {
   const { t, lang, setLang } = useTranslation();
-  const { currentUser, isAdmin, users, switchUser } = useAuth();
+  const can = useCan();
+
+  const visibleNav = NAV_PAGES.filter((p) => can(p.section));
 
   return (
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-slate-200/70">
@@ -30,7 +36,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           </div>
 
           <nav className="hidden lg:flex items-center gap-0.5">
-            {NAV_PAGES.map((p) => (
+            {visibleNav.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onPageChange(p.id)}
@@ -66,43 +72,15 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
             />
           </div>
 
-          {/* Role demo switcher */}
-          <div className="w-40 hidden sm:block">
-            <Select
-              value={currentUser.id}
-              onChange={(v) => switchUser(v)}
-              options={users.map((u) => u.id)}
-              compact
-              renderOption={(id) => {
-                const u = users.find((x) => x.id === id);
-                return u ? `${u.name} · ${u.role === "admin" ? t("admin") : t("manager")}` : id;
-              }}
-            />
-          </div>
-
-          <div className="flex items-center gap-2 pl-2 ml-1 border-l border-slate-200">
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-semibold ${
-                isAdmin
-                  ? "bg-gradient-to-br from-indigo-500 to-indigo-700"
-                  : "bg-gradient-to-br from-slate-700 to-slate-900"
-              }`}
-            >
-              {currentUser.initials}
-            </div>
-            <div className="hidden sm:block text-[12px] leading-tight">
-              <div className="font-medium text-slate-900">{currentUser.name}</div>
-              <div className="text-slate-500 capitalize">
-                {isAdmin ? t("admin") : t("manager")}
-              </div>
-            </div>
+          <div className="pl-2 ml-1 border-l border-slate-200">
+            <ProfileMenu />
           </div>
         </div>
       </div>
 
       {/* Mobile nav */}
       <div className="lg:hidden px-4 pb-2 pt-1 flex items-center gap-2 overflow-x-auto">
-        {NAV_PAGES.map((p) => (
+        {visibleNav.map((p) => (
           <button
             key={p.id}
             onClick={() => onPageChange(p.id)}

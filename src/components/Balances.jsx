@@ -14,12 +14,14 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     const agg = {};
     CURRENCIES.forEach((c) => {
       let total = 0;
-      let totalChange = 0;
+      let totalPrev = 0;
       OFFICES.forEach((o) => {
-        total += BALANCES_BY_OFFICE[o.id][c].amount;
-        totalChange += BALANCES_BY_OFFICE[o.id][c].change;
+        const b = BALANCES_BY_OFFICE[o.id][c];
+        total += b.amount;
+        totalPrev += (b.prevAmount ?? b.amount);
       });
-      agg[c] = { amount: total, change: +(totalChange / OFFICES.length).toFixed(1) };
+      const change = totalPrev > 0 ? +(((total - totalPrev) / totalPrev) * 100).toFixed(1) : 0;
+      agg[c] = { amount: total, prevAmount: totalPrev, change };
     });
     return agg;
   }, [scope, currentOffice]);
@@ -83,6 +85,20 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                 <span className="text-slate-400 text-[14px] font-medium mr-0.5">{curSymbol(c)}</span>
                 {fmt(b.amount, c)}
               </div>
+              {b.prevAmount !== undefined && (
+                <div className="mt-1.5 flex items-center gap-1 text-[11px] tabular-nums">
+                  <span
+                    className={`font-semibold ${
+                      up ? "text-emerald-600" : b.amount === b.prevAmount ? "text-slate-400" : "text-rose-600"
+                    }`}
+                  >
+                    {up && b.amount !== b.prevAmount ? "+" : ""}
+                    {curSymbol(c)}
+                    {fmt(Math.abs(b.amount - b.prevAmount), c)}
+                  </span>
+                  <span className="text-slate-400">{t("growth_yesterday")}</span>
+                </div>
+              )}
             </div>
           );
         })}

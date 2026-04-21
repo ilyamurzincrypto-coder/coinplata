@@ -6,6 +6,8 @@ import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
+import { useAudit } from "../store/audit.jsx";
+import { fmt } from "../utils/money.js";
 
 export default function CashierPage({ currentOffice }) {
   const [balanceScope, setBalanceScope] = useState("selected");
@@ -13,11 +15,23 @@ export default function CashierPage({ currentOffice }) {
   const [editingTx, setEditingTx] = useState(null);
 
   const { addTransaction } = useTransactions();
+  const { addEntry: logAudit } = useAudit();
 
   const handleCreate = (tx) => {
     addTransaction(tx);
     setJustCreatedId(tx.id);
     setTimeout(() => setJustCreatedId(null), 2500);
+
+    // Audit log
+    const outStr = (tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut }])
+      .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
+      .join(" + ");
+    logAudit({
+      action: "create",
+      entity: "transaction",
+      entityId: String(tx.id),
+      summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr} · fee $${fmt(tx.fee)}`,
+    });
   };
 
   return (
