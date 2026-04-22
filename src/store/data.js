@@ -2,12 +2,63 @@
 // Моки данных: офисы, валюты, транзакции, контрагенты, пользователи.
 
 export const OFFICES = [
-  { id: "mark", name: "Mark Antalya", city: "Antalya" },
-  { id: "terra", name: "Terra City", city: "Antalya" },
-  { id: "ist", name: "Istanbul", city: "Istanbul" },
+  { id: "mark", name: "Mark Antalya", city: "Antalya", status: "active", active: true },
+  { id: "terra", name: "Terra City", city: "Antalya", status: "active", active: true },
+  { id: "ist", name: "Istanbul", city: "Istanbul", status: "active", active: true },
 ];
 
 export const CURRENCIES = ["USDT", "USD", "EUR", "TRY", "GBP"];
+
+// Currency dictionary — структурированные метаданные каждой валюты.
+// Существующий массив CURRENCIES (коды) оставлен для обратной совместимости.
+export const CURRENCIES_DICT = [
+  { code: "USD", type: "fiat", symbol: "$", name: "US Dollar", decimals: 2 },
+  { code: "EUR", type: "fiat", symbol: "€", name: "Euro", decimals: 2 },
+  { code: "TRY", type: "fiat", symbol: "₺", name: "Turkish Lira", decimals: 2 },
+  { code: "GBP", type: "fiat", symbol: "£", name: "British Pound", decimals: 2 },
+  { code: "USDT", type: "crypto", symbol: "₮", name: "Tether USD", decimals: 2 },
+];
+
+// Хелперы
+export const currencyByCode = (code) => CURRENCIES_DICT.find((c) => c.code === code);
+export const isCrypto = (code) => currencyByCode(code)?.type === "crypto";
+export const isFiat = (code) => currencyByCode(code)?.type === "fiat";
+
+// Channel kinds — способ передачи средств. Отдельно от типа валюты.
+// fiat: cash | bank | sepa | swift
+// crypto: всегда "network" (сама сеть в .network)
+export const CHANNEL_KINDS = [
+  { id: "cash", label: "Cash", forCurrencyType: "fiat" },
+  { id: "bank", label: "Bank", forCurrencyType: "fiat" },
+  { id: "sepa", label: "SEPA", forCurrencyType: "fiat" },
+  { id: "swift", label: "SWIFT", forCurrencyType: "fiat" },
+  { id: "network", label: "Network", forCurrencyType: "crypto" },
+];
+
+export const NETWORKS = ["TRC20", "ERC20", "BEP20"];
+
+// Channel seed — способы передачи для каждой валюты.
+// Поле isDefaultForCurrency отмечает канал по умолчанию для currency —
+// используется когда нужно выбрать канал автоматически (напр. для рендера в RatesBar).
+export const SEED_CHANNELS = [
+  // USD
+  { id: "ch_usd_cash", currencyCode: "USD", kind: "cash", isDefaultForCurrency: true },
+  { id: "ch_usd_bank", currencyCode: "USD", kind: "bank", isDefaultForCurrency: false },
+  { id: "ch_usd_swift", currencyCode: "USD", kind: "swift", isDefaultForCurrency: false },
+  // EUR
+  { id: "ch_eur_cash", currencyCode: "EUR", kind: "cash", isDefaultForCurrency: false },
+  { id: "ch_eur_bank", currencyCode: "EUR", kind: "bank", isDefaultForCurrency: true },
+  { id: "ch_eur_sepa", currencyCode: "EUR", kind: "sepa", isDefaultForCurrency: false },
+  // TRY
+  { id: "ch_try_cash", currencyCode: "TRY", kind: "cash", isDefaultForCurrency: true },
+  { id: "ch_try_bank", currencyCode: "TRY", kind: "bank", isDefaultForCurrency: false },
+  // GBP
+  { id: "ch_gbp_bank", currencyCode: "GBP", kind: "bank", isDefaultForCurrency: true },
+  // USDT (crypto → network)
+  { id: "ch_usdt_trc20", currencyCode: "USDT", kind: "network", network: "TRC20", gasFee: 1.0, isDefaultForCurrency: true },
+  { id: "ch_usdt_erc20", currencyCode: "USDT", kind: "network", network: "ERC20", gasFee: 15.0, isDefaultForCurrency: false },
+  { id: "ch_usdt_bep20", currencyCode: "USDT", kind: "network", network: "BEP20", gasFee: 0.5, isDefaultForCurrency: false },
+];
 
 export const TYPES = ["All", "IN", "OUT", "EXCHANGE"];
 
@@ -146,9 +197,9 @@ export const SEED_ACCOUNTS = [
 ];
 
 export const SEED_USERS = [
-  { id: "u_ay", name: "A. Yilmaz", initials: "AY", role: "manager", email: "a.yilmaz@coinplata.io", active: true, createdAt: "2025-11-14" },
-  { id: "u_sk", name: "S. Kaya", initials: "SK", role: "manager", email: "s.kaya@coinplata.io", active: true, createdAt: "2025-12-02" },
-  { id: "u_md", name: "M. Demir", initials: "MD", role: "manager", email: "m.demir@coinplata.io", active: true, createdAt: "2026-01-08" },
+  { id: "u_ay", name: "A. Yilmaz", initials: "AY", role: "manager", email: "a.yilmaz@coinplata.io", officeId: "mark", active: true, createdAt: "2025-11-14" },
+  { id: "u_sk", name: "S. Kaya", initials: "SK", role: "manager", email: "s.kaya@coinplata.io", officeId: "terra", active: true, createdAt: "2025-12-02" },
+  { id: "u_md", name: "M. Demir", initials: "MD", role: "manager", email: "m.demir@coinplata.io", officeId: "ist", active: true, createdAt: "2026-01-08" },
   { id: "u_adm", name: "E. Kara", initials: "EK", role: "admin", email: "e.kara@coinplata.io", active: true, createdAt: "2025-09-01" },
   { id: "u_acc", name: "L. Özturk", initials: "LÖ", role: "accountant", email: "l.ozturk@coinplata.io", active: true, createdAt: "2025-10-20" },
 ];

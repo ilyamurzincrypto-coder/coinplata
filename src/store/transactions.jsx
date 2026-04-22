@@ -11,12 +11,23 @@ export function TransactionsProvider({ children }) {
   const [counterparties, setCounterparties] = useState(SEED_COUNTERPARTIES);
 
   const addTransaction = useCallback((tx) => {
-    setTransactions((prev) => [tx, ...prev]);
+    // status defaults to "completed" для полной обратной совместимости
+    const full = { status: "completed", ...tx };
+    setTransactions((prev) => [full, ...prev]);
   }, []);
 
   const updateTransaction = useCallback((id, patch) => {
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...patch } : t))
+    );
+  }, []);
+
+  // Перевод pending → completed (только меняет статус в store;
+  // запись movements остаётся задачей вызывающего кода, т.к. мы не должны
+  // знать про accounts store из transactions).
+  const completeTransaction = useCallback((id) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: "completed" } : t))
     );
   }, []);
 
@@ -52,6 +63,7 @@ export function TransactionsProvider({ children }) {
         counterparties,
         addTransaction,
         updateTransaction,
+        completeTransaction,
         addCounterparty,
       }}
     >

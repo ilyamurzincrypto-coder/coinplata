@@ -128,6 +128,7 @@ export default function ExchangeForm({
   const [referral, setReferral] = useState(starter?.referral || false);
   const [comment, setComment] = useState(starter?.comment || "");
   const [accountId, setAccountId] = useState(initialData?.accountId || "");
+  const [isPending, setIsPending] = useState(initialData?.status === "pending");
   const [flash, setFlash] = useState(false);
 
   // Список доступных счетов для пары (office, curIn)
@@ -335,6 +336,7 @@ export default function ExchangeForm({
       referral,
       comment,
       accountId,
+      status: isPending ? "pending" : "completed",
     };
 
     if (mode === "edit" && initialData) {
@@ -663,6 +665,30 @@ export default function ExchangeForm({
             )}
           </label>
         </div>
+
+        {/* Pending toggle */}
+        <label
+          className={`mt-3 flex items-center gap-2 cursor-pointer select-none rounded-[10px] px-3 py-2 border transition-colors ${
+            isPending
+              ? "bg-amber-50 border-amber-300"
+              : "bg-slate-50 border-slate-200 hover:border-slate-300"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={isPending}
+            onChange={(e) => setIsPending(e.target.checked)}
+            className="w-4 h-4 rounded-[4px] accent-amber-600"
+          />
+          <span className={`text-[13px] font-medium ${isPending ? "text-amber-800" : "text-slate-700"}`}>
+            {t("create_as_pending")}
+          </span>
+          {isPending && (
+            <span className="ml-auto text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+              {t("pending_hint")}
+            </span>
+          )}
+        </label>
 
         <input
           type="text"

@@ -7,7 +7,7 @@ import { Wallet, Plus, ArrowLeftRight, History as HistoryIcon, Building2 } from 
 import { useAccounts } from "../store/accounts.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTranslation } from "../i18n/translations.jsx";
-import { OFFICES, officeName } from "../store/data.js";
+import { useOffices } from "../store/offices.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
@@ -23,6 +23,7 @@ const TYPE_ICONS = {
 export default function AccountsPage() {
   const { t } = useTranslation();
   const { accounts, balanceOf } = useAccounts();
+  const { activeOffices } = useOffices();
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
 
@@ -31,9 +32,9 @@ export default function AccountsPage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
 
-  // Группировка по офисам
+  // Группировка по офисам (только активные)
   const grouped = useMemo(() => {
-    return OFFICES.map((o) => {
+    return activeOffices.map((o) => {
       const accs = accounts.filter((a) => a.officeId === o.id && a.active);
       const totalInBase = accs.reduce(
         (s, a) => s + toBase(balanceOf(a.id), a.currency),
@@ -41,7 +42,7 @@ export default function AccountsPage() {
       );
       return { office: o, accounts: accs, totalInBase };
     });
-  }, [accounts, balanceOf, toBase]);
+  }, [accounts, activeOffices, balanceOf, toBase]);
 
   const grandTotal = grouped.reduce((s, g) => s + g.totalInBase, 0);
 
@@ -80,7 +81,7 @@ export default function AccountsPage() {
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-500" />
-              <h2 className="text-[15px] font-semibold tracking-tight">{officeName(office.id)}</h2>
+              <h2 className="text-[15px] font-semibold tracking-tight">{office.name}</h2>
               <span className="text-[11px] text-slate-400">· {accs.length} accounts</span>
             </div>
             <div className="text-[13px] tabular-nums">

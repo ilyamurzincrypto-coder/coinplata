@@ -23,7 +23,17 @@ function timeAgo(date) {
 }
 
 export default function RatesBar() {
-  const { rates, getRate, setRate, deleteRate, ratesFromBase, lastUpdated } = useRates();
+  const {
+    rates,
+    getRate,
+    setRate,
+    deleteRate,
+    ratesFromBase,
+    lastUpdated,
+    // новый API для корректного добавления пар
+    addPair,
+    defaultChannelOf,
+  } = useRates();
   const { isAdmin } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const { t } = useTranslation();
@@ -33,10 +43,10 @@ export default function RatesBar() {
   // Обёртки с audit-логированием (только когда не seed-initial)
   const setRateLogged = (from, to, value) => {
     const old = rates[rateKey(from, to)];
-    setRate(from, to, value);
+    const result = setRate(from, to, value);
     const newVal = parseFloat(value) || 0;
     // Логируем только существенные изменения (не каждый символ ввода)
-    if (old !== undefined && Math.abs(old - newVal) > 0.0001) {
+    if (result.ok && old !== undefined && Math.abs(old - newVal) > 0.0001) {
       logAudit({
         action: "update",
         entity: "rate",
@@ -57,13 +67,40 @@ export default function RatesBar() {
   };
 
   const addRateLogged = (from, to, rate) => {
-    setRate(from, to, rate);
-    logAudit({
-      action: "create",
-      entity: "rate",
-      entityId: rateKey(from, to),
-      summary: `Added pair ${from} → ${to} @ ${rate}`,
+    // Сначала пробуем через setRate (если default pair уже существует).
+    // Если нет — создаём новую пару через addPair() с default channels у обеих валют.
+    const tryUpdate = setRate(from, to, rate);
+    if (tryUpdate.ok) {
+      logAudit({
+        action: "update",
+        entity: "rate",
+        entityId: rateKey(from, to),
+        summary: `${from} → ${to}: rate changed to ${rate}`,
+      });
+      return;
+    }
+    // Default pair не найден — создаём через addPair с default channels
+    const fromCh = defaultChannelOf(from);
+    const toCh = defaultChannelOf(to);
+    if (!fromCh || !toCh) {
+      // eslint-disable-next-line no-console
+      console.warn("Cannot create pair: missing default channels");
+      return;
+    }
+    const result = addPair({
+      fromChannelId: fromCh.id,
+      toChannelId: toCh.id,
+      rate,
+      priority: 10,
     });
+    if (result.ok) {
+      logAudit({
+        action: "create",
+        entity: "rate",
+        entityId: rateKey(from, to),
+        summary: `Added pair ${from} → ${to} @ ${rate} (${fromCh.kind}${fromCh.network ? ` ${fromCh.network}` : ""} → ${toCh.kind}${toCh.network ? ` ${toCh.network}` : ""})`,
+      });
+    }
   };
 
   // Для hover expansion показываем уникальные base валюты из FEATURED_PAIRS.

@@ -9,18 +9,44 @@ import {
   ArrowLeftRight,
   UserPlus,
   Lock,
+  Clock,
+  CheckCircle2,
 } from "lucide-react";
 import Select from "./ui/Select.jsx";
 import { CURRENCIES, TYPES, officeName } from "../store/data.js";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
+import { useAccounts } from "../store/accounts.jsx";
+import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt } from "../utils/money.js";
+import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {
   const { t } = useTranslation();
-  const { transactions } = useTransactions();
-  const { canEditTransaction, isAdmin } = useAuth();
+  const { transactions, completeTransaction } = useTransactions();
+  const { canEditTransaction, isAdmin, currentUser } = useAuth();
+  const { accounts, addMovement, removeMovementsByRefId } = useAccounts();
+  const { addEntry: logAudit } = useAudit();
+
+  const handleComplete = (tx) => {
+    // Pending → Completed: меняем статус, пишем movements
+    removeMovementsByRefId(tx.id); // на всякий случай — если вдруг были
+    completeTransaction(tx.id);
+    const { movements, warnings } = buildMovementsFromTransaction(
+      { ...tx, status: "completed" },
+      accounts,
+      currentUser.id
+    );
+    movements.forEach(addMovement);
+    const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} missing account(s)` : "";
+    logAudit({
+      action: "update",
+      entity: "transaction",
+      entityId: String(tx.id),
+      summary: `[COMPLETED] Tx #${tx.id}: movements recorded${warnSuffix}`,
+    });
+  };
 
   const [filterCurrency, setFilterCurrency] = useState("All");
   const [filterType, setFilterType] = useState("All");
@@ -187,6 +213,15 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         {tx.type === "EXCHANGE" && <ArrowLeftRight className="w-2.5 h-2.5" />}
                         {tx.type}
                       </span>
+                      {tx.status === "pending" && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                          title={t("pending_hint")}
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                          {t("pending_badge")}
+                        </span>
+                      )}
                       {tx.referral && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700"
@@ -241,22 +276,34 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     </div>
                   </td>
                   <td className="px-5 py-3">
-                    {canEdit ? (
-                      <button
-                        onClick={() => onEdit?.(tx)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900"
-                        title={t("edit")}
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                    ) : (
-                      <div
-                        className="opacity-0 group-hover:opacity-60 p-1.5 text-slate-400"
-                        title={t("not_your_tx")}
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {tx.status === "pending" && canEdit && (
+                        <button
+                          onClick={() => handleComplete(tx)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                          title={t("complete_tx")}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          {t("complete_tx")}
+                        </button>
+                      )}
+                      {canEdit ? (
+                        <button
+                          onClick={() => onEdit?.(tx)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900"
+                          title={t("edit")}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <div
+                          className="opacity-0 group-hover:opacity-60 p-1.5 text-slate-400"
+                          title={t("not_your_tx")}
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                        </div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );

@@ -27,30 +27,32 @@ export default function CashierPage({ currentOffice }) {
     setJustCreatedId(tx.id);
     setTimeout(() => setJustCreatedId(null), 2500);
 
-    // Защита от дублей: если вдруг создание сработало дважды с одним tx.id,
-    // старые movements этой tx снесутся перед записью новых.
+    const isPending = tx.status === "pending";
+
+    // Защита от дублей: убираем возможные ранее созданные movements этой tx
     removeMovementsByRefId(tx.id);
 
-    // Записываем движения по счетам (exchange_in + exchange_out[])
-    // TODO: в форме нет явного выбора from-account на каждый output.
-    // Временная стратегия: первый активный account офиса в валюте output.
-    const { movements, warnings } = buildMovementsFromTransaction(
-      tx,
-      accounts,
-      currentUser.id
-    );
-    movements.forEach(addMovement);
+    // Pending сделки НЕ создают movements — только запись в транзакции
+    let movements = [];
+    let warnings = [];
+    if (!isPending) {
+      const result = buildMovementsFromTransaction(tx, accounts, currentUser.id);
+      movements = result.movements;
+      warnings = result.warnings;
+      movements.forEach(addMovement);
+    }
 
     // Audit log сделки
     const outStr = (tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut }])
       .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
       .join(" + ");
     const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} missing account(s)` : "";
+    const statusPrefix = isPending ? "[PENDING] " : "";
     logAudit({
       action: "create",
       entity: "transaction",
       entityId: String(tx.id),
-      summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr} · fee $${fmt(tx.fee)}${warnSuffix}`,
+      summary: `${statusPrefix}${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr} · fee $${fmt(tx.fee)}${warnSuffix}`,
     });
   };
 

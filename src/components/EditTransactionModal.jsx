@@ -27,14 +27,26 @@ export default function EditTransactionModal({ transaction, onClose }) {
   const handleSubmit = (updated) => {
     updateTransaction(transaction.id, updated);
 
-    // Пересоздание movements: снести старые по refId, записать новые из обновлённой tx
+    const prevStatus = transaction.status || "completed";
+    const nextStatus = updated.status || "completed";
+
+    // Таблица переходов:
+    //   completed → completed : снести старые movements, записать новые (как было)
+    //   completed → pending   : снести movements (pending не имеет движений)
+    //   pending   → completed : движений раньше не было, записать новые
+    //   pending   → pending   : ничего с movements
+    //
+    // Для уверенности и безопасности — сначала всегда снести старые по refId.
     removeMovementsByRefId(transaction.id);
-    const { movements } = buildMovementsFromTransaction(
-      { ...updated, id: transaction.id },
-      accounts,
-      currentUser.id
-    );
-    movements.forEach(addMovement);
+
+    if (nextStatus === "completed") {
+      const { movements } = buildMovementsFromTransaction(
+        { ...updated, id: transaction.id },
+        accounts,
+        currentUser.id
+      );
+      movements.forEach(addMovement);
+    }
 
     // Diff для summary
     const changes = [];
@@ -47,9 +59,12 @@ export default function EditTransactionModal({ transaction, onClose }) {
     if (transaction.profit !== updated.profit) {
       changes.push(`profit $${fmt(transaction.profit)} → $${fmt(updated.profit)}`);
     }
+    if (prevStatus !== nextStatus) {
+      changes.push(`status: ${prevStatus} → ${nextStatus}`);
+    }
     const summary = changes.length
-      ? `${changes.join(", ")} · movements rewritten`
-      : `Transaction ${transaction.id} edited · movements rewritten`;
+      ? `${changes.join(", ")} · movements ${nextStatus === "completed" ? "rewritten" : "cleared (pending)"}`
+      : `Transaction ${transaction.id} edited`;
 
     logAudit({
       action: "update",

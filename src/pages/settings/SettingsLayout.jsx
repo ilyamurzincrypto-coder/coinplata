@@ -3,16 +3,18 @@
 // Active tab хранится локально в state; URL не трогаем (нет роутера).
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Users, Shield, ScrollText } from "lucide-react";
+import { Settings as SettingsIcon, Users, Shield, ScrollText, Building2 } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import GeneralTab from "./GeneralTab.jsx";
+import OfficesTab from "./OfficesTab.jsx";
 import UsersTab from "./UsersTab.jsx";
 import PermissionsTab from "./PermissionsTab.jsx";
 import AuditLogTab from "./AuditLogTab.jsx";
 
 const TABS = [
   { id: "general", labelKey: "settings_general", icon: SettingsIcon, component: GeneralTab },
+  { id: "offices", labelKey: "settings_offices", icon: Building2, component: OfficesTab, adminOnly: true },
   { id: "users", labelKey: "settings_users", icon: Users, component: UsersTab, adminOnly: true },
   { id: "permissions", labelKey: "settings_permissions", icon: Shield, component: PermissionsTab, adminOnly: true },
   { id: "audit", labelKey: "settings_audit", icon: ScrollText, component: AuditLogTab, adminOnly: true },

@@ -9,10 +9,12 @@ import ReferralsPage from "./pages/ReferralsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
+import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 
 import { I18nProvider } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
 import { AuthProvider } from "./store/auth.jsx";
+import { OfficesProvider } from "./store/offices.jsx";
 import { TransactionsProvider } from "./store/transactions.jsx";
 import { AccountsProvider } from "./store/accounts.jsx";
 import { PermissionsProvider, useCan } from "./store/permissions.jsx";
@@ -51,6 +53,7 @@ function Root() {
         currentOffice={currentOffice}
         onOfficeChange={setCurrentOffice}
       />
+      <RatesConfirmationBanner />
       {page === "cashier" && canShow("cashier") && <CashierPage currentOffice={currentOffice} />}
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
@@ -65,19 +68,21 @@ export default function App() {
   return (
     <I18nProvider>
       <AuthProvider>
-        <PermissionsProvider>
-          <AuditProvider>
-            <RatesProvider>
-              <AccountsProvider>
-                <IncomeExpenseProvider>
-                  <TransactionsProvider>
-                    <Root />
-                  </TransactionsProvider>
-                </IncomeExpenseProvider>
-              </AccountsProvider>
-            </RatesProvider>
-          </AuditProvider>
-        </PermissionsProvider>
+        <OfficesProvider>
+          <PermissionsProvider>
+            <AuditProvider>
+              <RatesProvider>
+                <AccountsProvider>
+                  <IncomeExpenseProvider>
+                    <TransactionsProvider>
+                      <Root />
+                    </TransactionsProvider>
+                  </IncomeExpenseProvider>
+                </AccountsProvider>
+              </RatesProvider>
+            </AuditProvider>
+          </PermissionsProvider>
+        </OfficesProvider>
       </AuthProvider>
     </I18nProvider>
   );

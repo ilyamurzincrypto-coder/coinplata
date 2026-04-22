@@ -7,16 +7,24 @@ import { UserPlus, ShieldCheck, Users as UsersIcon, Copy, Check, User as UserIco
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import Modal from "../../components/ui/Modal.jsx";
 import { useAuth, ROLES, ROLE_IDS } from "../../store/auth.jsx";
+import { useOffices } from "../../store/offices.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 
 export default function UsersTab() {
   const { t } = useTranslation();
-  const { users, updateUserRole, deactivateUser, reactivateUser, isAdmin } = useAuth();
+  const { users, updateUserRole, updateUser, deactivateUser, reactivateUser, isAdmin } = useAuth();
+  const { offices } = useOffices();
   const { addEntry: logAudit } = useAudit();
   const [filter, setFilter] = useState("active");
   const [createOpen, setCreateOpen] = useState(false);
   const [generated, setGenerated] = useState(null); // { user, password }
+
+  // Активные офисы для dropdown'а
+  const activeOffices = useMemo(
+    () => offices.filter((o) => o.active !== false && o.status !== "closed"),
+    [offices]
+  );
 
   // Обёртки с audit-логированием
   const handleRoleChange = (user, newRole) => {
@@ -27,6 +35,21 @@ export default function UsersTab() {
       entity: "user",
       entityId: user.id,
       summary: `${user.name}: role ${ROLES[oldRole]?.label || oldRole} → ${ROLES[newRole]?.label || newRole}`,
+    });
+  };
+
+  const handleOfficeChange = (user, newOfficeId) => {
+    const oldOfficeId = user.officeId || null;
+    const nextOfficeId = newOfficeId || null; // "" → null (global)
+    if (oldOfficeId === nextOfficeId) return;
+    updateUser(user.id, { officeId: nextOfficeId });
+    const oldName = offices.find((o) => o.id === oldOfficeId)?.name || t("user_office_global");
+    const newName = offices.find((o) => o.id === nextOfficeId)?.name || t("user_office_global");
+    logAudit({
+      action: "update",
+      entity: "user",
+      entityId: user.id,
+      summary: `${user.name}: office ${oldName} → ${newName}`,
     });
   };
 
@@ -106,6 +129,7 @@ export default function UsersTab() {
               <th className="px-5 py-2.5 font-bold">{t("ref_manager")}</th>
               <th className="px-3 py-2.5 font-bold">{t("email_label")}</th>
               <th className="px-3 py-2.5 font-bold">Role</th>
+              <th className="px-3 py-2.5 font-bold">{t("user_office")}</th>
               <th className="px-3 py-2.5 font-bold">{t("created_at")}</th>
               <th className="px-3 py-2.5 font-bold">{t("status")}</th>
               <th className="px-5 py-2.5 font-bold text-right">{t("actions")}</th>
@@ -157,6 +181,28 @@ export default function UsersTab() {
                       </span>
                     )}
                   </td>
+                  <td className="px-3 py-3">
+                    {isAdmin && isActive ? (
+                      <select
+                        value={u.officeId || ""}
+                        onChange={(e) => handleOfficeChange(u, e.target.value)}
+                        className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none max-w-[150px]"
+                      >
+                        <option value="">{t("user_office_global")}</option>
+                        {activeOffices.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-[12px] text-slate-600">
+                        {u.officeId
+                          ? offices.find((o) => o.id === u.officeId)?.name || "—"
+                          : t("user_office_global")}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-slate-500 tabular-nums">{u.createdAt || "—"}</td>
                   <td className="px-3 py-3">
                     <span
@@ -196,7 +242,7 @@ export default function UsersTab() {
             })}
             {visibleUsers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
                   {filter === "active" ? "No active users" : "No inactive users"}
                 </td>
               </tr>
