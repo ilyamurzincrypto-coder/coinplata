@@ -287,6 +287,7 @@ const DICT = {
 
     // Settings sidebar
     settings_general: "General",
+    settings_master_data: "Master data",
     settings_users: "Users",
     settings_permissions: "Permissions",
     settings_audit: "Audit log",
@@ -359,10 +360,12 @@ const DICT = {
 
     // Capital tabs
     tab_overview: "Overview",
+    tab_pnl: "P&L",
     tab_cashflow: "Cashflow",
     tab_income_expense: "Income & Expense",
     tab_by_office: "By office",
     tab_by_manager: "By manager",
+    tab_rate_history: "Rate history",
 
     // Table columns / shared labels
     col_office: "Office",
@@ -662,6 +665,7 @@ const DICT = {
 
     // Settings sidebar
     settings_general: "Основные",
+    settings_master_data: "Справочники",
     settings_users: "Пользователи",
     settings_permissions: "Права",
     settings_audit: "Журнал",
@@ -728,10 +732,12 @@ const DICT = {
     ie_empty: "Записей пока нет",
 
     tab_overview: "Обзор",
+    tab_pnl: "П&У",
     tab_cashflow: "ДДС",
     tab_income_expense: "Доходы / Расходы",
     tab_by_office: "По офисам",
     tab_by_manager: "По менеджерам",
+    tab_rate_history: "История курсов",
 
     // Колонки таблиц
     col_office: "Офис",
@@ -1027,6 +1033,7 @@ const DICT = {
     profile: "Profil",
 
     settings_general: "Genel",
+    settings_master_data: "Referans veriler",
     settings_users: "Kullanıcılar",
     settings_permissions: "İzinler",
     settings_audit: "Denetim kaydı",
@@ -1093,10 +1100,12 @@ const DICT = {
     ie_empty: "Kayıt yok",
 
     tab_overview: "Genel",
+    tab_pnl: "K&Z",
     tab_cashflow: "Nakit akışı",
     tab_income_expense: "Gelir / Gider",
     tab_by_office: "Ofis",
     tab_by_manager: "Yönetici",
+    tab_rate_history: "Kur geçmişi",
 
     // Tablo sütunları
     col_office: "Ofis",
@@ -1135,10 +1144,33 @@ const DICT = {
 
 const I18nContext = createContext(null);
 
+// Lookup-порядок:
+//   1. dict[key]                    — прямой flat-ключ в активном языке
+//   2. dict[lastSegment]            — namespaced: "common.save" → "save"
+//   3. enDict[key] / enDict[last]   — EN fallback (чтобы строки не исчезали)
+//   4. fallback аргумент            — дефолт вызвавшей стороны
+//   5. "" (пустая строка)           — НЕ возвращаем raw key, чтобы UI не показывал "common.save"
+// Старые вызовы t("save") работают как раньше. Новые t("common.save") мапятся
+// на "save" через lastSegment fallback.
 export function I18nProvider({ children }) {
   const [lang, setLang] = useState("EN");
   const dict = DICT[lang.toLowerCase()] || DICT.en;
-  const t = (key) => dict[key] ?? key;
+  const enDict = DICT.en;
+
+  const t = (key, fallback) => {
+    if (!key || typeof key !== "string") return fallback ?? "";
+    if (dict[key] != null) return dict[key];
+    if (key.includes(".")) {
+      const last = key.split(".").pop();
+      if (dict[last] != null) return dict[last];
+      if (enDict[last] != null) return enDict[last];
+    }
+    if (enDict[key] != null) return enDict[key];
+    // Ничего не нашли — предпочитаем явный fallback; иначе возвращаем пусто,
+    // чтобы не рендерить raw ключи.
+    return fallback ?? "";
+  };
+
   return (
     <I18nContext.Provider value={{ t, lang, setLang }}>
       {children}

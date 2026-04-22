@@ -7,13 +7,15 @@
 //   Если output.accountId не указан → OUT movement НЕ пишется, warning.
 //
 // RESERVED FLAG:
-//   Если tx.status === "pending" — все созданные movements получают reserved: true.
-//   Когда pending → completed, вызывающий код делает unreserveMovementsByRefId().
+//   Если tx.status === "pending" — manually pending (менеджер сам завершит)
+//   Если tx.status === "checking" — crypto deal, ждущая blockchain-подтверждения
+//   В обоих случаях movements получают reserved: true. Когда статус переходит
+//   в "completed" — вызывающий код делает unreserveMovementsByRefId().
 
 export function buildMovementsFromTransaction(tx, accounts, createdBy) {
   const movements = [];
   const warnings = [];
-  const isReserved = tx.status === "pending";
+  const isReserved = tx.status === "pending" || tx.status === "checking";
 
   const hasAccount = (id) =>
     !!id && accounts.some((a) => a.id === id && a.active !== false);
@@ -49,15 +51,23 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy) {
       warnings.push(`OUT #${index + 1}: account not selected (${out.amount} ${out.currency})`);
       return;
     }
+    // Crypto OUT с sendStatus не "confirmed" → движение резервируется отдельно
+    // (независимо от tx.status). Так балансы не списываются пока менеджер
+    // не подтвердит on-chain отправку.
+    const hasSendFlow =
+      typeof out.sendStatus === "string" && out.sendStatus.length > 0;
+    const outReserved =
+      isReserved || (hasSendFlow && out.sendStatus !== "confirmed");
     movements.push({
       accountId: out.accountId,
       amount: Math.abs(out.amount || 0),
       direction: "out",
       currency: out.currency,
-      reserved: isReserved,
+      reserved: outReserved,
       source: {
         kind: "exchange_out",
         refId: String(tx.id),
+        outputIndex: index,
         note: `Deal #${tx.id} · output ${index + 1}`,
       },
       createdBy,

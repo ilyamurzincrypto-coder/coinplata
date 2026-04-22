@@ -29,6 +29,15 @@ export const LEVELS = ["disabled", "view", "edit"];
 const LEVEL_RANK = { disabled: 0, view: 1, edit: 2 };
 
 const ROLE_DEFAULTS = {
+  owner: {
+    transactions: "edit",
+    capital: "edit",
+    accounts: "edit",
+    referrals: "edit",
+    income_expense: "edit",
+    settings: "edit",
+    audit: "edit",
+  },
   admin: {
     transactions: "edit",
     capital: "edit",

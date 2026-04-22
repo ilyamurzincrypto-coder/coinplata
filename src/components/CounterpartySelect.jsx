@@ -6,16 +6,36 @@
 // Используется в ExchangeForm вместо plain input+datalist.
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { Search, Plus, Send, User as UserIcon, Check } from "lucide-react";
+import { Search, Plus, Send, User as UserIcon, Check, UserPlus } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { CLIENT_TAGS } from "../store/data.js";
+
+const TAG_STYLE = {
+  VIP: "bg-amber-50 text-amber-800 ring-amber-200",
+  Regular: "bg-slate-100 text-slate-700 ring-slate-200",
+  New: "bg-sky-50 text-sky-700 ring-sky-200",
+  Risky: "bg-rose-50 text-rose-700 ring-rose-200",
+};
+
+export function ClientTag({ tag, size = "sm" }) {
+  if (!tag) return null;
+  const cls = TAG_STYLE[tag] || TAG_STYLE.Regular;
+  const sizeCls = size === "xs" ? "text-[9px] px-1 py-0" : "text-[10px] px-1.5 py-0.5";
+  return (
+    <span className={`inline-flex items-center rounded font-bold tracking-wider uppercase ring-1 ${cls} ${sizeCls}`}>
+      {tag}
+    </span>
+  );
+}
 
 export default function CounterpartySelect({ value, onChange }) {
   const { t } = useTranslation();
   const { counterparties, addCounterparty } = useTransactions();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value || "");
+  const [debouncedQuery, setDebouncedQuery] = useState(query);
   const [showAdd, setShowAdd] = useState(false);
   const rootRef = useRef(null);
 
@@ -23,6 +43,12 @@ export default function CounterpartySelect({ value, onChange }) {
   useEffect(() => {
     if (!open) setQuery(value || "");
   }, [value, open]);
+
+  // Debounce ввода — 300ms. Предотвращает фильтрацию на каждую букву.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query), 300);
+    return () => clearTimeout(t);
+  }, [query]);
 
   // Close on outside click
   useEffect(() => {
@@ -34,16 +60,22 @@ export default function CounterpartySelect({ value, onChange }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Пустой запрос → [] (пустой список). Ввод → фильтрация с limit 10.
   const results = useMemo(() => {
-    const q = query.trim().toLowerCase().replace(/^@/, "");
-    if (!q) return counterparties;
-    return counterparties.filter(
-      (c) =>
-        c.nickname.toLowerCase().includes(q) ||
-        (c.name || "").toLowerCase().includes(q) ||
-        (c.telegram || "").toLowerCase().replace(/^@/, "").includes(q)
-    );
-  }, [counterparties, query]);
+    const q = debouncedQuery.trim().toLowerCase().replace(/^@/, "");
+    if (!q) return [];
+    return counterparties
+      .filter(
+        (c) =>
+          c.nickname.toLowerCase().includes(q) ||
+          (c.name || "").toLowerCase().includes(q) ||
+          (c.telegram || "").toLowerCase().replace(/^@/, "").includes(q)
+      )
+      .slice(0, 10);
+  }, [counterparties, debouncedQuery]);
+
+  const hasQuery = debouncedQuery.trim().length > 0;
+  const noMatches = hasQuery && results.length === 0;
 
   const pick = (cp) => {
     onChange(cp.nickname);
@@ -65,35 +97,64 @@ export default function CounterpartySelect({ value, onChange }) {
 
   return (
     <div ref={rootRef} className="relative">
-      <div
-        className={`flex items-center bg-slate-50 border rounded-[10px] transition-colors ${
-          open ? "border-slate-400 ring-2 ring-slate-900/10 bg-white" : "border-slate-200 hover:border-slate-300"
-        }`}
-      >
-        <Search className="w-3.5 h-3.5 text-slate-400 ml-3" />
-        <input
-          type="text"
-          value={query}
-          onFocus={() => setOpen(true)}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            // Optimistic onChange: в tx сохраняем то что сейчас в поле
-            onChange(e.target.value);
-          }}
-          placeholder={t("search_counterparty")}
-          className="flex-1 bg-transparent outline-none text-[13px] px-2 py-2 placeholder:text-slate-400"
-        />
-        {selected?.telegram && !open && (
-          <span className="text-[11px] text-slate-500 mr-2 truncate max-w-[80px]">{selected.telegram}</span>
-        )}
+      <div className="flex items-stretch gap-1.5">
+        <div
+          className={`flex-1 flex items-center bg-slate-50 border rounded-[10px] transition-colors ${
+            open ? "border-slate-400 ring-2 ring-slate-900/10 bg-white" : "border-slate-200 hover:border-slate-300"
+          }`}
+        >
+          <Search className="w-3.5 h-3.5 text-slate-400 ml-3" />
+          <input
+            type="text"
+            value={query}
+            onFocus={() => setOpen(true)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+              onChange(e.target.value);
+            }}
+            placeholder={t("search_counterparty") || "Search client by name or @telegram"}
+            className="flex-1 bg-transparent outline-none text-[13px] px-2 py-2 placeholder:text-slate-400"
+          />
+          {selected?.tag && !open && <div className="mr-2"><ClientTag tag={selected.tag} size="xs" /></div>}
+          {selected?.telegram && !open && (
+            <span className="text-[11px] text-slate-500 mr-2 truncate max-w-[80px]">{selected.telegram}</span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAdd(true)}
+          className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+          title={t("add_new") || "Add client"}
+        >
+          <UserPlus className="w-3 h-3" />
+          Add
+        </button>
       </div>
 
       {open && (
         <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-[10px] shadow-xl shadow-slate-900/10 py-1 max-h-64 overflow-auto">
-          {results.length === 0 && (
+          {!hasQuery && (
             <div className="px-3 py-6 text-center text-[12px] text-slate-400">
-              No matches
+              Start typing to search clients
+            </div>
+          )}
+          {noMatches && (
+            <div className="px-3 py-6 text-center">
+              <div className="text-[13px] font-semibold text-slate-700 mb-1">
+                Client not found
+              </div>
+              <div className="text-[11px] text-slate-500 mb-3">
+                No client matches "{debouncedQuery}"
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
+              >
+                <UserPlus className="w-3 h-3" />
+                Add "{debouncedQuery}"
+              </button>
             </div>
           )}
           {results.map((cp) => (
@@ -107,8 +168,9 @@ export default function CounterpartySelect({ value, onChange }) {
                 {(cp.name || cp.nickname).split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-slate-900 truncate">
-                  {cp.name || cp.nickname}
+                <div className="text-[13px] font-medium text-slate-900 truncate flex items-center gap-1.5">
+                  <span className="truncate">{cp.name || cp.nickname}</span>
+                  <ClientTag tag={cp.tag} size="xs" />
                 </div>
                 <div className="text-[11px] text-slate-500 flex items-center gap-2">
                   {cp.nickname !== cp.name && cp.name && (
@@ -125,18 +187,21 @@ export default function CounterpartySelect({ value, onChange }) {
               {value === cp.nickname && <Check className="w-3.5 h-3.5 text-slate-900" />}
             </button>
           ))}
-          <div className="border-t border-slate-100 mt-1 pt-1 px-1">
-            <button
-              type="button"
-              onClick={() => setShowAdd(true)}
-              className="w-full text-left px-2 py-2 rounded-[8px] hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-            >
-              <div className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center">
-                <Plus className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-[13px] font-semibold">{t("add_new")}</span>
-            </button>
-          </div>
+          {/* Add client CTA — всегда снизу с divider'ом, только если НЕ активно no-matches (там отдельная кнопка). */}
+          {!noMatches && (
+            <div className="border-t border-slate-100 mt-1 pt-1 px-1">
+              <button
+                type="button"
+                onClick={() => setShowAdd(true)}
+                className="w-full text-left px-2 py-2 rounded-[8px] hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+              >
+                <div className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center">
+                  <Plus className="w-3.5 h-3.5 text-white" />
+                </div>
+                <span className="text-[13px] font-semibold">{t("add_new") || "Add client"}</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -154,32 +219,37 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
   const { t } = useTranslation();
   const [name, setName] = useState(initialName || "");
   const [telegram, setTelegram] = useState("");
+  const [tag, setTag] = useState("");
+  const [note, setNote] = useState("");
 
   useEffect(() => {
     if (open) {
       setName(initialName || "");
       setTelegram("");
+      setTag("");
+      setNote("");
     }
   }, [open, initialName]);
 
   const handleSubmit = () => {
     if (!name.trim()) return;
-    // nickname = name (или укороченная версия, если длинное)
     const nickname = name.trim();
     const tg = telegram.trim();
     onSubmit({
       nickname,
       name: nickname,
       telegram: tg && !tg.startsWith("@") ? `@${tg}` : tg,
+      tag: tag || "",
+      note: note.trim(),
     });
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={t("new_counterparty")} width="md">
+    <Modal open={open} onClose={onClose} title={t("new_counterparty") || "Add client"} width="md">
       <div className="p-5 space-y-3">
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            <UserIcon className="w-3 h-3 inline mr-1" /> {t("name_label")}
+            <UserIcon className="w-3 h-3 inline mr-1" /> {t("name_label") || "Name"}
           </label>
           <input
             type="text"
@@ -192,13 +262,53 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
         </div>
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            <Send className="w-3 h-3 inline mr-1" /> {t("telegram_label")}
+            <Send className="w-3 h-3 inline mr-1" /> {t("telegram_label") || "Telegram"}
           </label>
           <input
             type="text"
             value={telegram}
             onChange={(e) => setTelegram(e.target.value)}
             placeholder="@username"
+            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+          />
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            Tag
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setTag("")}
+              className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                !tag ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              None
+            </button>
+            {CLIENT_TAGS.map((tg) => (
+              <button
+                key={tg}
+                type="button"
+                onClick={() => setTag(tg)}
+                className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                  tag === tg ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {tg}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            Note (optional)
+          </label>
+          <input
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="OTC desk, prefers SEPA…"
             className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
@@ -217,7 +327,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             name.trim() ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          {t("save")}
+          {t("save") || "Save"}
         </button>
       </div>
     </Modal>

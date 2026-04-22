@@ -6,7 +6,7 @@
 // Постепенная миграция на useOffices() делается только там где нужен динамический список.
 
 import { createContext, useContext, useState, useCallback, useMemo } from "react";
-import { OFFICES as SEED_OFFICES } from "./data.js";
+import { OFFICES as SEED_OFFICES, DEFAULT_OFFICE_OPS } from "./data.js";
 
 const OfficesContext = createContext(null);
 
@@ -19,7 +19,7 @@ export function OfficesProvider({ children }) {
     [offices]
   );
 
-  const addOffice = useCallback(({ name, city }) => {
+  const addOffice = useCallback(({ name, city, timezone, workingDays, workingHours }) => {
     const id = `office_${Date.now()}`;
     const full = {
       id,
@@ -27,6 +27,9 @@ export function OfficesProvider({ children }) {
       city: String(city || "").trim(),
       status: "active",
       active: true,
+      timezone: timezone || DEFAULT_OFFICE_OPS.timezone,
+      workingDays: Array.isArray(workingDays) ? workingDays : DEFAULT_OFFICE_OPS.workingDays,
+      workingHours: workingHours || DEFAULT_OFFICE_OPS.workingHours,
     };
     if (!full.name) return null;
     setOffices((prev) => [...prev, full]);

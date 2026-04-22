@@ -256,6 +256,20 @@ export function AccountsProvider({ children }) {
     );
   }, []);
 
+  // Точечный unreserve конкретного OUT-движения (crypto outgoing flow):
+  // когда конкретный output tx'а подтверждён on-chain, снимаем reserved
+  // только с его movement'а, остальные могут оставаться reserved.
+  const unreserveMovementByOutputIndex = useCallback((refId, outputIndex) => {
+    if (!refId || outputIndex == null) return;
+    setMovements((prev) =>
+      prev.map((m) =>
+        m.source?.refId === String(refId) && m.source?.outputIndex === outputIndex
+          ? { ...m, reserved: false }
+          : m
+      )
+    );
+  }, []);
+
   const value = useMemo(
     () => ({
       accounts,
@@ -270,6 +284,7 @@ export function AccountsProvider({ children }) {
       addMovement,
       removeMovementsByRefId,
       unreserveMovementsByRefId,
+      unreserveMovementByOutputIndex,
       topUp,
       transfer,
       // computed
@@ -292,6 +307,7 @@ export function AccountsProvider({ children }) {
       addMovement,
       removeMovementsByRefId,
       unreserveMovementsByRefId,
+      unreserveMovementByOutputIndex,
       topUp,
       transfer,
       balances,

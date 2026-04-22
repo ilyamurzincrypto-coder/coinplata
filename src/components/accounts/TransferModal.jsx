@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowRight, AlertCircle } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
-import AccountSelect from "../AccountSelect.jsx";
+import GroupedAccountSelect from "../GroupedAccountSelect.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
@@ -104,12 +104,11 @@ export default function TransferModal({ open, fromAccount, onClose }) {
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
             {t("transfer_from")}
           </label>
-          <AccountSelect
+          <GroupedAccountSelect
             accounts={activeAccounts}
             value={fromId}
             onChange={setFromId}
             placeholder={t("select_account")}
-            allowClear={false}
           />
           {from && (
             <div className="mt-1.5 text-[11px] text-slate-500 tabular-nums">
@@ -134,12 +133,11 @@ export default function TransferModal({ open, fromAccount, onClose }) {
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
             {t("transfer_to")}
           </label>
-          <AccountSelect
+          <GroupedAccountSelect
             accounts={activeAccounts.filter((a) => a.id !== fromId)}
             value={toId}
             onChange={setToId}
             placeholder={t("select_account")}
-            allowClear={false}
           />
         </div>
 

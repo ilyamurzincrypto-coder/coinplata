@@ -80,142 +80,99 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, currencyDict) {
 
 // ------- UI: one currency row (Total / Reserved / Available) -------
 
-function CurrencyRow({ row }) {
-  const hasReserved = row.reserved > 0;
+// Строго: name слева, сумма справа, available-зеленый только если > 0 и без reserved.
+function AssetRow({ name, subtitle, amount, currency, reserved }) {
+  const hasReserved = reserved > 0;
   return (
-    <div className="bg-white border border-slate-200/80 rounded-[8px] px-2.5 py-2">
-      <div className="flex items-baseline justify-between mb-1 gap-2">
-        <span className="text-[11px] font-bold text-slate-700 tracking-wider">
-          {row.currency}
-        </span>
-        <span className="text-[13px] font-semibold tabular-nums tracking-tight text-slate-900">
-          <span className="text-slate-400 text-[10px] font-medium mr-0.5">
-            {curSymbol(row.currency)}
-          </span>
-          {fmt(row.total, row.currency)}
-        </span>
+    <div className="flex items-baseline justify-between gap-2 py-1.5 border-b border-slate-100 last:border-b-0">
+      <div className="min-w-0 flex-1">
+        <div className="text-[12px] font-semibold text-slate-800 truncate">{name}</div>
+        {subtitle && (
+          <div className="text-[10px] text-slate-400 truncate">{subtitle}</div>
+        )}
       </div>
-      {hasReserved ? (
-        <div className="grid grid-cols-2 gap-1 text-[10px] tabular-nums">
-          <div className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 rounded-md px-1.5 py-0.5">
-            <Clock className="w-2.5 h-2.5 shrink-0" />
-            <span className="font-semibold truncate">{fmt(row.reserved, row.currency)}</span>
-          </div>
-          <div className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 rounded-md px-1.5 py-0.5 justify-end">
-            <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-            <span className="font-semibold truncate">{fmt(row.available, row.currency)}</span>
-          </div>
+      <div className="text-right shrink-0">
+        <div className="text-[13px] font-semibold tabular-nums text-slate-900">
+          {curSymbol(currency)}{fmt(amount, currency)}
         </div>
-      ) : (
-        <div className="text-[10px] tabular-nums text-emerald-700 inline-flex items-center gap-1 bg-emerald-50 rounded-md px-1.5 py-0.5">
-          <CheckCircle2 className="w-2.5 h-2.5" />
-          <span className="font-semibold">available {fmt(row.available, row.currency)}</span>
-        </div>
-      )}
+        {hasReserved && (
+          <div className="text-[10px] text-amber-700 tabular-nums">
+            −{fmt(reserved, currency)} pending
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 // ------- Cash / Bank card -------
 
-function GroupCard({ title, icon: Icon, iconClass, rows, emptyText }) {
+// Нейтральная карточка группы. Все группы идентичны визуально.
+// — заголовок (CASH / BANK / CRYPTO)
+// — total
+// — divider
+// — список активов (скролл при переполнении)
+function GroupCard({ title, icon: Icon, rows, total, emptyText, currency }) {
   return (
-    <div className="bg-slate-50/60 border border-slate-200 rounded-[12px] p-3 flex flex-col">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Icon className={`w-3.5 h-3.5 ${iconClass || "text-slate-400"}`} />
-        <span className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase">
+    <div className="bg-white border border-slate-200 rounded-[14px] p-4 flex flex-col h-full min-h-[220px]">
+      {/* Header: title */}
+      <div className="flex items-center gap-1.5">
+        <Icon className="w-3.5 h-3.5 text-slate-400" />
+        <span className="text-[11px] font-bold text-slate-600 tracking-[0.15em] uppercase">
           {title}
         </span>
-        <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{rows.length}</span>
+        <span className="ml-auto text-[10px] font-semibold text-slate-400 tabular-nums">
+          {rows.length}
+        </span>
       </div>
-      {rows.length === 0 ? (
-        <div className="text-[11px] text-slate-400 italic py-2">{emptyText}</div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((r) => (
-            <CurrencyRow key={r.currency} row={r} />
-          ))}
-        </div>
-      )}
+
+      {/* Total amount — one line, right-aligned via block */}
+      <div className="mt-2 text-[24px] font-bold tabular-nums tracking-tight text-slate-900 leading-none">
+        {curSymbol(currency)}{fmt(total, currency)}
+        <span className="text-[12px] text-slate-400 font-medium ml-1.5">{currency}</span>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-3 border-t border-slate-200" />
+
+      {/* Assets list with scroll */}
+      <div className="mt-2 overflow-y-auto flex-1" style={{ maxHeight: 220 }}>
+        {rows.length === 0 ? (
+          <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
+        ) : (
+          rows.map((r, i) => (
+            <AssetRow
+              key={`${r.currency}_${r.subtitle || i}`}
+              name={r.currency}
+              subtitle={r.subtitle}
+              amount={r.total}
+              currency={r.currency}
+              reserved={r.reserved}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
 // ------- Crypto card (валюта → сети) -------
 
-function CryptoCard({ rows, emptyText }) {
-  return (
-    <div className="bg-slate-50/60 border border-slate-200 rounded-[12px] p-3 flex flex-col">
-      <div className="flex items-center gap-1.5 mb-3">
-        <Coins className="w-3.5 h-3.5 text-indigo-500" />
-        <span className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase">
-          Crypto
-        </span>
-        <span className="ml-auto text-[10px] text-slate-400 tabular-nums">{rows.length}</span>
-      </div>
-      {rows.length === 0 ? (
-        <div className="text-[11px] text-slate-400 italic py-2">{emptyText}</div>
-      ) : (
-        <div className="space-y-2">
-          {rows.map((c) => {
-            const total = c.networks.reduce((s, n) => s + n.total, 0);
-            const reserved = c.networks.reduce((s, n) => s + n.reserved, 0);
-            const available = total - reserved;
-            const hasReserved = reserved > 0;
-            return (
-              <div key={c.currency} className="bg-white border border-slate-200/80 rounded-[8px] p-2.5">
-                <div className="flex items-baseline justify-between mb-1 gap-2">
-                  <span className="text-[11px] font-bold text-slate-700 tracking-wider">
-                    {c.currency}
-                  </span>
-                  <span className="text-[13px] font-semibold tabular-nums tracking-tight text-slate-900">
-                    <span className="text-slate-400 text-[10px] font-medium mr-0.5">
-                      {curSymbol(c.currency)}
-                    </span>
-                    {fmt(total, c.currency)}
-                  </span>
-                </div>
-                {hasReserved && (
-                  <div className="grid grid-cols-2 gap-1 text-[10px] tabular-nums mb-1">
-                    <div className="inline-flex items-center gap-1 text-amber-700 bg-amber-50 rounded-md px-1.5 py-0.5">
-                      <Clock className="w-2.5 h-2.5 shrink-0" />
-                      <span className="font-semibold truncate">{fmt(reserved, c.currency)}</span>
-                    </div>
-                    <div className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 rounded-md px-1.5 py-0.5 justify-end">
-                      <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-                      <span className="font-semibold truncate">{fmt(available, c.currency)}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-1 mt-1 pt-1 border-t border-slate-100">
-                  {c.networks.map((n) => (
-                    <div
-                      key={n.network}
-                      className="flex items-center justify-between text-[11px] px-1.5 py-0.5"
-                    >
-                      <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-indigo-50 text-indigo-700">
-                        {n.network}
-                      </span>
-                      <div className="flex items-center gap-1.5 tabular-nums">
-                        {n.reserved > 0 && (
-                          <span className="text-[9px] text-amber-700 font-semibold">
-                            −{fmt(n.reserved, c.currency)}
-                          </span>
-                        )}
-                        <span className="font-semibold text-slate-700">
-                          {fmt(n.total, c.currency)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+// Плоский список криптоактивов: USDT (TRC20), USDT (ERC20), BTC, ETH...
+// Каждая пара (currency, network) — отдельная строка. Total = сумма в base.
+function cryptoRowsFromGroups(cryptoGroups) {
+  const out = [];
+  cryptoGroups.forEach((c) => {
+    c.networks.forEach((n) => {
+      out.push({
+        currency: c.currency,
+        subtitle: n.network,
+        total: n.total,
+        reserved: n.reserved,
+      });
+    });
+  });
+  return out;
 }
 
 // ------- Office block -------
@@ -268,12 +225,43 @@ function OfficeBlock({ office, accounts, balanceOf, reservedOf, currencyDict, to
         </div>
       </div>
 
-      {/* 3 columns */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <GroupCard title="Cash" icon={Banknote} iconClass="text-emerald-500" rows={grouped.cash} emptyText="No cash accounts" />
-        <GroupCard title="Bank" icon={Building2} iconClass="text-sky-500" rows={grouped.bank} emptyText="No bank accounts" />
-        <CryptoCard rows={grouped.crypto} emptyText="No crypto accounts" />
-      </div>
+      {/* 3 равные колонки — стабильный layout независимо от количества валют.
+          Каждая карточка скроллится внутри если активов много. */}
+      {(() => {
+        const cryptoRows = cryptoRowsFromGroups(grouped.crypto);
+        // Totals per card в base (для заголовочной суммы).
+        const cashTotalBase = grouped.cash.reduce((s, r) => s + toBase(r.total, r.currency), 0);
+        const bankTotalBase = grouped.bank.reduce((s, r) => s + toBase(r.total, r.currency), 0);
+        const cryptoTotalBase = cryptoRows.reduce((s, r) => s + toBase(r.total, r.currency), 0);
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <GroupCard
+              title="Cash"
+              icon={Banknote}
+              rows={grouped.cash}
+              total={cashTotalBase}
+              currency={base}
+              emptyText="No cash accounts"
+            />
+            <GroupCard
+              title="Bank"
+              icon={Building2}
+              rows={grouped.bank}
+              total={bankTotalBase}
+              currency={base}
+              emptyText="No bank accounts"
+            />
+            <GroupCard
+              title="Crypto"
+              icon={Coins}
+              rows={cryptoRows}
+              total={cryptoTotalBase}
+              currency={base}
+              emptyText="No crypto accounts"
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -131,6 +131,33 @@ export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate 
   return { remaining, feeInCurIn, consumed, exceedsInput };
 }
 
+// Net output amount: gross − feeOut. Fee сперва конвертируется из USD в output currency.
+//
+//   grossOut = amtIn × rate
+//   feeOut   = convert(feeUsd, USD → outputCurrency)
+//   netOut   = max(0, grossOut − feeOut)
+//
+// Используется в ExchangeForm для авто-заполнения первого output так, чтобы
+// "You receive" было финальной суммой с учётом комиссии (не gross).
+export function computeNetOutput({ amtIn, rate, feeUsd, outputCurrency, getRate }) {
+  const a = typeof amtIn === "number" ? amtIn : parseFloat(String(amtIn || "").replace(",", "."));
+  const r = typeof rate === "number" ? rate : parseFloat(String(rate || "").replace(",", "."));
+  if (!a || a <= 0 || !r || r <= 0) return 0;
+  const precision = outputCurrency === "TRY" ? 0 : 2;
+  const gross = multiplyAmount(a, r, precision);
+  const fee = typeof feeUsd === "number" ? feeUsd : parseFloat(String(feeUsd || "").replace(",", "."));
+  if (!fee || fee <= 0) return gross;
+  let feeOut = 0;
+  if (outputCurrency === "USD") {
+    feeOut = fee;
+  } else if (typeof getRate === "function") {
+    const r2 = getRate("USD", outputCurrency);
+    if (r2 && r2 > 0) feeOut = multiplyAmount(fee, r2, precision);
+  }
+  const net = gross - feeOut;
+  return net > 0 ? Math.round(net * Math.pow(10, precision)) / Math.pow(10, precision) : 0;
+}
+
 // Авто-расчёт прибыли от разницы между rate менеджера и рыночным rate.
 //
 // Для каждого output:

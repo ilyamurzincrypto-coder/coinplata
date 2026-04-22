@@ -5,7 +5,8 @@ import React, { useState, useMemo } from "react";
 import { Receipt, Plus, ArrowDownLeft, ArrowUpRight, Trash2 } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
-import { useIncomeExpense, IE_CATEGORIES } from "../../store/incomeExpense.jsx";
+import { useIncomeExpense } from "../../store/incomeExpense.jsx";
+import { useCategories } from "../../store/categories.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
@@ -204,6 +205,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { addEntry } = useIncomeExpense();
   const { accountsByOffice, addMovement } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
+  const { byType: categoriesByType } = useCategories();
 
   const [officeId, setOfficeId] = useState(OFFICES[0].id);
   const [currency, setCurrency] = useState("USD");
@@ -240,7 +242,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
 
   if (!type) return null;
 
-  const categories = IE_CATEGORIES[type] || [];
+  const categories = categoriesByType(type).map((c) => c.name);
   const canSubmit = amount && parseFloat(amount) > 0 && category && officeId;
 
   const handleSubmit = () => {

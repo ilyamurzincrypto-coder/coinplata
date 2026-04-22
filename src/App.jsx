@@ -21,6 +21,10 @@ import { AccountsProvider } from "./store/accounts.jsx";
 import { PermissionsProvider, useCan } from "./store/permissions.jsx";
 import { AuditProvider } from "./store/audit.jsx";
 import { IncomeExpenseProvider } from "./store/incomeExpense.jsx";
+import { WalletsProvider } from "./store/wallets.jsx";
+import { MonitoringProvider } from "./store/monitoring.jsx";
+import { CategoriesProvider } from "./store/categories.jsx";
+import { RateHistoryProvider } from "./store/rateHistory.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -54,7 +58,7 @@ function Root() {
         currentOffice={currentOffice}
         onOfficeChange={setCurrentOffice}
       />
-      <RatesConfirmationBanner />
+      <RatesConfirmationBanner currentOffice={currentOffice} />
       {page === "cashier" && canShow("cashier") && <CashierPage currentOffice={currentOffice} />}
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
@@ -74,13 +78,21 @@ export default function App() {
             <PermissionsProvider>
               <AuditProvider>
                 <RatesProvider>
+                  <RateHistoryProvider>
                   <AccountsProvider>
+                    <CategoriesProvider>
                     <IncomeExpenseProvider>
                       <TransactionsProvider>
-                        <Root />
+                        <WalletsProvider>
+                          <MonitoringProvider>
+                            <Root />
+                          </MonitoringProvider>
+                        </WalletsProvider>
                       </TransactionsProvider>
                     </IncomeExpenseProvider>
+                    </CategoriesProvider>
                   </AccountsProvider>
+                  </RateHistoryProvider>
                 </RatesProvider>
               </AuditProvider>
             </PermissionsProvider>

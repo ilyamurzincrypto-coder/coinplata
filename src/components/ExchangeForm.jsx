@@ -49,7 +49,15 @@ import {
   curSymbol,
   computeRemaining,
   computeProfitFromRates,
+  computeNetOutput,
 } from "../utils/money.js";
+import { useWallets } from "../store/wallets.jsx";
+import { useRateHistory } from "../store/rateHistory.jsx";
+import {
+  resolveTxHash,
+  detectNetworkFromAddress,
+  detectNetworkFromAccountName,
+} from "../utils/resolveCrypto.js";
 
 // Создать пустой output
 const emptyOutput = (currency = "TRY") => ({
@@ -60,6 +68,7 @@ const emptyOutput = (currency = "TRY") => ({
   manualRate: false,
   touched: false,
   accountId: "", // выбирается менеджером отдельно
+  address: "",   // crypto recipient; используется только для crypto-валют
 });
 
 // Иконки для типов счетов (дублирует data.js ACCOUNT_TYPES.icon, но здесь локально для UI скорости)
@@ -82,6 +91,7 @@ function initFromTx(tx) {
         manualRate: true,
         touched: true,
         accountId: o.accountId || "",
+        address: o.address || "",
       }))
     : [
         {
@@ -92,6 +102,7 @@ function initFromTx(tx) {
           manualRate: true,
           touched: true,
           accountId: tx.outAccountId || "",
+          address: "",
         },
       ];
   return {
@@ -101,6 +112,7 @@ function initFromTx(tx) {
     counterparty: tx.counterparty || "",
     referral: !!tx.referral,
     comment: tx.comment || "",
+    inTxHash: tx.inTxHash || "",
   };
 }
 
@@ -114,9 +126,21 @@ export default function ExchangeForm({
   const { t } = useTranslation();
   const { getRate } = useRates();
   const { currentUser, settings } = useAuth();
-  const { addCounterparty } = useTransactions();
+  const { addCounterparty, counterparties } = useTransactions();
   const { accountsByOffice, balanceOf, accounts } = useAccounts();
-  const { codes: CURRENCIES } = useCurrencies();
+  const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
+  const { upsertWallet, findWallet } = useWallets();
+  const { snapshots: rateSnapshots } = useRateHistory();
+
+  const isCryptoCode = (code) => currencyDict[code]?.type === "crypto";
+
+  // Резолвим counterparty string → id, чтобы проверять принадлежность кошелька.
+  // Для нового (несуществующего) имени вернём null — wallet conflict-проверка пропускается.
+  const resolveClientId = (nickname) => {
+    const nk = (nickname || "").trim().toLowerCase();
+    if (!nk) return null;
+    return counterparties.find((c) => c.nickname.toLowerCase() === nk)?.id || null;
+  };
 
   // --- state ---
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
@@ -129,11 +153,30 @@ export default function ExchangeForm({
   const [accountId, setAccountId] = useState(initialData?.accountId || "");
   const [isPending, setIsPending] = useState(initialData?.status === "pending");
   const [flash, setFlash] = useState(false);
+  const [inTxHash, setInTxHash] = useState(starter?.inTxHash || "");
 
-  // Список доступных счетов для пары (office, curIn)
+  // Wallet-конфликт для incoming (curIn crypto + txHash задан).
+  const inWalletCheck = useMemo(() => {
+    if (!isCryptoCode(curIn) || !inTxHash.trim()) return null;
+    const resolved = resolveTxHash(inTxHash.trim());
+    if (!resolved) return { status: "invalid_hash" };
+    const existing = findWallet(resolved.from_address, resolved.network);
+    const clientId = resolveClientId(counterparty);
+    if (existing && clientId && existing.clientId !== clientId) {
+      return { status: "conflict", resolved, existing };
+    }
+    if (existing && clientId && existing.clientId === clientId) {
+      return { status: "known", resolved, existing };
+    }
+    return { status: "new", resolved };
+  }, [curIn, inTxHash, counterparty, counterparties, findWallet]);
+
+  // Список доступных счетов для IN currency.
+  // ВСЕ офисы — current рендерится первой секцией, остальные — отмечаются как
+  // interoffice transfer в AccountSelect. Картирован по active + currency.
   const availableAccounts = useMemo(
-    () => accountsByOffice(currentOffice, { currency: curIn }),
-    [accountsByOffice, currentOffice, curIn]
+    () => accounts.filter((a) => a.active && a.currency === curIn),
+    [accounts, curIn]
   );
 
   // Computed: суммарный баланс всех active аккаунтов офиса в заданной валюте.
@@ -152,20 +195,35 @@ export default function ExchangeForm({
   }, [availableAccounts, accountId]);
 
   // --- auto-fill rates / amounts ---
+  // ВАЖНО: первый output теперь заполняется как NET (gross − feeOut),
+  // где feeUsd = settings.minFeeUsd. "You receive" показывает финальную сумму
+  // с учётом комиссии. computeRemaining ниже использует тот же fee baseline,
+  // поэтому remaining = 0 и "exceeds_remaining" не ложно срабатывает.
   useEffect(() => {
     setOutputs((prev) =>
-      prev.map((o) => {
-        // Если manual rate — не трогаем
+      prev.map((o, idx) => {
         if (o.manualRate) return o;
         const autoRate = getRate(curIn, o.currency);
         const nextRate = autoRate !== undefined ? String(autoRate) : o.rate;
-        // Пересчёт amount только если пользователь его не трогал
         let nextAmount = o.amount;
         if (!o.touched) {
           const a = parseFloat(amtIn);
           const r = parseFloat(nextRate);
           if (!isNaN(a) && !isNaN(r) && a > 0 && r > 0) {
-            const computed = multiplyAmount(a, r, o.currency === "TRY" ? 0 : 2);
+            // Первый output — net (минус fee). Остальные — gross (manager разделит
+            // через Use remaining / manual input).
+            let computed;
+            if (idx === 0) {
+              computed = computeNetOutput({
+                amtIn: a,
+                rate: r,
+                feeUsd: settings.minFeeUsd || 0,
+                outputCurrency: o.currency,
+                getRate,
+              });
+            } else {
+              computed = multiplyAmount(a, r, o.currency === "TRY" ? 0 : 2);
+            }
             nextAmount = String(computed);
           } else {
             nextAmount = "";
@@ -174,7 +232,7 @@ export default function ExchangeForm({
         return { ...o, rate: nextRate, amount: nextAmount };
       })
     );
-  }, [curIn, amtIn, getRate]);
+  }, [curIn, amtIn, getRate, settings.minFeeUsd]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
@@ -237,19 +295,21 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Передаём effectiveFee как USD — она автоматически вычитается из remaining
-  // через rate(curIn → USD).
+  // Используем тот же fee-baseline (minFeeUsd), что применяется в auto-fill
+  // для первого output. Это даёт remaining = 0 в стандартном сценарии
+  // и устраняет ложное "exceeds_remaining".
+  const remainingFeeUsd = settings.minFeeUsd || 0;
   const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
     () =>
       computeRemaining({
         amtIn,
         curIn,
         outputs,
-        fee: effectiveFee,
+        fee: remainingFeeUsd,
         feeType: "USD",
         getRate,
       }),
-    [amtIn, curIn, outputs, effectiveFee, getRate]
+    [amtIn, curIn, outputs, remainingFeeUsd, getRate]
   );
   const EPS = 0.01;
 
@@ -257,7 +317,9 @@ export default function ExchangeForm({
   const hasAllRates = outputs.every((o) => o.rate && parseFloat(o.rate) > 0);
   const hasAllAmounts = outputs.every((o) => o.amount && parseFloat(o.amount) > 0);
   const noSameCurrency = outputs.every((o) => o.currency !== curIn);
-  const canSubmit = amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput;
+  const hasClient = counterparty.trim().length > 0;
+  const canSubmit =
+    amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput && hasClient;
 
   // --- account warnings (non-blocking) ---
   // Список объектов {kind, label} для рендера под Submit.
@@ -280,23 +342,37 @@ export default function ExchangeForm({
   }, [accountId, outputs, t]);
 
   // --- submit ---
-  const buildTx = () => {
+  const buildTx = (clientId) => {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
 
-    const outputsClean = outputs.map((o) => ({
-      currency: o.currency,
-      amount: parseFloat(o.amount) || 0,
-      rate: parseFloat(o.rate) || 0,
-      accountId: o.accountId || "",
-    }));
+    const outputsClean = outputs.map((o) => {
+      const addr = (o.address || "").trim();
+      const base = {
+        currency: o.currency,
+        amount: parseFloat(o.amount) || 0,
+        rate: parseFloat(o.rate) || 0,
+        accountId: o.accountId || "",
+        address: addr,
+      };
+      // Crypto OUT с адресом → включаем send lifecycle.
+      // pending_send = сделка создана, но средства ещё не отправлены on-chain.
+      if (isCryptoCode(o.currency) && addr) {
+        base.sendStatus = "pending_send";
+        base.sendTxHash = "";
+        // network best-effort: пытаемся достать из выбранного account
+        // (или оставим пустым — можно задать в момент "Send").
+        const acc = accounts.find((a) => a.id === o.accountId);
+        base.network = acc?.network || null;
+      }
+      return base;
+    });
 
     // Профит: по умолчанию = эффективная комиссия в USD.
     // Минус реферальный бонус если referral=true.
     let profit = effectiveFee;
     if (referral) {
-      // Рефералка считается от оборота в USD
       const inUsd =
         curIn === "USD"
           ? parseFloat(amtIn) || 0
@@ -304,6 +380,16 @@ export default function ExchangeForm({
       const refBonus = percentOf(inUsd, settings.referralPct, 2);
       profit = Math.round((profit - refBonus) * 100) / 100;
     }
+
+    // Status:
+    //   — isPending checkbox → "pending" (manual pending, менеджер сам завершит)
+    //   — crypto curIn без ручного TX hash → "checking" (polling auto-confirm)
+    //   — иначе → "completed" (fiat или crypto с manual override)
+    const status = isPending
+      ? "pending"
+      : isCryptoCode(curIn) && !inTxHash.trim()
+      ? "checking"
+      : "completed";
 
     const base = {
       time: `${hh}:${mm}`,
@@ -313,7 +399,6 @@ export default function ExchangeForm({
       curIn,
       amtIn: parseFloat(amtIn),
       outputs: outputsClean,
-      // Для обратной совместимости — первый output дублируется в плоские поля
       curOut: outputsClean[0].currency,
       amtOut: outputsClean[0].amount,
       rate: outputsClean[0].rate,
@@ -322,10 +407,13 @@ export default function ExchangeForm({
       manager: currentUser.name,
       managerId: currentUser.id,
       counterparty,
+      counterpartyId: clientId || null, // для polling-матчинга + wallet ownership
       referral,
       comment,
       accountId,
-      status: isPending ? "pending" : "completed",
+      status,
+      createdAtMs: Date.now(), // для window-матчинга в monitoring
+      rateSnapshotId: rateSnapshots[0]?.id || null, // самый свежий snapshot
     };
 
     if (mode === "edit" && initialData) {
@@ -336,8 +424,43 @@ export default function ExchangeForm({
 
   const handleSubmit = () => {
     if (!canSubmit) return;
-    const tx = buildTx();
-    if (counterparty) addCounterparty(counterparty);
+
+    // СНАЧАЛА resolve/create counterparty — нужен clientId для tx (monitoring будет
+    // использовать tx.counterpartyId при auto-confirm для привязки wallet).
+    const cp = addCounterparty(counterparty);
+    const clientId = cp?.id || null;
+
+    const tx = buildTx(clientId);
+
+    // Auto-detect wallets. upsertWallet сам справляется с дублями и конфликтами —
+    // в случае conflict (другой клиент) ничего не пишется, UI уже показал warning.
+    if (clientId) {
+      // INCOMING: из txHash → from_address + network (stub-резолвер).
+      if (isCryptoCode(curIn) && inTxHash.trim()) {
+        const resolved = resolveTxHash(inTxHash.trim());
+        if (resolved) {
+          upsertWallet({
+            address: resolved.from_address,
+            network: resolved.network,
+            clientId,
+          });
+        }
+      }
+      // OUTGOING: per-output recipient address.
+      outputs.forEach((o) => {
+        if (!isCryptoCode(o.currency)) return;
+        const addr = (o.address || "").trim();
+        if (!addr) return;
+        let net = detectNetworkFromAddress(addr);
+        if (!net && o.accountId) {
+          const acc = accounts.find((a) => a.id === o.accountId);
+          if (acc) net = detectNetworkFromAccountName(acc.name);
+        }
+        if (!net) return;
+        upsertWallet({ address: addr, network: net, clientId });
+      });
+    }
+
     setFlash(true);
     setTimeout(() => setFlash(false), 600);
     onSubmit?.(tx);
@@ -348,6 +471,7 @@ export default function ExchangeForm({
       setCounterparty("");
       setReferral(false);
       setComment("");
+      setInTxHash("");
     }
   };
 
@@ -419,6 +543,30 @@ export default function ExchangeForm({
         </div>
       )}
 
+      {/* CLIENT — обязательное поле, всегда первое */}
+      <div className="px-5 pt-5">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
+            <UserPlus className="w-3 h-3 text-white" />
+          </div>
+          <span className="text-[11px] font-bold tracking-[0.15em] text-indigo-700 uppercase">
+            Client
+          </span>
+          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
+            required
+          </span>
+        </div>
+        <div
+          className={`rounded-[12px] border-2 transition-colors ${
+            counterparty.trim()
+              ? "border-indigo-200 bg-indigo-50/30"
+              : "border-amber-300 bg-amber-50/40"
+          } p-2`}
+        >
+          <CounterpartySelect value={counterparty} onChange={setCounterparty} />
+        </div>
+      </div>
+
       {/* RECEIVED */}
       <div className="px-5 pt-5">
         <div className="flex items-center mb-3">
@@ -487,33 +635,73 @@ export default function ExchangeForm({
               value={accountId}
               onChange={setAccountId}
               placeholder={t("select_account")}
+              currentOfficeId={currentOffice}
             />
           </div>
         )}
+
+        {/* Incoming crypto — manual TX hash override.
+            НЕ обязателен: blockchain monitoring сам найдёт входящую tx и подтвердит сделку.
+            Ввод хеша = быстрый ручной confirm (минует status=checking). */}
+        {isCryptoCode(curIn) && (
+          <details className="mt-3 group">
+            <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase select-none hover:text-slate-700">
+              <ChevronDown className="w-3 h-3 transition-transform group-open:-rotate-180" />
+              Manual TX hash · optional
+            </summary>
+            <div className="mt-2">
+              <input
+                type="text"
+                value={inTxHash}
+                onChange={(e) => setInTxHash(e.target.value.trim())}
+                placeholder="0x… or TRON 64-hex"
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Leave empty — polling will auto-confirm the deal when the incoming tx arrives.
+              </p>
+              {inWalletCheck && (
+                <WalletHint
+                  status={inWalletCheck.status}
+                  address={inWalletCheck.resolved?.from_address}
+                  network={inWalletCheck.resolved?.network}
+                  conflict={inWalletCheck.existing}
+                  counterparties={counterparties}
+                />
+              )}
+            </div>
+          </details>
+        )}
       </div>
 
-      {/* Connector */}
-      <div className="flex justify-center my-3">
-        <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center">
-          <ArrowDown className="w-3.5 h-3.5 text-slate-400" />
-        </div>
-      </div>
-
-      {/* Connector / Reverse button (swaps RECEIVED ↔ first ISSUED) */}
-      <div className="flex justify-center -my-1 relative z-10">
-        <button
-          type="button"
-          onClick={handleReverse}
-          disabled={!amtIn || !outputs[0]?.amount || outputs.length > 1}
-          title={outputs.length > 1 ? "Reverse unavailable for multi-output" : t("reverse")}
-          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all shadow-sm ${
-            !amtIn || !outputs[0]?.amount || outputs.length > 1
-              ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
-              : "bg-white border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 hover:shadow-md hover:scale-105"
-          }`}
-        >
-          <ArrowUpDown className="w-4 h-4" />
-        </button>
+      {/* Reverse rates button (swaps RECEIVED ↔ first ISSUED).
+          Текстовая кнопка вместо непонятной иконки — действие должно читаться. */}
+      <div className="flex justify-center my-3 relative z-10">
+        {(() => {
+          const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
+          const title =
+            outputs.length > 1
+              ? "Unavailable when there are multiple outputs"
+              : !amtIn || !outputs[0]?.amount
+              ? "Enter amounts first"
+              : "Swap received and issued";
+          return (
+            <button
+              type="button"
+              onClick={handleReverse}
+              disabled={disabled}
+              title={title}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold border transition-colors ${
+                disabled
+                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                  : "bg-white border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900"
+              }`}
+            >
+              <ArrowUpDown className="w-3 h-3" />
+              Reverse rates
+            </button>
+          );
+        })()}
       </div>
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3">
@@ -575,34 +763,27 @@ export default function ExchangeForm({
               remainingIn={remainingIn}
               availableInCurrency={officeCurrencyBalance(o.currency)}
               currentOffice={currentOffice}
+              counterpartyId={resolveClientId(counterparty)}
             />
           ))}
         </div>
 
-        {/* Counterparty + referral */}
-        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide">
-              {t("counterparty")}
-            </label>
-            <CounterpartySelect value={counterparty} onChange={setCounterparty} />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors self-end">
-            <input
-              type="checkbox"
-              checked={referral}
-              onChange={(e) => setReferral(e.target.checked)}
-              className="w-4 h-4 rounded-[4px] accent-slate-900"
-            />
-            <UserPlus className="w-3.5 h-3.5 text-slate-500" />
-            <span className="text-[13px] font-medium text-slate-700">{t("referral_client")}</span>
-            {referral && (
-              <span className="ml-auto text-[11px] font-bold text-indigo-600">
-                -{settings.referralPct}%
-              </span>
-            )}
-          </label>
-        </div>
+        {/* Referral toggle (counterparty вынесен в верх формы) */}
+        <label className="mt-4 flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors">
+          <input
+            type="checkbox"
+            checked={referral}
+            onChange={(e) => setReferral(e.target.checked)}
+            className="w-4 h-4 rounded-[4px] accent-slate-900"
+          />
+          <UserPlus className="w-3.5 h-3.5 text-slate-500" />
+          <span className="text-[13px] font-medium text-slate-700">{t("referral_client")}</span>
+          {referral && (
+            <span className="ml-auto text-[11px] font-bold text-indigo-600">
+              -{settings.referralPct}%
+            </span>
+          )}
+        </label>
 
         {/* Pending toggle */}
         <label
@@ -736,7 +917,9 @@ export default function ExchangeForm({
         </div>
         {!canSubmit && (
           <p className="text-[11px] text-slate-400 text-center mt-2">
-            {!amtIn
+            {!hasClient
+              ? "Select a client to continue"
+              : !amtIn
               ? t("enter_amount_received")
               : !hasAllRates
               ? t("enter_exchange_rate")
@@ -786,19 +969,45 @@ function OutputRow({
   remainingIn,
   availableInCurrency,
   currentOffice,
+  counterpartyId,
 }) {
   const { t } = useTranslation();
   const { getRate } = useRates();
-  const { accountsByOffice } = useAccounts();
-  const { codes: CURRENCIES } = useCurrencies();
+  const { accountsByOffice, accounts } = useAccounts();
+  const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
+  const { findWallet } = useWallets();
+  const { counterparties } = useTransactions();
   const o = output;
+  const isCrypto = currencyDict[o.currency]?.type === "crypto";
+
+  // Check wallet status for current address + detected network
+  const walletCheck = useMemo(() => {
+    if (!isCrypto) return null;
+    const addr = (o.address || "").trim();
+    if (!addr) return null;
+    let net = detectNetworkFromAddress(addr);
+    if (!net && o.accountId) {
+      const acc = accounts.find((a) => a.id === o.accountId);
+      if (acc) net = detectNetworkFromAccountName(acc.name);
+    }
+    if (!net) return { status: "unknown_network", address: addr };
+    const existing = findWallet(addr, net);
+    if (existing && counterpartyId && existing.clientId !== counterpartyId) {
+      return { status: "conflict", address: addr, network: net, existing };
+    }
+    if (existing && counterpartyId && existing.clientId === counterpartyId) {
+      return { status: "known", address: addr, network: net, existing };
+    }
+    return { status: "new", address: addr, network: net };
+  }, [isCrypto, o.address, o.accountId, accounts, findWallet, counterpartyId]);
 
   const otherCurrencies = CURRENCIES.filter((c) => c !== curIn);
 
-  // Список счетов офиса для валюты данного output
+  // Список счетов для валюты output'а — из ВСЕХ офисов. Current office сверху,
+  // остальные помечаются как interoffice transfer внутри AccountSelect.
   const outAccounts = useMemo(
-    () => accountsByOffice(currentOffice, { currency: o.currency }),
-    [accountsByOffice, currentOffice, o.currency]
+    () => accounts.filter((a) => a.active && a.currency === o.currency),
+    [accounts, o.currency]
   );
 
   // При смене валюты output — сбрасываем accountId если он больше не подходит
@@ -950,9 +1159,35 @@ function OutputRow({
             value={o.accountId || ""}
             onChange={(id) => onUpdate({ accountId: id })}
             placeholder={t("select_account")}
+            currentOfficeId={currentOffice}
           />
         )}
       </div>
+
+      {/* Recipient address — только для crypto */}
+      {isCrypto && (
+        <div className="mt-2">
+          <div className="text-[9px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1">
+            Recipient address
+          </div>
+          <input
+            type="text"
+            value={o.address || ""}
+            onChange={(e) => onUpdate({ address: e.target.value.trim() })}
+            placeholder="0x… or TRON address"
+            className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
+          />
+          {walletCheck && (
+            <WalletHint
+              status={walletCheck.status}
+              address={walletCheck.address}
+              network={walletCheck.network}
+              conflict={walletCheck.existing}
+              counterparties={counterparties}
+            />
+          )}
+        </div>
+      )}
 
       {/* Footer line: available warning + use-remaining button */}
       <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
@@ -988,6 +1223,58 @@ function OutputRow({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ----------------------------------------
+// WalletHint — подсказка под crypto-address input.
+// ----------------------------------------
+//   new             — новый кошелёк, будет записан
+//   known           — уже есть у этого клиента; usage++
+//   conflict        — уже принадлежит другому клиенту (не тронем)
+//   unknown_network — не смогли определить network (не запишем)
+//   invalid_hash    — txHash не распознан
+function WalletHint({ status, address, network, conflict, counterparties }) {
+  if (status === "invalid_hash") {
+    return (
+      <div className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" />
+        Could not parse tx hash
+      </div>
+    );
+  }
+  if (status === "unknown_network") {
+    return (
+      <div className="mt-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+        Network not detected — wallet won't be saved
+      </div>
+    );
+  }
+  if (status === "conflict") {
+    const other = counterparties?.find((c) => c.id === conflict?.clientId);
+    return (
+      <div className="mt-1.5 text-[11px] text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+        <AlertCircle className="w-3 h-3" />
+        <span>
+          Wallet used by another client
+          {other ? <> · <span className="font-semibold">{other.nickname}</span></> : null}
+        </span>
+      </div>
+    );
+  }
+  if (status === "known") {
+    return (
+      <div className="mt-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+        <Check className="w-3 h-3" />
+        Known wallet · {network}
+      </div>
+    );
+  }
+  // new
+  return (
+    <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+      New wallet · {network} — will be linked on submit
     </div>
   );
 }

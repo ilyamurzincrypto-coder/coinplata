@@ -1,11 +1,21 @@
 // src/store/data.js
 // Моки данных: офисы, валюты, транзакции, контрагенты, пользователи.
 
+// Офисы несут operational timezone + workingDays (ISO 1=Mon..7=Sun) + workingHours.
+// Используются для логики rates confirmation (см. utils/officeTime.js).
+const DEFAULT_OFFICE_OPS = {
+  timezone: "Europe/Istanbul",
+  workingDays: [1, 2, 3, 4, 5, 6], // Mon–Sat
+  workingHours: { start: "09:00", end: "21:00" },
+};
+
 export const OFFICES = [
-  { id: "mark", name: "Mark Antalya", city: "Antalya", status: "active", active: true },
-  { id: "terra", name: "Terra City", city: "Antalya", status: "active", active: true },
-  { id: "ist", name: "Istanbul", city: "Istanbul", status: "active", active: true },
+  { id: "mark",  name: "Mark Antalya", city: "Antalya",  status: "active", active: true, ...DEFAULT_OFFICE_OPS },
+  { id: "terra", name: "Terra City",   city: "Antalya",  status: "active", active: true, ...DEFAULT_OFFICE_OPS },
+  { id: "ist",   name: "Istanbul",     city: "Istanbul", status: "active", active: true, ...DEFAULT_OFFICE_OPS },
 ];
+
+export { DEFAULT_OFFICE_OPS };
 
 export const CURRENCIES = ["USDT", "USD", "EUR", "TRY", "GBP"];
 
@@ -159,13 +169,15 @@ export const SEED_TX = [
   },
 ];
 
-// Контрагенты теперь имеют nickname, name (полное имя для поиска) и telegram (@username).
-// nickname сохранён для обратной совместимости с полем tx.counterparty (string).
+// Контрагенты: nickname, name, telegram + tag (VIP | Regular | New | Risky) + note.
+// tag пустой = эквивалент "Regular" в UI, но не записан явно.
+export const CLIENT_TAGS = ["VIP", "Regular", "New", "Risky"];
+
 export const SEED_COUNTERPARTIES = [
-  { id: "cp1", nickname: "CryptoHouse", name: "Crypto House OTC", telegram: "@cryptohouse_otc" },
-  { id: "cp2", nickname: "Murat Y.", name: "Murat Yildiz", telegram: "@murat_y" },
-  { id: "cp3", nickname: "Boris L.", name: "Boris Levin", telegram: "@boris_lev" },
-  { id: "cp4", nickname: "Office deposit", name: "Office Safe", telegram: "" },
+  { id: "cp1", nickname: "CryptoHouse", name: "Crypto House OTC", telegram: "@cryptohouse_otc", tag: "VIP", note: "OTC desk, large tickets" },
+  { id: "cp2", nickname: "Murat Y.", name: "Murat Yildiz", telegram: "@murat_y", tag: "Regular", note: "" },
+  { id: "cp3", nickname: "Boris L.", name: "Boris Levin", telegram: "@boris_lev", tag: "New", note: "" },
+  { id: "cp4", nickname: "Office deposit", name: "Office Safe", telegram: "", tag: "", note: "Internal" },
 ];
 
 // Типы счетов — для иконок и группировки в UI
@@ -177,23 +189,38 @@ export const ACCOUNT_TYPES = {
 };
 
 // Счета/кошельки. Каждый привязан к офису и валюте.
-// Если нужны мульти-валютные счета (banks с sub-accounts) — в будущей итерации.
+// Для crypto accounts добавлены поля для blockchain monitoring:
+//   address          — on-chain адрес, по которому мониторится incoming
+//   network          — TRC20 / ERC20 / ...
+//   isDeposit        — если true, account принимает incoming (polling его отслеживает)
+//   isWithdrawal     — если true, из account можно отправлять наружу
+//   lastCheckedBlock — последний обработанный блок (for cursor); обновляется polling-циклом
+//   lastCheckedAt    — ISO timestamp последнего тика polling
+// Private keys не хранятся — account это чисто учётный объект.
 export const SEED_ACCOUNTS = [
   // Mark Antalya
-  { id: "a_mark_cash_usd", officeId: "mark", type: "cash", currency: "USD", name: "Cash · Safe A", active: true, balance: 18500 },
-  { id: "a_mark_cash_try", officeId: "mark", type: "cash", currency: "TRY", name: "Cash · Safe A", active: true, balance: 420000 },
-  { id: "a_mark_bank_try", officeId: "mark", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true, balance: 1250000 },
-  { id: "a_mark_crypto_usdt", officeId: "mark", type: "crypto", currency: "USDT", name: "TRC20 Main", active: true, balance: 45300 },
+  { id: "a_mark_cash_usd", officeId: "mark", type: "cash", currency: "USD", channelId: "ch_usd_cash", name: "Cash · Safe A", active: true, balance: 18500 },
+  { id: "a_mark_cash_try", officeId: "mark", type: "cash", currency: "TRY", channelId: "ch_try_cash", name: "Cash · Safe A", active: true, balance: 420000 },
+  { id: "a_mark_bank_try", officeId: "mark", type: "bank", currency: "TRY", channelId: "ch_try_bank", name: "Bank · Garanti", active: true, balance: 1250000 },
+  { id: "a_mark_crypto_usdt", officeId: "mark", type: "crypto", currency: "USDT", channelId: "ch_usdt_trc20", name: "TRC20 Main", active: true, balance: 45300,
+    address: "TMarkAntalyaUsdtTrc20MainDepositAddr1", network: "TRC20", isDeposit: true, isWithdrawal: true,
+    lastCheckedBlock: 0, lastCheckedAt: null },
   // Terra City
-  { id: "a_terra_cash_usd", officeId: "terra", type: "cash", currency: "USD", name: "Cash · Main", active: true, balance: 12400 },
-  { id: "a_terra_cash_try", officeId: "terra", type: "cash", currency: "TRY", name: "Cash · Main", active: true, balance: 285000 },
-  { id: "a_terra_crypto_usdt", officeId: "terra", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true, balance: 28700 },
+  { id: "a_terra_cash_usd", officeId: "terra", type: "cash", currency: "USD", channelId: "ch_usd_cash", name: "Cash · Main", active: true, balance: 12400 },
+  { id: "a_terra_cash_try", officeId: "terra", type: "cash", currency: "TRY", channelId: "ch_try_cash", name: "Cash · Main", active: true, balance: 285000 },
+  { id: "a_terra_crypto_usdt", officeId: "terra", type: "crypto", currency: "USDT", channelId: "ch_usdt_trc20", name: "TRC20 Hot", active: true, balance: 28700,
+    address: "TTerraCityUsdtTrc20HotDepositAddr0002", network: "TRC20", isDeposit: true, isWithdrawal: true,
+    lastCheckedBlock: 0, lastCheckedAt: null },
   // Istanbul
-  { id: "a_ist_bank_usd", officeId: "ist", type: "bank", currency: "USD", name: "Bank · İş Bankası", active: true, balance: 52000 },
-  { id: "a_ist_bank_try", officeId: "ist", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true, balance: 2100000 },
-  { id: "a_ist_cash_eur", officeId: "ist", type: "cash", currency: "EUR", name: "Cash · Safe B", active: true, balance: 8200 },
-  { id: "a_ist_crypto_usdt", officeId: "ist", type: "crypto", currency: "USDT", name: "ERC20 Main", active: true, balance: 67500 },
-  { id: "a_ist_crypto_usdt2", officeId: "ist", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true, balance: 34000 },
+  { id: "a_ist_bank_usd", officeId: "ist", type: "bank", currency: "USD", channelId: "ch_usd_bank", name: "Bank · İş Bankası", active: true, balance: 52000 },
+  { id: "a_ist_bank_try", officeId: "ist", type: "bank", currency: "TRY", channelId: "ch_try_bank", name: "Bank · Garanti", active: true, balance: 2100000 },
+  { id: "a_ist_cash_eur", officeId: "ist", type: "cash", currency: "EUR", channelId: "ch_eur_cash", name: "Cash · Safe B", active: true, balance: 8200 },
+  { id: "a_ist_crypto_usdt", officeId: "ist", type: "crypto", currency: "USDT", channelId: "ch_usdt_erc20", name: "ERC20 Main", active: true, balance: 67500,
+    address: "0xIstanbulErc20MainDepositAddress0001abcd", network: "ERC20", isDeposit: true, isWithdrawal: true,
+    lastCheckedBlock: 0, lastCheckedAt: null },
+  { id: "a_ist_crypto_usdt2", officeId: "ist", type: "crypto", currency: "USDT", channelId: "ch_usdt_trc20", name: "TRC20 Hot", active: true, balance: 34000,
+    address: "TIstanbulUsdtTrc20HotDepositAddress0003", network: "TRC20", isDeposit: true, isWithdrawal: true,
+    lastCheckedBlock: 0, lastCheckedAt: null },
 ];
 
 export const SEED_USERS = [

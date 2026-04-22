@@ -1,5 +1,11 @@
 // src/components/ui/Modal.jsx
+// Важно: модалка рендерится через createPortal прямо в document.body, чтобы
+// НЕ попадать в stacking-context родителей (ExchangeForm имеет overflow-hidden
+// и transitions, что ранее приводило к "просвечиванию" иконок таблицы поверх).
+// z-index 1000+ (выше любого внутреннего элемента).
+
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 export default function Modal({ open, onClose, title, subtitle, children, width = "xl" }) {
@@ -33,22 +39,24 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
     "2xl": "max-w-2xl",
   }[width] || "max-w-xl";
 
-  return (
+  const modalTree = (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center p-4 sm:p-6 overflow-y-auto"
+      className="fixed inset-0 flex items-start justify-center p-4 sm:p-6 overflow-y-auto"
+      style={{ zIndex: 1000 }}
       onMouseDown={(e) => {
-        // Overlay click closes
         if (e.target === e.currentTarget) onClose?.();
       }}
     >
       {/* backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm animate-[fadeIn_120ms_ease-out]"
+        style={{ zIndex: 1000 }}
         aria-hidden="true"
       />
-      {/* panel */}
+      {/* panel — z выше backdrop */}
       <div
         className={`relative w-full ${widthCls} bg-white rounded-[18px] shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] border border-slate-200 mt-8 mb-8 animate-[slideUp_160ms_ease-out]`}
+        style={{ zIndex: 1001 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
@@ -82,4 +90,8 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
       `}</style>
     </div>
   );
+
+  // Portal в body: избегаем overflow-hidden / transform родителей.
+  if (typeof document === "undefined") return modalTree;
+  return createPortal(modalTree, document.body);
 }

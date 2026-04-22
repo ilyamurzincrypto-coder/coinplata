@@ -1,12 +1,12 @@
 // src/pages/settings/GeneralTab.jsx
-// Системные настройки: base currency, min fee, referral %, rates (только для admin).
+// Системные настройки: base currency, min fee, referral %.
+// Управление курсами вынесено полностью в Dashboard → Rates (единый источник правды).
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, TrendingUp, Coins } from "lucide-react";
+import { Settings as SettingsIcon, Coins } from "lucide-react";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { useAuth } from "../../store/auth.jsx";
-import { useRates, FEATURED_PAIRS, rateKey } from "../../store/rates.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 
@@ -25,7 +25,6 @@ function SectionHeader({ icon, title, right }) {
 export default function GeneralTab() {
   const { t } = useTranslation();
   const { settings, updateSettings, isAdmin } = useAuth();
-  const { rates, setRate, lastUpdated } = useRates();
   const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
 
@@ -134,43 +133,6 @@ export default function GeneralTab() {
         </div>
       </section>
 
-      <section>
-        <SectionHeader
-          icon={<TrendingUp className="w-4 h-4 text-slate-500" />}
-          title={t("rates_management")}
-          right={
-            <span className="text-[11px] text-slate-500">
-              {t("rate_updated")}: {lastUpdated.toLocaleTimeString()}
-            </span>
-          }
-        />
-        <div className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {FEATURED_PAIRS.map(([from, to]) => (
-              <div key={`${from}-${to}`} className="flex items-center gap-2">
-                <div className="flex-1 text-[11px] font-bold text-slate-500 tracking-wide">
-                  {from} → {to}
-                </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  disabled={!isAdmin}
-                  value={rates[rateKey(from, to)] ?? ""}
-                  onChange={(e) =>
-                    setRate(from, to, e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
-                  }
-                  className="w-32 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500 disabled:cursor-not-allowed"
-                />
-              </div>
-            ))}
-          </div>
-          {isAdmin && (
-            <p className="text-[11px] text-slate-500 mt-3">
-              Full pair management with Add / Delete — in the Rates bar at the top of Cashier.
-            </p>
-          )}
-        </div>
-      </section>
     </div>
   );
 }

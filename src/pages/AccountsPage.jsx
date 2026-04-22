@@ -1,30 +1,47 @@
 // src/pages/AccountsPage.jsx
-// Office → Accounts layout. Для каждого офиса — блок со счетами.
-// Кнопки Top up / Transfer / History в каждой карточке.
+// Иерархия: Office → Currency (collapsible) → Channel → Account.
+// Дефолт — все currency-строки свёрнуты; видны: code, total, available.
+// Клик раскрывает — показывает только non-empty каналы с account-карточками.
 
 import React, { useState, useMemo } from "react";
-import { Wallet, Plus, ArrowLeftRight, History as HistoryIcon, Building2 } from "lucide-react";
+import {
+  Plus,
+  ArrowLeftRight,
+  History as HistoryIcon,
+  Building2,
+  Network as NetworkIcon,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
+  Trash2,
+} from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
+import { useAudit } from "../store/audit.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
-import { useTranslation } from "../i18n/translations.jsx";
+import { useCurrencies } from "../store/currencies.jsx";
+import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
+import { resolveAccountChannel, channelShortLabel } from "../utils/accountChannel.js";
 import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 
-const TYPE_ICONS = {
-  bank: "🏦",
-  cash: "💵",
-  crypto: "🪙",
-  exchange: "📈",
+const CURRENCY_ORDER = ["USD", "USDT", "EUR", "TRY", "GBP"];
+const curIndex = (code) => {
+  const i = CURRENCY_ORDER.indexOf(code);
+  return i === -1 ? 999 : i;
 };
 
 export default function AccountsPage() {
   const { t } = useTranslation();
-  const { accounts, balanceOf } = useAccounts();
+  const { accounts, balanceOf, reservedOf, availableOf, deactivateAccount } = useAccounts();
+  const { addEntry: logAudit } = useAudit();
   const { activeOffices } = useOffices();
+  const { dict: curDict } = useCurrencies();
+  const { channels } = useRates();
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
 
@@ -32,45 +49,115 @@ export default function AccountsPage() {
   const [transferFrom, setTransferFrom] = useState(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
-  const [addAccountFor, setAddAccountFor] = useState(null); // {id, name} офиса
+  const [addAccountFor, setAddAccountFor] = useState(null);
 
-  // Группировка по офисам (только активные)
-  const grouped = useMemo(() => {
-    return activeOffices.map((o) => {
-      const accs = accounts.filter((a) => a.officeId === o.id && a.active);
-      const totalInBase = accs.reduce(
-        (s, a) => s + toBase(balanceOf(a.id), a.currency),
-        0
-      );
-      return { office: o, accounts: accs, totalInBase };
+  const handleDeleteAccount = (acc) => {
+    if (!confirm(`Deactivate account "${acc.name}"? It will disappear from dropdowns; movements stay intact.`)) return;
+    deactivateAccount(acc.id);
+    logAudit({
+      action: "delete",
+      entity: "account",
+      entityId: acc.id,
+      summary: `Deactivated account "${acc.name}" (${acc.currency})`,
     });
-  }, [accounts, activeOffices, balanceOf, toBase]);
+  };
 
-  const grandTotal = grouped.reduce((s, g) => s + g.totalInBase, 0);
+  // open[officeId|currencyCode] = true означает раскрытый блок.
+  const [openMap, setOpenMap] = useState({});
+  const toggleOpen = (key) =>
+    setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Группировка: office → currencies. Показываем только currencies, для которых
+  // есть хотя бы один active account в этом офисе.
+  const officeBlocks = useMemo(() => {
+    return activeOffices.map((office) => {
+      const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
+      const codes = [...new Set(officeAccs.map((a) => a.currency))].sort((a, b) => {
+        const d = curIndex(a) - curIndex(b);
+        return d !== 0 ? d : a.localeCompare(b);
+      });
+
+      const currencyBlocks = codes.map((code) => {
+        const meta = curDict[code] || { code, type: "fiat", symbol: "" };
+        const accsForCur = officeAccs.filter((a) => a.currency === code);
+
+        // Группируем по каналу и удаляем пустые.
+        const byChannel = new Map();
+        accsForCur.forEach((a) => {
+          const ch = resolveAccountChannel(a, channels) || {
+            id: "__unresolved__",
+            kind: a.type || "cash",
+            currencyCode: code,
+          };
+          if (!byChannel.has(ch.id)) byChannel.set(ch.id, { channel: ch, accounts: [] });
+          byChannel.get(ch.id).accounts.push(a);
+        });
+
+        // Сортировка каналов: default → остальные по id.
+        const channelBlocks = [...byChannel.values()]
+          .filter((b) => b.accounts.length > 0)
+          .sort((a, b) => {
+            if (a.channel.isDefaultForCurrency && !b.channel.isDefaultForCurrency) return -1;
+            if (!a.channel.isDefaultForCurrency && b.channel.isDefaultForCurrency) return 1;
+            return (a.channel.id || "").localeCompare(b.channel.id || "");
+          });
+
+        let total = 0;
+        let reserved = 0;
+        accsForCur.forEach((a) => {
+          total += balanceOf(a.id);
+          reserved += reservedOf(a.id);
+        });
+
+        return {
+          currency: meta,
+          totals: { total, reserved, available: total - reserved },
+          channelBlocks,
+          accountsCount: accsForCur.length,
+        };
+      });
+
+      // Office totals в base currency.
+      let officeTotalBase = 0;
+      let officeReservedBase = 0;
+      officeAccs.forEach((a) => {
+        officeTotalBase += toBase(balanceOf(a.id), a.currency);
+        officeReservedBase += toBase(reservedOf(a.id), a.currency);
+      });
+
+      return {
+        office,
+        totals: {
+          total: officeTotalBase,
+          reserved: officeReservedBase,
+          available: officeTotalBase - officeReservedBase,
+          hasReserved: officeReservedBase > 0,
+        },
+        currencyBlocks,
+        accsCount: officeAccs.length,
+      };
+    });
+  }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, toBase]);
+
+  const grandTotal = officeBlocks.reduce((s, ob) => s + ob.totals.total, 0);
+  const grandReserved = officeBlocks.reduce((s, ob) => s + ob.totals.reserved, 0);
 
   return (
-    <main className="max-w-[1300px] mx-auto px-6 py-6 space-y-5">
+    <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-4">
+      {/* Top bar */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-[24px] font-bold tracking-tight">{t("accounts_title")}</h1>
-          <p className="text-[13px] text-slate-500 mt-1">{t("accounts_subtitle")}</p>
+          <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
+          <p className="text-[12px] text-slate-500">{t("accounts_subtitle")}</p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="bg-white border border-slate-200 rounded-[10px] px-4 py-2">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Total ({base})
-            </div>
-            <div className="text-[18px] font-bold tabular-nums tracking-tight text-slate-900">
-              {sym}
-              {fmt(grandTotal, base)}
-            </div>
-          </div>
+          <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
           <button
             onClick={() => {
               setTransferFrom(null);
               setTransferOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
           >
             <ArrowLeftRight className="w-3.5 h-3.5" />
             {t("acc_transfer")}
@@ -78,101 +165,106 @@ export default function AccountsPage() {
         </div>
       </div>
 
-      {grouped.map(({ office, accounts: accs, totalInBase }) => (
-        <section key={office.id} className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-slate-500" />
-              <h2 className="text-[15px] font-semibold tracking-tight">{office.name}</h2>
-              <span className="text-[11px] text-slate-400">· {accs.length} accounts</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-[13px] tabular-nums">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">
-                  {t("acc_total_by_office")}
-                </span>
-                <span className="font-bold text-slate-900">
-                  {sym}
-                  {fmt(totalInBase, base)}
-                </span>
+      {officeBlocks.map((block) => {
+        const { office, totals, currencyBlocks, accsCount } = block;
+        return (
+          <section
+            key={office.id}
+            className="bg-white rounded-[12px] border border-slate-200/70 overflow-hidden"
+          >
+            {/* Office strip */}
+            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-slate-500" />
+                <h2 className="text-[13px] font-semibold tracking-tight">{office.name}</h2>
+                <span className="text-[11px] text-slate-400">· {accsCount} accounts</span>
               </div>
-              <button
-                onClick={() => setAddAccountFor({ id: office.id, name: office.name })}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
-              >
-                <Plus className="w-3 h-3" />
-                {t("acc_add") || "Add account"}
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
-            {accs.map((a) => {
-              const bal = balanceOf(a.id);
-              return (
-                <div
-                  key={a.id}
-                  className="bg-slate-50/60 border border-slate-200 rounded-[12px] p-4 hover:border-slate-300 transition-colors"
+              <div className="flex items-center gap-2 tabular-nums text-[11px]">
+                <span className="text-slate-600">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                    Total
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {sym}
+                    {fmt(totals.total)}
+                  </span>
+                </span>
+                {totals.hasReserved && (
+                  <span className="text-amber-700 inline-flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5" />
+                    {sym}
+                    {fmt(totals.reserved)}
+                  </span>
+                )}
+                <span className="text-emerald-700 inline-flex items-center gap-0.5">
+                  <CheckCircle2 className="w-2.5 h-2.5" />
+                  {sym}
+                  {fmt(totals.available)}
+                </span>
+                <button
+                  onClick={() =>
+                    setAddAccountFor({ officeId: office.id, officeName: office.name })
+                  }
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-slate-900 text-white text-[10px] font-semibold hover:bg-slate-800 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[18px]">{TYPE_ICONS[a.type] || "•"}</span>
-                      <div>
-                        <div className="text-[13px] font-semibold text-slate-900 leading-tight">
-                          {a.name}
-                        </div>
-                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
-                          {t(`acc_type_${a.type}`) !== `acc_type_${a.type}` ? t(`acc_type_${a.type}`) : a.type}
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
-                      {a.currency}
-                    </span>
-                  </div>
+                  <Plus className="w-2.5 h-2.5" />
+                  Add
+                </button>
+              </div>
+            </div>
 
-                  <div className="text-[20px] font-bold tabular-nums tracking-tight text-slate-900 mb-3">
-                    {curSymbol(a.currency)}
-                    {fmt(bal, a.currency)}
-                  </div>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setTopUpFor(a)}
-                      className="flex-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-[8px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {t("acc_topup")}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTransferFrom(a);
+            {/* Currency rows */}
+            {currencyBlocks.length === 0 ? (
+              <div className="px-4 py-6 text-center text-[12px] text-slate-400">
+                No accounts yet.
+                <div className="mt-2">
+                  <button
+                    onClick={() =>
+                      setAddAccountFor({ officeId: office.id, officeName: office.name })
+                    }
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add first account
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {currencyBlocks.map((cb) => {
+                  const key = `${office.id}|${cb.currency.code}`;
+                  const isOpen = !!openMap[key];
+                  return (
+                    <CurrencyRow
+                      key={key}
+                      isOpen={isOpen}
+                      onToggle={() => toggleOpen(key)}
+                      data={cb}
+                      balanceOf={balanceOf}
+                      reservedOf={reservedOf}
+                      availableOf={availableOf}
+                      onTopUp={setTopUpFor}
+                      onTransfer={(acc) => {
+                        setTransferFrom(acc);
                         setTransferOpen(true);
                       }}
-                      className="flex-1 text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-[8px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
-                    >
-                      <ArrowLeftRight className="w-3 h-3" />
-                      {t("acc_transfer")}
-                    </button>
-                    <button
-                      onClick={() => setHistoryFor(a)}
-                      className="text-[11px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-[8px] px-2 py-1.5 transition-colors"
-                      title={t("acc_history")}
-                    >
-                      <HistoryIcon className="w-3 h-3" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-            {accs.length === 0 && (
-              <div className="col-span-full text-center text-[13px] text-slate-400 py-8">
-                No accounts in this office
+                      onHistory={setHistoryFor}
+                      onDelete={handleDeleteAccount}
+                      onAddAccount={(prefill) =>
+                        setAddAccountFor({
+                          officeId: office.id,
+                          officeName: office.name,
+                          prefill,
+                        })
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
-          </div>
-        </section>
-      ))}
+          </section>
+        );
+      })}
 
       <TopUpModal account={topUpFor} onClose={() => setTopUpFor(null)} />
       <TransferModal
@@ -186,10 +278,308 @@ export default function AccountsPage() {
       <AccountHistoryModal account={historyFor} onClose={() => setHistoryFor(null)} />
       <AddAccountModal
         open={!!addAccountFor}
-        officeId={addAccountFor?.id}
-        officeName={addAccountFor?.name}
+        officeId={addAccountFor?.officeId}
+        officeName={addAccountFor?.officeName}
+        prefill={addAccountFor?.prefill}
         onClose={() => setAddAccountFor(null)}
       />
     </main>
+  );
+}
+
+// -------- Compact totals badge --------
+function CompactTotals({ total, reserved, sym }) {
+  const available = total - reserved;
+  const hasReserved = reserved > 0;
+  return (
+    <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 flex items-center gap-3 tabular-nums text-[12px]">
+      <span>
+        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1">Total</span>
+        <span className="font-bold text-slate-900">
+          {sym}
+          {fmt(total)}
+        </span>
+      </span>
+      {hasReserved && (
+        <span className="inline-flex items-center gap-0.5 text-amber-700">
+          <Clock className="w-2.5 h-2.5" />
+          {sym}
+          {fmt(reserved)}
+        </span>
+      )}
+      <span className="inline-flex items-center gap-0.5 text-emerald-700">
+        <CheckCircle2 className="w-2.5 h-2.5" />
+        {sym}
+        {fmt(available)}
+      </span>
+    </div>
+  );
+}
+
+// -------- CurrencyRow: collapsed summary → expandable channels --------
+function CurrencyRow({
+  isOpen,
+  onToggle,
+  data,
+  balanceOf,
+  reservedOf,
+  availableOf,
+  onTopUp,
+  onTransfer,
+  onHistory,
+  onDelete,
+  onAddAccount,
+}) {
+  const { currency, totals, channelBlocks, accountsCount } = data;
+  const isCrypto = currency.type === "crypto";
+  const hasReserved = totals.reserved > 0;
+
+  return (
+    <div>
+      {/* Summary row (always visible, clickable) */}
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+      >
+        <ChevronRight
+          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+            isOpen ? "rotate-90" : ""
+          }`}
+        />
+        <div
+          className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-bold shrink-0 ${
+            isCrypto ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"
+          }`}
+        >
+          {currency.symbol || currency.code[0]}
+        </div>
+        <span className="text-[13px] font-bold tracking-wider text-slate-900 min-w-[48px]">
+          {currency.code}
+        </span>
+        <span className="text-[10px] text-slate-400">
+          {accountsCount > 0 ? `${accountsCount} acc` : "—"}
+        </span>
+
+        <span className="ml-auto flex items-center gap-3 tabular-nums text-[12px]">
+          <span className="font-bold text-slate-900">
+            {curSymbol(currency.code)}
+            {fmt(totals.total, currency.code)}
+          </span>
+          {hasReserved && (
+            <span className="inline-flex items-center gap-0.5 text-amber-700 text-[11px]">
+              <Clock className="w-2.5 h-2.5" />
+              {fmt(totals.reserved, currency.code)}
+            </span>
+          )}
+          <span className="inline-flex items-center gap-0.5 text-emerald-700 text-[11px]">
+            <CheckCircle2 className="w-2.5 h-2.5" />
+            {fmt(totals.available, currency.code)}
+          </span>
+        </span>
+      </button>
+
+      {/* Expanded content */}
+      {isOpen && (
+        <div className="px-4 pb-3 pt-1 bg-slate-50/40">
+          {/* Currency-level actions */}
+          <div className="flex items-center gap-1 mb-2">
+            <button
+              onClick={() => onAddAccount({ currency: currency.code })}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+            >
+              <Plus className="w-2.5 h-2.5" />
+              Add account
+            </button>
+            {channelBlocks.length > 0 && channelBlocks[0].accounts[0] && (
+              <button
+                onClick={() => onTransfer(channelBlocks[0].accounts[0])}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+                title={`Transfer from a ${currency.code} account`}
+              >
+                <ArrowLeftRight className="w-2.5 h-2.5" />
+                Transfer
+              </button>
+            )}
+          </div>
+
+          {channelBlocks.length === 0 ? (
+            <div className="text-[12px] text-slate-400 italic py-2 text-center bg-white border border-dashed border-slate-200 rounded-[8px]">
+              No accounts
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {channelBlocks.map(({ channel, accounts: accs }) => (
+                <ChannelBlock
+                  key={channel.id}
+                  channel={channel}
+                  accounts={accs}
+                  currency={currency}
+                  balanceOf={balanceOf}
+                  reservedOf={reservedOf}
+                  availableOf={availableOf}
+                  onTopUp={onTopUp}
+                  onTransfer={onTransfer}
+                  onHistory={onHistory}
+                  onDelete={onDelete}
+                  onAddAccount={onAddAccount}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -------- ChannelBlock --------
+function ChannelBlock({
+  channel,
+  accounts: accs,
+  currency,
+  balanceOf,
+  reservedOf,
+  availableOf,
+  onTopUp,
+  onTransfer,
+  onHistory,
+  onDelete,
+  onAddAccount,
+}) {
+  const label = channelShortLabel(channel);
+  const isNetwork = channel.kind === "network";
+  return (
+    <div className="bg-white border border-slate-200 rounded-[8px] p-2">
+      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1.5">
+        <div className="flex items-center gap-1.5">
+          {isNetwork ? (
+            <NetworkIcon className="w-3 h-3 text-indigo-500" />
+          ) : (
+            <span className="text-[11px]">{channel.kind === "cash" ? "💵" : "🏦"}</span>
+          )}
+          <span className="text-[10px] font-bold text-slate-700 tracking-wider uppercase">
+            {label}
+          </span>
+          {channel.gasFee != null && (
+            <span className="text-[10px] text-slate-500 tabular-nums">gas ${channel.gasFee}</span>
+          )}
+          {channel.isDefaultForCurrency && (
+            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">
+              default
+            </span>
+          )}
+          <span className="text-[10px] text-slate-400">· {accs.length}</span>
+        </div>
+        <button
+          onClick={() =>
+            onAddAccount({ currency: currency.code, channelId: channel.id })
+          }
+          className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-[6px] px-1.5 py-0.5 transition-colors"
+        >
+          <Plus className="w-2.5 h-2.5" />
+          Add
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+        {accs.map((a) => (
+          <AccountCard
+            key={a.id}
+            account={a}
+            balanceOf={balanceOf}
+            reservedOf={reservedOf}
+            availableOf={availableOf}
+            onTopUp={onTopUp}
+            onTransfer={onTransfer}
+            onHistory={onHistory}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// -------- AccountCard (compact) --------
+function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onTransfer, onHistory, onDelete }) {
+  const total = balanceOf(a.id);
+  const reserved = reservedOf(a.id);
+  const available = availableOf(a.id);
+  const hasReserved = reserved > 0.0001;
+  return (
+    <div className="bg-slate-50/70 border border-slate-200 rounded-[8px] px-2 py-1.5 hover:border-slate-300 transition-colors">
+      <div className="flex items-start justify-between gap-1 mb-1">
+        <div className="min-w-0">
+          <div className="text-[12px] font-semibold text-slate-900 leading-tight truncate">
+            {a.name}
+          </div>
+          {a.address && (
+            <div className="text-[9px] font-mono text-slate-500 truncate">
+              {a.address.length > 16 ? `${a.address.slice(0, 8)}…${a.address.slice(-6)}` : a.address}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-baseline justify-between gap-1 tabular-nums">
+        <span className="text-[13px] font-bold text-slate-900">
+          {curSymbol(a.currency)}
+          {fmt(total, a.currency)}
+        </span>
+        <span
+          className={`text-[10px] font-semibold inline-flex items-center gap-0.5 ${
+            hasReserved ? "text-amber-700" : "text-emerald-700"
+          }`}
+        >
+          {hasReserved ? (
+            <>
+              <Clock className="w-2.5 h-2.5" />
+              {fmt(reserved, a.currency)}
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-2.5 h-2.5" />
+              {fmt(available, a.currency)}
+            </>
+          )}
+        </span>
+      </div>
+
+      <div className="flex items-center gap-0.5 mt-1 pt-1 border-t border-slate-100">
+        <button
+          onClick={() => onTopUp(a)}
+          className="flex-1 text-[9px] font-semibold text-emerald-700 hover:bg-emerald-50 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+          title="Top up"
+        >
+          <Plus className="w-2.5 h-2.5" />
+          Top up
+        </button>
+        <button
+          onClick={() => onTransfer(a)}
+          className="flex-1 text-[9px] font-semibold text-slate-700 hover:bg-slate-100 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+          title="Transfer"
+        >
+          <ArrowLeftRight className="w-2.5 h-2.5" />
+          Transfer
+        </button>
+        <button
+          onClick={() => onHistory(a)}
+          className="text-[9px] font-semibold text-slate-500 hover:bg-slate-100 rounded-[4px] px-1 py-0.5 transition-colors"
+          title="History"
+        >
+          <HistoryIcon className="w-2.5 h-2.5" />
+        </button>
+        {onDelete && (
+          <button
+            onClick={() => onDelete(a)}
+            className="text-[9px] font-semibold text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] px-1 py-0.5 transition-colors"
+            title="Deactivate account"
+          >
+            <Trash2 className="w-2.5 h-2.5" />
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

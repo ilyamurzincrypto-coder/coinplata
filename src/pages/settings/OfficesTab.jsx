@@ -3,13 +3,39 @@
 // Подсчёт accounts per office — через useAccounts (read-only).
 
 import React, { useState, useMemo } from "react";
-import { Building2, Plus, Pencil, Power, RotateCcw } from "lucide-react";
+import { Building2, Plus, Pencil, Power, RotateCcw, Clock } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
+import { DEFAULT_OFFICE_OPS } from "../../store/data.js";
+
+const TIMEZONES = [
+  "Europe/Istanbul",
+  "Europe/Moscow",
+  "Europe/London",
+  "Europe/Berlin",
+  "Asia/Dubai",
+  "Asia/Tbilisi",
+  "UTC",
+];
+
+const ISO_DAYS = [
+  { n: 1, short: "Mon" },
+  { n: 2, short: "Tue" },
+  { n: 3, short: "Wed" },
+  { n: 4, short: "Thu" },
+  { n: 5, short: "Fri" },
+  { n: 6, short: "Sat" },
+  { n: 7, short: "Sun" },
+];
+
+function formatWorkingDays(days) {
+  if (!Array.isArray(days) || days.length === 0) return "—";
+  return ISO_DAYS.filter((d) => days.includes(d.n)).map((d) => d.short).join(" · ");
+}
 
 // --- Add / Edit modal ---
 function OfficeFormModal({ open, office, onClose }) {
@@ -19,35 +45,62 @@ function OfficeFormModal({ open, office, onClose }) {
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
+  const [timezone, setTimezone] = useState(DEFAULT_OFFICE_OPS.timezone);
+  const [workingDays, setWorkingDays] = useState(DEFAULT_OFFICE_OPS.workingDays);
+  const [startTime, setStartTime] = useState(DEFAULT_OFFICE_OPS.workingHours.start);
+  const [endTime, setEndTime] = useState(DEFAULT_OFFICE_OPS.workingHours.end);
 
   React.useEffect(() => {
     if (open) {
       setName(office?.name || "");
       setCity(office?.city || "");
+      setTimezone(office?.timezone || DEFAULT_OFFICE_OPS.timezone);
+      setWorkingDays(
+        Array.isArray(office?.workingDays) ? office.workingDays : DEFAULT_OFFICE_OPS.workingDays
+      );
+      setStartTime(office?.workingHours?.start || DEFAULT_OFFICE_OPS.workingHours.start);
+      setEndTime(office?.workingHours?.end || DEFAULT_OFFICE_OPS.workingHours.end);
     }
   }, [open, office]);
 
-  const canSubmit = name.trim().length > 0;
+  const toggleDay = (n) => {
+    setWorkingDays((prev) => {
+      const has = prev.includes(n);
+      const next = has ? prev.filter((d) => d !== n) : [...prev, n];
+      return next.sort((a, b) => a - b);
+    });
+  };
+
+  const validTimeRange = /^\d{2}:\d{2}$/.test(startTime) && /^\d{2}:\d{2}$/.test(endTime);
+  const canSubmit =
+    name.trim().length > 0 && workingDays.length > 0 && validTimeRange;
   const isEdit = !!office;
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    const patch = {
+      name: name.trim(),
+      city: city.trim(),
+      timezone,
+      workingDays,
+      workingHours: { start: startTime, end: endTime },
+    };
     if (isEdit) {
-      updateOffice(office.id, { name: name.trim(), city: city.trim() });
+      updateOffice(office.id, patch);
       logAudit({
         action: "update",
         entity: "office",
         entityId: office.id,
-        summary: `Edited office ${office.name} → ${name.trim()}`,
+        summary: `Edited office ${office.name} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime}`,
       });
     } else {
-      const created = addOffice({ name: name.trim(), city: city.trim() });
+      const created = addOffice(patch);
       if (created) {
         logAudit({
           action: "create",
           entity: "office",
           entityId: created.id,
-          summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""}`,
+          summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime}`,
         });
       }
     }
@@ -62,30 +115,100 @@ function OfficeFormModal({ open, office, onClose }) {
       width="md"
     >
       <div className="p-5 space-y-4">
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-            {t("office_name")}
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Istanbul Main"
-            autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              {t("office_name")}
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Istanbul Main"
+              autoFocus
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              {t("office_city")}
+            </label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Istanbul"
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            />
+          </div>
         </div>
+
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-            {t("office_city")}
+            Timezone
           </label>
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Istanbul"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
-          />
+          <select
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none"
+          >
+            {TIMEZONES.map((tz) => (
+              <option key={tz} value={tz}>{tz}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+            Working days
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {ISO_DAYS.map((d) => {
+              const active = workingDays.includes(d.n);
+              return (
+                <button
+                  key={d.n}
+                  type="button"
+                  onClick={() => toggleDay(d.n)}
+                  className={`px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                    active
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  {d.short}
+                </button>
+              );
+            })}
+          </div>
+          {workingDays.length === 0 && (
+            <p className="text-[11px] text-rose-700 mt-1">Pick at least one day.</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              Open at
+            </label>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              Close at
+            </label>
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            />
+          </div>
         </div>
       </div>
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
@@ -186,6 +309,7 @@ export default function OfficesTab() {
             <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100 bg-slate-50/40">
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
+              <th className="px-3 py-2.5 font-bold">Schedule</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
               <th className="px-3 py-2.5 font-bold text-right">Accounts</th>
               <th className="px-5 py-2.5 font-bold w-24"></th>
@@ -209,6 +333,19 @@ export default function OfficesTab() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-slate-600">{o.city || "—"}</td>
+                  <td className="px-3 py-3">
+                    <div className="inline-flex items-start gap-1.5 text-[11px]">
+                      <Clock className="w-3 h-3 text-slate-400 mt-0.5" />
+                      <div>
+                        <div className="text-slate-700 font-semibold tabular-nums">
+                          {o.workingHours?.start || "—"}–{o.workingHours?.end || "—"}
+                        </div>
+                        <div className="text-slate-500">
+                          {formatWorkingDays(o.workingDays)} · {o.timezone || "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
                   <td className="px-3 py-3">
                     <span
                       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
@@ -262,7 +399,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
                   No offices
                 </td>
               </tr>

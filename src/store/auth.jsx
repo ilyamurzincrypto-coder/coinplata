@@ -1,34 +1,33 @@
 // src/store/auth.jsx
-// Аутентификация, пользователи, системные настройки.
-// В фазе 2 добавлены:
-//   — роль accountant
-//   — поле active (dismiss employee)
-//   — createUser с mock password generation
-//   — deactivateUser / reactivateUser
-//   — helper `ROLES` для использования в UI
+// Users + их lifecycle (invited → active → disabled).
+//
+// Модель пользователя:
+//   {
+//     id, name, initials, email, role, officeId,
+//     status: "invited" | "active" | "disabled",
+//     passwordHash,         // mock-hash из utils/password.js
+//     inviteToken,          // задаётся при create/reset; стирается после activate
+//     invitedAt, activatedAt,
+//     active,               // КОПИЯ status === "active" для back-compat
+//     createdAt,
+//   }
+//
+// Роли (в порядке убывания прав): owner → admin → accountant → manager.
+// owner имеет полный доступ и не может быть удалён сам собой (guards в mutations).
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { SEED_USERS } from "./data.js";
+import { hashPassword, verifyPassword, generateInviteToken } from "../utils/password.js";
 
 export const ROLES = {
+  owner: { label: "Owner", color: "amber" },
   admin: { label: "Admin", color: "indigo" },
-  manager: { label: "Manager", color: "slate" },
   accountant: { label: "Accountant", color: "emerald" },
+  manager: { label: "Manager", color: "slate" },
 };
 
 export const ROLE_IDS = Object.keys(ROLES);
 
-// Mock password generator (в проде — через backend)
-function generatePassword(length = 12) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let out = "";
-  for (let i = 0; i < length; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
-
-// Простая генерация инициалов из имени
 function initialsFrom(name) {
   return name
     .trim()
@@ -39,45 +38,101 @@ function initialsFrom(name) {
     .toUpperCase();
 }
 
+// Seed password for demo users (known plaintext = "demo" so Change Password can
+// be exercised in the UI без предварительного reset).
+const SEED_PASSWORD = "demo";
+
+// Нормализация seed: каждому user'у добавляем status + hash. Существующий
+// u_adm по-умолчанию становится owner'ом — ему принадлежит система.
+function normalizeSeedUsers(users) {
+  return users.map((u) => ({
+    ...u,
+    role: u.id === "u_adm" ? "owner" : u.role,
+    officeId: u.officeId || null,
+    status: u.active === false ? "disabled" : "active",
+    passwordHash: hashPassword(SEED_PASSWORD),
+    inviteToken: "",
+    invitedAt: null,
+    activatedAt: u.active !== false ? u.createdAt : null,
+    active: u.active !== false,
+  }));
+}
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState("u_adm");
-  const [users, setUsers] = useState(SEED_USERS);
+  const [users, setUsers] = useState(() => normalizeSeedUsers(SEED_USERS));
   const [settings, setSettings] = useState({
     minFeeUsd: 10,
     referralPct: 0.1,
-    baseCurrency: "USD", // используется для агрегированных метрик: capital, dashboard, LTV
+    baseCurrency: "USD",
   });
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0];
-  const isAdmin = currentUser.role === "admin";
+  const isOwner = currentUser.role === "owner";
+  const isAdmin = currentUser.role === "admin" || currentUser.role === "owner"; // owner также считается admin
   const isAccountant = currentUser.role === "accountant";
   const isManager = currentUser.role === "manager";
 
-  const switchUser = useCallback((id) => setCurrentUserId(id), []);
+  // switchUser блокирует invited/disabled. Возвращает {ok, warning?, needsActivation?}.
+  const switchUser = useCallback(
+    (id) => {
+      const target = users.find((u) => u.id === id);
+      if (!target) return { ok: false, warning: "user not found" };
+      if (target.status === "disabled") {
+        return { ok: false, warning: "User is disabled" };
+      }
+      if (target.status === "invited") {
+        return { ok: false, warning: "User not activated yet", needsActivation: true, user: target };
+      }
+      setCurrentUserId(id);
+      return { ok: true };
+    },
+    [users]
+  );
 
-  // Полноценное создание пользователя с паролем
-  const createUser = useCallback(({ name, email, role = "manager" }) => {
-    if (!name?.trim()) return null;
-    const password = generatePassword();
-    const user = {
-      id: `u_${Date.now()}`,
-      name: name.trim(),
-      initials: initialsFrom(name),
-      email: (email || "").trim(),
-      role,
-      active: true,
-      createdAt: new Date().toISOString().slice(0, 10),
-    };
-    setUsers((prev) => [...prev, user]);
-    // Возвращаем пользователя + сгенерированный пароль (показать один раз).
-    return { user, password };
-  }, []);
+  // Invite: создаёт user'а в статусе "invited", генерирует token.
+  // Возвращает {user, inviteToken} — token показывается администратору один раз.
+  const createUser = useCallback(
+    ({ name, email, role = "manager", officeId = null }) => {
+      if (!name?.trim()) return null;
+      const token = generateInviteToken();
+      const user = {
+        id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+        name: name.trim(),
+        initials: initialsFrom(name),
+        email: (email || "").trim(),
+        role: ROLES[role] ? role : "manager",
+        officeId: officeId || null,
+        status: "invited",
+        passwordHash: "",
+        inviteToken: token,
+        invitedAt: new Date().toISOString(),
+        activatedAt: null,
+        active: true,
+        createdAt: new Date().toISOString().slice(0, 10),
+      };
+      setUsers((prev) => [...prev, user]);
+      return { user, inviteToken: token };
+    },
+    []
+  );
 
-  // Обратная совместимость со старым API
+  // Совместимость со старым API: добавление с готовым объектом.
   const addUser = useCallback((user) => {
-    setUsers((prev) => [...prev, { active: true, ...user }]);
+    setUsers((prev) => [
+      ...prev,
+      {
+        status: "active",
+        passwordHash: hashPassword(SEED_PASSWORD),
+        inviteToken: "",
+        invitedAt: null,
+        activatedAt: new Date().toISOString(),
+        active: true,
+        ...user,
+      },
+    ]);
   }, []);
 
   const updateUser = useCallback((id, patch) => {
@@ -88,13 +143,157 @@ export function AuthProvider({ children }) {
     setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)));
   }, []);
 
-  const deactivateUser = useCallback((id) => {
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active: false } : u)));
+  // Activate: перевод invited → active. Опционально проверяем токен.
+  const activateUser = useCallback((id, password, tokenOpt) => {
+    if (!password || password.length < 4) {
+      return { ok: false, warning: "Password must be at least 4 characters" };
+    }
+    let resp = { ok: true };
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== id) return u;
+        if (u.status === "disabled") {
+          resp = { ok: false, warning: "User is disabled" };
+          return u;
+        }
+        if (u.status === "active") {
+          resp = { ok: false, warning: "User is already active" };
+          return u;
+        }
+        if (tokenOpt && u.inviteToken && u.inviteToken !== tokenOpt) {
+          resp = { ok: false, warning: "Invalid invite token" };
+          return u;
+        }
+        return {
+          ...u,
+          status: "active",
+          passwordHash: hashPassword(password),
+          inviteToken: "",
+          activatedAt: new Date().toISOString(),
+          active: true,
+        };
+      })
+    );
+    return resp;
   }, []);
 
-  const reactivateUser = useCallback((id) => {
-    setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, active: true } : u)));
+  // Change own password (для текущего пользователя).
+  const changeOwnPassword = useCallback(
+    (oldPass, newPass) => {
+      if (!newPass || newPass.length < 4) {
+        return { ok: false, warning: "New password must be at least 4 characters" };
+      }
+      if (!verifyPassword(oldPass, currentUser.passwordHash || "")) {
+        return { ok: false, warning: "Current password is incorrect" };
+      }
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id ? { ...u, passwordHash: hashPassword(newPass) } : u
+        )
+      );
+      return { ok: true };
+    },
+    [currentUser]
+  );
+
+  // Direct password change (admin/owner). В отличие от resetPassword
+  // НЕ меняет статус — просто перезаписывает hash. Нельзя ставить пустой.
+  const setUserPassword = useCallback(
+    (userId, newPass) => {
+      if (!newPass || newPass.length < 6) {
+        return { ok: false, warning: "Password must be at least 6 characters" };
+      }
+      let found = false;
+      setUsers((prev) =>
+        prev.map((u) => {
+          if (u.id !== userId) return u;
+          found = true;
+          // Если user был invited — при прямой смене пароля переводим в active.
+          const nextStatus = u.status === "disabled" ? u.status : "active";
+          return {
+            ...u,
+            passwordHash: hashPassword(newPass),
+            status: nextStatus,
+            inviteToken: "",
+            activatedAt: u.activatedAt || new Date().toISOString(),
+            active: nextStatus !== "disabled",
+          };
+        })
+      );
+      if (!found) return { ok: false, warning: "User not found" };
+      return { ok: true };
+    },
+    []
+  );
+
+  // Reset password (админ / владелец). Target не может быть текущим пользователем.
+  // Возвращает новый inviteToken.
+  const resetPassword = useCallback(
+    (userId) => {
+      if (userId === currentUser.id) {
+        return { ok: false, warning: "Use Change Password for your own account" };
+      }
+      const token = generateInviteToken();
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                status: "invited",
+                passwordHash: "",
+                inviteToken: token,
+                invitedAt: new Date().toISOString(),
+                activatedAt: null,
+                active: true,
+              }
+            : u
+        )
+      );
+      return { ok: true, inviteToken: token };
+    },
+    [currentUser]
+  );
+
+  // Disable user. Нельзя отключать себя или последнего owner'а.
+  const disableUser = useCallback(
+    (userId) => {
+      if (userId === currentUser.id) {
+        return { ok: false, warning: "Cannot disable your own account" };
+      }
+      const target = users.find((u) => u.id === userId);
+      if (!target) return { ok: false, warning: "User not found" };
+      if (target.role === "owner") {
+        const otherOwners = users.filter(
+          (u) => u.role === "owner" && u.id !== userId && u.status !== "disabled"
+        );
+        if (otherOwners.length === 0) {
+          return { ok: false, warning: "Cannot disable the last owner" };
+        }
+      }
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId ? { ...u, status: "disabled", active: false } : u
+        )
+      );
+      return { ok: true };
+    },
+    [users, currentUser]
+  );
+
+  const enableUser = useCallback((userId) => {
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.id === userId
+          ? { ...u, status: u.passwordHash ? "active" : "invited", active: true }
+          : u
+      )
+    );
+    return { ok: true };
   }, []);
+
+  // Back-compat alias'ы старого API (используются в UsersTab старой версии).
+  const deactivateUser = disableUser;
+  const reactivateUser = enableUser;
 
   const updateSettings = useCallback((patch) => {
     setSettings((prev) => ({ ...prev, ...patch }));
@@ -112,19 +311,30 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider
       value={{
+        // core
         currentUser,
+        users,
+        settings,
+        // role flags
+        isOwner,
         isAdmin,
         isAccountant,
         isManager,
-        users,
-        settings,
+        // lifecycle
         switchUser,
         createUser,
         addUser,
         updateUser,
         updateUserRole,
+        activateUser,
+        changeOwnPassword,
+        setUserPassword,
+        resetPassword,
+        disableUser,
+        enableUser,
         deactivateUser,
         reactivateUser,
+        // misc
         updateSettings,
         canEditTransaction,
       }}

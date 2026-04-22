@@ -1,12 +1,40 @@
 // src/components/RatesBar.jsx
-import React, { useState } from "react";
-import { TrendingUp, Pencil, RefreshCw, Plus, Trash2, X } from "lucide-react";
+// Dashboard rates bar + единый modal управления Currency → Channel → Pair.
+// Это ЕДИНСТВЕННОЕ место создания currencies / channels / pairs в системе.
+// Settings → Currencies — read-only справочник.
+
+import React, { useState, useMemo } from "react";
+import {
+  TrendingUp,
+  Pencil,
+  RefreshCw,
+  Plus,
+  Trash2,
+  X,
+  ChevronLeft,
+  Coins,
+  Network as NetworkIcon,
+} from "lucide-react";
 import { useRates, FEATURED_PAIRS, rateKey } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { NETWORKS } from "../store/data.js";
 import Modal from "./ui/Modal.jsx";
+import {
+  computeSpread,
+  computeRateFromSpread,
+  getMidRate,
+  formatSpread,
+} from "../utils/spread.js";
+
+// Порядок групп/валют в RatesEditModal. Код не из этого списка — в конец, по алфавиту.
+const CURRENCY_ORDER = ["USD", "USDT", "EUR", "TRY", "GBP"];
+const curIndex = (code) => {
+  const i = CURRENCY_ORDER.indexOf(code);
+  return i === -1 ? 999 : i;
+};
 
 function formatRate(value) {
   if (!value && value !== 0) return "—";
@@ -22,91 +50,25 @@ function timeAgo(date) {
   return `${Math.floor(diff / 3600)}h`;
 }
 
+// Ярлык канала для отображения в кнопках/рядах
+function channelLabel(ch) {
+  if (!ch) return "—";
+  if (ch.kind === "network") return ch.network || "network";
+  if (ch.kind === "cash") return "Cash";
+  if (ch.kind === "bank") return "Bank";
+  if (ch.kind === "sepa") return "SEPA";
+  if (ch.kind === "swift") return "SWIFT";
+  return ch.kind;
+}
+
 export default function RatesBar() {
-  const {
-    rates,
-    getRate,
-    setRate,
-    deleteRate,
-    ratesFromBase,
-    lastUpdated,
-    // новый API для корректного добавления пар
-    addPair,
-    defaultChannelOf,
-  } = useRates();
+  const { getRate, ratesFromBase, lastUpdated } = useRates();
   const { isAdmin } = useAuth();
-  const { addEntry: logAudit } = useAudit();
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
   const [hoveredBase, setHoveredBase] = useState(null);
 
-  // Обёртки с audit-логированием (только когда не seed-initial)
-  const setRateLogged = (from, to, value) => {
-    const old = rates[rateKey(from, to)];
-    const result = setRate(from, to, value);
-    const newVal = parseFloat(value) || 0;
-    // Логируем только существенные изменения (не каждый символ ввода)
-    if (result.ok && old !== undefined && Math.abs(old - newVal) > 0.0001) {
-      logAudit({
-        action: "update",
-        entity: "rate",
-        entityId: rateKey(from, to),
-        summary: `${from} → ${to}: ${old} → ${newVal}`,
-      });
-    }
-  };
-
-  const deleteRateLogged = (from, to) => {
-    deleteRate(from, to);
-    logAudit({
-      action: "delete",
-      entity: "rate",
-      entityId: rateKey(from, to),
-      summary: `Removed pair ${from} → ${to}`,
-    });
-  };
-
-  const addRateLogged = (from, to, rate) => {
-    // Сначала пробуем через setRate (если default pair уже существует).
-    // Если нет — создаём новую пару через addPair() с default channels у обеих валют.
-    const tryUpdate = setRate(from, to, rate);
-    if (tryUpdate.ok) {
-      logAudit({
-        action: "update",
-        entity: "rate",
-        entityId: rateKey(from, to),
-        summary: `${from} → ${to}: rate changed to ${rate}`,
-      });
-      return;
-    }
-    // Default pair не найден — создаём через addPair с default channels
-    const fromCh = defaultChannelOf(from);
-    const toCh = defaultChannelOf(to);
-    if (!fromCh || !toCh) {
-      // eslint-disable-next-line no-console
-      console.warn("Cannot create pair: missing default channels");
-      return;
-    }
-    const result = addPair({
-      fromChannelId: fromCh.id,
-      toChannelId: toCh.id,
-      rate,
-      priority: 10,
-    });
-    if (result.ok) {
-      logAudit({
-        action: "create",
-        entity: "rate",
-        entityId: rateKey(from, to),
-        summary: `Added pair ${from} → ${to} @ ${rate} (${fromCh.kind}${fromCh.network ? ` ${fromCh.network}` : ""} → ${toCh.kind}${toCh.network ? ` ${toCh.network}` : ""})`,
-      });
-    }
-  };
-
-  // Сгруппированные пары для показа в expand-блоке (уникальные base валюты)
-  const expandData = hoveredBase
-    ? ratesFromBase(hoveredBase)
-    : [];
+  const expandData = hoveredBase ? ratesFromBase(hoveredBase) : [];
 
   return (
     <>
@@ -132,7 +94,6 @@ export default function RatesBar() {
           )}
         </div>
 
-        {/* Контейнер карточек + expand внутри. overflow-hidden чтобы ничего не вылезало */}
         <div
           className="bg-white rounded-[12px] border border-slate-200/70 overflow-hidden"
           onMouseLeave={() => setHoveredBase(null)}
@@ -163,7 +124,6 @@ export default function RatesBar() {
             })}
           </div>
 
-          {/* Inline expand — под строкой карточек, max-height transition */}
           <div
             className="overflow-hidden transition-[max-height] duration-200 ease-out border-t"
             style={{
@@ -182,9 +142,7 @@ export default function RatesBar() {
                       key={t2}
                       className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-white border border-slate-200"
                     >
-                      <span className="text-[11px] font-semibold text-slate-600">
-                        {t2}
-                      </span>
+                      <span className="text-[11px] font-semibold text-slate-600">{t2}</span>
                       <span className="text-[12px] font-bold tabular-nums text-slate-900">
                         {formatRate(r2)}
                       </span>
@@ -198,95 +156,31 @@ export default function RatesBar() {
       </section>
 
       {editOpen && (
-        <RatesEditModal
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          rates={rates}
-          setRate={setRateLogged}
-          deleteRate={deleteRateLogged}
-          onAdd={addRateLogged}
-          canDelete={isAdmin}
-        />
+        <RatesEditModal open={editOpen} onClose={() => setEditOpen(false)} canDelete={isAdmin} />
       )}
-
-      <style>{`
-        @keyframes fadeSlide {
-          from { opacity: 0; transform: translateY(-4px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </>
   );
 }
 
-// ---------- Rates Edit Modal ----------
-function RatesEditModal({ open, onClose, rates, setRate, deleteRate, onAdd, canDelete }) {
+// =========================================================================
+// Rates Edit Modal — список пар + добавление currency / channel / pair
+// =========================================================================
+function RatesEditModal({ open, onClose, canDelete }) {
   const { t } = useTranslation();
-  const [showAddPanel, setShowAddPanel] = useState(false);
-
-  const existingPairs = Object.keys(rates).map((k) => {
-    const [from, to] = k.split("_");
-    return { from, to, key: k };
-  });
+  const [view, setView] = useState("list"); // list | addPair | addCurrency | addChannel
 
   return (
     <Modal
       open={open}
       onClose={onClose}
       title={t("edit_rates")}
-      subtitle="1 unit of FROM in TO"
+      subtitle="Currency → Channel → Pair · 1 unit of FROM in TO"
       width="2xl"
     >
-      {/* Sliding container: left = current rates, right = add form */}
-      <div className="relative overflow-hidden">
-        <div
-          className="flex transition-transform duration-300 ease-out"
-          style={{ transform: showAddPanel ? "translateX(-50%)" : "translateX(0)", width: "200%" }}
-        >
-          {/* ========== LIST ========== */}
-          <div className="w-1/2 flex-shrink-0">
-            <div className="p-5 max-h-[60vh] overflow-auto">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                  {existingPairs.length} pairs
-                </div>
-                <button
-                  onClick={() => setShowAddPanel(true)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-900 hover:bg-slate-100 border border-slate-200 transition-colors"
-                >
-                  <Plus className="w-3 h-3" />
-                  {t("add_pair")}
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {existingPairs.map(({ from, to, key }) => (
-                  <RateField
-                    key={key}
-                    from={from}
-                    to={to}
-                    value={rates[key]}
-                    onChange={(v) => setRate(from, to, v)}
-                    onDelete={canDelete ? () => deleteRate(from, to) : null}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ========== ADD PANEL ========== */}
-          <div className="w-1/2 flex-shrink-0">
-            <AddPairPanel
-              onBack={() => setShowAddPanel(false)}
-              onAdd={(from, to, rate) => {
-                onAdd(from, to, rate);
-                setShowAddPanel(false);
-              }}
-              existingPairs={existingPairs}
-            />
-          </div>
-        </div>
-      </div>
+      {view === "list" && <ListPanel canDelete={canDelete} onGoto={setView} />}
+      {view === "addPair" && <AddPairPanel onBack={() => setView("list")} />}
+      {view === "addCurrency" && <AddCurrencyPanel onBack={() => setView("list")} />}
+      {view === "addChannel" && <AddChannelPanel onBack={() => setView("list")} />}
 
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
         <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -303,100 +197,355 @@ function RatesEditModal({ open, onClose, rates, setRate, deleteRate, onAdd, canD
   );
 }
 
-function RateField({ from, to, value, onChange, onDelete }) {
-  const [confirm, setConfirm] = useState(false);
+// =========================================================================
+// LIST — группы пар + три "+" кнопки (currency / channel / pair)
+// =========================================================================
+function ListPanel({ canDelete, onGoto }) {
+  const { t } = useTranslation();
+  const { rates, setRate, deleteRate, getRate, channels } = useRates();
+  const { currencies } = useCurrencies();
+  const { addEntry: logAudit } = useAudit();
+
+  const existingPairs = Object.keys(rates).map((k) => {
+    const [from, to] = k.split("_");
+    return { from, to, key: k };
+  });
+
+  const groups = useMemo(() => {
+    const byFrom = new Map();
+    existingPairs.forEach((p) => {
+      if (!byFrom.has(p.from)) byFrom.set(p.from, []);
+      byFrom.get(p.from).push(p);
+    });
+    const froms = [...byFrom.keys()].sort((a, b) => {
+      const d = curIndex(a) - curIndex(b);
+      return d !== 0 ? d : a.localeCompare(b);
+    });
+    return froms.map((from) => ({
+      from,
+      pairs: [...byFrom.get(from)].sort((a, b) => {
+        const d = curIndex(a.to) - curIndex(b.to);
+        return d !== 0 ? d : a.to.localeCompare(b.to);
+      }),
+    }));
+  }, [existingPairs]);
+
+  const setRateLogged = (from, to, value) => {
+    const old = rates[rateKey(from, to)];
+    const result = setRate(from, to, value);
+    const newVal = parseFloat(value) || 0;
+    if (result.ok && old !== undefined && Math.abs(old - newVal) > 0.0001) {
+      logAudit({
+        action: "update",
+        entity: "rate",
+        entityId: rateKey(from, to),
+        summary: `${from} → ${to}: ${old} → ${newVal}`,
+      });
+    }
+  };
+
+  const deleteRateLogged = (from, to) => {
+    deleteRate(from, to);
+    logAudit({
+      action: "delete",
+      entity: "rate",
+      entityId: rateKey(from, to),
+      summary: `Removed pair ${from} → ${to}`,
+    });
+  };
+
   return (
-    <div className="relative group">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-[11px] font-semibold text-slate-500 tracking-wide">
-          {from} → {to}
-        </span>
-        {onDelete && (
-          <button
-            onClick={() => (confirm ? onDelete() : setConfirm(true))}
-            onBlur={() => setConfirm(false)}
-            className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-0.5 rounded-md transition-all ${
-              confirm
-                ? "bg-rose-500 text-white opacity-100"
-                : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-            }`}
-            title={confirm ? "Confirm delete" : "Delete pair"}
-          >
-            {confirm ? <Trash2 className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
-          </button>
-        )}
+    <div className="p-5 max-h-[60vh] overflow-auto">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+          {currencies.length} currencies · {channels.length} channels · {existingPairs.length} pairs
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <HeaderButton icon={Coins} onClick={() => onGoto("addCurrency")}>
+            {t("currency_add")}
+          </HeaderButton>
+          <HeaderButton icon={NetworkIcon} onClick={() => onGoto("addChannel")}>
+            {t("channel_add")}
+          </HeaderButton>
+          <HeaderButton icon={Plus} onClick={() => onGoto("addPair")} primary>
+            {t("add_pair")}
+          </HeaderButton>
+        </div>
       </div>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
-        className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[14px] font-semibold text-slate-900 tabular-nums outline-none transition-colors"
-      />
+
+      {groups.length === 0 ? (
+        <div className="text-[13px] text-slate-400 italic py-8 text-center">
+          No pairs yet. Add a currency, then channels, then a pair.
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {groups.map((g) => (
+            <div key={g.from}>
+              <div className="mb-2 flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-700 tracking-wider">
+                  {g.from}
+                </span>
+                <span className="text-[10px] text-slate-400 tabular-nums">{g.pairs.length}</span>
+              </div>
+              <div className="border border-slate-200/70 rounded-[10px] overflow-hidden divide-y divide-slate-100">
+                {g.pairs.map(({ from, to, key }) => (
+                  <RateRow
+                    key={key}
+                    from={from}
+                    to={to}
+                    value={rates[key]}
+                    getRate={getRate}
+                    onChange={(v) => setRateLogged(from, to, v)}
+                    onDelete={canDelete ? () => deleteRateLogged(from, to) : null}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function AddPairPanel({ onBack, onAdd, existingPairs }) {
-  const { t } = useTranslation();
-  const [from, setFrom] = useState("USDT");
-  const [to, setTo] = useState("TRY");
-  const [rate, setRate] = useState("");
+function HeaderButton({ icon: Icon, children, onClick, primary }) {
+  const base =
+    "inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold transition-colors border";
+  const cls = primary
+    ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
+    : "text-slate-700 hover:text-slate-900 border-slate-200 hover:bg-slate-50";
+  return (
+    <button onClick={onClick} className={`${base} ${cls}`}>
+      <Icon className="w-3 h-3" />
+      {children}
+    </button>
+  );
+}
 
-  const exists = existingPairs.some((p) => p.from === from && p.to === to);
-  const sameCurrency = from === to;
-  const canSubmit = !exists && !sameCurrency && parseFloat(rate) > 0;
+function RateRow({ from, to, value, getRate, onChange, onDelete }) {
+  const [confirm, setConfirm] = useState(false);
+
+  // Derived из текущего rate + mid (через triangulation / USD-case).
+  const mid = getRate ? getMidRate(from, to, getRate) : null;
+  const derivedSpread = getRate ? computeSpread(value, from, to, getRate) : null;
+
+  // Local-state для spread: пока юзер печатает, показываем его ввод, чтобы
+  // избежать флика в случаях where midRate совпадает со stored rate (например USD→X),
+  // когда derivedSpread после каждого setRate «сбрасывается» к 0.
+  const [spreadInput, setSpreadInput] = useState("");
+  const [editingSpread, setEditingSpread] = useState(false);
+  const displaySpread = editingSpread
+    ? spreadInput
+    : derivedSpread != null
+    ? formatSpread(derivedSpread)
+    : "";
+
+  const handleRateChange = (e) => {
+    onChange(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
+  };
+
+  const handleSpreadChange = (e) => {
+    // Разрешаем цифры, точку, запятую и знаки +/-. Это явный text-input,
+    // а не type="number", чтобы пользователь мог набрать "+0.5" / "-0.25"
+    // без того чтобы браузер его обрезал.
+    const cleaned = e.target.value.replace(/[^\d.,+-]/g, "").replace(",", ".");
+    setSpreadInput(cleaned);
+    setEditingSpread(true);
+    const newRate = computeRateFromSpread(cleaned, from, to, getRate);
+    if (newRate != null && newRate > 0) {
+      onChange(String(newRate));
+    }
+  };
+
+  const spreadDisabled = mid == null;
+  const midTitle = mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate available";
+
+  return (
+    <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 transition-colors">
+      <span className="text-[12px] font-semibold text-slate-600 tracking-wide min-w-[90px]">
+        {from} <span className="text-slate-400">→</span> {to}
+      </span>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={value ?? ""}
+        onChange={handleRateChange}
+        placeholder="rate"
+        title={midTitle}
+        className="flex-1 min-w-0 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-slate-900 tabular-nums outline-none transition-colors"
+      />
+      <div className="relative w-24 shrink-0">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={displaySpread}
+          onChange={handleSpreadChange}
+          onFocus={() => setEditingSpread(true)}
+          onBlur={() => {
+            setEditingSpread(false);
+            setSpreadInput("");
+          }}
+          disabled={spreadDisabled}
+          placeholder={spreadDisabled ? "—" : "spread"}
+          title={midTitle}
+          className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] pl-3 pr-5 py-1.5 text-[13px] font-semibold text-slate-700 tabular-nums outline-none transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">
+          %
+        </span>
+      </div>
+      {onDelete && (
+        <button
+          onClick={() => (confirm ? onDelete() : setConfirm(true))}
+          onBlur={() => setConfirm(false)}
+          className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md transition-all ${
+            confirm
+              ? "bg-rose-500 text-white opacity-100"
+              : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+          }`}
+          title={confirm ? "Confirm delete" : "Delete pair"}
+        >
+          {confirm ? <Trash2 className="w-3 h-3" /> : <X className="w-3 h-3" />}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Маленький компонент "шапка sub-panel с back-кнопкой"
+function SubPanelHeader({ onBack, title }) {
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
+      >
+        <ChevronLeft className="w-3 h-3" />
+        Back
+      </button>
+      <div className="text-[13px] font-semibold text-slate-900">{title}</div>
+    </div>
+  );
+}
+
+// =========================================================================
+// ADD CURRENCY — создание валюты. Для fiat — авто cash + bank.
+// =========================================================================
+function AddCurrencyPanel({ onBack }) {
+  const { t } = useTranslation();
+  const { addCurrency } = useCurrencies();
+  const { addChannel } = useRates();
+  const { addEntry: logAudit } = useAudit();
+
+  const [code, setCode] = useState("");
+  const [type, setType] = useState("fiat");
+  const [symbol, setSymbol] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+
+  const canSubmit = code.trim().length > 0;
+
+  const handleSubmit = () => {
+    setError("");
+    const upper = code.trim().toUpperCase();
+    const res = addCurrency({
+      code: upper,
+      type,
+      symbol: symbol.trim(),
+      name: name.trim() || upper,
+      decimals: 2,
+    });
+    if (!res.ok) {
+      setError(res.warning);
+      return;
+    }
+    logAudit({
+      action: "create",
+      entity: "currency",
+      entityId: res.currency.code,
+      summary: `Added currency ${res.currency.code} (${res.currency.type})`,
+    });
+
+    // Для fiat автоматически создаём cash + bank каналы
+    if (type === "fiat") {
+      const cashId = addChannel({ currencyCode: upper, kind: "cash" });
+      const bankId = addChannel({ currencyCode: upper, kind: "bank" });
+      logAudit({
+        action: "create",
+        entity: "channel",
+        entityId: `${cashId},${bankId}`,
+        summary: `Auto-created channels for ${upper}: cash, bank`,
+      });
+    }
+
+    onBack();
+  };
 
   return (
     <div className="p-5 max-h-[60vh] overflow-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
-        >
-          ← Back
-        </button>
-        <div className="text-[13px] font-semibold text-slate-900">{t("add_pair")}</div>
-      </div>
+      <SubPanelHeader onBack={onBack} title={t("currency_add_title")} />
 
-      <div className="space-y-3 max-w-sm">
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("base_currency")}
-          </label>
-          <CurrencyRow value={from} onChange={setFrom} />
-        </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("quote_currency")}
-          </label>
-          <CurrencyRow value={to} onChange={setTo} disabled={from} />
-        </div>
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("rate")}
-          </label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={rate}
-            onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
-            placeholder="0.00"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[16px] font-bold text-slate-900 tabular-nums outline-none transition-colors"
-          />
-          <p className="text-[11px] text-slate-500 mt-1.5">
-            1 {from} = <span className="font-bold text-slate-700 tabular-nums">{rate || "?"}</span> {to}
-          </p>
+      <div className="space-y-4 max-w-md">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t("currency_code")}>
+            <input
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="USDC"
+              autoFocus
+              maxLength={6}
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
+            />
+          </Field>
+          <Field label={t("currency_type")}>
+            <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full">
+              <SegBtn active={type === "fiat"} onClick={() => setType("fiat")}>
+                {t("currency_type_fiat")}
+              </SegBtn>
+              <SegBtn active={type === "crypto"} onClick={() => setType("crypto")}>
+                {t("currency_type_crypto")}
+              </SegBtn>
+            </div>
+          </Field>
         </div>
 
-        {exists && (
-          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Pair {from} → {to} already exists
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t("currency_symbol")}>
+            <input
+              type="text"
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              placeholder="$"
+              maxLength={3}
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            />
+          </Field>
+          <Field label={t("currency_name")}>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="USD Coin"
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            />
+          </Field>
+        </div>
+
+        {type === "fiat" ? (
+          <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+            Channels <span className="font-semibold text-slate-700">cash</span> and{" "}
+            <span className="font-semibold text-slate-700">bank</span> will be created automatically.
+          </div>
+        ) : (
+          <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+            Add network channels (TRC20, ERC20, …) after creating the currency.
           </div>
         )}
-        {sameCurrency && (
-          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Base and quote must differ
+
+        {error && (
+          <div className="text-[12px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+            {error}
           </div>
         )}
 
@@ -408,7 +557,407 @@ function AddPairPanel({ onBack, onAdd, existingPairs }) {
             {t("cancel")}
           </button>
           <button
-            onClick={() => onAdd(from, to, rate)}
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+              canSubmit
+                ? "bg-slate-900 text-white hover:bg-slate-800"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            {t("currency_add")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// ADD CHANNEL — привязан к валюте.
+//   fiat  → cash | bank
+//   crypto → network (TRC20/ERC20/…) + gasFee
+// =========================================================================
+function AddChannelPanel({ onBack }) {
+  const { t } = useTranslation();
+  const { currencies, findByCode } = useCurrencies();
+  const { addChannel, channels } = useRates();
+  const { addEntry: logAudit } = useAudit();
+
+  const [currencyCode, setCurrencyCode] = useState(currencies[0]?.code || "");
+  const selectedCurrency = findByCode(currencyCode);
+  const isCrypto = selectedCurrency?.type === "crypto";
+
+  const [fiatKind, setFiatKind] = useState("cash"); // cash | bank
+  const [network, setNetwork] = useState("TRC20");
+  const [networkCustom, setNetworkCustom] = useState("");
+  const [gasFee, setGasFee] = useState("");
+
+  // При смене currency ресетим зависящие поля
+  React.useEffect(() => {
+    setFiatKind("cash");
+    setNetwork("TRC20");
+    setNetworkCustom("");
+    setGasFee("");
+  }, [currencyCode]);
+
+  const existingKinds = useMemo(
+    () => channels.filter((c) => c.currencyCode === currencyCode),
+    [channels, currencyCode]
+  );
+
+  const finalNetwork = network === "__custom" ? networkCustom.trim().toUpperCase() : network;
+  const duplicate = useMemo(() => {
+    if (!selectedCurrency) return false;
+    if (isCrypto) {
+      return existingKinds.some(
+        (c) => c.kind === "network" && (c.network || "").toUpperCase() === finalNetwork
+      );
+    }
+    return existingKinds.some((c) => c.kind === fiatKind);
+  }, [existingKinds, isCrypto, fiatKind, finalNetwork, selectedCurrency]);
+
+  const canSubmit = selectedCurrency && !duplicate && (!isCrypto || finalNetwork.length > 0);
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    const payload = { currencyCode };
+    if (isCrypto) {
+      payload.kind = "network";
+      payload.network = finalNetwork;
+      if (gasFee) payload.gasFee = parseFloat(gasFee);
+    } else {
+      payload.kind = fiatKind;
+    }
+    const id = addChannel(payload);
+    logAudit({
+      action: "create",
+      entity: "channel",
+      entityId: id,
+      summary: `Added channel for ${currencyCode}: ${
+        isCrypto ? `${finalNetwork}${gasFee ? ` (gas ${gasFee})` : ""}` : fiatKind
+      }`,
+    });
+    onBack();
+  };
+
+  return (
+    <div className="p-5 max-h-[60vh] overflow-auto">
+      <SubPanelHeader onBack={onBack} title={t("channel_add_title")} />
+
+      <div className="space-y-4 max-w-md">
+        <Field label="Currency">
+          <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap w-full">
+            {currencies.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => setCurrencyCode(c.code)}
+                className={`px-3 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
+                  currencyCode === c.code
+                    ? "bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {c.code}
+                <span className="ml-1 text-[9px] font-semibold text-slate-400">
+                  {c.type === "crypto" ? "crypto" : "fiat"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {!isCrypto && (
+          <Field label={t("channel_kind")}>
+            <div className="flex gap-1.5">
+              <SegBtn active={fiatKind === "cash"} onClick={() => setFiatKind("cash")}>
+                💵 Cash
+              </SegBtn>
+              <SegBtn active={fiatKind === "bank"} onClick={() => setFiatKind("bank")}>
+                🏦 Bank
+              </SegBtn>
+            </div>
+          </Field>
+        )}
+
+        {isCrypto && (
+          <>
+            <Field label={t("channel_network")}>
+              <div className="flex flex-wrap gap-1.5">
+                {NETWORKS.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNetwork(n)}
+                    className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                      network === n
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setNetwork("__custom")}
+                  className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                    network === "__custom"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  Custom…
+                </button>
+              </div>
+              {network === "__custom" && (
+                <input
+                  type="text"
+                  value={networkCustom}
+                  onChange={(e) => setNetworkCustom(e.target.value.toUpperCase())}
+                  placeholder="POLYGON"
+                  className="mt-2 w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
+                />
+              )}
+            </Field>
+            <Field label={t("channel_gas")}>
+              <input
+                type="text"
+                value={gasFee}
+                onChange={(e) => setGasFee(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder="1.0"
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+              />
+            </Field>
+          </>
+        )}
+
+        {duplicate && (
+          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            This channel already exists on {currencyCode}.
+          </div>
+        )}
+
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            onClick={onBack}
+            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          >
+            {t("cancel")}
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+              canSubmit
+                ? "bg-slate-900 text-white hover:bg-slate-800"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            {t("channel_add")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =========================================================================
+// ADD PAIR — выбор fromChannel + toChannel + rate.
+// =========================================================================
+function AddPairPanel({ onBack }) {
+  const { t } = useTranslation();
+  const { currencies } = useCurrencies();
+  const { channels, pairs, addPair, getRate } = useRates();
+  const { addEntry: logAudit } = useAudit();
+
+  const [fromCurrency, setFromCurrency] = useState(currencies[0]?.code || "");
+  const [toCurrency, setToCurrency] = useState(
+    currencies.find((c) => c.code !== (currencies[0]?.code))?.code || ""
+  );
+  const [fromChannelId, setFromChannelId] = useState("");
+  const [toChannelId, setToChannelId] = useState("");
+  const [rate, setRate] = useState("");
+  const [spreadInput, setSpreadInput] = useState("");
+  const [editingSpread, setEditingSpread] = useState(false);
+
+  const mid = getMidRate(fromCurrency, toCurrency, getRate);
+  const derivedSpread = computeSpread(rate, fromCurrency, toCurrency, getRate);
+  const displaySpread = editingSpread
+    ? spreadInput
+    : derivedSpread != null
+    ? formatSpread(derivedSpread)
+    : "";
+
+  const handleRateChange = (e) => {
+    setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
+  };
+
+  const handleSpreadChange = (e) => {
+    // Разрешаем цифры, точку, запятую и знаки +/-. Это явный text-input,
+    // а не type="number", чтобы пользователь мог набрать "+0.5" / "-0.25"
+    // без того чтобы браузер его обрезал.
+    const cleaned = e.target.value.replace(/[^\d.,+-]/g, "").replace(",", ".");
+    setSpreadInput(cleaned);
+    setEditingSpread(true);
+    const newRate = computeRateFromSpread(cleaned, fromCurrency, toCurrency, getRate);
+    if (newRate != null && newRate > 0) {
+      setRate(String(Number(newRate.toFixed(8))));
+    }
+  };
+
+  const fromChannels = useMemo(
+    () => channels.filter((c) => c.currencyCode === fromCurrency),
+    [channels, fromCurrency]
+  );
+  const toChannels = useMemo(
+    () => channels.filter((c) => c.currencyCode === toCurrency),
+    [channels, toCurrency]
+  );
+
+  // Авто-выбор первого канала при смене валюты
+  React.useEffect(() => {
+    setFromChannelId(fromChannels[0]?.id || "");
+  }, [fromCurrency, fromChannels]);
+  React.useEffect(() => {
+    setToChannelId(toChannels[0]?.id || "");
+  }, [toCurrency, toChannels]);
+
+  const sameCurrency = fromCurrency === toCurrency;
+  const duplicate = useMemo(
+    () => pairs.some((p) => p.fromChannelId === fromChannelId && p.toChannelId === toChannelId),
+    [pairs, fromChannelId, toChannelId]
+  );
+  const noChannels = fromChannels.length === 0 || toChannels.length === 0;
+
+  const canSubmit =
+    !sameCurrency &&
+    !duplicate &&
+    !noChannels &&
+    fromChannelId &&
+    toChannelId &&
+    parseFloat(rate) > 0;
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    const res = addPair({ fromChannelId, toChannelId, rate, priority: 10 });
+    if (!res.ok) return;
+    const fromCh = channels.find((c) => c.id === fromChannelId);
+    const toCh = channels.find((c) => c.id === toChannelId);
+    logAudit({
+      action: "create",
+      entity: "rate",
+      entityId: rateKey(fromCurrency, toCurrency),
+      summary: `Added pair ${fromCurrency} (${channelLabel(fromCh)}) → ${toCurrency} (${channelLabel(
+        toCh
+      )}) @ ${rate}`,
+    });
+    onBack();
+  };
+
+  return (
+    <div className="p-5 max-h-[60vh] overflow-auto">
+      <SubPanelHeader onBack={onBack} title={t("add_pair")} />
+
+      <div className="space-y-4 max-w-md">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t("base_currency") || "From"}>
+            <CurrencyPicker
+              value={fromCurrency}
+              onChange={setFromCurrency}
+              currencies={currencies}
+            />
+            <ChannelPicker
+              channels={fromChannels}
+              value={fromChannelId}
+              onChange={setFromChannelId}
+            />
+          </Field>
+          <Field label={t("quote_currency") || "To"}>
+            <CurrencyPicker
+              value={toCurrency}
+              onChange={setToCurrency}
+              currencies={currencies}
+            />
+            <ChannelPicker
+              channels={toChannels}
+              value={toChannelId}
+              onChange={setToChannelId}
+            />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-[1fr_7rem] gap-2 items-end">
+          <Field label={t("rate") || "Rate"}>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={rate}
+              onChange={handleRateChange}
+              placeholder="0.00"
+              title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[16px] font-bold text-slate-900 tabular-nums outline-none transition-colors"
+            />
+          </Field>
+          <Field label="Spread %">
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={displaySpread}
+                onChange={handleSpreadChange}
+                onFocus={() => setEditingSpread(true)}
+                onBlur={() => {
+                  setEditingSpread(false);
+                  setSpreadInput("");
+                }}
+                disabled={mid == null}
+                placeholder={mid == null ? "—" : "0.00"}
+                title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] pl-3 pr-6 py-2.5 text-[14px] font-semibold text-slate-700 tabular-nums outline-none transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+              />
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">
+                %
+              </span>
+            </div>
+          </Field>
+        </div>
+        <p className="text-[11px] text-slate-500 -mt-2">
+          1 {fromCurrency} ={" "}
+          <span className="font-bold text-slate-700 tabular-nums">{rate || "?"}</span> {toCurrency}
+          {mid != null && (
+            <span className="text-slate-400">
+              {" · "}mid <span className="tabular-nums">{mid.toFixed(4)}</span>
+            </span>
+          )}
+        </p>
+
+        {sameCurrency && (
+          <Warn>Base and quote must differ</Warn>
+        )}
+        {noChannels && !sameCurrency && (
+          <Warn>
+            {fromChannels.length === 0 ? fromCurrency : toCurrency} has no channels yet — add one first.
+          </Warn>
+        )}
+        {duplicate && !sameCurrency && !noChannels && (
+          <Warn>
+            Pair on these channels already exists ({channelLabel(
+              channels.find((c) => c.id === fromChannelId)
+            )} → {channelLabel(channels.find((c) => c.id === toChannelId))}).
+          </Warn>
+        )}
+
+        <div className="flex items-center gap-2 pt-2">
+          <button
+            onClick={onBack}
+            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          >
+            {t("cancel")}
+          </button>
+          <button
+            onClick={handleSubmit}
             disabled={!canSubmit}
             className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
               canSubmit
@@ -424,22 +973,87 @@ function AddPairPanel({ onBack, onAdd, existingPairs }) {
   );
 }
 
-function CurrencyRow({ value, onChange }) {
-  const { codes: CURRENCIES } = useCurrencies();
+// =========================================================================
+// Shared UI primitives (панельные)
+// =========================================================================
+function Field({ label, children }) {
   return (
-    <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap">
-      {CURRENCIES.map((c) => (
+    <div>
+      <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SegBtn({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
+        active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Warn({ children }) {
+  return (
+    <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+      {children}
+    </div>
+  );
+}
+
+function CurrencyPicker({ value, onChange, currencies }) {
+  return (
+    <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap w-full mb-2">
+      {currencies.map((c) => (
         <button
-          key={c}
+          key={c.code}
           type="button"
-          onClick={() => onChange(c)}
-          className={`px-3 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
-            value === c
+          onClick={() => onChange(c.code)}
+          className={`px-2.5 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
+            value === c.code
               ? "bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm"
               : "text-slate-500 hover:text-slate-900"
           }`}
         >
-          {c}
+          {c.code}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChannelPicker({ channels, value, onChange }) {
+  if (channels.length === 0) {
+    return (
+      <div className="text-[11px] text-slate-400 italic px-2 py-1">no channels</div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {channels.map((ch) => (
+        <button
+          key={ch.id}
+          type="button"
+          onClick={() => onChange(ch.id)}
+          className={`px-2 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+            value === ch.id
+              ? "bg-slate-900 text-white border-slate-900"
+              : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+          }`}
+          title={ch.id}
+        >
+          {channelLabel(ch)}
+          {ch.gasFee != null && (
+            <span className="ml-1 text-[9px] opacity-70 tabular-nums">gas {ch.gasFee}</span>
+          )}
         </button>
       ))}
     </div>

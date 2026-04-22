@@ -1,102 +1,148 @@
 // src/components/accounts/AddAccountModal.jsx
-// Минимальная модалка создания счёта. Source of truth для валют — useCurrencies().
-// Тип счёта зависит от типа валюты:
-//   fiat  → cash | bank
-//   crypto → crypto (без под-выбора сети — для простоты; network можно указать в имени)
+// Форма: office (fixed) → currency → channel → name → optional address (для crypto).
+// channelId — обязателен. Тип account.type производный от channel.kind:
+//   cash → "cash", bank → "bank", sepa/swift → "bank", network → "crypto".
+// address, network, isDeposit, isWithdrawal прописываются для crypto.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../ui/Modal.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
+import { useRates } from "../../store/rates.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
+import { channelShortLabel } from "../../utils/accountChannel.js";
 
-export default function AddAccountModal({ open, officeId, officeName, onClose }) {
+function deriveType(channelKind) {
+  if (channelKind === "network") return "crypto";
+  if (channelKind === "sepa" || channelKind === "swift") return "bank";
+  return channelKind || "cash";
+}
+
+export default function AddAccountModal({ open, officeId, officeName, prefill, onClose }) {
   const { t } = useTranslation();
   const { addAccount } = useAccounts();
   const { currencies } = useCurrencies();
+  const { channels } = useRates();
   const { addEntry: logAudit } = useAudit();
 
-  const [name, setName] = useState("");
   const [currency, setCurrency] = useState("USD");
-  const [type, setType] = useState("cash");
+  const [channelId, setChannelId] = useState("");
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [bankRef, setBankRef] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
+  const [isDeposit, setIsDeposit] = useState(true);
+  const [isWithdrawal, setIsWithdrawal] = useState(true);
   const [error, setError] = useState("");
 
-  const selectedCurrency = currencies.find((c) => c.code === currency);
-  const isCrypto = selectedCurrency?.type === "crypto";
-
-  // Reset при открытии
+  // Reset при открытии + применить prefill (из "Add" рядом с каналом).
   useEffect(() => {
-    if (open) {
-      setName("");
-      setCurrency(currencies[0]?.code || "USD");
-      setType("cash");
-      setOpeningBalance("");
-      setError("");
+    if (!open) return;
+    const c = prefill?.currency || currencies[0]?.code || "USD";
+    setCurrency(c);
+    setName("");
+    setAddress("");
+    setBankRef("");
+    setOpeningBalance("");
+    setIsDeposit(true);
+    setIsWithdrawal(true);
+    setError("");
+    // channelId apply после currency (в отдельном эффекте, когда список каналов синхронизируется)
+    if (prefill?.channelId) {
+      setChannelId(prefill.channelId);
+    } else {
+      setChannelId(""); // выберем сами ниже
     }
-  }, [open, currencies]);
+  }, [open, prefill, currencies]);
 
-  // Авто-коррекция типа когда меняется валюта
+  const selectedCurrency = currencies.find((c) => c.code === currency);
+  const currencyChannels = useMemo(
+    () => channels.filter((c) => c.currencyCode === currency),
+    [channels, currency]
+  );
+
+  // При смене валюты — если выбранный channel больше не принадлежит валюте, переключаемся на default/первый.
   useEffect(() => {
-    if (isCrypto && type !== "crypto") setType("crypto");
-    if (!isCrypto && type === "crypto") setType("cash");
-  }, [isCrypto]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (channelId && currencyChannels.some((c) => c.id === channelId)) return;
+    const def = currencyChannels.find((c) => c.isDefaultForCurrency) || currencyChannels[0];
+    setChannelId(def?.id || "");
+  }, [currency, currencyChannels, channelId]);
 
-  const canSubmit = name.trim().length > 0 && currency && officeId;
+  const selectedChannel = channels.find((c) => c.id === channelId) || null;
+  const isCryptoChannel = selectedChannel?.kind === "network";
+  const isBankChannel =
+    selectedChannel?.kind === "bank" ||
+    selectedChannel?.kind === "sepa" ||
+    selectedChannel?.kind === "swift";
+
+  const canSubmit = name.trim().length > 0 && currency && channelId && officeId;
 
   const handleSubmit = () => {
     if (!canSubmit) {
-      setError("Name and currency required");
+      setError("Name, currency and channel are required");
+      return;
+    }
+    if (isCryptoChannel && isDeposit && !address.trim()) {
+      setError("Address is required for a deposit crypto account");
       return;
     }
     const balance = parseFloat(openingBalance) || 0;
-    addAccount({
+    const type = deriveType(selectedChannel.kind);
+    const payload = {
       officeId,
       name: name.trim(),
       currency,
+      channelId,
       type,
       balance,
       active: true,
-    });
+    };
+    if (isCryptoChannel) {
+      payload.address = address.trim();
+      payload.network = (selectedChannel.network || "").toUpperCase();
+      payload.isDeposit = isDeposit;
+      payload.isWithdrawal = isWithdrawal;
+      payload.lastCheckedBlock = 0;
+      payload.lastCheckedAt = null;
+    }
+    if (isBankChannel && bankRef.trim()) {
+      payload.bankRef = bankRef.trim();
+    }
+
+    addAccount(payload);
+
+    const summaryExtras = [
+      `${currency}`,
+      channelShortLabel(selectedChannel),
+      balance ? `opening ${balance}` : null,
+      isCryptoChannel && address ? `addr ${address.slice(0, 10)}…` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
     logAudit({
       action: "create",
       entity: "account",
       entityId: name.trim(),
-      summary: `Added account "${name.trim()}" (${currency} · ${type}) in ${officeName || officeId}${balance ? ` with opening ${balance}` : ""}`,
+      summary: `Added account "${name.trim()}" (${summaryExtras}) in ${officeName || officeId}`,
     });
     onClose?.();
   };
 
-  const typeOptions = isCrypto
-    ? [{ id: "crypto", label: "Crypto" }]
-    : [
-        { id: "cash", label: "Cash" },
-        { id: "bank", label: "Bank" },
-        { id: "exchange", label: "Exchange" },
-      ];
-
   return (
-    <Modal open={open} onClose={onClose} title={t("acc_add_title") || "Add account"} subtitle={officeName} width="md">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={t("acc_add_title") || "Add account"}
+      subtitle={officeName}
+      width="md"
+    >
       <div className="p-5 space-y-4">
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-            {t("acc_name") || "Name"}
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={isCrypto ? "USDT Main TRC20" : "Cash TRY"}
-            autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
-          />
-        </div>
-
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-              {t("currency") || "Currency"}
+              Currency
             </label>
             <select
               value={currency}
@@ -112,22 +158,91 @@ export default function AddAccountModal({ open, officeId, officeName, onClose })
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-              {t("acc_type") || "Type"}
+              Channel
             </label>
             <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              disabled={isCrypto}
+              value={channelId}
+              onChange={(e) => setChannelId(e.target.value)}
+              disabled={currencyChannels.length === 0}
               className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none disabled:opacity-60"
             >
-              {typeOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.label}
+              {currencyChannels.length === 0 && <option>— no channels —</option>}
+              {currencyChannels.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {channelShortLabel(c)}
+                  {c.isDefaultForCurrency ? " · default" : ""}
+                  {c.gasFee != null ? ` (gas $${c.gasFee})` : ""}
                 </option>
               ))}
             </select>
+            {currencyChannels.length === 0 && (
+              <p className="text-[11px] text-amber-700 mt-1">
+                Add a channel for {currency} in Dashboard → Edit rates first.
+              </p>
+            )}
           </div>
         </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+            {t("acc_name") || "Name"}
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={isCryptoChannel ? "TRC20 Main" : "Cash · Safe A"}
+            autoFocus
+            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+          />
+        </div>
+
+        {isCryptoChannel && (
+          <>
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+                Wallet address
+              </label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value.trim())}
+                placeholder={selectedChannel?.network === "ERC20" ? "0x…" : "T…"}
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Used by polling to auto-detect incoming transactions.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Toggle
+                checked={isDeposit}
+                onChange={setIsDeposit}
+                label="Deposit (monitor incoming)"
+              />
+              <Toggle
+                checked={isWithdrawal}
+                onChange={setIsWithdrawal}
+                label="Withdrawal"
+              />
+            </div>
+          </>
+        )}
+
+        {isBankChannel && (
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              Bank details (optional)
+            </label>
+            <input
+              type="text"
+              value={bankRef}
+              onChange={(e) => setBankRef(e.target.value)}
+              placeholder="IBAN / account number"
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+            />
+          </div>
+        )}
 
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
@@ -136,7 +251,9 @@ export default function AddAccountModal({ open, officeId, officeName, onClose })
           <input
             type="text"
             value={openingBalance}
-            onChange={(e) => setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
+            onChange={(e) =>
+              setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+            }
             placeholder="0"
             className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
           />
@@ -148,6 +265,7 @@ export default function AddAccountModal({ open, officeId, officeName, onClose })
           </div>
         )}
       </div>
+
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
         <button
           onClick={onClose}
@@ -168,5 +286,19 @@ export default function AddAccountModal({ open, officeId, officeName, onClose })
         </button>
       </div>
     </Modal>
+  );
+}
+
+function Toggle({ checked, onChange, label }) {
+  return (
+    <label className="flex-1 flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded-[4px] accent-slate-900"
+      />
+      <span className="text-[12px] font-medium text-slate-700">{label}</span>
+    </label>
   );
 }
