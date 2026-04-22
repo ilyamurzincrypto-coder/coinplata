@@ -1,17 +1,21 @@
 // src/pages/ReferralsPage.jsx
+// Все суммы в base currency.
+// Bonus считаем от volume в базовой валюте через percentOf.
+
 import React, { useMemo } from "react";
 import { Users, TrendingUp } from "lucide-react";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
-import { useRates } from "../store/rates.jsx";
+import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTranslation } from "../i18n/translations.jsx";
-import { fmt, multiplyAmount, percentOf } from "../utils/money.js";
+import { fmt, percentOf, curSymbol } from "../utils/money.js";
 
 export default function ReferralsPage() {
   const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { users, settings } = useAuth();
-  const { getRate } = useRates();
+  const { base, toBase } = useBaseCurrency();
+  const sym = curSymbol(base);
 
   const stats = useMemo(() => {
     return users
@@ -19,21 +23,16 @@ export default function ReferralsPage() {
       .map((u) => {
         const myTx = transactions.filter((x) => x.managerId === u.id);
         const referralTx = myTx.filter((x) => x.referral);
-        const volume = myTx.reduce((sum, x) => {
-          const inUsd =
-            x.curIn === "USD"
-              ? x.amtIn
-              : multiplyAmount(x.amtIn, getRate(x.curIn, "USD") ?? 0, 2);
-          return sum + inUsd;
-        }, 0);
-        const income = myTx.reduce((sum, x) => sum + (x.profit || 0), 0);
-        const bonus = referralTx.reduce((sum, x) => {
-          const inUsd =
-            x.curIn === "USD"
-              ? x.amtIn
-              : multiplyAmount(x.amtIn, getRate(x.curIn, "USD") ?? 0, 2);
-          return sum + percentOf(inUsd, settings.referralPct, 2);
-        }, 0);
+
+        const volume = myTx.reduce((sum, x) => sum + toBase(x.amtIn, x.curIn), 0);
+        // tx.profit хранится в USD — нормализуем в base
+        const income = myTx.reduce((sum, x) => sum + toBase(x.profit || 0, "USD"), 0);
+        // Bonus: settings.referralPct от volume (volume уже в base)
+        const bonus = referralTx.reduce(
+          (sum, x) => sum + percentOf(toBase(x.amtIn, x.curIn), settings.referralPct, 2),
+          0
+        );
+
         return {
           user: u,
           deals: myTx.length,
@@ -44,7 +43,7 @@ export default function ReferralsPage() {
         };
       })
       .sort((a, b) => b.income - a.income);
-  }, [transactions, users, settings.referralPct, getRate]);
+  }, [transactions, users, settings.referralPct, toBase]);
 
   const totalReferralDeals = stats.reduce((s, x) => s + x.referralDeals, 0);
 
@@ -102,13 +101,13 @@ export default function ReferralsPage() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-700">
-                    ${fmt(s.volume)}
+                    {sym}{fmt(s.volume, base)}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums font-bold text-emerald-700">
-                    ${fmt(s.income)}
+                    {sym}{fmt(s.income, base)}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums font-bold text-indigo-700">
-                    ${fmt(s.bonus)}
+                    {sym}{fmt(s.bonus, base)}
                   </td>
                 </tr>
               ))}

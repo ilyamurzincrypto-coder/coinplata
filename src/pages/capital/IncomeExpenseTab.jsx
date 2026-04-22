@@ -9,6 +9,7 @@ import { useIncomeExpense, IE_CATEGORIES } from "../../store/incomeExpense.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
+import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { OFFICES, CURRENCIES, officeName } from "../../store/data.js";
 import { fmt, curSymbol } from "../../utils/money.js";
@@ -21,6 +22,8 @@ export default function IncomeExpenseTab({ range }) {
   const { findAccount } = useAccounts();
   const { currentUser } = useAuth();
   const { addEntry: logAudit } = useAudit();
+  const { base, toBase } = useBaseCurrency();
+  const sym = curSymbol(base);
 
   const [addType, setAddType] = useState(null); // null | "income" | "expense"
 
@@ -33,11 +36,13 @@ export default function IncomeExpenseTab({ range }) {
     let income = 0;
     let expense = 0;
     scoped.forEach((e) => {
-      if (e.type === "income") income += e.amount;
-      else expense += e.amount;
+      // Складываем в base currency — нельзя просто суммировать amount из разных валют
+      const v = toBase(e.amount, e.currency);
+      if (e.type === "income") income += v;
+      else expense += v;
     });
     return { income, expense };
-  }, [scoped]);
+  }, [scoped, toBase]);
 
   const handleDelete = (entry) => {
     if (!confirm(`Delete ${entry.type} ${curSymbol(entry.currency)}${fmt(entry.amount, entry.currency)} ${entry.currency}?`))
@@ -172,11 +177,11 @@ export default function IncomeExpenseTab({ range }) {
           <div className="flex items-center gap-5">
             <div>
               <span className="text-slate-500">Income: </span>
-              <span className="font-bold text-emerald-600 tabular-nums">+${fmt(totals.income)}</span>
+              <span className="font-bold text-emerald-600 tabular-nums">+{sym}{fmt(totals.income, base)}</span>
             </div>
             <div>
               <span className="text-slate-500">Expense: </span>
-              <span className="font-bold text-rose-600 tabular-nums">−${fmt(totals.expense)}</span>
+              <span className="font-bold text-rose-600 tabular-nums">−{sym}{fmt(totals.expense, base)}</span>
             </div>
           </div>
         </div>
@@ -196,7 +201,7 @@ export default function IncomeExpenseTab({ range }) {
 function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { t } = useTranslation();
   const { addEntry } = useIncomeExpense();
-  const { accountsByOffice } = useAccounts();
+  const { accountsByOffice, addMovement } = useAccounts();
 
   const [officeId, setOfficeId] = useState(OFFICES[0].id);
   const [currency, setCurrency] = useState("USD");
@@ -250,6 +255,17 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       createdBy: currentUser.id,
       date,
     });
+    // Параллельно создаём movement (если выбран конкретный счёт)
+    if (accountId) {
+      addMovement({
+        accountId,
+        amount: amt,
+        direction: type === "income" ? "in" : "out",
+        currency,
+        source: { kind: type, refId: entry.id, note: category },
+        createdBy: currentUser.id,
+      });
+    }
     onLog({
       action: "create",
       entity: type,

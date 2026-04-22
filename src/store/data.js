@@ -13,6 +13,9 @@ export const TYPES = ["All", "IN", "OUT", "EXCHANGE"];
 
 // Баланс содержит: amount (сегодня), prevAmount (вчера), change (% изменение)
 // change сохранено для обратной совместимости; компоненты могут использовать prevAmount для абсолютной дельты.
+// ⚠️ DEPRECATED: этот объект больше не используется в UI. Все балансы теперь считаются
+// через useAccounts().balanceOf() из movements. Оставлен до полной очистки для возможных
+// внешних ссылок. Можно безопасно удалить в следующем рефакторинге.
 export const BALANCES_BY_OFFICE = {
   mark: {
     USD: { amount: 48250, prevAmount: 47678, change: 1.2 },
@@ -126,20 +129,20 @@ export const ACCOUNT_TYPES = {
 // Если нужны мульти-валютные счета (banks с sub-accounts) — в будущей итерации.
 export const SEED_ACCOUNTS = [
   // Mark Antalya
-  { id: "a_mark_cash_usd", officeId: "mark", type: "cash", currency: "USD", name: "Cash · Safe A", active: true },
-  { id: "a_mark_cash_try", officeId: "mark", type: "cash", currency: "TRY", name: "Cash · Safe A", active: true },
-  { id: "a_mark_bank_try", officeId: "mark", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true },
-  { id: "a_mark_crypto_usdt", officeId: "mark", type: "crypto", currency: "USDT", name: "TRC20 Main", active: true },
+  { id: "a_mark_cash_usd", officeId: "mark", type: "cash", currency: "USD", name: "Cash · Safe A", active: true, balance: 18500 },
+  { id: "a_mark_cash_try", officeId: "mark", type: "cash", currency: "TRY", name: "Cash · Safe A", active: true, balance: 420000 },
+  { id: "a_mark_bank_try", officeId: "mark", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true, balance: 1250000 },
+  { id: "a_mark_crypto_usdt", officeId: "mark", type: "crypto", currency: "USDT", name: "TRC20 Main", active: true, balance: 45300 },
   // Terra City
-  { id: "a_terra_cash_usd", officeId: "terra", type: "cash", currency: "USD", name: "Cash · Main", active: true },
-  { id: "a_terra_cash_try", officeId: "terra", type: "cash", currency: "TRY", name: "Cash · Main", active: true },
-  { id: "a_terra_crypto_usdt", officeId: "terra", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true },
+  { id: "a_terra_cash_usd", officeId: "terra", type: "cash", currency: "USD", name: "Cash · Main", active: true, balance: 12400 },
+  { id: "a_terra_cash_try", officeId: "terra", type: "cash", currency: "TRY", name: "Cash · Main", active: true, balance: 285000 },
+  { id: "a_terra_crypto_usdt", officeId: "terra", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true, balance: 28700 },
   // Istanbul
-  { id: "a_ist_bank_usd", officeId: "ist", type: "bank", currency: "USD", name: "Bank · İş Bankası", active: true },
-  { id: "a_ist_bank_try", officeId: "ist", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true },
-  { id: "a_ist_cash_eur", officeId: "ist", type: "cash", currency: "EUR", name: "Cash · Safe B", active: true },
-  { id: "a_ist_crypto_usdt", officeId: "ist", type: "crypto", currency: "USDT", name: "ERC20 Main", active: true },
-  { id: "a_ist_crypto_usdt2", officeId: "ist", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true },
+  { id: "a_ist_bank_usd", officeId: "ist", type: "bank", currency: "USD", name: "Bank · İş Bankası", active: true, balance: 52000 },
+  { id: "a_ist_bank_try", officeId: "ist", type: "bank", currency: "TRY", name: "Bank · Garanti", active: true, balance: 2100000 },
+  { id: "a_ist_cash_eur", officeId: "ist", type: "cash", currency: "EUR", name: "Cash · Safe B", active: true, balance: 8200 },
+  { id: "a_ist_crypto_usdt", officeId: "ist", type: "crypto", currency: "USDT", name: "ERC20 Main", active: true, balance: 67500 },
+  { id: "a_ist_crypto_usdt2", officeId: "ist", type: "crypto", currency: "USDT", name: "TRC20 Hot", active: true, balance: 34000 },
 ];
 
 export const SEED_USERS = [

@@ -47,6 +47,7 @@ export function AuthProvider({ children }) {
   const [settings, setSettings] = useState({
     minFeeUsd: 10,
     referralPct: 0.1,
+    baseCurrency: "USD", // используется для агрегированных метрик: capital, dashboard, LTV
   });
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0];

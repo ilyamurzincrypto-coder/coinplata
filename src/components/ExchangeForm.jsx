@@ -16,6 +16,7 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowLeftRight,
+  ArrowUpDown,
   Zap,
   Plus,
   Trash2,
@@ -23,11 +24,17 @@ import {
   Unlock,
   UserPlus,
   RefreshCw,
+  AlertCircle,
+  ChevronDown,
+  Search,
+  Wallet,
+  Check,
 } from "lucide-react";
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
 import CounterpartySelect from "./CounterpartySelect.jsx";
-import { CURRENCIES, BALANCES_BY_OFFICE, officeName } from "../store/data.js";
+import AccountSelect from "./AccountSelect.jsx";
+import { CURRENCIES, officeName } from "../store/data.js";
 import { useRates } from "../store/rates.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -39,6 +46,7 @@ import {
   applyMinFee,
   fmt,
   curSymbol,
+  computeRemaining,
 } from "../utils/money.js";
 
 // Создать пустой output
@@ -49,6 +57,7 @@ const emptyOutput = (currency = "TRY") => ({
   rate: "",
   manualRate: false,
   touched: false,
+  accountId: "", // выбирается менеджером отдельно
 });
 
 // Иконки для типов счетов (дублирует data.js ACCOUNT_TYPES.icon, но здесь локально для UI скорости)
@@ -62,15 +71,15 @@ const ACCOUNT_TYPE_ICONS = {
 // Нормализация initialData в state формы
 function initFromTx(tx) {
   if (!tx) return null;
-  // tx.outputs — массив; если его нет (старый формат), делаем один output
   const outputs = tx.outputs && tx.outputs.length
     ? tx.outputs.map((o, i) => ({
         id: `o_init_${i}`,
         currency: o.currency,
         amount: String(o.amount),
         rate: String(o.rate),
-        manualRate: true, // в edit режиме по умолчанию ручной, чтобы не переписались
+        manualRate: true,
         touched: true,
+        accountId: o.accountId || "",
       }))
     : [
         {
@@ -80,6 +89,7 @@ function initFromTx(tx) {
           rate: String(tx.rate),
           manualRate: true,
           touched: true,
+          accountId: tx.outAccountId || "",
         },
       ];
   return {
@@ -105,7 +115,7 @@ export default function ExchangeForm({
   const { getRate } = useRates();
   const { currentUser, settings } = useAuth();
   const { addCounterparty } = useTransactions();
-  const { accountsByOffice } = useAccounts();
+  const { accountsByOffice, balanceOf, accounts } = useAccounts();
 
   // --- state ---
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
@@ -125,6 +135,14 @@ export default function ExchangeForm({
     () => accountsByOffice(currentOffice, { currency: curIn }),
     [accountsByOffice, currentOffice, curIn]
   );
+
+  // Computed: суммарный баланс всех active аккаунтов офиса в заданной валюте.
+  // Используется для "Current balance" (RECEIVED) и "Available" (OUTPUT).
+  const officeCurrencyBalance = (currency) => {
+    return accounts
+      .filter((a) => a.officeId === currentOffice && a.currency === currency && a.active)
+      .reduce((sum, a) => sum + balanceOf(a.id), 0);
+  };
 
   // При смене валюты/офиса сбрасываем выбор если текущий account не подходит
   useEffect(() => {
@@ -229,31 +247,47 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Каждый output конвертируем обратно в curIn через его rate:
-  //   amount_in_curIn = output.amount / output.rate
-  // remaining = amtIn - sum(всех output'ов в curIn)
-  const remainingIn = useMemo(() => {
-    const inNum = parseFloat(amtIn) || 0;
-    if (inNum <= 0) return 0;
-    const consumed = outputs.reduce((sum, o) => {
-      const amt = parseFloat(o.amount) || 0;
-      const r = parseFloat(o.rate) || 0;
-      if (amt <= 0 || r <= 0) return sum;
-      // Идём в обратную сторону: сколько curIn соответствует данному output'у.
-      return sum + amt / r;
-    }, 0);
-    return inNum - consumed;
-  }, [amtIn, outputs]);
-
-  // Порог для float-ошибок
+  // Единая точка расчёта — см. utils/money.js:computeRemaining
+  // Учитывает fee (USD-тип) через rate(curIn, USD).
+  const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
+    () =>
+      computeRemaining({
+        amtIn,
+        curIn,
+        outputs,
+        fee,
+        feeType,
+        getRate,
+      }),
+    [amtIn, curIn, outputs, fee, feeType, getRate]
+  );
   const EPS = 0.01;
-  const exceedsInput = remainingIn < -EPS;
 
   // --- validation ---
   const hasAllRates = outputs.every((o) => o.rate && parseFloat(o.rate) > 0);
   const hasAllAmounts = outputs.every((o) => o.amount && parseFloat(o.amount) > 0);
   const noSameCurrency = outputs.every((o) => o.currency !== curIn);
   const canSubmit = amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput;
+
+  // --- account warnings (non-blocking) ---
+  // Список объектов {kind, label} для рендера под Submit.
+  const accountWarnings = useMemo(() => {
+    const warnings = [];
+    if (!accountId) {
+      warnings.push({ kind: "in", label: t("account_missing_in") });
+    }
+    outputs.forEach((o, idx) => {
+      if (!o.accountId) {
+        warnings.push({
+          kind: "out",
+          label: t("account_missing_out")
+            .replace("{n}", String(idx + 1))
+            .replace("{cur}", o.currency),
+        });
+      }
+    });
+    return warnings;
+  }, [accountId, outputs, t]);
 
   // --- submit ---
   const buildTx = () => {
@@ -265,6 +299,7 @@ export default function ExchangeForm({
       currency: o.currency,
       amount: parseFloat(o.amount) || 0,
       rate: parseFloat(o.rate) || 0,
+      accountId: o.accountId || "",
     }));
 
     // Профит: по умолчанию = эффективная комиссия в USD.
@@ -396,7 +431,7 @@ export default function ExchangeForm({
 
       {/* RECEIVED */}
       <div className="px-5 pt-5">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center mb-3">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
               <ArrowDown className="w-3 h-3 text-white" />
@@ -405,16 +440,6 @@ export default function ExchangeForm({
               {t("you_received")}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={handleReverse}
-            disabled={!amtIn || !outputs[0]?.amount}
-            title={t("reverse")}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed rounded-[8px] px-2 py-1 border border-transparent hover:border-slate-200 transition-colors"
-          >
-            <RefreshCw className="w-3 h-3" />
-            {t("reverse")}
-          </button>
         </div>
         <CurrencyTabs value={curIn} onChange={setCurIn} accent="emerald" />
         <div
@@ -436,36 +461,43 @@ export default function ExchangeForm({
           <span className="text-slate-400 text-[12px] font-bold tracking-wider">{curIn}</span>
         </div>
         <div className="flex items-center justify-between mt-1.5 px-1">
-          <span className="text-[11px] text-slate-400">{t("available")}</span>
+          <span className="text-[11px] text-slate-400">{t("current_balance")}</span>
           <span className="text-[11px] font-semibold text-slate-600 tabular-nums">
             {curSymbol(curIn)}
-            {fmt(BALANCES_BY_OFFICE[currentOffice]?.[curIn]?.amount || 0, curIn)} {curIn}
+            {fmt(officeCurrencyBalance(curIn), curIn)} {curIn}
           </span>
         </div>
 
-        {/* Deposit to account — выбор конкретного счёта/кошелька */}
+        {/* Deposit to account — searchable dropdown с заметной рамкой состояния */}
         {availableAccounts.length > 0 && (
-          <div className="mt-2.5">
-            <div className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1.5">
-              Deposit to
+          <div
+            className={`mt-3 p-2.5 rounded-[12px] border-2 transition-colors ${
+              accountId
+                ? "bg-emerald-50/50 border-emerald-300"
+                : "bg-amber-50/40 border-amber-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="text-[10px] font-bold text-slate-600 tracking-[0.15em] uppercase">
+                {t("deposit_to")}
+              </div>
+              {accountId ? (
+                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700">
+                  <Check className="w-2.5 h-2.5" />
+                  {t("account_selected")}
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-amber-700">
+                  {t("select_account_warning")}
+                </span>
+              )}
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {availableAccounts.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => setAccountId(a.id === accountId ? "" : a.id)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold border transition-all ${
-                    a.id === accountId
-                      ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <span className="text-[13px]">{ACCOUNT_TYPE_ICONS[a.type] || "•"}</span>
-                  <span>{a.name}</span>
-                </button>
-              ))}
-            </div>
+            <AccountSelect
+              accounts={availableAccounts}
+              value={accountId}
+              onChange={setAccountId}
+              placeholder={t("select_account")}
+            />
           </div>
         )}
       </div>
@@ -527,14 +559,22 @@ export default function ExchangeForm({
         )}
       </div>
 
-      {/* Connector */}
-      <div className="flex justify-center my-3">
-        <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center">
-          <ArrowDown className="w-3.5 h-3.5 text-slate-400" />
-        </div>
+      {/* Connector / Reverse button (swaps RECEIVED ↔ first ISSUED) */}
+      <div className="flex justify-center -my-1 relative z-10">
+        <button
+          type="button"
+          onClick={handleReverse}
+          disabled={!amtIn || !outputs[0]?.amount || outputs.length > 1}
+          title={outputs.length > 1 ? "Reverse unavailable for multi-output" : t("reverse")}
+          className={`w-10 h-10 rounded-full border-2 flex items-center justify-center transition-all shadow-sm ${
+            !amtIn || !outputs[0]?.amount || outputs.length > 1
+              ? "bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed"
+              : "bg-white border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900 hover:shadow-md hover:scale-105"
+          }`}
+        >
+          <ArrowUpDown className="w-4 h-4" />
+        </button>
       </div>
-
-      {/* ISSUED — multi-output */}
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -592,6 +632,9 @@ export default function ExchangeForm({
               onRemove={() => removeOutput(o.id)}
               onToggleManual={() => toggleManualRate(o.id)}
               curIn={curIn}
+              remainingIn={remainingIn}
+              availableInCurrency={officeCurrencyBalance(o.currency)}
+              currentOffice={currentOffice}
             />
           ))}
         </div>
@@ -701,6 +744,26 @@ export default function ExchangeForm({
               : t("complete_the_form")}
           </p>
         )}
+
+        {/* Account warnings — не блокируют submit, но заметны */}
+        {accountWarnings.length > 0 && (
+          <div className="mt-3 p-2.5 rounded-[10px] bg-amber-50 border border-amber-200">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 mb-1.5">
+              <AlertCircle className="w-3 h-3" />
+              {t("account_warning_count").replace("{n}", String(accountWarnings.length))}
+            </div>
+            <ul className="space-y-0.5 ml-4">
+              {accountWarnings.map((w, i) => (
+                <li key={i} className="text-[11px] text-amber-700 list-disc">
+                  {w.label}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-1.5 text-[10px] text-amber-600 italic">
+              Balances won't be updated for missing accounts.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -709,12 +772,60 @@ export default function ExchangeForm({
 // ----------------------------------------
 // OutputRow — одна строка "выдать в валюте"
 // ----------------------------------------
-function OutputRow({ output, index, canRemove, onUpdate, onRemove, onToggleManual, curIn }) {
+function OutputRow({
+  output,
+  index,
+  canRemove,
+  onUpdate,
+  onRemove,
+  onToggleManual,
+  curIn,
+  remainingIn,
+  availableInCurrency,
+  currentOffice,
+}) {
   const { t } = useTranslation();
   const { getRate } = useRates();
+  const { accountsByOffice } = useAccounts();
   const o = output;
 
   const otherCurrencies = CURRENCIES.filter((c) => c !== curIn);
+
+  // Список счетов офиса для валюты данного output
+  const outAccounts = useMemo(
+    () => accountsByOffice(currentOffice, { currency: o.currency }),
+    [accountsByOffice, currentOffice, o.currency]
+  );
+
+  // При смене валюты output — сбрасываем accountId если он больше не подходит
+  useEffect(() => {
+    if (o.accountId && !outAccounts.some((a) => a.id === o.accountId)) {
+      onUpdate({ accountId: "" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [o.currency, outAccounts.length]);
+
+  // Available warning: если сумма вывода больше, чем суммарный баланс аккаунтов офиса в этой валюте
+  const outAmount = parseFloat(o.amount) || 0;
+  const insufficient =
+    availableInCurrency !== undefined && outAmount > 0 && outAmount > availableInCurrency;
+
+  // "Use remaining" — подставить остаток (remainingIn в curIn) через текущий курс output'а
+  const canUseRemaining =
+    index > 0 &&
+    remainingIn > 0.01 &&
+    parseFloat(o.rate) > 0;
+
+  const suggestedAmount =
+    canUseRemaining ? remainingIn * parseFloat(o.rate) : 0;
+
+  const handleUseRemaining = () => {
+    if (!canUseRemaining) return;
+    // Округляем до точности валюты (TRY=0, всё остальное=2)
+    const precision = o.currency === "TRY" ? 0 : 2;
+    const rounded = Math.floor(suggestedAmount * Math.pow(10, precision)) / Math.pow(10, precision);
+    onUpdate({ amount: String(rounded), touched: true });
+  };
 
   return (
     <div className="bg-slate-50/60 rounded-[14px] border border-slate-200 p-3">
@@ -817,6 +928,61 @@ function OutputRow({ output, index, canRemove, onUpdate, onRemove, onToggleManua
           {o.manualRate ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
           {o.manualRate ? "Manual" : "Auto"}
         </button>
+      </div>
+
+      {/* Account selector for this output */}
+      <div className="mt-2">
+        <div className="text-[9px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1">
+          {t("deposit_from")}
+        </div>
+        {outAccounts.length === 0 ? (
+          <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 inline-flex items-center gap-1">
+            <AlertCircle className="w-3 h-3" />
+            {t("no_accounts_currency")} {o.currency}
+          </div>
+        ) : (
+          <AccountSelect
+            accounts={outAccounts}
+            value={o.accountId || ""}
+            onChange={(id) => onUpdate({ accountId: id })}
+            placeholder={t("select_account")}
+          />
+        )}
+      </div>
+
+      {/* Footer line: available warning + use-remaining button */}
+      <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
+        {availableInCurrency !== undefined ? (
+          <div
+            className={`inline-flex items-center gap-1 text-[10px] font-medium tabular-nums ${
+              insufficient ? "text-amber-700" : "text-slate-500"
+            }`}
+          >
+            {insufficient && <AlertCircle className="w-3 h-3" />}
+            <span>
+              {t("available")}:{" "}
+              <span className="font-bold">
+                {curSymbol(o.currency)}
+                {fmt(availableInCurrency, o.currency)} {o.currency}
+              </span>
+            </span>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        {canUseRemaining && (
+          <button
+            type="button"
+            onClick={handleUseRemaining}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-[8px] px-2 py-1 transition-colors"
+            title="Convert remaining amount here"
+          >
+            <Zap className="w-3 h-3" />
+            {t("use_remaining")} · {curSymbol(o.currency)}
+            {fmt(suggestedAmount, o.currency)}
+          </button>
+        )}
       </div>
     </div>
   );

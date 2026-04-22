@@ -5,21 +5,16 @@
 import React, { useMemo, useState } from "react";
 import { Users, Send, Search, BarChart3 } from "lucide-react";
 import { useTransactions } from "../store/transactions.jsx";
-import { useRates } from "../store/rates.jsx";
+import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTranslation } from "../i18n/translations.jsx";
-import { fmt, multiplyAmount } from "../utils/money.js";
+import { fmt, curSymbol } from "../utils/money.js";
 import { toISODate, monthKey, monthLabel } from "../utils/date.js";
-
-function toUsd(amount, currency, getRate) {
-  if (!amount) return 0;
-  if (currency === "USD") return amount;
-  return multiplyAmount(amount, getRate(currency, "USD") ?? 0, 2);
-}
 
 export default function ClientsPage() {
   const { t } = useTranslation();
   const { transactions, counterparties } = useTransactions();
-  const { getRate } = useRates();
+  const { base, toBase } = useBaseCurrency();
+  const sym = curSymbol(base);
   const [search, setSearch] = useState("");
 
   // Агрегация по counterparty nickname
@@ -32,10 +27,11 @@ export default function ClientsPage() {
         bucket.set(cp, { nickname: cp, txs: [], volume: 0, profit: 0 });
       }
       const b = bucket.get(cp);
-      const usd = toUsd(tx.amtIn, tx.curIn, getRate);
+      const inBase = toBase(tx.amtIn, tx.curIn);
       b.txs.push(tx);
-      b.volume += usd;
-      b.profit += tx.profit || 0;
+      b.volume += inBase;
+      // tx.profit в USD — нормализуем в base
+      b.profit += toBase(tx.profit || 0, "USD");
     });
 
     const rows = [];
@@ -90,7 +86,7 @@ export default function ClientsPage() {
       const key = monthKey(iso);
       if (!byMonth[key]) byMonth[key] = { count: 0, volume: 0 };
       byMonth[key].count += 1;
-      byMonth[key].volume += toUsd(tx.amtIn, tx.curIn, getRate);
+      byMonth[key].volume += toBase(tx.amtIn, tx.curIn);
     });
     // Последние 6 месяцев
     const result = [];
@@ -101,7 +97,7 @@ export default function ClientsPage() {
       result.push({ key, label: monthLabel(key), ...(byMonth[key] || { count: 0, volume: 0 }) });
     }
     return result;
-  }, [transactions, getRate]);
+  }, [transactions, toBase]);
 
   const maxVolume = Math.max(...monthly.map((m) => m.volume), 1);
 
@@ -120,7 +116,7 @@ export default function ClientsPage() {
       <div>
         <h1 className="text-[24px] font-bold tracking-tight">{t("clients_title")}</h1>
         <p className="text-[13px] text-slate-500 mt-1">
-          {totals.clientsCount} clients · {totals.deals} deals · ${fmt(totals.volume)} total volume
+          {totals.clientsCount} clients · {totals.deals} deals · {sym}{fmt(totals.volume, base)} total volume
         </p>
       </div>
 
@@ -140,7 +136,7 @@ export default function ClientsPage() {
                   style={{ height: `${h}%`, minHeight: "2px" }}
                 >
                   <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-semibold rounded px-1.5 py-0.5 opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap tabular-nums">
-                    ${fmt(m.volume)} · {m.count}
+                    {sym}{fmt(m.volume, base)} · {m.count}
                   </div>
                 </div>
                 <div className="text-[10px] font-medium text-slate-500 tabular-nums">{m.label}</div>
@@ -210,10 +206,10 @@ export default function ClientsPage() {
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums font-semibold">{c.deals}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-700">
-                    ${fmt(c.volume)}
+                    {sym}{fmt(c.volume, base)}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-500">
-                    ${fmt(c.avgTicket)}
+                    {sym}{fmt(c.avgTicket, base)}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums">
                     <span
@@ -223,7 +219,7 @@ export default function ClientsPage() {
                           : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
                       }`}
                     >
-                      {c.ltv >= 0 ? "+" : ""}${fmt(c.ltv)}
+                      {c.ltv >= 0 ? "+" : ""}{sym}{fmt(c.ltv, base)}
                     </span>
                   </td>
                   <td className="px-5 py-3 text-slate-500 text-[12px] tabular-nums whitespace-nowrap">

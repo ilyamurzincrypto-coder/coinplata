@@ -1,8 +1,10 @@
 // src/pages/settings/GeneralTab.jsx
-// Системные настройки: min fee, referral %, rates (только для admin).
+// Системные настройки: base currency, min fee, referral %, rates (только для admin).
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, TrendingUp } from "lucide-react";
+import { Settings as SettingsIcon, TrendingUp, Coins } from "lucide-react";
+import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
+import { CURRENCIES } from "../../store/data.js";
 import { useAuth } from "../../store/auth.jsx";
 import { useRates, FEATURED_PAIRS, rateKey } from "../../store/rates.jsx";
 import { useAudit } from "../../store/audit.jsx";
@@ -28,6 +30,20 @@ export default function GeneralTab() {
 
   const [minFee, setMinFee] = useState(settings.minFeeUsd);
   const [refPct, setRefPct] = useState(settings.referralPct);
+
+  // Base currency меняется напрямую (без явной кнопки Save)
+  // — это settings-переключатель, эффект должен быть немедленным.
+  const handleBaseCurrencyChange = (newBase) => {
+    const oldBase = settings.baseCurrency || "USD";
+    if (newBase === oldBase) return;
+    updateSettings({ baseCurrency: newBase });
+    logAudit({
+      action: "update",
+      entity: "settings",
+      entityId: "base_currency",
+      summary: `Base currency ${oldBase} → ${newBase}`,
+    });
+  };
 
   const save = () => {
     const newMin = parseFloat(minFee) || 10;
@@ -58,6 +74,26 @@ export default function GeneralTab() {
           title={t("system_settings")}
         />
         <div className="p-5 space-y-4">
+          <div>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+              <label className="flex items-center gap-1.5 text-[13px] text-slate-700 font-medium">
+                <Coins className="w-3.5 h-3.5 text-slate-500" />
+                {t("base_currency_label")}
+              </label>
+              <SegmentedControl
+                options={CURRENCIES.map((c) => ({ id: c, name: c }))}
+                value={settings.baseCurrency || "USD"}
+                onChange={isAdmin ? handleBaseCurrencyChange : () => {}}
+                size="sm"
+              />
+            </div>
+            <p className="text-[11px] text-slate-500">
+              {t("base_currency_hint")}
+            </p>
+          </div>
+
+          <div className="h-px bg-slate-100" />
+
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <label className="text-[13px] text-slate-700 font-medium">
               {t("min_fee_label")}

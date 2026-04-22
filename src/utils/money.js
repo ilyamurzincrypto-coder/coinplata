@@ -81,3 +81,52 @@ export function fmt(n, currency) {
 }
 
 export const curSymbol = (c) => ({ USD: "$", EUR: "€", TRY: "₺", USDT: "₮", GBP: "£", RUB: "₽" }[c] || "");
+
+// ----------------------------------------------------------------
+// computeRemaining — единая точка расчёта остатка транзакции
+// ----------------------------------------------------------------
+// Возвращает остаток в валюте curIn после вычитания всех outputs и комиссии.
+// Правило:
+//   remaining = amtIn
+//               − Σ (output.amount / output.rate)          // каждый output обратно в curIn
+//               − feeInCurIn (только если feeType === "USD", абсолютная)
+//
+// Для feeType === "%" комиссию НЕ вычитаем — она уже заложена в маржу курса.
+//
+// Возвращает { remaining, feeInCurIn, consumed, exceedsInput }
+//   — remaining: число в curIn (может быть отрицательным → exceedsInput=true)
+//   — consumed: сумма всех outputs в curIn (без fee)
+//   — feeInCurIn: сколько curIn занимает комиссия (0 если feeType="%")
+//   — exceedsInput: boolean, true если распределили больше чем amtIn
+export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate }) {
+  const inNum = parseFloat(amtIn) || 0;
+
+  const consumed = (outputs || []).reduce((sum, o) => {
+    const amt = parseFloat(o.amount) || 0;
+    const r = parseFloat(o.rate) || 0;
+    if (amt <= 0 || r <= 0) return sum;
+    return sum + amt / r;
+  }, 0);
+
+  let feeInCurIn = 0;
+  const feeNum = parseFloat(fee) || 0;
+  if (feeType === "USD" && feeNum > 0) {
+    if (curIn === "USD") {
+      feeInCurIn = feeNum;
+    } else {
+      // fee в долларах → сколько это curIn? Делим на rate(curIn → USD).
+      // rate(X, USD) = сколько USD в 1 X. Значит 1 USD = 1 / rate(X, USD) единиц X.
+      const r = typeof getRate === "function" ? getRate(curIn, "USD") : undefined;
+      if (r && r > 0) {
+        feeInCurIn = feeNum / r;
+      }
+    }
+  }
+  // Для feeType === "%" fee уже сидит в маржинальном курсе output'ов — не вычитаем
+
+  const remaining = inNum - consumed - feeInCurIn;
+  const EPS = 0.01;
+  const exceedsInput = remaining < -EPS;
+
+  return { remaining, feeInCurIn, consumed, exceedsInput };
+}

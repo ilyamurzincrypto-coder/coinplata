@@ -1,30 +1,39 @@
 // src/components/Balances.jsx
+// Отображает балансы по офисам/валютам.
+// Данные идут из useAccounts().balanceOf() — агрегируем по валюте.
+// TODO: growth "vs yesterday" временно убран — нет snapshot-системы. Вернём после rates/balances history.
+
 import React, { useMemo } from "react";
-import { Wallet, TrendingUp, TrendingDown, Layers } from "lucide-react";
+import { Wallet, Layers } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
-import { CURRENCIES, OFFICES, BALANCES_BY_OFFICE, officeName } from "../store/data.js";
+import { CURRENCIES, OFFICES, officeName } from "../store/data.js";
+import { useAccounts } from "../store/accounts.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 
 export default function Balances({ currentOffice, scope, onScopeChange }) {
   const { t } = useTranslation();
+  const { accounts, balanceOf } = useAccounts();
 
+  // Собираем балансы {currency → amount}: или для currentOffice, или по всем офисам
   const displayed = useMemo(() => {
-    if (scope === "selected") return BALANCES_BY_OFFICE[currentOffice];
     const agg = {};
-    CURRENCIES.forEach((c) => {
-      let total = 0;
-      let totalPrev = 0;
-      OFFICES.forEach((o) => {
-        const b = BALANCES_BY_OFFICE[o.id][c];
-        total += b.amount;
-        totalPrev += (b.prevAmount ?? b.amount);
-      });
-      const change = totalPrev > 0 ? +(((total - totalPrev) / totalPrev) * 100).toFixed(1) : 0;
-      agg[c] = { amount: total, prevAmount: totalPrev, change };
+    CURRENCIES.forEach((c) => (agg[c] = 0));
+
+    const relevantAccounts = accounts.filter((a) => {
+      if (!a.active) return false;
+      if (scope === "selected") return a.officeId === currentOffice;
+      return true;
     });
+
+    relevantAccounts.forEach((a) => {
+      if (CURRENCIES.includes(a.currency)) {
+        agg[a.currency] = (agg[a.currency] || 0) + balanceOf(a.id);
+      }
+    });
+
     return agg;
-  }, [scope, currentOffice]);
+  }, [scope, currentOffice, accounts, balanceOf]);
 
   return (
     <section>
@@ -54,9 +63,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
         {CURRENCIES.map((c) => {
-          const b = displayed[c];
-          if (!b) return null;
-          const up = b.change >= 0;
+          const amount = displayed[c] || 0;
           return (
             <div
               key={`${c}-${scope}-${currentOffice}`}
@@ -71,34 +78,11 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                     </span>
                   )}
                 </div>
-                <span
-                  className={`inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
-                    up ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50"
-                  }`}
-                >
-                  {up ? <TrendingUp className="w-2.5 h-2.5" /> : <TrendingDown className="w-2.5 h-2.5" />}
-                  {up ? "+" : ""}
-                  {b.change}%
-                </span>
               </div>
               <div className="text-[20px] font-semibold tracking-tight tabular-nums text-slate-900">
                 <span className="text-slate-400 text-[14px] font-medium mr-0.5">{curSymbol(c)}</span>
-                {fmt(b.amount, c)}
+                {fmt(amount, c)}
               </div>
-              {b.prevAmount !== undefined && (
-                <div className="mt-1.5 flex items-center gap-1 text-[11px] tabular-nums">
-                  <span
-                    className={`font-semibold ${
-                      up ? "text-emerald-600" : b.amount === b.prevAmount ? "text-slate-400" : "text-rose-600"
-                    }`}
-                  >
-                    {up && b.amount !== b.prevAmount ? "+" : ""}
-                    {curSymbol(c)}
-                    {fmt(Math.abs(b.amount - b.prevAmount), c)}
-                  </span>
-                  <span className="text-slate-400">{t("growth_yesterday")}</span>
-                </div>
-              )}
             </div>
           );
         })}

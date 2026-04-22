@@ -1,25 +1,22 @@
 // src/pages/capital/ByManagerTab.jsx
-// Разбивка по менеджерам: deals, volume, avg ticket, profit.
+// Разбивка по менеджерам: deals, volume, avg ticket, profit. Всё в base currency.
 
 import React, { useMemo } from "react";
 import { Users } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useAuth, ROLES } from "../../store/auth.jsx";
-import { useRates } from "../../store/rates.jsx";
-import { fmt, multiplyAmount } from "../../utils/money.js";
+import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useTranslation } from "../../i18n/translations.jsx";
+import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
 
-function toUsd(amount, currency, getRate) {
-  if (!amount) return 0;
-  if (currency === "USD") return amount;
-  return multiplyAmount(amount, getRate(currency, "USD") ?? 0, 2);
-}
-
 export default function ByManagerTab({ range }) {
+  const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { users } = useAuth();
-  const { getRate } = useRates();
+  const { base, toBase } = useBaseCurrency();
+  const sym = curSymbol(base);
 
   const stats = useMemo(() => {
     return users
@@ -28,13 +25,14 @@ export default function ByManagerTab({ range }) {
         const tx = transactions.filter(
           (t) => t.managerId === u.id && inRange(toISODate(t.date), range)
         );
-        const volume = tx.reduce((s, t) => s + toUsd(t.amtIn, t.curIn, getRate), 0);
-        const profit = tx.reduce((s, t) => s + (t.profit || 0), 0);
+        const volume = tx.reduce((s, t) => s + toBase(t.amtIn, t.curIn), 0);
+        // tx.profit в USD — нормализуем в base
+        const profit = tx.reduce((s, t) => s + toBase(t.profit || 0, "USD"), 0);
         const avgTicket = tx.length > 0 ? volume / tx.length : 0;
         return { user: u, deals: tx.length, volume, profit, avgTicket };
       })
       .sort((a, b) => b.volume - a.volume);
-  }, [transactions, users, getRate, range]);
+  }, [transactions, users, toBase, range]);
 
   const totalVolume = stats.reduce((s, x) => s + x.volume, 0);
 
@@ -42,18 +40,18 @@ export default function ByManagerTab({ range }) {
     <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
         <Users className="w-4 h-4 text-slate-500" />
-        <h2 className="text-[15px] font-semibold tracking-tight">By manager</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight">{t("tab_by_manager")}</h2>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100 bg-slate-50/40">
-              <th className="px-5 py-2.5 font-bold">Manager</th>
-              <th className="px-3 py-2.5 font-bold text-right">Deals</th>
-              <th className="px-3 py-2.5 font-bold text-right">Volume</th>
-              <th className="px-3 py-2.5 font-bold text-right">Avg ticket</th>
-              <th className="px-5 py-2.5 font-bold text-right">Profit</th>
+              <th className="px-5 py-2.5 font-bold">{t("col_manager")}</th>
+              <th className="px-3 py-2.5 font-bold text-right">{t("col_deals")}</th>
+              <th className="px-3 py-2.5 font-bold text-right">{t("col_volume")}</th>
+              <th className="px-3 py-2.5 font-bold text-right">{t("clients_avg_ticket")}</th>
+              <th className="px-5 py-2.5 font-bold text-right">{t("col_profit")}</th>
             </tr>
           </thead>
           <tbody>
@@ -83,10 +81,10 @@ export default function ByManagerTab({ range }) {
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums font-semibold">{m.deals}</td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-700">
-                    ${fmt(m.volume)}
+                    {sym}{fmt(m.volume, base)}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-500">
-                    {m.deals > 0 ? `$${fmt(m.avgTicket)}` : "—"}
+                    {m.deals > 0 ? `${sym}${fmt(m.avgTicket, base)}` : "—"}
                   </td>
                   <td className="px-5 py-3 text-right tabular-nums">
                     <span
@@ -96,7 +94,7 @@ export default function ByManagerTab({ range }) {
                           : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
                       }`}
                     >
-                      {m.profit >= 0 ? "+" : ""}${fmt(m.profit)}
+                      {m.profit >= 0 ? "+" : ""}{sym}{fmt(m.profit, base)}
                     </span>
                   </td>
                 </tr>
@@ -105,7 +103,7 @@ export default function ByManagerTab({ range }) {
             {stats.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-5 py-12 text-center text-[13px] text-slate-400">
-                  No active managers
+                  {t("no_active_managers")}
                 </td>
               </tr>
             )}

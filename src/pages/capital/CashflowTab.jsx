@@ -6,42 +6,38 @@ import React, { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
-import { useRates } from "../../store/rates.jsx";
-import { fmt, multiplyAmount } from "../../utils/money.js";
+import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
-
-function toUsd(amount, currency, getRate) {
-  if (!amount) return 0;
-  if (currency === "USD") return amount;
-  return multiplyAmount(amount, getRate(currency, "USD") ?? 0, 2);
-}
 
 export default function CashflowTab({ range }) {
   const { transactions } = useTransactions();
   const { entries } = useIncomeExpense();
-  const { getRate } = useRates();
+  const { base, toBase } = useBaseCurrency();
+  const sym = curSymbol(base);
 
   const data = useMemo(() => {
     const scopedTx = transactions.filter((tx) => inRange(toISODate(tx.date), range));
     const scopedIE = entries.filter((e) => inRange(e.date, range));
 
-    const dealsProfit = scopedTx.reduce((s, tx) => s + (tx.profit || 0), 0);
+    // tx.profit хранится в USD (выбор менеджера при создании сделки).
+    // Конвертируем в base для отображения.
+    const dealsProfit = scopedTx.reduce((s, tx) => s + toBase(tx.profit || 0, "USD"), 0);
 
-    // Группировка по категориям
     const incomeByCat = {};
     const expenseByCat = {};
     let incomeTotal = 0;
     let expenseTotal = 0;
 
     scopedIE.forEach((e) => {
-      const usd = toUsd(e.amount, e.currency, getRate);
+      const v = toBase(e.amount, e.currency);
       if (e.type === "income") {
-        incomeByCat[e.category] = (incomeByCat[e.category] || 0) + usd;
-        incomeTotal += usd;
+        incomeByCat[e.category] = (incomeByCat[e.category] || 0) + v;
+        incomeTotal += v;
       } else {
-        expenseByCat[e.category] = (expenseByCat[e.category] || 0) + usd;
-        expenseTotal += usd;
+        expenseByCat[e.category] = (expenseByCat[e.category] || 0) + v;
+        expenseTotal += v;
       }
     });
 
@@ -55,12 +51,11 @@ export default function CashflowTab({ range }) {
       expenseTotal,
       net,
     };
-  }, [transactions, entries, getRate, range]);
+  }, [transactions, entries, toBase, range]);
 
   const { dealsProfit, incomeByCat, expenseByCat, incomeTotal, expenseTotal, net } = data;
-
-  // Max для нормализации bar chart
   const maxBar = Math.max(dealsProfit + incomeTotal, expenseTotal, 1);
+
 
   return (
     <div className="space-y-4">
@@ -75,6 +70,8 @@ export default function CashflowTab({ range }) {
             max={maxBar}
             color="emerald"
             icon={<TrendingUp className="w-3.5 h-3.5" />}
+            sym={sym}
+            base={base}
           />
           <FlowBar
             label="Other income"
@@ -82,6 +79,8 @@ export default function CashflowTab({ range }) {
             max={maxBar}
             color="sky"
             icon={<TrendingUp className="w-3.5 h-3.5" />}
+            sym={sym}
+            base={base}
           />
           <FlowBar
             label="Expenses"
@@ -89,6 +88,8 @@ export default function CashflowTab({ range }) {
             max={maxBar}
             color="rose"
             icon={<TrendingDown className="w-3.5 h-3.5" />}
+            sym={sym}
+            base={base}
           />
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex items-center justify-between">
@@ -101,7 +102,7 @@ export default function CashflowTab({ range }) {
                 net >= 0 ? "text-emerald-700" : "text-rose-700"
               }`}
             >
-              {net >= 0 ? "+" : ""}${fmt(net)}
+              {net >= 0 ? "+" : ""}{sym}{fmt(net, base)}
             </div>
           </div>
         </div>
@@ -115,19 +116,23 @@ export default function CashflowTab({ range }) {
           total={incomeTotal}
           color="emerald"
           extraTop={dealsProfit > 0 ? ["Deals profit", dealsProfit] : null}
+          sym={sym}
+          base={base}
         />
         <BreakdownCard
           title="Expense by category"
           rows={expenseByCat}
           total={expenseTotal}
           color="rose"
+          sym={sym}
+          base={base}
         />
       </div>
     </div>
   );
 }
 
-function FlowBar({ label, value, max, color, icon }) {
+function FlowBar({ label, value, max, color, icon, sym, base }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   const colorClass = {
     emerald: "bg-emerald-500",
@@ -141,7 +146,7 @@ function FlowBar({ label, value, max, color, icon }) {
           {icon}
           {label}
         </div>
-        <span className="text-[13px] font-bold tabular-nums text-slate-900">${fmt(value)}</span>
+        <span className="text-[13px] font-bold tabular-nums text-slate-900">{sym}{fmt(value, base)}</span>
       </div>
       <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
         <div className={`h-full ${colorClass} rounded-full transition-all`} style={{ width: `${pct}%` }} />
@@ -150,13 +155,13 @@ function FlowBar({ label, value, max, color, icon }) {
   );
 }
 
-function BreakdownCard({ title, rows, total, color, extraTop }) {
+function BreakdownCard({ title, rows, total, color, extraTop, sym, base }) {
   const dotColor = color === "emerald" ? "bg-emerald-500" : "bg-rose-500";
   return (
     <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-[14px] font-semibold tracking-tight">{title}</h3>
-        <span className="text-[12px] font-bold tabular-nums text-slate-700">${fmt(total)}</span>
+        <span className="text-[12px] font-bold tabular-nums text-slate-700">{sym}{fmt(total, base)}</span>
       </div>
       <div className="p-5">
         {extraTop && (
@@ -166,7 +171,7 @@ function BreakdownCard({ title, rows, total, color, extraTop }) {
               <span className="text-[12px] text-slate-700 font-medium italic">{extraTop[0]}</span>
             </div>
             <span className="text-[13px] font-semibold tabular-nums text-slate-700">
-              ${fmt(extraTop[1])}
+              {sym}{fmt(extraTop[1], base)}
             </span>
           </div>
         )}
@@ -179,7 +184,7 @@ function BreakdownCard({ title, rows, total, color, extraTop }) {
               <span className={`w-2 h-2 rounded-full ${dotColor}`} />
               <span className="text-[12px] text-slate-700">{cat}</span>
             </div>
-            <span className="text-[13px] font-semibold tabular-nums text-slate-900">${fmt(amount)}</span>
+            <span className="text-[13px] font-semibold tabular-nums text-slate-900">{sym}{fmt(amount, base)}</span>
           </div>
         ))}
       </div>

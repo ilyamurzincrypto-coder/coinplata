@@ -8,6 +8,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import ReferralsPage from "./pages/ReferralsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
+import AccountsPage from "./pages/AccountsPage.jsx";
 
 import { I18nProvider } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
@@ -21,6 +22,7 @@ import { IncomeExpenseProvider } from "./store/incomeExpense.jsx";
 const PAGE_SECTION = {
   cashier: "transactions",
   capital: "capital",
+  accounts: "accounts",
   clients: "capital",
   referrals: "referrals",
   settings: "settings",
@@ -51,6 +53,7 @@ function Root() {
       />
       {page === "cashier" && canShow("cashier") && <CashierPage currentOffice={currentOffice} />}
       {page === "capital" && canShow("capital") && <CapitalPage />}
+      {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}
