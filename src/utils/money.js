@@ -130,3 +130,54 @@ export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate 
 
   return { remaining, feeInCurIn, consumed, exceedsInput };
 }
+
+// Авто-расчёт прибыли от разницы между rate менеджера и рыночным rate.
+//
+// Для каждого output:
+//   market_rate = getRate(curIn, out.currency)  // сколько outCurrency за 1 unit curIn
+//   actual_rate = out.rate
+//   marginInOut = out.amount × (actual_rate − market_rate) / actual_rate
+//     — положительное если actual > market (office заработал на марже)
+//     — отрицательное иначе
+// ВНИМАНИЕ: в exchange формате "rate" = сколько outCurrency за 1 curIn.
+//   actual_rate > market_rate значит клиент получает больше outCurrency за тот же input,
+//   что для офиса означает меньшую маржу. Значит правильно: marginInOut positive когда
+//   actual < market (менеджер дал хуже рыночного).
+//
+// Возвращает суммарную маржу в USD (суммируем margin по всем outputs).
+// Если market rate недоступен для какого-то output — его margin = 0.
+export function computeProfitFromRates({ amtIn, curIn, outputs, getRate }) {
+  const inNum = parseFloat(amtIn) || 0;
+  if (inNum <= 0 || typeof getRate !== "function") return 0;
+
+  let marginUsd = 0;
+
+  (outputs || []).forEach((o) => {
+    const amt = parseFloat(o.amount) || 0;
+    const actualRate = parseFloat(o.rate) || 0;
+    if (amt <= 0 || actualRate <= 0 || !o.currency) return;
+
+    const marketRate = getRate(curIn, o.currency);
+    if (!marketRate || marketRate <= 0) return;
+
+    // Сколько curIn забрали на этот output:
+    //   consumed_curIn_actual = amt / actualRate
+    //   consumed_curIn_at_market = amt / marketRate
+    //   margin_in_curIn = consumed_curIn_actual − consumed_curIn_at_market
+    //     положительно если actualRate < marketRate (клиент получил меньше чем при рыночном)
+    const marginInCurIn = amt / actualRate - amt / marketRate;
+
+    // Конвертируем в USD через rate(curIn → USD)
+    let marginInUsd;
+    if (curIn === "USD") {
+      marginInUsd = marginInCurIn;
+    } else {
+      const toUsd = getRate(curIn, "USD");
+      if (!toUsd || toUsd <= 0) return; // не можем оценить в USD — пропускаем
+      marginInUsd = marginInCurIn * toUsd;
+    }
+    marginUsd += marginInUsd;
+  });
+
+  return Math.round(marginUsd * 100) / 100;
+}

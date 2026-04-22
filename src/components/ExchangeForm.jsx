@@ -48,6 +48,7 @@ import {
   fmt,
   curSymbol,
   computeRemaining,
+  computeProfitFromRates,
 } from "../utils/money.js";
 
 // Создать пустой output
@@ -96,8 +97,6 @@ function initFromTx(tx) {
   return {
     curIn: tx.curIn,
     amtIn: String(tx.amtIn),
-    feeType: "USD",
-    fee: String(tx.fee ?? ""),
     outputs,
     counterparty: tx.counterparty || "",
     referral: !!tx.referral,
@@ -123,8 +122,6 @@ export default function ExchangeForm({
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
   const [curIn, setCurIn] = useState(starter?.curIn || "USDT");
   const [amtIn, setAmtIn] = useState(starter?.amtIn || "");
-  const [feeType, setFeeType] = useState(starter?.feeType || "USD");
-  const [fee, setFee] = useState(starter?.fee || "");
   const [outputs, setOutputs] = useState(starter?.outputs || [emptyOutput("TRY")]);
   const [counterparty, setCounterparty] = useState(starter?.counterparty || "");
   const [referral, setReferral] = useState(starter?.referral || false);
@@ -179,41 +176,31 @@ export default function ExchangeForm({
     );
   }, [curIn, amtIn, getRate]);
 
-  // --- derived: эффективная комиссия в USD (с учётом минимума) ---
-  const effectiveFee = useMemo(() => {
+  // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
+  // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
+  // на output хуже рыночного (в пользу офиса). Считается в USD.
+  const profitFromRates = useMemo(() => {
     if (!amtIn) return 0;
-    const feeNum = parseFloat(fee) || 0;
-    // Если fee = 0 и не введено — показываем 0 (не применяем минимум в UI до попытки submit)
-    if (!fee) return 0;
+    return computeProfitFromRates({
+      amtIn,
+      curIn,
+      outputs,
+      getRate,
+    });
+  }, [amtIn, curIn, outputs, getRate]);
 
-    let feeUsd;
-    if (feeType === "%") {
-      // Переводим amtIn в USD (если нужно), считаем процент
-      const inUsd =
-        curIn === "USD"
-          ? parseFloat(amtIn)
-          : multiplyAmount(parseFloat(amtIn), getRate(curIn, "USD") ?? 0, 2);
-      feeUsd = percentOf(inUsd, feeNum, 2);
-    } else {
-      feeUsd = feeNum;
-    }
-    return applyMinFee(feeUsd, settings.minFeeUsd);
-  }, [fee, feeType, amtIn, curIn, getRate, settings.minFeeUsd]);
+  // effectiveFee = max(profitFromRates, minFeeUsd)
+  // Если rate-margin меньше минималки (или отрицательная) — берём минималку.
+  const effectiveFee = useMemo(() => {
+    if (!amtIn || parseFloat(amtIn) <= 0) return 0;
+    return Math.max(profitFromRates, settings.minFeeUsd || 0);
+  }, [profitFromRates, settings.minFeeUsd, amtIn]);
 
-  // Показать ли предупреждение о минимуме
+  // Показать ли пометку (min) — когда минималка победила rate-margin
   const minFeeApplied = useMemo(() => {
-    const feeNum = parseFloat(fee) || 0;
-    if (!feeNum) return false;
-    if (feeType === "%") {
-      const inUsd =
-        curIn === "USD"
-          ? parseFloat(amtIn)
-          : multiplyAmount(parseFloat(amtIn) || 0, getRate(curIn, "USD") ?? 0, 2);
-      const rawUsd = percentOf(inUsd, feeNum, 2);
-      return rawUsd < settings.minFeeUsd;
-    }
-    return feeNum < settings.minFeeUsd;
-  }, [fee, feeType, amtIn, curIn, getRate, settings.minFeeUsd]);
+    if (!amtIn || parseFloat(amtIn) <= 0) return false;
+    return profitFromRates < (settings.minFeeUsd || 0);
+  }, [profitFromRates, settings.minFeeUsd, amtIn]);
 
   // --- handlers для outputs ---
   const updateOutput = (id, patch) =>
@@ -250,19 +237,19 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Единая точка расчёта — см. utils/money.js:computeRemaining
-  // Учитывает fee (USD-тип) через rate(curIn, USD).
+  // Передаём effectiveFee как USD — она автоматически вычитается из remaining
+  // через rate(curIn → USD).
   const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
     () =>
       computeRemaining({
         amtIn,
         curIn,
         outputs,
-        fee,
-        feeType,
+        fee: effectiveFee,
+        feeType: "USD",
         getRate,
       }),
-    [amtIn, curIn, outputs, fee, feeType, getRate]
+    [amtIn, curIn, outputs, effectiveFee, getRate]
   );
   const EPS = 0.01;
 
@@ -357,7 +344,6 @@ export default function ExchangeForm({
     if (mode === "create") {
       // reset
       setAmtIn("");
-      setFee("");
       setOutputs([emptyOutput("TRY")]);
       setCounterparty("");
       setReferral(false);
@@ -367,7 +353,7 @@ export default function ExchangeForm({
 
   // --- live profit (для summary) ---
   const liveProfit = useMemo(() => {
-    if (!amtIn || !fee) return 0;
+    if (!amtIn || !effectiveFee) return 0;
     let p = effectiveFee;
     if (referral) {
       const inUsd =
@@ -377,7 +363,7 @@ export default function ExchangeForm({
       p -= percentOf(inUsd, settings.referralPct, 2);
     }
     return Math.round(p * 100) / 100;
-  }, [effectiveFee, referral, amtIn, curIn, getRate, settings.referralPct, fee]);
+  }, [effectiveFee, referral, amtIn, curIn, getRate, settings.referralPct]);
 
   // Reverse: меняет местами in и первый output. Используется в одно-выходном случае.
   // При множественных outputs берём только первый (обратимость многостороннего обмена неоднозначна).
@@ -511,56 +497,6 @@ export default function ExchangeForm({
         <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center">
           <ArrowDown className="w-3.5 h-3.5 text-slate-400" />
         </div>
-      </div>
-
-      {/* COMMISSION */}
-      <div className="px-5 pb-1">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center text-white text-[10px] font-bold">
-              %
-            </div>
-            <span className="text-[11px] font-bold tracking-[0.15em] text-amber-700 uppercase">
-              {t("commission")}
-            </span>
-          </div>
-          <div className="inline-flex bg-slate-100 p-0.5 rounded-[9px] gap-0.5">
-            {["USD", "%"].map((ty) => (
-              <button
-                key={ty}
-                type="button"
-                onClick={() => setFeeType(ty)}
-                className={`px-2.5 py-0.5 text-[11px] font-bold rounded-[7px] transition-all ${
-                  feeType === ty
-                    ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                    : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                {ty}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div
-          className={`relative flex items-baseline gap-2 bg-white rounded-[14px] border-2 transition-all px-4 py-3 ${
-            fee ? "border-amber-400" : "border-slate-200 hover:border-slate-300"
-          }`}
-        >
-          <span className="text-slate-400 text-[18px] font-semibold">{feeType === "%" ? "%" : "$"}</span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={fee}
-            onChange={(e) => setFee(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
-            placeholder="0"
-            className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0"
-          />
-        </div>
-        {minFeeApplied && (
-          <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1">
-            ⚠ {t("min_fee_notice")} · applied: ${fmt(effectiveFee)}
-          </div>
-        )}
       </div>
 
       {/* Connector / Reverse button (swaps RECEIVED ↔ first ISSUED) */}
@@ -700,6 +636,45 @@ export default function ExchangeForm({
           className="mt-3 w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-slate-400"
         />
       </div>
+
+      {/* SUMMARY: You will receive / Rate / Our fee */}
+      {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
+        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 space-y-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+              {t("summary_you_receive")}
+            </span>
+            <span className="text-[13px] font-bold tabular-nums text-slate-900">
+              {outputs
+                .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
+                .join(" + ")}
+            </span>
+          </div>
+          {outputs.length === 1 && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                {t("summary_rate")}
+              </span>
+              <span className="text-[13px] font-semibold tabular-nums text-slate-700">
+                {parseFloat(outputs[0].rate).toLocaleString("en-US", { maximumFractionDigits: 6 })}
+              </span>
+            </div>
+          )}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+              {t("summary_our_fee")}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[13px] font-bold tabular-nums text-amber-700">
+              ${fmt(effectiveFee)}
+              {minFeeApplied && (
+                <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
+                  {t("summary_min_label")}
+                </span>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* CTA */}
       <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4">
