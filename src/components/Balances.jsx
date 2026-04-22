@@ -132,8 +132,8 @@ function MetricRow({ label, actual, reserved, available, currency, dim }) {
 
 function CurrencyCard({ row }) {
   return (
-    <div className="h-full bg-white border border-slate-200/70 rounded-[10px] px-3 py-2.5 hover:border-slate-300 transition-colors min-w-0">
-      <div className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-0.5">
+    <div className="h-full bg-white border border-slate-200/70 rounded-[10px] px-3 py-2.5 hover:border-slate-300 transition-colors min-w-0 flex flex-col justify-between gap-1">
+      <div className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase">
         {row.currency}
       </div>
       <MetricRow

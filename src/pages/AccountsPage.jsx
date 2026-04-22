@@ -12,6 +12,7 @@ import { fmt, curSymbol } from "../utils/money.js";
 import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
+import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 
 const TYPE_ICONS = {
   bank: "🏦",
@@ -31,6 +32,7 @@ export default function AccountsPage() {
   const [transferFrom, setTransferFrom] = useState(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
+  const [addAccountFor, setAddAccountFor] = useState(null); // {id, name} офиса
 
   // Группировка по офисам (только активные)
   const grouped = useMemo(() => {
@@ -84,14 +86,23 @@ export default function AccountsPage() {
               <h2 className="text-[15px] font-semibold tracking-tight">{office.name}</h2>
               <span className="text-[11px] text-slate-400">· {accs.length} accounts</span>
             </div>
-            <div className="text-[13px] tabular-nums">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">
-                {t("acc_total_by_office")}
-              </span>
-              <span className="font-bold text-slate-900">
-                {sym}
-                {fmt(totalInBase, base)}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="text-[13px] tabular-nums">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mr-2">
+                  {t("acc_total_by_office")}
+                </span>
+                <span className="font-bold text-slate-900">
+                  {sym}
+                  {fmt(totalInBase, base)}
+                </span>
+              </div>
+              <button
+                onClick={() => setAddAccountFor({ id: office.id, name: office.name })}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                {t("acc_add") || "Add account"}
+              </button>
             </div>
           </div>
 
@@ -173,6 +184,12 @@ export default function AccountsPage() {
         }}
       />
       <AccountHistoryModal account={historyFor} onClose={() => setHistoryFor(null)} />
+      <AddAccountModal
+        open={!!addAccountFor}
+        officeId={addAccountFor?.id}
+        officeName={addAccountFor?.name}
+        onClose={() => setAddAccountFor(null)}
+      />
     </main>
   );
 }

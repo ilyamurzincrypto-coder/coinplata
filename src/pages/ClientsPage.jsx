@@ -64,7 +64,7 @@ export default function ClientsPage() {
     });
 
     return rows.sort((a, b) => b.volume - a.volume);
-  }, [transactions, counterparties, getRate]);
+  }, [transactions, counterparties, toBase]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return clients;
