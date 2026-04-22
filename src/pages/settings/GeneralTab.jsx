@@ -4,7 +4,7 @@
 import React, { useState } from "react";
 import { Settings as SettingsIcon, TrendingUp, Coins } from "lucide-react";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
-import { CURRENCIES } from "../../store/data.js";
+import { useCurrencies } from "../../store/currencies.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useRates, FEATURED_PAIRS, rateKey } from "../../store/rates.jsx";
 import { useAudit } from "../../store/audit.jsx";
@@ -26,6 +26,7 @@ export default function GeneralTab() {
   const { t } = useTranslation();
   const { settings, updateSettings, isAdmin } = useAuth();
   const { rates, setRate, lastUpdated } = useRates();
+  const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
 
   const [minFee, setMinFee] = useState(settings.minFeeUsd);

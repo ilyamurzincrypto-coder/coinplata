@@ -15,6 +15,7 @@ import { I18nProvider } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
 import { AuthProvider } from "./store/auth.jsx";
 import { OfficesProvider } from "./store/offices.jsx";
+import { CurrenciesProvider } from "./store/currencies.jsx";
 import { TransactionsProvider } from "./store/transactions.jsx";
 import { AccountsProvider } from "./store/accounts.jsx";
 import { PermissionsProvider, useCan } from "./store/permissions.jsx";
@@ -69,19 +70,21 @@ export default function App() {
     <I18nProvider>
       <AuthProvider>
         <OfficesProvider>
-          <PermissionsProvider>
-            <AuditProvider>
-              <RatesProvider>
-                <AccountsProvider>
-                  <IncomeExpenseProvider>
-                    <TransactionsProvider>
-                      <Root />
-                    </TransactionsProvider>
-                  </IncomeExpenseProvider>
-                </AccountsProvider>
-              </RatesProvider>
-            </AuditProvider>
-          </PermissionsProvider>
+          <CurrenciesProvider>
+            <PermissionsProvider>
+              <AuditProvider>
+                <RatesProvider>
+                  <AccountsProvider>
+                    <IncomeExpenseProvider>
+                      <TransactionsProvider>
+                        <Root />
+                      </TransactionsProvider>
+                    </IncomeExpenseProvider>
+                  </AccountsProvider>
+                </RatesProvider>
+              </AuditProvider>
+            </PermissionsProvider>
+          </CurrenciesProvider>
         </OfficesProvider>
       </AuthProvider>
     </I18nProvider>

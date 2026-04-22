@@ -1,8 +1,10 @@
 // src/components/ui/CurrencyTabs.jsx
 import React from "react";
-import { CURRENCIES } from "../../store/data.js";
+import { useCurrencies } from "../../store/currencies.jsx";
 
-export default function CurrencyTabs({ value, onChange, accent = "slate", currencies = CURRENCIES }) {
+export default function CurrencyTabs({ value, onChange, accent = "slate", currencies: currenciesProp }) {
+  const { codes } = useCurrencies();
+  const currencies = currenciesProp || codes;
   const activeCls =
     accent === "emerald"
       ? "bg-white text-emerald-700 ring-1 ring-emerald-200 shadow-sm"

@@ -13,7 +13,8 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Select from "./ui/Select.jsx";
-import { CURRENCIES, TYPES, officeName } from "../store/data.js";
+import { TYPES, officeName } from "../store/data.js";
+import { useCurrencies } from "../store/currencies.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -26,25 +27,20 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const { t } = useTranslation();
   const { transactions, completeTransaction } = useTransactions();
   const { canEditTransaction, isAdmin, currentUser } = useAuth();
-  const { accounts, addMovement, removeMovementsByRefId } = useAccounts();
+  const { accounts, addMovement, removeMovementsByRefId, unreserveMovementsByRefId } = useAccounts();
+  const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
 
   const handleComplete = (tx) => {
-    // Pending → Completed: меняем статус, пишем movements
-    removeMovementsByRefId(tx.id); // на всякий случай — если вдруг были
+    // Pending → Completed: движения уже были записаны с флагом reserved=true.
+    // Complete = снимаем флаг reserved (движения остаются как completed).
     completeTransaction(tx.id);
-    const { movements, warnings } = buildMovementsFromTransaction(
-      { ...tx, status: "completed" },
-      accounts,
-      currentUser.id
-    );
-    movements.forEach(addMovement);
-    const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} missing account(s)` : "";
+    unreserveMovementsByRefId(tx.id);
     logAudit({
       action: "update",
       entity: "transaction",
       entityId: String(tx.id),
-      summary: `[COMPLETED] Tx #${tx.id}: movements recorded${warnSuffix}`,
+      summary: `[COMPLETED] Tx #${tx.id}: reserved flag cleared`,
     });
   };
 

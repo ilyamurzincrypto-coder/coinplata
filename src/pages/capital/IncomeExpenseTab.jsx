@@ -11,7 +11,8 @@ import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { OFFICES, CURRENCIES, officeName } from "../../store/data.js";
+import { OFFICES, officeName } from "../../store/data.js";
+import { useCurrencies } from "../../store/currencies.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
@@ -202,6 +203,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { t } = useTranslation();
   const { addEntry } = useIncomeExpense();
   const { accountsByOffice, addMovement } = useAccounts();
+  const { codes: CURRENCIES } = useCurrencies();
 
   const [officeId, setOfficeId] = useState(OFFICES[0].id);
   const [currency, setCurrency] = useState("USD");

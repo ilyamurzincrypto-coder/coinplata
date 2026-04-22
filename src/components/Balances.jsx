@@ -13,14 +13,13 @@
 import React, { useMemo } from "react";
 import { Wallet, Layers, Banknote, Coins, Building2, Clock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
-import { officeName, currencyByCode } from "../store/data.js";
+import { officeName } from "../store/data.js";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
-import { useTransactions } from "../store/transactions.jsx";
+import { useCurrencies } from "../store/currencies.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
-import { computeReservedByAccount, reservedForAccount } from "../utils/reserved.js";
 
 const NETWORK_RX = /\b(TRC20|ERC20|BEP20)\b/i;
 
@@ -31,24 +30,24 @@ function detectNetwork(accountName) {
 }
 
 // --- Pure grouping helper ---
-// Возвращает структуру с 3 метриками на каждой позиции: actual/reserved/available
-function groupBalances(accounts, balanceFn, toBaseFn, reservedMap) {
+// Использует balanceOf (total) и reservedOf (reserved) прямо из accounts store.
+function groupBalances(accounts, balanceFn, reservedFn, toBaseFn, currencyDict) {
   const fiat = {
-    cash: new Map(), // currency → {actual, reserved}
+    cash: new Map(),
     bank: new Map(),
   };
-  const cryptoMap = new Map(); // currency → Map<network, {actual, reserved}>
+  const cryptoMap = new Map();
   let totalActualInBase = 0;
   let totalReservedInBase = 0;
 
   accounts.forEach((a) => {
     if (!a.active) return;
     const actual = balanceFn(a.id);
-    const reserved = reservedForAccount(reservedMap, a);
+    const reserved = reservedFn(a.id);
     totalActualInBase += toBaseFn(actual, a.currency);
     totalReservedInBase += toBaseFn(reserved, a.currency);
 
-    const meta = currencyByCode(a.currency);
+    const meta = currencyDict[a.currency];
     const isCrypto = meta?.type === "crypto";
 
     if (isCrypto) {
@@ -133,7 +132,7 @@ function MetricRow({ label, actual, reserved, available, currency, dim }) {
 
 function CurrencyCard({ row }) {
   return (
-    <div className="bg-white border border-slate-200/70 rounded-[10px] px-3 py-2.5 hover:border-slate-300 transition-colors min-w-0">
+    <div className="h-full bg-white border border-slate-200/70 rounded-[10px] px-3 py-2.5 hover:border-slate-300 transition-colors min-w-0">
       <div className="text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-0.5">
         {row.currency}
       </div>
@@ -157,7 +156,12 @@ function FiatSection({ title, rows, icon: Icon }) {
           {title}
         </span>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+      <div
+        className="grid gap-2 items-stretch"
+        style={{
+          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+        }}
+      >
         {rows.map((r) => (
           <CurrencyCard key={`${title}-${r.currency}`} row={r} />
         ))}
@@ -171,7 +175,7 @@ function CryptoCurrencyBlock({ currency, networks }) {
   const totalReserved = networks.reduce((s, n) => s + n.reserved, 0);
   const totalAvailable = totalActual - totalReserved;
   return (
-    <div className="bg-white border border-slate-200/70 rounded-[10px] p-3">
+    <div className="h-full bg-white border border-slate-200/70 rounded-[10px] p-3 flex flex-col">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[11px] font-bold text-slate-500 tracking-[0.15em] uppercase">
           {currency}
@@ -222,9 +226,9 @@ function CryptoCurrencyBlock({ currency, networks }) {
 
 export default function Balances({ currentOffice, scope, onScopeChange }) {
   const { t } = useTranslation();
-  const { accounts, balanceOf } = useAccounts();
+  const { accounts, balanceOf, reservedOf } = useAccounts();
   const { activeOffices, findOffice } = useOffices();
-  const { transactions } = useTransactions();
+  const { dict: currencyDict } = useCurrencies();
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
 
@@ -233,15 +237,9 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     return accounts.filter((a) => a.officeId === currentOffice);
   }, [accounts, scope, currentOffice]);
 
-  // Reserved агрегируется 1 раз по всем transactions
-  const reservedMap = useMemo(
-    () => computeReservedByAccount(transactions),
-    [transactions]
-  );
-
   const grouped = useMemo(
-    () => groupBalances(scopedAccounts, balanceOf, toBase, reservedMap),
-    [scopedAccounts, balanceOf, toBase, reservedMap]
+    () => groupBalances(scopedAccounts, balanceOf, reservedOf, toBase, currencyDict),
+    [scopedAccounts, balanceOf, reservedOf, toBase, currencyDict]
   );
 
   const { fiat, crypto, totalActualInBase, totalReservedInBase, totalAvailableInBase } = grouped;
@@ -329,7 +327,12 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                   Crypto
                 </span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+              <div
+                className="grid gap-2 items-stretch"
+                style={{
+                  gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                }}
+              >
                 {crypto.map((c) => (
                   <CryptoCurrencyBlock
                     key={c.currency}

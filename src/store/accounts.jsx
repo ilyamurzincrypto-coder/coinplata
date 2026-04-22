@@ -175,11 +175,18 @@ export function AccountsProvider({ children }) {
   );
 
   // --- Вычисляемый баланс по всем счетам ---
-  // Map<accountId, balance>
+  // balanceOf = "total" = сумма COMPLETED движений (reserved=false).
+  //   Reserved movements (pending) не влияют на balanceOf в обе стороны:
+  //   pending IN — ещё не поступление, pending OUT — ещё не списание.
+  //   Когда pending завершается (unreserveMovementsByRefId), reserved → false,
+  //   и обе стороны включаются в balanceOf как обычные движения.
+  //
+  // available = balanceOf − reservedOf (pending OUT резервируют часть total)
   const balances = useMemo(() => {
     const map = new Map();
     accounts.forEach((a) => map.set(a.id, 0));
     movements.forEach((m) => {
+      if (m.reserved) return; // pending не влияет на total
       const prev = map.get(m.accountId) || 0;
       const signed = m.direction === "in" ? m.amount : -m.amount;
       map.set(m.accountId, prev + signed);
@@ -190,6 +197,29 @@ export function AccountsProvider({ children }) {
   const balanceOf = useCallback(
     (accountId) => balances.get(accountId) || 0,
     [balances]
+  );
+
+  // Reserved = сумма OUT-движений с флагом reserved=true (pending сделки)
+  const reserved = useMemo(() => {
+    const map = new Map();
+    accounts.forEach((a) => map.set(a.id, 0));
+    movements.forEach((m) => {
+      if (!m.reserved) return;
+      if (m.direction !== "out") return;
+      const prev = map.get(m.accountId) || 0;
+      map.set(m.accountId, prev + m.amount);
+    });
+    return map;
+  }, [accounts, movements]);
+
+  const reservedOf = useCallback(
+    (accountId) => reserved.get(accountId) || 0,
+    [reserved]
+  );
+
+  const availableOf = useCallback(
+    (accountId) => (balances.get(accountId) || 0) - (reserved.get(accountId) || 0),
+    [balances, reserved]
   );
 
   // --- Фильтрация ---
@@ -216,6 +246,16 @@ export function AccountsProvider({ children }) {
     [movements]
   );
 
+  // Снять флаг reserved с movements по refId (когда pending → completed)
+  const unreserveMovementsByRefId = useCallback((refId) => {
+    if (!refId) return;
+    setMovements((prev) =>
+      prev.map((m) =>
+        m.source?.refId === String(refId) ? { ...m, reserved: false } : m
+      )
+    );
+  }, []);
+
   const value = useMemo(
     () => ({
       accounts,
@@ -229,11 +269,14 @@ export function AccountsProvider({ children }) {
       // operations
       addMovement,
       removeMovementsByRefId,
+      unreserveMovementsByRefId,
       topUp,
       transfer,
       // computed
       balances,
       balanceOf,
+      reservedOf,
+      availableOf,
       // queries
       accountsByOffice,
       findAccount,
@@ -248,10 +291,13 @@ export function AccountsProvider({ children }) {
       deactivateAccount,
       addMovement,
       removeMovementsByRefId,
+      unreserveMovementsByRefId,
       topUp,
       transfer,
       balances,
       balanceOf,
+      reservedOf,
+      availableOf,
       accountsByOffice,
       findAccount,
       movementsByAccount,

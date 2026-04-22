@@ -27,27 +27,21 @@ export default function CashierPage({ currentOffice }) {
     setJustCreatedId(tx.id);
     setTimeout(() => setJustCreatedId(null), 2500);
 
-    const isPending = tx.status === "pending";
-
-    // Защита от дублей: убираем возможные ранее созданные movements этой tx
+    // Защита от дублей
     removeMovementsByRefId(tx.id);
 
-    // Pending сделки НЕ создают movements — только запись в транзакции
-    let movements = [];
-    let warnings = [];
-    if (!isPending) {
-      const result = buildMovementsFromTransaction(tx, accounts, currentUser.id);
-      movements = result.movements;
-      warnings = result.warnings;
-      movements.forEach(addMovement);
-    }
+    // Pending сделки ТОЖЕ создают movements — но с флагом reserved: true
+    // (внутри buildMovementsFromTransaction на основе tx.status === "pending").
+    // balanceOf() видит их в total, reservedOf() — в reserved, availableOf = total - reserved.
+    const { movements, warnings } = buildMovementsFromTransaction(tx, accounts, currentUser.id);
+    movements.forEach(addMovement);
 
-    // Audit log сделки
+    // Audit log
     const outStr = (tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut }])
       .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
       .join(" + ");
     const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} missing account(s)` : "";
-    const statusPrefix = isPending ? "[PENDING] " : "";
+    const statusPrefix = tx.status === "pending" ? "[PENDING/RESERVED] " : "";
     logAudit({
       action: "create",
       entity: "transaction",

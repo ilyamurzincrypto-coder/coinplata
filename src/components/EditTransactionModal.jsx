@@ -30,25 +30,17 @@ export default function EditTransactionModal({ transaction, onClose }) {
     const prevStatus = transaction.status || "completed";
     const nextStatus = updated.status || "completed";
 
-    // Таблица переходов:
-    //   completed → completed : снести старые movements, записать новые (как было)
-    //   completed → pending   : снести movements (pending не имеет движений)
-    //   pending   → completed : движений раньше не было, записать новые
-    //   pending   → pending   : ничего с movements
-    //
-    // Для уверенности и безопасности — сначала всегда снести старые по refId.
+    // Простая стратегия: всегда rewrite movements (снести и записать заново).
+    // buildMovementsFromTransaction учтёт tx.status и поставит reserved:true если pending.
+    // Это проще чем тонкий diff и покрывает все случаи (смена currency, amount, account).
     removeMovementsByRefId(transaction.id);
+    const { movements } = buildMovementsFromTransaction(
+      { ...updated, id: transaction.id },
+      accounts,
+      currentUser.id
+    );
+    movements.forEach(addMovement);
 
-    if (nextStatus === "completed") {
-      const { movements } = buildMovementsFromTransaction(
-        { ...updated, id: transaction.id },
-        accounts,
-        currentUser.id
-      );
-      movements.forEach(addMovement);
-    }
-
-    // Diff для summary
     const changes = [];
     if (transaction.amtIn !== updated.amtIn) {
       changes.push(`in ${fmt(transaction.amtIn, transaction.curIn)} → ${fmt(updated.amtIn, updated.curIn)}`);
@@ -63,7 +55,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
       changes.push(`status: ${prevStatus} → ${nextStatus}`);
     }
     const summary = changes.length
-      ? `${changes.join(", ")} · movements ${nextStatus === "completed" ? "rewritten" : "cleared (pending)"}`
+      ? `${changes.join(", ")} · movements rewritten (${nextStatus === "pending" ? "reserved" : "completed"})`
       : `Transaction ${transaction.id} edited`;
 
     logAudit({

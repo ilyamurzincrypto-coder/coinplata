@@ -34,7 +34,8 @@ import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
 import CounterpartySelect from "./CounterpartySelect.jsx";
 import AccountSelect from "./AccountSelect.jsx";
-import { CURRENCIES, officeName } from "../store/data.js";
+import { officeName } from "../store/data.js";
+import { useCurrencies } from "../store/currencies.jsx";
 import { useRates } from "../store/rates.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -116,6 +117,7 @@ export default function ExchangeForm({
   const { currentUser, settings } = useAuth();
   const { addCounterparty } = useTransactions();
   const { accountsByOffice, balanceOf, accounts } = useAccounts();
+  const { codes: CURRENCIES } = useCurrencies();
 
   // --- state ---
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
@@ -813,6 +815,7 @@ function OutputRow({
   const { t } = useTranslation();
   const { getRate } = useRates();
   const { accountsByOffice } = useAccounts();
+  const { codes: CURRENCIES } = useCurrencies();
   const o = output;
 
   const otherCurrencies = CURRENCIES.filter((c) => c !== curIn);

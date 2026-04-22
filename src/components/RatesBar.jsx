@@ -2,11 +2,11 @@
 import React, { useState } from "react";
 import { TrendingUp, Pencil, RefreshCw, Plus, Trash2, X } from "lucide-react";
 import { useRates, FEATURED_PAIRS, rateKey } from "../store/rates.jsx";
+import { useCurrencies } from "../store/currencies.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import Modal from "./ui/Modal.jsx";
-import { CURRENCIES } from "../store/data.js";
 
 function formatRate(value) {
   if (!value && value !== 0) return "—";
@@ -103,7 +103,11 @@ export default function RatesBar() {
     }
   };
 
-  // Для hover expansion показываем уникальные base валюты из FEATURED_PAIRS.
+  // Сгруппированные пары для показа в expand-блоке (уникальные base валюты)
+  const expandData = hoveredBase
+    ? ratesFromBase(hoveredBase)
+    : [];
+
   return (
     <>
       <section>
@@ -128,19 +132,23 @@ export default function RatesBar() {
           )}
         </div>
 
-        <div className="bg-white rounded-[12px] border border-slate-200/70 p-1 flex overflow-visible">
-          {FEATURED_PAIRS.map(([from, to]) => {
-            const r = getRate(from, to);
-            const isExpanded = hoveredBase === from;
-            const siblings = ratesFromBase(from).filter((x) => x.to !== to);
-            return (
-              <div
-                key={`${from}-${to}`}
-                onMouseEnter={() => setHoveredBase(from)}
-                onMouseLeave={() => setHoveredBase(null)}
-                className="relative flex-1 min-w-[140px]"
-              >
-                <div className="px-4 py-2.5 flex items-center justify-between hover:bg-slate-50 rounded-[10px] transition-colors border-r last:border-r-0 border-slate-100 cursor-default">
+        {/* Контейнер карточек + expand внутри. overflow-hidden чтобы ничего не вылезало */}
+        <div
+          className="bg-white rounded-[12px] border border-slate-200/70 overflow-hidden"
+          onMouseLeave={() => setHoveredBase(null)}
+        >
+          <div className="p-1 flex">
+            {FEATURED_PAIRS.map(([from, to]) => {
+              const r = getRate(from, to);
+              const isActive = hoveredBase === from;
+              return (
+                <div
+                  key={`${from}-${to}`}
+                  onMouseEnter={() => setHoveredBase(from)}
+                  className={`flex-1 min-w-[140px] px-4 py-2.5 flex items-center justify-between rounded-[10px] transition-colors border-r last:border-r-0 border-slate-100 cursor-default ${
+                    isActive ? "bg-slate-50" : "hover:bg-slate-50"
+                  }`}
+                >
                   <div>
                     <div className="text-[10px] font-bold text-slate-500 tracking-[0.1em] mb-0.5">
                       {from} → {to}
@@ -151,35 +159,41 @@ export default function RatesBar() {
                   </div>
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Hover expansion — все остальные пары от этого base */}
-                {isExpanded && siblings.length > 0 && (
-                  <div
-                    className="absolute z-30 left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-[12px] shadow-xl shadow-slate-900/10 p-2 animate-[fadeSlide_160ms_ease-out]"
-                  >
-                    <div className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase px-2 py-1">
-                      {from} → all
+          {/* Inline expand — под строкой карточек, max-height transition */}
+          <div
+            className="overflow-hidden transition-[max-height] duration-200 ease-out border-t"
+            style={{
+              maxHeight: hoveredBase && expandData.length > 0 ? "200px" : "0px",
+              borderTopColor: hoveredBase ? "rgb(226 232 240)" : "transparent",
+            }}
+          >
+            {hoveredBase && (
+              <div className="p-3 bg-slate-50/60 overflow-y-auto max-h-[200px]">
+                <div className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase mb-2">
+                  {hoveredBase} → all pairs
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5">
+                  {expandData.map(({ to: t2, rate: r2 }) => (
+                    <div
+                      key={t2}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-white border border-slate-200"
+                    >
+                      <span className="text-[11px] font-semibold text-slate-600">
+                        {t2}
+                      </span>
+                      <span className="text-[12px] font-bold tabular-nums text-slate-900">
+                        {formatRate(r2)}
+                      </span>
                     </div>
-                    <div className="space-y-0.5">
-                      {siblings.map(({ to: t2, rate: r2 }) => (
-                        <div
-                          key={t2}
-                          className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50"
-                        >
-                          <span className="text-[11px] font-semibold text-slate-600">
-                            {t2}
-                          </span>
-                          <span className="text-[12px] font-bold tabular-nums text-slate-900">
-                            {formatRate(r2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  ))}
+                </div>
               </div>
-            );
-          })}
+            )}
+          </div>
         </div>
       </section>
 
@@ -411,6 +425,7 @@ function AddPairPanel({ onBack, onAdd, existingPairs }) {
 }
 
 function CurrencyRow({ value, onChange }) {
+  const { codes: CURRENCIES } = useCurrencies();
   return (
     <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap">
       {CURRENCIES.map((c) => (

@@ -2,19 +2,18 @@
 // Pure helper — из tx строит список движений денег.
 // Не пишет в store, только формирует data.
 //
-// ПРАВИЛО:
+// ПРАВИЛО accounts:
 //   Если tx.accountId не указан → IN movement НЕ пишется, возвращается warning.
 //   Если output.accountId не указан → OUT movement НЕ пишется, warning.
-// Никаких auto-pick / first-match — менеджер сам отвечает за выбор счёта.
-// Это upstream gate: балансы не должны меняться без осознанного решения.
+//
+// RESERVED FLAG:
+//   Если tx.status === "pending" — все созданные movements получают reserved: true.
+//   Когда pending → completed, вызывающий код делает unreserveMovementsByRefId().
 
-// tx: {id, officeId, curIn, amtIn, outputs: [{currency, amount, accountId?}], accountId?, ...}
-// accounts: весь массив (используется только для валидации что account существует)
-// createdBy: user id
-// Возвращает: { movements: [...], warnings: [...] }
 export function buildMovementsFromTransaction(tx, accounts, createdBy) {
   const movements = [];
   const warnings = [];
+  const isReserved = tx.status === "pending";
 
   const hasAccount = (id) =>
     !!id && accounts.some((a) => a.id === id && a.active !== false);
@@ -26,6 +25,7 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy) {
       amount: Math.abs(tx.amtIn || 0),
       direction: "in",
       currency: tx.curIn,
+      reserved: isReserved,
       source: {
         kind: "exchange_in",
         refId: String(tx.id),
@@ -54,6 +54,7 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy) {
       amount: Math.abs(out.amount || 0),
       direction: "out",
       currency: out.currency,
+      reserved: isReserved,
       source: {
         kind: "exchange_out",
         refId: String(tx.id),
