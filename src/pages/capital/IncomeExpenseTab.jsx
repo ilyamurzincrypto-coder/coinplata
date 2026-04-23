@@ -2,7 +2,7 @@
 // Таблица записей доходов/расходов + модалка Add income / Add expense с audit-логом.
 
 import React, { useState, useMemo } from "react";
-import { Receipt, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Download } from "lucide-react";
+import { Receipt, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Download, Tag } from "lucide-react";
 import { exportCSV } from "../../utils/csv.js";
 import Modal from "../../components/ui/Modal.jsx";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
@@ -78,6 +78,47 @@ export default function IncomeExpenseTab({ range }) {
 
   return (
     <>
+      {/* Totals summary bar */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <div className="rounded-[12px] border border-emerald-200 bg-emerald-50/70 px-4 py-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1.5">
+            <ArrowDownLeft className="w-3.5 h-3.5" />
+            {t("pnl_income_total")}
+          </div>
+          <div className="text-[22px] font-bold tabular-nums text-emerald-900">
+            {curSymbol(base)}{fmt(totals.income, base)}
+          </div>
+        </div>
+        <div className="rounded-[12px] border border-rose-200 bg-rose-50/70 px-4 py-3">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-rose-700 mb-1 flex items-center gap-1.5">
+            <ArrowUpRight className="w-3.5 h-3.5" />
+            {t("pnl_expense_total")}
+          </div>
+          <div className="text-[22px] font-bold tabular-nums text-rose-900">
+            −{curSymbol(base)}{fmt(totals.expense, base)}
+          </div>
+        </div>
+        <div
+          className={`rounded-[12px] border px-4 py-3 ring-2 ring-slate-900/5 ${
+            totals.income - totals.expense >= 0
+              ? "border-emerald-200 bg-emerald-50/70"
+              : "border-rose-200 bg-rose-50/70"
+          }`}
+        >
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
+            {t("pnl_net_profit")}
+          </div>
+          <div
+            className={`text-[22px] font-bold tabular-nums ${
+              totals.income - totals.expense >= 0 ? "text-emerald-900" : "text-rose-900"
+            }`}
+          >
+            {totals.income - totals.expense >= 0 ? "+" : ""}
+            {curSymbol(base)}{fmt(totals.income - totals.expense, base)}
+          </div>
+        </div>
+      </div>
+
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -86,7 +127,7 @@ export default function IncomeExpenseTab({ range }) {
               <h2 className="text-[15px] font-semibold tracking-tight">{t("ie_title")}</h2>
             </div>
             <div className="text-[12px] text-slate-500 tabular-nums">
-              {scoped.length} entries
+              {scoped.length} {t("pnl_entries")}
             </div>
           </div>
 
@@ -120,10 +161,10 @@ export default function IncomeExpenseTab({ range }) {
               }}
               disabled={scoped.length === 0}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[13px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Export entries to CSV"
+              title={t("pnl_export_ie_tip")}
             >
               <Download className="w-3 h-3" />
-              Export CSV
+              {t("export_csv")}
             </button>
             <button
               onClick={() => setAddType("income")}
@@ -149,7 +190,7 @@ export default function IncomeExpenseTab({ range }) {
                 <th className="px-5 py-2.5 font-bold">{t("ie_date")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("ie_type")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("ie_category")}</th>
-                <th className="px-3 py-2.5 font-bold">Office</th>
+                <th className="px-3 py-2.5 font-bold">{t("oblig_col_office")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("ie_account")}</th>
                 <th className="px-3 py-2.5 font-bold text-right">{t("ie_amount")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("ie_note")}</th>

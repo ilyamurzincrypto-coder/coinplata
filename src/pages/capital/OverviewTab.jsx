@@ -15,9 +15,13 @@ import {
   Coins,
   ArrowUp,
   ArrowDown,
+  Scale,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
+import { useObligations } from "../../store/obligations.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { OFFICES, officeName } from "../../store/data.js";
@@ -71,7 +75,25 @@ export default function OverviewTab({ range }) {
   const { t } = useTranslation();
   const { transactions, counterparties } = useTransactions();
   const { entries } = useIncomeExpense();
+  const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();
+
+  // Obligations — на сегодня (не фильтруем по range, т.к. это текущий
+  // баланс активов/пассивов, а не историческое)
+  const obligationsSummary = useMemo(() => {
+    let weOwe = 0;
+    let theyOwe = 0;
+    let openCount = 0;
+    (obligations || []).forEach((o) => {
+      if (o.status !== "open") return;
+      openCount += 1;
+      const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
+      const inBase = toBase(remaining, o.currency);
+      if (o.direction === "we_owe") weOwe += inBase;
+      else if (o.direction === "they_owe") theyOwe += inBase;
+    });
+    return { weOwe, theyOwe, net: theyOwe - weOwe, openCount };
+  }, [obligations, toBase]);
 
   const {
     txVolume,
@@ -219,6 +241,43 @@ export default function OverviewTab({ range }) {
         />
       </div>
 
+      {/* Obligations impact — активы/пассивы по долгам (current, не per-range) */}
+      {obligationsSummary.openCount > 0 && (
+        <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+            <Scale className="w-4 h-4 text-slate-500" />
+            <h2 className="text-[15px] font-semibold tracking-tight">{t("oblig_title")}</h2>
+            <span className="text-[11px] text-slate-400">
+              · {obligationsSummary.openCount} {t("oblig_open_obligations")}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-5">
+            <ObligationStat
+              label={t("oblig_they_owe")}
+              value={`${sym}${fmt(obligationsSummary.theyOwe, base)}`}
+              tone="emerald"
+              icon={<ArrowDownLeft className="w-3.5 h-3.5" />}
+              hint="assets (inflow expected)"
+            />
+            <ObligationStat
+              label={t("oblig_we_owe")}
+              value={`${sym}${fmt(obligationsSummary.weOwe, base)}`}
+              tone="rose"
+              icon={<ArrowUpRight className="w-3.5 h-3.5" />}
+              hint="liabilities (outflow pending)"
+            />
+            <ObligationStat
+              label={t("oblig_net")}
+              value={`${obligationsSummary.net >= 0 ? "+" : ""}${sym}${fmt(obligationsSummary.net, base)}`}
+              tone={obligationsSummary.net >= 0 ? "emerald" : "rose"}
+              icon={<Scale className="w-3.5 h-3.5" />}
+              hint="net on balance sheet"
+              emphasize
+            />
+          </div>
+        </section>
+      )}
+
       {/* Office breakdown */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
@@ -314,6 +373,23 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t }) {
           <Sparkline points={sparkline.map((d) => d.profit)} />
         </div>
       )}
+    </div>
+  );
+}
+
+function ObligationStat({ label, value, tone, icon, hint, emphasize }) {
+  const toneCls = {
+    emerald: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    rose: "bg-rose-50 border-rose-200 text-rose-700",
+  }[tone] || "bg-slate-50 border-slate-200 text-slate-700";
+  return (
+    <div className={`rounded-[12px] border p-4 ${toneCls} ${emphasize ? "ring-2 ring-slate-900/5" : ""}`}>
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider opacity-70 mb-1">
+        {icon}
+        {label}
+      </div>
+      <div className="text-[22px] font-bold tabular-nums tracking-tight">{value}</div>
+      {hint && <div className="text-[10px] opacity-70 mt-0.5">{hint}</div>}
     </div>
   );
 }
