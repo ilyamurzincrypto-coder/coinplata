@@ -484,7 +484,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
     <div className="p-5 max-h-[60vh] overflow-auto">
       {/* Coverage summary banner — видимая мотивация открыть full analysis */}
       {onOpenCoverage && (
-        <CoverageSummaryBanner summary={coverageSummary} onOpen={onOpenCoverage} />
+        <CoverageSummaryBanner summary={coverageSummary} onOpen={onOpenCoverage} t={t} />
       )}
 
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
@@ -497,12 +497,12 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
               icon={coverageSummary.hasIssues ? AlertTriangle : CheckCircle2}
               onClick={onOpenCoverage}
             >
-              Coverage {coverageSummary.pct}%
+              {t("cov_btn_coverage")} {coverageSummary.pct}%
             </HeaderButton>
           )}
           {onImport && (
             <HeaderButton icon={Upload} onClick={onImport}>
-              Import xlsx
+              {t("cov_import_xlsx")}
             </HeaderButton>
           )}
           <HeaderButton icon={Coins} onClick={() => onGoto("addCurrency")}>
@@ -569,7 +569,7 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
 }
 
 // Compact coverage summary над header списка. Клик открывает полную панель.
-function CoverageSummaryBanner({ summary, onOpen }) {
+function CoverageSummaryBanner({ summary, onOpen, t }) {
   const allGood = !summary.hasIssues;
   const toneCls = allGood
     ? "bg-emerald-50 border-emerald-200"
@@ -588,31 +588,31 @@ function CoverageSummaryBanner({ summary, onOpen }) {
       <Icon className={`w-4 h-4 ${iconCls} shrink-0`} />
       <div className="flex-1 min-w-0">
         <div className="text-[12px] font-bold text-slate-900">
-          {allGood ? "Full coverage" : `${summary.pct}% coverage`}
+          {allGood ? t("cov_banner_full") : `${summary.pct}% ${t("cov_coverage")}`}
           <span className="ml-2 text-[11px] font-normal text-slate-600">
-            · {summary.existing}/{summary.total} directions
+            · {summary.existing}/{summary.total} {t("cov_dirs")}
           </span>
         </div>
         {!allGood && (
           <div className="text-[11px] text-slate-600 mt-0.5 truncate">
             {summary.missing > 0 && (
               <span>
-                <strong className="text-rose-700">{summary.missing}</strong> missing
+                <strong className="text-rose-700">{summary.missing}</strong> {t("cov_missing").toLowerCase()}
               </span>
             )}
             {summary.missing > 0 && summary.oneWay > 0 && <span> · </span>}
             {summary.oneWay > 0 && (
               <span>
-                <strong className="text-amber-700">{summary.oneWay}</strong> one-way
+                <strong className="text-amber-700">{summary.oneWay}</strong> {t("cov_one_way").toLowerCase()}
               </span>
             )}
             {(summary.missing > 0 || summary.oneWay > 0) && summary.isolated > 0 && <span> · </span>}
             {summary.isolated > 0 && (
               <span>
-                <strong className="text-rose-700">{summary.isolated}</strong> isolated
+                <strong className="text-rose-700">{summary.isolated}</strong> {t("cov_isolated").toLowerCase()}
               </span>
             )}
-            <span className="text-slate-500"> — click for details</span>
+            <span className="text-slate-500"> — {t("cov_click_details")}</span>
           </div>
         )}
       </div>

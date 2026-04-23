@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 import {
   analyzeCoverage,
   loadDismissed,
@@ -31,6 +32,7 @@ import {
 import { buildTemplateBlob, downloadBlob } from "../utils/xlsxRates.js";
 
 export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport }) {
+  const { t } = useTranslation();
   const { pairs, channels, getRate } = useRates();
   const { currencies } = useCurrencies();
   const [dismissedTick, setDismissedTick] = useState(0); // force re-analyze
@@ -78,36 +80,36 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
         >
           <ChevronLeft className="w-3 h-3" />
-          Back
+          {t("cov_back")}
         </button>
         <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-          Coverage analysis
+          {t("cov_title")}
         </div>
       </div>
 
       {/* === Summary card === */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <SummaryStat
-          label="Coverage"
+          label={t("cov_coverage")}
           value={`${pct}%`}
-          sub={`${coverage.existingCount} of ${coverage.total} directions`}
+          sub={`${coverage.existingCount} / ${coverage.total} ${t("cov_dirs")}`}
           tone={pct >= 80 ? "emerald" : pct >= 50 ? "amber" : "rose"}
           big
         />
         <SummaryStat
-          label="Missing"
+          label={t("cov_missing")}
           value={coverage.missing.length}
-          sub="both directions"
+          sub={t("cov_both_directions")}
           tone={coverage.missing.length === 0 ? "emerald" : "rose"}
         />
         <SummaryStat
-          label="One-way"
+          label={t("cov_one_way")}
           value={coverage.oneWay.length}
-          sub="asymmetric"
+          sub={t("cov_asymmetric")}
           tone={coverage.oneWay.length === 0 ? "emerald" : "amber"}
         />
         <SummaryStat
-          label="Isolated"
+          label={t("cov_isolated")}
           value={coverage.isolated.length}
           sub={coverage.isolated.length > 0 ? coverage.isolated.join(", ") : "—"}
           tone={coverage.isolated.length === 0 ? "emerald" : "rose"}
@@ -118,12 +120,12 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       <section>
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
-            Matrix
+            {t("cov_matrix")}
           </h4>
           <div className="flex items-center gap-2 text-[10px] font-semibold">
-            <LegendPill tone="emerald" label="covered" />
-            <LegendPill tone="rose" label="missing" />
-            <LegendPill tone="slate" label="dismissed" />
+            <LegendPill tone="emerald" label={t("cov_legend_covered")} />
+            <LegendPill tone="rose" label={t("cov_legend_missing")} />
+            <LegendPill tone="slate" label={t("cov_legend_dismissed")} />
           </div>
         </div>
         <CoverageMatrix coverage={coverage} onQuickAdd={onQuickAdd} />
@@ -135,13 +137,13 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <div className="text-[12px] text-slate-700 flex-1">
             <TrendingUp className="inline w-3.5 h-3.5 mr-1 text-slate-500" />
             {coverage.missing.length > 0 && (
-              <>Got <strong>{coverage.missing.length}</strong> missing pair(s)</>
+              <>{t("cov_got_missing")} <strong>{coverage.missing.length}</strong> {t("cov_missing_pairs_word")}</>
             )}
             {coverage.missing.length > 0 && coverage.oneWay.length > 0 && " + "}
             {coverage.oneWay.length > 0 && (
-              <><strong>{coverage.oneWay.length}</strong> one-way</>
+              <><strong>{coverage.oneWay.length}</strong> {t("cov_oneway_word")}</>
             )}
-            . Export them, fill the rates, import back.
+            . {t("cov_export_hint")}
           </div>
           <button
             onClick={handleExportMissing}
@@ -149,13 +151,13 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50"
           >
             <Download className="w-3 h-3" />
-            Export missing.xlsx
+            {t("cov_export_missing")}
           </button>
           <button
             onClick={onOpenImport}
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800"
           >
-            Import xlsx
+            {t("cov_import_xlsx")}
           </button>
         </div>
       )}
@@ -166,10 +168,10 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <div className="flex items-center gap-1.5 mb-2">
             <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />
             <h4 className="text-[12px] font-bold uppercase tracking-wider text-amber-700">
-              One-way pairs · {coverage.oneWay.length}
+              {t("cov_oneway_heading")} · {coverage.oneWay.length}
             </h4>
             <span className="text-[11px] text-slate-500 font-normal normal-case tracking-normal">
-              — exists in one direction only. Add the reverse to allow full flow.
+              — {t("cov_oneway_hint")}
             </span>
           </div>
           <div className="border border-amber-200 rounded-[10px] bg-amber-50/40 overflow-hidden">
@@ -190,14 +192,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                     </span>
                   </span>
                   <span className="text-amber-700 text-[11px] font-semibold">
-                    missing: {missingDirection}
+                    {t("cov_missing_word")} {missingDirection}
                   </span>
                   <button
                     onClick={() => onQuickAdd?.(mf, mt)}
                     className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-900 text-white hover:bg-slate-800"
                   >
                     <Plus className="w-3 h-3" />
-                    Add {missingDirection}
+                    {missingDirection}
                   </button>
                 </div>
               );
@@ -212,7 +214,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <div className="flex items-center gap-1.5 mb-2">
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
             <h4 className="text-[12px] font-bold uppercase tracking-wider text-rose-700">
-              Missing pairs · {coverage.missing.length}
+              {t("cov_missing_heading")} · {coverage.missing.length}
             </h4>
           </div>
           <div className="border border-rose-200 rounded-[10px] bg-rose-50/30 overflow-hidden">
@@ -226,7 +228,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   <span className="text-slate-400 mx-1">↔</span>
                   <span className="font-semibold">{to}</span>
                 </span>
-                <span className="text-[10px] text-slate-500 italic">no rate in any direction</span>
+                <span className="text-[10px] text-slate-500 italic">{t("cov_missing_hint")}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <button
                     onClick={() => onQuickAdd?.(from, to)}
@@ -247,7 +249,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   <button
                     onClick={() => handleDismiss(from, to)}
                     className="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100"
-                    title="Not needed — hide from list"
+                    title={t("cov_hide")}
                   >
                     <EyeOff className="w-3 h-3" />
                   </button>
@@ -264,11 +266,11 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <div className="flex items-center gap-1.5 mb-1">
             <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
             <h4 className="text-[12px] font-bold uppercase tracking-wider text-rose-800">
-              Isolated currencies · {coverage.isolated.length}
+              {t("cov_isolated_heading")} · {coverage.isolated.length}
             </h4>
           </div>
           <div className="text-[12px] text-rose-800">
-            <strong>{coverage.isolated.join(", ")}</strong> — has zero rate pairs. Cannot be used in any exchange until at least one pair is added.
+            <strong>{coverage.isolated.join(", ")}</strong> {t("cov_isolated_msg")}
           </div>
         </section>
       )}
@@ -281,7 +283,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
             className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-900"
           >
             {showDismissed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-            {showDismissed ? "Hide" : "Show"} dismissed ({coverage.dismissed.length})
+            {showDismissed ? t("cov_hide") : t("cov_show")} {t("cov_dismissed_word")} ({coverage.dismissed.length})
           </button>
           {showDismissed && (
             <div className="mt-2 border border-slate-200 rounded-[10px] bg-slate-50/60 overflow-hidden">
@@ -301,7 +303,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                     className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200"
                   >
                     <Eye className="w-3 h-3" />
-                    Restore
+                    {t("cov_restore")}
                   </button>
                 </div>
               ))}
@@ -313,7 +315,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   }}
                   className="text-[10px] font-semibold text-rose-600 hover:text-rose-800"
                 >
-                  Clear all dismissed
+                  {t("cov_clear_dismissed")}
                 </button>
               </div>
             </div>
@@ -327,9 +329,9 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         coverage.isolated.length === 0 && (
           <div className="rounded-[12px] border border-emerald-200 bg-emerald-50 p-5 text-center">
             <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-            <div className="text-[14px] font-bold text-emerald-900">Full coverage</div>
+            <div className="text-[14px] font-bold text-emerald-900">{t("cov_full_title")}</div>
             <div className="text-[12px] text-emerald-700 mt-1">
-              All currencies have bidirectional rates. Nothing missing, nothing asymmetric.
+              {t("cov_full_sub")}
             </div>
           </div>
         )}

@@ -23,6 +23,7 @@ import Modal from "./ui/Modal.jsx";
 import { useRates } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useAudit } from "../store/audit.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcImportRates, withToast } from "../lib/supabaseWrite.js";
 import {
@@ -33,6 +34,7 @@ import {
 } from "../utils/xlsxRates.js";
 
 export default function RatesImportModal({ open, onClose }) {
+  const { t } = useTranslation();
   const { codes } = useCurrencies();
   const { pairs, channels, getRate } = useRates();
   const { addEntry: logAudit } = useAudit();
@@ -75,6 +77,19 @@ export default function RatesImportModal({ open, onClose }) {
   };
 
   // --------- Step 1: file processing ---------
+  // Локализация err.message: utils/xlsxRates.js бросает английские строки-маркеры,
+  // сопоставляем с t() для UI.
+  const localizeErr = (msg) => {
+    const m = String(msg || "");
+    if (m === "No file provided") return t("rimport_err_no_file");
+    if (m.startsWith("File is larger than 5 MB")) return t("rimport_err_too_big");
+    if (m === "Could not read file. Make sure it's a valid .xlsx.") return t("rimport_err_read");
+    if (m === "Workbook has no sheets.") return t("rimport_err_no_sheets");
+    if (m === "File is empty or has no data rows.") return t("rimport_err_empty");
+    if (m.startsWith("Header row must contain")) return t("rimport_err_headers");
+    return m;
+  };
+
   const handleFile = async (f) => {
     if (!f) return;
     setFile(f);
@@ -86,7 +101,7 @@ export default function RatesImportModal({ open, onClose }) {
       setParsed({ ...result, sheetCount });
       setStep(2);
     } catch (err) {
-      setParseError(err.message || String(err));
+      setParseError(localizeErr(err.message || String(err)));
     }
   };
 
@@ -156,8 +171,8 @@ export default function RatesImportModal({ open, onClose }) {
     <Modal
       open={open}
       onClose={handleClose}
-      title="Import rates from Excel"
-      subtitle={step === 1 ? "Step 1 · Upload file" : step === 2 ? "Step 2 · Review" : "Step 3 · Confirm"}
+      title={t("rimport_title")}
+      subtitle={step === 1 ? t("rimport_step_upload") : step === 2 ? t("rimport_step_review") : t("rimport_step_confirm")}
       width="2xl"
     >
       {/* Step progress */}
@@ -204,10 +219,10 @@ export default function RatesImportModal({ open, onClose }) {
             />
             <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
             <div className="text-[14px] font-semibold text-slate-900">
-              Drop .xlsx here or click to browse
+              {t("rimport_drop_here")}
             </div>
             <div className="text-[11px] text-slate-500 mt-1">
-              Max 5 MB · First sheet only
+              {t("rimport_size_hint")}
             </div>
           </div>
 
@@ -224,33 +239,32 @@ export default function RatesImportModal({ open, onClose }) {
             className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-slate-200 hover:border-slate-300 text-[12px] font-semibold text-slate-700 hover:text-slate-900"
           >
             <Download className="w-3.5 h-3.5" />
-            Download template.xlsx (current rates)
+            {t("rimport_download_template")}
           </button>
 
           <details className="group bg-slate-50/60 border border-slate-200 rounded-[10px] px-4 py-3">
             <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-semibold text-slate-700 hover:text-slate-900">
               <Info className="w-3.5 h-3.5 text-slate-400" />
-              File format guide
+              {t("rimport_format_guide")}
             </summary>
             <div className="mt-3 space-y-2 text-[12px] text-slate-600">
               <p>
-                <strong>Row 1:</strong> headers <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">From</code>,{" "}
+                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_row1") }} />{" "}
+                <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">From</code>,{" "}
                 <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">To</code>,{" "}
-                <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">Rate</code>{" "}
-                (case-insensitive).
+                <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">Rate</code>.
               </p>
               <p>
-                <strong>Each row:</strong> one exchange direction. <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">USD → TRY</code> and{" "}
-                <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">TRY → USD</code> are two separate rows.
+                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_row") }} />
               </p>
               <p>
-                <strong>Currency codes:</strong> as in Settings (USD, EUR, USDT, TRY, GBP, CHF, RUB…).
+                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_codes") }} />
               </p>
               <p>
-                <strong>Rate:</strong> positive number. Comma decimal auto-fixed. Max 10 decimals.
+                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_rate") }} />
               </p>
               <div className="mt-3 border border-slate-200 bg-white rounded-md p-3 text-[11px] font-mono">
-                <div className="text-slate-500 mb-1">Example:</div>
+                <div className="text-slate-500 mb-1">{t("rimport_format_example")}</div>
                 <div>From,To,Rate</div>
                 <div>USD,TRY,44.9247</div>
                 <div>TRY,USD,44.9254</div>
@@ -264,12 +278,12 @@ export default function RatesImportModal({ open, onClose }) {
       {/* Step 2 — Preview */}
       {step === 2 && parsed && (
         <div className="p-5 space-y-4">
-          <SummaryBar summary={parsed.summary} fileName={file?.name} />
+          <SummaryBar summary={parsed.summary} fileName={file?.name} t={t} />
 
           {parsed.sheetCount > 1 && (
             <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
               <Info className="w-3.5 h-3.5" />
-              Workbook has {parsed.sheetCount} sheets — only the first one was parsed.
+              {t("rimport_many_sheets").replace("{n}", parsed.sheetCount)}
             </div>
           )}
 
@@ -277,7 +291,7 @@ export default function RatesImportModal({ open, onClose }) {
             <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-amber-50 border border-amber-200 text-[12px] text-amber-800">
               <Info className="w-3.5 h-3.5 mt-0.5" />
               <div>
-                Duplicate pairs in file (last one wins):{" "}
+                {t("rimport_duplicates_hint")}{" "}
                 {parsed.duplicates.map((d) => `${d.from}→${d.to} ×${d.count}`).join(", ")}
               </div>
             </div>
@@ -288,11 +302,11 @@ export default function RatesImportModal({ open, onClose }) {
               <table className="w-full text-[12px]">
                 <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
                   <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase">
-                    <th className="px-3 py-2">Pair</th>
-                    <th className="px-3 py-2 text-right">Old rate</th>
-                    <th className="px-3 py-2 text-right">New rate</th>
-                    <th className="px-3 py-2 text-right">Δ</th>
-                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">{t("rimport_col_pair")}</th>
+                    <th className="px-3 py-2 text-right">{t("rimport_col_old")}</th>
+                    <th className="px-3 py-2 text-right">{t("rimport_col_new")}</th>
+                    <th className="px-3 py-2 text-right">{t("rimport_col_delta")}</th>
+                    <th className="px-3 py-2">{t("rimport_col_status")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,7 +325,7 @@ export default function RatesImportModal({ open, onClose }) {
                         ) : "—"}
                       </td>
                       <td className="px-3 py-2">
-                        <StatusBadge status={v.status} />
+                        <StatusBadge status={v.status} t={t} />
                       </td>
                     </tr>
                   ))}
@@ -324,7 +338,7 @@ export default function RatesImportModal({ open, onClose }) {
             <details className="border border-rose-200 rounded-[10px] overflow-hidden bg-rose-50/40">
               <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-rose-700 hover:bg-rose-50">
                 <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
-                {parsed.errors.length} error{parsed.errors.length === 1 ? "" : "s"} — will be skipped
+                {parsed.errors.length} {t("rimport_errors_caption")}
               </summary>
               <div className="max-h-[200px] overflow-auto">
                 <table className="w-full text-[11px]">
@@ -354,7 +368,7 @@ export default function RatesImportModal({ open, onClose }) {
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             >
               <ChevronLeft className="w-3 h-3" />
-              Upload another file
+              {t("rimport_upload_another")}
             </button>
             <button
               type="button"
@@ -362,7 +376,7 @@ export default function RatesImportModal({ open, onClose }) {
               disabled={parsed.valid.filter((v) => v.status !== "unchanged").length === 0}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Continue
+              {t("rimport_continue")}
               <ChevronRight className="w-3 h-3" />
             </button>
           </div>
@@ -375,16 +389,17 @@ export default function RatesImportModal({ open, onClose }) {
           <div className="bg-amber-50 border border-amber-200 rounded-[10px] px-4 py-3 space-y-1">
             <div className="flex items-center gap-2 text-[13px] font-bold text-amber-900">
               <AlertTriangle className="w-4 h-4" />
-              You're about to overwrite rates
+              {t("rimport_about_to_overwrite")}
             </div>
             <div className="text-[12px] text-amber-800">
-              <strong>{parsed.summary.updated}</strong> existing pair(s) will be updated,{" "}
-              <strong>{parsed.summary.added}</strong> new pair(s) added,{" "}
-              <strong>{parsed.summary.unchanged}</strong> unchanged,{" "}
-              <strong>{parsed.summary.errors}</strong> row(s) skipped.
+              {t("rimport_summary_line")
+                .replace("{upd}", parsed.summary.updated)
+                .replace("{add}", parsed.summary.added)
+                .replace("{unch}", parsed.summary.unchanged)
+                .replace("{err}", parsed.summary.errors)}
             </div>
             <div className="text-[11px] text-amber-700 mt-1">
-              A snapshot of current rates is saved before the import — you can find it in audit / rate history.
+              {t("rimport_snapshot_hint")}
             </div>
           </div>
 
@@ -396,7 +411,7 @@ export default function RatesImportModal({ open, onClose }) {
               className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
             />
             <span className="text-[12px] text-slate-700">
-              I understand this will overwrite existing rates. My team will see the new values immediately.
+              {t("rimport_ack")}
             </span>
           </label>
 
@@ -407,7 +422,7 @@ export default function RatesImportModal({ open, onClose }) {
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             >
               <ChevronLeft className="w-3 h-3" />
-              Back
+              {t("rimport_back")}
             </button>
             <div className="flex items-center gap-2">
               <button
@@ -415,7 +430,7 @@ export default function RatesImportModal({ open, onClose }) {
                 onClick={handleClose}
                 className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
               >
-                Cancel
+                {t("rimport_cancel")}
               </button>
               <button
                 type="button"
@@ -424,7 +439,7 @@ export default function RatesImportModal({ open, onClose }) {
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
-                {submitting ? "Applying…" : "Apply import"}
+                {submitting ? t("rimport_applying") : t("rimport_apply")}
               </button>
             </div>
           </div>
@@ -434,7 +449,7 @@ export default function RatesImportModal({ open, onClose }) {
   );
 }
 
-function SummaryBar({ summary, fileName }) {
+function SummaryBar({ summary, fileName, t }) {
   return (
     <div className="flex items-center gap-3 flex-wrap bg-slate-50 border border-slate-200 rounded-[10px] px-4 py-3">
       <FileSpreadsheet className="w-4 h-4 text-slate-500" />
@@ -442,10 +457,10 @@ function SummaryBar({ summary, fileName }) {
         {fileName || "upload.xlsx"}
       </span>
       <div className="h-4 w-px bg-slate-300" />
-      <Pill tone="emerald" label={`${summary.added} new`} />
-      <Pill tone="sky" label={`${summary.updated} updated`} />
-      <Pill tone="slate" label={`${summary.unchanged} unchanged`} />
-      {summary.errors > 0 && <Pill tone="rose" label={`${summary.errors} errors`} />}
+      <Pill tone="emerald" label={t("rimport_pills_new").replace("{n}", summary.added)} />
+      <Pill tone="sky" label={t("rimport_pills_updated").replace("{n}", summary.updated)} />
+      <Pill tone="slate" label={t("rimport_pills_unchanged").replace("{n}", summary.unchanged)} />
+      {summary.errors > 0 && <Pill tone="rose" label={t("rimport_pills_errors").replace("{n}", summary.errors)} />}
     </div>
   );
 }
@@ -464,11 +479,11 @@ function Pill({ tone, label }) {
   );
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, t }) {
   const map = {
-    new: { label: "new", cls: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
-    updated: { label: "updated", cls: "bg-sky-100 text-sky-700 ring-sky-200" },
-    unchanged: { label: "unchanged", cls: "bg-slate-100 text-slate-500 ring-slate-200" },
+    new: { label: t("rimport_status_new"), cls: "bg-emerald-100 text-emerald-700 ring-emerald-200" },
+    updated: { label: t("rimport_status_updated"), cls: "bg-sky-100 text-sky-700 ring-sky-200" },
+    unchanged: { label: t("rimport_status_unchanged"), cls: "bg-slate-100 text-slate-500 ring-slate-200" },
   };
   const it = map[status] || map.unchanged;
   return (

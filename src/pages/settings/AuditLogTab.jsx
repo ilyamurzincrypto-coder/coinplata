@@ -125,7 +125,7 @@ export default function AuditLogTab() {
           <ScrollText className="w-4 h-4 text-slate-500" />
           <h3 className="text-[15px] font-semibold tracking-tight">{t("audit_title")}</h3>
           <span className="text-[11px] text-slate-400">
-            · {filtered.length} of {log.length} events
+            · {t("audit_events_count").replace("{cur}", filtered.length).replace("{all}", log.length)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export default function AuditLogTab() {
             className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-3 h-3" />
-            Export CSV
+            {t("export_csv")}
           </button>
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -157,7 +157,7 @@ export default function AuditLogTab() {
           value={actionFilter}
           onChange={setActionFilter}
           options={[
-            { value: "all", label: "All actions" },
+            { value: "all", label: t("audit_filter_all_actions") },
             ...uniqueActions.map((a) => ({ value: a, label: a })),
           ]}
           compact
@@ -166,7 +166,7 @@ export default function AuditLogTab() {
           value={entityFilter}
           onChange={setEntityFilter}
           options={[
-            { value: "all", label: "All entities" },
+            { value: "all", label: t("audit_filter_all_entities") },
             ...uniqueEntities.map((a) => ({ value: a, label: a })),
           ]}
           compact
@@ -175,7 +175,7 @@ export default function AuditLogTab() {
           value={userFilter}
           onChange={setUserFilter}
           options={[
-            { value: "all", label: "All users" },
+            { value: "all", label: t("audit_filter_all_users") },
             ...uniqueUsers.map((a) => ({ value: a, label: a })),
           ]}
           compact
@@ -186,7 +186,7 @@ export default function AuditLogTab() {
             onClick={clearFilters}
             className="ml-auto px-2 py-1 rounded-[8px] text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200"
           >
-            Clear
+            {t("clear")}
           </button>
         )}
       </div>
@@ -243,7 +243,7 @@ export default function AuditLogTab() {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
-                  {log.length === 0 ? t("audit_empty") : "No events match the current filter"}
+                  {log.length === 0 ? t("audit_empty") : t("oblig_no_match")}
                 </td>
               </tr>
             )}
