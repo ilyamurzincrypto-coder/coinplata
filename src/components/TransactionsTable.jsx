@@ -22,6 +22,7 @@ import {
   Flag,
   ChevronLeft,
   ChevronRight,
+  Eye,
 } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import Select from "./ui/Select.jsx";
@@ -40,6 +41,7 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
 import { Shield } from "lucide-react";
+import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   rpcDeleteDeal,
@@ -68,6 +70,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const { obligations, cancelObligation } = useObligations();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
+  const [detailTarget, setDetailTarget] = useState(null); // tx для detail modal
   // Set ID'ов tx, по которым сейчас летит RPC — блокируем повторные клики.
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -739,6 +742,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                             <Flag className="w-3.5 h-3.5" />
                           </button>
                           <button
+                            onClick={() => setDetailTarget(tx)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-700"
+                            title="View details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
                             onClick={() => onEdit?.(tx)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900"
                             title={t("edit")}
@@ -910,6 +920,11 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         onCancel={() => !deleteBusy && setDeleteTarget(null)}
         onConfirm={handleDeleteConfirmed}
         busy={deleteBusy}
+      />
+
+      <TransactionDetailModal
+        transaction={detailTarget}
+        onClose={() => setDetailTarget(null)}
       />
 
       <SendCryptoModal

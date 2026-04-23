@@ -24,6 +24,8 @@ import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { NETWORKS } from "../store/data.js";
 import { getTradingRates } from "../utils/tradingRates.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
 import Modal from "./ui/Modal.jsx";
 import {
   computeSpread,
@@ -313,7 +315,8 @@ function RatesEditModal({ open, onClose, canDelete }) {
 // =========================================================================
 function ListPanel({ canDelete, onGoto }) {
   const { t } = useTranslation();
-  const { rates, setRate, deleteRate, getRate, channels } = useRates();
+  const { rates, setRate, deleteRate, getRate, channels, pairs: allPairs } = useRates();
+  const allChannels = channels;
   const { currencies } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
 
@@ -341,10 +344,38 @@ function ListPanel({ canDelete, onGoto }) {
     }));
   }, [existingPairs]);
 
-  const setRateLogged = (from, to, value) => {
+  // Resolve pair-object по валютам — нужно чтобы прочитать baseRate + spreadPercent
+  // для показа в input'ах. В DB mode они load'аются из БД.
+  const pairByCurrency = (from, to) => {
+    return allPairs.find((p) => {
+      const fc = allChannels.find((c) => c.id === p.fromChannelId)?.currencyCode;
+      const tc = allChannels.find((c) => c.id === p.toChannelId)?.currencyCode;
+      return fc === from && tc === to && p.isDefault;
+    });
+  };
+
+  // В DB mode — пишем напрямую через RPC (UPDATE pairs SET base_rate=...).
+  // Итоговый rate пересчитывается на сервере через generated column.
+  // В demo — legacy in-memory setRate.
+  const setRateLogged = async (from, to, value) => {
     const old = rates[rateKey(from, to)];
-    const result = setRate(from, to, value);
     const newVal = parseFloat(value) || 0;
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcUpdatePair({ fromCurrency: from, toCurrency: to, baseRate: newVal }),
+        { errorPrefix: "Update rate failed" }
+      );
+      if (res.ok && old !== undefined && Math.abs(old - newVal) > 0.0001) {
+        logAudit({
+          action: "update",
+          entity: "rate",
+          entityId: rateKey(from, to),
+          summary: `${from} → ${to}: rate ${old} → ${newVal}`,
+        });
+      }
+      return;
+    }
+    const result = setRate(from, to, value);
     if (result.ok && old !== undefined && Math.abs(old - newVal) > 0.0001) {
       logAudit({
         action: "update",
@@ -353,6 +384,27 @@ function ListPanel({ canDelete, onGoto }) {
         summary: `${from} → ${to}: ${old} → ${newVal}`,
       });
     }
+  };
+
+  // Spread % — отдельный handler. В DB mode пишет spread_percent напрямую.
+  // В demo — эмулируем старое поведение (computeRateFromSpread + setRate).
+  const setSpreadLogged = async (from, to, spreadValue) => {
+    const newSpread = parseFloat(spreadValue);
+    if (!Number.isFinite(newSpread)) return;
+    if (isSupabaseConfigured) {
+      await withToast(
+        () => rpcUpdatePair({ fromCurrency: from, toCurrency: to, spreadPercent: newSpread }),
+        { errorPrefix: "Update spread failed" }
+      );
+      logAudit({
+        action: "update",
+        entity: "rate",
+        entityId: rateKey(from, to),
+        summary: `${from} → ${to}: spread → ${newSpread}%`,
+      });
+      return;
+    }
+    // demo fallback — legacy computeRateFromSpread path через RateRow
   };
 
   const deleteRateLogged = (from, to) => {
@@ -405,8 +457,10 @@ function ListPanel({ canDelete, onGoto }) {
                     from={from}
                     to={to}
                     value={rates[key]}
+                    pair={pairByCurrency(from, to)}
                     getRate={getRate}
                     onChange={(v) => setRateLogged(from, to, v)}
+                    onChangeSpread={(v) => setSpreadLogged(from, to, v)}
                     onDelete={canDelete ? () => deleteRateLogged(from, to) : null}
                   />
                 ))}
@@ -433,43 +487,59 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
   );
 }
 
-function RateRow({ from, to, value, getRate, onChange, onDelete }) {
+function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onDelete }) {
   const [confirm, setConfirm] = useState(false);
 
-  // Derived из текущего rate + mid (через triangulation / USD-case).
+  // В DB-режиме pair уже содержит baseRate + spreadPercent из БД (overlay в rates store).
+  // В demo — pair может быть без этих полей → fallback на triangulation-derived spread.
+  const hasPairData = pair && pair.baseRate != null && pair.spreadPercent != null;
+
+  // Derived для demo mode (triangulation через USD)
   const mid = getRate ? getMidRate(from, to, getRate) : null;
   const derivedSpread = getRate ? computeSpread(value, from, to, getRate) : null;
 
-  // Local-state для spread: пока юзер печатает, показываем его ввод, чтобы
-  // избежать флика в случаях where midRate совпадает со stored rate (например USD→X),
-  // когда derivedSpread после каждого setRate «сбрасывается» к 0.
+  // Local-state для spread input — чтобы пока юзер печатает не было flicker.
   const [spreadInput, setSpreadInput] = useState("");
   const [editingSpread, setEditingSpread] = useState(false);
+
   const displaySpread = editingSpread
     ? spreadInput
+    : hasPairData
+    ? formatSpread(pair.spreadPercent)
     : derivedSpread != null
     ? formatSpread(derivedSpread)
     : "";
+
+  // Отображаемое значение rate — base_rate в DB mode, legacy value в demo.
+  // В DB писать → base_rate, итог (rate) пересчитывается на сервере.
+  const displayRate = hasPairData ? pair.baseRate : value;
 
   const handleRateChange = (e) => {
     onChange(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
   };
 
   const handleSpreadChange = (e) => {
-    // Разрешаем цифры, точку, запятую и знаки +/-. Это явный text-input,
-    // а не type="number", чтобы пользователь мог набрать "+0.5" / "-0.25"
-    // без того чтобы браузер его обрезал.
     const cleaned = e.target.value.replace(/[^\d.,+-]/g, "").replace(",", ".");
     setSpreadInput(cleaned);
     setEditingSpread(true);
+    // В DB mode пишем spread_percent напрямую через onChangeSpread.
+    if (hasPairData && onChangeSpread) {
+      onChangeSpread(cleaned);
+      return;
+    }
+    // Demo — legacy: compute derived rate from spread around mid.
     const newRate = computeRateFromSpread(cleaned, from, to, getRate);
     if (newRate != null && newRate > 0) {
       onChange(String(newRate));
     }
   };
 
-  const spreadDisabled = mid == null;
-  const midTitle = mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate available";
+  const spreadDisabled = !hasPairData && mid == null;
+  const midTitle = hasPairData
+    ? `market ${pair.baseRate?.toFixed(6)} → effective ${pair.rate?.toFixed(6)}`
+    : mid != null
+    ? `mid ${mid.toFixed(6)}`
+    : "no mid rate available";
 
   return (
     <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 transition-colors">
@@ -479,12 +549,20 @@ function RateRow({ from, to, value, getRate, onChange, onDelete }) {
       <input
         type="text"
         inputMode="decimal"
-        value={value ?? ""}
+        value={displayRate ?? ""}
         onChange={handleRateChange}
-        placeholder="rate"
+        placeholder="base rate"
         title={midTitle}
         className="flex-1 min-w-0 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-slate-900 tabular-nums outline-none transition-colors"
       />
+      {hasPairData && pair.rate != null && Math.abs(pair.rate - pair.baseRate) > 1e-8 && (
+        <span
+          className="text-[10px] text-emerald-700 font-semibold tabular-nums px-1.5 py-0.5 rounded bg-emerald-50"
+          title="Effective rate after spread"
+        >
+          = {pair.rate.toFixed(pair.rate >= 10 ? 2 : 4)}
+        </span>
+      )}
       <div className="relative w-24 shrink-0">
         <input
           type="text"

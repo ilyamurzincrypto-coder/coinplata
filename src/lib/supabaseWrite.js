@@ -483,6 +483,39 @@ export async function deleteExpenseById(id) {
   bumpDataVersion();
 }
 
+// ---------- pairs (rates + spread editor) ----------
+
+// Обновляем pair по связке (from_currency, to_currency). База рыночный rate
+// + spread %. Итоговый rate пересчитывается generated column на сервере.
+// Либо baseRate, либо spreadPercent можно передать null/undefined — тогда
+// только другое поле обновится.
+export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent }) {
+  assertConfigured();
+  const from = requireCurrency(fromCurrency, "fromCurrency");
+  const to = requireCurrency(toCurrency, "toCurrency");
+  const patch = {};
+  if (baseRate != null) {
+    const n = Number(baseRate);
+    if (!Number.isFinite(n) || n <= 0) throw new Error("baseRate: must be > 0");
+    patch.base_rate = n;
+  }
+  if (spreadPercent != null) {
+    const s = Number(spreadPercent);
+    if (!Number.isFinite(s)) throw new Error("spreadPercent: invalid");
+    patch.spread_percent = s;
+  }
+  if (Object.keys(patch).length === 0) return;
+  patch.updated_at = new Date().toISOString();
+  const { error } = await supabase
+    .from("pairs")
+    .update(patch)
+    .eq("from_currency", from)
+    .eq("to_currency", to)
+    .eq("is_default", true);
+  if (error) throw new Error(formatSupabaseError(error, "update pair"));
+  bumpDataVersion();
+}
+
 // ---------- users (status updates) ----------
 
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
@@ -597,7 +630,9 @@ export async function insertClient({ nickname, fullName, telegram, tag, note }) 
       nickname: nickname.trim(),
       full_name: (fullName || nickname).trim(),
       telegram: telegram || "",
-      tag: tag || "",
+      // tag check-constraint разрешает только VIP/Regular/New/Risky или NULL — пустая
+      // строка вызвала бы violation. note тоже nullable, пустая строка ОК.
+      tag: tag || null,
       note: note || "",
     })
     .select()

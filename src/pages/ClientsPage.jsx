@@ -15,7 +15,7 @@ import { ClientTag } from "../components/CounterpartySelect.jsx";
 import { CLIENT_TAGS } from "../store/data.js";
 import { checkWalletRisk, riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcArchiveClient, rpcDeleteClient, withToast, isUuid } from "../lib/supabaseWrite.js";
+import { rpcArchiveClient, rpcDeleteClient, insertClient, withToast, isUuid } from "../lib/supabaseWrite.js";
 
 export default function ClientsPage() {
   const { t } = useTranslation();
@@ -535,7 +535,25 @@ export default function ClientsPage() {
       <AddClientModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSubmit={(data) => {
+        onSubmit={async (data) => {
+          // В DB-режиме insert'им напрямую в clients → Supabase возвращает
+          // uuid. В demo — in-memory addCounterparty с префиксом cp_*.
+          if (isSupabaseConfigured) {
+            const res = await withToast(
+              () =>
+                insertClient({
+                  nickname: data.nickname,
+                  fullName: data.name,
+                  telegram: data.telegram,
+                  tag: data.tag,
+                  note: data.note,
+                }),
+              { success: "Client added", errorPrefix: "Failed to add client" }
+            );
+            setAddOpen(false);
+            if (res.ok && res.result?.id) setProfileFor(res.result.id);
+            return;
+          }
           const created = addCounterparty(data);
           setAddOpen(false);
           if (created?.id) setProfileFor(created.id);
