@@ -15,12 +15,38 @@
 //     status: 'open'|'closed'|'cancelled',
 //     note, createdAt, createdBy, closedAt?, closedBy? }
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadObligations } from "../lib/supabaseReaders.js";
 
 const ObligationsContext = createContext(null);
 
 export function ObligationsProvider({ children }) {
   const [obligations, setObligations] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadObligations()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setObligations(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[obligations] load failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addObligation = useCallback((input) => {
     const rec = {

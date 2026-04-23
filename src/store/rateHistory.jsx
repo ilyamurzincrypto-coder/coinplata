@@ -8,12 +8,38 @@
 // Текущая rates-система не ломается: store остаётся источником правды для
 // актуальных курсов, а история — append-only лог для аудита и привязки к tx.
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadRateSnapshots } from "../lib/supabaseReaders.js";
 
 const RateHistoryContext = createContext(null);
 
 export function RateHistoryProvider({ children }) {
   const [snapshots, setSnapshots] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadRateSnapshots()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setSnapshots(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[rateHistory] load failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Добавляет snapshot. rates — объект FROM_TO → number (обычно derived из
   // useRates().rates). officeId опционально (если конкретный офис).

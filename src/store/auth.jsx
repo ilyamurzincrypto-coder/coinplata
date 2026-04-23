@@ -15,9 +15,18 @@
 // Роли (в порядке убывания прав): owner → admin → accountant → manager.
 // owner имеет полный доступ и не может быть удалён сам собой (guards в mutations).
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { SEED_USERS } from "./data.js";
 import { hashPassword, verifyPassword, generateInviteToken } from "../utils/password.js";
+import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { loadUsers, loadSystemSettings } from "../lib/supabaseReaders.js";
 
 export const ROLES = {
   owner: { label: "Owner", color: "amber" },
@@ -71,6 +80,56 @@ export function AuthProvider({ children }) {
     referralPct: 0.1,
     baseCurrency: "USD",
   });
+
+  // Stage 3 hydration: Supabase session → public.users row.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [usersRows, sysSettings, sessionRes] = await Promise.all([
+          loadUsers().catch(() => null),
+          loadSystemSettings().catch(() => null),
+          supabase.auth.getSession().catch(() => ({ data: { session: null } })),
+        ]);
+        if (cancelled) return;
+
+        if (Array.isArray(usersRows) && usersRows.length > 0) {
+          // Поле passwordHash/inviteToken из БД не приходят — для обратной
+          // совместимости UI (Change Password и т.п.) оставляем пустыми:
+          // Stage 4 переключит эти операции на Supabase auth API.
+          const merged = usersRows.map((u) => ({
+            ...u,
+            passwordHash: "",
+            inviteToken: "",
+            invitedAt: u.invitedAt || null,
+            activatedAt: u.activatedAt || u.createdAt,
+          }));
+          setUsers(merged);
+
+          const authUserId = sessionRes?.data?.session?.user?.id;
+          if (authUserId && merged.some((u) => u.id === authUserId)) {
+            setCurrentUserId(authUserId);
+          }
+        }
+
+        if (sysSettings) {
+          setSettings((prev) => ({
+            ...prev,
+            referralPct: sysSettings.referralPct || prev.referralPct,
+            baseCurrency: sysSettings.baseCurrency || prev.baseCurrency,
+            minFeeUsd: sysSettings.minFeeUsd || prev.minFeeUsd,
+          }));
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[auth] load failed — keeping seed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const currentUser = users.find((u) => u.id === currentUserId) || users[0];
   const isOwner = currentUser.role === "owner";

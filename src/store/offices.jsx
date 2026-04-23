@@ -5,13 +5,39 @@
 // компоненты которые импортируют OFFICES напрямую продолжают видеть seed-snapshot.
 // Постепенная миграция на useOffices() делается только там где нужен динамический список.
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { OFFICES as SEED_OFFICES, DEFAULT_OFFICE_OPS } from "./data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadOffices } from "../lib/supabaseReaders.js";
 
 const OfficesContext = createContext(null);
 
 export function OfficesProvider({ children }) {
   const [offices, setOffices] = useState(SEED_OFFICES);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadOffices()
+      .then((rows) => {
+        if (cancelled) return;
+        if (rows && rows.length > 0) setOffices(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[offices] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Список активных офисов — для UI фильтров
   const activeOffices = useMemo(

@@ -1,14 +1,42 @@
 // src/store/currencies.jsx
-// Единый источник валют для UI. Стартует с seed CURRENCIES_DICT из data.js.
-// CURRENCIES (массив кодов) в data.js оставлен как deprecated для обратной совместимости.
+// Единый источник валют для UI.
+//
+// Stage 3: если Supabase настроен — на mount подгружаем currencies из БД и
+// заменяем seed. Write ops остаются локальными (изменения не персистятся).
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { CURRENCIES_DICT as SEED } from "./data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadCurrencies } from "../lib/supabaseReaders.js";
 
 const CurrenciesContext = createContext(null);
 
 export function CurrenciesProvider({ children }) {
   const [currencies, setCurrencies] = useState(SEED);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadCurrencies()
+      .then((rows) => {
+        if (cancelled) return;
+        if (rows && rows.length > 0) setCurrencies(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[currencies] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const codes = useMemo(() => currencies.map((c) => c.code), [currencies]);
   const dict = useMemo(() => {

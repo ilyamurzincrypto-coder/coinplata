@@ -5,7 +5,16 @@
 //
 // Запись: { id, type, officeId, accountId, category, amount, currency, date, note, createdBy }
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadExpenses } from "../lib/supabaseReaders.js";
 
 export const IE_TYPES = ["income", "expense"];
 
@@ -32,6 +41,23 @@ const IEContext = createContext(null);
 
 export function IncomeExpenseProvider({ children }) {
   const [entries, setEntries] = useState(SEED_IE);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadExpenses()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setEntries(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[incomeExpense] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addEntry = useCallback((entry) => {
     const full = {

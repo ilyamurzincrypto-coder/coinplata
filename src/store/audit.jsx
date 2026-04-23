@@ -8,8 +8,17 @@
 // userId/userName/ip подставляются автоматически из текущего пользователя.
 // Store не сам вызывает log из других store'ов — это делают компоненты / страницы в точках мутации.
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { useAuth } from "./auth.jsx";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadAuditLog } from "../lib/supabaseReaders.js";
 
 // Мок IP — в проде берём из session/headers
 const MOCK_IP = "78.186.42.17";
@@ -45,6 +54,23 @@ const SEED_LOG = [
 export function AuditProvider({ children }) {
   const { currentUser } = useAuth();
   const [log, setLogState] = useState(SEED_LOG);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadAuditLog()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setLogState(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[audit] load failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addEntry = useCallback(
     ({ action, entity, entityId, summary }) => {

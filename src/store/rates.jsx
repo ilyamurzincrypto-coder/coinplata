@@ -19,8 +19,17 @@
 //   — deleteRate(from, to) → удаляет default pair.
 //   — ratesFromBase(base) → все direction'ы от base через default pairs.
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadPairs } from "../lib/supabaseReaders.js";
 
 export const rateKey = (from, to) => `${from}_${to}`;
 
@@ -92,6 +101,49 @@ export function RatesProvider({ children }) {
   const [channels, setChannels] = useState(SEED_CHANNELS);
   const [pairs, setPairs] = useState(SEED_PAIRS);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+
+  // DB overlay: для каждой DB-пары (from_currency → to_currency, rate) находим
+  // default frontend-пару по валютам (через channels) и обновляем её rate.
+  // Frontend channel-based модель не меняется — Stage 4 либо переделает БД,
+  // либо фронт; сейчас задача read-only → синхронизация курсов достаточна.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadPairs()
+      .then((dbPairs) => {
+        if (cancelled) return;
+        if (!Array.isArray(dbPairs) || dbPairs.length === 0) return;
+        setPairs((prev) => {
+          const next = prev.map((p) => ({ ...p }));
+          const channelCurrency = (chId) =>
+            SEED_CHANNELS.find((c) => c.id === chId)?.currencyCode;
+          dbPairs.forEach((db) => {
+            const match = next.find(
+              (p) =>
+                p.isDefault &&
+                channelCurrency(p.fromChannelId) === db.fromCurrency &&
+                channelCurrency(p.toChannelId) === db.toCurrency
+            );
+            if (match) {
+              match.rate = db.rate;
+              match.baseRate = db.baseRate;
+              match.spreadPercent = db.spreadPercent;
+              match.dbId = db.id;
+              match.updatedAt = db.updatedAt;
+            }
+          });
+          return next;
+        });
+        setLastUpdated(new Date());
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[rates] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Confirmation state
   const [confirmationStatus, setConfirmationStatus] = useState("draft");

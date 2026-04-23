@@ -33,8 +33,15 @@ import {
   useState,
   useCallback,
   useMemo,
+  useEffect,
 } from "react";
 import { SEED_ACCOUNTS, ACCOUNT_TYPES } from "./data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  loadAccounts,
+  loadAccountBalances,
+  loadMovements,
+} from "../lib/supabaseReaders.js";
 
 const AccountsContext = createContext(null);
 
@@ -60,6 +67,31 @@ export function AccountsProvider({ children }) {
   const [accounts, setAccounts] = useState(SEED_ACCOUNTS);
   const [movements, setMovements] = useState(() => seedOpeningMovements(SEED_ACCOUNTS));
   const [transfers, setTransfers] = useState([]);
+  // Из БД приходит v_account_balances (total, reserved per account).
+  // Когда map непустой — balanceOf/reservedOf/availableOf читают из неё вместо
+  // вычисления из movements (movements в DB-режиме могут быть не полностью загружены).
+  const [dbBalances, setDbBalances] = useState(new Map());
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    Promise.all([loadAccounts(), loadAccountBalances(), loadMovements()])
+      .then(([accRows, balMap, mvRows]) => {
+        if (cancelled) return;
+        // В DB-режиме БД = источник правды. Даже пустая БД не откатывает на
+        // seed — иначе демо-данные "воскресали" бы на refresh.
+        if (Array.isArray(accRows)) setAccounts(accRows);
+        if (balMap) setDbBalances(balMap);
+        if (Array.isArray(mvRows)) setMovements(mvRows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[accounts] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // --- CRUD accounts ---
   const addAccount = useCallback((acc) => {
@@ -183,6 +215,13 @@ export function AccountsProvider({ children }) {
   //
   // available = balanceOf − reservedOf (pending OUT резервируют часть total)
   const balances = useMemo(() => {
+    // DB-режим: используем v_account_balances.total — это уже агрегат бэкенда.
+    if (dbBalances.size > 0) {
+      const map = new Map();
+      accounts.forEach((a) => map.set(a.id, 0));
+      dbBalances.forEach((v, k) => map.set(k, v.total));
+      return map;
+    }
     const map = new Map();
     accounts.forEach((a) => map.set(a.id, 0));
     movements.forEach((m) => {
@@ -192,7 +231,7 @@ export function AccountsProvider({ children }) {
       map.set(m.accountId, prev + signed);
     });
     return map;
-  }, [accounts, movements]);
+  }, [accounts, movements, dbBalances]);
 
   const balanceOf = useCallback(
     (accountId) => balances.get(accountId) || 0,
@@ -201,6 +240,12 @@ export function AccountsProvider({ children }) {
 
   // Reserved = сумма OUT-движений с флагом reserved=true (pending сделки)
   const reserved = useMemo(() => {
+    if (dbBalances.size > 0) {
+      const map = new Map();
+      accounts.forEach((a) => map.set(a.id, 0));
+      dbBalances.forEach((v, k) => map.set(k, v.reserved));
+      return map;
+    }
     const map = new Map();
     accounts.forEach((a) => map.set(a.id, 0));
     movements.forEach((m) => {
@@ -210,7 +255,7 @@ export function AccountsProvider({ children }) {
       map.set(m.accountId, prev + m.amount);
     });
     return map;
-  }, [accounts, movements]);
+  }, [accounts, movements, dbBalances]);
 
   const reservedOf = useCallback(
     (accountId) => reserved.get(accountId) || 0,

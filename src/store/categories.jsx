@@ -6,7 +6,16 @@
 // Модель:
 //   { id, name, type: "income" | "expense", group: "operational" | "financial" | "other" }
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadCategories } from "../lib/supabaseReaders.js";
 
 const SEED_CATEGORIES = [
   // Expenses
@@ -34,6 +43,23 @@ const CategoriesContext = createContext(null);
 
 export function CategoriesProvider({ children }) {
   const [categories, setCategories] = useState(SEED_CATEGORIES);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadCategories()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows) && rows.length > 0) setCategories(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[categories] load failed — keeping seed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const byType = useCallback(
     (type) => categories.filter((c) => c.type === type),

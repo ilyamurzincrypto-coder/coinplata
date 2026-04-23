@@ -11,7 +11,16 @@
 // клиента → upsert возвращает status: "conflict" и НЕ пишет; вызывающий код
 // решает что показать (warning в UI).
 
-import { createContext, useContext, useState, useCallback, useMemo } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+} from "react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { loadClientWallets } from "../lib/supabaseReaders.js";
 
 const WalletsContext = createContext(null);
 
@@ -25,6 +34,23 @@ function walletKey(address, network) {
 
 export function WalletsProvider({ children }) {
   const [wallets, setWallets] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    loadClientWallets()
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setWallets(rows);
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[wallets] load failed", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const findWallet = useCallback(
     (address, network) => {

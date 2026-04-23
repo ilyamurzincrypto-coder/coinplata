@@ -1,14 +1,50 @@
 // src/store/transactions.js
 // Общий store транзакций, чтобы Cashier / Capital / Referrals видели одни и те же данные.
 
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { SEED_TX, SEED_COUNTERPARTIES } from "./data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  loadDealsWithLegs,
+  loadClients,
+  loadUsers,
+} from "../lib/supabaseReaders.js";
 
 const TxContext = createContext(null);
 
 export function TransactionsProvider({ children }) {
   const [transactions, setTransactions] = useState(SEED_TX);
   const [counterparties, setCounterparties] = useState(SEED_COUNTERPARTIES);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        // Сначала users — нужны для резолва manager_id → name при маппинге deals.
+        const users = await loadUsers().catch(() => []);
+        const usersById = {};
+        (users || []).forEach((u) => {
+          usersById[u.id] = { id: u.id, full_name: u.name };
+        });
+
+        const [deals, clients] = await Promise.all([
+          loadDealsWithLegs(usersById).catch(() => null),
+          loadClients().catch(() => null),
+        ]);
+        if (cancelled) return;
+
+        if (Array.isArray(deals)) setTransactions(deals);
+        if (Array.isArray(clients) && clients.length > 0) setCounterparties(clients);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[transactions] load failed — keeping seed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const addTransaction = useCallback((tx) => {
     // status defaults to "completed" для полной обратной совместимости
