@@ -190,6 +190,7 @@ export default function OverviewTab({ range }) {
           sub={`${txCount} ${t("kpi_deals_sub")}`}
           icon={<Briefcase className="w-3.5 h-3.5" />}
           delta={pctDelta(txVolume, prev.txVolume)}
+          t={t}
         />
         <KPI
           label={t("kpi_deals_profit")}
@@ -198,12 +199,14 @@ export default function OverviewTab({ range }) {
           icon={<TrendingUp className="w-3.5 h-3.5" />}
           delta={pctDelta(txProfit, prev.txProfit)}
           sparkline={dailySeries}
+          t={t}
         />
         <KPI
           label={t("kpi_income_expense")}
           value={`+${sym}${fmt(income, base)} / −${sym}${fmt(expense, base)}`}
           icon={<Receipt className="w-3.5 h-3.5" />}
           delta={pctDelta(income - expense, prev.income - prev.expense)}
+          t={t}
         />
         <KPI
           label={t("kpi_net_profit")}
@@ -212,6 +215,7 @@ export default function OverviewTab({ range }) {
           icon={<TrendingUp className="w-3.5 h-3.5" />}
           delta={pctDelta(netProfit, prev.net)}
           big
+          t={t}
         />
       </div>
 
@@ -257,7 +261,7 @@ export default function OverviewTab({ range }) {
       {/* Top clients / Top currencies */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TopCard
-          title="Top clients"
+          title={t("overview_top_clients")}
           icon={<Users className="w-4 h-4 text-slate-500" />}
           rows={topClients.map((c) => ({
             key: c.nickname,
@@ -267,10 +271,10 @@ export default function OverviewTab({ range }) {
             subValue: `${c.profit >= 0 ? "+" : ""}${sym}${fmt(c.profit, base)}`,
             tone: c.profit >= 0 ? "emerald" : "rose",
           }))}
-          emptyText="No deals in this period"
+          emptyText={t("overview_empty_period")}
         />
         <TopCard
-          title="Top currencies"
+          title={t("overview_top_currencies")}
           icon={<Coins className="w-4 h-4 text-slate-500" />}
           rows={topCurrencies.map((c) => ({
             key: c.currency,
@@ -280,14 +284,14 @@ export default function OverviewTab({ range }) {
             subValue: `${c.profit >= 0 ? "+" : ""}${sym}${fmt(c.profit, base)}`,
             tone: c.profit >= 0 ? "emerald" : "rose",
           }))}
-          emptyText="No deals in this period"
+          emptyText={t("overview_empty_period")}
         />
       </div>
     </div>
   );
 }
 
-function KPI({ label, value, sub, accent, icon, big, delta, sparkline }) {
+function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t }) {
   const accentCls =
     accent === "emerald"
       ? "text-emerald-700"
@@ -303,7 +307,7 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline }) {
       <div className={`text-[22px] font-bold tabular-nums tracking-tight ${accentCls}`}>{value}</div>
       <div className="flex items-center gap-2 mt-0.5">
         {sub && <span className="text-[11px] text-slate-500 tabular-nums">{sub}</span>}
-        {delta !== null && delta !== undefined && <DeltaPill delta={delta} />}
+        {delta !== null && delta !== undefined && <DeltaPill delta={delta} t={t} />}
       </div>
       {sparkline && sparkline.length > 1 && (
         <div className="mt-2 -mb-1">
@@ -314,14 +318,14 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline }) {
   );
 }
 
-function DeltaPill({ delta }) {
+function DeltaPill({ delta, t }) {
   const up = delta >= 0;
   const cls = up ? "text-emerald-700 bg-emerald-50" : "text-rose-700 bg-rose-50";
   const Icon = up ? ArrowUp : ArrowDown;
   return (
     <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${cls}`}>
       <Icon className="w-2.5 h-2.5" />
-      {Math.abs(delta).toFixed(1)}% vs prev
+      {Math.abs(delta).toFixed(1)}% {t ? t("overview_vs_prev") : "vs prev"}
     </span>
   );
 }

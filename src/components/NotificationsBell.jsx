@@ -14,10 +14,11 @@ import {
   X,
 } from "lucide-react";
 import { useNotifications } from "../store/notifications.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 
 function timeAgo(iso) {
-  const t = new Date(iso).getTime();
-  const diff = Math.floor((Date.now() - t) / 1000);
+  const stamp = new Date(iso).getTime();
+  const diff = Math.floor((Date.now() - stamp) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -37,6 +38,7 @@ const TYPE_TONE = {
 };
 
 export default function NotificationsBell({ onNavigate }) {
+  const { t } = useTranslation();
   const { notifications, unreadCount, markAllRead, markOneRead, clearAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -77,7 +79,7 @@ export default function NotificationsBell({ onNavigate }) {
       <button
         onClick={handleOpen}
         className="relative inline-flex items-center justify-center w-8 h-8 rounded-[10px] text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-        title="Notifications"
+        title={t("notif_title")}
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
@@ -91,10 +93,10 @@ export default function NotificationsBell({ onNavigate }) {
         <div className="absolute right-0 mt-2 w-[360px] bg-white rounded-[12px] border border-slate-200 shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="text-[13px] font-bold text-slate-900">
-              Notifications
+              {t("notif_title")}
               {unreadCount > 0 && (
                 <span className="ml-1.5 text-[11px] font-semibold text-rose-600">
-                  {unreadCount} unread
+                  {unreadCount} {t("notif_unread")}
                 </span>
               )}
             </div>
@@ -103,17 +105,17 @@ export default function NotificationsBell({ onNavigate }) {
                 <button
                   onClick={markAllRead}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                  title="Mark all as read"
+                  title={t("notif_mark_read")}
                 >
                   <Check className="w-3 h-3" />
-                  Mark read
+                  {t("notif_mark_read")}
                 </button>
               )}
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50"
-                  title="Clear all"
+                  title={t("clear")}
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -131,9 +133,9 @@ export default function NotificationsBell({ onNavigate }) {
             {notifications.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
-                <div className="text-[13px] text-slate-500 font-semibold">No notifications yet</div>
+                <div className="text-[13px] text-slate-500 font-semibold">{t("notif_empty_title")}</div>
                 <div className="text-[11px] text-slate-400 mt-1">
-                  Rate changes and team activity will appear here
+                  {t("notif_empty_hint")}
                 </div>
               </div>
             ) : (
@@ -165,7 +167,7 @@ export default function NotificationsBell({ onNavigate }) {
                       </div>
                       <div className="text-[11px] text-slate-600 truncate mt-0.5">{n.body}</div>
                       <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                        {timeAgo(n.createdAt)} ago
+                        {timeAgo(n.createdAt)} {t("notif_ago")}
                       </div>
                     </div>
                   </button>

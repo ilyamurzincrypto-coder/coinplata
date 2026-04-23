@@ -40,8 +40,10 @@ import {
 import Modal from "../components/ui/Modal.jsx";
 import Select from "../components/ui/Select.jsx";
 import { exportCSV } from "../utils/csv.js";
+import { useTranslation } from "../i18n/translations.jsx";
 
 export default function ObligationsPage() {
+  const { t } = useTranslation();
   const { obligations } = useObligations();
   const { offices } = useOffices();
   const { counterparties } = useTransactions();
@@ -105,7 +107,7 @@ export default function ObligationsPage() {
 
   const handleCancel = async (obligation) => {
     if (busyId) return;
-    if (!confirm(`Cancel this obligation? (${obligation.direction}, ${obligation.amount} ${obligation.currency})`)) return;
+    if (!confirm(`${t("oblig_confirm_cancel")} (${obligation.direction}, ${obligation.amount} ${obligation.currency})`)) return;
     setBusyId(obligation.id);
     try {
       if (isSupabaseConfigured) {
@@ -167,10 +169,10 @@ export default function ObligationsPage() {
         <div>
           <h1 className="text-[24px] font-bold tracking-tight flex items-center gap-2">
             <Scale className="w-5 h-5 text-slate-500" />
-            Obligations
+            {t("oblig_title")}
           </h1>
           <p className="text-[13px] text-slate-500 mt-1">
-            Open debts tracker · we_owe = we still owe client · they_owe = client still owes us
+            {t("oblig_subtitle")}
           </p>
         </div>
       </header>
@@ -178,19 +180,19 @@ export default function ObligationsPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <SummaryCard
-          label="We owe"
+          label={t("oblig_we_owe")}
           value={`${sym}${fmt(summary.weOwe, base)}`}
           tone="rose"
           icon={<ArrowUpRight className="w-4 h-4" />}
         />
         <SummaryCard
-          label="They owe"
+          label={t("oblig_they_owe")}
           value={`${sym}${fmt(summary.theyOwe, base)}`}
           tone="emerald"
           icon={<ArrowDownLeft className="w-4 h-4" />}
         />
         <SummaryCard
-          label="Net"
+          label={t("oblig_net")}
           value={`${summary.net >= 0 ? "+" : ""}${sym}${fmt(summary.net, base)}`}
           tone={summary.net >= 0 ? "emerald" : "rose"}
           icon={<Scale className="w-4 h-4" />}
@@ -204,13 +206,13 @@ export default function ObligationsPage() {
           <Filter className="w-3.5 h-3.5" />
         </div>
         <SegBtn active={directionFilter === "all"} onClick={() => setDirectionFilter("all")}>
-          All
+          {t("oblig_all")}
         </SegBtn>
         <SegBtn active={directionFilter === "we_owe"} onClick={() => setDirectionFilter("we_owe")}>
-          We owe
+          {t("oblig_we_owe")}
         </SegBtn>
         <SegBtn active={directionFilter === "they_owe"} onClick={() => setDirectionFilter("they_owe")}>
-          They owe
+          {t("oblig_they_owe")}
         </SegBtn>
 
         <div className="h-5 w-px bg-slate-200 mx-1" />
@@ -219,24 +221,24 @@ export default function ObligationsPage() {
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
-            { value: "open", label: "Open" },
-            { value: "closed", label: "Closed" },
-            { value: "cancelled", label: "Cancelled" },
-            { value: "all", label: "All statuses" },
+            { value: "open", label: t("oblig_status_open") },
+            { value: "closed", label: t("oblig_status_closed") },
+            { value: "cancelled", label: t("oblig_status_cancelled") },
+            { value: "all", label: t("oblig_status_all") },
           ]}
           compact
         />
         <Select
           value={officeFilter}
           onChange={setOfficeFilter}
-          options={[{ value: "all", label: "All offices" }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
+          options={[{ value: "all", label: t("oblig_all_offices") }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
           compact
           icon={<Building2 className="w-3 h-3 text-slate-400" />}
         />
         <Select
           value={currencyFilter}
           onChange={setCurrencyFilter}
-          options={[{ value: "all", label: "All currencies" }, ...uniqueCurrencies.map((c) => ({ value: c, label: c }))]}
+          options={[{ value: "all", label: t("oblig_all_currencies") }, ...uniqueCurrencies.map((c) => ({ value: c, label: c }))]}
           compact
           icon={<Coins className="w-3 h-3 text-slate-400" />}
         />
@@ -246,7 +248,7 @@ export default function ObligationsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search client / note / deal#"
+            placeholder={t("oblig_search_ph")}
             className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300"
           />
         </div>
@@ -256,7 +258,7 @@ export default function ObligationsPage() {
           disabled={filtered.length === 0}
           className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Export CSV
+          {t("export_csv")}
         </button>
       </div>
 
@@ -266,15 +268,15 @@ export default function ObligationsPage() {
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
-                <th className="px-5 py-2.5 hidden md:table-cell">Created</th>
-                <th className="px-3 py-2.5">Direction</th>
-                <th className="px-3 py-2.5">Client</th>
-                <th className="px-3 py-2.5 hidden lg:table-cell">Office</th>
-                <th className="px-3 py-2.5 text-right hidden sm:table-cell">Amount</th>
-                <th className="px-3 py-2.5 text-right hidden lg:table-cell">Paid</th>
-                <th className="px-3 py-2.5 text-right">Remaining</th>
-                <th className="px-3 py-2.5 hidden md:table-cell">Status</th>
-                <th className="px-3 py-2.5 hidden xl:table-cell">Deal</th>
+                <th className="px-5 py-2.5 hidden md:table-cell">{t("oblig_col_created")}</th>
+                <th className="px-3 py-2.5">{t("oblig_col_direction")}</th>
+                <th className="px-3 py-2.5">{t("oblig_col_client")}</th>
+                <th className="px-3 py-2.5 hidden lg:table-cell">{t("oblig_col_office")}</th>
+                <th className="px-3 py-2.5 text-right hidden sm:table-cell">{t("oblig_col_amount")}</th>
+                <th className="px-3 py-2.5 text-right hidden lg:table-cell">{t("oblig_col_paid")}</th>
+                <th className="px-3 py-2.5 text-right">{t("oblig_col_remaining")}</th>
+                <th className="px-3 py-2.5 hidden md:table-cell">{t("oblig_col_status")}</th>
+                <th className="px-3 py-2.5 hidden xl:table-cell">{t("oblig_col_deal")}</th>
                 <th className="px-5 py-2.5 w-40"></th>
               </tr>
             </thead>
@@ -297,7 +299,7 @@ export default function ObligationsPage() {
                         }`}
                       >
                         {isWeOwe ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownLeft className="w-2.5 h-2.5" />}
-                        {isWeOwe ? "we owe" : "they owe"}
+                        {isWeOwe ? t("oblig_we_owe") : t("oblig_they_owe")}
                       </span>
                     </td>
                     <td className="px-3 py-3 font-medium text-slate-900">
@@ -332,13 +334,13 @@ export default function ObligationsPage() {
                             } disabled:opacity-50`}
                           >
                             <CheckCircle2 className="w-3 h-3" />
-                            {isWeOwe ? "Pay" : "Receive"}
+                            {isWeOwe ? t("oblig_pay") : t("oblig_receive")}
                           </button>
                           <button
                             onClick={() => handleCancel(o)}
                             disabled={busyId === o.id}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-50"
-                            title="Cancel obligation"
+                            title={t("oblig_cancel_tip")}
                           >
                             <Ban className="w-3 h-3" />
                           </button>
@@ -352,7 +354,7 @@ export default function ObligationsPage() {
                 <tr>
                   <td colSpan={10} className="px-5 py-16 text-center">
                     <div className="text-slate-400 text-[13px]">
-                      {obligations.length === 0 ? "No obligations yet" : "No obligations match the current filter"}
+                      {obligations.length === 0 ? t("oblig_empty") : t("oblig_no_match")}
                     </div>
                   </td>
                 </tr>
@@ -423,6 +425,7 @@ function StatusBadge({ status }) {
 }
 
 function SettleObligationModal({ obligation, mode, onClose }) {
+  const { t } = useTranslation();
   const { accountsByOffice, availableOf } = useAccounts();
   const { addEntry: logAudit } = useAudit();
   const remaining = (Number(obligation.amount) || 0) - (Number(obligation.paidAmount) || 0);
@@ -477,29 +480,29 @@ function SettleObligationModal({ obligation, mode, onClose }) {
 
   const title =
     mode === "settle"
-      ? `Pay ${fmt(remaining, obligation.currency)} ${obligation.currency}`
-      : `Receive ${fmt(remaining, obligation.currency)} ${obligation.currency}`;
+      ? `${t("oblig_pay_title")} ${fmt(remaining, obligation.currency)} ${obligation.currency}`
+      : `${t("oblig_receive_title")} ${fmt(remaining, obligation.currency)} ${obligation.currency}`;
 
   return (
     <Modal open={!!obligation} onClose={onClose} title={title} width="md">
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-2 text-[12px]">
-          <InfoPill label="Direction" value={obligation.direction} />
-          <InfoPill label="Currency" value={obligation.currency} />
-          <InfoPill label="Original" value={fmt(obligation.amount, obligation.currency)} />
+          <InfoPill label={t("oblig_direction_label")} value={obligation.direction} />
+          <InfoPill label={t("oblig_currency_label")} value={obligation.currency} />
+          <InfoPill label={t("oblig_original_label")} value={fmt(obligation.amount, obligation.currency)} />
           <InfoPill
-            label="Already paid"
+            label={t("oblig_already_paid_label")}
             value={fmt(obligation.paidAmount || 0, obligation.currency)}
           />
         </div>
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-            {mode === "settle" ? "Pay from account" : "Receive into account"}
+            {mode === "settle" ? t("oblig_pay_from_account") : t("oblig_receive_to_account")}
           </label>
           {candidateAccounts.length === 0 ? (
             <div className="text-[12px] text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
-              No {obligation.currency} accounts at this office.
+              {t("oblig_no_accounts").replace("{cur}", obligation.currency)}
             </div>
           ) : (
             <select
@@ -507,10 +510,10 @@ function SettleObligationModal({ obligation, mode, onClose }) {
               onChange={(e) => setAccountId(e.target.value)}
               className="w-full px-3 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300"
             >
-              <option value="">— select account —</option>
+              <option value="">{t("oblig_select_account")}</option>
               {candidateAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} · avail {fmt(availableOf(a.id), a.currency)} {a.currency}
+                  {a.name} · {fmt(availableOf(a.id), a.currency)} {a.currency}
                 </option>
               ))}
             </select>
@@ -519,7 +522,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
 
         <div>
           <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-            Amount ({obligation.currency})
+            {t("oblig_amount_label")} ({obligation.currency})
           </label>
           <input
             type="number"
@@ -529,17 +532,17 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             className="w-full px-3 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300 tabular-nums"
           />
           <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
-            <span>Remaining: {fmt(remaining, obligation.currency)}</span>
+            <span>{t("oblig_remaining_hint")} {fmt(remaining, obligation.currency)}</span>
             <button
               type="button"
               onClick={() => setAmount(remaining)}
               className="text-slate-700 hover:text-slate-900 font-semibold underline"
             >
-              Full
+              {t("oblig_full_btn")}
             </button>
           </div>
           {insufficient && (
-            <div className="text-[11px] text-rose-600 mt-1">Account balance insufficient.</div>
+            <div className="text-[11px] text-rose-600 mt-1">{t("oblig_insufficient")}</div>
           )}
         </div>
 
@@ -549,7 +552,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             onClick={onClose}
             className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
           >
-            Cancel
+            {t("cancel")}
           </button>
           <button
             type="button"
@@ -560,7 +563,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <CheckCircle2 className="w-3 h-3" />
-            {submitting ? "Working…" : mode === "settle" ? "Pay now" : "Mark received"}
+            {submitting ? t("oblig_working") : mode === "settle" ? t("oblig_pay_now") : t("oblig_mark_received")}
           </button>
         </div>
       </div>

@@ -24,20 +24,25 @@ import { useTransactions } from "../store/transactions.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
-
-const PAGE_ITEMS = [
-  { id: "nav:cashier", kind: "page", label: "Cashier", page: "cashier" },
-  { id: "nav:capital", kind: "page", label: "Capital", page: "capital" },
-  { id: "nav:accounts", kind: "page", label: "Accounts", page: "accounts" },
-  { id: "nav:clients", kind: "page", label: "Clients", page: "clients" },
-  { id: "nav:obligations", kind: "page", label: "Obligations", page: "obligations" },
-  { id: "nav:referrals", kind: "page", label: "Referrals", page: "referrals" },
-  { id: "nav:settings", kind: "page", label: "Settings", page: "settings" },
-];
+import { useTranslation } from "../i18n/translations.jsx";
 
 export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal }) {
+  const { t } = useTranslation();
   const { transactions, counterparties } = useTransactions();
   const { accounts } = useAccounts();
+
+  const PAGE_ITEMS = useMemo(
+    () => [
+      { id: "nav:cashier", kind: "page", label: t("nav_cashier"), page: "cashier" },
+      { id: "nav:capital", kind: "page", label: t("nav_capital"), page: "capital" },
+      { id: "nav:accounts", kind: "page", label: t("nav_accounts"), page: "accounts" },
+      { id: "nav:clients", kind: "page", label: t("nav_clients"), page: "clients" },
+      { id: "nav:obligations", kind: "page", label: t("nav_obligations"), page: "obligations" },
+      { id: "nav:referrals", kind: "page", label: t("nav_referrals"), page: "referrals" },
+      { id: "nav:settings", kind: "page", label: t("nav_settings"), page: "settings" },
+    ],
+    [t]
+  );
 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -71,7 +76,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
     if (!q) {
       // Default state — показываем pages + recent
       return [
-        { group: "Navigation", items: PAGE_ITEMS.slice(0, 5) },
+        { group: t("palette_group_nav"), items: PAGE_ITEMS.slice(0, 5) },
       ];
     }
 
@@ -136,12 +141,12 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
     const pages = PAGE_ITEMS.filter((p) => p.label.toLowerCase().includes(q));
 
     const groups = [];
-    if (deals.length > 0) groups.push({ group: "Deals", items: deals });
-    if (clients.length > 0) groups.push({ group: "Clients", items: clients });
-    if (accMatches.length > 0) groups.push({ group: "Accounts", items: accMatches });
-    if (pages.length > 0) groups.push({ group: "Navigation", items: pages });
+    if (deals.length > 0) groups.push({ group: t("palette_group_deals"), items: deals });
+    if (clients.length > 0) groups.push({ group: t("palette_group_clients"), items: clients });
+    if (accMatches.length > 0) groups.push({ group: t("palette_group_accounts"), items: accMatches });
+    if (pages.length > 0) groups.push({ group: t("palette_group_nav"), items: pages });
     return groups;
-  }, [query, transactions, counterparties, accounts]);
+  }, [query, transactions, counterparties, accounts, PAGE_ITEMS, t]);
 
   // Flatten для cursor
   const flatItems = useMemo(() => items.flatMap((g) => g.items), [items]);
@@ -199,7 +204,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Search deals, clients, accounts…"
+            placeholder={t("palette_search_ph")}
             className="flex-1 bg-transparent outline-none text-[15px] text-slate-900 placeholder:text-slate-400"
           />
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold tracking-wider">
@@ -210,7 +215,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
         <div className="max-h-[50vh] overflow-auto py-1">
           {items.length === 0 ? (
             <div className="px-5 py-8 text-center text-slate-400 text-[13px]">
-              No matches for “{query}”
+              {t("palette_no_match")} “{query}”
             </div>
           ) : (
             items.map((g, gi) => {
@@ -276,15 +281,15 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">↑↓</kbd>
-              navigate
+              {t("palette_hint_navigate")}
             </span>
             <span className="flex items-center gap-1">
               <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">↵</kbd>
-              select
+              {t("palette_hint_select")}
             </span>
           </div>
           <div className="text-slate-400">
-            <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">⌘K</kbd> · toggle
+            <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">⌘K</kbd> · {t("palette_hint_toggle")}
           </div>
         </div>
       </div>
