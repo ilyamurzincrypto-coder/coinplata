@@ -436,7 +436,29 @@ export default function ExchangeForm({
     };
 
     if (mode === "edit" && initialData) {
-      return { ...initialData, ...base };
+      // Edit: сохраняем лайф-цикл полей per-leg (actualAmount / completedAt /
+      // plannedAt / sendStatus / sendTxHash) и IN-стороны — они не в UI.
+      // Иначе edit ранее полностью сбрасывал прогресс completed сделок.
+      const preservedOuts = (base.outputs || []).map((newLeg, i) => {
+        const oldLeg = (initialData.outputs || [])[i];
+        if (!oldLeg) return newLeg;
+        return {
+          ...newLeg,
+          actualAmount: oldLeg.actualAmount ?? newLeg.actualAmount,
+          completedAt: oldLeg.completedAt ?? newLeg.completedAt,
+          plannedAt: oldLeg.plannedAt ?? newLeg.plannedAt,
+          sendStatus: oldLeg.sendStatus ?? newLeg.sendStatus,
+          sendTxHash: oldLeg.sendTxHash ?? newLeg.sendTxHash,
+        };
+      });
+      return {
+        ...initialData,
+        ...base,
+        outputs: preservedOuts,
+        inActualAmount: initialData.inActualAmount ?? base.inActualAmount,
+        inCompletedAt: initialData.inCompletedAt ?? base.inCompletedAt,
+        inPlannedAt: initialData.inPlannedAt ?? base.inPlannedAt,
+      };
     }
     return { ...base, id: Date.now() };
   };

@@ -32,6 +32,7 @@ import { useAuth } from "../store/auth.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useMonitoring } from "../store/monitoring.jsx";
+import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
@@ -53,6 +54,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
   const { simulateIncoming } = useMonitoring();
+  const { obligations, cancelObligation } = useObligations();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
 
@@ -93,13 +95,21 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const handleDeleteConfirmed = () => {
     if (!deleteTarget) return;
     const tx = deleteTarget;
+    // 1. Rollback movements (balance recomputes via view/balanceOf).
     removeMovementsByRefId(tx.id);
+    // 2. Cancel any open obligations attached to this deal — иначе они
+    //    остаются как «фантом» привязанные к удалённой сделке.
+    const openObs = obligations.filter(
+      (o) => o.dealId === tx.id && o.status === "open"
+    );
+    openObs.forEach((o) => cancelObligation(o.id, currentUser.id));
+    // 3. Soft-delete the tx.
     deleteTransaction(tx.id, "manual");
     logAudit({
       action: "delete",
       entity: "transaction",
       entityId: String(tx.id),
-      summary: `Deleted tx #${tx.id} · ${tx.curIn} ${tx.amtIn} → ${(tx.outputs || []).map((o) => `${o.amount} ${o.currency}`).join(" + ")} · movements rolled back`,
+      summary: `Deleted tx #${tx.id} · ${tx.curIn} ${tx.amtIn} → ${(tx.outputs || []).map((o) => `${o.amount} ${o.currency}`).join(" + ")} · movements rolled back${openObs.length ? ` · ${openObs.length} obligation(s) cancelled` : ""}`,
     });
     setDeleteTarget(null);
   };
