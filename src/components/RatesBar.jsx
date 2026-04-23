@@ -16,7 +16,9 @@ import {
   Network as NetworkIcon,
   ArrowLeft,
   ArrowRight,
+  Upload,
 } from "lucide-react";
+import RatesImportModal from "./RatesImportModal.jsx";
 import { useRates, FEATURED_PAIRS, rateKey } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useAuth } from "../store/auth.jsx";
@@ -83,6 +85,7 @@ export default function RatesBar() {
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(null);
   const wrapperRef = useRef(null);
   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
@@ -125,13 +128,23 @@ export default function RatesBar() {
             </span>
           </div>
           {isAdmin && (
-            <button
-              onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-            >
-              <Pencil className="w-3 h-3" />
-              {t("edit_rates") || "Edit"}
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setImportOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                title="Import rates from Excel"
+              >
+                <Upload className="w-3 h-3" />
+                Import
+              </button>
+              <button
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                {t("edit_rates") || "Edit"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -270,6 +283,9 @@ export default function RatesBar() {
 
       {editOpen && (
         <RatesEditModal open={editOpen} onClose={() => setEditOpen(false)} canDelete={isAdmin} />
+      )}
+      {importOpen && (
+        <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       )}
     </>
   );
