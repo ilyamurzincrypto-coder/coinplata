@@ -91,7 +91,12 @@ export function uuidOrNull(value) {
 
 // Переводит frontend deal.outputs → jsonb[] для RPC create_deal / update_deal.
 // Бросает error если outputs пустой или какой-то leg без amount/currency/rate.
-// Ключи snake_case, account_id uuid or null, network_id string or null.
+//
+// Опциональное поле pay_now (number, 0..amount):
+//   * undefined   → auto-логика (full payout если балансы ОК, иначе we_owe)
+//   * 0           → defer out (полный we_owe, OUT movement не создаётся)
+//   * 0 < x < amount → partial (платим x сейчас, остаток we_owe)
+//   * == amount   → эквивалент auto (full payout forced)
 export function legsToJsonb(outputs) {
   if (!Array.isArray(outputs) || outputs.length === 0) {
     throw new Error("Deal must have at least one output");
@@ -108,7 +113,7 @@ export function legsToJsonb(outputs) {
     if (typeof o.currency !== "string" || o.currency.length < 2) {
       throw new Error(`Output ${idx + 1}: missing currency`);
     }
-    return {
+    const leg = {
       currency: o.currency.toUpperCase(),
       amount,
       rate,
@@ -116,6 +121,15 @@ export function legsToJsonb(outputs) {
       address: o.address ? String(o.address).trim() : null,
       network_id: o.network || null,
     };
+    // pay_now добавляем только если явно задан (не undefined/null)
+    if (o.payNow != null) {
+      const pn = Number(o.payNow);
+      if (!Number.isFinite(pn) || pn < 0) {
+        throw new Error(`Output ${idx + 1}: invalid pay_now (${o.payNow})`);
+      }
+      leg.pay_now = Math.min(pn, amount);
+    }
+    return leg;
   });
 }
 

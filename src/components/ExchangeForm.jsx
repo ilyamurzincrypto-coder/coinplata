@@ -29,6 +29,8 @@ import {
   Search,
   Wallet,
   Check,
+  Clock,
+  ChevronUp,
 } from "lucide-react";
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
@@ -196,10 +198,13 @@ export default function ExchangeForm({
     starter?.inTxHash || draft?.inTxHash || ""
   );
   // Deferred IN = "клиент заплатит позже" — создаёт they_owe obligation
-  // вместо exchange_in movement. Сделка принудительно pending.
   const [deferredIn, setDeferredIn] = useState(draft?.deferredIn || false);
-  // Planned completion — датапикер "ожидается к". Формат HTML datetime-local.
-  // Пустая строка = без явной даты = деal на "сейчас".
+  // Deferred OUT = "мы платим позже" — каждому leg pay_now=0 → full we_owe
+  const [deferredOut, setDeferredOut] = useState(draft?.deferredOut || false);
+  // Partial mode = платим часть сейчас, остаток потом. Per-output amount.
+  const [partialMode, setPartialMode] = useState(draft?.partialMode || false);
+  const [partialPayNow, setPartialPayNow] = useState(draft?.partialPayNow || {});
+  // Planned completion — датапикер "ожидается к".
   const [plannedLocal, setPlannedLocal] = useState(draft?.plannedLocal || "");
 
   // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
@@ -228,6 +233,9 @@ export default function ExchangeForm({
         isPending,
         inTxHash,
         deferredIn,
+        deferredOut,
+        partialMode,
+        partialPayNow,
         plannedLocal,
         savedAt: Date.now(),
       };
@@ -235,7 +243,7 @@ export default function ExchangeForm({
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, plannedLocal]);
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -430,21 +438,31 @@ export default function ExchangeForm({
     const mm = String(now.getMinutes()).padStart(2, "0");
 
     const nowIso = new Date().toISOString();
-    const outputsClean = outputs.map((o) => {
+    const outputsClean = outputs.map((o, idx) => {
       const addr = (o.address || "").trim();
       const plannedAmount = parseFloat(o.amount) || 0;
+      // payNow: если deferredOut → 0 (не платим); если partialMode → из input;
+      // иначе undefined → auto-logic.
+      let payNow;
+      if (deferredOut) {
+        payNow = 0;
+      } else if (partialMode) {
+        const raw = partialPayNow[o.id] ?? partialPayNow[idx];
+        const n = parseFloat(raw);
+        payNow = Number.isFinite(n) ? n : undefined;
+      }
       const base = {
         currency: o.currency,
-        amount: plannedAmount, // legacy, равно plannedAmount
+        amount: plannedAmount,
         plannedAmount,
-        actualAmount: 0, // будет заполнено в CashierPage.handleCreate по правилу
+        actualAmount: 0,
         plannedAt: nowIso,
         completedAt: null,
         rate: parseFloat(o.rate) || 0,
         accountId: o.accountId || "",
         address: addr,
+        ...(payNow !== undefined ? { payNow } : {}),
       };
-      // Crypto OUT с адресом → включаем send lifecycle.
       if (isCryptoCode(o.currency) && addr) {
         base.sendStatus = "pending_send";
         base.sendTxHash = "";
@@ -887,90 +905,133 @@ export default function ExchangeForm({
           ))}
         </div>
 
-        {/* Referral toggle (counterparty вынесен в верх формы) */}
-        <label className="mt-4 flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors">
-          <input
-            type="checkbox"
-            checked={referral}
-            onChange={(e) => setReferral(e.target.checked)}
-            className="w-4 h-4 rounded-[4px] accent-slate-900"
-          />
-          <UserPlus className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-[13px] font-medium text-slate-700">{t("referral_client")}</span>
-          {referral && (
-            <span className="ml-auto text-[11px] font-bold text-indigo-600">
-              -{settings.referralPct}%
-            </span>
-          )}
-        </label>
+        {/* ═══════════════════════════════════════════════════════════════════
+            CONDITIONS block — pendingLogic, partialMode, referral, planned date
+            Чистый layout с toggle-switch'ами, группировка по смыслу.
+            ═══════════════════════════════════════════════════════════════════ */}
+        <section className="mt-5 bg-white border border-slate-200 rounded-[14px] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em]">
+              Conditions
+            </h3>
+            <span className="text-[10px] text-slate-400">optional</span>
+          </div>
 
-        {/* Pending toggle */}
-        <label
-          className={`mt-3 flex items-center gap-2 cursor-pointer select-none rounded-[10px] px-3 py-2 border transition-colors ${
-            isPending
-              ? "bg-amber-50 border-amber-300"
-              : "bg-slate-50 border-slate-200 hover:border-slate-300"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={isPending}
-            onChange={(e) => setIsPending(e.target.checked)}
-            className="w-4 h-4 rounded-[4px] accent-amber-600"
-          />
-          <span className={`text-[13px] font-medium ${isPending ? "text-amber-800" : "text-slate-700"}`}>
-            {t("create_as_pending")}
-          </span>
-          {isPending && (
-            <span className="ml-auto text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-              {t("pending_hint")}
-            </span>
-          )}
-        </label>
-
-        {/* Deferred IN toggle — "Клиент заплатит позже" (they_owe) */}
-        <label
-          className={`mt-2 flex items-center gap-2 cursor-pointer select-none rounded-[10px] px-3 py-2 border transition-colors ${
-            deferredIn
-              ? "bg-sky-50 border-sky-300"
-              : "bg-slate-50 border-slate-200 hover:border-slate-300"
-          }`}
-        >
-          <input
-            type="checkbox"
-            checked={deferredIn}
-            onChange={(e) => setDeferredIn(e.target.checked)}
-            className="w-4 h-4 rounded-[4px] accent-sky-600"
-          />
-          <span className={`text-[13px] font-medium ${deferredIn ? "text-sky-800" : "text-slate-700"}`}>
-            Client pays later
-          </span>
-          {deferredIn && (
-            <span className="ml-auto text-[10px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
-              they owe us
-            </span>
-          )}
-        </label>
-
-        {/* Planned completion date — "ожидается к" */}
-        <div className="mt-2">
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            Expected completion (optional)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="datetime-local"
-              value={plannedLocal}
-              onChange={(e) => setPlannedLocal(e.target.value)}
-              className="flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors"
+          <div className="space-y-2">
+            <Toggle
+              active={deferredIn}
+              onChange={setDeferredIn}
+              icon="↓"
+              label="Client pays later"
+              sub="Creates they-owe obligation · no IN movement"
+              tone="sky"
             />
-            {plannedLocal && (
-              <button
-                type="button"
-                onClick={() => setPlannedLocal("")}
-                className="px-2.5 py-2 rounded-[10px] text-[11px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                title="Clear planned date"
-              >
+            <Toggle
+              active={deferredOut}
+              onChange={(v) => {
+                setDeferredOut(v);
+                if (v) setPartialMode(false); // mutually exclusive
+              }}
+              icon="↑"
+              label="We pay later"
+              sub="Creates we-owe obligation for each leg · no OUT movement"
+              tone="amber"
+            />
+            <Toggle
+              active={partialMode}
+              onChange={(v) => {
+                setPartialMode(v);
+                if (v) setDeferredOut(false);
+              }}
+              icon="½"
+              label="Partial payout"
+              sub="Pay now N, remainder becomes we-owe obligation"
+              tone="violet"
+            />
+            <Toggle
+              active={referral}
+              onChange={setReferral}
+              icon={<UserPlus className="w-3 h-3" />}
+              label={t("referral_client")}
+              sub={`Deduct ${settings.referralPct}% from profit`}
+              tone="indigo"
+              suffix={referral ? `-${settings.referralPct}%` : null}
+            />
+            <Toggle
+              active={isPending}
+              onChange={setIsPending}
+              icon={<Clock className="w-3 h-3" />}
+              label={t("create_as_pending")}
+              sub={t("pending_hint")}
+              tone="slate"
+            />
+          </div>
+
+          {/* Partial per-output amounts — inline под conditions */}
+          {partialMode && outputs.length > 0 && (
+            <div className="mt-3 p-3 rounded-[12px] bg-violet-50/40 border border-violet-200/60 animate-[cIn_160ms_ease-out]">
+              <div className="text-[10px] font-bold text-violet-700 uppercase tracking-[0.12em] mb-2">
+                Partial payout — pay now per output
+              </div>
+              <div className="space-y-2">
+                {outputs.map((o, idx) => {
+                  const planned = parseFloat(o.amount) || 0;
+                  const now = parseFloat(partialPayNow[o.id] ?? "0") || 0;
+                  const remaining = Math.max(0, planned - now);
+                  return (
+                    <div key={o.id} className="flex items-center gap-2 text-[12px]">
+                      <span className="text-[10px] font-bold text-slate-400 tabular-nums w-6">
+                        #{idx + 1}
+                      </span>
+                      <span className="text-slate-600 min-w-[60px]">
+                        {o.currency}
+                      </span>
+                      <span className="text-slate-400">pay now</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={partialPayNow[o.id] ?? ""}
+                        placeholder="0"
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
+                          setPartialPayNow((prev) => ({ ...prev, [o.id]: clean }));
+                        }}
+                        className="flex-1 bg-white border border-violet-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 rounded-[8px] px-2 py-1 text-[12px] font-semibold tabular-nums outline-none"
+                      />
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap tabular-nums">
+                        / {fmt(planned, o.currency)}
+                      </span>
+                      {remaining > 0 && (
+                        <span className="text-[10px] font-bold text-violet-700 tabular-nums whitespace-nowrap">
+                          owe {fmt(remaining, o.currency)}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Planned completion date */}
+          <div className="mt-3">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
+              Expected completion
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="datetime-local"
+                value={plannedLocal}
+                onChange={(e) => setPlannedLocal(e.target.value)}
+                className="flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors"
+              />
+              {plannedLocal && (
+                <button
+                  type="button"
+                  onClick={() => setPlannedLocal("")}
+                  className="px-2.5 py-2 rounded-[10px] text-[11px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  title="Clear planned date"
+                >
                 Clear
               </button>
             )}
@@ -978,10 +1039,10 @@ export default function ExchangeForm({
           {plannedLocal && (
             <p className="text-[10px] text-slate-500 mt-1">
               Deal will be marked <span className="font-semibold">pending</span> until this date.
-              Delayed detection uses this instead of 24h default.
             </p>
           )}
-        </div>
+          </div>
+        </section>
 
         <input
           type="text"
@@ -1067,33 +1128,26 @@ export default function ExchangeForm({
               {t("cancel")}
             </button>
           )}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit || submitting}
-            className={`group relative flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-[12px] text-[15px] font-bold tracking-tight transition-all overflow-hidden ${
-              canSubmit && !submitting
-                ? "bg-slate-900 text-white hover:bg-slate-800 shadow-[0_10px_28px_-8px_rgba(15,23,42,0.45)] active:scale-[0.995]"
-                : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-            }`}
-          >
-            <Zap className={`w-4 h-4 ${canSubmit && !submitting ? "text-emerald-400" : "opacity-40"}`} />
-            <span>
-              {submitting
-                ? isEdit ? "Saving…" : "Creating…"
-                : isEdit ? t("save_changes") : t("create_transaction")}
-            </span>
-            {!submitting && (
-              <span
-                className={`ml-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                  canSubmit
-                    ? "bg-white/10 border-white/15 text-white/70"
-                    : "bg-slate-200 border-slate-300 text-slate-400"
-                }`}
-              >
-                ⌘ ↵
-              </span>
-            )}
-          </button>
+          <SubmitCTA
+            canSubmit={canSubmit}
+            submitting={submitting}
+            isEdit={isEdit}
+            onSubmit={handleSubmit}
+            onSubmitPending={() => {
+              setIsPending(true);
+              setTimeout(handleSubmit, 0);
+            }}
+            onSubmitDeferredOut={() => {
+              setDeferredOut(true);
+              setPartialMode(false);
+              setTimeout(handleSubmit, 0);
+            }}
+            onEnablePartial={() => {
+              setPartialMode(true);
+              setDeferredOut(false);
+            }}
+            t={t}
+          />
         </div>
         {!canSubmit && (
           <p className="text-[11px] text-slate-400 text-center mt-2">
@@ -1132,6 +1186,195 @@ export default function ExchangeForm({
         )}
       </div>
     </div>
+  );
+}
+
+// ----------------------------------------
+// SubmitCTA — основная кнопка + dropdown с пресетами (Create / Pending / Partial)
+// ----------------------------------------
+function SubmitCTA({
+  canSubmit,
+  submitting,
+  isEdit,
+  onSubmit,
+  onSubmitPending,
+  onSubmitDeferredOut,
+  onEnablePartial,
+  t,
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const disabled = !canSubmit || submitting;
+
+  return (
+    <div ref={ref} className="relative flex-1 flex">
+      {/* Основная кнопка — default create */}
+      <button
+        onClick={onSubmit}
+        disabled={disabled}
+        className={`group flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-l-[12px] text-[15px] font-bold tracking-tight transition-all ${
+          !disabled
+            ? "bg-slate-900 text-white hover:bg-slate-800 shadow-[0_10px_28px_-8px_rgba(15,23,42,0.45)] active:scale-[0.995]"
+            : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+        }`}
+      >
+        <Zap className={`w-4 h-4 ${!disabled ? "text-emerald-400" : "opacity-40"}`} />
+        <span>
+          {submitting
+            ? isEdit
+              ? "Saving…"
+              : "Creating…"
+            : isEdit
+            ? t("save_changes")
+            : t("create_transaction")}
+        </span>
+      </button>
+
+      {/* Chevron — открывает dropdown (не в edit mode) */}
+      {!isEdit && (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          disabled={disabled}
+          aria-label="More options"
+          className={`px-3 py-3.5 rounded-r-[12px] border-l border-black/10 transition-all ${
+            !disabled
+              ? "bg-slate-900 text-white hover:bg-slate-800"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed border-y border-r border-slate-200"
+          }`}
+        >
+          <ChevronUp
+            className={`w-4 h-4 transition-transform ${open ? "rotate-0" : "rotate-180"}`}
+          />
+        </button>
+      )}
+
+      {/* Dropdown menu */}
+      {open && !isEdit && (
+        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-slate-200 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
+          <MenuItem
+            icon={<Zap className="w-3.5 h-3.5 text-emerald-500" />}
+            label="Create deal"
+            sub="Complete now with current balance"
+            onClick={() => {
+              setOpen(false);
+              onSubmit();
+            }}
+            disabled={disabled}
+          />
+          <div className="h-px bg-slate-100" />
+          <MenuItem
+            icon={<Clock className="w-3.5 h-3.5 text-amber-500" />}
+            label="Create pending"
+            sub="We pay later (we-owe for all outs)"
+            onClick={() => {
+              setOpen(false);
+              onSubmitDeferredOut();
+            }}
+            disabled={disabled}
+          />
+          <MenuItem
+            icon={<span className="inline-block text-[12px] font-bold text-violet-600">½</span>}
+            label="Create partial"
+            sub="Pay part now, remainder as we-owe"
+            onClick={() => {
+              setOpen(false);
+              onEnablePartial();
+            }}
+            disabled={disabled}
+          />
+        </div>
+      )}
+
+      <style>{`
+        @keyframes cIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function MenuItem({ icon, label, sub, onClick, disabled }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="w-full flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 shrink-0 mt-0.5">
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-[13px] font-semibold text-slate-900">{label}</div>
+        <div className="text-[10px] text-slate-500">{sub}</div>
+      </div>
+    </button>
+  );
+}
+
+// ----------------------------------------
+// Toggle — iOS-style переключатель для Conditions блока
+// ----------------------------------------
+function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) {
+  const tones = {
+    sky: { on: "bg-sky-500", ring: "ring-sky-200", text: "text-sky-700", iconBg: "bg-sky-100 text-sky-700" },
+    amber: { on: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-700", iconBg: "bg-amber-100 text-amber-700" },
+    violet: { on: "bg-violet-500", ring: "ring-violet-200", text: "text-violet-700", iconBg: "bg-violet-100 text-violet-700" },
+    indigo: { on: "bg-indigo-500", ring: "ring-indigo-200", text: "text-indigo-700", iconBg: "bg-indigo-100 text-indigo-700" },
+    slate: { on: "bg-slate-700", ring: "ring-slate-200", text: "text-slate-700", iconBg: "bg-slate-100 text-slate-600" },
+  };
+  const c = tones[tone] || tones.slate;
+  return (
+    <label
+      className={`flex items-center gap-3 cursor-pointer select-none rounded-[10px] px-3 py-2 transition-all ${
+        active ? `bg-slate-50 ring-1 ${c.ring}` : "bg-slate-50/40 hover:bg-slate-50"
+      }`}
+    >
+      <div
+        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold shrink-0 ${c.iconBg}`}
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className={`text-[13px] font-semibold tracking-tight ${active ? c.text : "text-slate-700"}`}>
+          {label}
+        </div>
+        {sub && <div className="text-[10px] text-slate-400 truncate">{sub}</div>}
+      </div>
+      {suffix && (
+        <span className={`text-[10px] font-bold tabular-nums ${c.text}`}>{suffix}</span>
+      )}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={active}
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(!active);
+        }}
+        className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${
+          active ? c.on : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+            active ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </label>
   );
 }
 
