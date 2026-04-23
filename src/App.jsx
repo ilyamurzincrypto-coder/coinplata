@@ -9,6 +9,7 @@ import ReferralsPage from "./pages/ReferralsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
+import ObligationsPage from "./pages/ObligationsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -41,6 +42,7 @@ const PAGE_SECTION = {
   capital: "capital",
   accounts: "accounts",
   clients: "capital",
+  obligations: "capital",
   referrals: "referrals",
   settings: "settings",
 };
@@ -118,6 +120,7 @@ function Root() {
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
+      {page === "obligations" && canShow("obligations") && <ObligationsPage />}
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
