@@ -128,23 +128,13 @@ export default function RatesBar() {
             </span>
           </div>
           {isAdmin && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setImportOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                title="Import rates from Excel"
-              >
-                <Upload className="w-3 h-3" />
-                Import
-              </button>
-              <button
-                onClick={() => setEditOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              >
-                <Pencil className="w-3 h-3" />
-                {t("edit_rates") || "Edit"}
-              </button>
-            </div>
+            <button
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            >
+              <Pencil className="w-3 h-3" />
+              {t("edit_rates") || "Edit"}
+            </button>
           )}
         </div>
 
@@ -282,7 +272,15 @@ export default function RatesBar() {
       </section>
 
       {editOpen && (
-        <RatesEditModal open={editOpen} onClose={() => setEditOpen(false)} canDelete={isAdmin} />
+        <RatesEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          canDelete={isAdmin}
+          onImport={() => {
+            setEditOpen(false);
+            setImportOpen(true);
+          }}
+        />
       )}
       {importOpen && (
         <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} />
@@ -294,7 +292,7 @@ export default function RatesBar() {
 // =========================================================================
 // Rates Edit Modal — список пар + добавление currency / channel / pair
 // =========================================================================
-function RatesEditModal({ open, onClose, canDelete }) {
+function RatesEditModal({ open, onClose, canDelete, onImport }) {
   const { t } = useTranslation();
   const [view, setView] = useState("list"); // list | addPair | addCurrency | addChannel
 
@@ -306,7 +304,7 @@ function RatesEditModal({ open, onClose, canDelete }) {
       subtitle="Currency → Channel → Pair · 1 unit of FROM in TO"
       width="2xl"
     >
-      {view === "list" && <ListPanel canDelete={canDelete} onGoto={setView} />}
+      {view === "list" && <ListPanel canDelete={canDelete} onGoto={setView} onImport={onImport} />}
       {view === "addPair" && <AddPairPanel onBack={() => setView("list")} />}
       {view === "addCurrency" && <AddCurrencyPanel onBack={() => setView("list")} />}
       {view === "addChannel" && <AddChannelPanel onBack={() => setView("list")} />}
@@ -329,7 +327,7 @@ function RatesEditModal({ open, onClose, canDelete }) {
 // =========================================================================
 // LIST — группы пар + три "+" кнопки (currency / channel / pair)
 // =========================================================================
-function ListPanel({ canDelete, onGoto }) {
+function ListPanel({ canDelete, onGoto, onImport }) {
   const { t } = useTranslation();
   const { rates, setRate, deleteRate, getRate, channels, pairs: allPairs } = useRates();
   const allChannels = channels;
@@ -440,6 +438,11 @@ function ListPanel({ canDelete, onGoto }) {
           {currencies.length} currencies · {channels.length} channels · {existingPairs.length} pairs
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
+          {onImport && (
+            <HeaderButton icon={Upload} onClick={onImport}>
+              Import xlsx
+            </HeaderButton>
+          )}
           <HeaderButton icon={Coins} onClick={() => onGoto("addCurrency")}>
             {t("currency_add")}
           </HeaderButton>
