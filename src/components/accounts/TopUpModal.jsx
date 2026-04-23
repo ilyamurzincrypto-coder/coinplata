@@ -20,6 +20,7 @@ export default function TopUpModal({ account, onClose }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [source, setSource] = useState("external");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (account) {
@@ -43,24 +44,29 @@ export default function TopUpModal({ account, onClose }) {
   const currentBalance = balanceOf(account.id);
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || busy) return;
     const noteWithSource = note.trim()
       ? `[${source}] ${note.trim()}`
       : `[${source}]`;
 
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource }),
-        { success: "Top up recorded", errorPrefix: "Top up failed" }
-      );
-      if (res.ok) {
-        logAudit({
-          action: "create",
-          entity: "topup",
-          entityId: String(res.result || ""),
-          summary: `Top up ${account.name}: +${curSymbol(account.currency)}${fmt(amt, account.currency)} ${account.currency} · source: ${source}`,
-        });
-        onClose();
+      setBusy(true);
+      try {
+        const res = await withToast(
+          () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource }),
+          { success: "Top up recorded", errorPrefix: "Top up failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "create",
+            entity: "topup",
+            entityId: String(res.result || ""),
+            summary: `Top up ${account.name}: +${curSymbol(account.currency)}${fmt(amt, account.currency)} ${account.currency} · source: ${source}`,
+          });
+          onClose();
+        }
+      } finally {
+        setBusy(false);
       }
       return;
     }
@@ -165,14 +171,14 @@ export default function TopUpModal({ account, onClose }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit
+            canSubmit && !busy
               ? "bg-emerald-500 text-white hover:bg-emerald-600"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          {t("topup_confirm")}
+          {busy ? "Processing…" : t("topup_confirm")}
         </button>
       </div>
     </Modal>

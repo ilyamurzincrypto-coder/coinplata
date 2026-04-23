@@ -231,6 +231,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [busy, setBusy] = useState(false);
 
   const availableAccounts = useMemo(
     () => accountsByOffice(officeId, { currency }),
@@ -263,38 +264,40 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const canSubmit = amount && parseFloat(amount) > 0 && category && officeId;
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || busy) return;
     const amt = parseFloat(amount);
 
     if (isSupabaseConfigured) {
       const cat = findCategoryByName(category, type);
-      if (!cat) {
-        // На всякий случай — категория должна была быть подгружена из БД.
-        return;
-      }
-      const res = await withToast(
-        () =>
-          insertExpense({
-            type,
-            officeId,
-            accountId: accountId || null,
-            categoryId: cat.id,
-            amount: amt,
-            currency,
-            entryDate: date,
-            note: note.trim(),
-            createdBy: currentUser.id,
-          }),
-        { success: `${type} recorded`, errorPrefix: `${type} failed` }
-      );
-      if (res.ok) {
-        onLog({
-          action: "create",
-          entity: type,
-          entityId: res.result?.id || "",
-          summary: `${category}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
-        });
-        onClose();
+      if (!cat) return; // категория не подгружена из БД
+      setBusy(true);
+      try {
+        const res = await withToast(
+          () =>
+            insertExpense({
+              type,
+              officeId,
+              accountId: accountId || null,
+              categoryId: cat.id,
+              amount: amt,
+              currency,
+              entryDate: date,
+              note: note.trim(),
+              createdBy: currentUser.id,
+            }),
+          { success: `${type} recorded`, errorPrefix: `${type} failed` }
+        );
+        if (res.ok) {
+          onLog({
+            action: "create",
+            entity: type,
+            entityId: res.result?.id || "",
+            summary: `${category}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+          });
+          onClose();
+        }
+      } finally {
+        setBusy(false);
       }
       return;
     }
@@ -484,16 +487,16 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit
+            canSubmit && !busy
               ? isIncome
                 ? "bg-emerald-500 text-white hover:bg-emerald-600"
                 : "bg-slate-900 text-white hover:bg-slate-800"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          {isIncome ? t("ie_add_income") : t("ie_add_expense")}
+          {busy ? "Saving…" : isIncome ? t("ie_add_income") : t("ie_add_expense")}
         </button>
       </div>
     </Modal>

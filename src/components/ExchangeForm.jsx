@@ -124,6 +124,7 @@ export default function ExchangeForm({
   initialData = null,
   onSubmit,
   onCancel,
+  submitting = false,
 }) {
   const { t } = useTranslation();
   const { getRate } = useRates();
@@ -936,24 +937,30 @@ export default function ExchangeForm({
           )}
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || submitting}
             className={`group relative flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-[12px] text-[15px] font-bold tracking-tight transition-all overflow-hidden ${
-              canSubmit
+              canSubmit && !submitting
                 ? "bg-slate-900 text-white hover:bg-slate-800 shadow-[0_10px_28px_-8px_rgba(15,23,42,0.45)] active:scale-[0.995]"
                 : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
             }`}
           >
-            <Zap className={`w-4 h-4 ${canSubmit ? "text-emerald-400" : "opacity-40"}`} />
-            <span>{isEdit ? t("save_changes") : t("create_transaction")}</span>
-            <span
-              className={`ml-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                canSubmit
-                  ? "bg-white/10 border-white/15 text-white/70"
-                  : "bg-slate-200 border-slate-300 text-slate-400"
-              }`}
-            >
-              ⌘ ↵
+            <Zap className={`w-4 h-4 ${canSubmit && !submitting ? "text-emerald-400" : "opacity-40"}`} />
+            <span>
+              {submitting
+                ? isEdit ? "Saving…" : "Creating…"
+                : isEdit ? t("save_changes") : t("create_transaction")}
             </span>
+            {!submitting && (
+              <span
+                className={`ml-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                  canSubmit
+                    ? "bg-white/10 border-white/15 text-white/70"
+                    : "bg-slate-200 border-slate-300 text-slate-400"
+                }`}
+              >
+                ⌘ ↵
+              </span>
+            )}
           </button>
         </div>
         {!canSubmit && (

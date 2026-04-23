@@ -66,24 +66,48 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const { obligations, cancelObligation } = useObligations();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
+  // Set ID'ов tx, по которым сейчас летит RPC — блокируем повторные клики.
+  const [busyIds, setBusyIds] = useState(() => new Set());
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const isBusy = (id) => busyIds.has(String(id));
+  const withBusy = async (id, fn) => {
+    const key = String(id);
+    if (busyIds.has(key)) return { ok: false, error: "already in progress" };
+    setBusyIds((prev) => new Set(prev).add(key));
+    try {
+      return await fn();
+    } finally {
+      setBusyIds((prev) => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    }
+  };
 
   const handleSendCrypto = async (tx, outputIndex, { txHash, network }) => {
     if (isSupabaseConfigured) {
-      await withToast(
-        () =>
-          rpcMarkDealSent({
-            dealId: tx.id,
-            legIndex: outputIndex,
-            txHash,
-            network: network || tx.outputs[outputIndex]?.network || null,
-          }),
-        { success: "Marked sent", errorPrefix: "Mark sent failed" }
-      );
-      logAudit({
-        action: "send",
-        entity: "transaction_output",
-        entityId: `${tx.id}#${outputIndex}`,
-        summary: `Sent crypto for #${tx.id} output ${outputIndex + 1}: tx ${txHash.slice(0, 10)}…`,
+      await withBusy(tx.id, async () => {
+        const res = await withToast(
+          () =>
+            rpcMarkDealSent({
+              dealId: tx.id,
+              legIndex: outputIndex,
+              txHash,
+              network: network || tx.outputs[outputIndex]?.network || null,
+            }),
+          { success: "Marked sent", errorPrefix: "Mark sent failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "send",
+            entity: "transaction_output",
+            entityId: `${tx.id}#${outputIndex}`,
+            summary: `Sent crypto for #${tx.id} output ${outputIndex + 1}: tx ${txHash.slice(0, 10)}…`,
+          });
+        }
+        return res;
       });
       return;
     }
@@ -102,15 +126,20 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
 
   const handleConfirmCryptoOut = async (tx, outputIndex) => {
     if (isSupabaseConfigured) {
-      await withToast(
-        () => rpcConfirmDealLeg(tx.id, outputIndex),
-        { success: "Leg confirmed", errorPrefix: "Confirm failed" }
-      );
-      logAudit({
-        action: "confirm",
-        entity: "transaction_output",
-        entityId: `${tx.id}#${outputIndex}`,
-        summary: `Confirmed on-chain for #${tx.id} output ${outputIndex + 1}`,
+      await withBusy(tx.id, async () => {
+        const res = await withToast(
+          () => rpcConfirmDealLeg(tx.id, outputIndex),
+          { success: "Leg confirmed", errorPrefix: "Confirm failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "confirm",
+            entity: "transaction_output",
+            entityId: `${tx.id}#${outputIndex}`,
+            summary: `Confirmed on-chain for #${tx.id} output ${outputIndex + 1}`,
+          });
+        }
+        return res;
       });
       return;
     }
@@ -132,24 +161,29 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   };
 
   const handleDeleteConfirmed = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteBusy) return;
     const tx = deleteTarget;
 
     if (isSupabaseConfigured) {
-      // delete_deal RPC уже: сносит movements, cancel'ит obligations, soft-delete deal.
-      const res = await withToast(
-        () => rpcDeleteDeal(tx.id, "manual"),
-        { success: "Deal deleted", errorPrefix: "Delete failed" }
-      );
-      if (res.ok) {
-        logAudit({
-          action: "delete",
-          entity: "transaction",
-          entityId: String(tx.id),
-          summary: `Deleted tx #${tx.id} · ${tx.curIn} ${tx.amtIn} → ${(tx.outputs || []).map((o) => `${o.amount} ${o.currency}`).join(" + ")}`,
-        });
+      setDeleteBusy(true);
+      try {
+        // delete_deal RPC уже: сносит movements, cancel'ит obligations, soft-delete.
+        const res = await withToast(
+          () => rpcDeleteDeal(tx.id, "manual"),
+          { success: "Deal deleted", errorPrefix: "Delete failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "delete",
+            entity: "transaction",
+            entityId: String(tx.id),
+            summary: `Deleted tx #${tx.id} · ${tx.curIn} ${tx.amtIn} → ${(tx.outputs || []).map((o) => `${o.amount} ${o.currency}`).join(" + ")}`,
+          });
+        }
+        setDeleteTarget(null);
+      } finally {
+        setDeleteBusy(false);
       }
-      setDeleteTarget(null);
       return;
     }
 
@@ -190,18 +224,21 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
 
   const handleComplete = async (tx) => {
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () => rpcCompleteDeal(tx.id),
-        { success: "Deal completed", errorPrefix: "Complete failed" }
-      );
-      if (res.ok) {
-        logAudit({
-          action: "update",
-          entity: "transaction",
-          entityId: String(tx.id),
-          summary: `[COMPLETED] Tx #${tx.id}: reserved cleared, IN/OUT closed`,
-        });
-      }
+      await withBusy(tx.id, async () => {
+        const res = await withToast(
+          () => rpcCompleteDeal(tx.id),
+          { success: "Deal completed", errorPrefix: "Complete failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "update",
+            entity: "transaction",
+            entityId: String(tx.id),
+            summary: `[COMPLETED] Tx #${tx.id}: reserved cleared, IN/OUT closed`,
+          });
+        }
+        return res;
+      });
       return;
     }
     const nowIso = new Date().toISOString();
@@ -650,11 +687,16 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       {tx.status === "pending" && canEdit && (
                         <button
                           onClick={() => handleComplete(tx)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+                          disabled={isBusy(tx.id)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                            isBusy(tx.id)
+                              ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                              : "bg-emerald-600 text-white hover:bg-emerald-700"
+                          }`}
                           title={t("complete_tx")}
                         >
                           <CheckCircle2 className="w-3 h-3" />
-                          {t("complete_tx")}
+                          {isBusy(tx.id) ? "…" : t("complete_tx")}
                         </button>
                       )}
                       {tx.status === "checking" && canEdit && (
@@ -700,7 +742,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                           </button>
                           <button
                             onClick={() => setDeleteTarget(tx)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600"
+                            disabled={isBusy(tx.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 disabled:opacity-40 disabled:cursor-not-allowed"
                             title="Delete transaction"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -818,8 +861,9 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
 
       <DeleteTxModal
         tx={deleteTarget}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => !deleteBusy && setDeleteTarget(null)}
         onConfirm={handleDeleteConfirmed}
+        busy={deleteBusy}
       />
 
       <SendCryptoModal
@@ -1138,7 +1182,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
 }
 
 // -------- Delete confirmation modal --------
-function DeleteTxModal({ tx, onCancel, onConfirm }) {
+function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
   if (!tx) return null;
   const isConfirmedCrypto = tx.status === "completed" && !!tx.confirmedTxHash;
   return (
@@ -1167,16 +1211,20 @@ function DeleteTxModal({ tx, onCancel, onConfirm }) {
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          disabled={busy}
+          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors disabled:opacity-60"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          className="px-4 py-2 rounded-[10px] bg-rose-600 text-white text-[13px] font-semibold hover:bg-rose-700 transition-colors inline-flex items-center gap-1.5"
+          disabled={busy}
+          className={`px-4 py-2 rounded-[10px] text-white text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+            busy ? "bg-rose-400 cursor-not-allowed" : "bg-rose-600 hover:bg-rose-700"
+          }`}
         >
           <Trash2 className="w-3 h-3" />
-          Delete & rollback
+          {busy ? "Deleting…" : "Delete & rollback"}
         </button>
       </div>
     </Modal>

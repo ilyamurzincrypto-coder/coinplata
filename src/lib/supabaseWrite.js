@@ -11,34 +11,117 @@ import { supabase, isSupabaseConfigured } from "./supabase.js";
 import { bumpDataVersion } from "./dataVersion.jsx";
 import { emitToast } from "./toast.jsx";
 
+// Supabase возвращает ошибки в виде { message, details, hint, code }.
+// Формируем человекочитаемый message без дублирования кода.
+function formatSupabaseError(error, context) {
+  if (!error) return "Unknown error";
+  const parts = [];
+  if (error.message) parts.push(error.message);
+  if (error.details && error.details !== error.message) parts.push(error.details);
+  if (error.hint && !parts.some((p) => p && p.includes(error.hint))) parts.push(error.hint);
+  const msg = parts.filter(Boolean).join(" · ") || "Unknown error";
+  // Логируем в консоль с контекстом — для debug, но не шумим stack trace'ами.
+  // eslint-disable-next-line no-console
+  console.warn(`[supabaseWrite]${context ? " " + context : ""} RPC error`, {
+    code: error.code,
+    message: error.message,
+    details: error.details,
+    hint: error.hint,
+  });
+  return msg;
+}
+
 function assertConfigured() {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase not configured");
   }
 }
 
-function unwrap({ data, error }) {
+function unwrap({ data, error }, context) {
   if (error) {
-    const msg = error.message || error.hint || "Unknown error";
-    throw new Error(msg);
+    throw new Error(formatSupabaseError(error, context));
   }
   return data;
 }
 
+// Guards — выбрасывают error если payload невалиден. Ловятся withToast выше по стеку.
+function requireNumber(value, field) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) {
+    throw new Error(`${field}: invalid number (${value})`);
+  }
+  return n;
+}
+
+function requirePositive(value, field) {
+  const n = requireNumber(value, field);
+  if (n <= 0) {
+    throw new Error(`${field}: must be > 0 (got ${n})`);
+  }
+  return n;
+}
+
+function requireCurrency(value, field) {
+  if (typeof value !== "string" || value.length < 2 || value.length > 10) {
+    throw new Error(`${field}: invalid currency "${value}"`);
+  }
+  return value.toUpperCase();
+}
+
+function requireUuid(value, field) {
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${field}: required`);
+  }
+  return value;
+}
+
+// Проверка — похоже ли значение на UUID (DB-ID), а не on локальный in-memory
+// префикс (cp_, u_, a_, tx_, ob_, m_, rs_, cat_, ie_, w_, tr_, p_, ch_, office_, evt_).
+// Используется чтобы не слать FK-битые строки в RPC.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export function isUuid(value) {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
+// Возвращает value если это UUID, иначе null.
+// Nickname сохранится в client_nickname столбце deal'а — связь не теряется.
+export function uuidOrNull(value) {
+  return isUuid(value) ? value : null;
+}
+
 // Переводит frontend deal.outputs → jsonb[] для RPC create_deal / update_deal.
+// Бросает error если outputs пустой или какой-то leg без amount/currency/rate.
 // Ключи snake_case, account_id uuid or null, network_id string or null.
 export function legsToJsonb(outputs) {
-  return (outputs || []).map((o) => ({
-    currency: o.currency,
-    amount: Number(o.amount) || 0,
-    rate: Number(o.rate) || 0,
-    account_id: o.accountId || null,
-    address: o.address || null,
-    network_id: o.network || null,
-  }));
+  if (!Array.isArray(outputs) || outputs.length === 0) {
+    throw new Error("Deal must have at least one output");
+  }
+  return outputs.map((o, idx) => {
+    const amount = Number(o.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error(`Output ${idx + 1}: invalid amount (${o.amount})`);
+    }
+    const rate = Number(o.rate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new Error(`Output ${idx + 1}: invalid rate (${o.rate})`);
+    }
+    if (typeof o.currency !== "string" || o.currency.length < 2) {
+      throw new Error(`Output ${idx + 1}: missing currency`);
+    }
+    return {
+      currency: o.currency.toUpperCase(),
+      amount,
+      rate,
+      account_id: o.accountId || null,
+      address: o.address ? String(o.address).trim() : null,
+      network_id: o.network || null,
+    };
+  });
 }
 
 // ---------- deals ----------
+
+const DEAL_STATUSES = new Set(["completed", "pending", "checking", "deleted"]);
 
 export async function rpcCreateDeal({
   officeId,
@@ -55,21 +138,29 @@ export async function rpcCreateDeal({
   outputs,
 }) {
   assertConfigured();
+  const validOffice = requireUuid(officeId, "officeId");
+  const validManager = requireUuid(managerId, "managerId");
+  const validCur = requireCurrency(currencyIn, "currencyIn");
+  const validAmt = requirePositive(amountIn, "amountIn");
+  const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
+  const legs = legsToJsonb(outputs); // бросит если что-то невалидно
+
   const dealId = unwrap(
     await supabase.rpc("create_deal", {
-      p_office_id: officeId,
-      p_manager_id: managerId,
+      p_office_id: validOffice,
+      p_manager_id: validManager,
       p_client_id: clientId || null,
-      p_client_nickname: clientNickname || null,
-      p_currency_in: currencyIn,
-      p_amount_in: Number(amountIn) || 0,
+      p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
+      p_currency_in: validCur,
+      p_amount_in: validAmt,
       p_in_account_id: inAccountId || null,
-      p_in_tx_hash: inTxHash || null,
+      p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
       p_referral: !!referral,
       p_comment: comment || "",
-      p_status: status || "completed",
-      p_legs: legsToJsonb(outputs),
-    })
+      p_status: validStatus,
+      p_legs: legs,
+    }),
+    "create_deal"
   );
   bumpDataVersion();
   return dealId;
@@ -90,62 +181,87 @@ export async function rpcUpdateDeal({
   outputs,
 }) {
   assertConfigured();
+  const validDealId = requirePositive(dealId, "dealId");
+  const validOffice = requireUuid(officeId, "officeId");
+  const validCur = requireCurrency(currencyIn, "currencyIn");
+  const validAmt = requirePositive(amountIn, "amountIn");
+  const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
+  const legs = legsToJsonb(outputs);
+
   unwrap(
     await supabase.rpc("update_deal", {
-      p_deal_id: Number(dealId),
-      p_office_id: officeId,
+      p_deal_id: validDealId,
+      p_office_id: validOffice,
       p_client_id: clientId || null,
-      p_client_nickname: clientNickname || null,
-      p_currency_in: currencyIn,
-      p_amount_in: Number(amountIn) || 0,
+      p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
+      p_currency_in: validCur,
+      p_amount_in: validAmt,
       p_in_account_id: inAccountId || null,
-      p_in_tx_hash: inTxHash || null,
+      p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
       p_referral: !!referral,
       p_comment: comment || "",
-      p_status: status || "completed",
-      p_legs: legsToJsonb(outputs),
-    })
+      p_status: validStatus,
+      p_legs: legs,
+    }),
+    "update_deal"
   );
   bumpDataVersion();
 }
 
 export async function rpcCompleteDeal(dealId) {
   assertConfigured();
-  unwrap(await supabase.rpc("complete_deal", { p_deal_id: Number(dealId) }));
+  const id = requirePositive(dealId, "dealId");
+  unwrap(
+    await supabase.rpc("complete_deal", { p_deal_id: id }),
+    "complete_deal"
+  );
   bumpDataVersion();
 }
 
 export async function rpcDeleteDeal(dealId, reason = "") {
   assertConfigured();
+  const id = requirePositive(dealId, "dealId");
   unwrap(
     await supabase.rpc("delete_deal", {
-      p_deal_id: Number(dealId),
+      p_deal_id: id,
       p_reason: reason || "",
-    })
+    }),
+    "delete_deal"
   );
   bumpDataVersion();
 }
 
 export async function rpcConfirmDealLeg(dealId, legIndex) {
   assertConfigured();
+  const id = requirePositive(dealId, "dealId");
+  const idx = requireNumber(legIndex, "legIndex");
+  if (idx < 0) throw new Error(`legIndex must be >= 0 (got ${idx})`);
   unwrap(
     await supabase.rpc("confirm_deal_leg", {
-      p_deal_id: Number(dealId),
-      p_leg_index: Number(legIndex),
-    })
+      p_deal_id: id,
+      p_leg_index: idx,
+    }),
+    "confirm_deal_leg"
   );
   bumpDataVersion();
 }
 
 export async function rpcMarkDealSent({ dealId, legIndex, txHash, network }) {
   assertConfigured();
+  const id = requirePositive(dealId, "dealId");
+  const idx = requireNumber(legIndex, "legIndex");
+  if (idx < 0) throw new Error(`legIndex must be >= 0 (got ${idx})`);
+  if (typeof txHash !== "string" || txHash.trim().length < 4) {
+    throw new Error("txHash: required");
+  }
   unwrap(
     await supabase.rpc("mark_deal_sent", {
-      p_deal_id: Number(dealId),
-      p_leg_index: Number(legIndex),
-      p_tx_hash: txHash,
+      p_deal_id: id,
+      p_leg_index: idx,
+      p_tx_hash: txHash.trim(),
       p_network: network || null,
-    })
+    }),
+    "mark_deal_sent"
   );
   bumpDataVersion();
 }
@@ -154,21 +270,26 @@ export async function rpcMarkDealSent({ dealId, legIndex, txHash, network }) {
 
 export async function rpcSettleObligation(obligationId, accountId) {
   assertConfigured();
+  const validOb = requireUuid(obligationId, "obligationId");
+  const validAcc = requireUuid(accountId, "accountId");
   unwrap(
     await supabase.rpc("settle_obligation", {
-      p_obligation_id: obligationId,
-      p_account_id: accountId,
-    })
+      p_obligation_id: validOb,
+      p_account_id: validAcc,
+    }),
+    "settle_obligation"
   );
   bumpDataVersion();
 }
 
 export async function rpcCancelObligation(obligationId) {
   assertConfigured();
+  const validOb = requireUuid(obligationId, "obligationId");
   unwrap(
     await supabase.rpc("cancel_obligation", {
-      p_obligation_id: obligationId,
-    })
+      p_obligation_id: validOb,
+    }),
+    "cancel_obligation"
   );
   bumpDataVersion();
 }
@@ -184,15 +305,23 @@ export async function rpcCreateTransfer({
   note,
 }) {
   assertConfigured();
+  const from = requireUuid(fromAccountId, "fromAccountId");
+  const to = requireUuid(toAccountId, "toAccountId");
+  if (from === to) throw new Error("From and To accounts must differ");
+  const fromAmt = requirePositive(fromAmount, "fromAmount");
+  const toAmt = requirePositive(toAmount, "toAmount");
+  const rateNum = rate == null ? null : requirePositive(rate, "rate");
+
   const id = unwrap(
     await supabase.rpc("create_transfer", {
-      p_from_account_id: fromAccountId,
-      p_to_account_id: toAccountId,
-      p_from_amount: Number(fromAmount) || 0,
-      p_to_amount: Number(toAmount) || 0,
-      p_rate: rate ? Number(rate) : null,
+      p_from_account_id: from,
+      p_to_account_id: to,
+      p_from_amount: fromAmt,
+      p_to_amount: toAmt,
+      p_rate: rateNum,
       p_note: note || "",
-    })
+    }),
+    "create_transfer"
   );
   bumpDataVersion();
   return id;
@@ -200,12 +329,15 @@ export async function rpcCreateTransfer({
 
 export async function rpcTopUp({ accountId, amount, note }) {
   assertConfigured();
+  const acc = requireUuid(accountId, "accountId");
+  const amt = requirePositive(amount, "amount");
   const id = unwrap(
     await supabase.rpc("topup_account", {
-      p_account_id: accountId,
-      p_amount: Number(amount) || 0,
+      p_account_id: acc,
+      p_amount: amt,
       p_note: note || "",
-    })
+    }),
+    "topup_account"
   );
   bumpDataVersion();
   return id;
@@ -215,12 +347,20 @@ export async function rpcTopUp({ accountId, amount, note }) {
 
 export async function rpcUpsertClientWallet({ clientId, address, network }) {
   assertConfigured();
+  const cId = requireUuid(clientId, "clientId");
+  if (typeof address !== "string" || address.trim().length < 8) {
+    throw new Error("address: required");
+  }
+  if (typeof network !== "string" || network.trim().length === 0) {
+    throw new Error("network: required");
+  }
   const id = unwrap(
     await supabase.rpc("upsert_client_wallet", {
-      p_client_id: clientId,
-      p_address: address,
+      p_client_id: cId,
+      p_address: address.trim(),
       p_network_id: network,
-    })
+    }),
+    "upsert_client_wallet"
   );
   bumpDataVersion();
   return id;
@@ -234,7 +374,8 @@ export async function rpcConfirmRates({ officeId, reason }) {
     await supabase.rpc("confirm_rates", {
       p_office_id: officeId || null,
       p_reason: reason || "",
-    })
+    }),
+    "confirm_rates"
   );
   bumpDataVersion();
   return id;
@@ -254,30 +395,42 @@ export async function insertExpense({
   createdBy,
 }) {
   assertConfigured();
+  if (type !== "income" && type !== "expense") {
+    throw new Error(`type: must be "income" or "expense"`);
+  }
+  const office = requireUuid(officeId, "officeId");
+  const cat = requireUuid(categoryId, "categoryId");
+  const amt = requirePositive(amount, "amount");
+  const cur = requireCurrency(currency, "currency");
+  if (typeof entryDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) {
+    throw new Error("entryDate: expected YYYY-MM-DD");
+  }
+
   const { data, error } = await supabase
     .from("expenses")
     .insert({
       type,
-      office_id: officeId,
+      office_id: office,
       account_id: accountId || null,
-      category_id: categoryId,
-      amount: Number(amount) || 0,
-      currency_code: currency,
+      category_id: cat,
+      amount: amt,
+      currency_code: cur,
       entry_date: entryDate,
       note: note || "",
       created_by: createdBy || null,
     })
     .select()
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(formatSupabaseError(error, "insert expense"));
   bumpDataVersion();
   return data;
 }
 
 export async function deleteExpenseById(id) {
   assertConfigured();
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  const validId = requireUuid(id, "id");
+  const { error } = await supabase.from("expenses").delete().eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "delete expense"));
   bumpDataVersion();
 }
 
@@ -285,32 +438,37 @@ export async function deleteExpenseById(id) {
 
 export async function insertClient({ nickname, fullName, telegram, tag, note }) {
   assertConfigured();
+  if (typeof nickname !== "string" || nickname.trim().length === 0) {
+    throw new Error("nickname: required");
+  }
   const { data, error } = await supabase
     .from("clients")
     .insert({
-      nickname,
-      full_name: fullName || nickname,
+      nickname: nickname.trim(),
+      full_name: (fullName || nickname).trim(),
       telegram: telegram || "",
       tag: tag || "",
       note: note || "",
     })
     .select()
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(formatSupabaseError(error, "insert client"));
   bumpDataVersion();
   return data;
 }
 
 export async function updateClient(id, patch) {
   assertConfigured();
+  const validId = requireUuid(id, "id");
   const dbPatch = {};
   if (patch.nickname !== undefined) dbPatch.nickname = patch.nickname;
   if (patch.name !== undefined) dbPatch.full_name = patch.name;
   if (patch.telegram !== undefined) dbPatch.telegram = patch.telegram;
   if (patch.tag !== undefined) dbPatch.tag = patch.tag;
   if (patch.note !== undefined) dbPatch.note = patch.note;
-  const { error } = await supabase.from("clients").update(dbPatch).eq("id", id);
-  if (error) throw new Error(error.message);
+  if (Object.keys(dbPatch).length === 0) return; // no-op
+  const { error } = await supabase.from("clients").update(dbPatch).eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "update client"));
   bumpDataVersion();
 }
 
@@ -338,6 +496,10 @@ export async function insertAuditEntry({ action, entity, entityId, summary }) {
 }
 
 // ---------- generic error toast helper ----------
+//
+// Обёртка над async-операцией: ловит throw, делает toast success/error,
+// возвращает { ok, result? | error? }. Никогда не ре-throw'ит — вызывающий
+// код читает .ok и сам решает что дальше.
 
 export async function withToast(fn, { success, errorPrefix = "Error" } = {}) {
   try {
@@ -346,6 +508,8 @@ export async function withToast(fn, { success, errorPrefix = "Error" } = {}) {
     return { ok: true, result };
   } catch (err) {
     const msg = err?.message || String(err);
+    // eslint-disable-next-line no-console
+    console.warn(`[withToast] ${errorPrefix}:`, err);
     emitToast("error", `${errorPrefix}: ${msg}`);
     return { ok: false, error: msg };
   }

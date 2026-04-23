@@ -3,7 +3,7 @@
 // При сохранении пересоздаём movements: сносим все по refId=tx.id и пишем новые.
 // Это упрощённая схема "rewrite" вместо полноценных compensating entries.
 
-import React from "react";
+import React, { useState } from "react";
 import Modal from "./ui/Modal.jsx";
 import ExchangeForm from "./ExchangeForm.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -15,7 +15,7 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcUpdateDeal, withToast } from "../lib/supabaseWrite.js";
+import { rpcUpdateDeal, withToast, uuidOrNull } from "../lib/supabaseWrite.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
@@ -23,40 +23,50 @@ export default function EditTransactionModal({ transaction, onClose }) {
   const { addEntry: logAudit } = useAudit();
   const { accounts, addMovement, removeMovementsByRefId } = useAccounts();
   const { currentUser } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
 
   if (!transaction) return null;
 
   const handleSubmit = async (updated) => {
+    if (submitting) return;
     const prevStatus = transaction.status || "completed";
     const nextStatus = updated.status || "completed";
 
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () =>
-          rpcUpdateDeal({
-            dealId: transaction.id,
-            officeId: updated.officeId,
-            clientId: updated.counterpartyId || null,
-            clientNickname: updated.counterparty || null,
-            currencyIn: updated.curIn,
-            amountIn: updated.amtIn,
-            inAccountId: updated.accountId || null,
-            inTxHash: updated.inTxHash || null,
-            referral: !!updated.referral,
-            comment: updated.comment || "",
-            status: nextStatus,
-            outputs: updated.outputs,
-          }),
-        { success: "Deal updated", errorPrefix: "Update failed" }
-      );
-      if (res.ok) {
-        logAudit({
-          action: "update",
-          entity: "transaction",
-          entityId: String(transaction.id),
-          summary: `Edited #${transaction.id} · status ${prevStatus} → ${nextStatus}`,
-        });
-        onClose?.();
+      setSubmitting(true);
+      try {
+        const res = await withToast(
+          () =>
+            rpcUpdateDeal({
+              dealId: transaction.id,
+              officeId: uuidOrNull(updated.officeId),
+              clientId: uuidOrNull(updated.counterpartyId),
+              clientNickname: updated.counterparty || null,
+              currencyIn: updated.curIn,
+              amountIn: updated.amtIn,
+              inAccountId: uuidOrNull(updated.accountId),
+              inTxHash: updated.inTxHash || null,
+              referral: !!updated.referral,
+              comment: updated.comment || "",
+              status: nextStatus,
+              outputs: (updated.outputs || []).map((o) => ({
+                ...o,
+                accountId: uuidOrNull(o.accountId),
+              })),
+            }),
+          { success: "Deal updated", errorPrefix: "Update failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "update",
+            entity: "transaction",
+            entityId: String(transaction.id),
+            summary: `Edited #${transaction.id} · status ${prevStatus} → ${nextStatus}`,
+          });
+          onClose?.();
+        }
+      } finally {
+        setSubmitting(false);
       }
       return;
     }
@@ -111,6 +121,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
         initialData={transaction}
         onSubmit={handleSubmit}
         onCancel={onClose}
+        submitting={submitting}
       />
     </Modal>
   );

@@ -14,12 +14,13 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, withToast } from "../lib/supabaseWrite.js";
+import { rpcCreateDeal, withToast, uuidOrNull } from "../lib/supabaseWrite.js";
 
 export default function CashierPage({ currentOffice }) {
   const [balanceScope, setBalanceScope] = useState("selected");
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const { addTransaction, updateTransaction } = useTransactions();
   const { addEntry: logAudit } = useAudit();
@@ -56,39 +57,51 @@ export default function CashierPage({ currentOffice }) {
   };
 
   const handleCreate = async (tx) => {
+    if (submitting) return; // double-click guard
     // DB-режим: всю логику (obligation decisions, movements, fee, profit)
     // берёт на себя RPC create_deal. Frontend только строит payload + бампает.
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () =>
-          rpcCreateDeal({
-            officeId: tx.officeId,
-            managerId: tx.managerId || currentUser.id,
-            clientId: tx.counterpartyId || null,
-            clientNickname: tx.counterparty || null,
-            currencyIn: tx.curIn,
-            amountIn: tx.amtIn,
-            inAccountId: tx.accountId || null,
-            inTxHash: tx.inTxHash || null,
-            referral: !!tx.referral,
-            comment: tx.comment || "",
-            status: tx.status || "completed",
-            outputs: tx.outputs,
-          }),
-        { success: "Deal created", errorPrefix: "Create deal failed" }
-      );
-      if (res.ok) {
-        setJustCreatedId(res.result);
-        setTimeout(() => setJustCreatedId(null), 2500);
-        const outStr = (tx.outputs || [])
-          .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
-          .join(" + ");
-        logAudit({
-          action: "create",
-          entity: "transaction",
-          entityId: String(res.result),
-          summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
-        });
+      setSubmitting(true);
+      try {
+        // Локальные cp_/a_ id не годятся для FK — пропускаем только UUID.
+        // Nickname сохраняется в client_nickname. TODO Stage 5: auto-insert
+        // нового клиента в clients при submit.
+        const res = await withToast(
+          () =>
+            rpcCreateDeal({
+              officeId: uuidOrNull(tx.officeId),
+              managerId: currentUser.id,
+              clientId: uuidOrNull(tx.counterpartyId),
+              clientNickname: tx.counterparty || null,
+              currencyIn: tx.curIn,
+              amountIn: tx.amtIn,
+              inAccountId: uuidOrNull(tx.accountId),
+              inTxHash: tx.inTxHash || null,
+              referral: !!tx.referral,
+              comment: tx.comment || "",
+              status: tx.status || "completed",
+              outputs: (tx.outputs || []).map((o) => ({
+                ...o,
+                accountId: uuidOrNull(o.accountId),
+              })),
+            }),
+          { success: "Deal created", errorPrefix: "Create deal failed" }
+        );
+        if (res.ok) {
+          setJustCreatedId(res.result);
+          setTimeout(() => setJustCreatedId(null), 2500);
+          const outStr = (tx.outputs || [])
+            .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
+            .join(" + ");
+          logAudit({
+            action: "create",
+            entity: "transaction",
+            entityId: String(res.result),
+            summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
+          });
+        }
+      } finally {
+        setSubmitting(false);
       }
       return;
     }
@@ -195,7 +208,7 @@ export default function CashierPage({ currentOffice }) {
 
       <div className="grid grid-cols-1 xl:grid-cols-[440px_1fr] gap-6 items-start">
         <section className="xl:sticky xl:top-[140px]">
-          <ExchangeForm mode="create" currentOffice={currentOffice} onSubmit={handleCreate} />
+          <ExchangeForm mode="create" currentOffice={currentOffice} onSubmit={handleCreate} submitting={submitting} />
         </section>
 
         <TransactionsTable

@@ -47,6 +47,7 @@ export default function RatesConfirmationBanner({ currentOffice }) {
   const officeNeedsRates = office ? shouldOfficeHaveRatesConfirmed(office, now) : false;
 
   const canConfirm = isAdmin || isAccountant;
+  const [busy, setBusy] = useState(false);
 
   // Кейс 1: подтверждено и не модифицировано — ничего не показываем.
   if (!office) return null;
@@ -54,19 +55,25 @@ export default function RatesConfirmationBanner({ currentOffice }) {
   if (isConfirmedToday && !modifiedAfterConfirmation) return null;
 
   const handleConfirm = async () => {
+    if (busy) return;
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () => rpcConfirmRates({ officeId: office.id, reason: "confirm" }),
-        { success: "Rates confirmed", errorPrefix: "Confirm failed" }
-      );
-      if (res.ok) {
-        confirmRates(currentUser.id); // локальный флаг — чтобы скрыть баннер сразу
-        logAudit({
-          action: "update",
-          entity: "rates",
-          entityId: "confirmation",
-          summary: `Confirmed today's rates (from ${office.name}) · snapshot ${String(res.result || "").slice(0, 14)}`,
-        });
+      setBusy(true);
+      try {
+        const res = await withToast(
+          () => rpcConfirmRates({ officeId: office.id, reason: "confirm" }),
+          { success: "Rates confirmed", errorPrefix: "Confirm failed" }
+        );
+        if (res.ok) {
+          confirmRates(currentUser.id);
+          logAudit({
+            action: "update",
+            entity: "rates",
+            entityId: "confirmation",
+            summary: `Confirmed today's rates (from ${office.name}) · snapshot ${String(res.result || "").slice(0, 14)}`,
+          });
+        }
+      } finally {
+        setBusy(false);
       }
       return;
     }
@@ -92,7 +99,7 @@ export default function RatesConfirmationBanner({ currentOffice }) {
         <span>{t("rates_modified_after")}</span>
         <OfficeChip office={office} tone="amber" />
         {canConfirm ? (
-          <ConfirmButton tone="amber" onClick={handleConfirm} label={t("rates_confirm_btn")} />
+          <ConfirmButton tone="amber" onClick={handleConfirm} label={busy ? "Confirming…" : t("rates_confirm_btn")} disabled={busy} />
         ) : (
           <ManagerHint tone="amber" />
         )}
@@ -106,7 +113,7 @@ export default function RatesConfirmationBanner({ currentOffice }) {
       <span>{t("rates_not_confirmed_banner")}</span>
       <OfficeChip office={office} tone="rose" />
       {canConfirm ? (
-        <ConfirmButton tone="rose" onClick={handleConfirm} label={t("rates_confirm_btn")} />
+        <ConfirmButton tone="rose" onClick={handleConfirm} label={busy ? "Confirming…" : t("rates_confirm_btn")} disabled={busy} />
       ) : (
         <ManagerHint tone="rose" />
       )}
@@ -147,7 +154,7 @@ function OfficeChip({ office, tone }) {
   );
 }
 
-function ConfirmButton({ tone, onClick, label }) {
+function ConfirmButton({ tone, onClick, label, disabled = false }) {
   const cls =
     tone === "rose"
       ? "bg-rose-600 hover:bg-rose-700"
@@ -155,7 +162,8 @@ function ConfirmButton({ tone, onClick, label }) {
   return (
     <button
       onClick={onClick}
-      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-white transition-colors ${cls}`}
+      disabled={disabled}
+      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       <CheckCircle2 className="w-3 h-3" />
       {label}

@@ -326,6 +326,7 @@ function SettleModal({ obligation, onClose, onSettle }) {
   const { accounts, balanceOf, reservedOf } = useAccounts();
   const [accountId, setAccountId] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
   const candidates = useMemo(() => {
     if (!obligation) return [];
@@ -355,13 +356,19 @@ function SettleModal({ obligation, onClose, onSettle }) {
   const canSubmit = selected && selected.available >= obligation.amount;
 
   const handleSubmit = async () => {
+    if (busy) return;
     setError("");
-    const res = await onSettle(obligation, accountId);
-    if (!res.ok) {
-      setError(res.warning || "Could not settle");
-      return;
+    setBusy(true);
+    try {
+      const res = await onSettle(obligation, accountId);
+      if (!res.ok) {
+        setError(res.warning || "Could not settle");
+        return;
+      }
+      onClose();
+    } finally {
+      setBusy(false);
     }
-    onClose();
   };
 
   return (
@@ -437,15 +444,15 @@ function SettleModal({ obligation, onClose, onSettle }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
-            canSubmit
+            canSubmit && !busy
               ? "bg-emerald-600 text-white hover:bg-emerald-700"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
           <ArrowRight className="w-3 h-3" />
-          Settle
+          {busy ? "Settling…" : "Settle"}
         </button>
       </div>
     </Modal>

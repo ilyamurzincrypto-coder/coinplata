@@ -29,6 +29,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   const [fromAmount, setFromAmount] = useState("");
   const [rate, setRate] = useState("");
   const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -77,29 +78,34 @@ export default function TransferModal({ open, fromAccount, onClose }) {
     (sameCurrency || (needsRate && rateNum > 0));
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
+    if (!canSubmit || busy) return;
 
     if (isSupabaseConfigured) {
-      const res = await withToast(
-        () =>
-          rpcCreateTransfer({
-            fromAccountId: from.id,
-            toAccountId: to.id,
-            fromAmount: fromAmt,
-            toAmount,
-            rate: sameCurrency ? null : rateNum,
-            note: note.trim(),
-          }),
-        { success: "Transfer recorded", errorPrefix: "Transfer failed" }
-      );
-      if (res.ok) {
-        logAudit({
-          action: "create",
-          entity: "transfer",
-          entityId: String(res.result || ""),
-          summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}`,
-        });
-        onClose();
+      setBusy(true);
+      try {
+        const res = await withToast(
+          () =>
+            rpcCreateTransfer({
+              fromAccountId: from.id,
+              toAccountId: to.id,
+              fromAmount: fromAmt,
+              toAmount,
+              rate: sameCurrency ? null : rateNum,
+              note: note.trim(),
+            }),
+          { success: "Transfer recorded", errorPrefix: "Transfer failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "create",
+            entity: "transfer",
+            entityId: String(res.result || ""),
+            summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}`,
+          });
+          onClose();
+        }
+      } finally {
+        setBusy(false);
       }
       return;
     }
@@ -265,14 +271,14 @@ export default function TransferModal({ open, fromAccount, onClose }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!canSubmit}
+          disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit
+            canSubmit && !busy
               ? "bg-slate-900 text-white hover:bg-slate-800"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          {t("transfer_confirm")}
+          {busy ? "Processing…" : t("transfer_confirm")}
         </button>
       </div>
     </Modal>
