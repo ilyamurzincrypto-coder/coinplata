@@ -1,19 +1,26 @@
 // src/components/ProfileMenu.jsx
-// Dropdown у аватара: change password (реальный), switch user (demo), logout (stub).
+// Dropdown у аватара.
+// DB mode: logout → supabase.auth.signOut; change password → Supabase updateUser;
+//          switch user скрыт (нужно logout + login заново).
+// Demo mode: switch user работает локально, logout/password = alert-stub.
 
 import React, { useState, useRef, useEffect } from "react";
-import { Camera, Key, LogOut, ShieldCheck, Crown, ChevronDown, Check, Users as UsersIcon } from "lucide-react";
+import { Camera, Key, LogOut, ShieldCheck, Crown, ChevronDown, Check, Users as UsersIcon, Loader2 } from "lucide-react";
 import { useAuth, ROLES } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import Modal from "./ui/Modal.jsx";
+import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { useToast } from "../lib/toast.jsx";
 
 export default function ProfileMenu() {
   const { t } = useTranslation();
   const { currentUser, users, isAdmin, isOwner, switchUser } = useAuth();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [switchError, setSwitchError] = useState("");
+  const [loggingOut, setLoggingOut] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -28,6 +35,31 @@ export default function ProfileMenu() {
   const stub = (msg) => {
     setOpen(false);
     alert(msg + " — will be wired to backend in next release.");
+  };
+
+  // LOGOUT — в DB mode вызываем supabase.auth.signOut. AuthGate ловит
+  // onAuthStateChange → session=null → показывает LoginPage.
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    if (!isSupabaseConfigured) {
+      setOpen(false);
+      alert("Demo mode: no active session to sign out of.");
+      return;
+    }
+    setLoggingOut(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast.error(`Logout failed: ${error.message}`);
+        setLoggingOut(false);
+        return;
+      }
+      // AuthGate переключит на LoginPage автоматически. Меню закроется
+      // вместе с unmount всего приложения.
+    } catch (err) {
+      toast.error(`Logout failed: ${err?.message || String(err)}`);
+      setLoggingOut(false);
+    }
   };
 
   const handleSwitch = (id) => {
@@ -95,12 +127,17 @@ export default function ProfileMenu() {
             >
               {t("change_password")}
             </MenuItem>
-            <MenuItem
-              icon={<UsersIcon className="w-3.5 h-3.5" />}
-              onClick={() => setSwitcherOpen((v) => !v)}
-            >
-              Switch user (demo)
-            </MenuItem>
+            {/* Switch user имеет смысл только в demo-режиме — там он
+                меняет локального currentUserId. В DB mode чтобы сменить
+                пользователя нужен полный logout + login через Supabase auth. */}
+            {!isSupabaseConfigured && (
+              <MenuItem
+                icon={<UsersIcon className="w-3.5 h-3.5" />}
+                onClick={() => setSwitcherOpen((v) => !v)}
+              >
+                Switch user (demo)
+              </MenuItem>
+            )}
           </div>
           {switcherOpen && (
             <div className="border-t border-slate-100 bg-slate-50/60 py-1 max-h-60 overflow-auto">
@@ -138,11 +175,18 @@ export default function ProfileMenu() {
           )}
           <div className="py-1 border-t border-slate-100">
             <MenuItem
-              icon={<LogOut className="w-3.5 h-3.5" />}
-              onClick={() => stub(t("logout"))}
+              icon={
+                loggingOut ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <LogOut className="w-3.5 h-3.5" />
+                )
+              }
+              onClick={handleLogout}
               danger
+              disabled={loggingOut}
             >
-              {t("logout")}
+              {loggingOut ? "Signing out…" : t("logout")}
             </MenuItem>
           </div>
         </div>
@@ -159,11 +203,12 @@ export default function ProfileMenu() {
   );
 }
 
-function MenuItem({ icon, children, onClick, danger }) {
+function MenuItem({ icon, children, onClick, danger, disabled = false }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-left transition-colors ${
+      disabled={disabled}
+      className={`w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
         danger ? "text-rose-600 hover:bg-rose-50" : "text-slate-700 hover:bg-slate-50"
       }`}
     >
@@ -181,6 +226,7 @@ function ChangePasswordModal({ open, onClose }) {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -189,19 +235,61 @@ function ChangePasswordModal({ open, onClose }) {
       setConfirm("");
       setError("");
       setSuccess(false);
+      setSubmitting(false);
     }
   }, [open]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError("");
-    if (newPass.length < 4) {
-      setError("New password must be at least 4 characters");
+    if (submitting) return;
+    if (newPass.length < 6) {
+      setError("New password must be at least 6 characters");
       return;
     }
     if (newPass !== confirm) {
       setError("Passwords don't match");
       return;
     }
+
+    // DB mode: подтверждаем old pass через re-sign-in, затем updateUser.
+    // Иначе stolen-token-риск: кто угодно с текущей сессией смог бы менять пароль.
+    if (isSupabaseConfigured) {
+      setSubmitting(true);
+      try {
+        const email = currentUser.email;
+        if (!email) {
+          setError("Current user has no email — cannot verify");
+          setSubmitting(false);
+          return;
+        }
+        const { error: signErr } = await supabase.auth.signInWithPassword({
+          email,
+          password: oldPass,
+        });
+        if (signErr) {
+          setError("Current password is incorrect");
+          setSubmitting(false);
+          return;
+        }
+        const { error: upErr } = await supabase.auth.updateUser({
+          password: newPass,
+        });
+        if (upErr) {
+          setError(upErr.message || "Could not update password");
+          setSubmitting(false);
+          return;
+        }
+        setSuccess(true);
+        setSubmitting(false);
+        setTimeout(onClose, 900);
+      } catch (err) {
+        setError(err?.message || "Could not change password");
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // Demo mode — in-memory password hash.
     const res = changeOwnPassword(oldPass, newPass);
     if (!res.ok) {
       setError(res.warning || "Could not change password");
@@ -214,9 +302,11 @@ function ChangePasswordModal({ open, onClose }) {
   return (
     <Modal open={open} onClose={onClose} title="Change password" subtitle={currentUser.name} width="md">
       <div className="p-5 space-y-3">
-        <div className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-          Demo accounts are seeded with password <span className="font-mono font-semibold">demo</span>.
-        </div>
+        {!isSupabaseConfigured && (
+          <div className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+            Demo accounts are seeded with password <span className="font-mono font-semibold">demo</span>.
+          </div>
+        )}
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
             Current password
@@ -272,14 +362,14 @@ function ChangePasswordModal({ open, onClose }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!oldPass || !newPass || !confirm || success}
+          disabled={!oldPass || !newPass || !confirm || success || submitting}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            oldPass && newPass && confirm && !success
+            oldPass && newPass && confirm && !success && !submitting
               ? "bg-slate-900 text-white hover:bg-slate-800"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          Change password
+          {submitting ? "Updating…" : "Change password"}
         </button>
       </div>
     </Modal>
