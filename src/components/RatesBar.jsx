@@ -3,7 +3,7 @@
 // Это ЕДИНСТВЕННОЕ место создания currencies / channels / pairs в системе.
 // Settings → Currencies — read-only справочник.
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import {
   TrendingUp,
   Pencil,
@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   Coins,
   Network as NetworkIcon,
+  ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { useRates, FEATURED_PAIRS, rateKey } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -61,26 +63,49 @@ function channelLabel(ch) {
   return ch.kind;
 }
 
+// Каждая пара = один блок с ДВУМЯ направлениями (buy / sell). Кассир сразу
+// видит и rate в одну сторону, и в обратную. Dropdown с cross-rates открывается
+// только по КЛИКУ (не hover — чтобы случайные движения мышью не раскрывали).
+const TRADE_PAIRS = [
+  ["USDT", "TRY"],
+  ["USDT", "USD"],
+  ["USDT", "EUR"],
+  ["USDT", "GBP"],
+  ["USD", "TRY"],
+];
+
 export default function RatesBar() {
   const { getRate, ratesFromBase, lastUpdated } = useRates();
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
-  // FIX: selection по INDEX, а не по base-валюте. Иначе если несколько featured
-  // pairs имеют одинаковый from (например USDT→TRY + USDT→USD), все "USDT" карточки
-  // подсвечиваются одновременно — double-active bug.
   const [activeIdx, setActiveIdx] = useState(null);
+  const wrapperRef = useRef(null);
 
-  const activePair = activeIdx != null ? FEATURED_PAIRS[activeIdx] : null;
-  const hoveredBase = activePair ? activePair[0] : null;
-  const expandData = hoveredBase ? ratesFromBase(hoveredBase) : [];
-  const crossPairs = expandData.filter((p) => p.to !== hoveredBase);
+  // Закрытие dropdown при клике вне блока.
+  useEffect(() => {
+    if (activeIdx == null) return;
+    const handler = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setActiveIdx(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [activeIdx]);
+
+  const activePair = activeIdx != null ? TRADE_PAIRS[activeIdx] : null;
+  const expandedBase = activePair ? activePair[0] : null;
+  const expandData = expandedBase ? ratesFromBase(expandedBase) : [];
+  const crossPairs = expandData.filter((p) => p.to !== expandedBase);
+
+  const handleToggle = (idx) => {
+    setActiveIdx((prev) => (prev === idx ? null : idx));
+  };
 
   return (
     <>
-      {/* Ограниченная max-width + центрирование. Избавляет от "размазанного" блока
-          на wide-screens и упорядочивает карточки. */}
-      <section className="relative max-w-[1200px] mx-auto">
+      <section className="relative">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
@@ -106,62 +131,97 @@ export default function RatesBar() {
         </div>
 
         <div
-          className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] relative"
-          onMouseLeave={() => setActiveIdx(null)}
+          ref={wrapperRef}
+          className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 p-2 gap-1.5">
-            {FEATURED_PAIRS.map(([from, to], idx) => {
-              const r = getRate(from, to);
+          {/* Grid из TRADE_PAIRS — каждая карточка содержит ДВА направления. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
+            {TRADE_PAIRS.map(([a, b], idx) => {
+              const rAB = getRate(a, b); // a → b
+              const rBA = getRate(b, a); // b → a
               const isActive = activeIdx === idx;
               return (
                 <button
-                  key={`${from}-${to}`}
+                  key={`${a}-${b}`}
                   type="button"
-                  onMouseEnter={() => setActiveIdx(idx)}
-                  onFocus={() => setActiveIdx(idx)}
-                  className={`text-left px-4 py-3.5 rounded-[12px] transition-colors outline-none ${
+                  onClick={() => handleToggle(idx)}
+                  className={`text-left px-3.5 py-3 rounded-[12px] transition-all outline-none border ${
                     isActive
-                      ? "bg-slate-900 text-white"
-                      : "bg-slate-50 hover:bg-slate-100 text-slate-900"
+                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]"
+                      : "bg-slate-50 hover:bg-white border-transparent hover:border-slate-200 hover:shadow-[0_2px_8px_-4px_rgba(15,23,42,0.08)]"
                   }`}
                 >
                   <div
-                    className={`text-[10px] font-bold tracking-[0.12em] mb-1 ${
+                    className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center gap-1 ${
                       isActive ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
-                    {from} <span className={isActive ? "text-slate-400" : "text-slate-300"}>→</span> {to}
+                    <span>{a}</span>
+                    <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
+                    <span>{b}</span>
                   </div>
-                  <div
-                    className={`text-[22px] font-bold tabular-nums tracking-tight leading-none ${
-                      isActive ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    {formatRate(r)}
+
+                  {/* A → B — основное направление, крупно */}
+                  <div className="flex items-baseline justify-between mb-1">
+                    <span
+                      className={`text-[10px] font-semibold ${
+                        isActive ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      <ArrowRight className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
+                      {b}
+                    </span>
+                    <span
+                      className={`text-[18px] font-bold tabular-nums tracking-tight leading-none ${
+                        isActive ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      {formatRate(rAB)}
+                    </span>
+                  </div>
+
+                  {/* B → A — обратное направление, чуть мельче */}
+                  <div className="flex items-baseline justify-between">
+                    <span
+                      className={`text-[10px] font-semibold ${
+                        isActive ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      <ArrowLeft className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
+                      {a}
+                    </span>
+                    <span
+                      className={`text-[14px] font-bold tabular-nums tracking-tight leading-none ${
+                        isActive ? "text-slate-200" : "text-slate-600"
+                      }`}
+                    >
+                      {formatRate(rBA)}
+                    </span>
                   </div>
                 </button>
               );
             })}
           </div>
 
+          {/* Dropdown с cross-rates. Открывается по клику, закрывается повторным
+              кликом или кликом вне. Scroll внутри если много пар. */}
           <div
             className={`overflow-hidden transition-all ease-out ${
-              hoveredBase && crossPairs.length > 0
-                ? "max-h-[360px] opacity-100 duration-200"
+              expandedBase && crossPairs.length > 0
+                ? "max-h-[320px] opacity-100 duration-200"
                 : "max-h-0 opacity-0 duration-150"
             }`}
           >
-            {hoveredBase && crossPairs.length > 0 && (
-              <div className="border-t border-slate-100 px-4 py-3.5">
-                <div className="flex items-center justify-between mb-2.5">
+            {expandedBase && crossPairs.length > 0 && (
+              <div className="border-t border-slate-100 px-4 py-3 max-h-[320px] overflow-y-auto">
+                <div className="flex items-center justify-between mb-2">
                   <div className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">
-                    All {hoveredBase} pairs
+                    All {expandedBase} pairs
                   </div>
                   <div className="text-[10px] text-slate-400 tabular-nums">
                     {crossPairs.length} {crossPairs.length === 1 ? "pair" : "pairs"}
                   </div>
                 </div>
-
                 <div className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1 auto-cols-[minmax(160px,1fr)]">
                   {crossPairs.map(({ to: t2, rate: r2 }) => (
                     <div

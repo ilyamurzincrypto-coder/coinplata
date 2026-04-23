@@ -155,17 +155,79 @@ export default function ExchangeForm({
   };
 
   // --- state ---
+  // В create mode пытаемся восстановить draft из sessionStorage — это
+  // позволяет форме переживать переходы на другие вкладки (Clients/Capital).
+  // В edit mode приоритет у initialData (мы редактируем конкретную сделку).
+  const DRAFT_KEY = "coinplata.exchangeDraft";
+  const draft = useMemo(() => {
+    if (mode !== "create" || initialData) return null;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  }, [mode, initialData]);
+
   const starter = useMemo(() => initFromTx(initialData), [initialData]);
-  const [curIn, setCurIn] = useState(starter?.curIn || "USDT");
-  const [amtIn, setAmtIn] = useState(starter?.amtIn || "");
-  const [outputs, setOutputs] = useState(starter?.outputs || [emptyOutput("TRY")]);
-  const [counterparty, setCounterparty] = useState(starter?.counterparty || "");
-  const [referral, setReferral] = useState(starter?.referral || false);
-  const [comment, setComment] = useState(starter?.comment || "");
-  const [accountId, setAccountId] = useState(initialData?.accountId || "");
-  const [isPending, setIsPending] = useState(initialData?.status === "pending");
+  const [curIn, setCurIn] = useState(starter?.curIn || draft?.curIn || "USDT");
+  const [amtIn, setAmtIn] = useState(starter?.amtIn || draft?.amtIn || "");
+  const [outputs, setOutputs] = useState(
+    starter?.outputs || draft?.outputs || [emptyOutput("TRY")]
+  );
+  const [counterparty, setCounterparty] = useState(
+    starter?.counterparty || draft?.counterparty || ""
+  );
+  const [referral, setReferral] = useState(
+    starter?.referral ?? draft?.referral ?? false
+  );
+  const [comment, setComment] = useState(starter?.comment || draft?.comment || "");
+  const [accountId, setAccountId] = useState(
+    initialData?.accountId || draft?.accountId || ""
+  );
+  const [isPending, setIsPending] = useState(
+    initialData?.status === "pending" || draft?.isPending || false
+  );
   const [flash, setFlash] = useState(false);
-  const [inTxHash, setInTxHash] = useState(starter?.inTxHash || "");
+  const [inTxHash, setInTxHash] = useState(
+    starter?.inTxHash || draft?.inTxHash || ""
+  );
+
+  // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
+  // Только для create mode — в edit draft не нужен.
+  useEffect(() => {
+    if (mode !== "create") return;
+    try {
+      // Проверяем есть ли хоть какой-то пользовательский ввод — нет смысла
+      // писать пустой draft. Это предотвращает "пустой resume" при повторных
+      // mount'ах без ввода.
+      const hasInput =
+        amtIn || counterparty || comment || inTxHash ||
+        (outputs && outputs.some((o) => o.amount || o.rate || o.address));
+      if (!hasInput) {
+        sessionStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      const payload = {
+        curIn,
+        amtIn,
+        outputs,
+        counterparty,
+        referral,
+        comment,
+        accountId,
+        isPending,
+        inTxHash,
+        savedAt: Date.now(),
+      };
+      sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch {
+      // quota exceeded / disabled — silent fail
+    }
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -507,13 +569,16 @@ export default function ExchangeForm({
     setTimeout(() => setFlash(false), 600);
     onSubmit?.(tx);
     if (mode === "create") {
-      // reset
+      // reset + clear draft
       setAmtIn("");
       setOutputs([emptyOutput("TRY")]);
       setCounterparty("");
       setReferral(false);
       setComment("");
       setInTxHash("");
+      try {
+        sessionStorage.removeItem("coinplata.exchangeDraft");
+      } catch {}
     }
   };
 

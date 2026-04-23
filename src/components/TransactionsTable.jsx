@@ -27,6 +27,7 @@ import Modal from "./ui/Modal.jsx";
 import Select from "./ui/Select.jsx";
 import { officeName } from "../store/data.js";
 import { useCurrencies } from "../store/currencies.jsx";
+import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -34,7 +35,7 @@ import { useAudit } from "../store/audit.jsx";
 import { useMonitoring } from "../store/monitoring.jsx";
 import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
-import { fmt } from "../utils/money.js";
+import { fmt, curSymbol } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
@@ -61,6 +62,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     unreserveMovementByOutputIndex,
   } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
+  const { base: baseCurrency, toBase } = useBaseCurrency();
   const { addEntry: logAudit } = useAudit();
   const { simulateIncoming } = useMonitoring();
   const { obligations, cancelObligation } = useObligations();
@@ -829,35 +831,76 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between text-[12px] flex-wrap gap-2">
-        <div className="text-slate-500">
-          {t("showing")}{" "}
-          <span className="font-semibold text-slate-900">{filtered.length}</span>{" "}
-          {t("transactions").toLowerCase()}
-        </div>
-        <div className="flex items-center gap-5">
-          <div>
-            <span className="text-slate-500">{t("total_fees")}: </span>
-            <span className="font-bold text-slate-900 tabular-nums">
-              ${fmt(filtered.reduce((s, tx) => s + (tx.fee || 0), 0))}
-            </span>
+      {/* Footer — totals по всем отфильтрованным (не только на странице) */}
+      {(() => {
+        // Считаем один раз, reuse в нескольких блоках.
+        let totalFees = 0;
+        let totalProfit = 0;
+        let totalVolumeBase = 0; // в base currency
+        let countPending = 0;
+        let countCompleted = 0;
+        filtered.forEach((tx) => {
+          totalFees += tx.fee || 0;
+          totalProfit += tx.profit || 0;
+          const vol = toBase(tx.amtIn || 0, tx.curIn);
+          totalVolumeBase += Number.isFinite(vol) ? vol : 0;
+          if (tx.status === "pending" || tx.status === "checking") countPending += 1;
+          else if (tx.status === "completed") countCompleted += 1;
+        });
+        const baseSym = curSymbol(baseCurrency);
+        return (
+          <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/40 flex items-center justify-between text-[12px] flex-wrap gap-3">
+            <div className="flex items-center gap-4 flex-wrap">
+              <span className="text-slate-500">
+                {t("showing")}{" "}
+                <span className="font-semibold text-slate-900 tabular-nums">
+                  {filtered.length}
+                </span>{" "}
+                {t("transactions").toLowerCase()}
+              </span>
+              {countCompleted > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="tabular-nums font-semibold">{countCompleted}</span>
+                  <span className="text-emerald-600/70">completed</span>
+                </span>
+              )}
+              {countPending > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] text-amber-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  <span className="tabular-nums font-semibold">{countPending}</span>
+                  <span className="text-amber-600/70">pending</span>
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-5 flex-wrap">
+              <div>
+                <span className="text-slate-500">Volume: </span>
+                <span className="font-bold text-slate-900 tabular-nums">
+                  {baseSym}
+                  {fmt(totalVolumeBase, baseCurrency)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">{t("total_fees")}: </span>
+                <span className="font-bold text-slate-900 tabular-nums">
+                  ${fmt(totalFees)}
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">{t("net_profit")}: </span>
+                <span
+                  className={`font-bold tabular-nums ${
+                    totalProfit >= 0 ? "text-emerald-600" : "text-rose-600"
+                  }`}
+                >
+                  {totalProfit >= 0 ? "+" : ""}${fmt(totalProfit)}
+                </span>
+              </div>
+            </div>
           </div>
-          <div>
-            <span className="text-slate-500">{t("net_profit")}: </span>
-            <span
-              className={`font-bold tabular-nums ${
-                filtered.reduce((s, tx) => s + tx.profit, 0) >= 0
-                  ? "text-emerald-600"
-                  : "text-rose-600"
-              }`}
-            >
-              {filtered.reduce((s, tx) => s + tx.profit, 0) >= 0 ? "+" : ""}$
-              {fmt(filtered.reduce((s, tx) => s + tx.profit, 0))}
-            </span>
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       <DeleteTxModal
         tx={deleteTarget}

@@ -1,18 +1,20 @@
 // src/components/RatesSidebar.jsx
-// Компактный вертикальный список курсов для CREATE-режима CashierPage.
-// Кассир всегда видит курсы пока заполняет форму (sticky слева).
-//
-// Layout: grid 4 rows × flow-col → первые 4 пары в первой колонке, остальные
-// автоматически сваливаются во вторую. Это даёт стабильное количество строк
-// независимо от того сколько featured pairs.
-//
-// НЕ содержит hover-dropdown как RatesBar — тут нет места и нет смысла,
-// все популярные пары уже видны.
+// Компактный вертикальный список торговых пар для CREATE-режима CashierPage.
+// Каждый блок = одна пара с двумя направлениями (a→b и b→a), как в RatesBar.
+// Кассир видит и покупку и продажу не переключая внимание.
 
 import React from "react";
-import { TrendingUp } from "lucide-react";
-import { useRates, FEATURED_PAIRS } from "../store/rates.jsx";
+import { TrendingUp, ArrowRight, ArrowLeft } from "lucide-react";
+import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+
+const TRADE_PAIRS = [
+  ["USDT", "TRY"],
+  ["USDT", "USD"],
+  ["USDT", "EUR"],
+  ["USDT", "GBP"],
+  ["USD", "TRY"],
+];
 
 function formatRate(value) {
   if (!value && value !== 0) return "—";
@@ -49,20 +51,37 @@ export default function RatesSidebar() {
         </span>
       </header>
 
-      {/* 4 строки в колонке. При >4 parах — свалится во вторую колонку. */}
-      <div className="p-2 grid grid-rows-4 grid-flow-col auto-cols-fr gap-1">
-        {FEATURED_PAIRS.map(([from, to]) => {
-          const r = getRate(from, to);
+      <div className="p-2 space-y-1">
+        {TRADE_PAIRS.map(([a, b]) => {
+          const rAB = getRate(a, b);
+          const rBA = getRate(b, a);
           return (
             <div
-              key={`${from}-${to}`}
-              className="px-3 py-2 rounded-[10px] bg-slate-50 hover:bg-slate-100 transition-colors"
+              key={`${a}-${b}`}
+              className="px-3 py-2 rounded-[10px] bg-slate-50"
             >
-              <div className="text-[9px] font-bold text-slate-500 tracking-[0.12em] mb-0.5">
-                {from} <span className="text-slate-300">→</span> {to}
+              <div className="text-[9px] font-bold text-slate-500 tracking-[0.12em] mb-1.5 inline-flex items-center gap-1">
+                <span>{a}</span>
+                <span className="text-slate-400">⇄</span>
+                <span>{b}</span>
               </div>
-              <div className="text-[15px] font-bold tabular-nums tracking-tight leading-none text-slate-900">
-                {formatRate(r)}
+              <div className="flex items-baseline justify-between mb-0.5">
+                <span className="text-[10px] font-semibold text-slate-500">
+                  <ArrowRight className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
+                  {b}
+                </span>
+                <span className="text-[13px] font-bold tabular-nums text-slate-900 leading-none">
+                  {formatRate(rAB)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[10px] font-semibold text-slate-500">
+                  <ArrowLeft className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
+                  {a}
+                </span>
+                <span className="text-[12px] font-bold tabular-nums text-slate-600 leading-none">
+                  {formatRate(rBA)}
+                </span>
               </div>
             </div>
           );

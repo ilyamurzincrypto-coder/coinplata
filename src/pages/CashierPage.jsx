@@ -18,30 +18,33 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 
-export default function CashierPage({ currentOffice }) {
+export default function CashierPage({
+  currentOffice,
+  mode = "dashboard",
+  setMode = () => {},
+  formMounted = false,
+  setFormMounted = () => {},
+}) {
   const [balanceScope, setBalanceScope] = useState("selected");
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Two modes:
-  //   "dashboard" — rates + balances + transactions + CTA. НЕТ формы.
-  //   "create"    — sticky rates слева + форма справа. Balances/transactions СКРЫТЫ.
-  //
-  // formMounted: флаг "форма в DOM". Когда true и mode='dashboard' — форма
-  // visually скрыта (display:none) но остаётся mount'нутой → state не теряется.
-  // При close form unmount'ится полностью.
-  const [mode, setMode] = useState("dashboard");
-  const [formMounted, setFormMounted] = useState(false);
+  // mode / formMounted теперь lifted в App.jsx, чтобы переживать переход
+  // на другие вкладки (Clients/Capital и т.д.). ExchangeForm сохраняет
+  // ввод через sessionStorage — draft восстанавливается при возврате.
 
   const openCreate = () => {
     setFormMounted(true);
     setMode("create");
   };
-  const minimizeCreate = () => setMode("dashboard"); // form stays mounted
+  const minimizeCreate = () => setMode("dashboard"); // form stays mounted + draft
   const closeCreate = () => {
     setMode("dashboard");
-    setFormMounted(false); // discard: form unmounts, state lost
+    setFormMounted(false); // discard: form unmounts
+    try {
+      sessionStorage.removeItem("coinplata.exchangeDraft");
+    } catch {}
   };
 
   // Hotkey N — открыть/вернуться в create. Escape — minimize.
@@ -280,7 +283,7 @@ export default function CashierPage({ currentOffice }) {
           />
 
           {/* CTA: "+ New exchange" ИЛИ "Resume exchange" если форма в memory. */}
-          <section className="max-w-[1200px] mx-auto">
+          <section>
             {formMounted ? (
               <button
                 onClick={openCreate}

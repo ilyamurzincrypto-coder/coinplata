@@ -46,6 +46,23 @@ function Root() {
   const [currentOffice, setCurrentOffice] = useState("mark");
   const can = useCan();
 
+  // Exchange mode lifted сюда чтобы переживать unmount CashierPage при
+  // переходе на Clients/Capital и т.д. Форма формально сбрасывается (ExchangeForm
+  // не выживает unmount), но sessionStorage draft восстановит ввод при возврате.
+  const [exchangeMode, setExchangeMode] = useState("dashboard");
+  const [formMounted, setFormMounted] = useState(false);
+
+  // AUTO-MINIMIZE: при переходе на любую страницу кроме cashier —
+  // сворачиваем сделку (mode → dashboard). formMounted остаётся true,
+  // так что при возврате на cashier кассир увидит "Resume exchange" CTA
+  // + draft восстановится из sessionStorage в ExchangeForm.
+  const handlePageChange = (nextPage) => {
+    if (nextPage !== "cashier" && exchangeMode === "create") {
+      setExchangeMode("dashboard");
+    }
+    setPage(nextPage);
+  };
+
   // Если на текущую страницу нет прав — отправляем на cashier
   useEffect(() => {
     const section = PAGE_SECTION[page];
@@ -60,12 +77,20 @@ function Root() {
     <div className="min-h-screen bg-[#f5f5f3] text-slate-900 font-sans">
       <Header
         page={page}
-        onPageChange={setPage}
+        onPageChange={handlePageChange}
         currentOffice={currentOffice}
         onOfficeChange={setCurrentOffice}
       />
       <RatesConfirmationBanner currentOffice={currentOffice} />
-      {page === "cashier" && canShow("cashier") && <CashierPage currentOffice={currentOffice} />}
+      {page === "cashier" && canShow("cashier") && (
+        <CashierPage
+          currentOffice={currentOffice}
+          mode={exchangeMode}
+          setMode={setExchangeMode}
+          formMounted={formMounted}
+          setFormMounted={setFormMounted}
+        />
+      )}
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
