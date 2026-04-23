@@ -703,14 +703,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 />
               </th>
               <th className="px-3 py-2.5 font-bold">{t("time")}</th>
-              <th className="px-3 py-2.5 font-bold">{t("type")}</th>
+              <th className="px-3 py-2.5 font-bold hidden sm:table-cell">{t("type")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("in")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("rate")}</th>
+              <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("rate")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("out")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("fee")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("profit")}</th>
-              <th className="px-3 py-2.5 font-bold">Risk</th>
-              <th className="px-3 py-2.5 font-bold">{t("manager")}</th>
+              <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("fee")}</th>
+              <th className="px-3 py-2.5 font-bold text-right hidden lg:table-cell">{t("profit")}</th>
+              <th className="px-3 py-2.5 font-bold hidden lg:table-cell">Risk</th>
+              <th className="px-3 py-2.5 font-bold hidden xl:table-cell">{t("manager")}</th>
               <th className="px-5 py-2.5 font-bold w-10"></th>
             </tr>
           </thead>
@@ -758,7 +758,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     <div className="font-semibold text-slate-900 tabular-nums">{tx.time}</div>
                     <div className="text-[11px] text-slate-400">{tx.date}</div>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3 hidden sm:table-cell">
                     <div className="flex items-center gap-1">
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
@@ -863,7 +863,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     <InStatusLine tx={tx} />
                   </td>
                   {/* RATE посередине — между IN и OUT, как просил кассир. */}
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">
                     {firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })}
                   </td>
                   {/* OUT: такая же структура как IN (amount + currency label). */}
@@ -877,8 +877,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       onConfirm={(idx) => handleConfirmCryptoOut(tx, idx)}
                     />
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600">${fmt(tx.fee)}</td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">${fmt(tx.fee)}</td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap hidden lg:table-cell">
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded-md text-[13px] font-bold tabular-nums ${
                         tx.profit === 0
@@ -891,7 +891,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       {tx.profit === 0 ? "—" : (profitUp ? "+" : "") + "$" + fmt(tx.profit)}
                     </span>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap hidden lg:table-cell">
                     {tx.riskLevel ? (
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
@@ -904,7 +904,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       <span className="text-[10px] text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
+                  <td className="px-3 py-3 whitespace-nowrap hidden xl:table-cell">
                     <div className="flex items-center gap-1.5">
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
                         {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}

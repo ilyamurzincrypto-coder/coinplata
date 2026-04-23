@@ -414,10 +414,10 @@ export default function ClientsPage() {
               <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
                 <th className="px-5 py-2.5 font-bold">{t("clients_name")}</th>
                 <th className="px-3 py-2.5 font-bold text-right">{t("clients_deals")}</th>
-                <th className="px-3 py-2.5 font-bold text-right">{t("clients_volume")}</th>
-                <th className="px-3 py-2.5 font-bold text-right">{t("clients_avg_ticket")}</th>
-                <th className="px-3 py-2.5 font-bold text-right">{t("clients_ltv")}</th>
-                <th className="px-5 py-2.5 font-bold">{t("clients_last_deal")}</th>
+                <th className="px-3 py-2.5 font-bold text-right hidden sm:table-cell">{t("clients_volume")}</th>
+                <th className="px-3 py-2.5 font-bold text-right hidden lg:table-cell">{t("clients_avg_ticket")}</th>
+                <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("clients_ltv")}</th>
+                <th className="px-5 py-2.5 font-bold hidden lg:table-cell">{t("clients_last_deal")}</th>
                 <th className="px-3 py-2.5 font-bold w-24 text-right"></th>
               </tr>
             </thead>
@@ -455,13 +455,13 @@ export default function ClientsPage() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums font-semibold">{c.deals}</td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-700">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-700 hidden sm:table-cell">
                     {sym}{fmt(c.volume, base)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-500">
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-500 hidden lg:table-cell">
                     {sym}{fmt(c.avgTicket, base)}
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums">
+                  <td className="px-3 py-3 text-right tabular-nums hidden md:table-cell">
                     <span
                       className={`inline-flex items-center px-2 py-1 rounded-md text-[13px] font-bold ${
                         c.ltv >= 0
@@ -472,7 +472,7 @@ export default function ClientsPage() {
                       {c.ltv >= 0 ? "+" : ""}{sym}{fmt(c.ltv, base)}
                     </span>
                   </td>
-                  <td className="px-5 py-3 text-slate-500 text-[12px] tabular-nums whitespace-nowrap">
+                  <td className="px-5 py-3 text-slate-500 text-[12px] tabular-nums whitespace-nowrap hidden lg:table-cell">
                     {c.lastDealDate}
                   </td>
                   <td

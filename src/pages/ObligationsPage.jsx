@@ -266,15 +266,15 @@ export default function ObligationsPage() {
           <table className="w-full text-[13px]">
             <thead>
               <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
-                <th className="px-5 py-2.5">Created</th>
+                <th className="px-5 py-2.5 hidden md:table-cell">Created</th>
                 <th className="px-3 py-2.5">Direction</th>
                 <th className="px-3 py-2.5">Client</th>
-                <th className="px-3 py-2.5">Office</th>
-                <th className="px-3 py-2.5 text-right">Amount</th>
-                <th className="px-3 py-2.5 text-right">Paid</th>
+                <th className="px-3 py-2.5 hidden lg:table-cell">Office</th>
+                <th className="px-3 py-2.5 text-right hidden sm:table-cell">Amount</th>
+                <th className="px-3 py-2.5 text-right hidden lg:table-cell">Paid</th>
                 <th className="px-3 py-2.5 text-right">Remaining</th>
-                <th className="px-3 py-2.5">Status</th>
-                <th className="px-3 py-2.5">Deal</th>
+                <th className="px-3 py-2.5 hidden md:table-cell">Status</th>
+                <th className="px-3 py-2.5 hidden xl:table-cell">Deal</th>
                 <th className="px-5 py-2.5 w-40"></th>
               </tr>
             </thead>
@@ -285,7 +285,7 @@ export default function ObligationsPage() {
                 const isOpen = o.status === "open";
                 return (
                   <tr key={o.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="px-5 py-3 whitespace-nowrap text-slate-500 tabular-nums">
+                    <td className="px-5 py-3 whitespace-nowrap text-slate-500 tabular-nums hidden md:table-cell">
                       {(o.createdAt || "").slice(0, 10)}
                     </td>
                     <td className="px-3 py-3">
@@ -303,20 +303,20 @@ export default function ObligationsPage() {
                     <td className="px-3 py-3 font-medium text-slate-900">
                       {clientName(o.clientId) || <span className="text-slate-400 italic">—</span>}
                     </td>
-                    <td className="px-3 py-3 text-slate-600">{officeName(o.officeId)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold">
+                    <td className="px-3 py-3 text-slate-600 hidden lg:table-cell">{officeName(o.officeId)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold hidden sm:table-cell">
                       {fmt(o.amount, o.currency)} {o.currency}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-slate-500">
+                    <td className="px-3 py-3 text-right tabular-nums text-slate-500 hidden lg:table-cell">
                       {(o.paidAmount || 0) > 0 ? fmt(o.paidAmount, o.currency) : "—"}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-bold text-slate-900">
-                      {fmt(rem, o.currency)}
+                    <td className="px-3 py-3 text-right tabular-nums font-bold text-slate-900 whitespace-nowrap">
+                      {fmt(rem, o.currency)} {o.currency}
                     </td>
-                    <td className="px-3 py-3">
+                    <td className="px-3 py-3 hidden md:table-cell">
                       <StatusBadge status={o.status} />
                     </td>
-                    <td className="px-3 py-3 text-slate-500 tabular-nums">
+                    <td className="px-3 py-3 text-slate-500 tabular-nums hidden xl:table-cell">
                       {o.dealId ? `#${o.dealId}` : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
