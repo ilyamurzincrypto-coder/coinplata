@@ -136,7 +136,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   // Fallback когда users=[] (DB mode, hydration ещё не завершилась).
-  // Минимальный shape чтобы UI не крашился на currentUser.name / .role / etc.
+  // status: "_loading" — сентинель чтобы Root мог отличить hydration-state
+  // от реального "active" и не пустил invited-юзера мельком в приложение.
   const currentUser =
     users.find((u) => u.id === currentUserId) ||
     users[0] ||
@@ -147,8 +148,8 @@ export function AuthProvider({ children }) {
       email: "",
       role: "manager",
       officeId: null,
-      status: "active",
-      active: true,
+      status: "_loading",
+      active: false,
     };
   const isOwner = currentUser.role === "owner";
   const isAdmin = currentUser.role === "admin" || currentUser.role === "owner"; // owner также считается admin

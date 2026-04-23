@@ -30,6 +30,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
 import { useAuth } from "./store/auth.jsx";
+import { onDataBump } from "./lib/dataVersion.jsx";
 import { DataVersionProvider } from "./lib/dataVersion.jsx";
 import { ToastProvider } from "./lib/toast.jsx";
 import { RealtimeProvider } from "./lib/realtime.jsx";
@@ -50,12 +51,19 @@ function Root() {
   const [currentOffice, setCurrentOffice] = useState("mark");
   const can = useCan();
 
-  // Activation gate: приглашённый пользователь кликнул magic-link, имеет
-  // валидную session, но profile.status = 'invited' → заставляем установить
-  // пароль прежде чем пустить в приложение. После save он станет 'active'
-  // (через bumpDataVersion в SetPasswordPage → AuthProvider реhydrate).
-  if (isSupabaseConfigured && currentUser?.status === "invited") {
-    return <SetPasswordPage />;
+  // Activation gate: invited → SetPasswordPage; loading → ждём, чтобы
+  // invited-user не увидел основное приложение даже на долю секунды.
+  if (isSupabaseConfigured) {
+    if (currentUser?.status === "_loading") {
+      return (
+        <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center text-slate-500 text-[13px]">
+          Loading workspace…
+        </div>
+      );
+    }
+    if (currentUser?.status === "invited") {
+      return <SetPasswordPage />;
+    }
   }
 
   // Exchange mode lifted сюда чтобы переживать unmount CashierPage при
@@ -123,6 +131,10 @@ function Root() {
 function AuthGate({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [forcePreview, setForcePreview] = useState(false);
+  // profileStatus: undefined = loading, null = no row, 'active'|'invited'|'disabled'
+  // Нужен чтобы invited-user сразу попал на SetPasswordPage без мельканий
+  // основного приложения.
+  const [profileStatus, setProfileStatus] = useState(undefined);
 
   useEffect(() => {
     // Preview-режим через URL
@@ -140,12 +152,10 @@ function AuthGate({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setSession(null);
+      setProfileStatus(null);
       return;
     }
     let unsub;
-    // Safety timeout: если getSession по какой-то причине висит > 5s,
-    // не держим пользователя на Loading экране — переводим в "нет сессии"
-    // → покажется LoginPage, можно войти заново.
     const stuckTimer = setTimeout(() => {
       setSession((prev) => (prev === undefined ? null : prev));
     }, 5000);
@@ -171,6 +181,50 @@ function AuthGate({ children }) {
     };
   }, []);
 
+  // Fetch profile status отдельным запросом — до рендера children. Нужен для
+  // магического линка: invited-юзер должен ПРЯМО сразу попасть на
+  // SetPasswordPage, без промелькания основного приложения.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    if (!session?.user?.id) {
+      setProfileStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("status")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.warn("[authgate] profile status error", error);
+          setProfileStatus(null);
+          return;
+        }
+        // Если row нет (триггер не успел / RLS заблокировал) — трактуем как
+        // invited (безопаснее): лучше лишний раз отправить на SetPasswordPage
+        // чем пустить в приложение без профиля.
+        setProfileStatus(data?.status || "invited");
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[authgate] profile status threw", err);
+        setProfileStatus(null);
+      }
+    };
+    fetchStatus();
+    // Re-check при bumpDataVersion (сохранение пароля → status='active'
+    // → AuthGate увидит и пустит в приложение).
+    const unsub = onDataBump(fetchStatus);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [session]);
+
   // Preview форсится даже когда demo / сессия есть.
   if (forcePreview) return <LoginPage />;
 
@@ -184,8 +238,24 @@ function AuthGate({ children }) {
       );
     }
     if (!session) return <LoginPage />;
+    // Есть session — показываем loading до того как profileStatus подгрузится,
+    // чтобы invited-юзер не видел ни мельком основного приложения.
+    if (profileStatus === undefined) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 text-[13px]">
+          Loading…
+        </div>
+      );
+    }
+    // disabled (отключённый админом) → обратно на login + close session.
+    if (profileStatus === "disabled") {
+      supabase.auth.signOut().catch(() => {});
+      return <LoginPage />;
+    }
+    // status='invited' — дальше рендерим children, но Root увидит это через
+    // useAuth().currentUser.status и покажет SetPasswordPage.
   }
-  // Demo-режим или authenticated — рендерим приложение.
+  // Demo или authenticated — рендерим children (Root сам проверит invited).
   return children;
 }
 
