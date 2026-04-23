@@ -799,7 +799,11 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       ) : (
                         <div
                           className="opacity-0 group-hover:opacity-60 p-1.5 text-slate-400"
-                          title={isDeleted ? "Deleted" : t("not_your_tx")}
+                          title={
+                            isDeleted
+                              ? `Deleted · your role: ${currentUser?.role || "unknown"}`
+                              : `${t("not_your_tx")} · created by ${tx.manager || "—"} · your role: ${currentUser?.role || "unknown"}`
+                          }
                         >
                           <Lock className="w-3.5 h-3.5" />
                         </div>
