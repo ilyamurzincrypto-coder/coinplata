@@ -8,15 +8,17 @@
 // Data sources — только accounts store.
 // Pending сделки пишут movements с reserved:true — это меняет reservedOf автоматически.
 
-import React, { useMemo } from "react";
-import { Wallet, Banknote, Building2, Coins, Clock, Layers, CheckCircle2 } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Wallet, Banknote, Building2, Coins, Clock, Layers, CheckCircle2, Lock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
+import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
+import ObligationsModal from "./ObligationsModal.jsx";
 
 const NETWORK_RX = /\b(TRC20|ERC20|BEP20)\b/i;
 const detectNetwork = (name) => {
@@ -294,6 +296,8 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
   const { activeOffices, findOffice } = useOffices();
   const { dict: currencyDict } = useCurrencies();
   const { base, toBase } = useBaseCurrency();
+  const { obligations, openCount: openObligationsCount } = useObligations();
+  const [obligationsOpen, setObligationsOpen] = useState(false);
 
   const officesToRender = useMemo(() => {
     if (scope === "all") return activeOffices;
@@ -301,7 +305,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
 
-  // Grand totals
+  // Grand totals + obligations
   const grand = useMemo(() => {
     const relevant =
       scope === "all"
@@ -313,8 +317,20 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       total += toBase(balanceOf(a.id), a.currency);
       reserved += toBase(reservedOf(a.id), a.currency);
     });
-    return { total, reserved, available: total - reserved, hasReserved: reserved > 0 };
-  }, [accounts, scope, currentOffice, balanceOf, reservedOf, toBase]);
+    // Obligations в scope — все open we_owe по relevant офисам в base.
+    const officeIds = new Set(relevant.map((a) => a.officeId));
+    const obligationsBase = obligations
+      .filter((o) => o.status === "open" && o.direction === "we_owe" && officeIds.has(o.officeId))
+      .reduce((s, o) => s + toBase(o.amount, o.currency), 0);
+    return {
+      total,
+      reserved,
+      obligations: obligationsBase,
+      available: total - reserved - obligationsBase,
+      hasReserved: reserved > 0,
+      hasObligations: obligationsBase > 0,
+    };
+  }, [accounts, scope, currentOffice, balanceOf, reservedOf, toBase, obligations]);
 
   const sym = curSymbol(base);
 
@@ -350,6 +366,22 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
             {grand.hasReserved && (
               <SummaryBadge label="Pending" value={grand.reserved} sym={sym} tone="amber" icon={Clock} />
             )}
+            {grand.hasObligations && (
+              <button
+                type="button"
+                onClick={() => setObligationsOpen(true)}
+                className="flex flex-col items-start rounded-md px-2.5 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+                title="Open obligations — click to settle"
+              >
+                <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
+                  <Lock className="w-2.5 h-2.5" />
+                  Obligations · {openObligationsCount}
+                </div>
+                <div className="text-[13px] font-semibold tabular-nums">
+                  {sym}{fmt(grand.obligations)}
+                </div>
+              </button>
+            )}
             <SummaryBadge
               label="Available"
               value={grand.available}
@@ -370,6 +402,8 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
           />
         </div>
       </div>
+
+      <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
 
       {/* Unified container */}
       <div className="w-full bg-white rounded-[14px] border border-slate-200/70 p-4 md:p-5">

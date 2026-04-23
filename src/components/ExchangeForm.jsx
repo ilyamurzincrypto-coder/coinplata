@@ -53,6 +53,7 @@ import {
 } from "../utils/money.js";
 import { useWallets } from "../store/wallets.jsx";
 import { useRateHistory } from "../store/rateHistory.jsx";
+import { useObligations } from "../store/obligations.jsx";
 import {
   resolveTxHash,
   detectNetworkFromAddress,
@@ -131,6 +132,7 @@ export default function ExchangeForm({
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
   const { upsertWallet, findWallet } = useWallets();
   const { snapshots: rateSnapshots } = useRateHistory();
+  const { addObligation, openWeOweByOfficeCurrency } = useObligations();
 
   const isCryptoCode = (code) => currencyDict[code]?.type === "crypto";
 

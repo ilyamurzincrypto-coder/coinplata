@@ -9,6 +9,8 @@ import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAuth } from "../store/auth.jsx";
+import { useObligations } from "../store/obligations.jsx";
+import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 
@@ -17,36 +19,103 @@ export default function CashierPage({ currentOffice }) {
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
 
-  const { addTransaction } = useTransactions();
+  const { addTransaction, updateTransaction } = useTransactions();
   const { addEntry: logAudit } = useAudit();
-  const { accounts, addMovement, removeMovementsByRefId } = useAccounts();
+  const { accounts, addMovement, removeMovementsByRefId, balanceOf, reservedOf } = useAccounts();
   const { currentUser } = useAuth();
+  const { addObligation, openWeOweByOfficeCurrency } = useObligations();
+
+  // Находит легы, для которых не хватает available — они станут obligations.
+  // Правило: проверяется доступное по КОНКРЕТНОМУ выбранному аккаунту
+  //   available = balanceOf(acc) - reservedOf(acc) - уже-зарезервированное-выше-в-этой-сделке
+  // Open obligations по office+currency также учитываются (не даём повторно зарезервировать
+  // то что уже обещано).
+  const detectObligationLegs = (tx) => {
+    const set = new Set();
+    const committed = new Map(); // accountId → сколько уже зарезервировали в legs выше
+    const outs = tx.outputs || [];
+    outs.forEach((leg, idx) => {
+      if (!leg.accountId) return; // без account сделка уже с warning, не obligation
+      const acc = accounts.find((a) => a.id === leg.accountId);
+      if (!acc) return;
+      const balance = balanceOf(leg.accountId);
+      const reserved = reservedOf(leg.accountId);
+      const priorCommit = committed.get(leg.accountId) || 0;
+      // Open we_owe по office+currency — уменьшает пул (деньги уже обещаны).
+      const owedOnOfficeCurrency = openWeOweByOfficeCurrency(acc.officeId, leg.currency);
+      const available = balance - reserved - priorCommit - owedOnOfficeCurrency;
+      if (available < leg.amount) {
+        set.add(idx);
+      } else {
+        committed.set(leg.accountId, priorCommit + leg.amount);
+      }
+    });
+    return set;
+  };
 
   const handleCreate = (tx) => {
-    addTransaction(tx);
-    setJustCreatedId(tx.id);
-    setTimeout(() => setJustCreatedId(null), 2500);
-
-    // Защита от дублей
+    // 1. Защита от дублей
     removeMovementsByRefId(tx.id);
 
-    // Pending сделки ТОЖЕ создают movements — но с флагом reserved: true
-    // (внутри buildMovementsFromTransaction на основе tx.status === "pending").
-    // balanceOf() видит их в total, reservedOf() — в reserved, availableOf = total - reserved.
-    const { movements, warnings } = buildMovementsFromTransaction(tx, accounts, currentUser.id);
+    // 2. Ищем легы с недостатком available → obligations.
+    const obligationLegs = detectObligationLegs(tx);
+
+    // 3. Если есть obligations — сделка форсится в 'pending' (неважно что пришло).
+    //    Инвариант: баланс не уходит в минус.
+    const finalTx = obligationLegs.size > 0
+      ? { ...tx, status: "pending", hasObligations: true }
+      : tx;
+
+    addTransaction(finalTx);
+    setJustCreatedId(finalTx.id);
+    setTimeout(() => setJustCreatedId(null), 2500);
+
+    // 4. Создаём movements (OUT по obligation-легам пропускаем).
+    const { movements, warnings } = buildMovementsFromTransaction(
+      finalTx,
+      accounts,
+      currentUser.id,
+      { obligationLegs }
+    );
     movements.forEach(addMovement);
 
-    // Audit log
-    const outStr = (tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut }])
+    // 5. Для каждой obligation-леги — создаём we_owe obligation.
+    const obligationSummaries = [];
+    obligationLegs.forEach((idx) => {
+      const leg = (finalTx.outputs || [])[idx];
+      if (!leg) return;
+      const acc = accounts.find((a) => a.id === leg.accountId);
+      if (!acc) return;
+      addObligation({
+        officeId: acc.officeId,
+        dealId: finalTx.id,
+        dealLegIndex: idx,
+        clientId: finalTx.counterpartyId || null,
+        currency: leg.currency,
+        amount: leg.amount,
+        direction: "we_owe",
+        note: `Deal #${finalTx.id} — insufficient ${leg.currency} in ${officeName(acc.officeId)}`,
+        createdBy: currentUser.id,
+      });
+      obligationSummaries.push(`${fmt(leg.amount, leg.currency)} ${leg.currency}`);
+    });
+
+    // 6. Audit log.
+    const outStr = (finalTx.outputs || [{ currency: finalTx.curOut, amount: finalTx.amtOut }])
       .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
       .join(" + ");
-    const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} missing account(s)` : "";
-    const statusPrefix = tx.status === "pending" ? "[PENDING/RESERVED] " : "";
+    const warnSuffix = warnings.length > 0 ? ` · ⚠ ${warnings.length} warn` : "";
+    const oblSuffix = obligationSummaries.length
+      ? ` · 🔒 ${obligationSummaries.length} obligation(s): ${obligationSummaries.join(", ")}`
+      : "";
+    const statusPrefix =
+      finalTx.status === "pending" ? (obligationLegs.size ? "[PENDING/OBLIGATION] " : "[PENDING/RESERVED] ")
+        : finalTx.status === "checking" ? "[CHECKING] " : "";
     logAudit({
       action: "create",
       entity: "transaction",
-      entityId: String(tx.id),
-      summary: `${statusPrefix}${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr} · fee $${fmt(tx.fee)}${warnSuffix}`,
+      entityId: String(finalTx.id),
+      summary: `${statusPrefix}${fmt(finalTx.amtIn, finalTx.curIn)} ${finalTx.curIn} → ${outStr} · fee $${fmt(finalTx.fee)}${warnSuffix}${oblSuffix}`,
     });
   };
 

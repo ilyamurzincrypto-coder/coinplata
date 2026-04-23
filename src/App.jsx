@@ -25,6 +25,7 @@ import { WalletsProvider } from "./store/wallets.jsx";
 import { MonitoringProvider } from "./store/monitoring.jsx";
 import { CategoriesProvider } from "./store/categories.jsx";
 import { RateHistoryProvider } from "./store/rateHistory.jsx";
+import { ObligationsProvider } from "./store/obligations.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
 
@@ -141,11 +142,13 @@ export default function App() {
                       <CategoriesProvider>
                       <IncomeExpenseProvider>
                         <TransactionsProvider>
+                          <ObligationsProvider>
                           <WalletsProvider>
                             <MonitoringProvider>
                               <Root />
                             </MonitoringProvider>
                           </WalletsProvider>
+                          </ObligationsProvider>
                         </TransactionsProvider>
                       </IncomeExpenseProvider>
                       </CategoriesProvider>

@@ -12,7 +12,10 @@
 //   В обоих случаях movements получают reserved: true. Когда статус переходит
 //   в "completed" — вызывающий код делает unreserveMovementsByRefId().
 
-export function buildMovementsFromTransaction(tx, accounts, createdBy) {
+// opts.obligationLegs — Set<index> легов, для которых OUT movement НЕ создаётся
+// (деньги обещаны но не выданы — висит as obligation в store/obligations).
+export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}) {
+  const obligationLegs = opts.obligationLegs || new Set();
   const movements = [];
   const warnings = [];
   const isReserved = tx.status === "pending" || tx.status === "checking";
@@ -47,6 +50,12 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy) {
     : [];
 
   outs.forEach((out, index) => {
+    if (obligationLegs.has(index)) {
+      warnings.push(
+        `OUT #${index + 1}: insufficient balance → obligation created (${out.amount} ${out.currency})`
+      );
+      return; // movement не создаём — висит obligation, деньги не списываются
+    }
     if (!out.accountId || !hasAccount(out.accountId)) {
       warnings.push(`OUT #${index + 1}: account not selected (${out.amount} ${out.currency})`);
       return;
