@@ -72,6 +72,19 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
   const [detailTarget, setDetailTarget] = useState(null); // tx для detail modal
+  // Bulk selection: Set с ID выбранных строк для batch actions + CSV export.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkRunning, setBulkRunning] = useState(false);
+
+  const toggleRowSelected = (id) => {
+    const k = String(id);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
+      return next;
+    });
+  };
   // Set ID'ов tx, по которым сейчас летит RPC — блокируем повторные клики.
   const [busyIds, setBusyIds] = useState(() => new Set());
   const [deleteBusy, setDeleteBusy] = useState(false);
@@ -367,6 +380,128 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const pinnedTxs = useMemo(() => filtered.filter((tx) => tx.pinned), [filtered]);
   const regularTxs = useMemo(() => filtered.filter((tx) => !tx.pinned), [filtered]);
 
+  // Все видимые на экране tx (pinned + regular page) — для select-all.
+  const visibleIds = useMemo(
+    () => [...pinnedTxs, ...regularTxs].map((t) => String(t.id)),
+    [pinnedTxs, regularTxs]
+  );
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) {
+      // unselect все visible
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        visibleIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        visibleIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // Returns tx objects from filtered (not just visible) по selected IDs
+  const getSelectedTxs = () => {
+    const keys = selectedIds;
+    return filtered.filter((t) => keys.has(String(t.id)));
+  };
+
+  // CSV export: если есть selection — только выбранные, иначе все filtered.
+  // Поля: id, date, time, office, status, curIn, amtIn, curOut, amtOut, rate,
+  //       fee, profit, counterparty, manager, comment.
+  const handleExportCSV = () => {
+    const rows = selectedIds.size > 0 ? getSelectedTxs() : filtered;
+    if (rows.length === 0) return;
+    const esc = (v) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (/[",\n;]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const header = [
+      "id", "date", "time", "office", "status",
+      "curIn", "amtIn", "curOut", "amtOut", "rate",
+      "fee", "profit", "counterparty", "manager", "comment",
+    ];
+    const lines = [header.join(",")];
+    rows.forEach((r) => {
+      const firstOut = (r.outputs || [])[0] || {};
+      lines.push([
+        esc(r.id),
+        esc(r.date),
+        esc(r.time),
+        esc(officeName(r.officeId)),
+        esc(r.status),
+        esc(r.curIn),
+        esc(r.amtIn),
+        esc(firstOut.currency || r.curOut),
+        esc(firstOut.amount ?? r.amtOut),
+        esc(firstOut.rate ?? r.rate),
+        esc(r.fee),
+        esc(r.profit),
+        esc(r.counterparty || ""),
+        esc(r.manager || ""),
+        esc(r.comment || ""),
+      ].join(","));
+    });
+    const csv = lines.join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `coinplata-transactions-${stamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Batch complete — только для pending / checking.
+  const handleBulkComplete = async () => {
+    if (bulkRunning) return;
+    const targets = getSelectedTxs().filter(
+      (t) => t.status === "pending" || t.status === "checking"
+    );
+    if (targets.length === 0) return;
+    if (!confirm(`Complete ${targets.length} pending deal(s)?`)) return;
+    setBulkRunning(true);
+    let success = 0;
+    let failed = 0;
+    try {
+      for (const tx of targets) {
+        try {
+          if (isSupabaseConfigured) {
+            await rpcCompleteDeal(tx.id);
+          } else {
+            completeTransaction(tx.id);
+            unreserveMovementsByRefId(tx.id);
+          }
+          success += 1;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("bulk complete failed for", tx.id, err);
+          failed += 1;
+        }
+      }
+      logAudit({
+        action: "update",
+        entity: "transaction",
+        entityId: "bulk",
+        summary: `Bulk complete: ${success} succeeded, ${failed} failed`,
+      });
+      clearSelection();
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(regularTxs.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pagedRegular = useMemo(() => {
@@ -508,12 +643,66 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         )}
       </div>
 
+      {/* Bulk action bar — показываем только когда что-то выбрано. */}
+      {someSelected && (
+        <div className="mx-5 mb-2 flex items-center gap-3 px-3 py-2 rounded-[10px] bg-slate-900 text-white text-[12px] shadow-sm">
+          <span className="font-semibold">
+            {selectedIds.size} {selectedIds.size === 1 ? "deal" : "deals"} selected
+          </span>
+          <span className="h-3 w-px bg-white/25" />
+          <button
+            onClick={handleBulkComplete}
+            disabled={bulkRunning}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500 text-white font-semibold hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            {bulkRunning ? "Working…" : "Complete pending"}
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold hover:bg-white/20"
+          >
+            <Upload className="w-3 h-3" />
+            Export CSV
+          </button>
+          <button
+            onClick={clearSelection}
+            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-white/80 hover:text-white hover:bg-white/10"
+          >
+            <X className="w-3 h-3" /> Clear
+          </button>
+        </div>
+      )}
+
+      {/* Export-all button — виден всегда, экспортирует текущий filtered. */}
+      {!someSelected && filtered.length > 0 && (
+        <div className="mx-5 mb-2 flex justify-end">
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-slate-200 hover:border-slate-300"
+            title="Export all filtered rows to CSV"
+          >
+            <Upload className="w-3 h-3" />
+            Export CSV ({filtered.length})
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
-              <th className="px-5 py-2.5 font-bold">{t("time")}</th>
+              <th className="pl-5 pr-2 py-2.5 font-bold w-8">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
+                />
+              </th>
+              <th className="px-3 py-2.5 font-bold">{t("time")}</th>
               <th className="px-3 py-2.5 font-bold">{t("type")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("in")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("rate")}</th>
@@ -552,7 +741,20 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     tx.pinned ? "bg-indigo-50/40" : ""
                   }`}
                 >
-                  <td className="px-5 py-3 whitespace-nowrap">
+                  <td className="pl-5 pr-2 py-3 align-top">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select deal ${tx.id}`}
+                      checked={selectedIds.has(String(tx.id))}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleRowSelected(tx.id);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap">
                     <div className="font-semibold text-slate-900 tabular-nums">{tx.time}</div>
                     <div className="text-[11px] text-slate-400">{tx.date}</div>
                   </td>
@@ -815,7 +1017,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-5 py-16 text-center">
+                <td colSpan={11} className="px-5 py-16 text-center">
                   <div className="text-slate-400 text-[13px]">{t("no_match")}</div>
                   <button
                     onClick={clearFilters}

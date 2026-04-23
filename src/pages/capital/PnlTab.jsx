@@ -5,7 +5,8 @@
 // Default — Today (per task spec).
 
 import React, { useMemo, useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Wallet, Building2, Coins, Tag, X, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, Building2, Coins, Tag, X, ChevronRight, Download } from "lucide-react";
+import { exportCSV } from "../../utils/csv.js";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useOffices } from "../../store/offices.jsx";
@@ -129,6 +130,57 @@ export default function PnlTab({ range, onRangeChange }) {
 
   const revenueTotal = revenueExchange + income;
 
+  // Export CSV: многокомпонентный отчёт — summary + per-office + per-currency + per-category.
+  // Склеиваем в один файл с section-метками.
+  const handleExportPnl = () => {
+    const sectionRows = [];
+    sectionRows.push({ section: "Summary", dimension: "Revenue (exchange)", amount: revenueExchange.toFixed(2) });
+    sectionRows.push({ section: "Summary", dimension: "Income", amount: income.toFixed(2) });
+    sectionRows.push({ section: "Summary", dimension: "Expense", amount: (-expense).toFixed(2) });
+    sectionRows.push({ section: "Summary", dimension: "Net profit", amount: net.toFixed(2) });
+    byOffice.forEach((o) => {
+      sectionRows.push({
+        section: "By office",
+        dimension: o.name,
+        revenue: o.revenue.toFixed(2),
+        income: o.income.toFixed(2),
+        expense: o.expense.toFixed(2),
+        net: o.net.toFixed(2),
+      });
+    });
+    byCurrency.forEach((c) => {
+      sectionRows.push({
+        section: "By currency",
+        dimension: c.currency,
+        revenue: c.revenue.toFixed(2),
+        count: c.count,
+        volume: c.volume.toFixed(2),
+      });
+    });
+    byCategory.forEach((c) => {
+      sectionRows.push({
+        section: `${c.type === "expense" ? "Expense" : "Income"} categories`,
+        dimension: c.category,
+        amount: c.amount.toFixed(2),
+      });
+    });
+    exportCSV({
+      filename: `coinplata-pnl-${(range?.from || "").slice(0, 10)}_${(range?.to || "").slice(0, 10)}.csv`,
+      columns: [
+        { key: "section", label: "Section" },
+        { key: "dimension", label: "Dimension" },
+        { key: "amount", label: `Amount (${base})` },
+        { key: "revenue", label: `Revenue (${base})` },
+        { key: "income", label: `Income (${base})` },
+        { key: "expense", label: `Expense (${base})` },
+        { key: "net", label: `Net (${base})` },
+        { key: "count", label: "Count" },
+        { key: "volume", label: `Volume (${base})` },
+      ],
+      rows: sectionRows,
+    });
+  };
+
   return (
     <div className="space-y-4">
       {/* Period switcher */}
@@ -163,7 +215,18 @@ export default function PnlTab({ range, onRangeChange }) {
             Custom
           </button>
         </div>
-        <DateRangePicker value={range} onChange={setRangeDirect} />
+        <div className="flex items-center gap-2">
+          <DateRangePicker value={range} onChange={setRangeDirect} />
+          <button
+            type="button"
+            onClick={handleExportPnl}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+            title="Export P&L to CSV"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {/* KPI: Revenue / Expenses / Net — все карточки кликабельны для drill-down */}

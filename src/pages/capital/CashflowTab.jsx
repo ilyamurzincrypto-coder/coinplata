@@ -3,7 +3,8 @@
 // Показывает breakdown по категориям + простой bar chart.
 
 import React, { useMemo } from "react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Download } from "lucide-react";
+import { exportCSV } from "../../utils/csv.js";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
@@ -56,9 +57,43 @@ export default function CashflowTab({ range }) {
   const { dealsProfit, incomeByCat, expenseByCat, incomeTotal, expenseTotal, net } = data;
   const maxBar = Math.max(dealsProfit + incomeTotal, expenseTotal, 1);
 
+  const handleExport = () => {
+    const rows = [];
+    rows.push({ section: "Summary", category: "Deals profit", amount: dealsProfit.toFixed(2) });
+    rows.push({ section: "Summary", category: "Income total", amount: incomeTotal.toFixed(2) });
+    rows.push({ section: "Summary", category: "Expense total", amount: (-expenseTotal).toFixed(2) });
+    rows.push({ section: "Summary", category: "Net profit", amount: net.toFixed(2) });
+    incomeByCat.forEach(([cat, amount]) => {
+      rows.push({ section: "Income", category: cat, amount: amount.toFixed(2) });
+    });
+    expenseByCat.forEach(([cat, amount]) => {
+      rows.push({ section: "Expense", category: cat, amount: (-amount).toFixed(2) });
+    });
+    exportCSV({
+      filename: `coinplata-cashflow-${(range?.from || "").slice(0, 10)}_${(range?.to || "").slice(0, 10)}.csv`,
+      columns: [
+        { key: "section", label: "Section" },
+        { key: "category", label: "Category" },
+        { key: "amount", label: `Amount (${base})` },
+      ],
+      rows,
+    });
+  };
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={handleExport}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+          title="Export cashflow to CSV"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Export CSV
+        </button>
+      </div>
+
       {/* Summary bars */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 p-5">
         <h2 className="text-[15px] font-semibold tracking-tight mb-4">Period summary</h2>

@@ -7,9 +7,11 @@ import { Users, Send, Search, BarChart3, UserPlus, X, Network as NetworkIcon, Wa
 import { useTransactions } from "../store/transactions.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useWallets } from "../store/wallets.jsx";
+import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { toISODate, monthKey, monthLabel } from "../utils/date.js";
+import { exportCSV } from "../utils/csv.js";
 import Modal from "../components/ui/Modal.jsx";
 import { ClientTag } from "../components/CounterpartySelect.jsx";
 import { CLIENT_TAGS } from "../store/data.js";
@@ -21,6 +23,7 @@ export default function ClientsPage() {
   const { t } = useTranslation();
   const { transactions, counterparties, addCounterparty, updateCounterparty } = useTransactions();
   const { walletsByClient } = useWallets();
+  const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
   const [search, setSearch] = useState("");
@@ -567,6 +570,7 @@ export default function ClientsPage() {
         transactions={transactions}
         walletsByClient={walletsByClient}
         updateCounterparty={updateCounterparty}
+        obligations={obligations}
         base={base}
         sym={sym}
         toBase={toBase}
@@ -680,7 +684,7 @@ function TagBtn({ active, onClick, children }) {
 }
 
 // -------- Client profile modal --------
-function ClientProfileModal({ clientId, onClose, counterparties, transactions, walletsByClient, updateCounterparty, base, sym, toBase }) {
+function ClientProfileModal({ clientId, onClose, counterparties, transactions, walletsByClient, updateCounterparty, obligations, base, sym, toBase }) {
   const client = clientId ? counterparties.find((c) => c.id === clientId) : null;
   const [statusFilter, setStatusFilter] = useState("all");
   const [curFilter, setCurFilter] = useState("all");
@@ -692,6 +696,26 @@ function ClientProfileModal({ clientId, onClose, counterparties, transactions, w
     );
   }, [client, transactions]);
 
+  // Obligations — фильтруем по client_id (если матчим по UUID), плюс open-only.
+  const clientObligations = useMemo(() => {
+    if (!client || !Array.isArray(obligations)) return [];
+    return obligations.filter(
+      (o) => o.clientId === client.id && o.status === "open"
+    );
+  }, [client, obligations]);
+
+  const obligationTotals = useMemo(() => {
+    let weOwe = 0;
+    let theyOwe = 0;
+    clientObligations.forEach((o) => {
+      const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
+      const inBase = toBase(remaining, o.currency);
+      if (o.direction === "we_owe") weOwe += inBase;
+      else if (o.direction === "they_owe") theyOwe += inBase;
+    });
+    return { weOwe, theyOwe, net: theyOwe - weOwe };
+  }, [clientObligations, toBase]);
+
   const stats = useMemo(() => {
     let volume = 0, profit = 0;
     clientTxs.forEach((tx) => {
@@ -700,12 +724,29 @@ function ClientProfileModal({ clientId, onClose, counterparties, transactions, w
     });
     const deals = clientTxs.length;
     const avgDeal = deals > 0 ? volume / deals : 0;
-    const last = clientTxs
+    const sortedDates = clientTxs
       .map((tx) => toISODate(tx.date) + " " + (tx.time || ""))
-      .sort()
-      .pop() || "—";
-    return { volume, profit, deals, avgDeal, last };
+      .sort();
+    const last = sortedDates[sortedDates.length - 1] || "—";
+    const first = sortedDates[0] || "—";
+    // LTV = total profit — синоним, но выделен отдельно для ясности.
+    const ltv = profit;
+    return { volume, profit, deals, avgDeal, last, first, ltv };
   }, [clientTxs, toBase]);
+
+  // Monthly activity — bar chart в стиле CashflowTab
+  const monthly = useMemo(() => {
+    const map = new Map();
+    clientTxs.forEach((tx) => {
+      const k = monthKey(toISODate(tx.date));
+      if (!map.has(k)) map.set(k, { key: k, count: 0, volume: 0 });
+      const b = map.get(k);
+      b.count += 1;
+      b.volume += toBase(tx.amtIn, tx.curIn);
+    });
+    return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+  }, [clientTxs, toBase]);
+  const maxMonthlyVol = Math.max(1, ...monthly.map((m) => m.volume));
 
   const walletGroups = useMemo(() => {
     if (!client) return [];
@@ -767,14 +808,106 @@ function ClientProfileModal({ clientId, onClose, counterparties, transactions, w
           ))}
         </div>
 
-        {/* Stats grid + risk */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        {/* Stats grid + risk — 6 карточек: Deals / Volume / LTV / Avg / First / Last */}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
           <StatCard label="Deals" value={stats.deals} />
           <StatCard label="Volume" value={`${sym}${fmt(stats.volume, base)}`} />
-          <StatCard label="Profit" value={`${stats.profit >= 0 ? "+" : ""}${sym}${fmt(stats.profit, base)}`} tone={stats.profit >= 0 ? "emerald" : "rose"} />
+          <StatCard
+            label="LTV"
+            value={`${stats.ltv >= 0 ? "+" : ""}${sym}${fmt(stats.ltv, base)}`}
+            tone={stats.ltv >= 0 ? "emerald" : "rose"}
+          />
           <StatCard label="Avg deal" value={`${sym}${fmt(stats.avgDeal, base)}`} />
+          <StatCard label="First" value={stats.first} small />
           <StatCard label="Last" value={stats.last} small />
         </div>
+
+        {/* Obligations — показываем только если есть открытые */}
+        {clientObligations.length > 0 && (
+          <div className="border border-amber-200 bg-amber-50/50 rounded-[10px] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">
+                Open obligations · {clientObligations.length}
+              </h3>
+              <div className="flex items-center gap-3 text-[11px] tabular-nums">
+                {obligationTotals.theyOwe > 0 && (
+                  <span className="font-semibold text-emerald-700">
+                    They owe: {sym}{fmt(obligationTotals.theyOwe, base)}
+                  </span>
+                )}
+                {obligationTotals.weOwe > 0 && (
+                  <span className="font-semibold text-rose-700">
+                    We owe: {sym}{fmt(obligationTotals.weOwe, base)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              {clientObligations.map((o) => {
+                const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
+                const cur = o.currency;
+                const isWeOwe = o.direction === "we_owe";
+                return (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-md text-[11px]"
+                  >
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                        isWeOwe ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {isWeOwe ? "we owe" : "they owe"}
+                    </span>
+                    <span className="font-semibold tabular-nums text-slate-900">
+                      {fmt(remaining, cur)} {cur}
+                    </span>
+                    {(o.paidAmount || 0) > 0 && (
+                      <span className="text-[10px] text-slate-500">
+                        paid {fmt(o.paidAmount, cur)} / {fmt(o.amount, cur)}
+                      </span>
+                    )}
+                    <span className="text-slate-400 text-[10px] flex-1 min-w-0 truncate">
+                      {o.note || ""}
+                    </span>
+                    {o.dealId && (
+                      <span className="text-slate-400 text-[10px] tabular-nums">#{o.dealId}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Monthly activity — sparklines */}
+        {monthly.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+                Monthly activity
+              </h3>
+            </div>
+            <div className="flex items-end gap-1 h-16 bg-slate-50 border border-slate-200 rounded-[10px] px-2 py-2">
+              {monthly.map((m) => {
+                const h = Math.max(4, (m.volume / maxMonthlyVol) * 52);
+                return (
+                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                    <div
+                      className="w-full bg-indigo-400 rounded-sm hover:bg-indigo-500 transition-colors cursor-default"
+                      style={{ height: `${h}px` }}
+                      title={`${monthLabel(m.key)}: ${m.count} deals · ${sym}${fmt(m.volume, base)}`}
+                    />
+                    <span className="text-[9px] text-slate-500 font-medium truncate">
+                      {monthLabel(m.key).slice(0, 3)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {walletGroups.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall risk:</span>
@@ -835,6 +968,46 @@ function ClientProfileModal({ clientId, onClose, counterparties, transactions, w
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
             <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">Transactions · {clientTxs.length}</h3>
             <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  if (filteredTxs.length === 0) return;
+                  exportCSV({
+                    filename: `client-${(client.nickname || "unknown").replace(/[^a-z0-9_-]+/gi, "_")}-history.csv`,
+                    columns: [
+                      { key: "id", label: "ID" },
+                      { key: "date", label: "Date" },
+                      { key: "time", label: "Time" },
+                      { key: "status", label: "Status" },
+                      { key: "curIn", label: "IN currency" },
+                      { key: "amtIn", label: "IN amount" },
+                      { key: "outs", label: "OUT" },
+                      { key: "rate", label: "Rate" },
+                      { key: "fee", label: "Fee (USD)" },
+                      { key: "profit", label: "Profit (USD)" },
+                    ],
+                    rows: filteredTxs.map((tx) => ({
+                      id: tx.id,
+                      date: tx.date,
+                      time: tx.time,
+                      status: tx.status || "completed",
+                      curIn: tx.curIn,
+                      amtIn: tx.amtIn,
+                      outs: (tx.outputs || [])
+                        .map((o) => `${o.amount} ${o.currency}`)
+                        .join(" + "),
+                      rate: (tx.outputs || [])[0]?.rate ?? tx.rate ?? "",
+                      fee: tx.fee,
+                      profit: tx.profit,
+                    })),
+                  });
+                }}
+                disabled={filteredTxs.length === 0}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export client history to CSV"
+              >
+                Export
+              </button>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}

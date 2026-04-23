@@ -2,7 +2,8 @@
 // Таблица записей доходов/расходов + модалка Add income / Add expense с audit-логом.
 
 import React, { useState, useMemo } from "react";
-import { Receipt, Plus, ArrowDownLeft, ArrowUpRight, Trash2 } from "lucide-react";
+import { Receipt, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Download } from "lucide-react";
+import { exportCSV } from "../../utils/csv.js";
 import Modal from "../../components/ui/Modal.jsx";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
@@ -90,6 +91,40 @@ export default function IncomeExpenseTab({ range }) {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (scoped.length === 0) return;
+                exportCSV({
+                  filename: `coinplata-income-expense-${(range?.from || "").slice(0, 10)}_${(range?.to || "").slice(0, 10)}.csv`,
+                  columns: [
+                    { key: "date", label: "Date" },
+                    { key: "type", label: "Type" },
+                    { key: "category", label: "Category" },
+                    { key: "amount", label: "Amount" },
+                    { key: "currency", label: "Currency" },
+                    { key: "office", label: "Office" },
+                    { key: "account", label: "Account" },
+                    { key: "note", label: "Note" },
+                  ],
+                  rows: scoped.map((e) => ({
+                    date: e.date,
+                    type: e.type,
+                    category: e.category || "",
+                    amount: e.amount,
+                    currency: e.currency,
+                    office: officeName(e.officeId) || "",
+                    account: findAccount(e.accountId)?.name || "",
+                    note: e.note || "",
+                  })),
+                });
+              }}
+              disabled={scoped.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[13px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Export entries to CSV"
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
             <button
               onClick={() => setAddType("income")}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-emerald-500 text-white text-[13px] font-semibold hover:bg-emerald-600 transition-colors"
