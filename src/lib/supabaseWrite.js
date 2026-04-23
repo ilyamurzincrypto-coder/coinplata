@@ -370,9 +370,13 @@ export async function rpcUpsertClientWallet({ clientId, address, network }) {
 
 export async function rpcConfirmRates({ officeId, reason }) {
   assertConfigured();
+  // Если officeId — локальный seed ("mark", "ist", ...), не UUID — отправляем null.
+  // RPC разрешает NULL (snapshot без привязки к офису). Иначе Postgres фейлится
+  // на касте "mark"::uuid с нечитаемой ошибкой "invalid input syntax for type uuid".
+  const safeOfficeId = isUuid(officeId) ? officeId : null;
   const id = unwrap(
     await supabase.rpc("confirm_rates", {
-      p_office_id: officeId || null,
+      p_office_id: safeOfficeId,
       p_reason: reason || "",
     }),
     "confirm_rates"
