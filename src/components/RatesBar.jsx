@@ -17,8 +17,12 @@ import {
   ArrowLeft,
   ArrowRight,
   Upload,
+  AlertTriangle,
+  CheckCircle2,
 } from "lucide-react";
 import RatesImportModal from "./RatesImportModal.jsx";
+import RatesCoveragePanel from "./RatesCoveragePanel.jsx";
+import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { useRates, FEATURED_PAIRS, rateKey } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useAuth } from "../store/auth.jsx";
@@ -294,7 +298,14 @@ export default function RatesBar() {
 // =========================================================================
 function RatesEditModal({ open, onClose, canDelete, onImport }) {
   const { t } = useTranslation();
-  const [view, setView] = useState("list"); // list | addPair | addCurrency | addChannel
+  const [view, setView] = useState("list"); // list | addPair | addCurrency | addChannel | coverage
+  // addPair preset (from coverage-panel quick-add)
+  const [addPairPreset, setAddPairPreset] = useState({ from: "", to: "" });
+
+  const gotoAddPair = (from = "", to = "") => {
+    setAddPairPreset({ from, to });
+    setView("addPair");
+  };
 
   return (
     <Modal
@@ -304,10 +315,33 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
       subtitle="Currency → Channel → Pair · 1 unit of FROM in TO"
       width="2xl"
     >
-      {view === "list" && <ListPanel canDelete={canDelete} onGoto={setView} onImport={onImport} />}
-      {view === "addPair" && <AddPairPanel onBack={() => setView("list")} />}
+      {view === "list" && (
+        <ListPanel
+          canDelete={canDelete}
+          onGoto={setView}
+          onImport={onImport}
+          onOpenCoverage={() => setView("coverage")}
+        />
+      )}
+      {view === "addPair" && (
+        <AddPairPanel
+          onBack={() => {
+            setView("list");
+            setAddPairPreset({ from: "", to: "" });
+          }}
+          initFrom={addPairPreset.from}
+          initTo={addPairPreset.to}
+        />
+      )}
       {view === "addCurrency" && <AddCurrencyPanel onBack={() => setView("list")} />}
       {view === "addChannel" && <AddChannelPanel onBack={() => setView("list")} />}
+      {view === "coverage" && (
+        <RatesCoveragePanel
+          onBack={() => setView("list")}
+          onQuickAdd={(from, to) => gotoAddPair(from, to)}
+          onOpenImport={onImport}
+        />
+      )}
 
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
         <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
@@ -327,7 +361,7 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
 // =========================================================================
 // LIST — группы пар + три "+" кнопки (currency / channel / pair)
 // =========================================================================
-function ListPanel({ canDelete, onGoto, onImport }) {
+function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
   const { t } = useTranslation();
   const { rates, setRate, deleteRate, getRate, channels, pairs: allPairs } = useRates();
   const allChannels = channels;
@@ -431,13 +465,41 @@ function ListPanel({ canDelete, onGoto, onImport }) {
     });
   };
 
+  // Coverage — compact summary + кнопка в header. Полный анализ — в отдельном view.
+  const coverageSummary = useMemo(() => {
+    const r = analyzeCoverage(currencies, allPairs, channels, loadDismissed());
+    const pct = r.total > 0 ? Math.round((r.existingCount / r.total) * 100) : 0;
+    return {
+      pct,
+      existing: r.existingCount,
+      total: r.total,
+      missing: r.missing.length,
+      oneWay: r.oneWay.length,
+      isolated: r.isolated.length,
+      hasIssues: r.missing.length > 0 || r.oneWay.length > 0 || r.isolated.length > 0,
+    };
+  }, [currencies, allPairs, channels]);
+
   return (
     <div className="p-5 max-h-[60vh] overflow-auto">
+      {/* Coverage summary banner — видимая мотивация открыть full analysis */}
+      {onOpenCoverage && (
+        <CoverageSummaryBanner summary={coverageSummary} onOpen={onOpenCoverage} />
+      )}
+
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
           {currencies.length} currencies · {channels.length} channels · {existingPairs.length} pairs
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
+          {onOpenCoverage && (
+            <HeaderButton
+              icon={coverageSummary.hasIssues ? AlertTriangle : CheckCircle2}
+              onClick={onOpenCoverage}
+            >
+              Coverage {coverageSummary.pct}%
+            </HeaderButton>
+          )}
           {onImport && (
             <HeaderButton icon={Upload} onClick={onImport}>
               Import xlsx
@@ -502,6 +564,59 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
     <button onClick={onClick} className={`${base} ${cls}`}>
       <Icon className="w-3 h-3" />
       {children}
+    </button>
+  );
+}
+
+// Compact coverage summary над header списка. Клик открывает полную панель.
+function CoverageSummaryBanner({ summary, onOpen }) {
+  const allGood = !summary.hasIssues;
+  const toneCls = allGood
+    ? "bg-emerald-50 border-emerald-200"
+    : summary.isolated > 0
+    ? "bg-rose-50 border-rose-200"
+    : "bg-amber-50 border-amber-200";
+  const iconCls = allGood ? "text-emerald-600" : summary.isolated > 0 ? "text-rose-600" : "text-amber-600";
+  const Icon = allGood ? CheckCircle2 : AlertTriangle;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[10px] border ${toneCls} mb-3 text-left hover:shadow-sm transition-shadow`}
+    >
+      <Icon className={`w-4 h-4 ${iconCls} shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <div className="text-[12px] font-bold text-slate-900">
+          {allGood ? "Full coverage" : `${summary.pct}% coverage`}
+          <span className="ml-2 text-[11px] font-normal text-slate-600">
+            · {summary.existing}/{summary.total} directions
+          </span>
+        </div>
+        {!allGood && (
+          <div className="text-[11px] text-slate-600 mt-0.5 truncate">
+            {summary.missing > 0 && (
+              <span>
+                <strong className="text-rose-700">{summary.missing}</strong> missing
+              </span>
+            )}
+            {summary.missing > 0 && summary.oneWay > 0 && <span> · </span>}
+            {summary.oneWay > 0 && (
+              <span>
+                <strong className="text-amber-700">{summary.oneWay}</strong> one-way
+              </span>
+            )}
+            {(summary.missing > 0 || summary.oneWay > 0) && summary.isolated > 0 && <span> · </span>}
+            {summary.isolated > 0 && (
+              <span>
+                <strong className="text-rose-700">{summary.isolated}</strong> isolated
+              </span>
+            )}
+            <span className="text-slate-500"> — click for details</span>
+          </div>
+        )}
+      </div>
+      <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
     </button>
   );
 }
@@ -974,15 +1089,17 @@ function AddChannelPanel({ onBack }) {
 // =========================================================================
 // ADD PAIR — выбор fromChannel + toChannel + rate.
 // =========================================================================
-function AddPairPanel({ onBack }) {
+function AddPairPanel({ onBack, initFrom, initTo }) {
   const { t } = useTranslation();
   const { currencies } = useCurrencies();
   const { channels, pairs, addPair, getRate } = useRates();
   const { addEntry: logAudit } = useAudit();
 
-  const [fromCurrency, setFromCurrency] = useState(currencies[0]?.code || "");
+  const [fromCurrency, setFromCurrency] = useState(
+    initFrom || currencies[0]?.code || ""
+  );
   const [toCurrency, setToCurrency] = useState(
-    currencies.find((c) => c.code !== (currencies[0]?.code))?.code || ""
+    initTo || currencies.find((c) => c.code !== (currencies[0]?.code))?.code || ""
   );
   const [fromChannelId, setFromChannelId] = useState("");
   const [toChannelId, setToChannelId] = useState("");
