@@ -11,7 +11,7 @@
 //   — counterparty (select или свободный ввод)
 //   — точная математика через utils/money
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   ArrowDown,
   ArrowRight,
@@ -723,6 +723,54 @@ export default function ExchangeForm({
 
   const isEdit = mode === "edit";
 
+  // Keyboard-first flow: auto-focus на IN amount при mount в create-режиме,
+  // Enter в IN → первый OUT amount, Enter в OUT → submit, Shift+Enter → addOutput
+  const amtInRef = useRef(null);
+  useEffect(() => {
+    if (mode === "create") {
+      // небольшая задержка чтобы успел прорендериться
+      const t = setTimeout(() => amtInRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [mode]);
+
+  const focusFirstOutputAmount = () => {
+    const el = document.querySelector('[data-kbd="out-amount"]');
+    if (el) el.focus();
+  };
+
+  const handleKbdIn = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      focusFirstOutputAmount();
+    }
+  };
+
+  const handleKbdOut = (e, isLast) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (isLast) {
+        // Submit если валидно, иначе ничего
+        if (canSubmit) handleSubmit();
+      } else {
+        // Focus на следующий output
+        const next = e.currentTarget.closest('[data-output-row]')?.nextElementSibling;
+        const nextInput = next?.querySelector('[data-kbd="out-amount"]');
+        if (nextInput) nextInput.focus();
+      }
+    } else if (e.key === "Enter" && e.shiftKey) {
+      e.preventDefault();
+      addOutput();
+      // После следующего рендера focus на новый output
+      setTimeout(() => {
+        const all = document.querySelectorAll('[data-kbd="out-amount"]');
+        const last = all[all.length - 1];
+        if (last) last.focus();
+      }, 50);
+    }
+  };
+
   return (
     <div
       className={`relative bg-white rounded-[18px] border border-slate-200 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12),0_0_0_1px_rgba(15,23,42,0.02)] overflow-hidden transition-all ${
@@ -806,10 +854,12 @@ export default function ExchangeForm({
         >
           <span className="text-slate-400 text-[22px] font-semibold">{curSymbol(curIn)}</span>
           <input
+            ref={amtInRef}
             type="text"
             inputMode="decimal"
             value={amtIn}
             onChange={(e) => setAmtIn(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
+            onKeyDown={handleKbdIn}
             placeholder="0"
             className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[30px] font-bold tracking-tight min-w-0 leading-none"
           />
@@ -973,9 +1023,11 @@ export default function ExchangeForm({
               output={o}
               index={idx}
               canRemove={outputs.length > 1}
+              isLast={idx === outputs.length - 1}
               onUpdate={(patch) => updateOutput(o.id, patch)}
               onRemove={() => removeOutput(o.id)}
               onToggleManual={() => toggleManualRate(o.id)}
+              onAmountKeyDown={handleKbdOut}
               curIn={curIn}
               remainingIn={remainingIn}
               availableInCurrency={officeCurrencyBalance(o.currency)}
@@ -1465,9 +1517,11 @@ function OutputRow({
   output,
   index,
   canRemove,
+  isLast,
   onUpdate,
   onRemove,
   onToggleManual,
+  onAmountKeyDown,
   curIn,
   remainingIn,
   availableInCurrency,
@@ -1544,7 +1598,7 @@ function OutputRow({
   };
 
   return (
-    <div className="bg-slate-50/60 rounded-[14px] border border-slate-200 p-3">
+    <div data-output-row className="bg-slate-50/60 rounded-[14px] border border-slate-200 p-3">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
@@ -1597,6 +1651,7 @@ function OutputRow({
         <input
           type="text"
           inputMode="decimal"
+          data-kbd="out-amount"
           value={o.amount}
           onChange={(e) =>
             onUpdate({
@@ -1604,6 +1659,7 @@ function OutputRow({
               touched: true,
             })
           }
+          onKeyDown={(e) => onAmountKeyDown?.(e, isLast)}
           placeholder="0"
           className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0 leading-none"
         />
