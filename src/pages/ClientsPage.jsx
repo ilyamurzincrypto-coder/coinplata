@@ -136,8 +136,8 @@ export default function ClientsPage() {
         await withToast(
           () => rpcArchiveClient(client.id, archive),
           {
-            success: archive ? "Client archived" : "Client restored",
-            errorPrefix: archive ? "Archive failed" : "Restore failed",
+            success: archive ? t("toast_client_archived") : t("toast_client_restored"),
+            errorPrefix: archive ? t("err_archive_client") : t("err_restore_client"),
           }
         );
       }
@@ -148,16 +148,15 @@ export default function ClientsPage() {
 
   const handleDelete = async (client) => {
     if (!client?.id || !isUuid(client.id)) return;
-    if (client.deals > 0) return; // guard — DB тоже защитит, но уважим UI
+    if (client.deals > 0) return;
     if (busyId) return;
-    if (!confirm(`Delete client "${client.name}" permanently? This cannot be undone.`))
-      return;
+    if (!confirm(t("client_delete_confirm").replace("{name}", client.name))) return;
     setBusyId(client.id);
     try {
       if (isSupabaseConfigured) {
         await withToast(
           () => rpcDeleteClient(client.id),
-          { success: "Client deleted", errorPrefix: "Delete failed" }
+          { success: t("toast_client_deleted"), errorPrefix: t("err_delete_client") }
         );
       }
     } finally {
@@ -378,9 +377,9 @@ export default function ClientsPage() {
             </div>
             <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px] gap-0.5">
               {[
-                { id: "active", label: "Active" },
-                { id: "archived", label: `Archived${archivedCount > 0 ? ` (${archivedCount})` : ""}` },
-                { id: "all", label: "All" },
+                { id: "active", label: t("client_filter_active") },
+                { id: "archived", label: `${t("client_filter_archived")}${archivedCount > 0 ? ` (${archivedCount})` : ""}` },
+                { id: "all", label: t("client_filter_all") },
               ].map((o) => (
                 <button
                   key={o.id}
@@ -401,7 +400,7 @@ export default function ClientsPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
             >
               <UserPlus className="w-3 h-3" />
-              Add client
+              {t("client_add_btn")}
             </button>
           </div>
         </div>
@@ -483,7 +482,7 @@ export default function ClientsPage() {
                           <button
                             onClick={() => handleArchive(c, false)}
                             disabled={busyId === c.id}
-                            title="Restore from archive"
+                            title={t("client_restore_tip")}
                             className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                           >
                             <ArchiveRestore className="w-3.5 h-3.5" />
@@ -492,7 +491,7 @@ export default function ClientsPage() {
                           <button
                             onClick={() => handleArchive(c, true)}
                             disabled={busyId === c.id}
-                            title="Archive client (soft-delete, preserves history)"
+                            title={t("client_archive_tip")}
                             className="p-1.5 rounded-md text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                           >
                             <Archive className="w-3.5 h-3.5" />
@@ -503,8 +502,8 @@ export default function ClientsPage() {
                           disabled={busyId === c.id || c.deals > 0}
                           title={
                             c.deals > 0
-                              ? `Client has ${c.deals} deal(s) — cannot hard-delete, archive instead`
-                              : "Delete permanently"
+                              ? t("client_delete_blocked_tip").replace("{n}", String(c.deals))
+                              : t("client_delete_tip")
                           }
                           className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
@@ -521,10 +520,10 @@ export default function ClientsPage() {
                 <tr>
                   <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
                     {search
-                      ? "No clients match your search"
+                      ? t("no_clients_match")
                       : archiveFilter === "archived"
-                      ? "No archived clients"
-                      : "No clients yet"}
+                      ? t("no_archived_clients")
+                      : t("no_clients_yet")}
                   </td>
                 </tr>
               )}

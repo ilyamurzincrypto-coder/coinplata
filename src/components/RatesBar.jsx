@@ -23,6 +23,7 @@ import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { NETWORKS } from "../store/data.js";
+import { getTradingRates } from "../utils/tradingRates.js";
 import Modal from "./ui/Modal.jsx";
 import {
   computeSpread,
@@ -76,11 +77,13 @@ const TRADE_PAIRS = [
 
 export default function RatesBar() {
   const { getRate, ratesFromBase, lastUpdated } = useRates();
+  const { dict: currencyDict } = useCurrencies();
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(null);
   const wrapperRef = useRef(null);
+  const isCrypto = (code) => currencyDict[code]?.type === "crypto";
 
   // Закрытие dropdown при клике вне блока.
   useEffect(() => {
@@ -137,18 +140,17 @@ export default function RatesBar() {
           {/* Grid из TRADE_PAIRS — каждая карточка содержит ДВА направления. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
             {TRADE_PAIRS.map(([a, b], idx) => {
-              // SELL: client приносит A, получает B → rate = "B per A" (прямо из БД).
-              // BUY: client приносит B, получает A → rate ОТОБРАЖАЕМ тоже в "B per A"
-              // (чтобы не 0.025). В БД обратная пара лежит как "A per B" (т.е. 0.025);
-              // разворачиваем через 1/x. Если у обеих пар нет спреда → sell≈buy.
-              // Спред возникает когда admin ставит для TRY→USDT rate ≠ 1/rate(USDT→TRY).
-              const sell = getRate(a, b);
-              const inverseBuy = getRate(b, a);
-              const buy = inverseBuy && inverseBuy > 0 ? 1 / inverseBuy : sell;
-              const spreadPct =
-                sell && buy && sell > 0
-                  ? ((sell - buy) / sell) * 100
-                  : 0;
+              // Bid/Ask от market rate (без инверсии 1/x).
+              // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
+              // buy  (bid) = market * (1 - spread) → клиент B→A получает по этой цене
+              // Оба в "B per A" единице — нет значений вроде 0.025.
+              const { ask: sell, bid: buy, spread } = getTradingRates({
+                getRate,
+                isCrypto,
+                base: a,
+                quote: b,
+              });
+              const spreadPct = spread * 100 * 2; // полный spread = ask-bid относительно mid
               const isActive = activeIdx === idx;
               return (
                 <button

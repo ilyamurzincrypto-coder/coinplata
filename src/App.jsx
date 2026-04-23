@@ -11,7 +11,7 @@ import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 
-import { I18nProvider } from "./i18n/translations.jsx";
+import { I18nProvider, useTranslation } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
 import { AuthProvider } from "./store/auth.jsx";
 import { OfficesProvider } from "./store/offices.jsx";
@@ -42,6 +42,7 @@ const PAGE_SECTION = {
 };
 
 function Root() {
+  const { t } = useTranslation();
   const [page, setPage] = useState("cashier");
   const [currentOffice, setCurrentOffice] = useState("mark");
   const can = useCan();
@@ -75,10 +76,9 @@ function Root() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-slate-900 font-sans">
-      {/* Demo-mode warning: если env vars не прилетели — сразу видно. */}
       {!isSupabaseConfigured && (
         <div className="bg-amber-500 text-slate-900 text-[12px] font-semibold text-center px-4 py-2 border-b border-amber-600">
-          ⚠ DEMO MODE — Supabase env vars not configured. Real sign-in/sign-out disabled. See Vercel Settings → Environment Variables.
+          {t("demo_banner")}
         </div>
       )}
       <Header

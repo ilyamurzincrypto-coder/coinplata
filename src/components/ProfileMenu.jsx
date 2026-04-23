@@ -44,7 +44,7 @@ export default function ProfileMenu() {
     if (loggingOut) return;
     if (!isSupabaseConfigured) {
       setOpen(false);
-      alert("Demo mode: no active session to sign out of.");
+      alert(t("demo_no_session"));
       return;
     }
     setLoggingOut(true);
@@ -55,17 +55,15 @@ export default function ProfileMenu() {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        toast.error(`Logout failed: ${error.message}`);
+        toast.error(`${t("err_logout")}: ${error.message}`);
         setLoggingOut(false);
         return;
       }
-      // Safety: force-reload на корень. Гарантирует fresh state и
-      // не зависит от того, сработал ли onAuthStateChange.
       setTimeout(() => {
         window.location.href = window.location.pathname || "/";
       }, 150);
     } catch (err) {
-      toast.error(`Logout failed: ${err?.message || String(err)}`);
+      toast.error(`${t("err_logout")}: ${err?.message || String(err)}`);
       setLoggingOut(false);
     }
   };
@@ -194,7 +192,7 @@ export default function ProfileMenu() {
               danger
               disabled={loggingOut}
             >
-              {loggingOut ? "Signing out…" : t("logout")}
+              {loggingOut ? t("signing_out") : t("logout")}
             </MenuItem>
           </div>
         </div>

@@ -6,7 +6,9 @@
 import React from "react";
 import { TrendingUp, ArrowRight } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
+import { useCurrencies } from "../store/currencies.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { getTradingRates, formatTradingRate } from "../utils/tradingRates.js";
 
 const TRADE_PAIRS = [
   ["USDT", "TRY"],
@@ -32,7 +34,9 @@ function timeAgo(date) {
 
 export default function RatesSidebar() {
   const { getRate, lastUpdated } = useRates();
+  const { dict: currencyDict } = useCurrencies();
   const { t } = useTranslation();
+  const isCrypto = (code) => currencyDict[code]?.type === "crypto";
 
   return (
     <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]">
@@ -53,11 +57,12 @@ export default function RatesSidebar() {
 
       <div className="p-2 space-y-1">
         {TRADE_PAIRS.map(([a, b]) => {
-          // Sell = клиент отдаёт A, получает B (rate "B per A").
-          // Buy = клиент отдаёт B, получает A, отображаем в том же юните через 1/inverse.
-          const sell = getRate(a, b);
-          const inverseBuy = getRate(b, a);
-          const buy = inverseBuy && inverseBuy > 0 ? 1 / inverseBuy : sell;
+          const { ask: sell, bid: buy } = getTradingRates({
+            getRate,
+            isCrypto,
+            base: a,
+            quote: b,
+          });
           return (
             <div
               key={`${a}-${b}`}

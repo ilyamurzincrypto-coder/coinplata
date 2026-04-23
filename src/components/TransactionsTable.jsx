@@ -556,43 +556,43 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       {tx.status === "checking" && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-sky-50 text-sky-700 ring-1 ring-sky-200"
-                          title="Waiting for blockchain confirmation"
+                          title={t("tip_checking")}
                         >
                           <Radar className="w-2.5 h-2.5 animate-pulse" />
-                          Checking blockchain…
+                          {t("badge_checking")}
                         </span>
                       )}
                       {tx.status === "completed" && tx.confirmedAt && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                          title={`Confirmed ${tx.confirmedAt}${tx.confirmedTxHash ? ` · tx ${tx.confirmedTxHash.slice(0, 10)}…` : ""}`}
+                          title={`${t("badge_confirmed")} ${tx.confirmedAt}${tx.confirmedTxHash ? ` · tx ${tx.confirmedTxHash.slice(0, 10)}…` : ""}`}
                         >
                           <CheckCircle2 className="w-2.5 h-2.5" />
-                          Confirmed
+                          {t("badge_confirmed")}
                         </span>
                       )}
                       {isDeleted && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-200 text-slate-700">
                           <Trash2 className="w-2.5 h-2.5" />
-                          Deleted
+                          {t("status_deleted")}
                         </span>
                       )}
                       {tx.status === "flagged" && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-                          title="Flagged for review"
+                          title={t("tip_flagged")}
                         >
                           <Flag className="w-2.5 h-2.5" />
-                          Flagged
+                          {t("status_flagged")}
                         </span>
                       )}
                       {tx.pinned && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
-                          title="Pinned — always on top"
+                          title={t("tip_pinned")}
                         >
                           <Pin className="w-2.5 h-2.5" />
-                          PINNED
+                          {t("badge_pinned")}
                         </span>
                       )}
                       {(() => {
@@ -723,7 +723,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                                 ? "text-indigo-600 bg-indigo-50 hover:bg-indigo-100 opacity-100"
                                 : "text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 opacity-0 group-hover:opacity-100"
                             }`}
-                            title={tx.pinned ? "Unpin" : "Pin to top"}
+                            title={tx.pinned ? t("tip_unpin") : t("tip_pin")}
                           >
                             {tx.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                           </button>
@@ -734,7 +734,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                                 ? "text-rose-600 bg-rose-50 hover:bg-rose-100 opacity-100"
                                 : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 opacity-0 group-hover:opacity-100"
                             }`}
-                            title={tx.status === "flagged" ? "Unflag" : "Flag for review"}
+                            title={tx.status === "flagged" ? t("tip_unflag") : t("tip_flag")}
                           >
                             <Flag className="w-3.5 h-3.5" />
                           </button>
