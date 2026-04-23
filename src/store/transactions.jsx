@@ -14,8 +14,12 @@ import { onDataBump } from "../lib/dataVersion.jsx";
 const TxContext = createContext(null);
 
 export function TransactionsProvider({ children }) {
-  const [transactions, setTransactions] = useState(SEED_TX);
-  const [counterparties, setCounterparties] = useState(SEED_COUNTERPARTIES);
+  const [transactions, setTransactions] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_TX
+  );
+  const [counterparties, setCounterparties] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_COUNTERPARTIES
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;

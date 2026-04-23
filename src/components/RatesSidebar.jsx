@@ -4,7 +4,7 @@
 // Кассир видит и покупку и продажу не переключая внимание.
 
 import React from "react";
-import { TrendingUp, ArrowRight, ArrowLeft } from "lucide-react";
+import { TrendingUp, ArrowRight } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 
@@ -53,8 +53,11 @@ export default function RatesSidebar() {
 
       <div className="p-2 space-y-1">
         {TRADE_PAIRS.map(([a, b]) => {
-          const rAB = getRate(a, b);
-          const rBA = getRate(b, a);
+          // Sell = клиент отдаёт A, получает B (rate "B per A").
+          // Buy = клиент отдаёт B, получает A, отображаем в том же юните через 1/inverse.
+          const sell = getRate(a, b);
+          const inverseBuy = getRate(b, a);
+          const buy = inverseBuy && inverseBuy > 0 ? 1 / inverseBuy : sell;
           return (
             <div
               key={`${a}-${b}`}
@@ -66,21 +69,19 @@ export default function RatesSidebar() {
                 <span>{b}</span>
               </div>
               <div className="flex items-baseline justify-between mb-0.5">
-                <span className="text-[10px] font-semibold text-slate-500">
-                  <ArrowRight className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
-                  {b}
+                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
+                  {a} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {b}
                 </span>
                 <span className="text-[13px] font-bold tabular-nums text-slate-900 leading-none">
-                  {formatRate(rAB)}
+                  {formatRate(sell)}
                 </span>
               </div>
               <div className="flex items-baseline justify-between">
-                <span className="text-[10px] font-semibold text-slate-500">
-                  <ArrowLeft className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
-                  {a}
+                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
+                  {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
                 </span>
                 <span className="text-[12px] font-bold tabular-nums text-slate-600 leading-none">
-                  {formatRate(rBA)}
+                  {formatRate(buy)}
                 </span>
               </div>
             </div>

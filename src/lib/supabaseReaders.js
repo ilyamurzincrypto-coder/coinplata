@@ -203,6 +203,7 @@ export async function loadClients() {
     riskScore: r.risk_score,
     riskLevel: r.risk_level,
     createdAt: r.created_at,
+    archivedAt: r.archived_at || null,
   }));
 }
 

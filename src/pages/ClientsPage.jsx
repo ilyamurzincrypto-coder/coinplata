@@ -3,7 +3,7 @@
 // + простой monthly bar chart общей активности (по всем клиентам).
 
 import React, { useMemo, useState } from "react";
-import { Users, Send, Search, BarChart3, UserPlus, X, Network as NetworkIcon, Wallet } from "lucide-react";
+import { Users, Send, Search, BarChart3, UserPlus, X, Network as NetworkIcon, Wallet, Archive, Trash2, ArchiveRestore } from "lucide-react";
 import { useTransactions } from "../store/transactions.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useWallets } from "../store/wallets.jsx";
@@ -14,6 +14,8 @@ import Modal from "../components/ui/Modal.jsx";
 import { ClientTag } from "../components/CounterpartySelect.jsx";
 import { CLIENT_TAGS } from "../store/data.js";
 import { checkWalletRisk, riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcArchiveClient, rpcDeleteClient, withToast, isUuid } from "../lib/supabaseWrite.js";
 
 export default function ClientsPage() {
   const { t } = useTranslation();
@@ -24,6 +26,8 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [profileFor, setProfileFor] = useState(null); // counterparty id
   const [addOpen, setAddOpen] = useState(false);
+  const [archiveFilter, setArchiveFilter] = useState("active"); // active | archived | all
+  const [busyId, setBusyId] = useState(null); // клиент над которым сейчас выполняется RPC
 
   // Агрегация по counterparty nickname
   const clients = useMemo(() => {
@@ -65,6 +69,7 @@ export default function ClientsPage() {
         telegram: meta?.telegram || "",
         tag: meta?.tag || "",
         note: meta?.note || "",
+        archivedAt: meta?.archivedAt || null,
         deals,
         volume: b.volume,
         profit: b.profit,
@@ -85,6 +90,7 @@ export default function ClientsPage() {
         telegram: cp.telegram || "",
         tag: cp.tag || "",
         note: cp.note || "",
+        archivedAt: cp.archivedAt || null,
         deals: 0,
         volume: 0,
         profit: 0,
@@ -99,15 +105,65 @@ export default function ClientsPage() {
   }, [transactions, counterparties, toBase]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return clients;
+    // archive filter первым — не показываем archived в active view и наоборот
+    let base = clients;
+    if (archiveFilter === "active") base = clients.filter((c) => !c.archivedAt);
+    else if (archiveFilter === "archived") base = clients.filter((c) => !!c.archivedAt);
+    if (!search.trim()) return base;
     const q = search.trim().toLowerCase().replace(/^@/, "");
-    return clients.filter(
+    return base.filter(
       (c) =>
         c.nickname.toLowerCase().includes(q) ||
         c.name.toLowerCase().includes(q) ||
         c.telegram.toLowerCase().replace(/^@/, "").includes(q)
     );
-  }, [clients, search]);
+  }, [clients, search, archiveFilter]);
+
+  const archivedCount = useMemo(
+    () => clients.filter((c) => c.archivedAt).length,
+    [clients]
+  );
+
+  // Архивация / восстановление / удаление.
+  // Доступны только если client имеет DB-id (UUID). Legacy-строки (без id)
+  // пропускают — ничего не хранится на бэке.
+  const handleArchive = async (client, archive = true) => {
+    if (!client?.id || !isUuid(client.id)) return;
+    if (busyId) return;
+    setBusyId(client.id);
+    try {
+      if (isSupabaseConfigured) {
+        await withToast(
+          () => rpcArchiveClient(client.id, archive),
+          {
+            success: archive ? "Client archived" : "Client restored",
+            errorPrefix: archive ? "Archive failed" : "Restore failed",
+          }
+        );
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (client) => {
+    if (!client?.id || !isUuid(client.id)) return;
+    if (client.deals > 0) return; // guard — DB тоже защитит, но уважим UI
+    if (busyId) return;
+    if (!confirm(`Delete client "${client.name}" permanently? This cannot be undone.`))
+      return;
+    setBusyId(client.id);
+    try {
+      if (isSupabaseConfigured) {
+        await withToast(
+          () => rpcDeleteClient(client.id),
+          { success: "Client deleted", errorPrefix: "Delete failed" }
+        );
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const [chartMetric, setChartMetric] = useState("count"); // count | volume
   const [chartFilter, setChartFilter] = useState("all");   // all | new | returning
@@ -320,6 +376,26 @@ export default function ClientsPage() {
                 className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/70 focus:bg-white focus:border-slate-300 rounded-[8px] text-[13px] outline-none w-64 transition-colors placeholder:text-slate-400"
               />
             </div>
+            <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px] gap-0.5">
+              {[
+                { id: "active", label: "Active" },
+                { id: "archived", label: `Archived${archivedCount > 0 ? ` (${archivedCount})` : ""}` },
+                { id: "all", label: "All" },
+              ].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => setArchiveFilter(o.id)}
+                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-[6px] transition-all ${
+                    archiveFilter === o.id
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-900"
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => setAddOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
@@ -340,6 +416,7 @@ export default function ClientsPage() {
                 <th className="px-3 py-2.5 font-bold text-right">{t("clients_avg_ticket")}</th>
                 <th className="px-3 py-2.5 font-bold text-right">{t("clients_ltv")}</th>
                 <th className="px-5 py-2.5 font-bold">{t("clients_last_deal")}</th>
+                <th className="px-3 py-2.5 font-bold w-24 text-right"></th>
               </tr>
             </thead>
             <tbody>
@@ -347,7 +424,9 @@ export default function ClientsPage() {
                 <tr
                   key={c.nickname}
                   onClick={() => c.id && setProfileFor(c.id)}
-                  className="border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer"
+                  className={`group border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${
+                    c.archivedAt ? "opacity-60" : ""
+                  }`}
                 >
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">
@@ -394,12 +473,58 @@ export default function ClientsPage() {
                   <td className="px-5 py-3 text-slate-500 text-[12px] tabular-nums whitespace-nowrap">
                     {c.lastDealDate}
                   </td>
+                  <td
+                    className="px-3 py-3 text-right whitespace-nowrap"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {c.id && isUuid(c.id) ? (
+                      <div className="inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {c.archivedAt ? (
+                          <button
+                            onClick={() => handleArchive(c, false)}
+                            disabled={busyId === c.id}
+                            title="Restore from archive"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <ArchiveRestore className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleArchive(c, true)}
+                            disabled={busyId === c.id}
+                            title="Archive client (soft-delete, preserves history)"
+                            className="p-1.5 rounded-md text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDelete(c)}
+                          disabled={busyId === c.id || c.deals > 0}
+                          title={
+                            c.deals > 0
+                              ? `Client has ${c.deals} deal(s) — cannot hard-delete, archive instead`
+                              : "Delete permanently"
+                          }
+                          className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-300 italic">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
-                    {search ? "No clients match your search" : "No clients yet"}
+                  <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                    {search
+                      ? "No clients match your search"
+                      : archiveFilter === "archived"
+                      ? "No archived clients"
+                      : "No clients yet"}
                   </td>
                 </tr>
               )}

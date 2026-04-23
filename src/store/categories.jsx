@@ -43,7 +43,9 @@ export const CATEGORY_GROUPS = [
 const CategoriesContext = createContext(null);
 
 export function CategoriesProvider({ children }) {
-  const [categories, setCategories] = useState(SEED_CATEGORIES);
+  const [categories, setCategories] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_CATEGORIES
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;

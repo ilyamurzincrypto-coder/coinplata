@@ -72,7 +72,11 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState("u_adm");
-  const [users, setUsers] = useState(() => normalizeSeedUsers(SEED_USERS));
+  // В DB-режиме — пустой список, до момента как loadUsers() заполнит из БД.
+  // Избегаем "мигания" seed-юзеров (E.Kara, L.Özturk и др.) на refresh.
+  const [users, setUsers] = useState(() =>
+    isSupabaseConfigured ? [] : normalizeSeedUsers(SEED_USERS)
+  );
   const [settings, setSettings] = useState({
     // DEPRECATED: minFeeUsd теперь per-office (offices[*].minFeeUsd).
     // Оставлено как legacy-fallback на случай если где-то ещё читается.
@@ -131,7 +135,21 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const currentUser = users.find((u) => u.id === currentUserId) || users[0];
+  // Fallback когда users=[] (DB mode, hydration ещё не завершилась).
+  // Минимальный shape чтобы UI не крашился на currentUser.name / .role / etc.
+  const currentUser =
+    users.find((u) => u.id === currentUserId) ||
+    users[0] ||
+    {
+      id: currentUserId || "",
+      name: "Loading…",
+      initials: "",
+      email: "",
+      role: "manager",
+      officeId: null,
+      status: "active",
+      active: true,
+    };
   const isOwner = currentUser.role === "owner";
   const isAdmin = currentUser.role === "admin" || currentUser.role === "owner"; // owner также считается admin
   const isAccountant = currentUser.role === "accountant";

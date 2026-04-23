@@ -137,8 +137,18 @@ export default function RatesBar() {
           {/* Grid из TRADE_PAIRS — каждая карточка содержит ДВА направления. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
             {TRADE_PAIRS.map(([a, b], idx) => {
-              const rAB = getRate(a, b); // a → b
-              const rBA = getRate(b, a); // b → a
+              // SELL: client приносит A, получает B → rate = "B per A" (прямо из БД).
+              // BUY: client приносит B, получает A → rate ОТОБРАЖАЕМ тоже в "B per A"
+              // (чтобы не 0.025). В БД обратная пара лежит как "A per B" (т.е. 0.025);
+              // разворачиваем через 1/x. Если у обеих пар нет спреда → sell≈buy.
+              // Спред возникает когда admin ставит для TRY→USDT rate ≠ 1/rate(USDT→TRY).
+              const sell = getRate(a, b);
+              const inverseBuy = getRate(b, a);
+              const buy = inverseBuy && inverseBuy > 0 ? 1 / inverseBuy : sell;
+              const spreadPct =
+                sell && buy && sell > 0
+                  ? ((sell - buy) / sell) * 100
+                  : 0;
               const isActive = activeIdx === idx;
               return (
                 <button
@@ -152,50 +162,61 @@ export default function RatesBar() {
                   }`}
                 >
                   <div
-                    className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center gap-1 ${
+                    className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center justify-between w-full ${
                       isActive ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
-                    <span>{a}</span>
-                    <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
-                    <span>{b}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <span>{a}</span>
+                      <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
+                      <span>{b}</span>
+                    </span>
+                    {Math.abs(spreadPct) >= 0.05 && (
+                      <span
+                        className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
+                          isActive
+                            ? "bg-slate-700 text-emerald-300"
+                            : "bg-emerald-50 text-emerald-700"
+                        }`}
+                      >
+                        {spreadPct.toFixed(2)}%
+                      </span>
+                    )}
                   </div>
 
-                  {/* A → B — основное направление, крупно */}
+                  {/* SELL — клиент отдаёт A, получает B. Крупно. */}
                   <div className="flex items-baseline justify-between mb-1">
                     <span
-                      className={`text-[10px] font-semibold ${
+                      className={`text-[10px] font-semibold inline-flex items-center ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      <ArrowRight className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
-                      {b}
+                      {a} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {b}
                     </span>
                     <span
                       className={`text-[18px] font-bold tabular-nums tracking-tight leading-none ${
                         isActive ? "text-white" : "text-slate-900"
                       }`}
                     >
-                      {formatRate(rAB)}
+                      {formatRate(sell)}
                     </span>
                   </div>
 
-                  {/* B → A — обратное направление, чуть мельче */}
+                  {/* BUY — клиент отдаёт B, получает A. Тот же юнит (B per A). */}
                   <div className="flex items-baseline justify-between">
                     <span
-                      className={`text-[10px] font-semibold ${
+                      className={`text-[10px] font-semibold inline-flex items-center ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      <ArrowLeft className="w-2.5 h-2.5 inline-block mr-0.5 -mt-px" />
-                      {a}
+                      {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
                     </span>
                     <span
                       className={`text-[14px] font-bold tabular-nums tracking-tight leading-none ${
                         isActive ? "text-slate-200" : "text-slate-600"
                       }`}
                     >
-                      {formatRate(rBA)}
+                      {formatRate(buy)}
                     </span>
                   </div>
                 </button>

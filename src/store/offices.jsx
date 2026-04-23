@@ -21,7 +21,9 @@ import { onDataBump } from "../lib/dataVersion.jsx";
 const OfficesContext = createContext(null);
 
 export function OfficesProvider({ children }) {
-  const [offices, setOffices] = useState(SEED_OFFICES);
+  const [offices, setOffices] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_OFFICES
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;

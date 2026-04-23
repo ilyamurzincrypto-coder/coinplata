@@ -41,7 +41,9 @@ const SEED_IE = [
 const IEContext = createContext(null);
 
 export function IncomeExpenseProvider({ children }) {
-  const [entries, setEntries] = useState(SEED_IE);
+  const [entries, setEntries] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_IE
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;

@@ -20,7 +20,11 @@ import { onDataBump } from "../lib/dataVersion.jsx";
 const CurrenciesContext = createContext(null);
 
 export function CurrenciesProvider({ children }) {
-  const [currencies, setCurrencies] = useState(SEED);
+  // В DB-режиме начинаем с пустого → seed не "мигает" при refresh перед
+  // тем как loadCurrencies() заполнит из БД. В demo-режиме используем seed.
+  const [currencies, setCurrencies] = useState(() =>
+    isSupabaseConfigured ? [] : SEED
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;

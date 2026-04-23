@@ -55,7 +55,9 @@ const SEED_LOG = [
 
 export function AuditProvider({ children }) {
   const { currentUser } = useAuth();
-  const [log, setLogState] = useState(SEED_LOG);
+  const [log, setLogState] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_LOG
+  );
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -83,8 +85,8 @@ export function AuditProvider({ children }) {
       const entry = {
         id: `evt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         timestamp: new Date().toISOString(),
-        userId: currentUser.id,
-        userName: currentUser.name,
+        userId: currentUser?.id || "",
+        userName: currentUser?.name || "—",
         action,
         entity,
         entityId: entityId || "",

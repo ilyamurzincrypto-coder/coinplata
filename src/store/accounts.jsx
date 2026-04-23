@@ -65,8 +65,12 @@ function seedOpeningMovements(accounts) {
 }
 
 export function AccountsProvider({ children }) {
-  const [accounts, setAccounts] = useState(SEED_ACCOUNTS);
-  const [movements, setMovements] = useState(() => seedOpeningMovements(SEED_ACCOUNTS));
+  const [accounts, setAccounts] = useState(() =>
+    isSupabaseConfigured ? [] : SEED_ACCOUNTS
+  );
+  const [movements, setMovements] = useState(() =>
+    isSupabaseConfigured ? [] : seedOpeningMovements(SEED_ACCOUNTS)
+  );
   const [transfers, setTransfers] = useState([]);
   // Из БД приходит v_account_balances (total, reserved per account).
   // Когда map непустой — balanceOf/reservedOf/availableOf читают из неё вместо

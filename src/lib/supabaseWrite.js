@@ -539,6 +539,31 @@ export async function insertClient({ nickname, fullName, telegram, tag, note }) 
   return data;
 }
 
+// Архивация / восстановление — мягкое "удаление".
+export async function rpcArchiveClient(id, archive = true) {
+  assertConfigured();
+  const validId = requireUuid(id, "id");
+  unwrap(
+    await supabase.rpc("archive_client", {
+      p_client_id: validId,
+      p_archive: !!archive,
+    }),
+    archive ? "archive_client" : "unarchive_client"
+  );
+  bumpDataVersion();
+}
+
+// Hard-delete — только если нет активных сделок (RPC проверяет на сервере).
+export async function rpcDeleteClient(id) {
+  assertConfigured();
+  const validId = requireUuid(id, "id");
+  unwrap(
+    await supabase.rpc("delete_client", { p_client_id: validId }),
+    "delete_client"
+  );
+  bumpDataVersion();
+}
+
 export async function updateClient(id, patch) {
   assertConfigured();
   const validId = requireUuid(id, "id");
