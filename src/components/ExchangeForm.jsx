@@ -54,6 +54,7 @@ import {
 import { useWallets } from "../store/wallets.jsx";
 import { useRateHistory } from "../store/rateHistory.jsx";
 import { useObligations } from "../store/obligations.jsx";
+import { useOffices } from "../store/offices.jsx";
 import {
   resolveTxHash,
   detectNetworkFromAddress,
@@ -133,6 +134,14 @@ export default function ExchangeForm({
   const { upsertWallet, findWallet } = useWallets();
   const { snapshots: rateSnapshots } = useRateHistory();
   const { addObligation, openWeOweByOfficeCurrency } = useObligations();
+  const { findOffice } = useOffices();
+
+  // Fee-настройки per-office. Глобальный settings.minFeeUsd больше НЕ читается.
+  // Если офис по какой-то причине не найден — безопасный фолбэк 10 USD.
+  const office = findOffice(currentOffice);
+  const minFeeUsd = Number.isFinite(Number(office?.minFeeUsd))
+    ? Number(office.minFeeUsd)
+    : 10;
 
   const isCryptoCode = (code) => currencyDict[code]?.type === "crypto";
 
@@ -198,8 +207,8 @@ export default function ExchangeForm({
 
   // --- auto-fill rates / amounts ---
   // ВАЖНО: первый output теперь заполняется как NET (gross − feeOut),
-  // где feeUsd = settings.minFeeUsd. "You receive" показывает финальную сумму
-  // с учётом комиссии. computeRemaining ниже использует тот же fee baseline,
+  // где feeUsd = office.minFeeUsd (per-office). "You receive" показывает финальную
+  // сумму с учётом комиссии. computeRemaining ниже использует тот же fee baseline,
   // поэтому remaining = 0 и "exceeds_remaining" не ложно срабатывает.
   useEffect(() => {
     setOutputs((prev) =>
@@ -219,7 +228,7 @@ export default function ExchangeForm({
               computed = computeNetOutput({
                 amtIn: a,
                 rate: r,
-                feeUsd: settings.minFeeUsd || 0,
+                feeUsd: minFeeUsd,
                 outputCurrency: o.currency,
                 getRate,
               });
@@ -234,7 +243,7 @@ export default function ExchangeForm({
         return { ...o, rate: nextRate, amount: nextAmount };
       })
     );
-  }, [curIn, amtIn, getRate, settings.minFeeUsd]);
+  }, [curIn, amtIn, getRate, minFeeUsd]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
@@ -249,18 +258,18 @@ export default function ExchangeForm({
     });
   }, [amtIn, curIn, outputs, getRate]);
 
-  // effectiveFee = max(profitFromRates, minFeeUsd)
+  // effectiveFee = max(profitFromRates, minFeeUsd)  — minFeeUsd из офиса.
   // Если rate-margin меньше минималки (или отрицательная) — берём минималку.
   const effectiveFee = useMemo(() => {
     if (!amtIn || parseFloat(amtIn) <= 0) return 0;
-    return Math.max(profitFromRates, settings.minFeeUsd || 0);
-  }, [profitFromRates, settings.minFeeUsd, amtIn]);
+    return Math.max(profitFromRates, minFeeUsd);
+  }, [profitFromRates, minFeeUsd, amtIn]);
 
   // Показать ли пометку (min) — когда минималка победила rate-margin
   const minFeeApplied = useMemo(() => {
     if (!amtIn || parseFloat(amtIn) <= 0) return false;
-    return profitFromRates < (settings.minFeeUsd || 0);
-  }, [profitFromRates, settings.minFeeUsd, amtIn]);
+    return profitFromRates < minFeeUsd;
+  }, [profitFromRates, minFeeUsd, amtIn]);
 
   // --- handlers для outputs ---
   const updateOutput = (id, patch) =>
@@ -297,10 +306,10 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Используем тот же fee-baseline (minFeeUsd), что применяется в auto-fill
+  // Используем тот же fee-baseline (office.minFeeUsd), что применяется в auto-fill
   // для первого output. Это даёт remaining = 0 в стандартном сценарии
   // и устраняет ложное "exceeds_remaining".
-  const remainingFeeUsd = settings.minFeeUsd || 0;
+  const remainingFeeUsd = minFeeUsd;
   const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
     () =>
       computeRemaining({

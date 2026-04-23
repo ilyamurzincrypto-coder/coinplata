@@ -64,6 +64,9 @@ export function AuthProvider({ children }) {
   const [currentUserId, setCurrentUserId] = useState("u_adm");
   const [users, setUsers] = useState(() => normalizeSeedUsers(SEED_USERS));
   const [settings, setSettings] = useState({
+    // DEPRECATED: minFeeUsd теперь per-office (offices[*].minFeeUsd).
+    // Оставлено как legacy-fallback на случай если где-то ещё читается.
+    // Миграция: существующие офисы получают default = 10 через DEFAULT_OFFICE_OPS.
     minFeeUsd: 10,
     referralPct: 0.1,
     baseCurrency: "USD",

@@ -19,22 +19,31 @@ export function OfficesProvider({ children }) {
     [offices]
   );
 
-  const addOffice = useCallback(({ name, city, timezone, workingDays, workingHours }) => {
-    const id = `office_${Date.now()}`;
-    const full = {
-      id,
-      name: String(name || "").trim(),
-      city: String(city || "").trim(),
-      status: "active",
-      active: true,
-      timezone: timezone || DEFAULT_OFFICE_OPS.timezone,
-      workingDays: Array.isArray(workingDays) ? workingDays : DEFAULT_OFFICE_OPS.workingDays,
-      workingHours: workingHours || DEFAULT_OFFICE_OPS.workingHours,
-    };
-    if (!full.name) return null;
-    setOffices((prev) => [...prev, full]);
-    return full;
-  }, []);
+  const addOffice = useCallback(
+    ({ name, city, timezone, workingDays, workingHours, minFeeUsd, feePercent }) => {
+      const id = `office_${Date.now()}`;
+      const full = {
+        id,
+        name: String(name || "").trim(),
+        city: String(city || "").trim(),
+        status: "active",
+        active: true,
+        timezone: timezone || DEFAULT_OFFICE_OPS.timezone,
+        workingDays: Array.isArray(workingDays) ? workingDays : DEFAULT_OFFICE_OPS.workingDays,
+        workingHours: workingHours || DEFAULT_OFFICE_OPS.workingHours,
+        minFeeUsd: Number.isFinite(Number(minFeeUsd))
+          ? Number(minFeeUsd)
+          : DEFAULT_OFFICE_OPS.minFeeUsd,
+        feePercent: Number.isFinite(Number(feePercent))
+          ? Number(feePercent)
+          : DEFAULT_OFFICE_OPS.feePercent,
+      };
+      if (!full.name) return null;
+      setOffices((prev) => [...prev, full]);
+      return full;
+    },
+    []
+  );
 
   const updateOffice = useCallback((id, patch) => {
     setOffices((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));

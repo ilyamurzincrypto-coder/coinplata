@@ -1,12 +1,15 @@
 // src/store/data.js
 // Моки данных: офисы, валюты, транзакции, контрагенты, пользователи.
 
-// Офисы несут operational timezone + workingDays (ISO 1=Mon..7=Sun) + workingHours.
-// Используются для логики rates confirmation (см. utils/officeTime.js).
+// Офисы несут operational timezone + workingDays (ISO 1=Mon..7=Sun) + workingHours,
+// а также свои финансовые настройки (minFeeUsd / feePercent) — комиссии теперь
+// per-office, не глобальные. См. ExchangeForm: fee считается от office.minFeeUsd.
 const DEFAULT_OFFICE_OPS = {
   timezone: "Europe/Istanbul",
   workingDays: [1, 2, 3, 4, 5, 6], // Mon–Sat
   workingHours: { start: "09:00", end: "21:00" },
+  minFeeUsd: 10,     // минимальная комиссия сделки в USD
+  feePercent: 0,     // опциональный процент от оборота (в будущем — поверх min fee)
 };
 
 export const OFFICES = [

@@ -49,6 +49,8 @@ function OfficeFormModal({ open, office, onClose }) {
   const [workingDays, setWorkingDays] = useState(DEFAULT_OFFICE_OPS.workingDays);
   const [startTime, setStartTime] = useState(DEFAULT_OFFICE_OPS.workingHours.start);
   const [endTime, setEndTime] = useState(DEFAULT_OFFICE_OPS.workingHours.end);
+  const [minFee, setMinFee] = useState(String(DEFAULT_OFFICE_OPS.minFeeUsd));
+  const [feePct, setFeePct] = useState(String(DEFAULT_OFFICE_OPS.feePercent));
 
   React.useEffect(() => {
     if (open) {
@@ -60,6 +62,20 @@ function OfficeFormModal({ open, office, onClose }) {
       );
       setStartTime(office?.workingHours?.start || DEFAULT_OFFICE_OPS.workingHours.start);
       setEndTime(office?.workingHours?.end || DEFAULT_OFFICE_OPS.workingHours.end);
+      setMinFee(
+        String(
+          Number.isFinite(Number(office?.minFeeUsd))
+            ? Number(office.minFeeUsd)
+            : DEFAULT_OFFICE_OPS.minFeeUsd
+        )
+      );
+      setFeePct(
+        String(
+          Number.isFinite(Number(office?.feePercent))
+            ? Number(office.feePercent)
+            : DEFAULT_OFFICE_OPS.feePercent
+        )
+      );
     }
   }, [open, office]);
 
@@ -78,12 +94,16 @@ function OfficeFormModal({ open, office, onClose }) {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+    const minFeeNum = Number.isFinite(Number(minFee)) ? Number(minFee) : DEFAULT_OFFICE_OPS.minFeeUsd;
+    const feePctNum = Number.isFinite(Number(feePct)) ? Number(feePct) : DEFAULT_OFFICE_OPS.feePercent;
     const patch = {
       name: name.trim(),
       city: city.trim(),
       timezone,
       workingDays,
       workingHours: { start: startTime, end: endTime },
+      minFeeUsd: minFeeNum,
+      feePercent: feePctNum,
     };
     if (isEdit) {
       updateOffice(office.id, patch);
@@ -91,7 +111,7 @@ function OfficeFormModal({ open, office, onClose }) {
         action: "update",
         entity: "office",
         entityId: office.id,
-        summary: `Edited office ${office.name} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime}`,
+        summary: `Edited office ${office.name} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime} · min fee $${minFeeNum}${feePctNum ? ` · ${feePctNum}%` : ""}`,
       });
     } else {
       const created = addOffice(patch);
@@ -100,7 +120,7 @@ function OfficeFormModal({ open, office, onClose }) {
           action: "create",
           entity: "office",
           entityId: created.id,
-          summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime}`,
+          summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime} · min fee $${minFeeNum}`,
         });
       }
     }
@@ -210,6 +230,55 @@ function OfficeFormModal({ open, office, onClose }) {
             />
           </div>
         </div>
+
+        {/* Fees — per-office */}
+        <div className="border-t border-slate-100 pt-4">
+          <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
+            Fees
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+                Minimum fee (USD)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={minFee}
+                  onChange={(e) =>
+                    setMinFee(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+                  }
+                  placeholder="10"
+                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] tabular-nums outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+                Fee % (optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={feePct}
+                  onChange={(e) =>
+                    setFeePct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+                  }
+                  placeholder="0"
+                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] pl-3 pr-7 py-2.5 text-[14px] tabular-nums outline-none"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">%</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-1.5">
+            Applied to deals created in this office. Minimum fee is the floor — if
+            the rate margin is lower, the min kicks in.
+          </p>
+        </div>
       </div>
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
         <button
@@ -310,6 +379,7 @@ export default function OfficesTab() {
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
               <th className="px-3 py-2.5 font-bold">Schedule</th>
+              <th className="px-3 py-2.5 font-bold">Fees</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
               <th className="px-3 py-2.5 font-bold text-right">Accounts</th>
               <th className="px-5 py-2.5 font-bold w-24"></th>
@@ -344,6 +414,18 @@ export default function OfficesTab() {
                           {formatWorkingDays(o.workingDays)} · {o.timezone || "—"}
                         </div>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="text-[11px] tabular-nums">
+                      <span className="font-semibold text-slate-700">
+                        min ${Number(o.minFeeUsd ?? 10)}
+                      </span>
+                      {Number(o.feePercent ?? 0) > 0 && (
+                        <span className="ml-1.5 text-slate-500">
+                          · {Number(o.feePercent)}%
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-3 py-3">
@@ -399,7 +481,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
                   No offices
                 </td>
               </tr>

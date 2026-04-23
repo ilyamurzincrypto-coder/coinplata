@@ -1,9 +1,10 @@
 // src/pages/settings/GeneralTab.jsx
-// Системные настройки: base currency, min fee, referral %.
-// Управление курсами вынесено полностью в Dashboard → Rates (единый источник правды).
+// Глобальные системные настройки: base currency + referral %.
+// Min fee и другие fee-параметры вынесены на уровень офиса (Settings → Offices).
+// Rates — в Dashboard → Edit rates.
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Coins } from "lucide-react";
+import { Settings as SettingsIcon, Coins, Info } from "lucide-react";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { useAuth } from "../../store/auth.jsx";
@@ -28,11 +29,8 @@ export default function GeneralTab() {
   const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
 
-  const [minFee, setMinFee] = useState(settings.minFeeUsd);
   const [refPct, setRefPct] = useState(settings.referralPct);
 
-  // Base currency меняется напрямую (без явной кнопки Save)
-  // — это settings-переключатель, эффект должен быть немедленным.
   const handleBaseCurrencyChange = (newBase) => {
     const oldBase = settings.baseCurrency || "USD";
     if (newBase === oldBase) return;
@@ -46,24 +44,15 @@ export default function GeneralTab() {
   };
 
   const save = () => {
-    const newMin = parseFloat(minFee) || 10;
     const newPct = parseFloat(refPct) || 0.1;
-    const changes = [];
-    if (newMin !== settings.minFeeUsd) {
-      changes.push(`min fee $${settings.minFeeUsd} → $${newMin}`);
-    }
-    if (newPct !== settings.referralPct) {
-      changes.push(`referral ${settings.referralPct}% → ${newPct}%`);
-    }
-    updateSettings({ minFeeUsd: newMin, referralPct: newPct });
-    if (changes.length) {
-      logAudit({
-        action: "update",
-        entity: "settings",
-        entityId: "general",
-        summary: changes.join(", "),
-      });
-    }
+    if (newPct === settings.referralPct) return;
+    updateSettings({ referralPct: newPct });
+    logAudit({
+      action: "update",
+      entity: "settings",
+      entityId: "general",
+      summary: `Referral ${settings.referralPct}% → ${newPct}%`,
+    });
   };
 
   return (
@@ -96,19 +85,6 @@ export default function GeneralTab() {
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <label className="text-[13px] text-slate-700 font-medium">
-              {t("min_fee_label")}
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              disabled={!isAdmin}
-              value={minFee}
-              onChange={(e) => setMinFee(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
-              className="w-40 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500"
-            />
-          </div>
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <label className="text-[13px] text-slate-700 font-medium">
               {t("referral_pct_label")}
             </label>
             <input
@@ -116,10 +92,13 @@ export default function GeneralTab() {
               inputMode="decimal"
               disabled={!isAdmin}
               value={refPct}
-              onChange={(e) => setRefPct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
+              onChange={(e) =>
+                setRefPct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+              }
               className="w-40 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500"
             />
           </div>
+
           {isAdmin && (
             <div className="pt-2 flex justify-end">
               <button
@@ -130,9 +109,17 @@ export default function GeneralTab() {
               </button>
             </div>
           )}
+
+          <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 flex items-start gap-2">
+            <Info className="w-3 h-3 mt-0.5 text-slate-400 shrink-0" />
+            <span>
+              Minimum fee and fee % are now configured{" "}
+              <span className="font-semibold text-slate-700">per office</span> — see
+              Settings → Offices.
+            </span>
+          </div>
         </div>
       </section>
-
     </div>
   );
 }
