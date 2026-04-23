@@ -344,6 +344,8 @@ const DICT = {
     section_transactions: "Transactions",
     section_capital: "Capital",
     section_accounts: "Accounts",
+    section_clients: "Clients",
+    section_obligations: "Obligations",
     section_referrals: "Referrals",
     section_income_expense: "Income / Expense",
     section_settings: "Settings",
@@ -700,6 +702,10 @@ const DICT = {
     xf_partial_title: "Partial payout — pay now per output",
     xf_pay_now: "pay now",
     xf_owe: "owe",
+
+    // === Income/Expense modal ===
+    ie_select_category: "Select category",
+    ie_select_subcategory: "No subcategory (optional)",
 
     clients_title: "Clients",
     clients_name: "Client",
@@ -1122,6 +1128,8 @@ const DICT = {
     section_transactions: "Транзакции",
     section_capital: "Капитал",
     section_accounts: "Счета",
+    section_clients: "Клиенты",
+    section_obligations: "Долги",
     section_referrals: "Рефералы",
     section_income_expense: "Доходы / Расходы",
     section_settings: "Настройки",
@@ -1473,6 +1481,10 @@ const DICT = {
     xf_partial_title: "Частичная выплата — сейчас по каждому выводу",
     xf_pay_now: "сейчас",
     xf_owe: "остаток",
+
+    // === Income/Expense modal ===
+    ie_select_category: "Выберите категорию",
+    ie_select_subcategory: "Без подкатегории (опционально)",
 
     clients_title: "Клиенты",
     clients_name: "Клиент",
@@ -1893,6 +1905,8 @@ const DICT = {
     section_transactions: "İşlemler",
     section_capital: "Sermaye",
     section_accounts: "Hesaplar",
+    section_clients: "Müşteriler",
+    section_obligations: "Borçlar",
     section_referrals: "Referanslar",
     section_income_expense: "Gelir / Gider",
     section_settings: "Ayarlar",
@@ -2244,6 +2258,10 @@ const DICT = {
     xf_partial_title: "Kısmi ödeme — her çıkış için şimdi öde",
     xf_pay_now: "şimdi",
     xf_owe: "kalan",
+
+    // === Income/Expense modal ===
+    ie_select_category: "Kategori seç",
+    ie_select_subcategory: "Alt kategori yok (opsiyonel)",
 
     clients_title: "Müşteriler",
     clients_name: "Müşteri",

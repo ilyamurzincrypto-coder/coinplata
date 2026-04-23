@@ -662,6 +662,86 @@ export async function rpcSetUserStatus(userId, status) {
   bumpDataVersion();
 }
 
+// ---------- accounts ----------
+
+// Маппим frontend account payload на БД колонки.
+// type: cash|bank|crypto|network (network → crypto в БД).
+// Address для crypto обязателен или nullable (constraint unique nulls not distinct).
+export async function insertAccount(payload) {
+  assertConfigured();
+  if (!payload?.name) throw new Error("Account name required");
+  if (!payload?.officeId) throw new Error("Office required");
+  if (!payload?.currency) throw new Error("Currency required");
+
+  // БД type: cash|bank|crypto
+  const typeRaw = String(payload.type || "cash").toLowerCase();
+  const dbType = typeRaw === "network" ? "crypto" : typeRaw;
+  if (!["cash", "bank", "crypto"].includes(dbType)) {
+    throw new Error(`Invalid account type: ${typeRaw}`);
+  }
+
+  const row = {
+    office_id: payload.officeId,
+    currency_code: payload.currency,
+    type: dbType,
+    name: String(payload.name).trim(),
+    bank_ref: payload.bankRef || null,
+    address: payload.address || null,
+    network_id: payload.networkId || (payload.network ? payload.network.toLowerCase() : null),
+    is_deposit: !!payload.isDeposit,
+    is_withdrawal: !!payload.isWithdrawal,
+    active: payload.active !== false,
+    opening_balance: Number(payload.balance) || 0,
+  };
+  const { data, error } = await supabase
+    .from("accounts")
+    .insert(row)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(formatSupabaseError(error, "insert account"));
+
+  // Если opening_balance > 0 — пишем opening movement (бэк не делает
+  // автоматически, только фронт)
+  if (data && row.opening_balance > 0) {
+    try {
+      await supabase.from("account_movements").insert({
+        account_id: data.id,
+        amount: row.opening_balance,
+        direction: "in",
+        currency_code: row.currency_code,
+        reserved: false,
+        source_kind: "opening",
+        source_ref_id: null,
+        note: "Opening balance",
+      });
+    } catch (mvErr) {
+      // eslint-disable-next-line no-console
+      console.warn("[opening movement]", mvErr);
+    }
+  }
+
+  bumpDataVersion();
+  return data;
+}
+
+export async function updateAccountRow(id, patch) {
+  assertConfigured();
+  if (!id) throw new Error("Account id required");
+  const row = {};
+  if (patch.name != null) row.name = String(patch.name).trim();
+  if (patch.active !== undefined) row.active = !!patch.active;
+  if (patch.address !== undefined) row.address = patch.address || null;
+  if (patch.bankRef !== undefined) row.bank_ref = patch.bankRef || null;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from("accounts").update(row).eq("id", id);
+  if (error) throw new Error(formatSupabaseError(error, "update account"));
+  bumpDataVersion();
+}
+
+export async function deactivateAccountRow(id) {
+  return updateAccountRow(id, { active: false });
+}
+
 // ---------- clients (direct insert) ----------
 
 // Гарантирует существование client'а в БД и возвращает его uuid.

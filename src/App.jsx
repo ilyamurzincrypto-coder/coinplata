@@ -45,8 +45,8 @@ const PAGE_SECTION = {
   cashier: "transactions",
   capital: "capital",
   accounts: "accounts",
-  clients: "capital",
-  obligations: "capital",
+  clients: "clients",
+  obligations: "obligations",
   referrals: "referrals",
   settings: "settings",
 };

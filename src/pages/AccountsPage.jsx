@@ -33,6 +33,8 @@ import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { deactivateAccountRow, withToast } from "../lib/supabaseWrite.js";
 
 const CURRENCY_ORDER = ["USD", "USDT", "EUR", "TRY", "GBP"];
 const curIndex = (code) => {
@@ -88,9 +90,17 @@ export default function AccountsPage() {
     });
   };
 
-  const handleDeleteAccount = (acc) => {
+  const handleDeleteAccount = async (acc) => {
     if (!confirm(`Deactivate account "${acc.name}"? It will disappear from dropdowns; movements stay intact.`)) return;
-    deactivateAccount(acc.id);
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => deactivateAccountRow(acc.id),
+        { success: "Account deactivated", errorPrefix: "Failed" }
+      );
+      if (!res.ok) return;
+    } else {
+      deactivateAccount(acc.id);
+    }
     logAudit({
       action: "delete",
       entity: "account",

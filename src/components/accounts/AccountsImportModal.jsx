@@ -21,6 +21,8 @@ import { useCurrencies } from "../../store/currencies.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { buildTemplateBlob, downloadBlob, parseXlsxFile } from "../../utils/xlsxRates.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { insertAccount } from "../../lib/supabaseWrite.js";
 
 // Минимальный CSV-парсер: split по новой строке, запятая как sep.
 // Поддерживает quoted values с "" внутри.
@@ -217,6 +219,7 @@ export default function AccountsImportModal({ open, onClose }) {
     try {
       let added = 0;
       let skipped = 0;
+      let failed = 0;
       for (const row of parsed.valid) {
         if (row.duplicate) {
           skipped += 1;
@@ -232,14 +235,24 @@ export default function AccountsImportModal({ open, onClose }) {
         };
         if (row.address) payload.address = row.address;
         if (row.network) payload.network = row.network;
-        addAccount(payload);
-        added += 1;
+        try {
+          if (isSupabaseConfigured) {
+            await insertAccount(payload);
+          } else {
+            addAccount(payload);
+          }
+          added += 1;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("[import] account failed", row.name, err);
+          failed += 1;
+        }
       }
       logAudit({
         action: "create",
         entity: "account",
         entityId: "bulk-import",
-        summary: `CSV import: ${added} new, ${skipped} skipped, ${parsed.summary.errors} errors (${file?.name || ""})`,
+        summary: `CSV import: ${added} new, ${skipped} skipped, ${parsed.summary.errors + failed} errors (${file?.name || ""})`,
       });
       handleClose();
     } finally {
@@ -248,34 +261,35 @@ export default function AccountsImportModal({ open, onClose }) {
   };
 
   const handleTemplate = () => {
-    // Template = export existing as base
-    const rows = [];
-    accounts.forEach((a) => {
-      const o = offices.find((x) => x.id === a.officeId);
-      rows.push({
-        from: o?.name || "",
-        to: a.name,
-        rate: "",
-      });
-    });
-    // Используем buildTemplateBlob — но там From/To/Rate, нам нужно другое.
-    // Проще: собрать xlsx вручную. Однако build сейчас есть только через xlsx.
-    // Упрощение: экспортируем CSV в новую вкладку.
-    const csv = [
-      "Office,Account,Currency,Type,Balance,Address,Network",
-      ...accounts.map((a) => {
+    // Template CSV: header + пример строки или существующие accounts.
+    // Доступен всегда — даже если accounts пустой (новый проект).
+    const header = "Office,Account,Currency,Type,Balance,Address,Network";
+    const esc = (v) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const rows = [header];
+    if (accounts.length > 0) {
+      accounts.forEach((a) => {
         const o = offices.find((x) => x.id === a.officeId);
-        return [
-          `"${(o?.name || "").replace(/"/g, '""')}"`,
-          `"${(a.name || "").replace(/"/g, '""')}"`,
+        rows.push([
+          esc(o?.name || ""),
+          esc(a.name || ""),
           a.currency,
           a.type || "cash",
           a.balance || 0,
-          a.address || "",
+          esc(a.address || ""),
           a.network || "",
-        ].join(",");
-      }),
-    ].join("\n");
+        ].join(","));
+      });
+    } else {
+      // Пример-строки чтобы видно было формат
+      const sampleOffice = offices[0]?.name || "Main office";
+      rows.push(`${esc(sampleOffice)},Cash USD,USD,cash,1000,,`);
+      rows.push(`${esc(sampleOffice)},Bank EUR,EUR,bank,0,,`);
+      rows.push(`${esc(sampleOffice)},USDT wallet,USDT,network,0,TR...,TRC20`);
+    }
+    const csv = rows.join("\n");
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
     downloadBlob(blob, "coinplata-accounts-template.csv");
   };
@@ -338,11 +352,10 @@ export default function AccountsImportModal({ open, onClose }) {
 
           <button
             onClick={handleTemplate}
-            disabled={accounts.length === 0}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-slate-200 hover:border-slate-300 text-[12px] font-semibold text-slate-700 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-slate-200 hover:border-slate-300 text-[12px] font-semibold text-slate-700 hover:text-slate-900"
           >
             <Download className="w-3.5 h-3.5" />
-            {t("acc_import_template") || "Download template.csv (current accounts)"}
+            {t("acc_import_template") || "Download template.csv"}
           </button>
         </div>
       )}

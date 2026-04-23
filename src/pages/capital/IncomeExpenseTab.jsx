@@ -477,7 +477,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-              Office
+              {t("oblig_col_office")}
             </label>
             <select
               value={officeId}
@@ -493,7 +493,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-              Currency
+              {t("oblig_currency_label")}
             </label>
             <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap">
               {CURRENCIES.map((c) => (
@@ -544,7 +544,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
             {t("ie_category") || "Category"}
           </label>
           <CategoryPicker
-            label="Category"
+            label={t("cat_type") /* "Category" equivalent; reuse */}
             value={parentCatId}
             onChange={(v) => {
               setParentCatId(v);
@@ -555,11 +555,11 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
               const created = await handleCreateCategory(name, null);
               if (created) setParentCatId(created.id);
             }}
-            placeholder="Select category"
+            placeholder={t("ie_select_category") || "Select category"}
           />
           {parentCatId && (
             <CategoryPicker
-              label="Subcategory"
+              label={t("cat_subcategory")}
               value={subCatId}
               onChange={setSubCatId}
               options={subCategories}
@@ -567,7 +567,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
                 const created = await handleCreateCategory(name, parentCatId);
                 if (created) setSubCatId(created.id);
               }}
-              placeholder="No subcategory (optional)"
+              placeholder={t("ie_select_subcategory") || "No subcategory (optional)"}
               indent
               allowClear
             />

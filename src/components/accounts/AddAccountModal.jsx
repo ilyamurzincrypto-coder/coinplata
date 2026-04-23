@@ -12,6 +12,8 @@ import { useRates } from "../../store/rates.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { channelShortLabel } from "../../utils/accountChannel.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { insertAccount, withToast } from "../../lib/supabaseWrite.js";
 
 function deriveType(channelKind) {
   if (channelKind === "network") return "crypto";
@@ -78,7 +80,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
 
   const canSubmit = name.trim().length > 0 && currency && channelId && officeId;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) {
       setError("Name, currency and channel are required");
       return;
@@ -110,7 +112,15 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
       payload.bankRef = bankRef.trim();
     }
 
-    addAccount(payload);
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => insertAccount(payload),
+        { success: "Account created", errorPrefix: "Failed to create account" }
+      );
+      if (!res.ok) return;
+    } else {
+      addAccount(payload);
+    }
 
     const summaryExtras = [
       `${currency}`,
