@@ -536,6 +536,36 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
     patch.spread_percent = s;
   }
   if (Object.keys(patch).length === 0) return;
+
+  // Snapshot перед UPDATE — чтобы одиночное изменение курса тоже попало
+  // в Rate history. Reason включает пару + новое значение. Fire-and-forget:
+  // если упадёт, основной UPDATE всё равно выполнится.
+  try {
+    const { data: currentPairs } = await supabase
+      .from("pairs")
+      .select("from_currency, to_currency, rate")
+      .eq("is_default", true);
+    if (currentPairs && currentPairs.length > 0) {
+      const ratesMap = {};
+      currentPairs.forEach((p) => {
+        ratesMap[`${p.from_currency}_${p.to_currency}`] = Number(p.rate);
+      });
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess?.session?.user?.id || null;
+      const newVal = patch.base_rate ?? patch.spread_percent ?? "";
+      await supabase.from("rate_snapshots").insert({
+        created_by: userId,
+        reason: `single pair: ${from}→${to} ${baseRate != null ? `rate=${baseRate}` : ""}${spreadPercent != null ? ` spread=${spreadPercent}%` : ""}`,
+        rates: ratesMap,
+        pairs_count: currentPairs.length,
+      });
+    }
+  } catch (err) {
+    // Snapshot не критичен — логируем и продолжаем
+    // eslint-disable-next-line no-console
+    console.warn("[rate snapshot] failed", err);
+  }
+
   patch.updated_at = new Date().toISOString();
   const { error } = await supabase
     .from("pairs")

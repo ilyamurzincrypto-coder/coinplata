@@ -16,11 +16,13 @@ import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import DateRangePicker, { rangeForPreset, inRange } from "../../components/ui/DateRangePicker.jsx";
 import Modal from "../../components/ui/Modal.jsx";
+import { useTranslation } from "../../i18n/translations.jsx";
 
 // Получает пропс `range` из CapitalPage, но внутри мы сразу переопределяем
 // на "Today" при первом рендере — per spec default. Дальнейшее переключение
 // живёт здесь локально и синхронизируется назад (через onRangeChange если есть).
 export default function PnlTab({ range, onRangeChange }) {
+  const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { entries } = useIncomeExpense();
   const { offices } = useOffices();
@@ -187,9 +189,9 @@ export default function PnlTab({ range, onRangeChange }) {
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex items-center justify-between flex-wrap gap-3">
         <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5">
           {[
-            { id: "today", label: "Today" },
-            { id: "week", label: "Week" },
-            { id: "month", label: "Month" },
+            { id: "today", label: t("pnl_today") },
+            { id: "week", label: t("pnl_week") },
+            { id: "month", label: t("pnl_month") },
           ].map((p) => {
             const active = range?.preset === p.id;
             return (
@@ -212,7 +214,7 @@ export default function PnlTab({ range, onRangeChange }) {
               range?.preset === "custom" ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200" : "text-slate-500 hover:text-slate-900"
             }`}
           >
-            Custom
+            {t("pnl_custom")}
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -221,10 +223,10 @@ export default function PnlTab({ range, onRangeChange }) {
             type="button"
             onClick={handleExportPnl}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
-            title="Export P&L to CSV"
+            title={t("pnl_export_tip")}
           >
             <Download className="w-3.5 h-3.5" />
-            Export CSV
+            {t("export_csv")}
           </button>
         </div>
       </div>
@@ -232,25 +234,25 @@ export default function PnlTab({ range, onRangeChange }) {
       {/* KPI: Revenue / Expenses / Net — все карточки кликабельны для drill-down */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <PnlCard
-          label="Revenue"
+          label={t("pnl_revenue")}
           value={`${sym}${fmt(revenueTotal, base)}`}
-          sub={`Deals ${sym}${fmt(revenueExchange, base)} · Income ${sym}${fmt(income, base)}`}
+          sub={`${t("pnl_deals")} ${sym}${fmt(revenueExchange, base)} · ${t("pnl_income")} ${sym}${fmt(income, base)}`}
           icon={<TrendingUp className="w-4 h-4" />}
           tone="emerald"
           onClick={() => setDrill({ kind: "revenue" })}
         />
         <PnlCard
-          label="Expenses"
+          label={t("pnl_expenses")}
           value={`${sym}${fmt(expense, base)}`}
-          sub="Salaries, rent, utilities…"
+          sub={t("pnl_expenses_sub")}
           icon={<TrendingDown className="w-4 h-4" />}
           tone="rose"
           onClick={() => setDrill({ kind: "expenses" })}
         />
         <PnlCard
-          label="Net profit"
+          label={t("pnl_net_profit")}
           value={`${net >= 0 ? "+" : ""}${sym}${fmt(net, base)}`}
-          sub="Revenue − Expenses"
+          sub={t("pnl_revenue_minus_exp")}
           icon={<Wallet className="w-4 h-4" />}
           tone={net >= 0 ? "emerald" : "rose"}
           emphasize
@@ -262,7 +264,7 @@ export default function PnlTab({ range, onRangeChange }) {
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold">By office</h3>
+          <h3 className="text-[14px] font-semibold">{t("pnl_by_office")}</h3>
         </div>
         {byOffice.filter((b) => b.revenue || b.income || b.expense).length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No activity in this period</div>
@@ -339,7 +341,7 @@ export default function PnlTab({ range, onRangeChange }) {
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Coins className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold">By currency (by incoming leg)</h3>
+          <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
         </div>
         {byCurrency.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No deals in this period</div>
@@ -403,6 +405,7 @@ function PnlCard({ label, value, sub, icon, tone, emphasize, onClick }) {
 //   — для office: всё выше, но только для одного офиса
 // =========================================================================
 function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }) {
+  const { t } = useTranslation();
   if (!drill) return null;
 
   // Фильтрация по office если нужно.
@@ -417,14 +420,15 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
   const income = ies.filter((e) => e.type === "income").reduce((s, e) => s + toBase(e.amount, e.currency), 0);
   const expense = ies.filter((e) => e.type === "expense").reduce((s, e) => s + toBase(e.amount, e.currency), 0);
 
+  const officeLabel = drill.officeId ? officeName(drill.officeId) : t("pnl_all_offices");
   const title =
     drill.kind === "revenue"
-      ? `Revenue · ${drill.officeId ? officeName(drill.officeId) : "All offices"}`
+      ? `${t("pnl_revenue")} · ${officeLabel}`
       : drill.kind === "expenses"
-      ? `Expenses · ${drill.officeId ? officeName(drill.officeId) : "All offices"}`
+      ? `${t("pnl_expenses")} · ${officeLabel}`
       : drill.kind === "office"
       ? `P&L · ${officeName(drill.officeId)}`
-      : `Net profit · ${drill.officeId ? officeName(drill.officeId) : "All offices"}`;
+      : `${t("pnl_net_profit")} · ${officeLabel}`;
 
   const showRevenueBreakdown = drill.kind === "revenue" || drill.kind === "net" || drill.kind === "office";
   const showExpensesBreakdown = drill.kind === "expenses" || drill.kind === "net" || drill.kind === "office";
@@ -448,11 +452,11 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
       <div className="p-5 max-h-[70vh] overflow-auto space-y-4">
         {/* Summary row — Level 1 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <MiniKpi label="Exchange profit" value={revenueExchange} sym={sym} tone={revenueExchange >= 0 ? "emerald" : "rose"} />
-          <MiniKpi label="Other income" value={income} sym={sym} tone="emerald" />
-          <MiniKpi label="Expenses" value={expense} sym={sym} tone="rose" negate />
+          <MiniKpi label={t("pnl_deals_profit")} value={revenueExchange} sym={sym} tone={revenueExchange >= 0 ? "emerald" : "rose"} />
+          <MiniKpi label={t("pnl_other_income")} value={income} sym={sym} tone="emerald" />
+          <MiniKpi label={t("pnl_expenses")} value={expense} sym={sym} tone="rose" negate />
           <MiniKpi
-            label="Net"
+            label={t("pnl_net_profit")}
             value={revenueExchange + income - expense}
             sym={sym}
             tone={(revenueExchange + income - expense) >= 0 ? "emerald" : "rose"}
@@ -464,11 +468,11 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
         {showRevenueBreakdown && (
           <div>
             <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Revenue sources
+              {t("pnl_revenue_sources")}
             </h4>
             <div className="border border-slate-200 rounded-[10px] overflow-hidden divide-y divide-slate-100">
-              <DrillRow label={`Exchange profit (${txs.length} deals)`} amount={revenueExchange} sym={sym} tone="emerald" />
-              <DrillRow label={`Other income (${ies.filter((e) => e.type === "income").length} entries)`} amount={income} sym={sym} tone="emerald" />
+              <DrillRow label={`${t("pnl_deals_profit")} (${txs.length} ${t("kpi_deals_sub")})`} amount={revenueExchange} sym={sym} tone="emerald" />
+              <DrillRow label={`${t("pnl_other_income")} (${ies.filter((e) => e.type === "income").length} ${t("pnl_entries")})`} amount={income} sym={sym} tone="emerald" />
             </div>
           </div>
         )}
@@ -477,7 +481,7 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
         {showExpensesBreakdown && (
           <div>
             <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Expenses by category
+              {t("pnl_expenses_by_cat")}
             </h4>
             {expenseCats.length === 0 ? (
               <div className="text-[12px] text-slate-400 italic py-2">No expenses in this period</div>

@@ -313,7 +313,7 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
       onClose={onClose}
       title={t("edit_rates")}
       subtitle="Currency → Channel → Pair · 1 unit of FROM in TO"
-      width="2xl"
+      width="4xl"
     >
       {view === "list" && (
         <ListPanel

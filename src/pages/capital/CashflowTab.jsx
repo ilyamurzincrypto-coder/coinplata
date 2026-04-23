@@ -5,6 +5,7 @@
 import React, { useMemo } from "react";
 import { TrendingUp, TrendingDown, Minus, Download } from "lucide-react";
 import { exportCSV } from "../../utils/csv.js";
+import { useTranslation } from "../../i18n/translations.jsx";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
@@ -13,6 +14,7 @@ import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
 
 export default function CashflowTab({ range }) {
+  const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { entries } = useIncomeExpense();
   const { base, toBase } = useBaseCurrency();
@@ -87,20 +89,20 @@ export default function CashflowTab({ range }) {
           type="button"
           onClick={handleExport}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
-          title="Export cashflow to CSV"
+          title={t("pnl_export_cashflow_tip")}
         >
           <Download className="w-3.5 h-3.5" />
-          Export CSV
+          {t("export_csv")}
         </button>
       </div>
 
       {/* Summary bars */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 p-5">
-        <h2 className="text-[15px] font-semibold tracking-tight mb-4">Period summary</h2>
+        <h2 className="text-[15px] font-semibold tracking-tight mb-4">{t("pnl_period_summary")}</h2>
 
         <div className="space-y-3">
           <FlowBar
-            label="Deals profit"
+            label={t("pnl_deals_profit")}
             value={dealsProfit}
             max={maxBar}
             color="emerald"
@@ -109,7 +111,7 @@ export default function CashflowTab({ range }) {
             base={base}
           />
           <FlowBar
-            label="Other income"
+            label={t("pnl_other_income")}
             value={incomeTotal}
             max={maxBar}
             color="sky"
@@ -118,7 +120,7 @@ export default function CashflowTab({ range }) {
             base={base}
           />
           <FlowBar
-            label="Expenses"
+            label={t("pnl_expenses")}
             value={expenseTotal}
             max={maxBar}
             color="rose"
@@ -130,7 +132,7 @@ export default function CashflowTab({ range }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-700">
               <Minus className="w-3.5 h-3.5 text-slate-500" />
-              Net profit
+              {t("pnl_net_profit")}
             </div>
             <div
               className={`text-[22px] font-bold tabular-nums tracking-tight ${
@@ -146,21 +148,23 @@ export default function CashflowTab({ range }) {
       {/* Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <BreakdownCard
-          title="Income by category"
+          title={t("pnl_income_by_cat")}
           rows={incomeByCat}
           total={incomeTotal}
           color="emerald"
-          extraTop={dealsProfit > 0 ? ["Deals profit", dealsProfit] : null}
+          extraTop={dealsProfit > 0 ? [t("pnl_deals_profit"), dealsProfit] : null}
           sym={sym}
           base={base}
+          t={t}
         />
         <BreakdownCard
-          title="Expense by category"
+          title={t("pnl_expense_by_cat")}
           rows={expenseByCat}
           total={expenseTotal}
           color="rose"
           sym={sym}
           base={base}
+          t={t}
         />
       </div>
     </div>
@@ -190,7 +194,7 @@ function FlowBar({ label, value, max, color, icon, sym, base }) {
   );
 }
 
-function BreakdownCard({ title, rows, total, color, extraTop, sym, base }) {
+function BreakdownCard({ title, rows, total, color, extraTop, sym, base, t }) {
   const dotColor = color === "emerald" ? "bg-emerald-500" : "bg-rose-500";
   return (
     <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
@@ -211,7 +215,7 @@ function BreakdownCard({ title, rows, total, color, extraTop, sym, base }) {
           </div>
         )}
         {rows.length === 0 && !extraTop && (
-          <div className="text-[12px] text-slate-400 italic text-center py-6">No entries</div>
+          <div className="text-[12px] text-slate-400 italic text-center py-6">{t ? t("pnl_no_entries") : "No entries"}</div>
         )}
         {rows.map(([cat, amount]) => (
           <div key={cat} className="flex items-center justify-between py-1.5">
