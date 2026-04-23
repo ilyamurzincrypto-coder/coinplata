@@ -27,7 +27,9 @@ import { CategoriesProvider } from "./store/categories.jsx";
 import { RateHistoryProvider } from "./store/rateHistory.jsx";
 import { ObligationsProvider } from "./store/obligations.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
+import { useAuth } from "./store/auth.jsx";
 import { DataVersionProvider } from "./lib/dataVersion.jsx";
 import { ToastProvider } from "./lib/toast.jsx";
 import { RealtimeProvider } from "./lib/realtime.jsx";
@@ -43,9 +45,18 @@ const PAGE_SECTION = {
 
 function Root() {
   const { t } = useTranslation();
+  const { currentUser } = useAuth();
   const [page, setPage] = useState("cashier");
   const [currentOffice, setCurrentOffice] = useState("mark");
   const can = useCan();
+
+  // Activation gate: приглашённый пользователь кликнул magic-link, имеет
+  // валидную session, но profile.status = 'invited' → заставляем установить
+  // пароль прежде чем пустить в приложение. После save он станет 'active'
+  // (через bumpDataVersion в SetPasswordPage → AuthProvider реhydrate).
+  if (isSupabaseConfigured && currentUser?.status === "invited") {
+    return <SetPasswordPage />;
+  }
 
   // Exchange mode lifted сюда чтобы переживать unmount CashierPage при
   // переходе на Clients/Capital и т.д. Форма формально сбрасывается (ExchangeForm
