@@ -1067,9 +1067,9 @@ export default function ExchangeForm({
         <section className="mt-5 bg-white border border-slate-200 rounded-[14px] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em]">
-              Conditions
+              {t("xf_conditions")}
             </h3>
-            <span className="text-[10px] text-slate-400">optional</span>
+            <span className="text-[10px] text-slate-400">{t("xf_optional")}</span>
           </div>
 
           <div className="space-y-2">
@@ -1077,8 +1077,8 @@ export default function ExchangeForm({
               active={deferredIn}
               onChange={setDeferredIn}
               icon="↓"
-              label="Client pays later"
-              sub="Creates they-owe obligation · no IN movement"
+              label={t("xf_client_pays_later")}
+              sub={t("xf_client_pays_later_sub")}
               tone="sky"
             />
             <Toggle
@@ -1088,8 +1088,8 @@ export default function ExchangeForm({
                 if (v) setPartialMode(false); // mutually exclusive
               }}
               icon="↑"
-              label="We pay later"
-              sub="Creates we-owe obligation for each leg · no OUT movement"
+              label={t("xf_we_pay_later")}
+              sub={t("xf_we_pay_later_sub")}
               tone="amber"
             />
             <Toggle
@@ -1099,8 +1099,8 @@ export default function ExchangeForm({
                 if (v) setDeferredOut(false);
               }}
               icon="½"
-              label="Partial payout"
-              sub="Pay now N, remainder becomes we-owe obligation"
+              label={t("xf_partial_payout")}
+              sub={t("xf_partial_payout_sub")}
               tone="violet"
             />
             <Toggle
@@ -1126,7 +1126,7 @@ export default function ExchangeForm({
           {partialMode && outputs.length > 0 && (
             <div className="mt-3 p-3 rounded-[12px] bg-violet-50/40 border border-violet-200/60 animate-[cIn_160ms_ease-out]">
               <div className="text-[10px] font-bold text-violet-700 uppercase tracking-[0.12em] mb-2">
-                Partial payout — pay now per output
+                {t("xf_partial_title")}
               </div>
               <div className="space-y-2">
                 {outputs.map((o, idx) => {
@@ -1141,7 +1141,7 @@ export default function ExchangeForm({
                       <span className="text-slate-600 min-w-[60px]">
                         {o.currency}
                       </span>
-                      <span className="text-slate-400">pay now</span>
+                      <span className="text-slate-400">{t("xf_pay_now")}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -1158,7 +1158,7 @@ export default function ExchangeForm({
                       </span>
                       {remaining > 0 && (
                         <span className="text-[10px] font-bold text-violet-700 tabular-nums whitespace-nowrap">
-                          owe {fmt(remaining, o.currency)}
+                          {t("xf_owe")} {fmt(remaining, o.currency)}
                         </span>
                       )}
                     </div>

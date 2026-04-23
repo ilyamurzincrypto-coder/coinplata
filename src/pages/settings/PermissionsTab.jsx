@@ -59,7 +59,10 @@ export default function PermissionsTab() {
             <tbody>
               {activeUsers.map((u) => {
                 const perms = getPermissions(u.id);
-                const isRoleAdmin = u.role === "admin";
+                // Owner и admin оба имеют полный доступ по дизайну — показываем
+                // EDIT lock для обоих (раньше lock был только для admin → UI
+                // позволял менять права owner'а, что сбивало).
+                const isRoleAdmin = u.role === "admin" || u.role === "owner";
                 return (
                   <tr key={u.id} className="hover:bg-slate-50/60">
                     <td className="sticky left-0 bg-white py-2 pr-4 border-b border-slate-100">
@@ -88,7 +91,11 @@ export default function PermissionsTab() {
                           {isRoleAdmin ? (
                             <div
                               className={`inline-flex items-center justify-center px-2 py-1 rounded-md text-[11px] font-semibold ${LEVEL_STYLES.edit}`}
-                              title="Admin has full access everywhere"
+                              title={
+                                u.role === "owner"
+                                  ? "Owner has full access everywhere"
+                                  : "Admin has full access everywhere"
+                              }
                             >
                               EDIT
                             </div>

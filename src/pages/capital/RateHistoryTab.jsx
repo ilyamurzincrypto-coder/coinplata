@@ -8,6 +8,7 @@ import { useRateHistory } from "../../store/rateHistory.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useTransactions } from "../../store/transactions.jsx";
+import { useTranslation } from "../../i18n/translations.jsx";
 
 function fmtDate(iso) {
   if (!iso) return "—";
@@ -16,6 +17,7 @@ function fmtDate(iso) {
 }
 
 export default function RateHistoryTab() {
+  const { t } = useTranslation();
   const { snapshots } = useRateHistory();
   const { findOffice } = useOffices();
   const { users } = useAuth();
@@ -41,26 +43,25 @@ export default function RateHistoryTab() {
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <History className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold">Rate history · {snapshots.length}</h3>
+          <h3 className="text-[14px] font-semibold">{t("rh_title")} · {snapshots.length}</h3>
           <span className="text-[11px] text-slate-400">
-            · append-only log of confirmed rate sets
+            · {t("rh_subtitle")}
           </span>
         </div>
         {snapshots.length === 0 ? (
           <div className="px-5 py-12 text-center text-[13px] text-slate-400">
-            No rate snapshots yet. They're created when an admin confirms rates
-            for the day via the dashboard banner.
+            {t("rh_empty")}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100 bg-slate-50/40">
-                  <th className="px-5 py-2.5 font-bold">When</th>
-                  <th className="px-3 py-2.5 font-bold">Office</th>
-                  <th className="px-3 py-2.5 font-bold">By</th>
-                  <th className="px-3 py-2.5 font-bold text-right">Pairs</th>
-                  <th className="px-3 py-2.5 font-bold text-right">Referenced by tx</th>
+                  <th className="px-5 py-2.5 font-bold">{t("rh_when")}</th>
+                  <th className="px-3 py-2.5 font-bold">{t("oblig_col_office")}</th>
+                  <th className="px-3 py-2.5 font-bold">{t("rh_by")}</th>
+                  <th className="px-3 py-2.5 font-bold text-right">{t("rh_pairs")}</th>
+                  <th className="px-3 py-2.5 font-bold text-right">{t("rh_ref_tx")}</th>
                   <th className="px-5 py-2.5 font-bold w-10"></th>
                 </tr>
               </thead>
@@ -87,7 +88,7 @@ export default function RateHistoryTab() {
                       <td className="px-3 py-3 text-slate-700">
                         <span className="inline-flex items-center gap-1">
                           <UserIcon className="w-3 h-3 text-slate-400" />
-                          {user?.name || "system"}
+                          {user?.name || t("rh_system")}
                         </span>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums font-semibold">{s.pairsCount}</td>
@@ -112,6 +113,7 @@ export default function RateHistoryTab() {
 }
 
 function SnapshotViewModal({ snapshot, onClose }) {
+  const { t } = useTranslation();
   if (!snapshot) return null;
   const pairs = Object.entries(snapshot.rates).map(([k, v]) => {
     const [from, to] = k.split("_");
@@ -128,8 +130,8 @@ function SnapshotViewModal({ snapshot, onClose }) {
     <Modal
       open={!!snapshot}
       onClose={onClose}
-      title={`Snapshot · ${fmtDate(snapshot.timestamp)}`}
-      subtitle={`${snapshot.pairsCount} pairs · reason: ${snapshot.reason || "—"}`}
+      title={`${t("rh_snapshot")} · ${fmtDate(snapshot.timestamp)}`}
+      subtitle={`${snapshot.pairsCount} ${t("rh_pairs_lower")} · ${t("rh_reason")}: ${snapshot.reason || "—"}`}
       width="2xl"
     >
       <div className="p-5 max-h-[60vh] overflow-auto space-y-4">
@@ -157,7 +159,7 @@ function SnapshotViewModal({ snapshot, onClose }) {
         ))}
         {pairs.length === 0 && (
           <div className="text-center text-[13px] text-slate-400 py-6">
-            Empty snapshot
+            {t("rh_empty_snapshot")}
           </div>
         )}
       </div>
@@ -168,7 +170,7 @@ function SnapshotViewModal({ snapshot, onClose }) {
           className="px-3 py-1.5 rounded-[10px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors inline-flex items-center gap-1"
         >
           <X className="w-3 h-3" />
-          Close
+          {t("rh_close")}
         </button>
       </div>
     </Modal>

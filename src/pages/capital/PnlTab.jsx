@@ -218,11 +218,8 @@ export default function PnlTab({ range, onRangeChange }) {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          {/* Локальный Custom picker — показываем ТОЛЬКО когда preset='custom',
-              чтобы не дублировать global DateRangePicker из CapitalPage header */}
-          {range?.preset === "custom" && (
-            <DateRangePicker value={range} onChange={setRangeDirect} />
-          )}
+          {/* Global DateRangePicker живёт в CapitalPage header — не дублируем здесь.
+              Локальный picker убран. Preset-кнопки выше обновляют общий range. */}
           <button
             type="button"
             onClick={handleExportPnl}
