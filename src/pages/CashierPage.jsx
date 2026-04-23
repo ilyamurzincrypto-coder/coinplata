@@ -140,6 +140,9 @@ export default function CashierPage({
                 ...o,
                 accountId: uuidOrNull(o.accountId),
               })),
+              // Tier-1 pending fields
+              plannedAt: tx.plannedAt || null,
+              deferredIn: !!tx.deferredIn,
             }),
           { success: "Deal created", errorPrefix: "Create deal failed" }
         );

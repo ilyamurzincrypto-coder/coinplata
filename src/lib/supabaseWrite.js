@@ -136,6 +136,8 @@ export async function rpcCreateDeal({
   comment,
   status,
   outputs,
+  plannedAt,      // optional ISO timestamp — "ожидается к дате"
+  deferredIn,     // optional bool — client will pay IN later (they_owe)
 }) {
   assertConfigured();
   const validOffice = requireUuid(officeId, "officeId");
@@ -143,7 +145,11 @@ export async function rpcCreateDeal({
   const validCur = requireCurrency(currencyIn, "currencyIn");
   const validAmt = requirePositive(amountIn, "amountIn");
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
-  const legs = legsToJsonb(outputs); // бросит если что-то невалидно
+  const legs = legsToJsonb(outputs);
+
+  // plannedAt ожидается как ISO-string из <input type="datetime-local"> +
+  // приведение .toISOString(). Если null/undef — бэк использует now().
+  const validPlannedAt = plannedAt ? String(plannedAt) : null;
 
   const dealId = unwrap(
     await supabase.rpc("create_deal", {
@@ -159,6 +165,8 @@ export async function rpcCreateDeal({
       p_comment: comment || "",
       p_status: validStatus,
       p_legs: legs,
+      p_planned_at: validPlannedAt,
+      p_deferred_in: !!deferredIn,
     }),
     "create_deal"
   );
@@ -278,6 +286,43 @@ export async function rpcSettleObligation(obligationId, accountId) {
       p_account_id: validAcc,
     }),
     "settle_obligation"
+  );
+  bumpDataVersion();
+}
+
+// Partial settle — закрываем obligation не полностью, а на конкретную сумму.
+// RPC проверяет amount <= remaining (amount - paid_amount) и баланс счёта.
+// При amount == remaining ведёт себя как settle_obligation (полный close).
+export async function rpcSettleObligationPartial(obligationId, accountId, amount) {
+  assertConfigured();
+  const validOb = requireUuid(obligationId, "obligationId");
+  const validAcc = requireUuid(accountId, "accountId");
+  const validAmt = requirePositive(amount, "amount");
+  unwrap(
+    await supabase.rpc("settle_obligation_partial", {
+      p_obligation_id: validOb,
+      p_account_id: validAcc,
+      p_amount: validAmt,
+    }),
+    "settle_obligation_partial"
+  );
+  bumpDataVersion();
+}
+
+// They_owe: клиент принёс деньги которые был должен. Создаёт IN movement
+// на указанный аккаунт + увеличивает obligation.paid_amount.
+export async function rpcReceivePayment(obligationId, accountId, amount) {
+  assertConfigured();
+  const validOb = requireUuid(obligationId, "obligationId");
+  const validAcc = requireUuid(accountId, "accountId");
+  const validAmt = requirePositive(amount, "amount");
+  unwrap(
+    await supabase.rpc("receive_payment", {
+      p_obligation_id: validOb,
+      p_account_id: validAcc,
+      p_amount: validAmt,
+    }),
+    "receive_payment"
   );
   bumpDataVersion();
 }
@@ -435,6 +480,25 @@ export async function deleteExpenseById(id) {
   const validId = requireUuid(id, "id");
   const { error } = await supabase.from("expenses").delete().eq("id", validId);
   if (error) throw new Error(formatSupabaseError(error, "delete expense"));
+  bumpDataVersion();
+}
+
+// ---------- users (status updates) ----------
+
+// Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
+// Принимает 'active' | 'disabled' | 'invited'. Hard-delete не делаем — для
+// этого нужен service_role (auth.users.delete), недоступный из браузера.
+export async function rpcSetUserStatus(userId, status) {
+  assertConfigured();
+  const validId = requireUuid(userId, "userId");
+  if (!["active", "disabled", "invited"].includes(status)) {
+    throw new Error(`Invalid status: ${status}`);
+  }
+  const { error } = await supabase
+    .from("users")
+    .update({ status, active: status === "active" })
+    .eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "update user status"));
   bumpDataVersion();
 }
 

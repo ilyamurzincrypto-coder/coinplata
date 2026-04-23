@@ -28,6 +28,7 @@ import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase.js";
 import { useToast } from "../../lib/toast.jsx";
+import { rpcSetUserStatus, withToast } from "../../lib/supabaseWrite.js";
 
 const STATUS_STYLE = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -144,8 +145,27 @@ export default function UsersTab() {
     });
   };
 
-  const handleDisable = (user) => {
+  const handleDisable = async (user) => {
     if (!confirm(`Disable ${user.name}? They will not be able to log in.`)) return;
+
+    // DB mode: UPDATE public.users SET status='disabled' — иначе in-memory
+    // disable сбрасывается при следующем bump/reload из БД.
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcSetUserStatus(user.id, "disabled"),
+        { success: "User disabled", errorPrefix: "Disable failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "disable",
+          entity: "user",
+          entityId: user.id,
+          summary: `Disabled ${user.name} (${ROLES[user.role]?.label || user.role})`,
+        });
+      }
+      return;
+    }
+
     const res = disableUser(user.id);
     if (!res.ok) {
       showToast(res.warning || "Cannot disable user");
@@ -159,7 +179,23 @@ export default function UsersTab() {
     });
   };
 
-  const handleEnable = (user) => {
+  const handleEnable = async (user) => {
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcSetUserStatus(user.id, "active"),
+        { success: "User enabled", errorPrefix: "Enable failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "enable",
+          entity: "user",
+          entityId: user.id,
+          summary: `Re-enabled ${user.name}`,
+        });
+      }
+      return;
+    }
+
     enableUser(user.id);
     logAudit({
       action: "enable",

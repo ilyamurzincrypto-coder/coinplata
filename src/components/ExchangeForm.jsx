@@ -195,6 +195,12 @@ export default function ExchangeForm({
   const [inTxHash, setInTxHash] = useState(
     starter?.inTxHash || draft?.inTxHash || ""
   );
+  // Deferred IN = "клиент заплатит позже" — создаёт they_owe obligation
+  // вместо exchange_in movement. Сделка принудительно pending.
+  const [deferredIn, setDeferredIn] = useState(draft?.deferredIn || false);
+  // Planned completion — датапикер "ожидается к". Формат HTML datetime-local.
+  // Пустая строка = без явной даты = деal на "сейчас".
+  const [plannedLocal, setPlannedLocal] = useState(draft?.plannedLocal || "");
 
   // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
   // Только для create mode — в edit draft не нужен.
@@ -221,13 +227,15 @@ export default function ExchangeForm({
         accountId,
         isPending,
         inTxHash,
+        deferredIn,
+        plannedLocal,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash]);
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, plannedLocal]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -484,18 +492,22 @@ export default function ExchangeForm({
       manager: currentUser.name,
       managerId: currentUser.id,
       counterparty,
-      counterpartyId: clientId || null, // для polling-матчинга + wallet ownership
+      counterpartyId: clientId || null,
       referral,
       comment,
       accountId,
       status,
       createdAtMs: Date.now(),
       rateSnapshotId: rateSnapshots[0]?.id || null,
-      // IN side — planned / actual / completed даты для multi-day tracking.
       inPlannedAmount: parseFloat(amtIn) || 0,
-      inActualAmount: 0, // заполнится в CashierPage по правилу
+      inActualAmount: 0,
       inPlannedAt: nowIso,
       inCompletedAt: null,
+      // TIER-1 поля для pending tracking:
+      //   deferredIn — клиент заплатит IN позже, создать they_owe obligation
+      //   plannedAt — "ожидается к" (ISO), применяется ко всем legs и deal
+      deferredIn,
+      plannedAt: plannedLocal ? new Date(plannedLocal).toISOString() : null,
     };
 
     if (mode === "edit" && initialData) {
@@ -915,6 +927,61 @@ export default function ExchangeForm({
             </span>
           )}
         </label>
+
+        {/* Deferred IN toggle — "Клиент заплатит позже" (they_owe) */}
+        <label
+          className={`mt-2 flex items-center gap-2 cursor-pointer select-none rounded-[10px] px-3 py-2 border transition-colors ${
+            deferredIn
+              ? "bg-sky-50 border-sky-300"
+              : "bg-slate-50 border-slate-200 hover:border-slate-300"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={deferredIn}
+            onChange={(e) => setDeferredIn(e.target.checked)}
+            className="w-4 h-4 rounded-[4px] accent-sky-600"
+          />
+          <span className={`text-[13px] font-medium ${deferredIn ? "text-sky-800" : "text-slate-700"}`}>
+            Client pays later
+          </span>
+          {deferredIn && (
+            <span className="ml-auto text-[10px] font-bold text-sky-700 bg-sky-100 px-1.5 py-0.5 rounded">
+              they owe us
+            </span>
+          )}
+        </label>
+
+        {/* Planned completion date — "ожидается к" */}
+        <div className="mt-2">
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            Expected completion (optional)
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              value={plannedLocal}
+              onChange={(e) => setPlannedLocal(e.target.value)}
+              className="flex-1 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors"
+            />
+            {plannedLocal && (
+              <button
+                type="button"
+                onClick={() => setPlannedLocal("")}
+                className="px-2.5 py-2 rounded-[10px] text-[11px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                title="Clear planned date"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {plannedLocal && (
+            <p className="text-[10px] text-slate-500 mt-1">
+              Deal will be marked <span className="font-semibold">pending</span> until this date.
+              Delayed detection uses this instead of 24h default.
+            </p>
+          )}
+        </div>
 
         <input
           type="text"

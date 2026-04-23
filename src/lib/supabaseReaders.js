@@ -325,11 +325,12 @@ export async function loadObligations() {
     id: r.id,
     officeId: r.office_id,
     dealId: r.deal_id,
-    dealLegIndex: null, // backend хранит deal_leg_id (uuid), не index; для UI считаем из deal_legs при нужде
+    dealLegIndex: null,
     dealLegId: r.deal_leg_id,
     clientId: r.client_id,
     currency: r.currency_code,
     amount: num(r.amount),
+    paidAmount: num(r.paid_amount),
     direction: r.direction,
     status: r.status,
     note: r.note || "",
