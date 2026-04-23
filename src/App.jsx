@@ -39,6 +39,7 @@ import { ToastProvider } from "./lib/toast.jsx";
 import { RealtimeProvider } from "./lib/realtime.jsx";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import CommandPalette from "./components/CommandPalette.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -154,6 +155,7 @@ function Root() {
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
       {page === "obligations" && canShow("obligations") && <ObligationsPage />}
+      <CommandPalette onNavigate={handlePageChange} />
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
