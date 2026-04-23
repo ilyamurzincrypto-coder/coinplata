@@ -6,3 +6,23 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Long-lived cache для hashed assets — Vite кладёт contenthash в имя файла,
+# поэтому новый билд = новый URL, старый URL можно кешировать вечно.
+# Снижает bandwidth (без этого каждый refresh может подтягивать ~135 KB gzip bundle).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# index.html должен быть свежим всегда — иначе старая версия будет бесконечно
+# держать ссылки на устаревшие assets.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

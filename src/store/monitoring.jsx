@@ -47,7 +47,11 @@ export function MonitoringProvider({ children }) {
   const { upsertWallet } = useWallets();
   const { addEntry: logAudit } = useAudit();
 
-  const [pollingEnabled, setPollingEnabled] = useState(true);
+  // По умолчанию ВЫКЛЮЧЕНО: fetchers — стабы (см. blockchainApi.js), реального
+  // мониторинга блокчейна нет. Включать когда появится реальный backend.
+  // Цель выключения: не палить CPU на клиенте каждые 15 сек (triggerит re-render'ы
+  // на setState lastCheckedAt) и не вводить в заблуждение, что идёт реальный poll.
+  const [pollingEnabled, setPollingEnabled] = useState(false);
   const [lastPollAt, setLastPollAt] = useState(null);
   const [events, setEvents] = useState([]); // [{ at, type, summary, txId?, incoming }]
 
