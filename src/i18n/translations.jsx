@@ -2,7 +2,23 @@
 // Простая i18n-реализация без библиотек.
 // Использование: const { t, lang, setLang } = useTranslation();
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+
+const LANG_STORAGE_KEY = "coinplata.lang";
+const SUPPORTED_LANGS = ["EN", "RU", "TR"];
+
+function readInitialLang() {
+  try {
+    const stored = localStorage.getItem(LANG_STORAGE_KEY);
+    if (stored && SUPPORTED_LANGS.includes(stored)) return stored;
+  } catch {}
+  // Browser locale fallback: ru-RU → RU, tr-* → TR, прочее → EN
+  if (typeof navigator !== "undefined") {
+    const browserLang = (navigator.language || "").slice(0, 2).toUpperCase();
+    if (SUPPORTED_LANGS.includes(browserLang)) return browserLang;
+  }
+  return "EN";
+}
 
 const DICT = {
   en: {
@@ -485,6 +501,28 @@ const DICT = {
     demo_no_session: "Demo mode: no active session to sign out of.",
     signing_out: "Signing out…",
     loading_ellipsis: "Loading…",
+
+    // ── Invite user modal ────────────────────────────────────────────────
+    invite_user_title: "Invite user",
+    invite_field_name: "Name",
+    invite_field_email: "Email",
+    invite_field_role: "Role",
+    invite_send: "Send invite",
+    invite_sending: "Sending…",
+    invite_placeholder_name: "Jane Doe",
+    invite_placeholder_email: "jane@coinplata.io",
+    invite_owner_only_hint: "Only the owner can promote to Owner.",
+    invite_info_hint: "Magic link will be emailed. User will set their password on first sign-in.",
+    invite_info_demo: "Demo: user is created locally only. Real email invite requires Supabase setup.",
+    invite_success: "Invite sent",
+    invite_failed: "Invite failed",
+    invite_token_title: "Invite sent to {name}",
+    invite_reset_title: "Password reset for {name}",
+    invite_link_label: "One-time invite link",
+    btn_copy: "Copy",
+    btn_copied: "Copied",
+    invite_link_warn: "⚠ This link is shown only once. Give it to the user through a secure channel.",
+    invite_reset_warn_extra: "Their previous password no longer works.",
   },
 
   ru: {
@@ -937,6 +975,28 @@ const DICT = {
     demo_no_session: "Демо-режим: активной сессии нет.",
     signing_out: "Выходим…",
     loading_ellipsis: "Загрузка…",
+
+    // ── Invite user modal ────────────────────────────────────────────────
+    invite_user_title: "Пригласить пользователя",
+    invite_field_name: "Имя",
+    invite_field_email: "Email",
+    invite_field_role: "Роль",
+    invite_send: "Отправить приглашение",
+    invite_sending: "Отправка…",
+    invite_placeholder_name: "Иван Иванов",
+    invite_placeholder_email: "ivan@coinplata.io",
+    invite_owner_only_hint: "Только владелец может назначить роль Owner.",
+    invite_info_hint: "Magic-link будет отправлен на email. Пароль пользователь установит при первом входе.",
+    invite_info_demo: "Демо: пользователь создан только локально. Для реального email-invite нужен настроенный Supabase.",
+    invite_success: "Приглашение отправлено",
+    invite_failed: "Не удалось отправить",
+    invite_token_title: "Приглашение для {name}",
+    invite_reset_title: "Сброс пароля для {name}",
+    invite_link_label: "Одноразовая ссылка-приглашение",
+    btn_copy: "Копировать",
+    btn_copied: "Скопировано",
+    invite_link_warn: "⚠ Ссылка показана один раз. Передайте её пользователю через безопасный канал.",
+    invite_reset_warn_extra: "Старый пароль больше не действует.",
   },
 
   tr: {
@@ -1388,6 +1448,28 @@ const DICT = {
     demo_no_session: "Demo modu: aktif oturum yok.",
     signing_out: "Çıkış yapılıyor…",
     loading_ellipsis: "Yükleniyor…",
+
+    // ── Invite user modal ────────────────────────────────────────────────
+    invite_user_title: "Kullanıcı davet et",
+    invite_field_name: "İsim",
+    invite_field_email: "Email",
+    invite_field_role: "Rol",
+    invite_send: "Davet gönder",
+    invite_sending: "Gönderiliyor…",
+    invite_placeholder_name: "Ayşe Yılmaz",
+    invite_placeholder_email: "ayse@coinplata.io",
+    invite_owner_only_hint: "Sadece owner, Owner rolüne atayabilir.",
+    invite_info_hint: "Magic link email ile gönderilecek. Kullanıcı ilk girişte parolasını belirler.",
+    invite_info_demo: "Demo: kullanıcı sadece yerel olarak oluşturuldu. Gerçek email-invite Supabase gerektirir.",
+    invite_success: "Davet gönderildi",
+    invite_failed: "Davet başarısız",
+    invite_token_title: "{name} için davet",
+    invite_reset_title: "{name} için parola sıfırlama",
+    invite_link_label: "Tek kullanımlık davet bağlantısı",
+    btn_copy: "Kopyala",
+    btn_copied: "Kopyalandı",
+    invite_link_warn: "⚠ Bu bağlantı sadece bir kez gösterilir. Güvenli bir kanalla iletin.",
+    invite_reset_warn_extra: "Eski parola artık çalışmıyor.",
   },
 };
 
@@ -1402,7 +1484,24 @@ const I18nContext = createContext(null);
 // Старые вызовы t("save") работают как раньше. Новые t("common.save") мапятся
 // на "save" через lastSegment fallback.
 export function I18nProvider({ children }) {
-  const [lang, setLang] = useState("EN");
+  // Initial language: localStorage → browser → EN. После change сохраняем обратно.
+  const [lang, setLangState] = useState(readInitialLang);
+
+  const setLang = (next) => {
+    const normalized = SUPPORTED_LANGS.includes(next) ? next : "EN";
+    setLangState(normalized);
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, normalized);
+    } catch {}
+  };
+
+  // Fallback effect: если вдруг lang установлен programmatically обходя setLang.
+  useEffect(() => {
+    try {
+      localStorage.setItem(LANG_STORAGE_KEY, lang);
+    } catch {}
+  }, [lang]);
+
   const dict = DICT[lang.toLowerCase()] || DICT.en;
   const enDict = DICT.en;
 

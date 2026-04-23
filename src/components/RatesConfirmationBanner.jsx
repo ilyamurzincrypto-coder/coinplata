@@ -9,7 +9,7 @@
 // admin/accountant → кнопка "Confirm today's rates"
 // manager → только текст "Coordinate with management"
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { AlertTriangle, CheckCircle2, Building2 } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useRateHistory } from "../store/rateHistory.jsx";
@@ -24,12 +24,29 @@ import { rpcConfirmRates, withToast } from "../lib/supabaseWrite.js";
 export default function RatesConfirmationBanner({ currentOffice }) {
   const { t } = useTranslation();
   const {
-    isConfirmedToday,
+    isConfirmedToday: inMemoryConfirmed,
     modifiedAfterConfirmation,
     confirmRates,
     rates,
   } = useRates();
-  const { addSnapshot } = useRateHistory();
+  const { addSnapshot, snapshots } = useRateHistory();
+
+  // DB-backed проверка: ищем snapshot с сегодняшней датой в rate_snapshots.
+  // Переживает F5, не сбрасывается в "draft". Fallback на in-memory флаг
+  // (сразу после клика Confirm пока bump/realtime не приехал).
+  const isConfirmedToday = useMemo(() => {
+    if (inMemoryConfirmed) return true;
+    if (!Array.isArray(snapshots) || snapshots.length === 0) return false;
+    const today = new Date().toISOString().slice(0, 10);
+    return snapshots.some((s) => {
+      if (!s || !s.timestamp) return false;
+      try {
+        return new Date(s.timestamp).toISOString().slice(0, 10) === today;
+      } catch {
+        return false;
+      }
+    });
+  }, [inMemoryConfirmed, snapshots]);
   const { currentUser, isAdmin, isAccountant } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const { findOffice } = useOffices();
@@ -61,7 +78,7 @@ export default function RatesConfirmationBanner({ currentOffice }) {
       try {
         const res = await withToast(
           () => rpcConfirmRates({ officeId: office.id, reason: "confirm" }),
-          { success: "Rates confirmed", errorPrefix: "Confirm failed" }
+          { success: t("toast_rates_confirmed"), errorPrefix: t("err_confirm_rates") }
         );
         if (res.ok) {
           confirmRates(currentUser.id);
