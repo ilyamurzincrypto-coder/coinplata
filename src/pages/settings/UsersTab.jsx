@@ -28,7 +28,7 @@ import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase.js";
 import { useToast } from "../../lib/toast.jsx";
-import { rpcSetUserStatus, withToast } from "../../lib/supabaseWrite.js";
+import { rpcSetUserStatus, updateUserRow, withToast } from "../../lib/supabaseWrite.js";
 
 const STATUS_STYLE = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -115,13 +115,26 @@ export default function UsersTab() {
     setTimeout(() => setToast(null), 3500);
   };
 
-  const handleRoleChange = (user, newRole) => {
+  const handleRoleChange = async (user, newRole) => {
     if (newRole === "owner" && !isOwner) {
       showToast("Only an owner can promote to owner");
       return;
     }
     const oldRole = user.role;
+    if (oldRole === newRole) return;
+    // Optimistic UI — local update сразу; БД следом. При ошибке откатим.
     updateUserRole(user.id, newRole);
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => updateUserRow(user.id, { role: newRole }),
+        { success: "Role updated", errorPrefix: "Role change failed" }
+      );
+      if (!res.ok) {
+        // rollback
+        updateUserRole(user.id, oldRole);
+        return;
+      }
+    }
     logAudit({
       action: "update",
       entity: "user",
@@ -130,11 +143,21 @@ export default function UsersTab() {
     });
   };
 
-  const handleOfficeChange = (user, newOfficeId) => {
+  const handleOfficeChange = async (user, newOfficeId) => {
     const nextOfficeId = newOfficeId || null;
     const oldOfficeId = user.officeId || null;
     if (oldOfficeId === nextOfficeId) return;
     updateUser(user.id, { officeId: nextOfficeId });
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => updateUserRow(user.id, { officeId: nextOfficeId }),
+        { success: "Office updated", errorPrefix: "Office change failed" }
+      );
+      if (!res.ok) {
+        updateUser(user.id, { officeId: oldOfficeId });
+        return;
+      }
+    }
     const oldName = offices.find((o) => o.id === oldOfficeId)?.name || t("user_office_global");
     const newName = offices.find((o) => o.id === nextOfficeId)?.name || t("user_office_global");
     logAudit({

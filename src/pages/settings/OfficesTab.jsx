@@ -11,6 +11,7 @@ import { useAudit } from "../../store/audit.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { DEFAULT_OFFICE_OPS } from "../../store/data.js";
+import { getOfficeOpenState } from "../../utils/officeSchedule.js";
 
 const TIMEZONES = [
   "Europe/Istanbul",
@@ -303,14 +304,16 @@ function OfficeFormModal({ open, office, onClose }) {
   );
 }
 
-// Live clock в таймзоне офиса. Тикает каждую секунду.
-function LiveClock({ timezone }) {
+// Live clock + open/closed indicator в таймзоне офиса. Тикает каждую минуту
+// (достаточно для live-status; секундной точности не надо).
+function LiveClock({ office }) {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
+    const id = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(id);
   }, []);
-  if (!timezone) {
+  const tz = office?.timezone;
+  if (!tz) {
     return <span className="text-[11px] text-slate-400">—</span>;
   }
   let display = "";
@@ -319,11 +322,10 @@ function LiveClock({ timezone }) {
     display = now.toLocaleTimeString("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: timezone,
+      timeZone: tz,
     });
-    // Вытаскиваем GMT-offset через short-name (GMT+3 / UTC+3)
     const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
+      timeZone: tz,
       timeZoneName: "shortOffset",
     }).formatToParts(now);
     const tzPart = parts.find((p) => p.type === "timeZoneName");
@@ -331,8 +333,15 @@ function LiveClock({ timezone }) {
   } catch {
     return <span className="text-[11px] text-rose-500 font-mono">invalid tz</span>;
   }
+  const state = getOfficeOpenState(office, now);
   return (
-    <div className="inline-flex items-baseline gap-1.5 text-[13px]">
+    <div className="inline-flex items-center gap-2 text-[13px]">
+      <span
+        className={`inline-flex items-center justify-center w-1.5 h-1.5 rounded-full ${
+          state.open ? "bg-emerald-500" : "bg-rose-500"
+        } ${state.open ? "animate-pulse" : ""}`}
+        title={state.open ? "Open now" : `Closed (${state.reason || "—"})`}
+      />
       <span className="font-bold tabular-nums text-slate-900">{display}</span>
       {offset && <span className="text-[10px] text-slate-500 tabular-nums">{offset}</span>}
     </div>
@@ -441,7 +450,7 @@ export default function OfficesTab() {
                   </td>
                   <td className="px-3 py-3 text-slate-600">{o.city || "—"}</td>
                   <td className="px-3 py-3">
-                    <LiveClock timezone={o.timezone} />
+                    <LiveClock office={o} />
                   </td>
                   <td className="px-3 py-3">
                     <div className="inline-flex items-start gap-1.5 text-[11px]">

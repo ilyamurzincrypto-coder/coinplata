@@ -644,6 +644,33 @@ export async function deleteCategoryRow(id) {
 
 // ---------- users (status updates) ----------
 
+// Обновляет public.users запись. patch: {role, officeId, fullName, ...}.
+// Используется из UsersTab при изменении роли / офиса / имени.
+export async function updateUserRow(userId, patch) {
+  assertConfigured();
+  const validId = requireUuid(userId, "userId");
+  const row = {};
+  if (patch.role != null) {
+    if (!["owner", "admin", "accountant", "manager"].includes(patch.role)) {
+      throw new Error(`Invalid role: ${patch.role}`);
+    }
+    row.role = patch.role;
+  }
+  if (patch.officeId !== undefined) {
+    row.office_id = patch.officeId || null;
+  }
+  if (patch.fullName != null) {
+    row.full_name = String(patch.fullName).trim();
+  }
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase
+    .from("users")
+    .update(row)
+    .eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "update user"));
+  bumpDataVersion();
+}
+
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
 // Принимает 'active' | 'disabled' | 'invited'. Hard-delete не делаем — для
 // этого нужен service_role (auth.users.delete), недоступный из браузера.

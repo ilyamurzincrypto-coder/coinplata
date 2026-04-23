@@ -22,8 +22,10 @@ import { loadAuditLog } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { insertAuditEntry } from "../lib/supabaseWrite.js";
 
-// Мок IP — в проде берём из session/headers
-const MOCK_IP = "78.186.42.17";
+// IP пользователя: в прод-режиме заполняется на бэкенде (пока не забираем —
+// колонка остаётся "" в Supabase insert). В demo — пустая строка для
+// единообразия. Убрали mock-IP "78.186.42.17" как артефакт демо-режима.
+const CLIENT_IP = "";
 
 const AuditContext = createContext(null);
 
@@ -38,7 +40,7 @@ const SEED_LOG = [
     entity: "settings",
     entityId: "general",
     summary: "Referral rate changed from 0.05% to 0.1%",
-    ip: MOCK_IP,
+    ip: CLIENT_IP,
   },
   {
     id: "evt_seed_2",
@@ -49,7 +51,7 @@ const SEED_LOG = [
     entity: "user",
     entityId: "u_acc",
     summary: "Created user L. Özturk (accountant)",
-    ip: MOCK_IP,
+    ip: CLIENT_IP,
   },
 ];
 
@@ -91,7 +93,7 @@ export function AuditProvider({ children }) {
         entity,
         entityId: entityId || "",
         summary: summary || "",
-        ip: MOCK_IP,
+        ip: CLIENT_IP,
       };
       setLogState((prev) => [entry, ...prev]);
       // Fire-and-forget persist в БД. Не bump-им — audit не влияет на

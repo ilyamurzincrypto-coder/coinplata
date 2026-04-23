@@ -6,10 +6,18 @@
 // per-office, не глобальные. См. ExchangeForm: fee считается от office.minFeeUsd.
 const DEFAULT_OFFICE_OPS = {
   timezone: "Europe/Istanbul",
-  workingDays: [1, 2, 3, 4, 5, 6], // Mon–Sat
-  workingHours: { start: "09:00", end: "21:00" },
-  minFeeUsd: 10,     // минимальная комиссия сделки в USD
-  feePercent: 0,     // опциональный процент от оборота (в будущем — поверх min fee)
+  workingDays: [1, 2, 3, 4, 5, 6], // Mon–Sat (ISO: 1=Mon, 7=Sun)
+  workingHours: { start: "09:00", end: "21:00" }, // fallback для всех workingDays
+  // Override на конкретный день: {6: {start: "10:00", end: "15:00"}} — субб. сокр.
+  // null → закрыт в этот день (переопределяет workingDays).
+  workingHoursByDay: null,
+  // Даты-праздники когда офис НЕ работает, ISO "YYYY-MM-DD".
+  holidays: [],
+  // Временное закрытие — ISO timestamp "до какого момента офис закрыт"
+  tempClosedUntil: null,
+  tempClosedReason: "",
+  minFeeUsd: 10,
+  feePercent: 0,
 };
 
 export const OFFICES = [
