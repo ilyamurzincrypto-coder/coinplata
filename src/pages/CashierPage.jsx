@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, ArrowUpRight, X, Minus, ArrowLeft } from "lucide-react";
 import Balances from "../components/Balances.jsx";
-import CashierKPI from "../components/CashierKPI.jsx";
 import RatesBar from "../components/RatesBar.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
@@ -266,7 +265,6 @@ export default function CashierPage({
           className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
         >
           <RatesBar />
-          <CashierKPI currentOffice={currentOffice} onNavigate={onNavigate} />
           <Balances
             currentOffice={currentOffice}
             scope={balanceScope}
