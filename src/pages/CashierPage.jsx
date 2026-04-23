@@ -17,6 +17,8 @@ import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { supabase } from "../lib/supabase.js";
+import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 
 export default function CashierPage({
@@ -57,6 +59,7 @@ export default function CashierPage({
   const { accounts, addMovement, removeMovementsByRefId, balanceOf, reservedOf } = useAccounts();
   const { currentUser } = useAuth();
   const { addObligation, openWeOweByOfficeCurrency } = useObligations();
+  const { getRate } = useRates();
 
   // Находит легы, для которых не хватает available — они станут obligations.
   // Правило: проверяется доступное по КОНКРЕТНОМУ выбранному аккаунту
@@ -142,6 +145,59 @@ export default function CashierPage({
             entityId: String(res.result),
             summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
           });
+
+          // Manual rate → snapshot. Если любой output имеет rate отличный
+          // от текущего market rate (getRate) хотя бы на 0.5% — пишем snapshot
+          // в rate_snapshots с reason "deal #X: custom rate FROM→TO applied=X
+          // market=Y". PnL может ретроспективно использовать эти snapshot'ы
+          // для расчёта реальной прибыли.
+          try {
+            const customRates = [];
+            (tx.outputs || []).forEach((o) => {
+              const market = getRate(tx.curIn, o.currency);
+              const applied = Number(o.rate);
+              if (!Number.isFinite(applied) || applied <= 0) return;
+              if (!Number.isFinite(market) || market <= 0) return;
+              const diff = Math.abs(applied - market) / market;
+              if (diff >= 0.005) {
+                customRates.push({
+                  from: tx.curIn,
+                  to: o.currency,
+                  applied,
+                  market,
+                });
+              }
+            });
+            if (customRates.length > 0) {
+              // Снимок ВСЕХ текущих default-пар + override для manual
+              const { data: currentPairs } = await supabase
+                .from("pairs")
+                .select("from_currency, to_currency, rate")
+                .eq("is_default", true);
+              const ratesMap = {};
+              (currentPairs || []).forEach((p) => {
+                ratesMap[`${p.from_currency}_${p.to_currency}`] = Number(p.rate);
+              });
+              // Перезаписываем manual-курсы — в snapshot хранится то что реально
+              // использовалось в сделке.
+              customRates.forEach((r) => {
+                ratesMap[`${r.from}_${r.to}`] = r.applied;
+              });
+              const reasonParts = customRates.map(
+                (r) => `${r.from}→${r.to}: applied=${r.applied} market=${r.market.toFixed(6)}`
+              );
+              await supabase.from("rate_snapshots").insert({
+                created_by: currentUser.id || null,
+                reason: `deal #${res.result} manual: ${reasonParts.join("; ")}`,
+                rates: ratesMap,
+                pairs_count: Object.keys(ratesMap).length,
+              });
+            }
+          } catch (err) {
+            // Snapshot не критичен — логируем и продолжаем
+            // eslint-disable-next-line no-console
+            console.warn("[manual rate snapshot] failed", err);
+          }
         }
         return { ok: res.ok };
       } finally {

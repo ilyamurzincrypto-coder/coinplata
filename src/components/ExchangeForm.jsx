@@ -174,7 +174,20 @@ export default function ExchangeForm({
   const { upsertWallet, findWallet } = useWallets();
   const { snapshots: rateSnapshots } = useRateHistory();
   const { addObligation, openWeOweByOfficeCurrency } = useObligations();
-  const { findOffice } = useOffices();
+  const { findOffice, activeOffices } = useOffices();
+
+  // Балансы всех офисов для suggestion "в другом офисе есть нужная валюта".
+  // Map<"officeId_currency", balance>. Считается из active + currency accounts.
+  const officeBalancesByCurrency = useMemo(() => {
+    const m = new Map();
+    accounts.forEach((a) => {
+      if (!a.active) return;
+      const key = `${a.officeId}_${a.currency}`;
+      m.set(key, (m.get(key) || 0) + balanceOf(a.id));
+    });
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, balanceOf]);
 
   // Fee-настройки per-office. Глобальный settings.minFeeUsd больше НЕ читается.
   // Если офис по какой-то причине не найден — безопасный фолбэк 10 USD.
@@ -1041,6 +1054,8 @@ export default function ExchangeForm({
               availableInCurrency={officeCurrencyBalance(o.currency)}
               currentOffice={currentOffice}
               counterpartyId={resolveClientId(counterparty)}
+              officeBalancesByCurrency={officeBalancesByCurrency}
+              offices={activeOffices}
             />
           ))}
         </div>
@@ -1535,6 +1550,8 @@ function OutputRow({
   availableInCurrency,
   currentOffice,
   counterpartyId,
+  officeBalancesByCurrency, // Map<"officeId_currency", balance> across all offices
+  offices,
 }) {
   const { t } = useTranslation();
   const { getRate } = useRates();
@@ -1596,6 +1613,22 @@ function OutputRow({
 
   const suggestedAmount =
     canUseRemaining ? remainingIn * parseFloat(o.rate) : 0;
+
+  // Suggest офисы: если в текущем не хватает, посмотрим кто может покрыть.
+  // Показываем top-3 по убыванию баланса, исключая текущий офис.
+  const otherOfficesWithBalance = useMemo(() => {
+    if (!insufficient || !officeBalancesByCurrency || !offices) return [];
+    return offices
+      .filter((off) => off.id !== currentOffice)
+      .map((off) => ({
+        id: off.id,
+        name: off.name,
+        balance: officeBalancesByCurrency.get(`${off.id}_${o.currency}`) || 0,
+      }))
+      .filter((off) => off.balance >= outAmount)
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 3);
+  }, [insufficient, officeBalancesByCurrency, offices, currentOffice, o.currency, outAmount]);
 
   const handleUseRemaining = () => {
     if (!canUseRemaining) return;
@@ -1790,6 +1823,27 @@ function OutputRow({
           </button>
         )}
       </div>
+
+      {/* Suggest other offices when insufficient in current */}
+      {insufficient && otherOfficesWithBalance.length > 0 && (
+        <div className="mt-2 px-3 py-2 rounded-[10px] bg-sky-50 border border-sky-200 text-[11px]">
+          <div className="font-bold text-sky-900 mb-1">
+            {t("insufficient_suggest_body").replace("{cur}", o.currency)}
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {otherOfficesWithBalance.map((off) => (
+              <span
+                key={off.id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-sky-200 text-sky-800 tabular-nums"
+              >
+                <span className="font-bold">{off.name}</span>
+                <span className="text-sky-400">·</span>
+                <span>{fmt(off.balance, o.currency)} {o.currency}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
