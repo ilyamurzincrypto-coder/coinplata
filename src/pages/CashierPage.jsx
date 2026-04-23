@@ -1,5 +1,5 @@
 // src/pages/CashierPage.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Plus, ArrowUpRight, X, Minus, ArrowLeft } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
