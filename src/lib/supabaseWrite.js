@@ -605,6 +605,43 @@ export async function insertCategory({ name, type, parentId, groupName }) {
   return data;
 }
 
+export async function updateCategoryRow(id, { name, type, parentId, groupName }) {
+  assertConfigured();
+  if (!id) throw new Error("Category id required");
+  const patch = {};
+  if (name != null) {
+    const cleanName = String(name || "").trim();
+    if (!cleanName) throw new Error("Category name required");
+    patch.name = cleanName;
+  }
+  if (type != null) {
+    if (type !== "income" && type !== "expense") {
+      throw new Error("Category type must be income or expense");
+    }
+    patch.type = type;
+  }
+  if (parentId !== undefined) patch.parent_id = parentId || null;
+  if (groupName != null) patch.group_name = groupName;
+  if (Object.keys(patch).length === 0) return;
+  const { error } = await supabase
+    .from("categories")
+    .update(patch)
+    .eq("id", id);
+  if (error) throw new Error(formatSupabaseError(error, "update category"));
+  bumpDataVersion();
+}
+
+export async function deleteCategoryRow(id) {
+  assertConfigured();
+  if (!id) throw new Error("Category id required");
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id);
+  if (error) throw new Error(formatSupabaseError(error, "delete category"));
+  bumpDataVersion();
+}
+
 // ---------- users (status updates) ----------
 
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
