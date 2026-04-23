@@ -365,6 +365,25 @@ export default function LoginPage() {
             Secure · Private · Internal system
           </div>
           <div className="text-slate-700">v{APP_VERSION}</div>
+          {/* Escape hatch — если session cache "залип" и signin ведёт себя странно.
+              Чистит все Supabase токены и перезагружает. */}
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                Object.keys(localStorage).forEach((k) => {
+                  if (k.startsWith("sb-") || k.includes("supabase")) {
+                    localStorage.removeItem(k);
+                  }
+                });
+                sessionStorage.clear();
+              } catch {}
+              window.location.reload();
+            }}
+            className="mt-1 text-slate-600 hover:text-slate-400 underline underline-offset-2 transition-colors"
+          >
+            Clear stored session
+          </button>
         </footer>
       </div>
 

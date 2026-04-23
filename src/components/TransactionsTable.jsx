@@ -490,8 +490,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               <th className="px-5 py-2.5 font-bold">{t("time")}</th>
               <th className="px-3 py-2.5 font-bold">{t("type")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("in")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("out")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("rate")}</th>
+              <th className="px-3 py-2.5 font-bold text-right">{t("out")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("fee")}</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("profit")}</th>
               <th className="px-3 py-2.5 font-bold">Risk</th>
@@ -628,11 +628,17 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                     </div>
                   </td>
+                  {/* IN: сумма сверху (крупно), валюта под ней (лейбл). */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                     <div className="font-semibold text-slate-900">{fmt(tx.amtIn, tx.curIn)}</div>
                     <div className="text-[11px] text-slate-400 font-medium">{tx.curIn}</div>
                     <InStatusLine tx={tx} />
                   </td>
+                  {/* RATE посередине — между IN и OUT, как просил кассир. */}
+                  <td className="px-3 py-3 text-right tabular-nums text-slate-600">
+                    {firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })}
+                  </td>
+                  {/* OUT: такая же структура как IN (amount + currency label). */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                     <OutputsCell
                       tx={tx}
@@ -642,9 +648,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       onSend={(idx) => setSendTarget({ tx, outputIndex: idx })}
                       onConfirm={(idx) => handleConfirmCryptoOut(tx, idx)}
                     />
-                  </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600">
-                    {firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })}
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums text-slate-600">${fmt(tx.fee)}</td>
                   <td className="px-3 py-3 text-right whitespace-nowrap">

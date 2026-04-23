@@ -132,13 +132,30 @@ function AuthGate({ children }) {
       return;
     }
     let unsub;
+    // Safety timeout: если getSession по какой-то причине висит > 5s,
+    // не держим пользователя на Loading экране — переводим в "нет сессии"
+    // → покажется LoginPage, можно войти заново.
+    const stuckTimer = setTimeout(() => {
+      setSession((prev) => (prev === undefined ? null : prev));
+    }, 5000);
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      setSession(data.session);
-      const sub = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
-      unsub = sub.data.subscription;
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.warn("[auth] getSession error", error);
+        }
+        setSession(data?.session || null);
+        const sub = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
+        unsub = sub.data.subscription;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn("[auth] getSession threw", err);
+        setSession(null);
+      }
     })();
     return () => {
+      clearTimeout(stuckTimer);
       try { unsub?.unsubscribe?.(); } catch {}
     };
   }, []);

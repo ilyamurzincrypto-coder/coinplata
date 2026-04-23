@@ -38,7 +38,8 @@ export default function ProfileMenu() {
   };
 
   // LOGOUT — в DB mode вызываем supabase.auth.signOut. AuthGate ловит
-  // onAuthStateChange → session=null → показывает LoginPage.
+  // onAuthStateChange → session=null → показывает LoginPage. Плюс safety
+  // reload() в конце на случай если listener по какой-то причине не сработал.
   const handleLogout = async () => {
     if (loggingOut) return;
     if (!isSupabaseConfigured) {
@@ -47,6 +48,10 @@ export default function ProfileMenu() {
       return;
     }
     setLoggingOut(true);
+    // Чистим session-draft — не нужно продолжать чужую форму.
+    try {
+      sessionStorage.removeItem("coinplata.exchangeDraft");
+    } catch {}
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -54,8 +59,11 @@ export default function ProfileMenu() {
         setLoggingOut(false);
         return;
       }
-      // AuthGate переключит на LoginPage автоматически. Меню закроется
-      // вместе с unmount всего приложения.
+      // Safety: force-reload на корень. Гарантирует fresh state и
+      // не зависит от того, сработал ли onAuthStateChange.
+      setTimeout(() => {
+        window.location.href = window.location.pathname || "/";
+      }, 150);
     } catch (err) {
       toast.error(`Logout failed: ${err?.message || String(err)}`);
       setLoggingOut(false);
