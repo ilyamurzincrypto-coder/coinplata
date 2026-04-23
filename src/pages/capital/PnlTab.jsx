@@ -218,7 +218,11 @@ export default function PnlTab({ range, onRangeChange }) {
           </button>
         </div>
         <div className="flex items-center gap-2">
-          <DateRangePicker value={range} onChange={setRangeDirect} />
+          {/* Локальный Custom picker — показываем ТОЛЬКО когда preset='custom',
+              чтобы не дублировать global DateRangePicker из CapitalPage header */}
+          {range?.preset === "custom" && (
+            <DateRangePicker value={range} onChange={setRangeDirect} />
+          )}
           <button
             type="button"
             onClick={handleExportPnl}
@@ -298,7 +302,7 @@ export default function PnlTab({ range, onRangeChange }) {
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Tag className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold">By category</h3>
+          <h3 className="text-[14px] font-semibold">{t("pnl_by_category")}</h3>
           <span className="text-[11px] text-slate-400">· income/expense entries only (exchange profit not categorized)</span>
         </div>
         {byCategory.length === 0 ? (

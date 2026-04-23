@@ -653,9 +653,10 @@ export async function rpcSetUserStatus(userId, status) {
   if (!["active", "disabled", "invited"].includes(status)) {
     throw new Error(`Invalid status: ${status}`);
   }
+  // ⚠ public.users не имеет колонки `active` — только `status` (active|disabled|invited).
   const { error } = await supabase
     .from("users")
-    .update({ status, active: status === "active" })
+    .update({ status })
     .eq("id", validId);
   if (error) throw new Error(formatSupabaseError(error, "update user status"));
   bumpDataVersion();

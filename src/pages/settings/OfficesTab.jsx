@@ -2,7 +2,7 @@
 // CRUD офисов. Использует useOffices() для state.
 // Подсчёт accounts per office — через useAccounts (read-only).
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Building2, Plus, Pencil, Power, RotateCcw, Clock } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { useOffices } from "../../store/offices.jsx";
@@ -303,6 +303,42 @@ function OfficeFormModal({ open, office, onClose }) {
   );
 }
 
+// Live clock в таймзоне офиса. Тикает каждую секунду.
+function LiveClock({ timezone }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!timezone) {
+    return <span className="text-[11px] text-slate-400">—</span>;
+  }
+  let display = "";
+  let offset = "";
+  try {
+    display = now.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZone: timezone,
+    });
+    // Вытаскиваем GMT-offset через short-name (GMT+3 / UTC+3)
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      timeZoneName: "shortOffset",
+    }).formatToParts(now);
+    const tzPart = parts.find((p) => p.type === "timeZoneName");
+    offset = tzPart?.value || "";
+  } catch {
+    return <span className="text-[11px] text-rose-500 font-mono">invalid tz</span>;
+  }
+  return (
+    <div className="inline-flex items-baseline gap-1.5 text-[13px]">
+      <span className="font-bold tabular-nums text-slate-900">{display}</span>
+      {offset && <span className="text-[10px] text-slate-500 tabular-nums">{offset}</span>}
+    </div>
+  );
+}
+
 // --- Main ---
 export default function OfficesTab() {
   const { t } = useTranslation();
@@ -378,6 +414,7 @@ export default function OfficesTab() {
             <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100 bg-slate-50/40">
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
+              <th className="px-3 py-2.5 font-bold">{t("office_local_time") || "Local time"}</th>
               <th className="px-3 py-2.5 font-bold">Schedule</th>
               <th className="px-3 py-2.5 font-bold">Fees</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
@@ -403,6 +440,9 @@ export default function OfficesTab() {
                     </div>
                   </td>
                   <td className="px-3 py-3 text-slate-600">{o.city || "—"}</td>
+                  <td className="px-3 py-3">
+                    <LiveClock timezone={o.timezone} />
+                  </td>
                   <td className="px-3 py-3">
                     <div className="inline-flex items-start gap-1.5 text-[11px]">
                       <Clock className="w-3 h-3 text-slate-400 mt-0.5" />

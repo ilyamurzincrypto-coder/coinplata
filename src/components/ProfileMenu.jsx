@@ -12,6 +12,35 @@ import Modal from "./ui/Modal.jsx";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { useToast } from "../lib/toast.jsx";
 
+// Ключ для аватара в localStorage. Хранится data-URL per user.
+// Не требует миграции БД. Локально на устройстве — если user залогинился
+// на другом — аватара не будет. Для глобального хранения нужна Supabase
+// Storage + колонка public.users.avatar_url (отдельная миграция).
+const AVATAR_KEY = (userId) => `coinplata.avatar.${userId}`;
+
+function readAvatar(userId) {
+  if (!userId) return null;
+  try {
+    return localStorage.getItem(AVATAR_KEY(userId));
+  } catch {
+    return null;
+  }
+}
+
+function writeAvatar(userId, dataUrl) {
+  if (!userId) return;
+  try {
+    localStorage.setItem(AVATAR_KEY(userId), dataUrl);
+  } catch {}
+}
+
+function removeAvatar(userId) {
+  if (!userId) return;
+  try {
+    localStorage.removeItem(AVATAR_KEY(userId));
+  } catch {}
+}
+
 export default function ProfileMenu() {
   const { t } = useTranslation();
   const { currentUser, users, isAdmin, isOwner, switchUser } = useAuth();
@@ -21,7 +50,69 @@ export default function ProfileMenu() {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [switchError, setSwitchError] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(() => readAvatar(currentUser?.id));
+  const fileInputRef = useRef(null);
   const ref = useRef(null);
+
+  // Подгружаем аватар при смене юзера
+  useEffect(() => {
+    setAvatarUrl(readAvatar(currentUser?.id));
+  }, [currentUser?.id]);
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // сбросить для повторного выбора того же файла
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file");
+      return;
+    }
+    if (file.size > 500 * 1024) {
+      toast.error("Image is too large (max 500 KB after crop). Please pick a smaller one or crop it first.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result;
+      if (typeof dataUrl !== "string") return;
+      // Попытка ограничить размер через canvas resize до 256x256
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 256;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        // cover crop (square)
+        const ratio = img.width / img.height;
+        let sx = 0, sy = 0, sw = img.width, sh = img.height;
+        if (ratio > 1) {
+          sw = img.height;
+          sx = (img.width - img.height) / 2;
+        } else if (ratio < 1) {
+          sh = img.width;
+          sy = (img.height - img.width) / 2;
+        }
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+        const compressed = canvas.toDataURL("image/jpeg", 0.8);
+        writeAvatar(currentUser.id, compressed);
+        setAvatarUrl(compressed);
+        toast.success(t("photo_updated"));
+        setOpen(false);
+      };
+      img.onerror = () => toast.error("Could not load image");
+      img.src = dataUrl;
+    };
+    reader.onerror = () => toast.error("Could not read file");
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    removeAvatar(currentUser.id);
+    setAvatarUrl(null);
+    toast.success(t("photo_removed"));
+    setOpen(false);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -94,11 +185,19 @@ export default function ProfileMenu() {
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 pl-2 py-1 pr-2 rounded-[10px] hover:bg-slate-50 transition-colors"
       >
-        <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-semibold bg-gradient-to-br ${avatarGradient}`}
-        >
-          {currentUser.initials}
-        </div>
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt={currentUser.name}
+            className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200"
+          />
+        ) : (
+          <div
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-semibold bg-gradient-to-br ${avatarGradient}`}
+          >
+            {currentUser.initials}
+          </div>
+        )}
         <div className="hidden sm:block text-[12px] leading-tight text-left">
           <div className="font-medium text-slate-900">{currentUser.name}</div>
           <div className="text-slate-500 flex items-center gap-1">
@@ -121,9 +220,28 @@ export default function ProfileMenu() {
             </div>
           </div>
           <div className="py-1">
-            <MenuItem icon={<Camera className="w-3.5 h-3.5" />} onClick={() => stub(t("change_photo"))}>
+            <MenuItem
+              icon={<Camera className="w-3.5 h-3.5" />}
+              onClick={() => fileInputRef.current?.click()}
+            >
               {t("change_photo")}
             </MenuItem>
+            {avatarUrl && (
+              <MenuItem
+                icon={<Camera className="w-3.5 h-3.5" />}
+                onClick={handleRemovePhoto}
+                danger
+              >
+                {t("remove_photo")}
+              </MenuItem>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
             <MenuItem
               icon={<Key className="w-3.5 h-3.5" />}
               onClick={() => {
