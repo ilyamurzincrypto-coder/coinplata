@@ -39,6 +39,15 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
 import { Shield } from "lucide-react";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  rpcDeleteDeal,
+  rpcCompleteDeal,
+  rpcConfirmDealLeg,
+  rpcMarkDealSent,
+  rpcCancelObligation,
+  withToast,
+} from "../lib/supabaseWrite.js";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {
   const { t } = useTranslation();
@@ -58,7 +67,26 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
 
-  const handleSendCrypto = (tx, outputIndex, { txHash, network }) => {
+  const handleSendCrypto = async (tx, outputIndex, { txHash, network }) => {
+    if (isSupabaseConfigured) {
+      await withToast(
+        () =>
+          rpcMarkDealSent({
+            dealId: tx.id,
+            legIndex: outputIndex,
+            txHash,
+            network: network || tx.outputs[outputIndex]?.network || null,
+          }),
+        { success: "Marked sent", errorPrefix: "Mark sent failed" }
+      );
+      logAudit({
+        action: "send",
+        entity: "transaction_output",
+        entityId: `${tx.id}#${outputIndex}`,
+        summary: `Sent crypto for #${tx.id} output ${outputIndex + 1}: tx ${txHash.slice(0, 10)}…`,
+      });
+      return;
+    }
     updateOutput(tx.id, outputIndex, {
       sendStatus: "sent",
       sendTxHash: txHash,
@@ -72,7 +100,20 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   };
 
-  const handleConfirmCryptoOut = (tx, outputIndex) => {
+  const handleConfirmCryptoOut = async (tx, outputIndex) => {
+    if (isSupabaseConfigured) {
+      await withToast(
+        () => rpcConfirmDealLeg(tx.id, outputIndex),
+        { success: "Leg confirmed", errorPrefix: "Confirm failed" }
+      );
+      logAudit({
+        action: "confirm",
+        entity: "transaction_output",
+        entityId: `${tx.id}#${outputIndex}`,
+        summary: `Confirmed on-chain for #${tx.id} output ${outputIndex + 1}`,
+      });
+      return;
+    }
     const nowIso = new Date().toISOString();
     const leg = tx.outputs?.[outputIndex];
     const planned = leg?.plannedAmount ?? leg?.amount ?? 0;
@@ -90,20 +131,34 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   };
 
-  // Confirm + rollback. Soft delete: статус → "deleted", все movements по refId
-  // удаляются → balanceOf автоматически откатывается.
-  const handleDeleteConfirmed = () => {
+  const handleDeleteConfirmed = async () => {
     if (!deleteTarget) return;
     const tx = deleteTarget;
-    // 1. Rollback movements (balance recomputes via view/balanceOf).
+
+    if (isSupabaseConfigured) {
+      // delete_deal RPC уже: сносит movements, cancel'ит obligations, soft-delete deal.
+      const res = await withToast(
+        () => rpcDeleteDeal(tx.id, "manual"),
+        { success: "Deal deleted", errorPrefix: "Delete failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "delete",
+          entity: "transaction",
+          entityId: String(tx.id),
+          summary: `Deleted tx #${tx.id} · ${tx.curIn} ${tx.amtIn} → ${(tx.outputs || []).map((o) => `${o.amount} ${o.currency}`).join(" + ")}`,
+        });
+      }
+      setDeleteTarget(null);
+      return;
+    }
+
+    // Demo: rollback in-memory.
     removeMovementsByRefId(tx.id);
-    // 2. Cancel any open obligations attached to this deal — иначе они
-    //    остаются как «фантом» привязанные к удалённой сделке.
     const openObs = obligations.filter(
       (o) => o.dealId === tx.id && o.status === "open"
     );
     openObs.forEach((o) => cancelObligation(o.id, currentUser.id));
-    // 3. Soft-delete the tx.
     deleteTransaction(tx.id, "manual");
     logAudit({
       action: "delete",
@@ -133,14 +188,27 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     simulateIncoming(depositAccount.id, { amount: tx.amtIn });
   };
 
-  const handleComplete = (tx) => {
-    // Pending/checking → Completed: снимаем reserved, ставим completed_at
-    // на IN сторону и на все OUT legs которые ещё не закрыты.
+  const handleComplete = async (tx) => {
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcCompleteDeal(tx.id),
+        { success: "Deal completed", errorPrefix: "Complete failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "update",
+          entity: "transaction",
+          entityId: String(tx.id),
+          summary: `[COMPLETED] Tx #${tx.id}: reserved cleared, IN/OUT closed`,
+        });
+      }
+      return;
+    }
     const nowIso = new Date().toISOString();
     completeTransaction(tx.id);
     unreserveMovementsByRefId(tx.id);
     const updatedOuts = (tx.outputs || []).map((l) => {
-      if (l.completedAt) return l; // уже закрыт
+      if (l.completedAt) return l;
       return {
         ...l,
         actualAmount: l.plannedAmount ?? l.amount ?? 0,

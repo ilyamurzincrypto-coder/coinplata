@@ -12,6 +12,8 @@ import { useRates } from "../../store/rates.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol, multiplyAmount } from "../../utils/money.js";
 import { officeName } from "../../store/data.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { rpcCreateTransfer, withToast } from "../../lib/supabaseWrite.js";
 
 export default function TransferModal({ open, fromAccount, onClose }) {
   const { t } = useTranslation();
@@ -74,8 +76,34 @@ export default function TransferModal({ open, fromAccount, onClose }) {
     fromAmt > 0 &&
     (sameCurrency || (needsRate && rateNum > 0));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
+
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () =>
+          rpcCreateTransfer({
+            fromAccountId: from.id,
+            toAccountId: to.id,
+            fromAmount: fromAmt,
+            toAmount,
+            rate: sameCurrency ? null : rateNum,
+            note: note.trim(),
+          }),
+        { success: "Transfer recorded", errorPrefix: "Transfer failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "create",
+          entity: "transfer",
+          entityId: String(res.result || ""),
+          summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}`,
+        });
+        onClose();
+      }
+      return;
+    }
+
     const rec = transfer({
       fromAccountId: from.id,
       toAccountId: to.id,

@@ -9,6 +9,7 @@ import {
   loadClients,
   loadUsers,
 } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const TxContext = createContext(null);
 
@@ -19,30 +20,30 @@ export function TransactionsProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    (async () => {
+    const reload = async () => {
       try {
-        // Сначала users — нужны для резолва manager_id → name при маппинге deals.
         const users = await loadUsers().catch(() => []);
         const usersById = {};
         (users || []).forEach((u) => {
           usersById[u.id] = { id: u.id, full_name: u.name };
         });
-
         const [deals, clients] = await Promise.all([
           loadDealsWithLegs(usersById).catch(() => null),
           loadClients().catch(() => null),
         ]);
         if (cancelled) return;
-
         if (Array.isArray(deals)) setTransactions(deals);
         if (Array.isArray(clients) && clients.length > 0) setCounterparties(clients);
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("[transactions] load failed — keeping seed", err);
       }
-    })();
+    };
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

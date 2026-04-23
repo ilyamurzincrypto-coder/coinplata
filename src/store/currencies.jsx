@@ -15,6 +15,7 @@ import {
 import { CURRENCIES_DICT as SEED } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadCurrencies } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const CurrenciesContext = createContext(null);
 
@@ -24,17 +25,21 @@ export function CurrenciesProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadCurrencies()
-      .then((rows) => {
-        if (cancelled) return;
-        if (rows && rows.length > 0) setCurrencies(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[currencies] load failed — keeping seed", err);
-      });
+    const reload = () =>
+      loadCurrencies()
+        .then((rows) => {
+          if (cancelled) return;
+          if (rows && rows.length > 0) setCurrencies(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[currencies] load failed — keeping seed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

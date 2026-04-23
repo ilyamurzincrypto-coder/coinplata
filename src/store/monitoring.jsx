@@ -34,6 +34,8 @@ import { useWallets } from "./wallets.jsx";
 import { useAudit } from "./audit.jsx";
 import { fetcherForNetwork } from "../utils/blockchainApi.js";
 import { checkWalletRisk } from "../utils/aml.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcUpsertClientWallet } from "../lib/supabaseWrite.js";
 
 const POLL_INTERVAL_MS = 15000;
 const AMOUNT_TOLERANCE = 0.005; // ±0.5%
@@ -159,11 +161,23 @@ export function MonitoringProvider({ children }) {
       let walletResult = null;
       const clientId = match.counterpartyId || null;
       if (clientId && enriched.from_address && enriched.network) {
-        walletResult = upsertWallet({
-          address: enriched.from_address,
-          network: enriched.network,
-          clientId,
-        });
+        if (isSupabaseConfigured) {
+          rpcUpsertClientWallet({
+            clientId,
+            address: enriched.from_address,
+            network: enriched.network,
+          }).catch((err) => {
+            // eslint-disable-next-line no-console
+            console.warn("[monitoring] upsert_client_wallet failed", err);
+          });
+          walletResult = { ok: true, status: "queued" };
+        } else {
+          walletResult = upsertWallet({
+            address: enriched.from_address,
+            network: enriched.network,
+            clientId,
+          });
+        }
       }
 
       logAudit({

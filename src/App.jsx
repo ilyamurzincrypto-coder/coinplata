@@ -28,6 +28,8 @@ import { RateHistoryProvider } from "./store/rateHistory.jsx";
 import { ObligationsProvider } from "./store/obligations.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
+import { DataVersionProvider } from "./lib/dataVersion.jsx";
+import { ToastProvider } from "./lib/toast.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -129,38 +131,42 @@ function AuthGate({ children }) {
 
 export default function App() {
   return (
-    <AuthGate>
-      <I18nProvider>
-        <AuthProvider>
-          <OfficesProvider>
-            <CurrenciesProvider>
-              <PermissionsProvider>
-                <AuditProvider>
-                  <RatesProvider>
-                    <RateHistoryProvider>
-                    <AccountsProvider>
-                      <CategoriesProvider>
-                      <IncomeExpenseProvider>
-                        <TransactionsProvider>
-                          <ObligationsProvider>
-                          <WalletsProvider>
-                            <MonitoringProvider>
-                              <Root />
-                            </MonitoringProvider>
-                          </WalletsProvider>
-                          </ObligationsProvider>
-                        </TransactionsProvider>
-                      </IncomeExpenseProvider>
-                      </CategoriesProvider>
-                    </AccountsProvider>
-                    </RateHistoryProvider>
-                  </RatesProvider>
-                </AuditProvider>
-              </PermissionsProvider>
-            </CurrenciesProvider>
-          </OfficesProvider>
-        </AuthProvider>
-      </I18nProvider>
-    </AuthGate>
+    <ToastProvider>
+      <DataVersionProvider>
+        <AuthGate>
+          <I18nProvider>
+            <AuthProvider>
+              <OfficesProvider>
+                <CurrenciesProvider>
+                  <PermissionsProvider>
+                    <AuditProvider>
+                      <RatesProvider>
+                        <RateHistoryProvider>
+                        <AccountsProvider>
+                          <CategoriesProvider>
+                          <IncomeExpenseProvider>
+                            <TransactionsProvider>
+                              <ObligationsProvider>
+                              <WalletsProvider>
+                                <MonitoringProvider>
+                                  <Root />
+                                </MonitoringProvider>
+                              </WalletsProvider>
+                              </ObligationsProvider>
+                            </TransactionsProvider>
+                          </IncomeExpenseProvider>
+                          </CategoriesProvider>
+                        </AccountsProvider>
+                        </RateHistoryProvider>
+                      </RatesProvider>
+                    </AuditProvider>
+                  </PermissionsProvider>
+                </CurrenciesProvider>
+              </OfficesProvider>
+            </AuthProvider>
+          </I18nProvider>
+        </AuthGate>
+      </DataVersionProvider>
+    </ToastProvider>
   );
 }

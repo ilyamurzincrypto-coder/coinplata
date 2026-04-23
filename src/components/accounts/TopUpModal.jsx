@@ -8,6 +8,8 @@ import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { rpcTopUp, withToast } from "../../lib/supabaseWrite.js";
 
 export default function TopUpModal({ account, onClose }) {
   const { t } = useTranslation();
@@ -40,13 +42,29 @@ export default function TopUpModal({ account, onClose }) {
   const canSubmit = amt > 0;
   const currentBalance = balanceOf(account.id);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
-    // source идёт в movement.source.origin — метаданные для audit / reports.
-    // sourceTag также подклеиваем к note, чтобы видно было в history.
     const noteWithSource = note.trim()
       ? `[${source}] ${note.trim()}`
       : `[${source}]`;
+
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource }),
+        { success: "Top up recorded", errorPrefix: "Top up failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "create",
+          entity: "topup",
+          entityId: String(res.result || ""),
+          summary: `Top up ${account.name}: +${curSymbol(account.currency)}${fmt(amt, account.currency)} ${account.currency} · source: ${source}`,
+        });
+        onClose();
+      }
+      return;
+    }
+
     const mv = topUp({
       accountId: account.id,
       amount: amt,

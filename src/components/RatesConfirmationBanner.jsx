@@ -18,6 +18,8 @@ import { useAudit } from "../store/audit.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { shouldOfficeHaveRatesConfirmed } from "../utils/officeTime.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcConfirmRates, withToast } from "../lib/supabaseWrite.js";
 
 export default function RatesConfirmationBanner({ currentOffice }) {
   const { t } = useTranslation();
@@ -51,9 +53,24 @@ export default function RatesConfirmationBanner({ currentOffice }) {
   if (!officeNeedsRates) return null; // офис ещё/уже не работает → не требуем
   if (isConfirmedToday && !modifiedAfterConfirmation) return null;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcConfirmRates({ officeId: office.id, reason: "confirm" }),
+        { success: "Rates confirmed", errorPrefix: "Confirm failed" }
+      );
+      if (res.ok) {
+        confirmRates(currentUser.id); // локальный флаг — чтобы скрыть баннер сразу
+        logAudit({
+          action: "update",
+          entity: "rates",
+          entityId: "confirmation",
+          summary: `Confirmed today's rates (from ${office.name}) · snapshot ${String(res.result || "").slice(0, 14)}`,
+        });
+      }
+      return;
+    }
     confirmRates(currentUser.id);
-    // Snapshot текущих курсов — для аудита и привязки к будущим транзакциям.
     const snap = addSnapshot({
       rates,
       officeId: office.id,

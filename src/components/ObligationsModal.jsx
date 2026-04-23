@@ -21,6 +21,12 @@ import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import {
+  rpcSettleObligation,
+  rpcCancelObligation,
+  withToast,
+} from "../lib/supabaseWrite.js";
 
 export default function ObligationsModal({ open, onClose }) {
   const { obligations, closeObligation, cancelObligation } = useObligations();
@@ -45,7 +51,7 @@ export default function ObligationsModal({ open, onClose }) {
     return m;
   }, [openObligations]);
 
-  const handleSettle = (obligation, accountId) => {
+  const handleSettle = async (obligation, accountId) => {
     const acc = accounts.find((a) => a.id === accountId);
     if (!acc) return { ok: false, warning: "Account not found" };
     const available = balanceOf(accountId) - reservedOf(accountId);
@@ -54,6 +60,21 @@ export default function ObligationsModal({ open, onClose }) {
         ok: false,
         warning: `Insufficient balance: ${fmt(available, acc.currency)} ${acc.currency} available, ${fmt(obligation.amount, acc.currency)} needed`,
       };
+    }
+
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => rpcSettleObligation(obligation.id, accountId),
+        { success: "Obligation settled", errorPrefix: "Settle failed" }
+      );
+      if (!res.ok) return { ok: false, warning: res.error };
+      logAudit({
+        action: "settle",
+        entity: "obligation",
+        entityId: obligation.id,
+        summary: `Settled ${fmt(obligation.amount, obligation.currency)} ${obligation.currency} from ${acc.name} · deal #${obligation.dealId}`,
+      });
+      return { ok: true };
     }
 
     // 1. Создаём OUT movement (тот, что был пропущен при создании сделки).
@@ -126,9 +147,22 @@ export default function ObligationsModal({ open, onClose }) {
     return { ok: true };
   };
 
-  const handleCancel = (obligation) => {
+  const handleCancel = async (obligation) => {
     if (!confirm(`Cancel obligation for ${fmt(obligation.amount, obligation.currency)} ${obligation.currency}? Deal will remain pending.`))
       return;
+    if (isSupabaseConfigured) {
+      await withToast(
+        () => rpcCancelObligation(obligation.id),
+        { success: "Obligation cancelled", errorPrefix: "Cancel failed" }
+      );
+      logAudit({
+        action: "cancel",
+        entity: "obligation",
+        entityId: obligation.id,
+        summary: `Cancelled obligation · ${fmt(obligation.amount, obligation.currency)} ${obligation.currency} · deal #${obligation.dealId}`,
+      });
+      return;
+    }
     cancelObligation(obligation.id, currentUser.id);
     logAudit({
       action: "cancel",
@@ -320,9 +354,9 @@ function SettleModal({ obligation, onClose, onSettle }) {
   const selected = candidates.find((c) => c.id === accountId);
   const canSubmit = selected && selected.available >= obligation.amount;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError("");
-    const res = onSettle(obligation, accountId);
+    const res = await onSettle(obligation, accountId);
     if (!res.ok) {
       setError(res.warning || "Could not settle");
       return;

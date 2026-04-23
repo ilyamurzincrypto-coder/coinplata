@@ -19,6 +19,8 @@ import {
 import { useAuth } from "./auth.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadAuditLog } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
+import { insertAuditEntry } from "../lib/supabaseWrite.js";
 
 // Мок IP — в проде берём из session/headers
 const MOCK_IP = "78.186.42.17";
@@ -58,17 +60,21 @@ export function AuditProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadAuditLog()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows)) setLogState(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[audit] load failed", err);
-      });
+    const reload = () =>
+      loadAuditLog()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows)) setLogState(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[audit] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 
@@ -86,6 +92,9 @@ export function AuditProvider({ children }) {
         ip: MOCK_IP,
       };
       setLogState((prev) => [entry, ...prev]);
+      // Fire-and-forget persist в БД. Не bump-им — audit не влияет на
+      // остальные stores, записи подтянутся при следующем reload.
+      insertAuditEntry({ action, entity, entityId, summary });
       return entry;
     },
     [currentUser]

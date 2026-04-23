@@ -15,6 +15,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadExpenses } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const IE_TYPES = ["income", "expense"];
 
@@ -45,17 +46,21 @@ export function IncomeExpenseProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadExpenses()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows)) setEntries(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[incomeExpense] load failed — keeping seed", err);
-      });
+    const reload = () =>
+      loadExpenses()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows)) setEntries(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[incomeExpense] load failed — keeping seed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

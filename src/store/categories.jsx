@@ -16,6 +16,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadCategories } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const SEED_CATEGORIES = [
   // Expenses
@@ -47,17 +48,21 @@ export function CategoriesProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadCategories()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows) && rows.length > 0) setCategories(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[categories] load failed — keeping seed", err);
-      });
+    const reload = () =>
+      loadCategories()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows) && rows.length > 0) setCategories(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[categories] load failed — keeping seed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

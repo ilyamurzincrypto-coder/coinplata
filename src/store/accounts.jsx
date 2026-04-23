@@ -42,6 +42,7 @@ import {
   loadAccountBalances,
   loadMovements,
 } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const AccountsContext = createContext(null);
 
@@ -75,21 +76,23 @@ export function AccountsProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    Promise.all([loadAccounts(), loadAccountBalances(), loadMovements()])
-      .then(([accRows, balMap, mvRows]) => {
-        if (cancelled) return;
-        // В DB-режиме БД = источник правды. Даже пустая БД не откатывает на
-        // seed — иначе демо-данные "воскресали" бы на refresh.
-        if (Array.isArray(accRows)) setAccounts(accRows);
-        if (balMap) setDbBalances(balMap);
-        if (Array.isArray(mvRows)) setMovements(mvRows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[accounts] load failed — keeping seed", err);
-      });
+    const reload = () =>
+      Promise.all([loadAccounts(), loadAccountBalances(), loadMovements()])
+        .then(([accRows, balMap, mvRows]) => {
+          if (cancelled) return;
+          if (Array.isArray(accRows)) setAccounts(accRows);
+          if (balMap) setDbBalances(balMap);
+          if (Array.isArray(mvRows)) setMovements(mvRows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[accounts] load failed — keeping seed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

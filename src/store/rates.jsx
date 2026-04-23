@@ -30,6 +30,7 @@ import {
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadPairs } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const rateKey = (from, to) => `${from}_${to}`;
 
@@ -109,39 +110,43 @@ export function RatesProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadPairs()
-      .then((dbPairs) => {
-        if (cancelled) return;
-        if (!Array.isArray(dbPairs) || dbPairs.length === 0) return;
-        setPairs((prev) => {
-          const next = prev.map((p) => ({ ...p }));
-          const channelCurrency = (chId) =>
-            SEED_CHANNELS.find((c) => c.id === chId)?.currencyCode;
-          dbPairs.forEach((db) => {
-            const match = next.find(
-              (p) =>
-                p.isDefault &&
-                channelCurrency(p.fromChannelId) === db.fromCurrency &&
-                channelCurrency(p.toChannelId) === db.toCurrency
-            );
-            if (match) {
-              match.rate = db.rate;
-              match.baseRate = db.baseRate;
-              match.spreadPercent = db.spreadPercent;
-              match.dbId = db.id;
-              match.updatedAt = db.updatedAt;
-            }
+    const reload = () =>
+      loadPairs()
+        .then((dbPairs) => {
+          if (cancelled) return;
+          if (!Array.isArray(dbPairs) || dbPairs.length === 0) return;
+          setPairs((prev) => {
+            const next = prev.map((p) => ({ ...p }));
+            const channelCurrency = (chId) =>
+              SEED_CHANNELS.find((c) => c.id === chId)?.currencyCode;
+            dbPairs.forEach((db) => {
+              const match = next.find(
+                (p) =>
+                  p.isDefault &&
+                  channelCurrency(p.fromChannelId) === db.fromCurrency &&
+                  channelCurrency(p.toChannelId) === db.toCurrency
+              );
+              if (match) {
+                match.rate = db.rate;
+                match.baseRate = db.baseRate;
+                match.spreadPercent = db.spreadPercent;
+                match.dbId = db.id;
+                match.updatedAt = db.updatedAt;
+              }
+            });
+            return next;
           });
-          return next;
+          setLastUpdated(new Date());
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[rates] load failed — keeping seed", err);
         });
-        setLastUpdated(new Date());
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[rates] load failed — keeping seed", err);
-      });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

@@ -14,6 +14,8 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcUpdateDeal, withToast } from "../lib/supabaseWrite.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
@@ -24,15 +26,42 @@ export default function EditTransactionModal({ transaction, onClose }) {
 
   if (!transaction) return null;
 
-  const handleSubmit = (updated) => {
-    updateTransaction(transaction.id, updated);
-
+  const handleSubmit = async (updated) => {
     const prevStatus = transaction.status || "completed";
     const nextStatus = updated.status || "completed";
 
-    // Простая стратегия: всегда rewrite movements (снести и записать заново).
-    // buildMovementsFromTransaction учтёт tx.status и поставит reserved:true если pending.
-    // Это проще чем тонкий diff и покрывает все случаи (смена currency, amount, account).
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () =>
+          rpcUpdateDeal({
+            dealId: transaction.id,
+            officeId: updated.officeId,
+            clientId: updated.counterpartyId || null,
+            clientNickname: updated.counterparty || null,
+            currencyIn: updated.curIn,
+            amountIn: updated.amtIn,
+            inAccountId: updated.accountId || null,
+            inTxHash: updated.inTxHash || null,
+            referral: !!updated.referral,
+            comment: updated.comment || "",
+            status: nextStatus,
+            outputs: updated.outputs,
+          }),
+        { success: "Deal updated", errorPrefix: "Update failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "update",
+          entity: "transaction",
+          entityId: String(transaction.id),
+          summary: `Edited #${transaction.id} · status ${prevStatus} → ${nextStatus}`,
+        });
+        onClose?.();
+      }
+      return;
+    }
+
+    updateTransaction(transaction.id, updated);
     removeMovementsByRefId(transaction.id);
     const { movements } = buildMovementsFromTransaction(
       { ...updated, id: transaction.id },

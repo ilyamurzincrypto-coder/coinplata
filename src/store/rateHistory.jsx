@@ -18,6 +18,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadRateSnapshots } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const RateHistoryContext = createContext(null);
 
@@ -27,17 +28,21 @@ export function RateHistoryProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadRateSnapshots()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows)) setSnapshots(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[rateHistory] load failed", err);
-      });
+    const reload = () =>
+      loadRateSnapshots()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows)) setSnapshots(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[rateHistory] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

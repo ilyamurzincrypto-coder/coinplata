@@ -21,6 +21,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadClientWallets } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const WalletsContext = createContext(null);
 
@@ -38,17 +39,21 @@ export function WalletsProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadClientWallets()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows)) setWallets(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[wallets] load failed", err);
-      });
+    const reload = () =>
+      loadClientWallets()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows)) setWallets(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[wallets] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

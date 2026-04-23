@@ -27,6 +27,7 @@ import { SEED_USERS } from "./data.js";
 import { hashPassword, verifyPassword, generateInviteToken } from "../utils/password.js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { loadUsers, loadSystemSettings } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const ROLES = {
   owner: { label: "Owner", color: "amber" },
@@ -81,11 +82,11 @@ export function AuthProvider({ children }) {
     baseCurrency: "USD",
   });
 
-  // Stage 3 hydration: Supabase session → public.users row.
+  // Stage 3/4 hydration: Supabase session → public.users row, + reload on bump.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    (async () => {
+    const reload = async () => {
       try {
         const [usersRows, sysSettings, sessionRes] = await Promise.all([
           loadUsers().catch(() => null),
@@ -95,9 +96,6 @@ export function AuthProvider({ children }) {
         if (cancelled) return;
 
         if (Array.isArray(usersRows) && usersRows.length > 0) {
-          // Поле passwordHash/inviteToken из БД не приходят — для обратной
-          // совместимости UI (Change Password и т.п.) оставляем пустыми:
-          // Stage 4 переключит эти операции на Supabase auth API.
           const merged = usersRows.map((u) => ({
             ...u,
             passwordHash: "",
@@ -106,7 +104,6 @@ export function AuthProvider({ children }) {
             activatedAt: u.activatedAt || u.createdAt,
           }));
           setUsers(merged);
-
           const authUserId = sessionRes?.data?.session?.user?.id;
           if (authUserId && merged.some((u) => u.id === authUserId)) {
             setCurrentUserId(authUserId);
@@ -125,9 +122,12 @@ export function AuthProvider({ children }) {
         // eslint-disable-next-line no-console
         console.warn("[auth] load failed — keeping seed", err);
       }
-    })();
+    };
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

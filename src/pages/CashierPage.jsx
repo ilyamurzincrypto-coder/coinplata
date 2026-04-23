@@ -13,6 +13,8 @@ import { useObligations } from "../store/obligations.jsx";
 import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcCreateDeal, withToast } from "../lib/supabaseWrite.js";
 
 export default function CashierPage({ currentOffice }) {
   const [balanceScope, setBalanceScope] = useState("selected");
@@ -53,7 +55,45 @@ export default function CashierPage({ currentOffice }) {
     return set;
   };
 
-  const handleCreate = (tx) => {
+  const handleCreate = async (tx) => {
+    // DB-режим: всю логику (obligation decisions, movements, fee, profit)
+    // берёт на себя RPC create_deal. Frontend только строит payload + бампает.
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () =>
+          rpcCreateDeal({
+            officeId: tx.officeId,
+            managerId: tx.managerId || currentUser.id,
+            clientId: tx.counterpartyId || null,
+            clientNickname: tx.counterparty || null,
+            currencyIn: tx.curIn,
+            amountIn: tx.amtIn,
+            inAccountId: tx.accountId || null,
+            inTxHash: tx.inTxHash || null,
+            referral: !!tx.referral,
+            comment: tx.comment || "",
+            status: tx.status || "completed",
+            outputs: tx.outputs,
+          }),
+        { success: "Deal created", errorPrefix: "Create deal failed" }
+      );
+      if (res.ok) {
+        setJustCreatedId(res.result);
+        setTimeout(() => setJustCreatedId(null), 2500);
+        const outStr = (tx.outputs || [])
+          .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
+          .join(" + ");
+        logAudit({
+          action: "create",
+          entity: "transaction",
+          entityId: String(res.result),
+          summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
+        });
+      }
+      return;
+    }
+
+    // Demo-режим (in-memory): оригинальная логика.
     // 1. Защита от дублей
     removeMovementsByRefId(tx.id);
 

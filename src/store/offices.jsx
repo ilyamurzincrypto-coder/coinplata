@@ -16,6 +16,7 @@ import {
 import { OFFICES as SEED_OFFICES, DEFAULT_OFFICE_OPS } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadOffices } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const OfficesContext = createContext(null);
 
@@ -25,17 +26,21 @@ export function OfficesProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadOffices()
-      .then((rows) => {
-        if (cancelled) return;
-        if (rows && rows.length > 0) setOffices(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[offices] load failed — keeping seed", err);
-      });
+    const reload = () =>
+      loadOffices()
+        .then((rows) => {
+          if (cancelled) return;
+          if (rows && rows.length > 0) setOffices(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[offices] load failed — keeping seed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

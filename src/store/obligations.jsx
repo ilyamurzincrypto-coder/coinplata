@@ -25,6 +25,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadObligations } from "../lib/supabaseReaders.js";
+import { onDataBump } from "../lib/dataVersion.jsx";
 
 const ObligationsContext = createContext(null);
 
@@ -34,17 +35,21 @@ export function ObligationsProvider({ children }) {
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
-    loadObligations()
-      .then((rows) => {
-        if (cancelled) return;
-        if (Array.isArray(rows)) setObligations(rows);
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.warn("[obligations] load failed", err);
-      });
+    const reload = () =>
+      loadObligations()
+        .then((rows) => {
+          if (cancelled) return;
+          if (Array.isArray(rows)) setObligations(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[obligations] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
     return () => {
       cancelled = true;
+      unsub();
     };
   }, []);
 

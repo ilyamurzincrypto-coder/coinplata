@@ -17,6 +17,8 @@ import { useCurrencies } from "../../store/currencies.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { insertExpense, deleteExpenseById, withToast } from "../../lib/supabaseWrite.js";
 
 export default function IncomeExpenseTab({ range }) {
   const { t } = useTranslation();
@@ -46,9 +48,24 @@ export default function IncomeExpenseTab({ range }) {
     return { income, expense };
   }, [scoped, toBase]);
 
-  const handleDelete = (entry) => {
+  const handleDelete = async (entry) => {
     if (!confirm(`Delete ${entry.type} ${curSymbol(entry.currency)}${fmt(entry.amount, entry.currency)} ${entry.currency}?`))
       return;
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => deleteExpenseById(entry.id),
+        { success: "Entry deleted", errorPrefix: "Delete failed" }
+      );
+      if (res.ok) {
+        logAudit({
+          action: "delete",
+          entity: entry.type,
+          entityId: entry.id,
+          summary: `${entry.category}: ${curSymbol(entry.currency)}${fmt(entry.amount, entry.currency)} ${entry.currency}`,
+        });
+      }
+      return;
+    }
     deleteEntry(entry.id);
     logAudit({
       action: "delete",
@@ -205,7 +222,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { addEntry } = useIncomeExpense();
   const { accountsByOffice, addMovement } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
-  const { byType: categoriesByType } = useCategories();
+  const { byType: categoriesByType, byName: findCategoryByName } = useCategories();
 
   const [officeId, setOfficeId] = useState(OFFICES[0].id);
   const [currency, setCurrency] = useState("USD");
@@ -245,9 +262,43 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const categories = categoriesByType(type).map((c) => c.name);
   const canSubmit = amount && parseFloat(amount) > 0 && category && officeId;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
     const amt = parseFloat(amount);
+
+    if (isSupabaseConfigured) {
+      const cat = findCategoryByName(category, type);
+      if (!cat) {
+        // На всякий случай — категория должна была быть подгружена из БД.
+        return;
+      }
+      const res = await withToast(
+        () =>
+          insertExpense({
+            type,
+            officeId,
+            accountId: accountId || null,
+            categoryId: cat.id,
+            amount: amt,
+            currency,
+            entryDate: date,
+            note: note.trim(),
+            createdBy: currentUser.id,
+          }),
+        { success: `${type} recorded`, errorPrefix: `${type} failed` }
+      );
+      if (res.ok) {
+        onLog({
+          action: "create",
+          entity: type,
+          entityId: res.result?.id || "",
+          summary: `${category}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+        });
+        onClose();
+      }
+      return;
+    }
+
     const entry = addEntry({
       type,
       officeId,
@@ -259,7 +310,6 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       createdBy: currentUser.id,
       date,
     });
-    // Параллельно создаём movement (если выбран конкретный счёт)
     if (accountId) {
       addMovement({
         accountId,
