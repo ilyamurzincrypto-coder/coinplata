@@ -706,6 +706,8 @@ const DICT = {
     // === Income/Expense modal ===
     ie_select_category: "Select category",
     ie_select_subcategory: "No subcategory (optional)",
+    ie_all_categories: "All categories",
+    ie_search: "Search category / note",
 
     clients_title: "Clients",
     clients_name: "Client",
@@ -1485,6 +1487,8 @@ const DICT = {
     // === Income/Expense modal ===
     ie_select_category: "Выберите категорию",
     ie_select_subcategory: "Без подкатегории (опционально)",
+    ie_all_categories: "Все категории",
+    ie_search: "Поиск по категории / заметке",
 
     clients_title: "Клиенты",
     clients_name: "Клиент",
@@ -2262,6 +2266,8 @@ const DICT = {
     // === Income/Expense modal ===
     ie_select_category: "Kategori seç",
     ie_select_subcategory: "Alt kategori yok (opsiyonel)",
+    ie_all_categories: "Tüm kategoriler",
+    ie_search: "Kategori / not ara",
 
     clients_title: "Müşteriler",
     clients_name: "Müşteri",

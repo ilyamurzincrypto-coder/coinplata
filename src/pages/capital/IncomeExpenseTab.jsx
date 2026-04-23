@@ -31,23 +31,58 @@ export default function IncomeExpenseTab({ range }) {
   const sym = curSymbol(base);
 
   const [addType, setAddType] = useState(null); // null | "income" | "expense"
+  // Filters
+  const [typeFilter, setTypeFilter] = useState("all"); // all | income | expense
+  const [officeFilter, setOfficeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
-  const scoped = useMemo(
+  const scopedByRange = useMemo(
     () => entries.filter((e) => inRange(e.date, range)),
     [entries, range]
   );
 
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
-    scoped.forEach((e) => {
-      // Складываем в base currency — нельзя просто суммировать amount из разных валют
-      const v = toBase(e.amount, e.currency);
-      if (e.type === "income") income += v;
-      else expense += v;
+  // Уникальные категории и офисы в scoped — для select options
+  const uniqueCategories = useMemo(() => {
+    const s = new Set();
+    scopedByRange.forEach((e) => {
+      if (e.category) s.add(e.category);
     });
-    return { income, expense };
-  }, [scoped, toBase]);
+    return [...s].sort();
+  }, [scopedByRange]);
+
+  const uniqueOffices = useMemo(() => {
+    const s = new Set();
+    scopedByRange.forEach((e) => {
+      if (e.officeId) s.add(e.officeId);
+    });
+    return [...s];
+  }, [scopedByRange]);
+
+  // Apply filters
+  const scoped = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return scopedByRange.filter((e) => {
+      if (typeFilter !== "all" && e.type !== typeFilter) return false;
+      if (officeFilter !== "all" && e.officeId !== officeFilter) return false;
+      if (categoryFilter !== "all" && (e.category || "") !== categoryFilter) return false;
+      if (q) {
+        const hay = `${e.category || ""} ${e.note || ""} ${e.currency}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [scopedByRange, typeFilter, officeFilter, categoryFilter, search]);
+
+  const hasActiveFilters =
+    typeFilter !== "all" || officeFilter !== "all" || categoryFilter !== "all" || search.trim();
+
+  const clearFilters = () => {
+    setTypeFilter("all");
+    setOfficeFilter("all");
+    setCategoryFilter("all");
+    setSearch("");
+  };
 
   const handleDelete = async (entry) => {
     if (!confirm(`Delete ${entry.type} ${curSymbol(entry.currency)}${fmt(entry.amount, entry.currency)} ${entry.currency}?`))
@@ -78,47 +113,6 @@ export default function IncomeExpenseTab({ range }) {
 
   return (
     <>
-      {/* Totals summary bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-        <div className="rounded-[12px] border border-emerald-200 bg-emerald-50/70 px-4 py-3">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 mb-1 flex items-center gap-1.5">
-            <ArrowDownLeft className="w-3.5 h-3.5" />
-            {t("pnl_income_total")}
-          </div>
-          <div className="text-[22px] font-bold tabular-nums text-emerald-900">
-            {curSymbol(base)}{fmt(totals.income, base)}
-          </div>
-        </div>
-        <div className="rounded-[12px] border border-rose-200 bg-rose-50/70 px-4 py-3">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-rose-700 mb-1 flex items-center gap-1.5">
-            <ArrowUpRight className="w-3.5 h-3.5" />
-            {t("pnl_expense_total")}
-          </div>
-          <div className="text-[22px] font-bold tabular-nums text-rose-900">
-            −{curSymbol(base)}{fmt(totals.expense, base)}
-          </div>
-        </div>
-        <div
-          className={`rounded-[12px] border px-4 py-3 ring-2 ring-slate-900/5 ${
-            totals.income - totals.expense >= 0
-              ? "border-emerald-200 bg-emerald-50/70"
-              : "border-rose-200 bg-rose-50/70"
-          }`}
-        >
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1">
-            {t("pnl_net_profit")}
-          </div>
-          <div
-            className={`text-[22px] font-bold tabular-nums ${
-              totals.income - totals.expense >= 0 ? "text-emerald-900" : "text-rose-900"
-            }`}
-          >
-            {totals.income - totals.expense >= 0 ? "+" : ""}
-            {curSymbol(base)}{fmt(totals.income - totals.expense, base)}
-          </div>
-        </div>
-      </div>
-
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
@@ -181,6 +175,77 @@ export default function IncomeExpenseTab({ range }) {
               {t("ie_add_expense")}
             </button>
           </div>
+        </div>
+
+        {/* Filter row */}
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/40">
+          <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px]">
+            {[
+              { id: "all", label: t("oblig_all") },
+              { id: "income", label: t("cat_type_income") },
+              { id: "expense", label: t("cat_type_expense") },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setTypeFilter(f.id)}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-[6px] transition-all ${
+                  typeFilter === f.id
+                    ? "bg-white text-slate-900 shadow-sm"
+                    : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <select
+            value={officeFilter}
+            onChange={(e) => setOfficeFilter(e.target.value)}
+            className="bg-white border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none hover:border-slate-300"
+          >
+            <option value="all">{t("oblig_all_offices")}</option>
+            {uniqueOffices.map((oid) => (
+              <option key={oid} value={oid}>
+                {officeName(oid) || oid}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-white border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none hover:border-slate-300"
+          >
+            <option value="all">{t("ie_all_categories") || "All categories"}</option>
+            {uniqueCategories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={t("ie_search") || "Search category / note"}
+            className="flex-1 min-w-[160px] bg-white border border-slate-200 rounded-[8px] px-2.5 py-1 text-[12px] outline-none focus:border-slate-400"
+          />
+
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200"
+            >
+              {t("clear")}
+            </button>
+          )}
+
+          <span className="text-[11px] text-slate-500 tabular-nums ml-auto">
+            {scoped.length} / {scopedByRange.length} {t("pnl_entries")}
+          </span>
         </div>
 
         <div className="overflow-x-auto">
