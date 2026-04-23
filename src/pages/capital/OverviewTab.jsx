@@ -204,6 +204,12 @@ export default function OverviewTab({ range }) {
 
   return (
     <div className="space-y-4">
+      {/* Маркировка секции "Факт" — только completed сделки + записанные Income/Expense */}
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        {t("scope_fact") || "Fact — completed only (exchange profit + income/expense)"}
+      </div>
+
       {/* KPI ряд */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPI
@@ -241,12 +247,17 @@ export default function OverviewTab({ range }) {
         />
       </div>
 
-      {/* Obligations impact — активы/пассивы по долгам (current, не per-range) */}
+      {/* Obligations impact — активы/пассивы по долгам (current, не per-range).
+          Секция чётко маркирована как "План / Обязательства" (не факт). */}
       {obligationsSummary.openCount > 0 && (
         <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
             <Scale className="w-4 h-4 text-slate-500" />
             <h2 className="text-[15px] font-semibold tracking-tight">{t("oblig_title")}</h2>
+            <span className="ml-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+              <span className="w-1 h-1 rounded-full bg-amber-500" />
+              {t("scope_plan") || "plan / pending"}
+            </span>
             <span className="text-[11px] text-slate-400">
               · {obligationsSummary.openCount} {t("oblig_open_obligations")}
             </span>

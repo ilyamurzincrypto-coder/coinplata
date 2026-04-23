@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   ChevronRight,
   Trash2,
+  Download,
+  Upload,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -28,6 +30,9 @@ import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
+import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
+import { exportCSV } from "../utils/csv.js";
+import { officeName } from "../store/data.js";
 
 const CURRENCY_ORDER = ["USD", "USDT", "EUR", "TRY", "GBP"];
 const curIndex = (code) => {
@@ -50,6 +55,38 @@ export default function AccountsPage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
   const [addAccountFor, setAddAccountFor] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleExportAccounts = () => {
+    if (accounts.length === 0) return;
+    exportCSV({
+      filename: `coinplata-accounts-${new Date().toISOString().slice(0, 10)}.csv`,
+      columns: [
+        { key: "office", label: "Office" },
+        { key: "name", label: "Account" },
+        { key: "currency", label: "Currency" },
+        { key: "type", label: "Type" },
+        { key: "balance", label: "Balance" },
+        { key: "reserved", label: "Reserved" },
+        { key: "available", label: "Available" },
+        { key: "active", label: "Active" },
+        { key: "address", label: "Address" },
+        { key: "network", label: "Network" },
+      ],
+      rows: accounts.map((a) => ({
+        office: officeName(a.officeId) || a.officeId,
+        name: a.name,
+        currency: a.currency,
+        type: a.type || "",
+        balance: balanceOf(a.id),
+        reserved: reservedOf(a.id),
+        available: availableOf(a.id),
+        active: a.active ? "yes" : "no",
+        address: a.address || "",
+        network: a.network || "",
+      })),
+    });
+  };
 
   const handleDeleteAccount = (acc) => {
     if (!confirm(`Deactivate account "${acc.name}"? It will disappear from dropdowns; movements stay intact.`)) return;
@@ -150,8 +187,25 @@ export default function AccountsPage() {
           <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
           <p className="text-[12px] text-slate-500">{t("accounts_subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
+          <button
+            onClick={handleExportAccounts}
+            disabled={accounts.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={t("acc_export_tip") || "Export accounts to CSV"}
+          >
+            <Download className="w-3.5 h-3.5" />
+            {t("export_csv")}
+          </button>
+          <button
+            onClick={() => setImportOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold transition-colors"
+            title={t("acc_import_tip") || "Import accounts from CSV"}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {t("acc_import") || "Import CSV"}
+          </button>
           <button
             onClick={() => {
               setTransferFrom(null);
@@ -283,6 +337,7 @@ export default function AccountsPage() {
         prefill={addAccountFor?.prefill}
         onClose={() => setAddAccountFor(null)}
       />
+      <AccountsImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </main>
   );
 }

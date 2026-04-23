@@ -655,6 +655,24 @@ const DICT = {
     pnl_export_ie_tip: "Export entries to CSV",
     pnl_by_category: "By category",
 
+    // === Scope markers (fact vs plan) ===
+    scope_fact: "Fact — completed only (exchange profit + income/expense)",
+    scope_plan: "plan / pending",
+
+    // === Accounts import ===
+    acc_export_tip: "Export accounts to CSV",
+    acc_import_tip: "Import accounts from CSV",
+    acc_import: "Import CSV",
+    acc_import_title: "Import accounts",
+    acc_import_drop: "Drop .csv or .xlsx here, or click to browse",
+    acc_import_hint: "Columns: Office, Account, Currency, Type, Balance, Address (opt), Network (opt)",
+    acc_import_template: "Download template.csv (current accounts)",
+    acc_import_about: "You're about to create accounts",
+    acc_import_ack: "I understand this will create new accounts with opening balances.",
+    acc_import_apply: "Create accounts",
+    acc_import_err_empty: "File has no data rows.",
+    acc_import_err_headers: "Required headers: Office, Account, Currency.",
+
     clients_title: "Clients",
     clients_name: "Client",
     clients_deals: "Deals",
@@ -1382,6 +1400,24 @@ const DICT = {
     pnl_export_ie_tip: "Экспорт записей в CSV",
     pnl_by_category: "По категориям",
 
+    // === Scope markers ===
+    scope_fact: "Факт — только завершённые (прибыль от сделок + доходы/расходы)",
+    scope_plan: "план / ожидается",
+
+    // === Accounts import ===
+    acc_export_tip: "Экспорт счетов в CSV",
+    acc_import_tip: "Импорт счетов из CSV",
+    acc_import: "Импорт CSV",
+    acc_import_title: "Импорт счетов",
+    acc_import_drop: "Перетащите .csv или .xlsx или кликните для выбора",
+    acc_import_hint: "Колонки: Office, Account, Currency, Type, Balance, Address (опц.), Network (опц.)",
+    acc_import_template: "Скачать шаблон.csv (текущие счета)",
+    acc_import_about: "Вы собираетесь создать счета",
+    acc_import_ack: "Я понимаю, что это создаст новые счета с начальными остатками.",
+    acc_import_apply: "Создать счета",
+    acc_import_err_empty: "В файле нет строк с данными.",
+    acc_import_err_headers: "Нужны колонки: Office, Account, Currency.",
+
     clients_title: "Клиенты",
     clients_name: "Клиент",
     clients_deals: "Сделок",
@@ -2106,6 +2142,24 @@ const DICT = {
     pnl_export_cashflow_tip: "Nakit akışını CSV olarak aktar",
     pnl_export_ie_tip: "Kayıtları CSV olarak aktar",
     pnl_by_category: "Kategoriye göre",
+
+    // === Scope markers ===
+    scope_fact: "Gerçekleşen — sadece tamamlanan (işlem kârı + gelir/gider)",
+    scope_plan: "plan / beklemede",
+
+    // === Accounts import ===
+    acc_export_tip: "Hesapları CSV olarak aktar",
+    acc_import_tip: "Hesapları CSV'den içe aktar",
+    acc_import: "CSV İçe Aktar",
+    acc_import_title: "Hesapları içe aktar",
+    acc_import_drop: ".csv veya .xlsx dosyasını sürükle veya seçmek için tıkla",
+    acc_import_hint: "Sütunlar: Office, Account, Currency, Type, Balance, Address (opt), Network (opt)",
+    acc_import_template: "Şablonu indir.csv (mevcut hesaplar)",
+    acc_import_about: "Hesap oluşturmak üzeresiniz",
+    acc_import_ack: "Bu, açılış bakiyeleri ile yeni hesaplar oluşturacak — anladım.",
+    acc_import_apply: "Hesapları oluştur",
+    acc_import_err_empty: "Dosyada veri satırı yok.",
+    acc_import_err_headers: "Gerekli sütunlar: Office, Account, Currency.",
 
     clients_title: "Müşteriler",
     clients_name: "Müşteri",
