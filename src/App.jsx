@@ -10,6 +10,7 @@ import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
+import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
 import { I18nProvider, useTranslation } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
@@ -103,6 +104,7 @@ function Root() {
         currentOffice={currentOffice}
         onOfficeChange={setCurrentOffice}
       />
+      <RateChangeBanner />
       <RatesConfirmationBanner currentOffice={currentOffice} />
       {page === "cashier" && canShow("cashier") && (
         <CashierPage
