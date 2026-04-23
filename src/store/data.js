@@ -29,6 +29,8 @@ export const CURRENCIES_DICT = [
   { code: "EUR", type: "fiat", symbol: "€", name: "Euro", decimals: 2 },
   { code: "TRY", type: "fiat", symbol: "₺", name: "Turkish Lira", decimals: 2 },
   { code: "GBP", type: "fiat", symbol: "£", name: "British Pound", decimals: 2 },
+  { code: "CHF", type: "fiat", symbol: "CHF", name: "Swiss Franc", decimals: 2 },
+  { code: "RUB", type: "fiat", symbol: "₽", name: "Russian Ruble", decimals: 2 },
   { code: "USDT", type: "crypto", symbol: "₮", name: "Tether USD", decimals: 2 },
 ];
 
@@ -67,6 +69,12 @@ export const SEED_CHANNELS = [
   { id: "ch_try_bank", currencyCode: "TRY", kind: "bank", isDefaultForCurrency: false },
   // GBP
   { id: "ch_gbp_bank", currencyCode: "GBP", kind: "bank", isDefaultForCurrency: true },
+  // CHF
+  { id: "ch_chf_bank", currencyCode: "CHF", kind: "bank", isDefaultForCurrency: true },
+  { id: "ch_chf_cash", currencyCode: "CHF", kind: "cash", isDefaultForCurrency: false },
+  // RUB
+  { id: "ch_rub_bank", currencyCode: "RUB", kind: "bank", isDefaultForCurrency: true },
+  { id: "ch_rub_cash", currencyCode: "RUB", kind: "cash", isDefaultForCurrency: false },
   // USDT (crypto → network)
   { id: "ch_usdt_trc20", currencyCode: "USDT", kind: "network", network: "TRC20", gasFee: 1.0, isDefaultForCurrency: true },
   { id: "ch_usdt_erc20", currencyCode: "USDT", kind: "network", network: "ERC20", gasFee: 15.0, isDefaultForCurrency: false },

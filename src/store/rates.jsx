@@ -34,37 +34,40 @@ import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const rateKey = (from, to) => `${from}_${to}`;
 
-// Seed pairs — каждая пара ссылается на два channelId.
-// На каждую (from→to) currency-пару отмечена одна isDefault=true.
+// Seed pairs — курсы из Excel (реальные). Значения подставлены как есть,
+// без 1/x и auto-conversion. Каждая пара — одно направление.
 const SEED_PAIRS = [
-  // USDT → ... (default channel: TRC20)
-  { id: "p_usdt_try_default", fromChannelId: "ch_usdt_trc20", toChannelId: "ch_try_cash", rate: 38.9, isDefault: true, priority: 10 },
-  { id: "p_usdt_usd_default", fromChannelId: "ch_usdt_trc20", toChannelId: "ch_usd_cash", rate: 0.9985, isDefault: true, priority: 10 },
-  { id: "p_usdt_eur_default", fromChannelId: "ch_usdt_trc20", toChannelId: "ch_eur_bank", rate: 0.918, isDefault: true, priority: 10 },
-  { id: "p_usdt_gbp_default", fromChannelId: "ch_usdt_trc20", toChannelId: "ch_gbp_bank", rate: 0.787, isDefault: true, priority: 10 },
+  // ------- CRYPTO (через USDT TRC20) -------
+  { id: "p_eur_usdt_default",  fromChannelId: "ch_eur_bank",   toChannelId: "ch_usdt_trc20", rate: 1.1532,   isDefault: true, priority: 10 },
+  { id: "p_usdt_eur_default",  fromChannelId: "ch_usdt_trc20", toChannelId: "ch_eur_bank",   rate: 1.1827,   isDefault: true, priority: 10 },
 
-  // USD → ...
-  { id: "p_usd_try_default", fromChannelId: "ch_usd_cash", toChannelId: "ch_try_cash", rate: 38.95, isDefault: true, priority: 10 },
-  { id: "p_usd_eur_default", fromChannelId: "ch_usd_bank", toChannelId: "ch_eur_bank", rate: 0.9195, isDefault: true, priority: 10 },
-  { id: "p_usd_gbp_default", fromChannelId: "ch_usd_bank", toChannelId: "ch_gbp_bank", rate: 0.788, isDefault: true, priority: 10 },
+  { id: "p_usdt_try_default",  fromChannelId: "ch_usdt_trc20", toChannelId: "ch_try_cash",   rate: 44.0015,  isDefault: true, priority: 10 },
+  { id: "p_try_usdt_default",  fromChannelId: "ch_try_cash",   toChannelId: "ch_usdt_trc20", rate: 45.1025,  isDefault: true, priority: 10 },
 
-  // EUR → ...
-  { id: "p_eur_try_default", fromChannelId: "ch_eur_bank", toChannelId: "ch_try_cash", rate: 42.35, isDefault: true, priority: 10 },
-  { id: "p_eur_usd_default", fromChannelId: "ch_eur_bank", toChannelId: "ch_usd_cash", rate: 1.0875, isDefault: true, priority: 10 },
-  { id: "p_eur_usdt_default", fromChannelId: "ch_eur_bank", toChannelId: "ch_usdt_trc20", rate: 1.088, isDefault: true, priority: 10 },
+  { id: "p_gbp_usdt_default",  fromChannelId: "ch_gbp_bank",   toChannelId: "ch_usdt_trc20", rate: 1.3315,   isDefault: true, priority: 10 },
+  { id: "p_usdt_gbp_default",  fromChannelId: "ch_usdt_trc20", toChannelId: "ch_gbp_bank",   rate: 1.3154,   isDefault: true, priority: 10 },
 
-  // TRY → ...
-  { id: "p_try_usd_default", fromChannelId: "ch_try_cash", toChannelId: "ch_usd_cash", rate: 0.02567, isDefault: true, priority: 10 },
-  { id: "p_try_usdt_default", fromChannelId: "ch_try_cash", toChannelId: "ch_usdt_trc20", rate: 0.0257, isDefault: true, priority: 10 },
-  { id: "p_try_eur_default", fromChannelId: "ch_try_cash", toChannelId: "ch_eur_bank", rate: 0.02362, isDefault: true, priority: 10 },
+  { id: "p_chf_usdt_default",  fromChannelId: "ch_chf_bank",   toChannelId: "ch_usdt_trc20", rate: 1.2635,   isDefault: true, priority: 10 },
+  { id: "p_usdt_chf_default",  fromChannelId: "ch_usdt_trc20", toChannelId: "ch_chf_bank",   rate: 1.2832,   isDefault: true, priority: 10 },
 
-  // GBP → ...
-  { id: "p_gbp_usd_default", fromChannelId: "ch_gbp_bank", toChannelId: "ch_usd_cash", rate: 1.269, isDefault: true, priority: 10 },
-  { id: "p_gbp_try_default", fromChannelId: "ch_gbp_bank", toChannelId: "ch_try_cash", rate: 49.45, isDefault: true, priority: 10 },
-  { id: "p_gbp_usdt_default", fromChannelId: "ch_gbp_bank", toChannelId: "ch_usdt_trc20", rate: 1.271, isDefault: true, priority: 10 },
+  { id: "p_rub_usdt_default",  fromChannelId: "ch_rub_bank",   toChannelId: "ch_usdt_trc20", rate: 78.6725,  isDefault: true, priority: 10 },
+  { id: "p_usdt_rub_default",  fromChannelId: "ch_usdt_trc20", toChannelId: "ch_rub_bank",   rate: 77.1752,  isDefault: true, priority: 10 },
 
-  // Пример non-default pair: USDT→TRY через ERC20 (дороже из-за gas)
-  { id: "p_usdt_try_erc20", fromChannelId: "ch_usdt_erc20", toChannelId: "ch_try_cash", rate: 38.85, isDefault: false, priority: 20 },
+  // ------- CASH (через TRY) -------
+  { id: "p_usd_try_default",   fromChannelId: "ch_usd_cash",   toChannelId: "ch_try_cash",   rate: 44.9247,  isDefault: true, priority: 10 },
+  { id: "p_try_usd_default",   fromChannelId: "ch_try_cash",   toChannelId: "ch_usd_cash",   rate: 44.9254,  isDefault: true, priority: 10 },
+
+  { id: "p_eur_try_default",   fromChannelId: "ch_eur_bank",   toChannelId: "ch_try_cash",   rate: 52.6279,  isDefault: true, priority: 10 },
+  { id: "p_try_eur_default",   fromChannelId: "ch_try_cash",   toChannelId: "ch_eur_bank",   rate: 52.6345,  isDefault: true, priority: 10 },
+
+  { id: "p_gbp_try_default",   fromChannelId: "ch_gbp_bank",   toChannelId: "ch_try_cash",   rate: 60.3256,  isDefault: true, priority: 10 },
+  { id: "p_try_gbp_default",   fromChannelId: "ch_try_cash",   toChannelId: "ch_gbp_bank",   rate: 60.6339,  isDefault: true, priority: 10 },
+
+  { id: "p_chf_try_default",   fromChannelId: "ch_chf_bank",   toChannelId: "ch_try_cash",   rate: 56.5923,  isDefault: true, priority: 10 },
+  { id: "p_try_chf_default",   fromChannelId: "ch_try_cash",   toChannelId: "ch_chf_bank",   rate: 57.0786,  isDefault: true, priority: 10 },
+
+  { id: "p_rub_try_default",   fromChannelId: "ch_rub_bank",   toChannelId: "ch_try_cash",   rate: 1.717852, isDefault: true, priority: 10 },
+  { id: "p_try_rub_default",   fromChannelId: "ch_try_cash",   toChannelId: "ch_rub_bank",   rate: 1.751181, isDefault: true, priority: 10 },
 ];
 
 const RatesContext = createContext(null);
