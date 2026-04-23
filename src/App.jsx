@@ -75,6 +75,12 @@ function Root() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-slate-900 font-sans">
+      {/* Demo-mode warning: если env vars не прилетели — сразу видно. */}
+      {!isSupabaseConfigured && (
+        <div className="bg-amber-500 text-slate-900 text-[12px] font-semibold text-center px-4 py-2 border-b border-amber-600">
+          ⚠ DEMO MODE — Supabase env vars not configured. Real sign-in/sign-out disabled. See Vercel Settings → Environment Variables.
+        </div>
+      )}
       <Header
         page={page}
         onPageChange={handlePageChange}
