@@ -147,6 +147,31 @@ function CategoriesSection() {
 }
 
 function CategoryList({ title, toneClass, items, onAdd, onEdit, onDelete }) {
+  // Строим tree: parents сначала, их children сразу под ними.
+  const tree = React.useMemo(() => {
+    const parents = items.filter((c) => !c.parentId);
+    const childrenByParent = new Map();
+    items.forEach((c) => {
+      if (!c.parentId) return;
+      if (!childrenByParent.has(c.parentId)) childrenByParent.set(c.parentId, []);
+      childrenByParent.get(c.parentId).push(c);
+    });
+    const ordered = [];
+    parents.forEach((p) => {
+      ordered.push({ ...p, depth: 0 });
+      (childrenByParent.get(p.id) || []).forEach((ch) => {
+        ordered.push({ ...ch, depth: 1 });
+      });
+    });
+    // Orphans (subcategory чей parent был удалён) — в конец как top-level
+    items.forEach((c) => {
+      if (c.parentId && !parents.find((p) => p.id === c.parentId)) {
+        ordered.push({ ...c, depth: 0, orphan: true });
+      }
+    });
+    return ordered;
+  }, [items]);
+
   return (
     <section className="border border-slate-200 rounded-[12px] overflow-hidden">
       <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
@@ -168,12 +193,32 @@ function CategoryList({ title, toneClass, items, onAdd, onEdit, onDelete }) {
         <div className="px-4 py-6 text-center text-[12px] text-slate-400">No categories yet</div>
       ) : (
         <div className="divide-y divide-slate-100">
-          {items.map((c) => (
-            <div key={c.id} className="px-4 py-2 flex items-center justify-between gap-2 group">
-              <div>
-                <div className="text-[13px] font-medium text-slate-900">{c.name}</div>
-                <div className="text-[10px] text-slate-500 uppercase tracking-wider">
-                  {c.group}
+          {tree.map((c) => (
+            <div
+              key={c.id}
+              className="px-4 py-2 flex items-center justify-between gap-2 group"
+              style={{ paddingLeft: c.depth ? 32 : 16 }}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {c.depth > 0 && (
+                  <span className="text-slate-300 select-none text-[12px] font-mono">└</span>
+                )}
+                <div>
+                  <div
+                    className={`text-[13px] ${
+                      c.depth === 0 ? "font-bold text-slate-900" : "font-medium text-slate-600"
+                    }`}
+                  >
+                    {c.name}
+                    {c.orphan && (
+                      <span className="ml-2 text-[9px] font-bold text-amber-600 uppercase tracking-wider">
+                        orphan
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                    {c.depth === 0 ? c.group : "subcategory"}
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

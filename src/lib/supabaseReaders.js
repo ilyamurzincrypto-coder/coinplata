@@ -78,6 +78,7 @@ export async function loadCategories() {
     name: r.name,
     type: r.type,
     group: r.group_name,
+    parentId: r.parent_id || null,
   }));
 }
 

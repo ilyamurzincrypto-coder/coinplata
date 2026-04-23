@@ -530,6 +530,34 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
   bumpDataVersion();
 }
 
+// ---------- categories ----------
+
+// Inline-создание категории / подкатегории. parentId опционален.
+// При parentId != null новая запись подчиняется родителю (type обязан
+// совпадать — trigger на бэке бросит exception иначе).
+export async function insertCategory({ name, type, parentId, groupName }) {
+  assertConfigured();
+  const cleanName = (name || "").trim();
+  if (!cleanName) throw new Error("Category name required");
+  if (type !== "income" && type !== "expense") {
+    throw new Error("Category type must be income or expense");
+  }
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({
+      name: cleanName,
+      type,
+      parent_id: parentId || null,
+      group_name: groupName || "other",
+      active: true,
+    })
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(formatSupabaseError(error, "insert category"));
+  bumpDataVersion();
+  return data;
+}
+
 // ---------- users (status updates) ----------
 
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.

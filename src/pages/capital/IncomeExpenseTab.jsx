@@ -18,7 +18,7 @@ import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { insertExpense, deleteExpenseById, withToast } from "../../lib/supabaseWrite.js";
+import { insertExpense, deleteExpenseById, insertCategory, withToast } from "../../lib/supabaseWrite.js";
 
 export default function IncomeExpenseTab({ range }) {
   const { t } = useTranslation();
@@ -222,12 +222,14 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { addEntry } = useIncomeExpense();
   const { accountsByOffice, addMovement } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
-  const { byType: categoriesByType, byName: findCategoryByName } = useCategories();
+  const { categories: allCategories, addCategory: localAddCategory } = useCategories();
 
   const [officeId, setOfficeId] = useState(OFFICES[0].id);
   const [currency, setCurrency] = useState("USD");
   const [accountId, setAccountId] = useState("");
-  const [category, setCategory] = useState("");
+  // Category hierarchy: user picks parent → optionally picks subcategory
+  const [parentCatId, setParentCatId] = useState("");
+  const [subCatId, setSubCatId] = useState("");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -244,12 +246,56 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       setOfficeId(OFFICES[0].id);
       setCurrency("USD");
       setAccountId("");
-      setCategory("");
+      setParentCatId("");
+      setSubCatId("");
       setAmount("");
       setNote("");
       setDate(new Date().toISOString().slice(0, 10));
     }
   }, [type]);
+
+  // Parent categories фильтруются по type + parent_id IS NULL
+  const parentCategories = useMemo(
+    () => allCategories.filter((c) => c.type === type && !c.parentId),
+    [allCategories, type]
+  );
+  // Subcategories — подчинённые текущему parent
+  const subCategories = useMemo(
+    () =>
+      allCategories.filter(
+        (c) => c.type === type && c.parentId && c.parentId === parentCatId
+      ),
+    [allCategories, type, parentCatId]
+  );
+
+  // Effective category: если subCatId выбран → его; иначе parent.
+  const effectiveCategoryId = subCatId || parentCatId;
+  const effectiveCategory = useMemo(
+    () => allCategories.find((c) => c.id === effectiveCategoryId),
+    [allCategories, effectiveCategoryId]
+  );
+
+  // При смене parent сбрасываем sub если он больше не принадлежит parent'у.
+  React.useEffect(() => {
+    if (subCatId && !subCategories.some((c) => c.id === subCatId)) {
+      setSubCatId("");
+    }
+  }, [parentCatId, subCategories, subCatId]);
+
+  // Inline create helpers
+  const handleCreateCategory = async (name, parentId) => {
+    const cleanName = (name || "").trim();
+    if (!cleanName) return null;
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => insertCategory({ name: cleanName, type, parentId: parentId || null }),
+        { success: null, errorPrefix: "Failed to add category" }
+      );
+      return res.ok ? res.result : null;
+    }
+    const r = localAddCategory({ name: cleanName, type, parentId: parentId || null });
+    return r.ok ? r.category : null;
+  };
 
   // Auto-pick first matching account when filters change
   React.useEffect(() => {
@@ -260,16 +306,23 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
 
   if (!type) return null;
 
-  const categories = categoriesByType(type).map((c) => c.name);
-  const canSubmit = amount && parseFloat(amount) > 0 && category && officeId;
+  // effective category нужна для canSubmit + audit summary
+  const canSubmit = amount && parseFloat(amount) > 0 && effectiveCategoryId && officeId;
+
+  const summaryPath = useMemo(() => {
+    if (!effectiveCategory) return "";
+    if (effectiveCategory.parentId) {
+      const parent = allCategories.find((c) => c.id === effectiveCategory.parentId);
+      return parent ? `${parent.name} / ${effectiveCategory.name}` : effectiveCategory.name;
+    }
+    return effectiveCategory.name;
+  }, [effectiveCategory, allCategories]);
 
   const handleSubmit = async () => {
     if (!canSubmit || busy) return;
     const amt = parseFloat(amount);
 
     if (isSupabaseConfigured) {
-      const cat = findCategoryByName(category, type);
-      if (!cat) return; // категория не подгружена из БД
       setBusy(true);
       try {
         const res = await withToast(
@@ -278,7 +331,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
               type,
               officeId,
               accountId: accountId || null,
-              categoryId: cat.id,
+              categoryId: effectiveCategoryId,
               amount: amt,
               currency,
               entryDate: date,
@@ -292,7 +345,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
             action: "create",
             entity: type,
             entityId: res.result?.id || "",
-            summary: `${category}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+            summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
           });
           onClose();
         }
@@ -306,7 +359,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       type,
       officeId,
       accountId,
-      category,
+      category: summaryPath,
       amount: amt,
       currency,
       note: note.trim(),
@@ -319,7 +372,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
         amount: amt,
         direction: type === "income" ? "in" : "out",
         currency,
-        source: { kind: type, refId: entry.id, note: category },
+        source: { kind: type, refId: entry.id, note: summaryPath },
         createdBy: currentUser.id,
       });
     }
@@ -327,7 +380,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       action: "create",
       entity: type,
       entityId: entry.id,
-      summary: `${category}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+      summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
     });
     onClose();
   };
@@ -407,27 +460,40 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
           </div>
         </div>
 
-        {/* Category */}
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("ie_category")}
+        {/* Category + Subcategory */}
+        <div className="space-y-2">
+          <label className="block text-[11px] font-semibold text-slate-500 tracking-wide uppercase">
+            {t("ie_category") || "Category"}
           </label>
-          <div className="flex flex-wrap gap-1.5">
-            {categories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`px-3 py-1.5 rounded-[10px] text-[12px] font-semibold border transition-all ${
-                  category === c
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
+          <CategoryPicker
+            label="Category"
+            value={parentCatId}
+            onChange={(v) => {
+              setParentCatId(v);
+              setSubCatId("");
+            }}
+            options={parentCategories}
+            onCreate={async (name) => {
+              const created = await handleCreateCategory(name, null);
+              if (created) setParentCatId(created.id);
+            }}
+            placeholder="Select category"
+          />
+          {parentCatId && (
+            <CategoryPicker
+              label="Subcategory"
+              value={subCatId}
+              onChange={setSubCatId}
+              options={subCategories}
+              onCreate={async (name) => {
+                const created = await handleCreateCategory(name, parentCatId);
+                if (created) setSubCatId(created.id);
+              }}
+              placeholder="No subcategory (optional)"
+              indent
+              allowClear
+            />
+          )}
         </div>
 
         {/* Account */}
@@ -500,5 +566,122 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
         </button>
       </div>
     </Modal>
+  );
+}
+
+// ----------------------------------------
+// CategoryPicker — dropdown + inline "+ New" создание
+// ----------------------------------------
+function CategoryPicker({
+  label,
+  value,
+  onChange,
+  options,
+  onCreate,
+  placeholder,
+  indent = false,
+  allowClear = false,
+}) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    const name = newName.trim();
+    if (!name || saving) return;
+    setSaving(true);
+    try {
+      await onCreate(name);
+      setNewName("");
+      setCreating(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={indent ? "pl-4 border-l-2 border-slate-200" : ""}>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">
+          {label}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {allowClear && value && (
+            <button
+              type="button"
+              onClick={() => onChange("")}
+              className="text-[10px] text-slate-400 hover:text-slate-700 transition-colors"
+            >
+              clear
+            </button>
+          )}
+          {!creating && (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="text-[10px] font-semibold text-slate-500 hover:text-slate-900 transition-colors inline-flex items-center gap-0.5"
+            >
+              + New
+            </button>
+          )}
+        </div>
+      </div>
+      {creating ? (
+        <div className="flex items-center gap-1.5">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleCreate();
+              } else if (e.key === "Escape") {
+                setCreating(false);
+                setNewName("");
+              }
+            }}
+            autoFocus
+            placeholder={`New ${label.toLowerCase()} name…`}
+            className="flex-1 bg-white border border-slate-300 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={!newName.trim() || saving}
+            className={`px-3 py-2 rounded-[10px] text-[12px] font-semibold ${
+              newName.trim() && !saving
+                ? "bg-slate-900 text-white hover:bg-slate-800"
+                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            }`}
+          >
+            {saving ? "…" : "Add"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCreating(false);
+              setNewName("");
+            }}
+            className="px-2 py-2 rounded-[10px] text-[12px] text-slate-500 hover:bg-slate-100"
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] font-medium outline-none transition-colors"
+        >
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
   );
 }

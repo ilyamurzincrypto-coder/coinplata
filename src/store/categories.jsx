@@ -88,7 +88,7 @@ export function CategoriesProvider({ children }) {
     [categories]
   );
 
-  const addCategory = useCallback(({ name, type, group }) => {
+  const addCategory = useCallback(({ name, type, group, parentId }) => {
     const n = String(name || "").trim();
     if (!n) return { ok: false, warning: "Name required" };
     if (type !== "income" && type !== "expense") {
@@ -96,8 +96,13 @@ export function CategoriesProvider({ children }) {
     }
     let created = null;
     setCategories((prev) => {
+      // Уникальность по (type, parentId, name) — одно и то же имя допустимо
+      // если одна категория, другая — подкатегория.
       const exists = prev.find(
-        (c) => c.name.toLowerCase() === n.toLowerCase() && c.type === type
+        (c) =>
+          c.name.toLowerCase() === n.toLowerCase() &&
+          c.type === type &&
+          (c.parentId || null) === (parentId || null)
       );
       if (exists) {
         created = exists;
@@ -108,6 +113,7 @@ export function CategoriesProvider({ children }) {
         name: n,
         type,
         group: group || "other",
+        parentId: parentId || null,
       };
       created = cat;
       return [...prev, cat];
