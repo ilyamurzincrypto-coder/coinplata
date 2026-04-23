@@ -45,37 +45,18 @@ const PAGE_SECTION = {
 };
 
 function Root() {
+  // CRITICAL: все хуки вызываются безусловно на каждом рендере.
+  // Early return'ы — ТОЛЬКО после всех useXxx вызовов (Rules of Hooks).
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const [page, setPage] = useState("cashier");
   const [currentOffice, setCurrentOffice] = useState("mark");
-  const can = useCan();
-
-  // Activation gate: invited → SetPasswordPage; loading → ждём, чтобы
-  // invited-user не увидел основное приложение даже на долю секунды.
-  if (isSupabaseConfigured) {
-    if (currentUser?.status === "_loading") {
-      return (
-        <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center text-slate-500 text-[13px]">
-          Loading workspace…
-        </div>
-      );
-    }
-    if (currentUser?.status === "invited") {
-      return <SetPasswordPage />;
-    }
-  }
-
-  // Exchange mode lifted сюда чтобы переживать unmount CashierPage при
-  // переходе на Clients/Capital и т.д. Форма формально сбрасывается (ExchangeForm
-  // не выживает unmount), но sessionStorage draft восстановит ввод при возврате.
   const [exchangeMode, setExchangeMode] = useState("dashboard");
   const [formMounted, setFormMounted] = useState(false);
+  const can = useCan();
 
   // AUTO-MINIMIZE: при переходе на любую страницу кроме cashier —
-  // сворачиваем сделку (mode → dashboard). formMounted остаётся true,
-  // так что при возврате на cashier кассир увидит "Resume exchange" CTA
-  // + draft восстановится из sessionStorage в ExchangeForm.
+  // сворачиваем сделку. Draft остаётся в sessionStorage.
   const handlePageChange = (nextPage) => {
     if (nextPage !== "cashier" && exchangeMode === "create") {
       setExchangeMode("dashboard");
@@ -92,6 +73,22 @@ function Root() {
   }, [page, can]);
 
   const canShow = (p) => can(PAGE_SECTION[p] || "transactions");
+
+  // === Early returns AFTER all hooks ===
+  // Activation gate: invited → SetPasswordPage; _loading → ждём, чтобы
+  // invited-user не увидел основное приложение даже на долю секунды.
+  if (isSupabaseConfigured) {
+    if (currentUser?.status === "_loading") {
+      return (
+        <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center text-slate-500 text-[13px]">
+          Loading workspace…
+        </div>
+      );
+    }
+    if (currentUser?.status === "invited") {
+      return <SetPasswordPage />;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-slate-900 font-sans">
