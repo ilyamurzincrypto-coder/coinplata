@@ -339,11 +339,10 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
     }
   }, [availableAccounts, accountId]);
 
-  if (!type) return null;
-
   // effective category нужна для canSubmit + audit summary
   const canSubmit = amount && parseFloat(amount) > 0 && effectiveCategoryId && officeId;
 
+  // ВАЖНО: useMemo до early-return, иначе React #310 (rules of hooks).
   const summaryPath = useMemo(() => {
     if (!effectiveCategory) return "";
     if (effectiveCategory.parentId) {
@@ -352,6 +351,9 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
     }
     return effectiveCategory.name;
   }, [effectiveCategory, allCategories]);
+
+  // Early return ПОСЛЕ всех хуков — rules of hooks.
+  if (!type) return null;
 
   const handleSubmit = async () => {
     if (!canSubmit || busy) return;
