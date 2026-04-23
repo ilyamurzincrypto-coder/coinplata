@@ -62,9 +62,38 @@ export default function CashierPage({ currentOffice }) {
 
     // 3. Если есть obligations — сделка форсится в 'pending' (неважно что пришло).
     //    Инвариант: баланс не уходит в минус.
-    const finalTx = obligationLegs.size > 0
+    const nowIso = new Date().toISOString();
+    let finalTx = obligationLegs.size > 0
       ? { ...tx, status: "pending", hasObligations: true }
       : tx;
+
+    // === Leg-level lifecycle ===
+    // Для каждого OUT leg решаем: paid-out сейчас или pending.
+    //   — obligation-leg     → actual=0, completedAt=null (деньги обещаны, не выданы)
+    //   — crypto send        → actual=0, completedAt=null (pending_send, ждём on-chain)
+    //   — deal 'checking'    → actual=0, completedAt=null (ждём crypto match)
+    //   — deal 'pending' (manual) → actual=0, completedAt=null
+    //   — всё остальное      → actual=planned, completedAt=now
+    const outs = (finalTx.outputs || []).map((leg, idx) => {
+      const isObligation = obligationLegs.has(idx);
+      const isCryptoSendPending = leg.sendStatus && leg.sendStatus !== "confirmed";
+      const isDealPending = finalTx.status === "pending" || finalTx.status === "checking";
+      const fullyPaid = !isObligation && !isCryptoSendPending && !isDealPending;
+      return {
+        ...leg,
+        actualAmount: fullyPaid ? leg.plannedAmount ?? leg.amount ?? 0 : 0,
+        completedAt: fullyPaid ? nowIso : null,
+      };
+    });
+
+    // IN side: аналогично — для checking ждём блокчейн, для manual pending ждём действий.
+    const inCompleted = finalTx.status === "completed" && finalTx.accountId;
+    finalTx = {
+      ...finalTx,
+      outputs: outs,
+      inActualAmount: inCompleted ? (finalTx.amtIn || 0) : 0,
+      inCompletedAt: inCompleted ? nowIso : null,
+    };
 
     addTransaction(finalTx);
     setJustCreatedId(finalTx.id);

@@ -25,7 +25,7 @@ import { fmt, curSymbol } from "../utils/money.js";
 export default function ObligationsModal({ open, onClose }) {
   const { obligations, closeObligation, cancelObligation } = useObligations();
   const { accounts, balanceOf, reservedOf, addMovement } = useAccounts();
-  const { transactions, updateTransaction } = useTransactions();
+  const { transactions, updateTransaction, updateOutput } = useTransactions();
   const { findOffice } = useOffices();
   const { currentUser } = useAuth();
   const { addEntry: logAudit } = useAudit();
@@ -75,7 +75,17 @@ export default function ObligationsModal({ open, onClose }) {
     // 2. Закрываем obligation.
     closeObligation(obligation.id, currentUser.id);
 
-    // 3. Если у сделки больше нет open obligations → переводим в completed.
+    // 3. Помечаем конкретный leg как completed (actual = planned, completedAt = now).
+    const nowIso = new Date().toISOString();
+    if (obligation.dealId && Number.isFinite(obligation.dealLegIndex)) {
+      updateOutput(obligation.dealId, obligation.dealLegIndex, {
+        actualAmount: obligation.amount,
+        completedAt: nowIso,
+      });
+    }
+
+    // 4. Если у сделки больше нет open obligations → переводим её в completed
+    //    и закрываем все остальные legs + IN (если они ещё pending).
     if (obligation.dealId) {
       const stillOpen = obligations.some(
         (o) =>
@@ -84,10 +94,26 @@ export default function ObligationsModal({ open, onClose }) {
           o.status === "open"
       );
       if (!stillOpen) {
-        updateTransaction(obligation.dealId, {
-          status: "completed",
-          confirmedAt: new Date().toISOString(),
-        });
+        const deal = transactions.find((t) => t.id === obligation.dealId);
+        const patch = { status: "completed", confirmedAt: nowIso };
+        if (deal) {
+          // IN side — если ещё не закрыт (deal был pending, IN мог ждать)
+          if (!deal.inCompletedAt) {
+            patch.inActualAmount = deal.amtIn || 0;
+            patch.inCompletedAt = nowIso;
+          }
+          // Остальные OUT legs — закрыть все что ещё не закрыты (не только этот)
+          const updatedOuts = (deal.outputs || []).map((l, idx) => {
+            if (l.completedAt) return l;
+            return {
+              ...l,
+              actualAmount: l.plannedAmount ?? l.amount ?? 0,
+              completedAt: nowIso,
+            };
+          });
+          patch.outputs = updatedOuts;
+        }
+        updateTransaction(obligation.dealId, patch);
       }
     }
 

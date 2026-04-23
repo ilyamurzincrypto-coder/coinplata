@@ -358,22 +358,25 @@ export default function ExchangeForm({
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
 
+    const nowIso = new Date().toISOString();
     const outputsClean = outputs.map((o) => {
       const addr = (o.address || "").trim();
+      const plannedAmount = parseFloat(o.amount) || 0;
       const base = {
         currency: o.currency,
-        amount: parseFloat(o.amount) || 0,
+        amount: plannedAmount, // legacy, равно plannedAmount
+        plannedAmount,
+        actualAmount: 0, // будет заполнено в CashierPage.handleCreate по правилу
+        plannedAt: nowIso,
+        completedAt: null,
         rate: parseFloat(o.rate) || 0,
         accountId: o.accountId || "",
         address: addr,
       };
       // Crypto OUT с адресом → включаем send lifecycle.
-      // pending_send = сделка создана, но средства ещё не отправлены on-chain.
       if (isCryptoCode(o.currency) && addr) {
         base.sendStatus = "pending_send";
         base.sendTxHash = "";
-        // network best-effort: пытаемся достать из выбранного account
-        // (или оставим пустым — можно задать в момент "Send").
         const acc = accounts.find((a) => a.id === o.accountId);
         base.network = acc?.network || null;
       }
@@ -423,8 +426,13 @@ export default function ExchangeForm({
       comment,
       accountId,
       status,
-      createdAtMs: Date.now(), // для window-матчинга в monitoring
-      rateSnapshotId: rateSnapshots[0]?.id || null, // самый свежий snapshot
+      createdAtMs: Date.now(),
+      rateSnapshotId: rateSnapshots[0]?.id || null,
+      // IN side — planned / actual / completed даты для multi-day tracking.
+      inPlannedAmount: parseFloat(amtIn) || 0,
+      inActualAmount: 0, // заполнится в CashierPage по правилу
+      inPlannedAt: nowIso,
+      inCompletedAt: null,
     };
 
     if (mode === "edit" && initialData) {

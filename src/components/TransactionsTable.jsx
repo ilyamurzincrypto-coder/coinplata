@@ -36,6 +36,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
+import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
 import { Shield } from "lucide-react";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {
@@ -70,7 +71,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   };
 
   const handleConfirmCryptoOut = (tx, outputIndex) => {
-    updateOutput(tx.id, outputIndex, { sendStatus: "confirmed" });
+    const nowIso = new Date().toISOString();
+    const leg = tx.outputs?.[outputIndex];
+    const planned = leg?.plannedAmount ?? leg?.amount ?? 0;
+    updateOutput(tx.id, outputIndex, {
+      sendStatus: "confirmed",
+      actualAmount: planned,
+      completedAt: nowIso,
+    });
     unreserveMovementByOutputIndex(tx.id, outputIndex);
     logAudit({
       action: "confirm",
@@ -116,15 +124,30 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   };
 
   const handleComplete = (tx) => {
-    // Pending → Completed: движения уже были записаны с флагом reserved=true.
-    // Complete = снимаем флаг reserved (движения остаются как completed).
+    // Pending/checking → Completed: снимаем reserved, ставим completed_at
+    // на IN сторону и на все OUT legs которые ещё не закрыты.
+    const nowIso = new Date().toISOString();
     completeTransaction(tx.id);
     unreserveMovementsByRefId(tx.id);
+    const updatedOuts = (tx.outputs || []).map((l) => {
+      if (l.completedAt) return l; // уже закрыт
+      return {
+        ...l,
+        actualAmount: l.plannedAmount ?? l.amount ?? 0,
+        completedAt: nowIso,
+      };
+    });
+    updateTransaction(tx.id, {
+      confirmedAt: nowIso,
+      outputs: updatedOuts,
+      inActualAmount: tx.amtIn || 0,
+      inCompletedAt: tx.inCompletedAt || nowIso,
+    });
     logAudit({
       action: "update",
       entity: "transaction",
       entityId: String(tx.id),
-      summary: `[COMPLETED] Tx #${tx.id}: reserved flag cleared`,
+      summary: `[COMPLETED] Tx #${tx.id}: reserved cleared, IN/OUT closed`,
     });
   };
 
@@ -491,6 +514,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                     <div className="font-semibold text-slate-900">{fmt(tx.amtIn, tx.curIn)}</div>
                     <div className="text-[11px] text-slate-400 font-medium">{tx.curIn}</div>
+                    <InStatusLine tx={tx} />
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                     <OutputsCell
@@ -777,15 +801,60 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
 
 function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
   const isCryptoOut = !!o.sendStatus;
+  // Leg-level status (pending / partial / delayed / completed) из planned/actual/at-fields.
+  // Для legacy-сделок без этих полей fallback: считаем completed если нет явных признаков.
+  const legacy = o.plannedAmount === undefined && o.actualAmount === undefined;
+  const legState = legacy
+    ? { status: "completed", progress: 1, planned: o.amount, actual: o.amount }
+    : computeLegStatus({
+        plannedAmount: o.plannedAmount ?? o.amount,
+        actualAmount: o.actualAmount ?? 0,
+        plannedAt: o.plannedAt,
+        completedAt: o.completedAt,
+      });
+  const legStyle = legStatusStyle(legState.status);
+  const showLegChip = !legacy && !isCryptoOut; // для crypto OUT есть отдельный SendStatusBadge
+
   return (
-    <div className="flex items-center justify-end gap-1.5">
+    <div className="flex items-center justify-end gap-1.5 flex-wrap">
       <span className="font-semibold text-slate-900 text-[13px] tabular-nums">
         {fmt(o.amount, o.currency)}
       </span>
       <span className="text-[10px] text-slate-500 font-bold w-10 text-left">
         {o.currency}
       </span>
+
+      {/* Partial: показываем прогресс "actual / planned" */}
+      {legState.status === "partial" && (
+        <span className="text-[10px] font-bold text-violet-700 tabular-nums">
+          {fmt(legState.actual, o.currency)}/{fmt(legState.planned, o.currency)}
+        </span>
+      )}
+
+      {/* Leg status chip (для не-crypto) */}
+      {showLegChip && legState.status !== "completed" && (
+        <span
+          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold ring-1 ${legStyle.cls}`}
+          title={
+            legState.status === "delayed"
+              ? `Planned ${formatShortDate(o.plannedAt)} · delayed ${legState.delayDays}d`
+              : `Planned ${formatShortDate(o.plannedAt)}`
+          }
+        >
+          {legState.status === "delayed" ? "⚠ Delayed" : legStyle.label}
+        </span>
+      )}
+
+      {/* Completed date (compact) — только если не legacy и сделка не свежая */}
+      {showLegChip && legState.status === "completed" && o.completedAt && (
+        <span className="text-[10px] text-slate-400 tabular-nums">
+          ✓ {formatShortDate(o.completedAt)}
+        </span>
+      )}
+
+      {/* Crypto send badge (TRC20/ERC20 lifecycle) */}
       {isCryptoOut && <SendStatusBadge status={o.sendStatus} />}
+
       {isCryptoOut && canEdit && o.sendStatus === "pending_send" && (
         <button
           onClick={onSend}
@@ -806,6 +875,46 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
           Confirm
         </button>
       )}
+    </div>
+  );
+}
+
+// IN-сторона статус — показывает получено / ждём / delayed.
+// Legacy-сделки без inPlannedAt/inCompletedAt: показываем как completed (тихо).
+function InStatusLine({ tx }) {
+  const legacy = tx.inPlannedAt === undefined && tx.inCompletedAt === undefined;
+  if (legacy) return null;
+  const state = computeLegStatus({
+    plannedAmount: tx.inPlannedAmount ?? tx.amtIn ?? 0,
+    actualAmount: tx.inActualAmount ?? 0,
+    plannedAt: tx.inPlannedAt,
+    completedAt: tx.inCompletedAt,
+  });
+  if (state.status === "completed") {
+    return tx.inCompletedAt ? (
+      <div className="text-[9px] text-slate-400 tabular-nums mt-0.5">
+        ✓ {formatShortDate(tx.inCompletedAt)}
+      </div>
+    ) : null;
+  }
+  const style = legStatusStyle(state.status);
+  if (state.status === "partial") {
+    return (
+      <div className="text-[9px] font-bold text-violet-700 tabular-nums mt-0.5">
+        {fmt(state.actual, tx.curIn)}/{fmt(state.planned, tx.curIn)}
+      </div>
+    );
+  }
+  return (
+    <div
+      className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold ring-1 mt-0.5 ${style.cls}`}
+      title={
+        state.status === "delayed"
+          ? `Planned ${formatShortDate(tx.inPlannedAt)} · delayed ${state.delayDays}d`
+          : `Waiting · planned ${formatShortDate(tx.inPlannedAt)}`
+      }
+    >
+      {state.status === "delayed" ? "⚠ Delayed" : "🟡 Waiting"}
     </div>
   );
 }

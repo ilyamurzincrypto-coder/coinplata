@@ -126,14 +126,32 @@ export function MonitoringProvider({ children }) {
       // в tx. UI отобразит warning. В проде можно уйти в manual review.
       const risk = checkWalletRisk(enriched.from_address);
 
-      // Обновляем транзакцию
+      // Обновляем транзакцию: IN сторона → completed, и все OUT legs
+      // которые ещё не закрыты тоже помечаем completed (при матче на checking
+      // фактически сделка закрывается целиком, если только нет crypto send
+      // pending обязательств; те обновятся отдельно через confirm_deal_leg).
+      const nowIso = new Date().toISOString();
+      const updatedOuts = (match.outputs || []).map((l) => {
+        if (l.completedAt) return l;
+        // Не трогаем crypto OUT legs которые ещё в pending_send/sent — они
+        // закрываются отдельно через confirm_deal_leg.
+        if (l.sendStatus && l.sendStatus !== "confirmed") return l;
+        return {
+          ...l,
+          actualAmount: l.plannedAmount ?? l.amount ?? 0,
+          completedAt: nowIso,
+        };
+      });
       updateTransaction(match.id, {
         status: "completed",
-        confirmedAt: new Date().toISOString(),
+        confirmedAt: nowIso,
         confirmedTxHash: enriched.txHash,
         riskScore: risk.riskScore,
         riskLevel: risk.riskLevel,
         riskFlags: risk.flags,
+        inActualAmount: match.amtIn || 0,
+        inCompletedAt: nowIso,
+        outputs: updatedOuts,
       });
       unreserveMovementsByRefId(match.id);
 
