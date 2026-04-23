@@ -25,6 +25,8 @@ import { WalletsProvider } from "./store/wallets.jsx";
 import { MonitoringProvider } from "./store/monitoring.jsx";
 import { CategoriesProvider } from "./store/categories.jsx";
 import { RateHistoryProvider } from "./store/rateHistory.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -69,36 +71,93 @@ function Root() {
   );
 }
 
+// Gate перед app: если Supabase настроен и нет session → LoginPage.
+// Плюс: `?login=1` или `#login` форсит preview LoginPage без Supabase (удобно
+// смотреть дизайн до миграции).
+function AuthGate({ children }) {
+  const [session, setSession] = useState(undefined); // undefined = loading
+  const [forcePreview, setForcePreview] = useState(false);
+
+  useEffect(() => {
+    // Preview-режим через URL
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("login") === "1" || window.location.hash === "#login") {
+      setForcePreview(true);
+    }
+    const onHash = () => {
+      setForcePreview(window.location.hash === "#login");
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setSession(null);
+      return;
+    }
+    let unsub;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
+      const sub = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
+      unsub = sub.data.subscription;
+    })();
+    return () => {
+      try { unsub?.unsubscribe?.(); } catch {}
+    };
+  }, []);
+
+  // Preview форсится даже когда demo / сессия есть.
+  if (forcePreview) return <LoginPage />;
+
+  // Supabase настроен — ждём session и гейтим.
+  if (isSupabaseConfigured) {
+    if (session === undefined) {
+      return (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 text-[13px]">
+          Loading…
+        </div>
+      );
+    }
+    if (!session) return <LoginPage />;
+  }
+  // Demo-режим или authenticated — рендерим приложение.
+  return children;
+}
+
 export default function App() {
   return (
-    <I18nProvider>
-      <AuthProvider>
-        <OfficesProvider>
-          <CurrenciesProvider>
-            <PermissionsProvider>
-              <AuditProvider>
-                <RatesProvider>
-                  <RateHistoryProvider>
-                  <AccountsProvider>
-                    <CategoriesProvider>
-                    <IncomeExpenseProvider>
-                      <TransactionsProvider>
-                        <WalletsProvider>
-                          <MonitoringProvider>
-                            <Root />
-                          </MonitoringProvider>
-                        </WalletsProvider>
-                      </TransactionsProvider>
-                    </IncomeExpenseProvider>
-                    </CategoriesProvider>
-                  </AccountsProvider>
-                  </RateHistoryProvider>
-                </RatesProvider>
-              </AuditProvider>
-            </PermissionsProvider>
-          </CurrenciesProvider>
-        </OfficesProvider>
-      </AuthProvider>
-    </I18nProvider>
+    <AuthGate>
+      <I18nProvider>
+        <AuthProvider>
+          <OfficesProvider>
+            <CurrenciesProvider>
+              <PermissionsProvider>
+                <AuditProvider>
+                  <RatesProvider>
+                    <RateHistoryProvider>
+                    <AccountsProvider>
+                      <CategoriesProvider>
+                      <IncomeExpenseProvider>
+                        <TransactionsProvider>
+                          <WalletsProvider>
+                            <MonitoringProvider>
+                              <Root />
+                            </MonitoringProvider>
+                          </WalletsProvider>
+                        </TransactionsProvider>
+                      </IncomeExpenseProvider>
+                      </CategoriesProvider>
+                    </AccountsProvider>
+                    </RateHistoryProvider>
+                  </RatesProvider>
+                </AuditProvider>
+              </PermissionsProvider>
+            </CurrenciesProvider>
+          </OfficesProvider>
+        </AuthProvider>
+      </I18nProvider>
+    </AuthGate>
   );
 }
