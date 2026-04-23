@@ -14,7 +14,7 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, withToast, uuidOrNull } from "../lib/supabaseWrite.js";
+import { rpcCreateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 
 export default function CashierPage({ currentOffice }) {
   const [balanceScope, setBalanceScope] = useState("selected");
@@ -22,7 +22,7 @@ export default function CashierPage({ currentOffice }) {
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { addTransaction, updateTransaction } = useTransactions();
+  const { addTransaction, updateTransaction, counterparties } = useTransactions();
   const { addEntry: logAudit } = useAudit();
   const { accounts, addMovement, removeMovementsByRefId, balanceOf, reservedOf } = useAccounts();
   const { currentUser } = useAuth();
@@ -63,15 +63,24 @@ export default function CashierPage({ currentOffice }) {
     if (isSupabaseConfigured) {
       setSubmitting(true);
       try {
-        // Локальные cp_/a_ id не годятся для FK — пропускаем только UUID.
-        // Nickname сохраняется в client_nickname. TODO Stage 5: auto-insert
-        // нового клиента в clients при submit.
+        // Гарантируем существование клиента в clients (match-or-insert).
+        // Дедупликация по nickname/telegram. Если не удалось — fallback на
+        // client_nickname only (deal создастся без FK-связи, не блокируется).
+        const resolvedClientId = await ensureClient(
+          {
+            nickname: tx.counterparty,
+            telegram: tx.counterpartyTelegram,
+            counterpartyId: tx.counterpartyId,
+          },
+          counterparties
+        );
+
         const res = await withToast(
           () =>
             rpcCreateDeal({
               officeId: uuidOrNull(tx.officeId),
               managerId: currentUser.id,
-              clientId: uuidOrNull(tx.counterpartyId),
+              clientId: resolvedClientId,
               clientNickname: tx.counterparty || null,
               currencyIn: tx.curIn,
               amountIn: tx.amtIn,

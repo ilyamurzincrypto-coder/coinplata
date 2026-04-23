@@ -436,6 +436,88 @@ export async function deleteExpenseById(id) {
 
 // ---------- clients (direct insert) ----------
 
+// Гарантирует существование client'а в БД и возвращает его uuid.
+// Дедупликация: (1) если counterpartyId уже UUID — trust it; (2) ищем по
+// lowercased nickname в already-loaded counterparties; (3) по telegram;
+// (4) запрос в БД по nickname/telegram; (5) если всё ещё не нашли — insert.
+//
+// Вызывается из CashierPage/EditTransactionModal перед create_deal.
+// Если nickname пустой → null (deal создастся без client_id).
+export async function ensureClient({ nickname, telegram, counterpartyId }, loadedClients = []) {
+  if (!isSupabaseConfigured) return null;
+  // (1) уже DB-UUID
+  if (isUuid(counterpartyId)) return counterpartyId;
+
+  const nick = (nickname || "").trim();
+  if (!nick) return null;
+  const nickLower = nick.toLowerCase();
+  const tg = (telegram || "").trim().toLowerCase();
+
+  // (2) + (3) — in-memory hit (мгновенно, без round-trip)
+  const local = (loadedClients || []).find((c) => {
+    if (!c) return false;
+    if (c.nickname && c.nickname.toLowerCase() === nickLower) return true;
+    if (tg && c.telegram && c.telegram.toLowerCase() === tg) return true;
+    return false;
+  });
+  if (local && isUuid(local.id)) return local.id;
+
+  // (4) — на случай если counterparties не долетели / race condition:
+  // запрос в clients ilike nickname.
+  try {
+    const { data, error } = await supabase
+      .from("clients")
+      .select("id, nickname, telegram")
+      .or(`nickname.ilike.${nick},telegram.ilike.${tg || nick}`)
+      .limit(5);
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn("[ensureClient] lookup failed", error);
+    } else if (Array.isArray(data) && data.length > 0) {
+      const hit = data.find((c) => {
+        if (!c) return false;
+        if (c.nickname && c.nickname.toLowerCase() === nickLower) return true;
+        if (tg && c.telegram && c.telegram.toLowerCase() === tg) return true;
+        return false;
+      });
+      if (hit) return hit.id;
+    }
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[ensureClient] lookup error", err);
+  }
+
+  // (5) — insert. Если unique-constraint споткнётся — ловим и ещё раз ищем.
+  try {
+    const { data, error } = await supabase
+      .from("clients")
+      .insert({
+        nickname: nick,
+        full_name: nick,
+        telegram: telegram || "",
+      })
+      .select("id")
+      .maybeSingle();
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.warn("[ensureClient] insert failed, retry lookup", error);
+      const { data: again } = await supabase
+        .from("clients")
+        .select("id")
+        .ilike("nickname", nick)
+        .limit(1)
+        .maybeSingle();
+      return again?.id || null;
+    }
+    bumpDataVersion();
+    return data?.id || null;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn("[ensureClient] insert error", err);
+    return null;
+  }
+}
+
 export async function insertClient({ nickname, fullName, telegram, tag, note }) {
   assertConfigured();
   if (typeof nickname !== "string" || nickname.trim().length === 0) {

@@ -30,6 +30,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
 import { DataVersionProvider } from "./lib/dataVersion.jsx";
 import { ToastProvider } from "./lib/toast.jsx";
+import { RealtimeProvider } from "./lib/realtime.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -133,6 +134,7 @@ export default function App() {
   return (
     <ToastProvider>
       <DataVersionProvider>
+        <RealtimeProvider>
         <AuthGate>
           <I18nProvider>
             <AuthProvider>
@@ -166,6 +168,7 @@ export default function App() {
             </AuthProvider>
           </I18nProvider>
         </AuthGate>
+        </RealtimeProvider>
       </DataVersionProvider>
     </ToastProvider>
   );

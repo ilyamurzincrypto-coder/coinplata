@@ -15,11 +15,11 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcUpdateDeal, withToast, uuidOrNull } from "../lib/supabaseWrite.js";
+import { rpcUpdateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
-  const { updateTransaction } = useTransactions();
+  const { updateTransaction, counterparties } = useTransactions();
   const { addEntry: logAudit } = useAudit();
   const { accounts, addMovement, removeMovementsByRefId } = useAccounts();
   const { currentUser } = useAuth();
@@ -35,12 +35,21 @@ export default function EditTransactionModal({ transaction, onClose }) {
     if (isSupabaseConfigured) {
       setSubmitting(true);
       try {
+        const resolvedClientId = await ensureClient(
+          {
+            nickname: updated.counterparty,
+            telegram: updated.counterpartyTelegram,
+            counterpartyId: updated.counterpartyId,
+          },
+          counterparties
+        );
+
         const res = await withToast(
           () =>
             rpcUpdateDeal({
               dealId: transaction.id,
               officeId: uuidOrNull(updated.officeId),
-              clientId: uuidOrNull(updated.counterpartyId),
+              clientId: resolvedClientId,
               clientNickname: updated.counterparty || null,
               currencyIn: updated.curIn,
               amountIn: updated.amtIn,
