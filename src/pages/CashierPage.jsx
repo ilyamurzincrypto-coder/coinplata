@@ -49,24 +49,7 @@ export default function CashierPage({
     } catch {}
   };
 
-  // Hotkey N — открыть/вернуться в create. Escape — minimize.
-  useEffect(() => {
-    const onKey = (e) => {
-      const tag = (e.target?.tagName || "").toLowerCase();
-      if (tag === "input" || tag === "textarea" || tag === "select") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key === "n" || e.key === "N") {
-        if (mode !== "create") {
-          e.preventDefault();
-          openCreate();
-        }
-      } else if (e.key === "Escape" && mode === "create") {
-        minimizeCreate();
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [mode]);
+  // N / Esc — обрабатываются глобально в App.jsx через useKeyboardShortcuts.
 
   const { addTransaction, updateTransaction, counterparties } = useTransactions();
   const { addEntry: logAudit } = useAudit();

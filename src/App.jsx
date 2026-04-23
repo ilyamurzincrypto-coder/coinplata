@@ -37,6 +37,7 @@ import { DataVersionProvider } from "./lib/dataVersion.jsx";
 import { ToastProvider } from "./lib/toast.jsx";
 import { RealtimeProvider } from "./lib/realtime.jsx";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -293,6 +294,7 @@ function AuthGate({ children }) {
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <ToastProvider>
       <DataVersionProvider>
         <RealtimeProvider>
@@ -332,5 +334,6 @@ export default function App() {
         </RealtimeProvider>
       </DataVersionProvider>
     </ToastProvider>
+    </ErrorBoundary>
   );
 }
