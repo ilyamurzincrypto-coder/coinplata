@@ -873,8 +873,11 @@ export default function ExchangeForm({
           </span>
         </div>
 
-        {/* Deposit to account — searchable dropdown с заметной рамкой состояния */}
-        {availableAccounts.length > 0 && (
+        {/* Deposit to account — searchable dropdown с заметной рамкой состояния.
+            Всегда виден — если нет подходящих счетов, AccountSelect показывает
+            empty-state. Раньше прятался через length>0 → селект исчезал
+            когда в офисе не было аккаунта с нужной валютой. */}
+        {!deferredIn && (
           <div
             className={`mt-3 p-2.5 rounded-[12px] border-2 transition-colors ${
               accountId
@@ -904,6 +907,11 @@ export default function ExchangeForm({
               placeholder={t("select_account")}
               currentOfficeId={currentOffice}
             />
+            {availableAccounts.length === 0 && (
+              <div className="mt-1.5 text-[11px] text-amber-700">
+                {t("no_account_for_currency").replace("{cur}", curIn)}
+              </div>
+            )}
           </div>
         )}
 

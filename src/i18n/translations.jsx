@@ -119,6 +119,11 @@ const DICT = {
 
     // Exchange form
     deposit_to: "Deposit to",
+    no_account_for_currency: "No active account for {cur} — create one in Accounts first.",
+    try_other_office: "Try another office",
+    insufficient_suggest_title: "Not enough balance",
+    insufficient_suggest_body: "Selected office doesn't have enough {cur}. Other offices can cover:",
+    insufficient_switch_office: "Switch to this office",
     select_account: "Select account…",
     current_balance: "Current balance",
     use_remaining: "Use remaining",
@@ -856,6 +861,11 @@ const DICT = {
     base_currency_hint: "Все сводные показатели (капитал, дашборд, LTV) отображаются в этой валюте. Смена применяется сразу.",
 
     deposit_to: "Зачислить на",
+    no_account_for_currency: "Нет активного счёта в {cur} — создайте в разделе Счета.",
+    try_other_office: "Попробовать другой офис",
+    insufficient_suggest_title: "Недостаточно средств",
+    insufficient_suggest_body: "В выбранном офисе не хватает {cur}. В других офисах есть:",
+    insufficient_switch_office: "Переключиться на этот офис",
     select_account: "Выбрать счёт…",
     current_balance: "Текущий баланс",
     use_remaining: "Остаток сюда",
@@ -1572,6 +1582,11 @@ const DICT = {
     base_currency_hint: "Toplam göstergeler (sermaye, gösterge tablosu, LTV) bu para biriminde gösterilir. Değişiklik anında uygulanır.",
 
     deposit_to: "Yatırılacak hesap",
+    no_account_for_currency: "{cur} için aktif hesap yok — önce Hesaplar bölümünden oluşturun.",
+    try_other_office: "Başka ofis dene",
+    insufficient_suggest_title: "Yetersiz bakiye",
+    insufficient_suggest_body: "Seçilen ofiste yeterli {cur} yok. Diğer ofisler:",
+    insufficient_switch_office: "Bu ofise geç",
     select_account: "Hesap seç…",
     current_balance: "Mevcut bakiye",
     use_remaining: "Kalanı kullan",
