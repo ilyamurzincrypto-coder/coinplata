@@ -45,6 +45,7 @@ import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
   rpcDeleteDeal,
+  rpcHardDeleteDeal,
   rpcCompleteDeal,
   rpcConfirmDealLeg,
   rpcMarkDealSent,
@@ -163,6 +164,28 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       entityId: `${tx.id}#${outputIndex}`,
       summary: `Confirmed on-chain for #${tx.id} output ${outputIndex + 1}`,
     });
+  };
+
+  // Hard delete — физически удаляет row из БД. Только для status='deleted'.
+  const handleHardDelete = async (tx) => {
+    if (!confirm(`Permanently delete tx #${tx.id}? This cannot be undone.`)) return;
+    if (isSupabaseConfigured) {
+      await withBusy(tx.id, async () => {
+        const res = await withToast(
+          () => rpcHardDeleteDeal(tx.id),
+          { success: "Deal removed permanently", errorPrefix: "Hard delete failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "delete",
+            entity: "transaction",
+            entityId: String(tx.id),
+            summary: `Hard-deleted tx #${tx.id}`,
+          });
+        }
+        return res;
+      });
+    }
   };
 
   const handleDeleteConfirmed = async () => {
@@ -764,6 +787,15 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </>
+                      ) : isDeleted && canEdit ? (
+                        <button
+                          onClick={() => handleHardDelete(tx)}
+                          disabled={isBusy(tx.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-rose-100 text-rose-500 hover:text-rose-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Remove permanently from database"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       ) : (
                         <div
                           className="opacity-0 group-hover:opacity-60 p-1.5 text-slate-400"

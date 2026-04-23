@@ -253,6 +253,18 @@ export async function rpcDeleteDeal(dealId, reason = "") {
   bumpDataVersion();
 }
 
+// Hard-delete — физически удаляет row из БД. Работает только на
+// уже soft-deleted сделках (backend enforcing).
+export async function rpcHardDeleteDeal(dealId) {
+  assertConfigured();
+  const id = requirePositive(dealId, "dealId");
+  unwrap(
+    await supabase.rpc("hard_delete_deal", { p_deal_id: id }),
+    "hard_delete_deal"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcConfirmDealLeg(dealId, legIndex) {
   assertConfigured();
   const id = requirePositive(dealId, "dealId");
