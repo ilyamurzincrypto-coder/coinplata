@@ -28,6 +28,7 @@ import { MonitoringProvider } from "./store/monitoring.jsx";
 import { CategoriesProvider } from "./store/categories.jsx";
 import { RateHistoryProvider } from "./store/rateHistory.jsx";
 import { ObligationsProvider } from "./store/obligations.jsx";
+import { NotificationsProvider } from "./store/notifications.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
@@ -313,11 +314,13 @@ export default function App() {
                           <IncomeExpenseProvider>
                             <TransactionsProvider>
                               <ObligationsProvider>
+                              <NotificationsProvider>
                               <WalletsProvider>
                                 <MonitoringProvider>
                                   <Root />
                                 </MonitoringProvider>
                               </WalletsProvider>
+                              </NotificationsProvider>
                               </ObligationsProvider>
                             </TransactionsProvider>
                           </IncomeExpenseProvider>

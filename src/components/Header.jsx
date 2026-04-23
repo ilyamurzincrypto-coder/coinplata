@@ -4,6 +4,7 @@ import { Globe, Building2 } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import Select from "./ui/Select.jsx";
 import ProfileMenu from "./ProfileMenu.jsx";
+import NotificationsBell from "./NotificationsBell.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -20,6 +21,7 @@ const NAV_PAGES = [
 ];
 
 export default function Header({ currentOffice, onOfficeChange, page, onPageChange }) {
+  // onPageChange прокинут из Root — используем для navigate из bell-dropdown
   const { t, lang, setLang } = useTranslation();
   const { activeOffices } = useOffices();
   const { currentUser } = useAuth();
@@ -102,6 +104,8 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
               compact
             />
           </div>
+
+          <NotificationsBell onNavigate={onPageChange} />
 
           <div className="pl-2 ml-1 border-l border-slate-200">
             <ProfileMenu />
