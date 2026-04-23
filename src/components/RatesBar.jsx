@@ -66,16 +66,21 @@ export default function RatesBar() {
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
   const [editOpen, setEditOpen] = useState(false);
-  const [hoveredBase, setHoveredBase] = useState(null);
+  // FIX: selection по INDEX, а не по base-валюте. Иначе если несколько featured
+  // pairs имеют одинаковый from (например USDT→TRY + USDT→USD), все "USDT" карточки
+  // подсвечиваются одновременно — double-active bug.
+  const [activeIdx, setActiveIdx] = useState(null);
 
+  const activePair = activeIdx != null ? FEATURED_PAIRS[activeIdx] : null;
+  const hoveredBase = activePair ? activePair[0] : null;
   const expandData = hoveredBase ? ratesFromBase(hoveredBase) : [];
-  // Скрываем пару которая совпадает с верхней (FROM→FROM не имеет смысла).
   const crossPairs = expandData.filter((p) => p.to !== hoveredBase);
 
   return (
     <>
-      {/* Секция — визуально доминирующий блок: крупнее, белая карточка, shadow-sm. */}
-      <section className="relative">
+      {/* Ограниченная max-width + центрирование. Избавляет от "размазанного" блока
+          на wide-screens и упорядочивает карточки. */}
+      <section className="relative max-w-[1200px] mx-auto">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
@@ -102,19 +107,18 @@ export default function RatesBar() {
 
         <div
           className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] relative"
-          onMouseLeave={() => setHoveredBase(null)}
+          onMouseLeave={() => setActiveIdx(null)}
         >
-          {/* Основной ряд пар — крупные карточки. grid чтобы ширины были одинаковые. */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 p-2 gap-1">
-            {FEATURED_PAIRS.map(([from, to]) => {
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 p-2 gap-1.5">
+            {FEATURED_PAIRS.map(([from, to], idx) => {
               const r = getRate(from, to);
-              const isActive = hoveredBase === from;
+              const isActive = activeIdx === idx;
               return (
                 <button
                   key={`${from}-${to}`}
                   type="button"
-                  onMouseEnter={() => setHoveredBase(from)}
-                  onFocus={() => setHoveredBase(from)}
+                  onMouseEnter={() => setActiveIdx(idx)}
+                  onFocus={() => setActiveIdx(idx)}
                   className={`text-left px-4 py-3.5 rounded-[12px] transition-colors outline-none ${
                     isActive
                       ? "bg-slate-900 text-white"
@@ -140,9 +144,6 @@ export default function RatesBar() {
             })}
           </div>
 
-          {/* Dropdown с cross-rates — раскрывается ВНИЗ.
-              Анимация: max-height + opacity + translateY (150ms ease-out).
-              Компонент остаётся mount'нутым — это гладкий fade out при mouse leave. */}
           <div
             className={`overflow-hidden transition-all ease-out ${
               hoveredBase && crossPairs.length > 0
@@ -151,11 +152,7 @@ export default function RatesBar() {
             }`}
           >
             {hoveredBase && crossPairs.length > 0 && (
-              <div
-                className={`border-t border-slate-100 px-4 py-3.5 transition-transform duration-200 ${
-                  hoveredBase ? "translate-y-0" : "-translate-y-1"
-                }`}
-              >
+              <div className="border-t border-slate-100 px-4 py-3.5">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">
                     All {hoveredBase} pairs
@@ -165,7 +162,6 @@ export default function RatesBar() {
                   </div>
                 </div>
 
-                {/* 4 строки, flow по колонкам. При >4 парах — вторая/третья колонка. */}
                 <div className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1 auto-cols-[minmax(160px,1fr)]">
                   {crossPairs.map(({ to: t2, rate: r2 }) => (
                     <div

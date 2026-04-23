@@ -1,9 +1,10 @@
 // src/pages/CashierPage.jsx
 import React, { useState, useEffect } from "react";
-import { Plus, ArrowUpRight } from "lucide-react";
+import { Plus, ArrowUpRight, X, Minus, ArrowLeft } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
-import ExchangeDrawer from "../components/ExchangeDrawer.jsx";
+import RatesSidebar from "../components/RatesSidebar.jsx";
+import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -23,43 +24,44 @@ export default function CashierPage({ currentOffice }) {
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Mode state: "view" — котировки + транзакции + CTA.
-  //             "create" — drawer с формой справа, транзакции сжимаются.
-  // minimized: внутри create-mode drawer можно свернуть без потери данных.
-  //            Form остаётся mounted в drawer'е → state сохраняется.
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerMinimized, setDrawerMinimized] = useState(false);
+  // Two modes:
+  //   "dashboard" — rates + balances + transactions + CTA. НЕТ формы.
+  //   "create"    — sticky rates слева + форма справа. Balances/transactions СКРЫТЫ.
+  //
+  // formMounted: флаг "форма в DOM". Когда true и mode='dashboard' — форма
+  // visually скрыта (display:none) но остаётся mount'нутой → state не теряется.
+  // При close form unmount'ится полностью.
+  const [mode, setMode] = useState("dashboard");
+  const [formMounted, setFormMounted] = useState(false);
 
-  const openDrawer = () => {
-    setDrawerOpen(true);
-    setDrawerMinimized(false);
+  const openCreate = () => {
+    setFormMounted(true);
+    setMode("create");
   };
-  const minimizeDrawer = () => setDrawerMinimized(true);
-  const restoreDrawer = () => setDrawerMinimized(false);
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setDrawerMinimized(false);
+  const minimizeCreate = () => setMode("dashboard"); // form stays mounted
+  const closeCreate = () => {
+    setMode("dashboard");
+    setFormMounted(false); // discard: form unmounts, state lost
   };
 
-  // Hotkey N — быстро открыть создание сделки (кассирам не нужно тянуться к мыши).
+  // Hotkey N — открыть/вернуться в create. Escape — minimize.
   useEffect(() => {
     const onKey = (e) => {
-      // Игнорируем если в input'е / textarea / modal'е или мета-клавиши.
       const tag = (e.target?.tagName || "").toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "n" || e.key === "N") {
-        if (!drawerOpen || drawerMinimized) {
+        if (mode !== "create") {
           e.preventDefault();
-          openDrawer();
+          openCreate();
         }
-      } else if (e.key === "Escape" && drawerOpen && !drawerMinimized) {
-        minimizeDrawer();
+      } else if (e.key === "Escape" && mode === "create") {
+        minimizeCreate();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [drawerOpen, drawerMinimized]);
+  }, [mode]);
 
   const { addTransaction, updateTransaction, counterparties } = useTransactions();
   const { addEntry: logAudit } = useAudit();
@@ -251,90 +253,169 @@ export default function CashierPage({ currentOffice }) {
     return { ok: true };
   };
 
-  // В режиме create (drawer открыт и не свёрнут) добавляем padding справа,
-  // чтобы основной контент не уходил под drawer. На маленьких экранах drawer
-  // накрывает контент как overlay → padding не нужен.
-  const drawerActive = drawerOpen && !drawerMinimized;
+  // Фокусная обёртка формы — submit возвращает { ok }; при успехе закрываем form.
+  const handleFormSubmit = async (tx) => {
+    const r = await handleCreate(tx);
+    if (r?.ok) closeCreate();
+  };
+
+  const isDashboard = mode === "dashboard";
+  const isCreate = mode === "create";
 
   return (
     <main className="min-h-screen">
-      <div
-        className={`max-w-[1400px] mx-auto px-6 py-6 space-y-6 transition-[padding] duration-300 ease-out ${
-          drawerActive ? "lg:pr-[540px]" : "pr-0"
-        }`}
-      >
-        {/* 1. Котировки — главный визуальный фокус, якорь интерфейса */}
-        <RatesBar />
+      {/* ====== DASHBOARD MODE ====== */}
+      {/* Rendered когда mode=dashboard. Плавный fade через key remount
+          внутри animate-fadeIn. */}
+      {isDashboard && (
+        <div
+          key="dashboard"
+          className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
+        >
+          <RatesBar />
+          <Balances
+            currentOffice={currentOffice}
+            scope={balanceScope}
+            onScopeChange={setBalanceScope}
+          />
 
-        {/* 2. Балансы — вторичный блок. В режиме create чуть сжимаем spacing. */}
-        <Balances
-          currentOffice={currentOffice}
-          scope={balanceScope}
-          onScopeChange={setBalanceScope}
-        />
-
-        {/* CTA — большая кнопка "+ New exchange". Видна только в view mode.
-            В create mode её заменяет drawer (плюс minimize-chip если свернут). */}
-        {!drawerOpen && (
-          <section>
-            <button
-              onClick={openDrawer}
-              className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
-                  <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
-                </div>
-                <div className="text-left">
-                  <div className="text-[16px] font-bold tracking-tight">
-                    New exchange
+          {/* CTA: "+ New exchange" ИЛИ "Resume exchange" если форма в memory. */}
+          <section className="max-w-[1200px] mx-auto">
+            {formMounted ? (
+              <button
+                onClick={openCreate}
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-slate-900 shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="relative w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
+                    <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
                   </div>
-                  <div className="text-[12px] text-slate-300">
-                    Open the deal form — rates stay visible
+                  <div className="text-left">
+                    <div className="text-[16px] font-bold tracking-tight">
+                      Resume exchange
+                    </div>
+                    <div className="text-[12px] text-slate-500">
+                      Form data is preserved — continue where you stopped
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
-                  Press
-                  <kbd className="px-1.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200 tracking-wider">
-                    N
-                  </kbd>
-                </span>
-                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-              </div>
-            </button>
+                <ArrowUpRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </button>
+            ) : (
+              <button
+                onClick={openCreate}
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
+                    <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+                  </div>
+                  <div className="text-left">
+                    <div className="text-[16px] font-bold tracking-tight">
+                      New exchange
+                    </div>
+                    <div className="text-[12px] text-slate-300">
+                      Open the deal form — rates stay pinned on the left
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                    Press
+                    <kbd className="px-1.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200 tracking-wider">
+                      N
+                    </kbd>
+                  </span>
+                  <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                </div>
+              </button>
+            )}
           </section>
-        )}
 
-        {/* 3. Транзакции — третичный блок. Занимают всю ширину в view mode
-               и сжимаются автоматически благодаря padding-right на контейнере. */}
-        <TransactionsTable
-          currentOffice={currentOffice}
-          justCreatedId={justCreatedId}
-          onEdit={setEditingTx}
-        />
+          <TransactionsTable
+            currentOffice={currentOffice}
+            justCreatedId={justCreatedId}
+            onEdit={setEditingTx}
+          />
+        </div>
+      )}
+
+      {/* ====== CREATE MODE ====== */}
+      {/* Sticky rates слева + форма справа. Balances/transactions скрыты. */}
+      {/* Форма mount'нута всегда пока formMounted=true — переключение mode не
+          теряет её state. В dashboard mode обёртка display:none. */}
+      <div
+        style={{ display: isCreate ? "block" : "none" }}
+        className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
+          {/* LEFT: sticky rates */}
+          <aside className="lg:sticky lg:top-[88px]">
+            <RatesSidebar />
+          </aside>
+
+          {/* RIGHT: header + ExchangeForm */}
+          <section>
+            <div className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
+              <header className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500 text-white shrink-0">
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-slate-900 tracking-tight">
+                      New exchange
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      Minimize anytime — form data is preserved
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={minimizeCreate}
+                    title="Minimize (Esc)"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Minimize</span>
+                  </button>
+                  <button
+                    onClick={closeCreate}
+                    title="Close & discard"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Close</span>
+                  </button>
+                </div>
+              </header>
+
+              <div className="p-5">
+                {formMounted && (
+                  <ExchangeForm
+                    mode="create"
+                    currentOffice={currentOffice}
+                    onSubmit={handleFormSubmit}
+                    submitting={submitting}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
 
-      {/* Drawer (справа) — форма сделки. Remount=false: при minimize остаётся
-          в DOM, ExchangeForm внутри сохраняет state. */}
-      <ExchangeDrawer
-        open={drawerOpen}
-        minimized={drawerMinimized}
-        currentOffice={currentOffice}
-        onSubmit={async (tx) => {
-          const r = await handleCreate(tx);
-          // Закрываем drawer только при успехе — при ошибке форма остаётся
-          // открытой, пользователь может исправить ввод и повторить.
-          if (r?.ok) closeDrawer();
-        }}
-        onMinimize={minimizeDrawer}
-        onRestore={restoreDrawer}
-        onClose={closeDrawer}
-        submitting={submitting}
-      />
-
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
+
+      {/* Глобальные keyframes для fadeIn анимации. */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </main>
   );
 }
