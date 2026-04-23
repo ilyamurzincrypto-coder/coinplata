@@ -62,6 +62,9 @@ export default function EditTransactionModal({ transaction, onClose }) {
                 ...o,
                 accountId: uuidOrNull(o.accountId),
               })),
+              // preserve pending fields — без этого 0003-версия сносила их в defaults
+              plannedAt: updated.plannedAt || null,
+              deferredIn: !!updated.deferredIn,
             }),
           { success: "Deal updated", errorPrefix: "Update failed" }
         );

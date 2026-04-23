@@ -201,6 +201,8 @@ export async function rpcUpdateDeal({
   comment,
   status,
   outputs,
+  plannedAt,   // NEW — preserved при edit
+  deferredIn,  // NEW — preserved при edit
 }) {
   assertConfigured();
   const validDealId = requirePositive(dealId, "dealId");
@@ -209,6 +211,7 @@ export async function rpcUpdateDeal({
   const validAmt = requirePositive(amountIn, "amountIn");
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
   const legs = legsToJsonb(outputs);
+  const validPlannedAt = plannedAt ? String(plannedAt) : null;
 
   unwrap(
     await supabase.rpc("update_deal", {
@@ -224,6 +227,8 @@ export async function rpcUpdateDeal({
       p_comment: comment || "",
       p_status: validStatus,
       p_legs: legs,
+      p_planned_at: validPlannedAt,
+      p_deferred_in: !!deferredIn,
     }),
     "update_deal"
   );

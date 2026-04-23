@@ -109,6 +109,35 @@ function initFromTx(tx) {
           address: "",
         },
       ];
+
+  // Восстанавливаем pending-флаги для edit-mode, чтобы edit pending/partial
+  // сделки не сбрасывал её состояние.
+  const outs = tx.outputs || [];
+  const allDeferred = outs.length > 0 && outs.every(
+    (o) => (o.actualAmount ?? 0) === 0 && (o.plannedAmount ?? o.amount) > 0
+  );
+  const anyPartial = outs.some(
+    (o) =>
+      (o.actualAmount ?? 0) > 0 &&
+      (o.actualAmount ?? 0) < (o.plannedAmount ?? o.amount)
+  );
+  const partialPayNow = {};
+  if (anyPartial) {
+    outs.forEach((o, i) => {
+      partialPayNow[`o_init_${i}`] = String(o.actualAmount ?? 0);
+    });
+  }
+
+  // Plannedat в datetime-local формате (YYYY-MM-DDTHH:MM)
+  let plannedLocal = "";
+  if (tx.inPlannedAt) {
+    try {
+      const d = new Date(tx.inPlannedAt);
+      const pad = (n) => String(n).padStart(2, "0");
+      plannedLocal = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {}
+  }
+
   return {
     curIn: tx.curIn,
     amtIn: String(tx.amtIn),
@@ -117,6 +146,12 @@ function initFromTx(tx) {
     referral: !!tx.referral,
     comment: tx.comment || "",
     inTxHash: tx.inTxHash || "",
+    // pending/partial restoration
+    deferredIn: (tx.inActualAmount ?? 0) === 0 && tx.status === "pending" && !tx.accountId,
+    deferredOut: allDeferred && !anyPartial,
+    partialMode: anyPartial,
+    partialPayNow,
+    plannedLocal,
   };
 }
 
@@ -197,15 +232,23 @@ export default function ExchangeForm({
   const [inTxHash, setInTxHash] = useState(
     starter?.inTxHash || draft?.inTxHash || ""
   );
-  // Deferred IN = "клиент заплатит позже" — создаёт they_owe obligation
-  const [deferredIn, setDeferredIn] = useState(draft?.deferredIn || false);
-  // Deferred OUT = "мы платим позже" — каждому leg pay_now=0 → full we_owe
-  const [deferredOut, setDeferredOut] = useState(draft?.deferredOut || false);
-  // Partial mode = платим часть сейчас, остаток потом. Per-output amount.
-  const [partialMode, setPartialMode] = useState(draft?.partialMode || false);
-  const [partialPayNow, setPartialPayNow] = useState(draft?.partialPayNow || {});
-  // Planned completion — датапикер "ожидается к".
-  const [plannedLocal, setPlannedLocal] = useState(draft?.plannedLocal || "");
+  // Deferred IN = "клиент заплатит позже" — создаёт they_owe obligation.
+  // В edit-mode читается из starter (по initialData), иначе из draft.
+  const [deferredIn, setDeferredIn] = useState(
+    starter?.deferredIn ?? draft?.deferredIn ?? false
+  );
+  const [deferredOut, setDeferredOut] = useState(
+    starter?.deferredOut ?? draft?.deferredOut ?? false
+  );
+  const [partialMode, setPartialMode] = useState(
+    starter?.partialMode ?? draft?.partialMode ?? false
+  );
+  const [partialPayNow, setPartialPayNow] = useState(
+    starter?.partialPayNow || draft?.partialPayNow || {}
+  );
+  const [plannedLocal, setPlannedLocal] = useState(
+    starter?.plannedLocal || draft?.plannedLocal || ""
+  );
 
   // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
   // Только для create mode — в edit draft не нужен.
