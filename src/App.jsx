@@ -36,6 +36,7 @@ import { onDataBump } from "./lib/dataVersion.jsx";
 import { DataVersionProvider } from "./lib/dataVersion.jsx";
 import { ToastProvider } from "./lib/toast.jsx";
 import { RealtimeProvider } from "./lib/realtime.jsx";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 
 const PAGE_SECTION = {
   cashier: "transactions",
@@ -76,6 +77,35 @@ function Root() {
   }, [page, can]);
 
   const canShow = (p) => can(PAGE_SECTION[p] || "transactions");
+
+  // Глобальные хоткеи:
+  //   N — новая сделка (только на cashier, иначе переключит и откроет)
+  //   /  — фокус на поиск в транзакциях
+  //   Esc — свернуть форму создания сделки
+  //   G+C cashier, G+K capital, G+A accounts, G+L clients, G+O obligations,
+  //   G+S settings, G+R referrals
+  useKeyboardShortcuts({
+    n: () => {
+      if (!canShow("cashier")) return;
+      if (page !== "cashier") setPage("cashier");
+      setExchangeMode("create");
+    },
+    "/": () => {
+      // Находим поле поиска в активной таблице (rough — первый input[placeholder*=Search])
+      const el = document.querySelector('input[placeholder*="Search" i], input[placeholder*="Поиск" i]');
+      if (el) el.focus();
+    },
+    escape: () => {
+      if (exchangeMode === "create") setExchangeMode("dashboard");
+    },
+    "g c": () => handlePageChange("cashier"),
+    "g k": () => handlePageChange("capital"),
+    "g a": () => handlePageChange("accounts"),
+    "g l": () => handlePageChange("clients"),
+    "g o": () => handlePageChange("obligations"),
+    "g r": () => handlePageChange("referrals"),
+    "g s": () => handlePageChange("settings"),
+  });
 
   // === Early returns AFTER all hooks ===
   // Activation gate: invited → SetPasswordPage; _loading → ждём, чтобы
