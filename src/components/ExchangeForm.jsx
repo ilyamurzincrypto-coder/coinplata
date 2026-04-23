@@ -36,6 +36,8 @@ import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
 import CounterpartySelect from "./CounterpartySelect.jsx";
 import AccountSelect from "./AccountSelect.jsx";
+import DealTemplatesBar from "./DealTemplatesBar.jsx";
+import { recordDealUsage } from "../utils/dealTemplates.js";
 import { officeName } from "../store/data.js";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useRates } from "../store/rates.jsx";
@@ -640,6 +642,10 @@ export default function ExchangeForm({
 
     setFlash(true);
     setTimeout(() => setFlash(false), 600);
+    // Usage counter для quick-templates — ловим main target currency (первый output)
+    if (mode === "create" && outputs[0]?.currency) {
+      recordDealUsage(curIn, outputs[0].currency);
+    }
     onSubmit?.(tx);
     if (mode === "create") {
       // reset + clear draft
@@ -689,6 +695,28 @@ export default function ExchangeForm({
         rate: autoRate !== undefined ? String(autoRate) : (first.rate ? String(1 / parseFloat(first.rate)) : ""),
         manualRate: autoRate === undefined,
         touched: !!newOutAmount,
+      },
+    ]);
+  };
+
+  // Quick-templates apply: меняет curIn → template.from и пересоздаёт единый
+  // output с template.to. Суммы очищаются — пользователь заполнит после.
+  const handleApplyTemplate = (tpl) => {
+    if (!tpl?.from || !tpl?.to || tpl.from === tpl.to) return;
+    setCurIn(tpl.from);
+    setAmtIn("");
+    const autoRate = getRate(tpl.from, tpl.to);
+    setOutputs([
+      {
+        id: `o_tpl_${Date.now()}`,
+        currency: tpl.to,
+        amount: "",
+        rate: autoRate !== undefined ? String(autoRate) : "",
+        manualRate: autoRate === undefined,
+        touched: false,
+        accountId: "",
+        address: "",
+        networkId: "",
       },
     ]);
   };
@@ -746,6 +774,15 @@ export default function ExchangeForm({
           <CounterpartySelect value={counterparty} onChange={setCounterparty} />
         </div>
       </div>
+
+      {/* Quick templates — показываем только в create-режиме */}
+      {!isEdit && (
+        <DealTemplatesBar
+          onApply={handleApplyTemplate}
+          currentFrom={curIn}
+          currentTo={outputs[0]?.currency}
+        />
+      )}
 
       {/* RECEIVED */}
       <div className="px-5 pt-5">
