@@ -146,6 +146,7 @@ function Root() {
           setMode={setExchangeMode}
           formMounted={formMounted}
           setFormMounted={setFormMounted}
+          onNavigate={handlePageChange}
         />
       )}
       {page === "capital" && canShow("capital") && <CapitalPage />}
