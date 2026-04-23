@@ -1,8 +1,9 @@
 // src/pages/CashierPage.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { Plus, ArrowUpRight } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
-import ExchangeForm from "../components/ExchangeForm.jsx";
+import ExchangeDrawer from "../components/ExchangeDrawer.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -21,6 +22,44 @@ export default function CashierPage({ currentOffice }) {
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Mode state: "view" — котировки + транзакции + CTA.
+  //             "create" — drawer с формой справа, транзакции сжимаются.
+  // minimized: внутри create-mode drawer можно свернуть без потери данных.
+  //            Form остаётся mounted в drawer'е → state сохраняется.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMinimized, setDrawerMinimized] = useState(false);
+
+  const openDrawer = () => {
+    setDrawerOpen(true);
+    setDrawerMinimized(false);
+  };
+  const minimizeDrawer = () => setDrawerMinimized(true);
+  const restoreDrawer = () => setDrawerMinimized(false);
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setDrawerMinimized(false);
+  };
+
+  // Hotkey N — быстро открыть создание сделки (кассирам не нужно тянуться к мыши).
+  useEffect(() => {
+    const onKey = (e) => {
+      // Игнорируем если в input'е / textarea / modal'е или мета-клавиши.
+      const tag = (e.target?.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "n" || e.key === "N") {
+        if (!drawerOpen || drawerMinimized) {
+          e.preventDefault();
+          openDrawer();
+        }
+      } else if (e.key === "Escape" && drawerOpen && !drawerMinimized) {
+        minimizeDrawer();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen, drawerMinimized]);
 
   const { addTransaction, updateTransaction, counterparties } = useTransactions();
   const { addEntry: logAudit } = useAudit();
@@ -56,8 +95,9 @@ export default function CashierPage({ currentOffice }) {
     return set;
   };
 
+  // Возвращает { ok } — чтобы drawer закрывался только при успехе.
   const handleCreate = async (tx) => {
-    if (submitting) return; // double-click guard
+    if (submitting) return { ok: false };
     // DB-режим: всю логику (obligation decisions, movements, fee, profit)
     // берёт на себя RPC create_deal. Frontend только строит payload + бампает.
     if (isSupabaseConfigured) {
@@ -109,10 +149,10 @@ export default function CashierPage({ currentOffice }) {
             summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
           });
         }
+        return { ok: res.ok };
       } finally {
         setSubmitting(false);
       }
-      return;
     }
 
     // Demo-режим (in-memory): оригинальная логика.
@@ -208,24 +248,91 @@ export default function CashierPage({ currentOffice }) {
       entityId: String(finalTx.id),
       summary: `${statusPrefix}${fmt(finalTx.amtIn, finalTx.curIn)} ${finalTx.curIn} → ${outStr} · fee $${fmt(finalTx.fee)}${warnSuffix}${oblSuffix}`,
     });
+    return { ok: true };
   };
 
+  // В режиме create (drawer открыт и не свёрнут) добавляем padding справа,
+  // чтобы основной контент не уходил под drawer. На маленьких экранах drawer
+  // накрывает контент как overlay → padding не нужен.
+  const drawerActive = drawerOpen && !drawerMinimized;
+
   return (
-    <main className="max-w-[1400px] mx-auto px-6 py-6 space-y-6">
-      <RatesBar />
-      <Balances currentOffice={currentOffice} scope={balanceScope} onScopeChange={setBalanceScope} />
+    <main className="min-h-screen">
+      <div
+        className={`max-w-[1400px] mx-auto px-6 py-6 space-y-6 transition-[padding] duration-300 ease-out ${
+          drawerActive ? "lg:pr-[540px]" : "pr-0"
+        }`}
+      >
+        {/* 1. Котировки — главный визуальный фокус, якорь интерфейса */}
+        <RatesBar />
 
-      <div className="grid grid-cols-1 xl:grid-cols-[440px_1fr] gap-6 items-start">
-        <section className="xl:sticky xl:top-[140px]">
-          <ExchangeForm mode="create" currentOffice={currentOffice} onSubmit={handleCreate} submitting={submitting} />
-        </section>
+        {/* 2. Балансы — вторичный блок. В режиме create чуть сжимаем spacing. */}
+        <Balances
+          currentOffice={currentOffice}
+          scope={balanceScope}
+          onScopeChange={setBalanceScope}
+        />
 
+        {/* CTA — большая кнопка "+ New exchange". Видна только в view mode.
+            В create mode её заменяет drawer (плюс minimize-chip если свернут). */}
+        {!drawerOpen && (
+          <section>
+            <button
+              onClick={openDrawer}
+              className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
+                  <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+                </div>
+                <div className="text-left">
+                  <div className="text-[16px] font-bold tracking-tight">
+                    New exchange
+                  </div>
+                  <div className="text-[12px] text-slate-300">
+                    Open the deal form — rates stay visible
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                  Press
+                  <kbd className="px-1.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200 tracking-wider">
+                    N
+                  </kbd>
+                </span>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </div>
+            </button>
+          </section>
+        )}
+
+        {/* 3. Транзакции — третичный блок. Занимают всю ширину в view mode
+               и сжимаются автоматически благодаря padding-right на контейнере. */}
         <TransactionsTable
           currentOffice={currentOffice}
           justCreatedId={justCreatedId}
           onEdit={setEditingTx}
         />
       </div>
+
+      {/* Drawer (справа) — форма сделки. Remount=false: при minimize остаётся
+          в DOM, ExchangeForm внутри сохраняет state. */}
+      <ExchangeDrawer
+        open={drawerOpen}
+        minimized={drawerMinimized}
+        currentOffice={currentOffice}
+        onSubmit={async (tx) => {
+          const r = await handleCreate(tx);
+          // Закрываем drawer только при успехе — при ошибке форма остаётся
+          // открытой, пользователь может исправить ввод и повторить.
+          if (r?.ok) closeDrawer();
+        }}
+        onMinimize={minimizeDrawer}
+        onRestore={restoreDrawer}
+        onClose={closeDrawer}
+        submitting={submitting}
+      />
 
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
     </main>
