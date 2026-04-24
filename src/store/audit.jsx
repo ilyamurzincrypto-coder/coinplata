@@ -96,18 +96,32 @@ export function AuditProvider({ children }) {
         ip: CLIENT_IP,
       };
       setLogState((prev) => [entry, ...prev]);
-      // Fire-and-forget persist в БД. Не bump-им — audit не влияет на
-      // остальные stores, записи подтянутся при следующем reload.
-      // Передаём реальное имя юзера — иначе в DB писалось бы email
-      // из auth.session, и после reload в журнале был бы email а не имя.
-      insertAuditEntry({
-        action,
-        entity,
-        entityId,
-        summary,
-        userId: currentUser?.id || null,
-        userName: currentUser?.name || "",
-      });
+      // Гонка: rpcCreateDeal etc. дёргает bumpDataVersion → audit reload
+      // стартует ПАРАЛЛЕЛЬНО insertAuditEntry. Если reload завершится
+      // первым, local optimistic entry стирается (setLogState(rows) —
+      // replace), а DB row ещё не закоммичен. Кратковременное моргание.
+      // Fix: после insert'а делаем явный reload — финальное состояние
+      // синхронизировано с БД.
+      if (isSupabaseConfigured) {
+        (async () => {
+          try {
+            await insertAuditEntry({
+              action,
+              entity,
+              entityId,
+              summary,
+              userId: currentUser?.id || null,
+              userName: currentUser?.name || "",
+            });
+            const rows = await loadAuditLog();
+            if (Array.isArray(rows)) setLogState(rows);
+          } catch (err) {
+            // persist failed — optimistic entry остаётся; UI показал действие
+            // eslint-disable-next-line no-console
+            console.warn("[audit] persist+reload failed", err);
+          }
+        })();
+      }
       return entry;
     },
     [currentUser]
