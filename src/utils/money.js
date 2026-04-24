@@ -80,7 +80,29 @@ export function fmt(n, currency) {
   }).format(n);
 }
 
-export const curSymbol = (c) => ({ USD: "$", EUR: "€", TRY: "₺", USDT: "₮", GBP: "£", RUB: "₽" }[c] || "");
+// Hardcoded fallback для well-known валют — используется пока
+// CurrenciesProvider не зарегистрировал dict (первый рендер до hydration).
+const HARDCODED_SYMBOLS = { USD: "$", EUR: "€", TRY: "₺", USDT: "₮", GBP: "£", RUB: "₽" };
+
+// Module-local registry для symbols из БД. CurrenciesProvider вызывает
+// registerCurrencyDict({USD:{symbol:"$"},...}) на каждое изменение
+// currencies — чтобы curSymbol(code) в неконтекстных utilities видел
+// свежие данные (например CHF после редактирования в Master Data).
+let REGISTERED_DICT = null;
+
+export function registerCurrencyDict(dict) {
+  // Принимаем {code: {symbol, type, ...}} или {code: "sym"} для гибкости.
+  REGISTERED_DICT = dict || null;
+}
+
+export const curSymbol = (c) => {
+  if (REGISTERED_DICT && REGISTERED_DICT[c]) {
+    const entry = REGISTERED_DICT[c];
+    const sym = typeof entry === "string" ? entry : entry?.symbol;
+    if (sym) return sym;
+  }
+  return HARDCODED_SYMBOLS[c] || "";
+};
 
 // ----------------------------------------------------------------
 // computeRemaining — единая точка расчёта остатка транзакции

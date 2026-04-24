@@ -16,6 +16,7 @@ import { CURRENCIES_DICT as SEED } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadCurrencies } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
+import { registerCurrencyDict } from "../utils/money.js";
 
 const CurrenciesContext = createContext(null);
 
@@ -53,6 +54,13 @@ export function CurrenciesProvider({ children }) {
     currencies.forEach((c) => (m[c.code] = c));
     return m;
   }, [currencies]);
+
+  // Регистрируем dict в money.js registry, чтобы curSymbol() в utility-коде
+  // (вне React context) сразу увидел изменения символов из Master Data / addCurrency.
+  // Раньше symbol был захардкожен — CHF после правки в БД в UI всё равно пуст.
+  useEffect(() => {
+    registerCurrencyDict(dict);
+  }, [dict]);
 
   const findByCode = useCallback(
     (code) => currencies.find((c) => c.code === code),

@@ -1688,8 +1688,7 @@ function OutputRow({
   const suggestedAmount =
     canUseRemaining ? remainingIn * parseFloat(o.rate) : 0;
 
-  // Suggest офисы: если в текущем не хватает, посмотрим кто может покрыть.
-  // Показываем top-3 по убыванию баланса, исключая текущий офис.
+  // Suggest офисы when insufficient — top-3 по балансу (могут покрыть сумму)
   const otherOfficesWithBalance = useMemo(() => {
     if (!insufficient || !officeBalancesByCurrency || !offices) return [];
     return offices
@@ -1703,6 +1702,23 @@ function OutputRow({
       .sort((a, b) => b.balance - a.balance)
       .slice(0, 3);
   }, [insufficient, officeBalancesByCurrency, offices, currentOffice, o.currency, outAmount]);
+
+  // Availability в других офисах — показываем всегда (informational), когда
+  // current office мало/нет этой валюты. Помогает кассиру до ввода суммы
+  // увидеть "у других офисов Mark:5000, Terra:2000" и спланировать сделку.
+  const otherOfficesInline = useMemo(() => {
+    if (!officeBalancesByCurrency || !offices) return [];
+    return offices
+      .filter((off) => off.id !== currentOffice)
+      .map((off) => ({
+        id: off.id,
+        name: off.name,
+        balance: officeBalancesByCurrency.get(`${off.id}_${o.currency}`) || 0,
+      }))
+      .filter((off) => off.balance > 0)
+      .sort((a, b) => b.balance - a.balance)
+      .slice(0, 3);
+  }, [officeBalancesByCurrency, offices, currentOffice, o.currency]);
 
   const handleUseRemaining = () => {
     if (!canUseRemaining) return;
@@ -1973,7 +1989,7 @@ function OutputRow({
       <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
         {availableInCurrency !== undefined ? (
           <div
-            className={`inline-flex items-center gap-1 text-[10px] font-medium tabular-nums ${
+            className={`inline-flex items-center gap-1 text-[10px] font-medium tabular-nums flex-wrap ${
               insufficient ? "text-amber-700" : "text-slate-500"
             }`}
           >
@@ -1985,6 +2001,28 @@ function OutputRow({
                 {fmt(availableInCurrency, o.currency)} {o.currency}
               </span>
             </span>
+            {/* Inline chips других офисов с положительным балансом —
+                informational, всегда видно, помогает планировать до ввода суммы. */}
+            {otherOfficesInline.length > 0 && (
+              <>
+                <span className="text-slate-300 mx-0.5">·</span>
+                <span className="text-slate-400 inline-flex items-center gap-1 flex-wrap">
+                  {otherOfficesInline.map((off) => (
+                    <span
+                      key={off.id}
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"
+                      title={`${off.name} — available for this currency`}
+                    >
+                      <span className="font-semibold">{off.name}</span>:{" "}
+                      <span className="tabular-nums">
+                        {curSymbol(o.currency)}
+                        {fmt(off.balance, o.currency)}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+              </>
+            )}
           </div>
         ) : (
           <div />

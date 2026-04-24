@@ -331,14 +331,9 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
         >
-          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
-          <Balances
-            currentOffice={currentOffice}
-            scope={balanceScope}
-            onScopeChange={setBalanceScope}
-          />
-
-          {/* CTA: "+ New exchange" ИЛИ "Resume exchange" если форма в memory. */}
+          {/* CTA "+ New exchange" / "Resume" вынесен в самый верх дашборда —
+              главное действие кассира на странице, видно сразу, без скролла
+              мимо котировок и балансов. */}
           <section>
             {formMounted ? (
               <button
@@ -391,6 +386,13 @@ export default function CashierPage({
               </button>
             )}
           </section>
+
+          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
+          <Balances
+            currentOffice={currentOffice}
+            scope={balanceScope}
+            onScopeChange={setBalanceScope}
+          />
 
           <TransactionsTable
             currentOffice={currentOffice}
