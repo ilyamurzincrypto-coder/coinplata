@@ -1581,9 +1581,12 @@ function OutputRow({
     Number.isFinite(officeRate) &&
     Math.abs(globalRate - officeRate) > 1e-9;
 
-  // Per-office rate chips: current office + другие офисы с override != global.
-  // Кассир видит "что в Стамбуле 44.8, у меня 44.5, в Анкаре = global" — может
-  // взять другой курс одним кликом.
+  // Per-office rate chips: current office + ВСЕ другие активные офисы.
+  // Админ/owner видит полный срез (где override, где = global).
+  // Chip цвет:
+  //   • indigo — текущий офис
+  //   • sky — другой офис с override, отличающимся от global
+  //   • slate — другой офис без override (курс = global, чип info-only)
   const currentOfficeObj = (offices || []).find((off) => off.id === currentOffice);
   const currentOfficeChip =
     currentOfficeObj && Number.isFinite(officeRate)
@@ -1597,11 +1600,20 @@ function OutputRow({
   const otherOfficeChips = (offices || [])
     .filter((off) => off.id !== currentOffice)
     .map((off) => {
+      // Эффективный курс офиса = override если есть, иначе global fallback.
+      const rate = getRateRaw(curIn, o.currency, off.id);
+      if (!Number.isFinite(rate)) return null;
       const ovr = getOfficeOverride?.(off.id, curIn, o.currency);
-      if (!ovr || !Number.isFinite(ovr.rate)) return null;
-      // Скрываем если override равен global — chip был бы дублирующим
-      if (Number.isFinite(globalRate) && Math.abs(ovr.rate - globalRate) < 1e-9) return null;
-      return { id: off.id, name: off.name || "Office", rate: ovr.rate };
+      const hasOverride =
+        !!ovr &&
+        Number.isFinite(ovr.rate) &&
+        (!Number.isFinite(globalRate) || Math.abs(ovr.rate - globalRate) > 1e-9);
+      return {
+        id: off.id,
+        name: off.name || "Office",
+        rate,
+        hasOverride,
+      };
     })
     .filter(Boolean);
 
@@ -1808,24 +1820,34 @@ function OutputRow({
             </button>
           )}
 
-          {/* OTHER OFFICES — только если override отличается от global */}
-          {otherOfficeChips.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() =>
-                onUpdate({ rate: String(row.rate), manualRate: false, touched: false })
-              }
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
-                !o.manualRate && Math.abs(parseFloat(o.rate) - row.rate) < 1e-9
-                  ? "bg-sky-600 text-white border-sky-600"
-                  : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
-              }`}
-              title={`${row.name} · per-office override`}
-            >
-              {row.name} · {Number(row.rate).toFixed(4)}
-            </button>
-          ))}
+          {/* OTHER OFFICES — все активные офисы (sky если override, slate если =global) */}
+          {otherOfficeChips.map((row) => {
+            const active = !o.manualRate && Math.abs(parseFloat(o.rate) - row.rate) < 1e-9;
+            const baseCls = row.hasOverride
+              ? active
+                ? "bg-sky-600 text-white border-sky-600"
+                : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+              : active
+              ? "bg-slate-600 text-white border-slate-600"
+              : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50";
+            return (
+              <button
+                key={row.id}
+                type="button"
+                onClick={() =>
+                  onUpdate({ rate: String(row.rate), manualRate: false, touched: false })
+                }
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${baseCls}`}
+                title={
+                  row.hasOverride
+                    ? `${row.name} · per-office override`
+                    : `${row.name} · курс = Global (нет override)`
+                }
+              >
+                {row.name} · {Number(row.rate).toFixed(4)}
+              </button>
+            );
+          })}
 
           {/* MANUAL — всегда */}
           <button
