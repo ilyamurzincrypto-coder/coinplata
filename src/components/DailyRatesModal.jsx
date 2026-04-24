@@ -5,7 +5,7 @@
 // На submit батчом через rpcImportRates (atomic + snapshot для истории).
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Zap, ArrowRight } from "lucide-react";
+import { Zap, ArrowRight, Search, X } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import { useRates } from "../store/rates.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -28,16 +28,42 @@ function timeAgo(date) {
   return `${Math.floor(diff / 3600)}h ago`;
 }
 
+// Короткая подпись "изм. DD.MM HH:MM" для метки под курсом.
+function formatUpdatedAt(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}.${pad(d.getMonth() + 1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 export default function DailyRatesModal({ open, onClose }) {
   const { t } = useTranslation();
-  const { allTradePairs, getRate, lastUpdated } = useRates();
+  const { allTradePairs, getRate, lastUpdated, pairs, channels } = useRates();
   const { addEntry: logAudit } = useAudit();
   const [inputs, setInputs] = useState({}); // { "FROM_TO": "value" }
   const [busy, setBusy] = useState(false);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
-    if (!open) setInputs({});
+    if (!open) {
+      setInputs({});
+      setQuery("");
+    }
   }, [open]);
+
+  // Helper: найти pair по валютам и вернуть {updatedAt, rate}
+  const pairInfo = useMemo(() => {
+    const m = new Map();
+    const channelCur = (chId) => channels.find((c) => c.id === chId)?.currencyCode;
+    pairs.forEach((p) => {
+      if (!p.isDefault) return;
+      const f = channelCur(p.fromChannelId);
+      const t = channelCur(p.toChannelId);
+      if (f && t) m.set(`${f}_${t}`, { updatedAt: p.updatedAt, rate: p.rate });
+    });
+    return m;
+  }, [pairs, channels]);
 
   // Разворачиваем уникальные (a,b) в два направления для редактирования.
   const rows = useMemo(() => {
@@ -48,6 +74,20 @@ export default function DailyRatesModal({ open, onClose }) {
     });
     return out;
   }, [allTradePairs]);
+
+  // Фильтр по поиску — match по FROM или TO (case-insensitive)
+  const visibleRows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) =>
+        r.from.toLowerCase().includes(q) ||
+        r.to.toLowerCase().includes(q) ||
+        `${r.from}${r.to}`.toLowerCase().includes(q) ||
+        `${r.from} ${r.to}`.toLowerCase().includes(q) ||
+        `${r.from}→${r.to}`.toLowerCase().includes(q)
+    );
+  }, [rows, query]);
 
   // Собираем "изменения" — только заполненные и != текущему.
   const changes = useMemo(() => {
@@ -114,8 +154,34 @@ export default function DailyRatesModal({ open, onClose }) {
           атомарно + делается snapshot в историю.
         </div>
 
+        {/* Поиск — более тёмный контейнер slate-200, визуально отделён
+            от обычных row-контейнеров (slate-50/60). */}
+        <div className="mb-3 flex items-center gap-2 bg-slate-200/70 border border-slate-300 rounded-[10px] px-3 py-2">
+          <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск по валюте (USD, TRY, USDT → TRY…)"
+            className="flex-1 min-w-0 bg-transparent outline-none text-[12.5px] text-slate-900 placeholder:text-slate-500"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="p-0.5 rounded hover:bg-slate-300 text-slate-600 hover:text-slate-900 transition-colors shrink-0"
+              title="Очистить поиск"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <span className="text-[10px] text-slate-500 tabular-nums shrink-0 pl-1 border-l border-slate-300">
+            {visibleRows.length} / {rows.length}
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
-          {rows.map(({ from, to }) => {
+          {visibleRows.map(({ from, to }) => {
             const current = getRate(from, to);
             const key = `${from}_${to}`;
             const typed = inputs[key] || "";
@@ -126,38 +192,53 @@ export default function DailyRatesModal({ open, onClose }) {
               typedNum > 0 &&
               Number.isFinite(current) &&
               Math.abs(typedNum - current) > 1e-9;
+            const info = pairInfo.get(key);
+            const updatedLabel = formatUpdatedAt(info?.updatedAt);
             return (
               <div
                 key={key}
-                className={`flex items-center gap-2 px-3 py-2 rounded-[10px] border transition-colors ${
+                className={`flex flex-col gap-0.5 px-3 py-2 rounded-[10px] border transition-colors ${
                   isChanged
                     ? "bg-emerald-50/60 border-emerald-300"
                     : "bg-slate-50/60 border-slate-200"
                 }`}
               >
-                <div className="flex items-center gap-1 text-[12px] font-bold text-slate-700 min-w-[100px] tracking-wide">
-                  <span>{from}</span>
-                  <ArrowRight className="w-3 h-3 text-slate-400" />
-                  <span>{to}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 text-[12px] font-bold text-slate-700 min-w-[100px] tracking-wide">
+                    <span>{from}</span>
+                    <ArrowRight className="w-3 h-3 text-slate-400" />
+                    <span>{to}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 tabular-nums min-w-[70px]">
+                    {formatRate(current)}
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={typed}
+                    onChange={(e) => handleChange(from, to, e.target.value)}
+                    placeholder={formatRate(current)}
+                    className={`flex-1 min-w-0 bg-white border rounded-[8px] px-2.5 py-1.5 text-[13px] font-semibold tabular-nums outline-none transition-colors ${
+                      isChanged
+                        ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                        : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                    }`}
+                  />
                 </div>
-                <div className="text-[11px] text-slate-400 tabular-nums min-w-[70px]">
-                  {formatRate(current)}
-                </div>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={typed}
-                  onChange={(e) => handleChange(from, to, e.target.value)}
-                  placeholder={formatRate(current)}
-                  className={`flex-1 min-w-0 bg-white border rounded-[8px] px-2.5 py-1.5 text-[13px] font-semibold tabular-nums outline-none transition-colors ${
-                    isChanged
-                      ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                      : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
-                  }`}
-                />
+                {/* Подпись "изм. DD.MM HH:MM" — когда курс был последний раз обновлён */}
+                {updatedLabel && (
+                  <div className="text-[9.5px] text-slate-400 tabular-nums pl-[100px]">
+                    изм. {updatedLabel}
+                  </div>
+                )}
               </div>
             );
           })}
+          {visibleRows.length === 0 && (
+            <div className="col-span-full py-6 text-center text-[12px] text-slate-400 italic">
+              Ничего не найдено по «{query}»
+            </div>
+          )}
         </div>
       </div>
 
