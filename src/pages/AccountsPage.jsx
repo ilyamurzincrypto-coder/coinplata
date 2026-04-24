@@ -115,9 +115,12 @@ export default function AccountsPage() {
     setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Группировка: office → currencies. Показываем только currencies, для которых
-  // есть хотя бы один active account в этом офисе.
+  // есть хотя бы один active account в этом офисе. Сами office-блоки без
+  // аккаунтов вообще не рендерим (для scoped менеджеров RLS режет видимость —
+  // раньше они видели пустые "карточки-тени" остальных офисов).
   const officeBlocks = useMemo(() => {
-    return activeOffices.map((office) => {
+    return activeOffices
+      .map((office) => {
       const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
       const codes = [...new Set(officeAccs.map((a) => a.currency))].sort((a, b) => {
         const d = curIndex(a) - curIndex(b);
@@ -183,7 +186,8 @@ export default function AccountsPage() {
         currencyBlocks,
         accsCount: officeAccs.length,
       };
-    });
+    })
+    .filter((block) => block.accsCount > 0);
   }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, toBase]);
 
   const grandTotal = officeBlocks.reduce((s, ob) => s + ob.totals.total, 0);
