@@ -187,7 +187,10 @@ export default function PnlTab({ range, onRangeChange }) {
     <div className="space-y-4">
       {/* Period switcher */}
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex items-center justify-between flex-wrap gap-3">
-        <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5">
+        <div
+          className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5"
+          title={t("pnl_period_tip") || "Период для расчёта П&У. Custom — открывает date-picker в шапке Capital."}
+        >
           {[
             { id: "today", label: t("pnl_today") },
             { id: "week", label: t("pnl_week") },
@@ -292,10 +295,14 @@ export default function PnlTab({ range, onRangeChange }) {
                   <span className="font-semibold text-slate-900">{b.name}</span>
                 </div>
                 <div className="flex items-center gap-4 text-[12px] tabular-nums">
-                  <Stat label="Rev" value={b.revenue} sym={sym} tone="emerald" />
-                  <Stat label="Inc" value={b.income} sym={sym} tone="slate" />
-                  <Stat label="Exp" value={b.expense} sym={sym} tone="rose" negate />
-                  <Stat label="Net" value={b.net} sym={sym} tone={b.net >= 0 ? "emerald" : "rose"} bold />
+                  <Stat label="Rev" value={b.revenue} sym={sym} tone="emerald"
+                    tip="Revenue — прибыль от обменных сделок этого офиса (tx.profit)" />
+                  <Stat label="Inc" value={b.income} sym={sym} tone="slate"
+                    tip="Income — записанные доходы вне обменных (инвестиции, возвраты, др.)" />
+                  <Stat label="Exp" value={b.expense} sym={sym} tone="rose" negate
+                    tip="Expense — записанные расходы (зарплата, аренда, коммуналка, маркетинг)" />
+                  <Stat label="Net" value={b.net} sym={sym} tone={b.net >= 0 ? "emerald" : "rose"} bold
+                    tip="Net = Rev + Inc − Exp. Это чистая прибыль этого офиса за период" />
                   <ChevronRight className="w-3 h-3 text-slate-400" />
                 </div>
               </button>
@@ -309,7 +316,12 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Tag className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_category")}</h3>
-          <span className="text-[11px] text-slate-400">· income/expense entries only (exchange profit not categorized)</span>
+          <span
+            className="text-[11px] text-slate-400 cursor-help"
+            title={t("pnl_by_category_tip") || "Разбивка только по ручным Income/Expense записям с категориями. Прибыль от обменных сделок НЕ входит (у неё нет категории)."}
+          >
+            ⓘ
+          </span>
         </div>
         {byCategory.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No categorized entries in this period</div>
@@ -477,15 +489,26 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
       <div className="p-5 max-h-[70vh] overflow-auto space-y-4">
         {/* Summary row — Level 1 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <MiniKpi label={t("pnl_deals_profit")} value={revenueExchange} sym={sym} tone={revenueExchange >= 0 ? "emerald" : "rose"} />
-          <MiniKpi label={t("pnl_other_income")} value={income} sym={sym} tone="emerald" />
-          <MiniKpi label={t("pnl_expenses")} value={expense} sym={sym} tone="rose" negate />
+          <MiniKpi
+            label={t("pnl_deals_profit")} value={revenueExchange} sym={sym}
+            tone={revenueExchange >= 0 ? "emerald" : "rose"}
+            tip="Прибыль от обменных сделок — сумма tx.profit в периоде (в USD, конверт в base)"
+          />
+          <MiniKpi
+            label={t("pnl_other_income")} value={income} sym={sym} tone="emerald"
+            tip="Прочий доход — ручные Income-записи (не обменные сделки): инвестиции, возвраты, и пр."
+          />
+          <MiniKpi
+            label={t("pnl_expenses")} value={expense} sym={sym} tone="rose" negate
+            tip="Сумма всех Expense записей в периоде: зарплата, аренда, коммуналка, и пр."
+          />
           <MiniKpi
             label={t("pnl_net_profit")}
             value={revenueExchange + income - expense}
             sym={sym}
             tone={(revenueExchange + income - expense) >= 0 ? "emerald" : "rose"}
             bold
+            tip="Net = Deals profit + Other income − Expenses. Итоговое за период"
           />
         </div>
 
@@ -617,15 +640,18 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
   );
 }
 
-function MiniKpi({ label, value, sym, tone, negate, bold }) {
+function MiniKpi({ label, value, sym, tone, negate, bold, tip }) {
   const toneCls =
     tone === "emerald" ? "text-emerald-700 bg-emerald-50 border-emerald-100"
     : tone === "rose" ? "text-rose-700 bg-rose-50 border-rose-100"
     : "text-slate-900 bg-slate-50/60 border-slate-200";
   const sign = negate && value > 0 ? "−" : value >= 0 && bold ? "+" : "";
   return (
-    <div className={`rounded-[8px] border p-2.5 ${toneCls}`}>
-      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{label}</div>
+    <div className={`rounded-[8px] border p-2.5 ${toneCls}`} title={tip || undefined}>
+      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-0.5">
+        {label}
+        {tip && <span className="text-slate-400 text-[10px]">ⓘ</span>}
+      </div>
       <div className={`text-[16px] ${bold ? "font-bold" : "font-semibold"} tabular-nums tracking-tight mt-0.5`}>
         {sign}{sym}{fmt(value)}
       </div>
@@ -645,7 +671,7 @@ function DrillRow({ label, amount, sym, tone }) {
   );
 }
 
-function Stat({ label, value, sym, tone, bold, negate }) {
+function Stat({ label, value, sym, tone, bold, negate, tip }) {
   const toneCls =
     tone === "emerald"
       ? "text-emerald-700"
@@ -654,8 +680,12 @@ function Stat({ label, value, sym, tone, bold, negate }) {
       : "text-slate-600";
   const display = negate && value > 0 ? `−${sym}${fmt(value)}` : `${sym}${fmt(value)}`;
   return (
-    <div className="inline-flex items-baseline gap-1">
-      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{label}</span>
+    <div className="inline-flex items-baseline gap-1" title={tip || undefined}>
+      <span
+        className={`text-[9px] font-bold text-slate-400 uppercase tracking-wider ${tip ? "cursor-help underline decoration-dotted decoration-slate-300" : ""}`}
+      >
+        {label}
+      </span>
       <span className={`${bold ? "font-bold" : "font-semibold"} ${toneCls}`}>{display}</span>
     </div>
   );
