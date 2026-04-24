@@ -642,6 +642,33 @@ export async function updateUserRow(userId, patch) {
   bumpDataVersion();
 }
 
+// Создание новой pair через security-definer RPC (migration 0031).
+// Раньше фронт делал direct insert в public.pairs, но RLS policy
+// ref_write_admin (0001) периодически молча блокировала — пара
+// исчезала после refresh. RPC проверяет caller role и бросает
+// понятные ошибки (purposefully не fire-and-forget — caller awaits
+// и показывает toast при fail).
+export async function rpcCreatePair({ fromCurrency, toCurrency, baseRate, spreadPercent, priority }) {
+  assertConfigured();
+  const from = requireCurrency(fromCurrency, "fromCurrency");
+  const to = requireCurrency(toCurrency, "toCurrency");
+  if (from === to) throw new Error("from and to must differ");
+  const rate = Number(baseRate);
+  if (!Number.isFinite(rate) || rate <= 0) throw new Error("baseRate must be > 0");
+  const spread = spreadPercent != null ? Number(spreadPercent) : 0;
+  const prio = priority != null ? Number(priority) : 50;
+  const { data, error } = await supabase.rpc("create_pair", {
+    p_from: from,
+    p_to: to,
+    p_base_rate: rate,
+    p_spread: Number.isFinite(spread) ? spread : 0,
+    p_priority: Number.isFinite(prio) ? prio : 50,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "create_pair"));
+  bumpDataVersion();
+  return data; // uuid new pair id
+}
+
 // Invite user — атомарная RPC (migration 0022):
 //   1. upsert pending_invites (для first-time flow: trigger on_auth_user_created
 //      прочитает роль при INSERT в auth.users)

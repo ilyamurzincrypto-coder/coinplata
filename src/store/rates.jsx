@@ -28,9 +28,11 @@ import {
   useEffect,
 } from "react";
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
-import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadPairs, loadOfficeRateOverrides } from "../lib/supabaseReaders.js";
-import { onDataBump, bumpDataVersion } from "../lib/dataVersion.jsx";
+import { onDataBump } from "../lib/dataVersion.jsx";
+import { rpcCreatePair } from "../lib/supabaseWrite.js";
+import { emitToast } from "../lib/toast.jsx";
 
 export const rateKey = (from, to) => `${from}_${to}`;
 
@@ -398,29 +400,31 @@ export function RatesProvider({ children }) {
       setLastUpdated(new Date());
       markModifiedIfConfirmed();
 
-      // DB-режим: persist в public.pairs. Если упадёт — оставим local
-      // state (пользователь сможет повторить). bump после успеха триггерит
-      // reload — locally-created pair заменится DB-rows с реальным UUID.
+      // DB-режим: persist через security-definer RPC create_pair (0031).
+      // Раньше прямой insert в public.pairs молча упирался в RLS
+      // ref_write_admin policy и пара исчезала после refresh. RPC
+      // обходит RLS, проверяет caller role, бросает понятные ошибки.
+      // При фейле показываем toast И откатываем local state, чтобы не
+      // вводить юзера в заблуждение "вижу пару, а её нет".
       if (isSupabaseConfigured) {
         (async () => {
           try {
-            const { error } = await supabase.from("pairs").insert({
-              from_currency: fromCh.currencyCode,
-              to_currency: toCh.currencyCode,
-              base_rate: baseRate,
-              spread_percent: 0,
-              is_default: !existingDefault,
+            await rpcCreatePair({
+              fromCurrency: fromCh.currencyCode,
+              toCurrency: toCh.currencyCode,
+              baseRate,
+              spreadPercent: 0,
               priority,
             });
-            if (error) {
-              // eslint-disable-next-line no-console
-              console.warn("[addPair] DB insert failed — pair only in local state", error);
-              return;
-            }
-            bumpDataVersion();
+            // bump в rpcCreatePair уже дёрнут — loadPairs подтянет реальную row
           } catch (err) {
+            const msg = err?.message || String(err);
             // eslint-disable-next-line no-console
-            console.warn("[addPair] DB insert threw", err);
+            console.warn("[addPair] DB persist failed", msg);
+            emitToast("error", `Pair save failed: ${msg}`);
+            // Откатываем local state — иначе пользователь будет видеть
+            // "виртуальную" пару которой на самом деле нет в БД
+            setPairs((prev) => prev.filter((p) => p.id !== id));
           }
         })();
       }
