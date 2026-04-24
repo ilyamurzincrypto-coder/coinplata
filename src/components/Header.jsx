@@ -77,20 +77,31 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
             ))}
           </nav>
 
-          <div className="hidden md:block h-5 w-px bg-slate-200" />
-
-          {/* Office switcher only on Cashier page */}
+          {/* Office switcher only on Cashier page. Dropdown (не segmented),
+              чтобы шапка не росла линейно с числом офисов. При 1 офисе
+              (scoped manager) показываем статичный badge. */}
           {page === "cashier" && (
-            <div className="hidden md:block">
-              {isScopedManager ? (
-                <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-[8px] px-2.5 py-1 text-[12px] font-semibold text-slate-700">
-                  <Building2 className="w-3 h-3 text-slate-500" />
-                  {scopedOffices[0]?.name || "—"}
-                </div>
-              ) : (
-                <SegmentedControl options={scopedOffices} value={currentOffice} onChange={onOfficeChange} />
-              )}
-            </div>
+            <>
+              <div className="hidden md:block h-5 w-px bg-slate-200" />
+              <div className="hidden md:block">
+                {isScopedManager ? (
+                  <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-[8px] px-2.5 py-1 text-[12px] font-semibold text-slate-700">
+                    <Building2 className="w-3 h-3 text-slate-500" />
+                    {scopedOffices[0]?.name || "—"}
+                  </div>
+                ) : (
+                  <div className="w-[180px]">
+                    <Select
+                      value={currentOffice}
+                      onChange={onOfficeChange}
+                      options={scopedOffices.map((o) => ({ value: o.id, label: o.name }))}
+                      icon={<Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+                      compact
+                    />
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 
