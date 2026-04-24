@@ -473,6 +473,8 @@ const DICT = {
     xf_global_rate: "Global",
     xf_use_office_rate: "This office's override rate",
     xf_use_global_rate: "Global rate (ignores office override)",
+    xf_manual_rate: "Manual",
+    xf_manual_rate_tip: "Enter a custom rate manually for this deal only",
 
     // === Obligations page ===
     oblig_title: "Obligations",
@@ -1313,6 +1315,8 @@ const DICT = {
     xf_global_rate: "Глобал",
     xf_use_office_rate: "Курс с override этого офиса",
     xf_use_global_rate: "Общий курс без учёта override",
+    xf_manual_rate: "Вручную",
+    xf_manual_rate_tip: "Ввести нестандартный курс только для этой сделки",
 
     // === Obligations page ===
     oblig_title: "Долги",
@@ -2151,6 +2155,8 @@ const DICT = {
     xf_global_rate: "Global",
     xf_use_office_rate: "Bu ofisin override kuru",
     xf_use_global_rate: "Override'ı yoksayan global kur",
+    xf_manual_rate: "Manuel",
+    xf_manual_rate_tip: "Sadece bu işlem için özel kur girin",
 
     // === Obligations page ===
     oblig_title: "Borçlar",

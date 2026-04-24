@@ -1726,35 +1726,62 @@ function OutputRow({
         <span className="text-slate-400 text-[11px] font-bold tracking-wider">{o.currency}</span>
       </div>
 
-      {/* Rate source chips — если есть office override, даём выбрать Global или Office */}
-      {hasOfficeOverride && (
+      {/* Rate source chips — видны всегда.
+            • Office · X.XX — курс с учётом per-office override (если есть)
+            • Global · X.XX — pairs.rate без override (если отличается)
+            • Manual — режим ручного ввода (разблокирует rate input)
+          Клик на Office/Global ставит соответствующий курс + manualRate=false.
+          Если офис = global (нет override), Office chip скрываем чтобы не дублировать. */}
+      {(Number.isFinite(officeRate) || Number.isFinite(globalRate)) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
           <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
             {t("xf_rate_source") || "Rate source"}
           </span>
+          {hasOfficeOverride && Number.isFinite(officeRate) && (
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({ rate: String(officeRate), manualRate: false, touched: false })
+              }
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+                !o.manualRate && Math.abs(parseFloat(o.rate) - officeRate) < 1e-9
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+              }`}
+              title={t("xf_use_office_rate") || "Курс этого офиса (override)"}
+            >
+              {t("xf_office_rate") || "Office"} · {Number(officeRate).toFixed(4)}
+            </button>
+          )}
+          {Number.isFinite(globalRate) && (
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({ rate: String(globalRate), manualRate: false, touched: false })
+              }
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+                !o.manualRate && Math.abs(parseFloat(o.rate) - globalRate) < 1e-9
+                  ? "bg-slate-700 text-white border-slate-700"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+              title={t("xf_use_global_rate") || "Общий курс (без учёта override офиса)"}
+            >
+              {t("xf_global_rate") || "Global"} · {Number(globalRate).toFixed(4)}
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => onUpdate({ rate: String(officeRate), manualRate: false, touched: false })}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border ${
-              Math.abs(parseFloat(o.rate) - officeRate) < 1e-9
-                ? "bg-indigo-600 text-white border-indigo-600"
-                : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            onClick={() => {
+              if (!o.manualRate) onToggleManual?.();
+            }}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold border transition-colors ${
+              o.manualRate
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
             }`}
-            title={t("xf_use_office_rate") || "Курс этого офиса (override)"}
+            title={t("xf_manual_rate_tip") || "Ввести курс вручную — нестандартный для этой сделки"}
           >
-            {t("xf_office_rate") || "Office"} · {Number(officeRate).toFixed(4)}
-          </button>
-          <button
-            type="button"
-            onClick={() => onUpdate({ rate: String(globalRate), manualRate: false, touched: false })}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border ${
-              Math.abs(parseFloat(o.rate) - globalRate) < 1e-9
-                ? "bg-slate-700 text-white border-slate-700"
-                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-            }`}
-            title={t("xf_use_global_rate") || "Общий курс (без учёта override офиса)"}
-          >
-            {t("xf_global_rate") || "Global"} · {Number(globalRate).toFixed(4)}
+            {t("xf_manual_rate") || "Manual"}
           </button>
         </div>
       )}

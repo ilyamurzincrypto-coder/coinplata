@@ -16,6 +16,7 @@ import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import DateRangePicker, { rangeForPreset, inRange } from "../../components/ui/DateRangePicker.jsx";
 import Modal from "../../components/ui/Modal.jsx";
+import InfoHint from "../../components/ui/InfoHint.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 
 // Получает пропс `range` из CapitalPage, но внутри мы сразу переопределяем
@@ -272,12 +273,10 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_office")}</h3>
-          <span
-            className="text-[11px] text-slate-400 cursor-help"
-            title={t("pnl_by_office_tip") || "Разбивка Revenue / Expenses / Net по офисам. Клик на строку — drill-down на один офис."}
-          >
-            ⓘ
-          </span>
+          <InfoHint label={t("pnl_by_office")}>
+            {t("pnl_by_office_tip") ||
+              "Разбивка Revenue / Expenses / Net по офисам за выбранный период. Клик на строку — drill-down: detail по одному офису с каждой сделкой и записью доход/расход."}
+          </InfoHint>
         </div>
         {byOffice.filter((b) => b.revenue || b.income || b.expense).length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No activity in this period</div>
@@ -316,12 +315,10 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Tag className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_category")}</h3>
-          <span
-            className="text-[11px] text-slate-400 cursor-help"
-            title={t("pnl_by_category_tip") || "Разбивка только по ручным Income/Expense записям с категориями. Прибыль от обменных сделок НЕ входит (у неё нет категории)."}
-          >
-            ⓘ
-          </span>
+          <InfoHint label={t("pnl_by_category")}>
+            {t("pnl_by_category_tip") ||
+              "Разбивка только по ручным Income/Expense записям с категориями (аренда, зарплата, инвестиции и т.п.). Прибыль от обменных сделок НЕ входит — у неё нет категории, она считается из tx.profit на этапе создания сделки."}
+          </InfoHint>
         </div>
         {byCategory.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No categorized entries in this period</div>
@@ -364,12 +361,10 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Coins className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
-          <span
-            className="text-[11px] text-slate-400 cursor-help"
-            title={t("pnl_by_currency_tip") || "Разбивка по валюте, с которой клиент ПРИШЁЛ (curIn). Volume — сумма амt в base; Profit — прибыль от таких сделок."}
-          >
-            ⓘ
-          </span>
+          <InfoHint label={t("pnl_by_currency")}>
+            {t("pnl_by_currency_tip") ||
+              "Разбивка по валюте IN (с которой клиент ПРИШЁЛ к нам). Volume = общий оборот в base; Count = количество сделок; Revenue = прибыль от сделок именно с этой валюты как входящей."}
+          </InfoHint>
         </div>
         {byCurrency.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No deals in this period</div>
@@ -417,13 +412,7 @@ function PnlCard({ label, value, sub, icon, tone, emphasize, onClick, tooltip })
         {icon}
         <span>{label}</span>
         {tooltip && (
-          <span
-            className="text-[10px] text-slate-400 cursor-help"
-            title={tooltip}
-            onClick={(e) => e.stopPropagation()}
-          >
-            ⓘ
-          </span>
+          <InfoHint label={label}>{tooltip}</InfoHint>
         )}
         {clickable && <ChevronRight className="w-3 h-3 ml-auto text-slate-300" />}
       </div>
