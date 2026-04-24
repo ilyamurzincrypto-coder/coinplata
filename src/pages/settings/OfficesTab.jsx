@@ -284,7 +284,7 @@ function OfficeFormModal({ open, office, onClose }) {
 
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-            Working days
+            {t("office_working_days")}
           </label>
           <div className="flex flex-wrap gap-1.5">
             {ISO_DAYS.map((d) => {
@@ -313,7 +313,7 @@ function OfficeFormModal({ open, office, onClose }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-              Open at
+              {t("office_open_at")}
             </label>
             <input
               type="time"
@@ -324,7 +324,7 @@ function OfficeFormModal({ open, office, onClose }) {
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-              Close at
+              {t("office_close_at")}
             </label>
             <input
               type="time"
@@ -338,9 +338,9 @@ function OfficeFormModal({ open, office, onClose }) {
         {/* Per-day hours override (expandable) */}
         <details className="border-t border-slate-100 pt-4">
           <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
-            Per-day hours override
+            {t("office_per_day_title")}
             <span className="ml-2 text-[10px] font-normal normal-case text-slate-400">
-              (например сокр. суббота)
+              {t("office_per_day_hint")}
             </span>
           </summary>
           <div className="mt-3 space-y-1">
@@ -363,7 +363,7 @@ function OfficeFormModal({ open, office, onClose }) {
                         : "bg-indigo-100 text-indigo-700"
                     }`}
                   >
-                    {state === "same" ? "как общие" : state === "closed" ? "закрыт" : "свои часы"}
+                    {state === "same" ? t("office_day_same") : state === "closed" ? t("office_day_closed") : t("office_day_custom")}
                   </button>
                   {state === "custom" && override && (
                     <>
@@ -391,7 +391,7 @@ function OfficeFormModal({ open, office, onClose }) {
         {/* Holidays */}
         <details className="border-t border-slate-100 pt-4">
           <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
-            Holidays
+            {t("office_holidays")}
             <span className="ml-2 text-[10px] font-normal normal-case text-slate-400">
               ({holidays.length})
             </span>
@@ -410,7 +410,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 disabled={!newHoliday}
                 className="px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                + Add
+                + {t("office_holiday_add")}
               </button>
             </div>
             {holidays.length > 0 && (
@@ -438,17 +438,17 @@ function OfficeFormModal({ open, office, onClose }) {
         {/* Temporary closure */}
         <details className="border-t border-slate-100 pt-4">
           <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
-            Temporary closure
+            {t("office_temp_closure")}
             {tempClosedUntil && (
               <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[9px] font-bold tracking-wider uppercase">
-                active
+                {t("office_temp_active")}
               </span>
             )}
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-                Closed until
+                {t("office_temp_until")}
               </label>
               <input
                 type="datetime-local"
@@ -459,13 +459,13 @@ function OfficeFormModal({ open, office, onClose }) {
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-                Reason (optional)
+                {t("office_temp_reason")}
               </label>
               <input
                 type="text"
                 value={tempClosedReason}
                 onChange={(e) => setTempClosedReason(e.target.value)}
-                placeholder="Holiday / renovation / force majeure"
+                placeholder={t("office_temp_reason_ph")}
                 className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
               />
             </div>
@@ -476,7 +476,7 @@ function OfficeFormModal({ open, office, onClose }) {
                   onClick={() => { setTempClosedUntil(""); setTempClosedReason(""); }}
                   className="text-[11px] font-semibold text-slate-600 hover:text-rose-700"
                 >
-                  Reopen (clear temp closure)
+                  {t("office_temp_reopen")}
                 </button>
               </div>
             )}
@@ -486,12 +486,12 @@ function OfficeFormModal({ open, office, onClose }) {
         {/* Fees — per-office */}
         <div className="border-t border-slate-100 pt-4">
           <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-            Fees
+            {t("office_fees")}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-                Minimum fee (USD)
+                {t("office_min_fee")}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[13px]">$</span>
@@ -509,7 +509,7 @@ function OfficeFormModal({ open, office, onClose }) {
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
-                Fee % (optional)
+                {t("office_fee_percent")}
               </label>
               <div className="relative">
                 <input
@@ -527,8 +527,7 @@ function OfficeFormModal({ open, office, onClose }) {
             </div>
           </div>
           <p className="text-[10px] text-slate-500 mt-1.5">
-            Applied to deals created in this office. Minimum fee is the floor — if
-            the rate margin is lower, the min kicks in.
+            {t("office_fees_hint")}
           </p>
         </div>
       </div>
@@ -691,10 +690,10 @@ export default function OfficesTab() {
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_local_time") || "Local time"}</th>
-              <th className="px-3 py-2.5 font-bold">Schedule</th>
-              <th className="px-3 py-2.5 font-bold">Fees</th>
+              <th className="px-3 py-2.5 font-bold">{t("office_schedule")}</th>
+              <th className="px-3 py-2.5 font-bold">{t("office_fees")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">Accounts</th>
+              <th className="px-3 py-2.5 font-bold text-right">{t("office_accounts")}</th>
               <th className="px-5 py-2.5 font-bold w-24"></th>
             </tr>
           </thead>
