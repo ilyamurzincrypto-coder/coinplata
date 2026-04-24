@@ -60,6 +60,14 @@ function OfficeFormModal({ open, office, onClose }) {
   const [endTime, setEndTime] = useState(DEFAULT_OFFICE_OPS.workingHours.end);
   const [minFee, setMinFee] = useState(String(DEFAULT_OFFICE_OPS.minFeeUsd));
   const [feePct, setFeePct] = useState(String(DEFAULT_OFFICE_OPS.feePercent));
+  // Per-day hours override: { "6": {start, end} | null } — null = закрыт в этот день
+  const [workingHoursByDay, setWorkingHoursByDay] = useState(null);
+  // Holidays (YYYY-MM-DD строки)
+  const [holidays, setHolidays] = useState([]);
+  const [newHoliday, setNewHoliday] = useState("");
+  // Temp closure
+  const [tempClosedUntil, setTempClosedUntil] = useState("");
+  const [tempClosedReason, setTempClosedReason] = useState("");
 
   React.useEffect(() => {
     if (open) {
@@ -85,8 +93,67 @@ function OfficeFormModal({ open, office, onClose }) {
             : DEFAULT_OFFICE_OPS.feePercent
         )
       );
+      setWorkingHoursByDay(
+        office?.workingHoursByDay && typeof office.workingHoursByDay === "object"
+          ? office.workingHoursByDay
+          : null
+      );
+      setHolidays(Array.isArray(office?.holidays) ? office.holidays : []);
+      setNewHoliday("");
+      setTempClosedUntil(
+        office?.tempClosedUntil
+          ? new Date(office.tempClosedUntil).toISOString().slice(0, 16)
+          : ""
+      );
+      setTempClosedReason(office?.tempClosedReason || "");
     }
   }, [open, office]);
+
+  const toggleDayOverride = (n) => {
+    // 3 состояния: same as общие часы (key не в объекте) → own hours →
+    // closed (null) → same (remove key). Click циклит.
+    setWorkingHoursByDay((prev) => {
+      const cur = prev || {};
+      const key = String(n);
+      const state = cur[key] === undefined ? "same" : cur[key] === null ? "closed" : "custom";
+      const next = { ...cur };
+      if (state === "same") {
+        // → custom: copy общие часы
+        next[key] = { start: startTime, end: endTime };
+      } else if (state === "custom") {
+        next[key] = null;
+      } else {
+        delete next[key];
+      }
+      // Если всё пустое — вернуть null (использовать общие для всех)
+      return Object.keys(next).length === 0 ? null : next;
+    });
+  };
+
+  const setDayHours = (n, field, value) => {
+    setWorkingHoursByDay((prev) => {
+      const cur = prev || {};
+      const key = String(n);
+      const existing = cur[key] && typeof cur[key] === "object"
+        ? cur[key]
+        : { start: startTime, end: endTime };
+      const next = { ...cur, [key]: { ...existing, [field]: value } };
+      return next;
+    });
+  };
+
+  const addHoliday = () => {
+    const val = newHoliday.trim();
+    if (!val) return;
+    if (holidays.includes(val)) {
+      setNewHoliday("");
+      return;
+    }
+    setHolidays([...holidays, val].sort());
+    setNewHoliday("");
+  };
+
+  const removeHoliday = (d) => setHolidays(holidays.filter((x) => x !== d));
 
   const toggleDay = (n) => {
     setWorkingDays((prev) => {
@@ -111,6 +178,12 @@ function OfficeFormModal({ open, office, onClose }) {
       timezone,
       workingDays,
       workingHours: { start: startTime, end: endTime },
+      workingHoursByDay: workingHoursByDay && Object.keys(workingHoursByDay).length > 0
+        ? workingHoursByDay
+        : null,
+      holidays: holidays.filter(Boolean),
+      tempClosedUntil: tempClosedUntil ? new Date(tempClosedUntil).toISOString() : null,
+      tempClosedReason: tempClosedReason.trim() || null,
       minFeeUsd: minFeeNum,
       feePercent: feePctNum,
     };
@@ -261,6 +334,154 @@ function OfficeFormModal({ open, office, onClose }) {
             />
           </div>
         </div>
+
+        {/* Per-day hours override (expandable) */}
+        <details className="border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
+            Per-day hours override
+            <span className="ml-2 text-[10px] font-normal normal-case text-slate-400">
+              (например сокр. суббота)
+            </span>
+          </summary>
+          <div className="mt-3 space-y-1">
+            {ISO_DAYS.filter((d) => workingDays.includes(d.n)).map((d) => {
+              const key = String(d.n);
+              const override = workingHoursByDay?.[key];
+              const state =
+                override === undefined ? "same" : override === null ? "closed" : "custom";
+              return (
+                <div key={d.n} className="flex items-center gap-2 text-[12px]">
+                  <span className="w-10 text-slate-600 font-semibold">{d.short}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleDayOverride(d.n)}
+                    className={`px-2 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider ${
+                      state === "same"
+                        ? "bg-slate-100 text-slate-600"
+                        : state === "closed"
+                        ? "bg-rose-100 text-rose-700"
+                        : "bg-indigo-100 text-indigo-700"
+                    }`}
+                  >
+                    {state === "same" ? "как общие" : state === "closed" ? "закрыт" : "свои часы"}
+                  </button>
+                  {state === "custom" && override && (
+                    <>
+                      <input
+                        type="time"
+                        value={override.start || ""}
+                        onChange={(e) => setDayHours(d.n, "start", e.target.value)}
+                        className="bg-white border border-slate-200 rounded-[6px] px-2 py-1 text-[12px] tabular-nums outline-none"
+                      />
+                      <span className="text-slate-400">–</span>
+                      <input
+                        type="time"
+                        value={override.end || ""}
+                        onChange={(e) => setDayHours(d.n, "end", e.target.value)}
+                        className="bg-white border border-slate-200 rounded-[6px] px-2 py-1 text-[12px] tabular-nums outline-none"
+                      />
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </details>
+
+        {/* Holidays */}
+        <details className="border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
+            Holidays
+            <span className="ml-2 text-[10px] font-normal normal-case text-slate-400">
+              ({holidays.length})
+            </span>
+          </summary>
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={newHoliday}
+                onChange={(e) => setNewHoliday(e.target.value)}
+                className="flex-1 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[8px] px-2.5 py-1.5 text-[12px] tabular-nums outline-none"
+              />
+              <button
+                type="button"
+                onClick={addHoliday}
+                disabled={!newHoliday}
+                className="px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                + Add
+              </button>
+            </div>
+            {holidays.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {holidays.map((d) => (
+                  <span
+                    key={d}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-[11px] font-medium text-rose-700 tabular-nums"
+                  >
+                    {d}
+                    <button
+                      type="button"
+                      onClick={() => removeHoliday(d)}
+                      className="text-rose-400 hover:text-rose-900"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </details>
+
+        {/* Temporary closure */}
+        <details className="border-t border-slate-100 pt-4">
+          <summary className="cursor-pointer text-[11px] font-bold text-slate-500 uppercase tracking-wider hover:text-slate-900 select-none">
+            Temporary closure
+            {tempClosedUntil && (
+              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-[9px] font-bold tracking-wider uppercase">
+                active
+              </span>
+            )}
+          </summary>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+                Closed until
+              </label>
+              <input
+                type="datetime-local"
+                value={tempClosedUntil}
+                onChange={(e) => setTempClosedUntil(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] tabular-nums outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wide">
+                Reason (optional)
+              </label>
+              <input
+                type="text"
+                value={tempClosedReason}
+                onChange={(e) => setTempClosedReason(e.target.value)}
+                placeholder="Holiday / renovation / force majeure"
+                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+              />
+            </div>
+            {tempClosedUntil && (
+              <div className="col-span-2">
+                <button
+                  type="button"
+                  onClick={() => { setTempClosedUntil(""); setTempClosedReason(""); }}
+                  className="text-[11px] font-semibold text-slate-600 hover:text-rose-700"
+                >
+                  Reopen (clear temp closure)
+                </button>
+              </div>
+            )}
+          </div>
+        </details>
 
         {/* Fees — per-office */}
         <div className="border-t border-slate-100 pt-4">

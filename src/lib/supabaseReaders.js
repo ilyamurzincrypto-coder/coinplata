@@ -45,6 +45,11 @@ export async function loadOffices() {
     timezone: r.timezone,
     workingDays: r.working_days || [1, 2, 3, 4, 5, 6],
     workingHours: r.working_hours || { start: "09:00", end: "21:00" },
+    // Расширенные поля из 0017_office_schedule
+    workingHoursByDay: r.working_hours_by_day || null,
+    holidays: Array.isArray(r.holidays) ? r.holidays : [],
+    tempClosedUntil: r.temp_closed_until || null,
+    tempClosedReason: r.temp_closed_reason || "",
     minFeeUsd: num(r.min_fee_usd),
     feePercent: num(r.fee_percent),
   }));
