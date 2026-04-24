@@ -331,9 +331,10 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
         >
-          {/* CTA "+ New exchange" / "Resume" вынесен в самый верх дашборда —
-              главное действие кассира на странице, видно сразу, без скролла
-              мимо котировок и балансов. */}
+          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
+
+          {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
+              балансами. Видно без скролла и прямо рядом с актуальным курсом. */}
           <section>
             {formMounted ? (
               <button
@@ -387,7 +388,6 @@ export default function CashierPage({
             )}
           </section>
 
-          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
           <Balances
             currentOffice={currentOffice}
             scope={balanceScope}
