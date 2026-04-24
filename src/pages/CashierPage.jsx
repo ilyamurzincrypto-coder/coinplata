@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Plus, ArrowUpRight, X, Minus, ArrowLeft } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
+import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
@@ -309,18 +310,28 @@ export default function CashierPage({
 
   const isDashboard = mode === "dashboard";
   const isCreate = mode === "create";
+  const isRates = mode === "rates";
+
+  const openRates = () => setMode("rates");
+  const closeRates = () => setMode("dashboard");
 
   return (
     <main className="min-h-screen">
       {/* ====== DASHBOARD MODE ====== */}
       {/* Rendered когда mode=dashboard. Плавный fade через key remount
           внутри animate-fadeIn. */}
+      {isRates && (
+        <div key="rates" className="animate-[fadeIn_180ms_ease-out]">
+          <RatesPage onBack={closeRates} />
+        </div>
+      )}
+
       {isDashboard && (
         <div
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
         >
-          <RatesBar />
+          <RatesBar onOpenRates={openRates} />
           <Balances
             currentOffice={currentOffice}
             scope={balanceScope}

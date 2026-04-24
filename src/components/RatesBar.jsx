@@ -83,13 +83,11 @@ const TRADE_PAIRS = [
   ["USD", "TRY"],
 ];
 
-export default function RatesBar() {
+export default function RatesBar({ onOpenRates }) {
   const { getRate, ratesFromBase, lastUpdated } = useRates();
   const { dict: currencyDict } = useCurrencies();
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
-  const [editOpen, setEditOpen] = useState(false);
-  const [importOpen, setImportOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(null);
   const wrapperRef = useRef(null);
   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
@@ -131,13 +129,16 @@ export default function RatesBar() {
               updated {timeAgo(lastUpdated)} ago
             </span>
           </div>
-          {isAdmin && (
+          {isAdmin && onOpenRates && (
             <button
-              onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              onClick={onOpenRates}
+              className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-800 active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
             >
-              <Pencil className="w-3 h-3" />
-              {t("edit_rates") || "Edit"}
+              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
+                <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
+              </div>
+              <span>{t("edit_rates") || "Редактировать курсы"}</span>
+              <ArrowRight className="w-3 h-3 opacity-60 group-hover:translate-x-0.5 transition-transform" />
             </button>
           )}
         </div>
@@ -275,20 +276,8 @@ export default function RatesBar() {
         </div>
       </section>
 
-      {editOpen && (
-        <RatesEditModal
-          open={editOpen}
-          onClose={() => setEditOpen(false)}
-          canDelete={isAdmin}
-          onImport={() => {
-            setEditOpen(false);
-            setImportOpen(true);
-          }}
-        />
-      )}
-      {importOpen && (
-        <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} />
-      )}
+      {/* Edit Rates модалка удалена — теперь открывается как full-screen
+          RatesPage через onOpenRates (из CashierPage setMode("rates")) */}
     </>
   );
 }

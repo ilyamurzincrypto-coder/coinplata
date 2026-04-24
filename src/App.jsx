@@ -10,7 +10,6 @@ import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import ObligationsPage from "./pages/ObligationsPage.jsx";
-import RatesPage from "./pages/RatesPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -48,7 +47,6 @@ const PAGE_SECTION = {
   accounts: "accounts",
   clients: "clients",
   obligations: "obligations",
-  rates: "rates",
   referrals: "referrals",
   settings: "settings",
 };
@@ -67,7 +65,7 @@ function Root() {
   // AUTO-MINIMIZE: при переходе на любую страницу кроме cashier —
   // сворачиваем сделку. Draft остаётся в sessionStorage.
   const handlePageChange = (nextPage) => {
-    if (nextPage !== "cashier" && exchangeMode === "create") {
+    if (nextPage !== "cashier" && (exchangeMode === "create" || exchangeMode === "rates")) {
       setExchangeMode("dashboard");
     }
     setPage(nextPage);
@@ -100,14 +98,13 @@ function Root() {
       if (el) el.focus();
     },
     escape: () => {
-      if (exchangeMode === "create") setExchangeMode("dashboard");
+      if (exchangeMode === "create" || exchangeMode === "rates") setExchangeMode("dashboard");
     },
     "g c": () => handlePageChange("cashier"),
     "g k": () => handlePageChange("capital"),
     "g a": () => handlePageChange("accounts"),
     "g l": () => handlePageChange("clients"),
     "g o": () => handlePageChange("obligations"),
-    "g t": () => handlePageChange("rates"),
     "g r": () => handlePageChange("referrals"),
     "g s": () => handlePageChange("settings"),
   });
@@ -157,7 +154,6 @@ function Root() {
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
       {page === "obligations" && canShow("obligations") && <ObligationsPage />}
-      {page === "rates" && canShow("rates") && <RatesPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}

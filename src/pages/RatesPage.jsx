@@ -48,7 +48,7 @@ import { rateKey } from "../store/rates.jsx";
 import { fmt } from "../utils/money.js";
 import { exportCSV } from "../utils/csv.js";
 
-export default function RatesPage() {
+export default function RatesPage({ onBack }) {
   const { t } = useTranslation();
   const {
     rates,
@@ -250,6 +250,16 @@ export default function RatesPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
+            {onBack && view === "list" && (
+              <button
+                onClick={onBack}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                title={t("rates_back_dashboard") || "Back to dashboard"}
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                {t("rates_back_dashboard") || "Dashboard"}
+              </button>
+            )}
             <div className="w-9 h-9 rounded-[10px] bg-slate-900 flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>

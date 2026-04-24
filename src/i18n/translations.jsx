@@ -455,6 +455,7 @@ const DICT = {
     nav_obligations: "Obligations",
     nav_rates: "Rates",
     section_rates: "Rates",
+    rates_back_dashboard: "Dashboard",
 
     // === Obligations page ===
     oblig_title: "Obligations",
@@ -1275,6 +1276,7 @@ const DICT = {
     nav_obligations: "Долги",
     nav_rates: "Курсы",
     section_rates: "Курсы",
+    rates_back_dashboard: "Дашборд",
 
     // === Obligations page ===
     oblig_title: "Долги",
@@ -2093,6 +2095,7 @@ const DICT = {
     nav_obligations: "Borçlar",
     nav_rates: "Kurlar",
     section_rates: "Kurlar",
+    rates_back_dashboard: "Panele dön",
 
     // === Obligations page ===
     oblig_title: "Borçlar",
