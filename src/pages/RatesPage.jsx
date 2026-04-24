@@ -129,13 +129,32 @@ export default function RatesPage({ onBack }) {
     }));
   }, [existingPairs]);
 
-  const handleSetRate = async (from, to, value) => {
-    const n = parseFloat(value);
-    if (!Number.isFinite(n) || n <= 0) return;
-    // Per-office override (0021) — если active office ≠ "all"
+  // Унифицированный updater: передать {baseRate?, spreadPercent?}.
+  // В office-режиме пишет override (oba поля сразу), в global — обновляет pairs.
+  const handleSetRate = async (from, to, { baseRate, spreadPercent } = {}) => {
+    if (baseRate != null) {
+      const n = Number(baseRate);
+      if (!Number.isFinite(n) || n <= 0) return;
+    }
+    if (spreadPercent != null && !Number.isFinite(Number(spreadPercent))) return;
+
     if (isSupabaseConfigured && activeOffice !== "all") {
+      // Office override — нужны оба поля; если одно не передано — берём из текущего состояния
+      const existing = getOfficeOverride(activeOffice, from, to);
+      const currentBase = existing?.baseRate ?? existing?.rate ?? getRate(from, to, "all");
+      const currentSpread = existing?.spreadPercent ?? 0;
+      const nextBase = baseRate != null ? Number(baseRate) : Number(currentBase);
+      const nextSpread = spreadPercent != null ? Number(spreadPercent) : Number(currentSpread);
+      if (!Number.isFinite(nextBase) || nextBase <= 0) return;
       const res = await withToast(
-        () => rpcUpsertOfficeRate({ officeId: activeOffice, from, to, rate: n }),
+        () =>
+          rpcUpsertOfficeRate({
+            officeId: activeOffice,
+            from,
+            to,
+            rate: nextBase,
+            spreadPercent: nextSpread,
+          }),
         { success: null, errorPrefix: "Office rate update failed" }
       );
       if (res.ok) {
@@ -144,15 +163,22 @@ export default function RatesPage({ onBack }) {
           action: "update",
           entity: "office_rate",
           entityId: `${activeOffice}:${rateKey(from, to)}`,
-          summary: `${officeLabel}: ${from}→${to} override = ${n}`,
+          summary: `${officeLabel}: ${from}→${to} base=${nextBase} spread=${nextSpread}%`,
         });
       }
       return;
     }
-    // Global rate (pairs) — active office "all" или demo mode
+
+    // Global rate
     if (isSupabaseConfigured) {
       const res = await withToast(
-        () => rpcUpdatePair({ fromCurrency: from, toCurrency: to, baseRate: n }),
+        () =>
+          rpcUpdatePair({
+            fromCurrency: from,
+            toCurrency: to,
+            ...(baseRate != null ? { baseRate: Number(baseRate) } : {}),
+            ...(spreadPercent != null ? { spreadPercent: Number(spreadPercent) } : {}),
+          }),
         { success: null, errorPrefix: "Update failed" }
       );
       if (res.ok) {
@@ -160,20 +186,31 @@ export default function RatesPage({ onBack }) {
           action: "update",
           entity: "pair",
           entityId: rateKey(from, to),
-          summary: `${from}→${to}: rate ${n}`,
+          summary: `${from}→${to}: base=${baseRate ?? "-"} spread=${spreadPercent ?? "-"}`,
         });
       }
       return;
     }
-    const result = setRate(from, to, value);
-    if (result?.ok) {
-      logAudit({
-        action: "update",
-        entity: "pair",
-        entityId: rateKey(from, to),
-        summary: `${from}→${to}: rate ${n}`,
-      });
+    // Demo fallback (legacy)
+    if (baseRate != null) {
+      const result = setRate(from, to, baseRate);
+      if (result?.ok) {
+        logAudit({
+          action: "update",
+          entity: "pair",
+          entityId: rateKey(from, to),
+          summary: `${from}→${to}: rate ${baseRate}`,
+        });
+      }
     }
+  };
+
+  // "Apply global to office" — копирует global rate в office override
+  const handleApplyGlobal = async (from, to) => {
+    if (activeOffice === "all") return;
+    const globalRate = getRate(from, to, "all");
+    if (!globalRate || globalRate <= 0) return;
+    await handleSetRate(from, to, { baseRate: globalRate, spreadPercent: 0 });
   };
 
   // Сбросить override офиса — вернуться на global rate
@@ -436,26 +473,31 @@ export default function RatesPage({ onBack }) {
                     </div>
                     <div className="divide-y divide-slate-100">
                       {g.pairs.map((p) => {
-                        const override = activeOffice !== "all"
+                        const isOfficeTab = activeOffice !== "all";
+                        const override = isOfficeTab
                           ? getOfficeOverride(activeOffice, p.from, p.to)
                           : null;
-                        const displayValue = override
-                          ? override.rate
-                          : getRate(p.from, p.to, "all");
+                        // Global pair объект (для baseRate / spreadPercent)
+                        const globalPair = allPairs.find((pp) => {
+                          const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
+                          const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
+                          return pp.isDefault && f === p.from && t2 === p.to;
+                        });
                         return (
                           <PairRow
                             key={p.key}
                             from={p.from}
                             to={p.to}
-                            value={displayValue}
-                            globalValue={getRate(p.from, p.to)}
-                            hasOverride={!!override}
-                            canReset={activeOffice !== "all" && !!override}
-                            getRate={getRate}
-                            onChange={(v) => handleSetRate(p.from, p.to, v)}
+                            globalValue={getRate(p.from, p.to, "all")}
+                            globalPair={globalPair}
+                            officeOverride={override}
+                            isOfficeTab={isOfficeTab}
+                            canReset={isOfficeTab && !!override}
+                            onUpdate={(patch) => handleSetRate(p.from, p.to, patch)}
+                            onApplyGlobal={() => handleApplyGlobal(p.from, p.to)}
                             onDelete={() => handleDeletePair(p.from, p.to)}
                             onResetOverride={() => handleResetOverride(p.from, p.to)}
-                            canDelete={(isOwner || isAdmin) && activeOffice === "all"}
+                            canDelete={(isOwner || isAdmin) && !isOfficeTab}
                           />
                         );
                       })}
@@ -508,100 +550,196 @@ export default function RatesPage({ onBack }) {
   );
 }
 
-// ---------------- Pair row with spread edit ----------------
+// ---------------- Pair row — обменная логика ----------------
+// Global (read-only) · Apply global btn · Office base · Spread % · Effective
+// В "all" tab: только одна колонка Rate + Spread (редактирует global pair).
+// В office tab: global read-only + office base (edit) + spread (edit) +
+//   кнопка ← apply global · reset override (↺) · индикатор override chip.
 function PairRow({
   from,
   to,
-  value,
-  globalValue,
-  hasOverride,
+  globalValue,        // текущий global rate
+  globalPair,         // pair object (для base/spread global)
+  officeOverride,     // {baseRate, spreadPercent, rate} | null
+  isOfficeTab,        // true если active tab ≠ "all"
   canReset,
-  getRate,
-  onChange,
+  onUpdate,           // ({baseRate?, spreadPercent?}) => void
+  onApplyGlobal,      // () => void (копирует global в office override)
+  onResetOverride,    // () => void
   onDelete,
-  onResetOverride,
   canDelete,
 }) {
   const { t } = useTranslation();
-  const [localVal, setLocalVal] = useState(value != null ? String(value) : "");
-  const [editing, setEditing] = useState(false);
+
+  // В office-режиме источник значений = override > global fallback
+  // В global-режиме — из globalPair (base/spread/rate)
+  const effectiveBase = isOfficeTab
+    ? (officeOverride?.baseRate ?? officeOverride?.rate ?? globalPair?.baseRate ?? globalValue ?? "")
+    : (globalPair?.baseRate ?? globalValue ?? "");
+  const effectiveSpread = isOfficeTab
+    ? (officeOverride?.spreadPercent ?? 0)
+    : (globalPair?.spreadPercent ?? 0);
+  const effectiveRate = isOfficeTab
+    ? (officeOverride?.rate ?? globalValue)
+    : globalPair?.rate ?? globalValue;
+
+  const [baseStr, setBaseStr] = useState(String(effectiveBase ?? ""));
+  const [spreadStr, setSpreadStr] = useState(String(effectiveSpread ?? ""));
+  const [editingBase, setEditingBase] = useState(false);
+  const [editingSpread, setEditingSpread] = useState(false);
 
   React.useEffect(() => {
-    if (!editing) setLocalVal(value != null ? String(value) : "");
-  }, [value, editing]);
+    if (!editingBase) setBaseStr(String(effectiveBase ?? ""));
+  }, [effectiveBase, editingBase]);
+  React.useEffect(() => {
+    if (!editingSpread) setSpreadStr(String(effectiveSpread ?? ""));
+  }, [effectiveSpread, editingSpread]);
 
-  const mid = getMidRate(from, to, getRate);
-  const spread = computeSpread(localVal, from, to, getRate);
+  const hasOverride = !!officeOverride;
+
+  const commitBase = () => {
+    setEditingBase(false);
+    const n = Number(baseStr);
+    if (Number.isFinite(n) && n > 0 && n !== Number(effectiveBase)) {
+      onUpdate({ baseRate: n });
+    }
+  };
+  const commitSpread = () => {
+    setEditingSpread(false);
+    const n = Number(spreadStr);
+    if (Number.isFinite(n) && n !== Number(effectiveSpread)) {
+      onUpdate({ spreadPercent: n });
+    }
+  };
 
   return (
     <div
-      className={`px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/60 ${
-        hasOverride ? "bg-indigo-50/30" : ""
+      className={`px-4 py-3 hover:bg-slate-50/40 ${
+        hasOverride && isOfficeTab ? "bg-indigo-50/30" : ""
       }`}
     >
-      <div className="flex items-center gap-2 min-w-[140px]">
-        <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
-        <span className="text-slate-400">→</span>
-        <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>
-        {hasOverride && (
-          <span
-            className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-indigo-700 bg-indigo-100 uppercase tracking-wider"
-            title={`Global: ${globalValue ?? "—"}`}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Pair label */}
+        <div className="flex items-center gap-2 min-w-[110px]">
+          <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
+          <span className="text-slate-400">→</span>
+          <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>
+          {hasOverride && isOfficeTab && (
+            <span
+              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-indigo-700 bg-indigo-100 uppercase tracking-wider"
+              title={t("rates_override_tip") || "У офиса свой курс поверх global"}
+            >
+              OFC
+            </span>
+          )}
+        </div>
+
+        {/* Global (read-only в office-режиме) */}
+        {isOfficeTab && (
+          <div
+            className="flex flex-col items-start"
+            title={t("rates_global_tip") || "Общий курс для всех офисов"}
           >
-            override
-          </span>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              {t("rates_global_label") || "Global"}
+            </span>
+            <span className="text-[12px] font-semibold text-slate-600 tabular-nums">
+              {globalValue != null ? Number(globalValue).toFixed(4) : "—"}
+            </span>
+          </div>
         )}
+
+        {/* Apply global → office (только в office-режиме) */}
+        {isOfficeTab && (
+          <button
+            type="button"
+            onClick={onApplyGlobal}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
+            title={t("rates_apply_global_tip") || "Скопировать global курс в этот офис (сбросит spread)"}
+          >
+            ← {t("rates_apply_global") || "Apply global"}
+          </button>
+        )}
+
+        {/* Base rate input */}
+        <div className="flex flex-col items-start">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+            {isOfficeTab ? (t("rates_office_base") || "Office base") : (t("rates_base_rate") || "Base rate")}
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={baseStr}
+            onChange={(e) => {
+              setEditingBase(true);
+              setBaseStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
+            }}
+            onBlur={commitBase}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            className={`w-[120px] bg-slate-50 border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
+              hasOverride && isOfficeTab
+                ? "border-indigo-300 focus:border-indigo-500"
+                : "border-slate-200 focus:border-slate-400"
+            }`}
+          />
+        </div>
+
+        {/* Spread input */}
+        <div className="flex flex-col items-start">
+          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+            {t("rates_spread") || "Spread %"}
+          </span>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={spreadStr}
+              onChange={(e) => {
+                setEditingSpread(true);
+                setSpreadStr(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."));
+              }}
+              onBlur={commitSpread}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              className="w-[80px] bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">%</span>
+          </div>
+        </div>
+
+        {/* Effective rate (computed) */}
+        <div className="flex flex-col items-start">
+          <span
+            className="text-[9px] font-bold text-slate-400 uppercase tracking-wider cursor-help"
+            title={t("rates_effective_tip") || "Итоговый курс который применяется в сделках = Base × (1 + Spread/100)"}
+          >
+            {t("rates_effective") || "Effective"} ⓘ
+          </span>
+          <span className="text-[14px] font-bold text-slate-900 tabular-nums">
+            {effectiveRate != null ? Number(effectiveRate).toFixed(4) : "—"}
+          </span>
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          {canReset && (
+            <button
+              onClick={onResetOverride}
+              className="text-[12px] text-indigo-600 hover:text-indigo-800 font-bold"
+              title={t("rates_reset_override") || "Вернуть на global"}
+            >
+              ↺
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={onDelete}
+              className="text-[14px] text-rose-500 hover:text-rose-700 font-semibold"
+              title={t("delete") || "Delete"}
+            >
+              ×
+            </button>
+          )}
+        </div>
       </div>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={localVal}
-        onChange={(e) => {
-          setEditing(true);
-          setLocalVal(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
-        }}
-        onBlur={() => {
-          setEditing(false);
-          if (localVal && Number(localVal) > 0 && Number(localVal) !== Number(value)) {
-            onChange(localVal);
-          }
-        }}
-        className={`flex-1 max-w-[200px] bg-slate-50 border rounded-[8px] px-3 py-1.5 text-[13px] tabular-nums outline-none focus:bg-white ${
-          hasOverride ? "border-indigo-300 focus:border-indigo-500" : "border-slate-200 focus:border-slate-400"
-        }`}
-      />
-      {mid && (
-        <span className="text-[10px] text-slate-400 font-mono">
-          mid: {mid.toFixed(mid < 1 ? 6 : 4)}
-        </span>
-      )}
-      {spread != null && (
-        <span
-          className={`text-[10px] font-semibold tabular-nums ${
-            Math.abs(spread) < 0.5 ? "text-slate-500" : "text-emerald-700"
-          }`}
-        >
-          {formatSpread(spread)}
-        </span>
-      )}
-      {canReset && (
-        <button
-          onClick={onResetOverride}
-          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
-          title={t("rates_reset_override") || "Reset to global"}
-        >
-          ↺
-        </button>
-      )}
-      {canDelete && (
-        <button
-          onClick={onDelete}
-          className="ml-auto text-[11px] text-rose-500 hover:text-rose-700 font-semibold"
-          title={t("delete") || "Delete"}
-        >
-          ×
-        </button>
-      )}
     </div>
   );
 }
