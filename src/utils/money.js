@@ -147,7 +147,11 @@ export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate 
   // Для feeType === "%" fee уже сидит в маржинальном курсе output'ов — не вычитаем
 
   const remaining = inNum - consumed - feeInCurIn;
-  const EPS = 0.01;
+  // EPS относительный к inNum — защита от rounding-noise. При amtIn=45000
+  // TRY gross округляется до 2 decimals USD, обратное деление даёт
+  // remaining≈-0.45 TRY (шум), а с EPS=0.01 ложно фаерил exceedsInput.
+  // 1e-4 = 0.01% tolerance — для 45 000 это 4.5 единицы. Абсолютный минимум 0.01.
+  const EPS = Math.max(0.01, Math.abs(inNum) * 1e-4);
   const exceedsInput = remaining < -EPS;
 
   return { remaining, feeInCurIn, consumed, exceedsInput };
