@@ -3,6 +3,7 @@ import React, { useMemo } from "react";
 import { Globe, Building2 } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import Select from "./ui/Select.jsx";
+import OfficeSwitcher from "./OfficeSwitcher.jsx";
 import ProfileMenu from "./ProfileMenu.jsx";
 import NotificationsBell from "./NotificationsBell.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -83,13 +84,11 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
                     {scopedOffices[0]?.name || "—"}
                   </div>
                 ) : (
-                  <div className="w-[180px]">
-                    <Select
+                  <div className="w-[200px]">
+                    <OfficeSwitcher
                       value={currentOffice}
                       onChange={onOfficeChange}
-                      options={scopedOffices.map((o) => ({ value: o.id, label: o.name }))}
-                      icon={<Building2 className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
-                      compact
+                      offices={scopedOffices}
                     />
                   </div>
                 )}
