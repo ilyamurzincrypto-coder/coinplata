@@ -28,7 +28,12 @@ import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
+import {
+  rpcUpdatePair,
+  rpcUpsertOfficeRate,
+  rpcDeleteOfficeRate,
+  withToast,
+} from "../lib/supabaseWrite.js";
 import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
 import Modal from "../components/ui/Modal.jsx";
@@ -45,7 +50,15 @@ import { exportCSV } from "../utils/csv.js";
 
 export default function RatesPage() {
   const { t } = useTranslation();
-  const { rates, setRate, deleteRate, getRate, channels, pairs: allPairs } = useRates();
+  const {
+    rates,
+    setRate,
+    deleteRate,
+    getRate,
+    channels,
+    pairs: allPairs,
+    getOfficeOverride,
+  } = useRates();
   const { currencies } = useCurrencies();
   const { activeOffices } = useOffices();
   const { isAdmin, isOwner } = useAuth();
@@ -119,6 +132,24 @@ export default function RatesPage() {
   const handleSetRate = async (from, to, value) => {
     const n = parseFloat(value);
     if (!Number.isFinite(n) || n <= 0) return;
+    // Per-office override (0021) — если active office ≠ "all"
+    if (isSupabaseConfigured && activeOffice !== "all") {
+      const res = await withToast(
+        () => rpcUpsertOfficeRate({ officeId: activeOffice, from, to, rate: n }),
+        { success: null, errorPrefix: "Office rate update failed" }
+      );
+      if (res.ok) {
+        const officeLabel = activeOffices.find((o) => o.id === activeOffice)?.name || activeOffice;
+        logAudit({
+          action: "update",
+          entity: "office_rate",
+          entityId: `${activeOffice}:${rateKey(from, to)}`,
+          summary: `${officeLabel}: ${from}→${to} override = ${n}`,
+        });
+      }
+      return;
+    }
+    // Global rate (pairs) — active office "all" или demo mode
     if (isSupabaseConfigured) {
       const res = await withToast(
         () => rpcUpdatePair({ fromCurrency: from, toCurrency: to, baseRate: n }),
@@ -141,6 +172,24 @@ export default function RatesPage() {
         entity: "pair",
         entityId: rateKey(from, to),
         summary: `${from}→${to}: rate ${n}`,
+      });
+    }
+  };
+
+  // Сбросить override офиса — вернуться на global rate
+  const handleResetOverride = async (from, to) => {
+    if (activeOffice === "all") return;
+    const res = await withToast(
+      () => rpcDeleteOfficeRate({ officeId: activeOffice, from, to }),
+      { success: "Reverted to global", errorPrefix: "Reset failed" }
+    );
+    if (res.ok) {
+      const officeLabel = activeOffices.find((o) => o.id === activeOffice)?.name || activeOffice;
+      logAudit({
+        action: "delete",
+        entity: "office_rate",
+        entityId: `${activeOffice}:${rateKey(from, to)}`,
+        summary: `${officeLabel}: ${from}→${to} override removed (global ${getRate(from, to)})`,
       });
     }
   };
@@ -304,17 +353,18 @@ export default function RatesPage() {
         {/* List view */}
         {view === "list" && (
           <>
-            {/* Scope notice (non-global tab) */}
+            {/* Scope notice — редактирование override для конкретного офиса */}
             {activeOffice !== "all" && (
-              <div className="bg-sky-50 border border-sky-200 rounded-[10px] px-4 py-3 text-[12px] text-sky-800 flex items-start gap-2">
+              <div className="bg-indigo-50 border border-indigo-200 rounded-[10px] px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
                 <Building2 className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold">
-                    {t("rates_office_scope_title") || "Курсы пока общие для всех офисов"}
+                    {t("rates_office_override_title") ||
+                      "Редактирование курсов для этого офиса"}
                   </div>
-                  <div className="text-sky-700 mt-0.5">
-                    {t("rates_office_scope_body") ||
-                      "Просмотр по вкладке офиса — чтобы увидеть какие пары применимы. Редактирование меняет глобальный курс (то же значение у всех офисов). Per-office overrides — отдельная задача на будущее."}
+                  <div className="text-indigo-700 mt-0.5">
+                    {t("rates_office_override_body") ||
+                      "Изменение курса создаёт override только для этого офиса — global остаётся как есть. Пары с override подсвечены индиго. Кнопка ↺ рядом — вернуть на global."}
                   </div>
                 </div>
               </div>
@@ -375,18 +425,30 @@ export default function RatesPage() {
                       </span>
                     </div>
                     <div className="divide-y divide-slate-100">
-                      {g.pairs.map((p) => (
-                        <PairRow
-                          key={p.key}
-                          from={p.from}
-                          to={p.to}
-                          value={getRate(p.from, p.to)}
-                          getRate={getRate}
-                          onChange={(v) => handleSetRate(p.from, p.to, v)}
-                          onDelete={() => handleDeletePair(p.from, p.to)}
-                          canDelete={isOwner || isAdmin}
-                        />
-                      ))}
+                      {g.pairs.map((p) => {
+                        const override = activeOffice !== "all"
+                          ? getOfficeOverride(activeOffice, p.from, p.to)
+                          : null;
+                        const displayValue = override
+                          ? override.rate
+                          : getRate(p.from, p.to, "all");
+                        return (
+                          <PairRow
+                            key={p.key}
+                            from={p.from}
+                            to={p.to}
+                            value={displayValue}
+                            globalValue={getRate(p.from, p.to)}
+                            hasOverride={!!override}
+                            canReset={activeOffice !== "all" && !!override}
+                            getRate={getRate}
+                            onChange={(v) => handleSetRate(p.from, p.to, v)}
+                            onDelete={() => handleDeletePair(p.from, p.to)}
+                            onResetOverride={() => handleResetOverride(p.from, p.to)}
+                            canDelete={(isOwner || isAdmin) && activeOffice === "all"}
+                          />
+                        );
+                      })}
                     </div>
                   </section>
                 ))}
@@ -437,7 +499,19 @@ export default function RatesPage() {
 }
 
 // ---------------- Pair row with spread edit ----------------
-function PairRow({ from, to, value, getRate, onChange, onDelete, canDelete }) {
+function PairRow({
+  from,
+  to,
+  value,
+  globalValue,
+  hasOverride,
+  canReset,
+  getRate,
+  onChange,
+  onDelete,
+  onResetOverride,
+  canDelete,
+}) {
   const { t } = useTranslation();
   const [localVal, setLocalVal] = useState(value != null ? String(value) : "");
   const [editing, setEditing] = useState(false);
@@ -450,11 +524,23 @@ function PairRow({ from, to, value, getRate, onChange, onDelete, canDelete }) {
   const spread = computeSpread(localVal, from, to, getRate);
 
   return (
-    <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/60">
+    <div
+      className={`px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50/60 ${
+        hasOverride ? "bg-indigo-50/30" : ""
+      }`}
+    >
       <div className="flex items-center gap-2 min-w-[140px]">
         <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
         <span className="text-slate-400">→</span>
         <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>
+        {hasOverride && (
+          <span
+            className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-indigo-700 bg-indigo-100 uppercase tracking-wider"
+            title={`Global: ${globalValue ?? "—"}`}
+          >
+            override
+          </span>
+        )}
       </div>
       <input
         type="text"
@@ -470,7 +556,9 @@ function PairRow({ from, to, value, getRate, onChange, onDelete, canDelete }) {
             onChange(localVal);
           }
         }}
-        className="flex-1 max-w-[200px] bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[8px] px-3 py-1.5 text-[13px] tabular-nums outline-none"
+        className={`flex-1 max-w-[200px] bg-slate-50 border rounded-[8px] px-3 py-1.5 text-[13px] tabular-nums outline-none focus:bg-white ${
+          hasOverride ? "border-indigo-300 focus:border-indigo-500" : "border-slate-200 focus:border-slate-400"
+        }`}
       />
       {mid && (
         <span className="text-[10px] text-slate-400 font-mono">
@@ -485,6 +573,15 @@ function PairRow({ from, to, value, getRate, onChange, onDelete, canDelete }) {
         >
           {formatSpread(spread)}
         </span>
+      )}
+      {canReset && (
+        <button
+          onClick={onResetOverride}
+          className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold"
+          title={t("rates_reset_override") || "Reset to global"}
+        >
+          ↺
+        </button>
       )}
       {canDelete && (
         <button

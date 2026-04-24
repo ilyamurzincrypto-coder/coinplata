@@ -825,6 +825,42 @@ export async function upsertClientWalletRow({ clientId, address, network, riskSc
   return data;
 }
 
+// ---------- office rate overrides (0021) ----------
+
+// Upsert override для (office, from, to). rate обязательно, spread опционально.
+// Использует RPC upsert_office_rate_override (security definer).
+export async function rpcUpsertOfficeRate({ officeId, from, to, rate, spreadPercent }) {
+  assertConfigured();
+  const validOffice = requireUuid(officeId, "officeId");
+  const validFrom = requireCurrency(from, "from");
+  const validTo = requireCurrency(to, "to");
+  const n = Number(rate);
+  if (!Number.isFinite(n) || n <= 0) throw new Error("rate must be > 0");
+  const sp = spreadPercent != null ? Number(spreadPercent) : 0;
+  const { error } = await supabase.rpc("upsert_office_rate_override", {
+    p_office_id: validOffice,
+    p_from: validFrom,
+    p_to: validTo,
+    p_rate: n,
+    p_spread: Number.isFinite(sp) ? sp : 0,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "upsert office rate"));
+  bumpDataVersion();
+}
+
+// Сбросить override (вернуться на global).
+export async function rpcDeleteOfficeRate({ officeId, from, to }) {
+  assertConfigured();
+  const validOffice = requireUuid(officeId, "officeId");
+  const { error } = await supabase.rpc("delete_office_rate_override", {
+    p_office_id: validOffice,
+    p_from: String(from).toUpperCase(),
+    p_to: String(to).toUpperCase(),
+  });
+  if (error) throw new Error(formatSupabaseError(error, "delete office rate"));
+  bumpDataVersion();
+}
+
 // ---------- accounts ----------
 
 // Маппим frontend account payload на БД колонки.

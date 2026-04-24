@@ -365,6 +365,29 @@ export async function loadObligations() {
   }));
 }
 
+// ---------- office rate overrides (0021) ----------
+
+// Загружает все office-overrides в Map<officeId, Map<"FROM_TO", rate>>.
+// Используется в useRates для effective-rate расчёта.
+export async function loadOfficeRateOverrides() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb.from("office_rate_overrides").select("*");
+  if (error) throw error;
+  const m = new Map();
+  (data || []).forEach((r) => {
+    const off = r.office_id;
+    if (!m.has(off)) m.set(off, new Map());
+    m.get(off).set(`${r.from_currency}_${r.to_currency}`, {
+      rate: num(r.rate),
+      baseRate: num(r.base_rate),
+      spreadPercent: num(r.spread_percent),
+      updatedAt: r.updated_at,
+      updatedBy: r.updated_by,
+    });
+  });
+  return m;
+}
+
 // ---------- rate snapshots ----------
 
 export async function loadRateSnapshots() {

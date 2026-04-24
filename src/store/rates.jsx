@@ -29,7 +29,7 @@ import {
 } from "react";
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { loadPairs } from "../lib/supabaseReaders.js";
+import { loadPairs, loadOfficeRateOverrides } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const rateKey = (from, to) => `${from}_${to}`;
@@ -105,6 +105,8 @@ export function RatesProvider({ children }) {
   const [channels, setChannels] = useState(SEED_CHANNELS);
   const [pairs, setPairs] = useState(SEED_PAIRS);
   const [lastUpdated, setLastUpdated] = useState(new Date());
+  // Per-office overrides (0021). Map<officeId, Map<"FROM_TO", {rate, baseRate, spreadPercent}>>
+  const [officeOverrides, setOfficeOverrides] = useState(new Map());
 
   // DB overlay: для каждой DB-пары (from_currency → to_currency, rate) находим
   // default frontend-пару по валютам (через channels) и обновляем её rate.
@@ -153,6 +155,27 @@ export function RatesProvider({ children }) {
     };
   }, []);
 
+  // Per-office overrides loader (0021)
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    const reload = () =>
+      loadOfficeRateOverrides()
+        .then((m) => {
+          if (!cancelled && m instanceof Map) setOfficeOverrides(m);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[office rate overrides] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
   // Confirmation state
   const [confirmationStatus, setConfirmationStatus] = useState("draft");
   const [confirmedAt, setConfirmedAt] = useState(null);
@@ -183,12 +206,32 @@ export function RatesProvider({ children }) {
 
   // ---------- getRate / setRate / deleteRate (обратная совместимость) ----------
 
+  // getRate: если officeId указан и есть office override для этой пары — use it.
+  // Иначе fallback на global default rate.
   const getRate = useCallback(
-    (from, to) => {
+    (from, to, officeId) => {
       if (from === to) return 1;
+      if (officeId && officeOverrides instanceof Map) {
+        const officeMap = officeOverrides.get(officeId);
+        if (officeMap) {
+          const ovr = officeMap.get(rateKey(from, to));
+          if (ovr && Number.isFinite(ovr.rate)) return ovr.rate;
+        }
+      }
       return rates[rateKey(from, to)];
     },
-    [rates]
+    [rates, officeOverrides]
+  );
+
+  // Получить override (или null если нет) — для UI индикации
+  const getOfficeOverride = useCallback(
+    (officeId, from, to) => {
+      if (!officeId || !(officeOverrides instanceof Map)) return null;
+      const officeMap = officeOverrides.get(officeId);
+      if (!officeMap) return null;
+      return officeMap.get(rateKey(from, to)) || null;
+    },
+    [officeOverrides]
   );
 
   // setRate — меняет rate у default pair (from → to).
@@ -416,6 +459,9 @@ export function RatesProvider({ children }) {
       deleteRate,
       ratesFromBase,
       lastUpdated,
+      // per-office overrides
+      officeOverrides,
+      getOfficeOverride,
       // pair/channel API
       pairs,
       channels,
@@ -444,6 +490,8 @@ export function RatesProvider({ children }) {
       deleteRate,
       ratesFromBase,
       lastUpdated,
+      officeOverrides,
+      getOfficeOverride,
       pairs,
       channels,
       getChannel,

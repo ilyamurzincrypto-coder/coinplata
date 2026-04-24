@@ -241,6 +241,7 @@ export default function PnlTab({ range, onRangeChange }) {
           icon={<TrendingUp className="w-4 h-4" />}
           tone="emerald"
           onClick={() => setDrill({ kind: "revenue" })}
+          tooltip={t("pnl_revenue_tip") || "Общая выручка за период = прибыль от обменных сделок (tx.profit) + записанные Income (доходы). Расходы НЕ вычитаются здесь — см. Net profit."}
         />
         <PnlCard
           label={t("pnl_expenses")}
@@ -249,6 +250,7 @@ export default function PnlTab({ range, onRangeChange }) {
           icon={<TrendingDown className="w-4 h-4" />}
           tone="rose"
           onClick={() => setDrill({ kind: "expenses" })}
+          tooltip={t("pnl_expenses_tip") || "Сумма всех Expense-записей в Income/Expense за период. Клик — разбивка по категориям."}
         />
         <PnlCard
           label={t("pnl_net_profit")}
@@ -258,6 +260,7 @@ export default function PnlTab({ range, onRangeChange }) {
           tone={net >= 0 ? "emerald" : "rose"}
           emphasize
           onClick={() => setDrill({ kind: "net" })}
+          tooltip={t("pnl_net_tip") || "Чистая прибыль: Revenue (deals + income) минус Expenses. Именно это деньги заработанные компанией за период."}
         />
       </div>
 
@@ -266,6 +269,12 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_office")}</h3>
+          <span
+            className="text-[11px] text-slate-400 cursor-help"
+            title={t("pnl_by_office_tip") || "Разбивка Revenue / Expenses / Net по офисам. Клик на строку — drill-down на один офис."}
+          >
+            ⓘ
+          </span>
         </div>
         {byOffice.filter((b) => b.revenue || b.income || b.expense).length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No activity in this period</div>
@@ -343,6 +352,12 @@ export default function PnlTab({ range, onRangeChange }) {
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Coins className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
+          <span
+            className="text-[11px] text-slate-400 cursor-help"
+            title={t("pnl_by_currency_tip") || "Разбивка по валюте, с которой клиент ПРИШЁЛ (curIn). Volume — сумма амt в base; Profit — прибыль от таких сделок."}
+          >
+            ⓘ
+          </span>
         </div>
         {byCurrency.length === 0 ? (
           <div className="px-5 py-8 text-center text-[13px] text-slate-400">No deals in this period</div>
@@ -370,7 +385,7 @@ export default function PnlTab({ range, onRangeChange }) {
   );
 }
 
-function PnlCard({ label, value, sub, icon, tone, emphasize, onClick }) {
+function PnlCard({ label, value, sub, icon, tone, emphasize, onClick, tooltip }) {
   const toneCls =
     tone === "emerald"
       ? "text-emerald-700"
@@ -388,7 +403,16 @@ function PnlCard({ label, value, sub, icon, tone, emphasize, onClick }) {
     >
       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
         {icon}
-        {label}
+        <span>{label}</span>
+        {tooltip && (
+          <span
+            className="text-[10px] text-slate-400 cursor-help"
+            title={tooltip}
+            onClick={(e) => e.stopPropagation()}
+          >
+            ⓘ
+          </span>
+        )}
         {clickable && <ChevronRight className="w-3 h-3 ml-auto text-slate-300" />}
       </div>
       <div className={`text-[22px] font-bold tabular-nums tracking-tight ${toneCls}`}>{value}</div>

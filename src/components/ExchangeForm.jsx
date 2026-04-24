@@ -166,7 +166,13 @@ export default function ExchangeForm({
   submitting = false,
 }) {
   const { t } = useTranslation();
-  const { getRate } = useRates();
+  const { getRate: getRateRaw } = useRates();
+  // Оборачиваем getRate так, чтобы использовался office override (0021).
+  // Если есть override для (currentOffice, from, to) — берём его, иначе global.
+  const getRate = React.useCallback(
+    (from, to) => getRateRaw(from, to, currentOffice),
+    [getRateRaw, currentOffice]
+  );
   const { currentUser, settings } = useAuth();
   const { addCounterparty, counterparties } = useTransactions();
   const { accountsByOffice, balanceOf, accounts } = useAccounts();
@@ -1554,7 +1560,12 @@ function OutputRow({
   offices,
 }) {
   const { t } = useTranslation();
-  const { getRate } = useRates();
+  const { getRate: getRateRaw } = useRates();
+  // OutputRow: getRate тоже учитывает currentOffice override
+  const getRate = React.useCallback(
+    (from, to) => getRateRaw(from, to, currentOffice),
+    [getRateRaw, currentOffice]
+  );
   const { accountsByOffice, accounts } = useAccounts();
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
   const { findWallet } = useWallets();
