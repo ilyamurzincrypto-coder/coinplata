@@ -411,7 +411,7 @@ export default function CashierPage({
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
           {/* LEFT: sticky rates */}
           <aside className="lg:sticky lg:top-[88px]">
-            <RatesSidebar />
+            <RatesSidebar currentOffice={currentOffice} />
           </aside>
 
           {/* RIGHT: header + ExchangeForm */}
