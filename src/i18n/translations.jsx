@@ -762,6 +762,7 @@ const DICT = {
     xf_partial_payout_sub: "Pay now N, remainder becomes we-owe obligation",
     xf_partial_title: "Partial payout — pay now per output",
     xf_pay_now: "pay now",
+    xf_pay_all: "Full",
     xf_owe: "owe",
 
     // === Income/Expense modal ===
@@ -1604,6 +1605,7 @@ const DICT = {
     xf_partial_payout_sub: "Выплатить N сейчас, остаток — we-owe обязательство",
     xf_partial_title: "Частичная выплата — сейчас по каждому выводу",
     xf_pay_now: "сейчас",
+    xf_pay_all: "Весь",
     xf_owe: "остаток",
 
     // === Income/Expense modal ===
@@ -2444,6 +2446,7 @@ const DICT = {
     xf_partial_payout_sub: "Şimdi N öde, kalan we-owe borç olur",
     xf_partial_title: "Kısmi ödeme — her çıkış için şimdi öde",
     xf_pay_now: "şimdi",
+    xf_pay_all: "Tümü",
     xf_owe: "kalan",
 
     // === Income/Expense modal ===

@@ -1178,6 +1178,24 @@ export default function ExchangeForm({
                         }}
                         className="flex-1 bg-white border border-violet-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 rounded-[8px] px-2 py-1 text-[12px] font-semibold tabular-nums outline-none"
                       />
+                      {/* "Весь" кнопка — одним кликом выставить pay_now=planned
+                          (выдать полностью, без obligation). Показывается пока
+                          now < planned. */}
+                      {planned > 0 && remaining > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPartialPayNow((prev) => ({
+                              ...prev,
+                              [o.id]: String(planned),
+                            }))
+                          }
+                          className="px-1.5 py-1 rounded-[6px] text-[10px] font-bold text-violet-700 bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
+                          title={`Вставить весь остаток: ${fmt(remaining, o.currency)} ${o.currency}`}
+                        >
+                          {t("xf_pay_all") || "Весь"}
+                        </button>
+                      )}
                       <span className="text-[10px] text-slate-400 whitespace-nowrap tabular-nums">
                         / {fmt(planned, o.currency)}
                       </span>
