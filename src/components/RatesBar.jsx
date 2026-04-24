@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   ChevronLeft,
+  ChevronDown,
   Coins,
   Network as NetworkIcon,
   ArrowLeft,
@@ -19,6 +20,7 @@ import {
   Upload,
   AlertTriangle,
   CheckCircle2,
+  Star,
 } from "lucide-react";
 import RatesImportModal from "./RatesImportModal.jsx";
 import RatesCoveragePanel from "./RatesCoveragePanel.jsx";
@@ -89,11 +91,79 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
   const { getRate: getRateRaw, ratesFromBase, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { dict: currencyDict } = useCurrencies();
-  const { isAdmin } = useAuth();
+  const { isAdmin, currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
   const [activeIdx, setActiveIdx] = useState(null);
   const wrapperRef = useRef(null);
   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
+
+  // ---- Favorites + show-all ----
+  // Источник избранного — currentUser.preferences.favoriteRatePairs (сохраняется
+  // в БД через updatePreferences — миграция 0023, public.users.preferences jsonb).
+  // Если юзер ничего не выбрал — фолбэк на FALLBACK_PAIRS (5 популярных).
+  // Expand state — sessionStorage (в рамках сессии), не DB: UI-эфемерность.
+  const favoritePairs = useMemo(() => {
+    const fav = currentUser?.preferences?.favoriteRatePairs;
+    if (!Array.isArray(fav) || fav.length === 0) return null;
+    // Валидируем: каждая запись — массив [string, string]
+    return fav.filter(
+      (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === "string" && typeof p[1] === "string"
+    );
+  }, [currentUser]);
+
+  const favoriteKeys = useMemo(() => {
+    const set = new Set();
+    (favoritePairs || []).forEach(([a, b]) => set.add(`${a}_${b}`));
+    return set;
+  }, [favoritePairs]);
+
+  const [showAll, setShowAll] = useState(() => {
+    try {
+      return sessionStorage.getItem("coinplata.ratesShowAll") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("coinplata.ratesShowAll", showAll ? "1" : "0");
+    } catch {}
+  }, [showAll]);
+
+  // Пары для отображения: showAll → все, иначе favorites (если есть) или top-5
+  // из FALLBACK_PAIRS. Фильтруем FALLBACK через actual tradePairs чтобы не
+  // показать пару которой реально нет в БД (например USDT/GBP ещё не создан).
+  const displayPairs = useMemo(() => {
+    if (showAll) return tradePairs;
+    const available = new Set(tradePairs.map(([a, b]) => `${a}_${b}`));
+    if (favoritePairs && favoritePairs.length > 0) {
+      return favoritePairs.filter(([a, b]) => available.has(`${a}_${b}`));
+    }
+    return FALLBACK_PAIRS.filter(([a, b]) => available.has(`${a}_${b}`));
+  }, [showAll, favoritePairs, tradePairs]);
+
+  const hiddenCount = tradePairs.length - displayPairs.length;
+
+  const toggleFavorite = React.useCallback(
+    async (a, b, e) => {
+      // Останавливаем propagation — клик по ⭐ не должен раскрывать карточку
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      const key = `${a}_${b}`;
+      const current = Array.isArray(currentUser?.preferences?.favoriteRatePairs)
+        ? currentUser.preferences.favoriteRatePairs
+        : [];
+      const next = favoriteKeys.has(key)
+        ? current.filter((p) => !(p?.[0] === a && p?.[1] === b))
+        : [...current, [a, b]];
+      if (updatePreferences) {
+        await updatePreferences({ favoriteRatePairs: next });
+      }
+    },
+    [currentUser, favoriteKeys, updatePreferences]
+  );
 
   // Office-aware getRate — использует override (0021) если активен office tab
   const getRate = React.useCallback(
@@ -118,7 +188,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [activeIdx]);
 
-  const activePair = activeIdx != null ? tradePairs[activeIdx] : null;
+  const activePair = activeIdx != null ? displayPairs[activeIdx] : null;
   const expandedBase = activePair ? activePair[0] : null;
   // Office-aware: dropdown с cross-rates должен использовать override текущего
   // офиса, иначе возникает рассинхрон (topline показывает office-rate, а
@@ -164,11 +234,11 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
           ref={wrapperRef}
           className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
-          {/* Grid из tradePairs (динамический) — каждая карточка содержит
-              ДВА направления. На xl — 5 колонок (10 пар = 2 строки).
-              При большем количестве пар переносится дополнительными строками. */}
+          {/* Grid из displayPairs — favorites (или top-5 популярных) в
+              свёрнутом режиме, все пары при Show all. На xl — 5 колонок.
+              Каждая карточка имеет ⭐ для toggle избранного. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
-            {tradePairs.map(([a, b], idx) => {
+            {displayPairs.map(([a, b], idx) => {
               // Bid/Ask от market rate (без инверсии 1/x).
               // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
               // buy  (bid) = market * (1 - spread) → клиент B→A получает по этой цене
@@ -214,17 +284,47 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                         </span>
                       )}
                     </span>
-                    {Math.abs(spreadPct) >= 0.05 && (
+                    <span className="inline-flex items-center gap-1">
+                      {Math.abs(spreadPct) >= 0.05 && (
+                        <span
+                          className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
+                            isActive
+                              ? "bg-slate-700 text-emerald-300"
+                              : "bg-emerald-50 text-emerald-700"
+                          }`}
+                        >
+                          {spreadPct.toFixed(2)}%
+                        </span>
+                      )}
+                      {/* ⭐ toggle favorite — сохраняется в preferences.favoriteRatePairs */}
                       <span
-                        className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
-                          isActive
-                            ? "bg-slate-700 text-emerald-300"
-                            : "bg-emerald-50 text-emerald-700"
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => toggleFavorite(a, b, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") toggleFavorite(a, b, e);
+                        }}
+                        className={`p-0.5 rounded transition-colors cursor-pointer ${
+                          favoriteKeys.has(`${a}_${b}`)
+                            ? isActive
+                              ? "text-amber-300"
+                              : "text-amber-500"
+                            : isActive
+                            ? "text-slate-600 hover:text-slate-300"
+                            : "text-slate-300 hover:text-slate-500"
                         }`}
+                        title={
+                          favoriteKeys.has(`${a}_${b}`)
+                            ? "Убрать из избранного"
+                            : "В избранное"
+                        }
                       >
-                        {spreadPct.toFixed(2)}%
+                        <Star
+                          className="w-3 h-3"
+                          fill={favoriteKeys.has(`${a}_${b}`) ? "currentColor" : "none"}
+                        />
                       </span>
-                    )}
+                    </span>
                   </div>
 
                   {/* SELL — клиент отдаёт A, получает B. Крупно. */}
@@ -304,6 +404,26 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               </div>
             )}
           </div>
+
+          {/* Show all / Hide extra — показывается только если есть что раскрыть
+              или уже раскрыто. При hidden>0 — кнопка "+N more". В режиме
+              showAll — "Hide extra". */}
+          {(hiddenCount > 0 || showAll) && (
+            <div className="border-t border-slate-100 px-2 py-1.5 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+              >
+                <ChevronDown
+                  className={`w-3 h-3 transition-transform ${showAll ? "rotate-180" : ""}`}
+                />
+                {showAll
+                  ? t("hide_extra_rates") || "Скрыть лишнее"
+                  : `${t("show_all_rates") || "Показать все"} · +${hiddenCount}`}
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

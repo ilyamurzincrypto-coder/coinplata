@@ -380,6 +380,43 @@ export function AuthProvider({ children }) {
     setSettings((prev) => ({ ...prev, ...patch }));
   }, []);
 
+  // Per-user UI preferences — merge в currentUser.preferences + persist в БД
+  // (public.users.preferences jsonb, миграция 0023). RLS self-update policy
+  // из 0001 покрывает: id = auth.uid() может писать в свою row.
+  const updatePreferences = useCallback(
+    async (patch) => {
+      const userId = currentUser?.id;
+      if (!userId) return { ok: false, warning: "no current user" };
+      const base = (currentUser.preferences && typeof currentUser.preferences === "object")
+        ? currentUser.preferences
+        : {};
+      const nextPrefs = { ...base, ...patch };
+      // Optimistic local update
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, preferences: nextPrefs } : u))
+      );
+      if (isSupabaseConfigured) {
+        try {
+          const { error } = await supabase
+            .from("users")
+            .update({ preferences: nextPrefs })
+            .eq("id", userId);
+          if (error) {
+            // eslint-disable-next-line no-console
+            console.warn("[updatePreferences] DB write failed", error);
+            return { ok: false, warning: error.message };
+          }
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("[updatePreferences] threw", err);
+          return { ok: false, warning: String(err) };
+        }
+      }
+      return { ok: true };
+    },
+    [currentUser]
+  );
+
   const canEditTransaction = useCallback(
     (tx) => {
       if (!tx) return false;
@@ -417,6 +454,7 @@ export function AuthProvider({ children }) {
         reactivateUser,
         // misc
         updateSettings,
+        updatePreferences,
         canEditTransaction,
       }}
     >

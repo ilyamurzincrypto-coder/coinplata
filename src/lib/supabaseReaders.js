@@ -489,6 +489,7 @@ export function mapUser(r) {
     activatedAt: r.activated_at,
     active: r.status !== "disabled",
     createdAt: r.created_at?.slice(0, 10) || null,
+    preferences: r.preferences && typeof r.preferences === "object" ? r.preferences : {},
   };
 }
 
