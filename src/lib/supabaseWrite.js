@@ -620,29 +620,22 @@ export async function deleteCategoryRow(id) {
 
 // ---------- users (status updates) ----------
 
-// Обновляет public.users запись. patch: {role, officeId, fullName, ...}.
-// Используется из UsersTab при изменении роли / офиса / имени.
+// Обновляет public.users запись через security-definer RPC admin_update_user
+// (0018). Обходит RLS и даёт чёткие ошибки ("Only owner can promote to
+// owner", "Caller is not admin" и т.д.).
+// patch: {role, officeId, fullName}.
 export async function updateUserRow(userId, patch) {
   assertConfigured();
   const validId = requireUuid(userId, "userId");
-  const row = {};
-  if (patch.role != null) {
-    if (!["owner", "admin", "accountant", "manager"].includes(patch.role)) {
-      throw new Error(`Invalid role: ${patch.role}`);
-    }
-    row.role = patch.role;
+  if (patch.role != null && !["owner", "admin", "accountant", "manager"].includes(patch.role)) {
+    throw new Error(`Invalid role: ${patch.role}`);
   }
-  if (patch.officeId !== undefined) {
-    row.office_id = patch.officeId || null;
-  }
-  if (patch.fullName != null) {
-    row.full_name = String(patch.fullName).trim();
-  }
-  if (Object.keys(row).length === 0) return;
-  const { error } = await supabase
-    .from("users")
-    .update(row)
-    .eq("id", validId);
+  const { error } = await supabase.rpc("admin_update_user", {
+    p_user_id: validId,
+    p_role: patch.role ?? null,
+    p_office_id: patch.officeId === undefined ? null : patch.officeId || null,
+    p_full_name: patch.fullName ?? null,
+  });
   if (error) throw new Error(formatSupabaseError(error, "update user"));
   bumpDataVersion();
 }
