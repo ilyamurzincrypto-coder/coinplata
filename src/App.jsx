@@ -10,6 +10,7 @@ import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import ObligationsPage from "./pages/ObligationsPage.jsx";
+import RatesPage from "./pages/RatesPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -47,6 +48,7 @@ const PAGE_SECTION = {
   accounts: "accounts",
   clients: "clients",
   obligations: "obligations",
+  rates: "rates",
   referrals: "referrals",
   settings: "settings",
 };
@@ -94,7 +96,6 @@ function Root() {
       setExchangeMode("create");
     },
     "/": () => {
-      // Находим поле поиска в активной таблице (rough — первый input[placeholder*=Search])
       const el = document.querySelector('input[placeholder*="Search" i], input[placeholder*="Поиск" i]');
       if (el) el.focus();
     },
@@ -106,6 +107,7 @@ function Root() {
     "g a": () => handlePageChange("accounts"),
     "g l": () => handlePageChange("clients"),
     "g o": () => handlePageChange("obligations"),
+    "g t": () => handlePageChange("rates"),
     "g r": () => handlePageChange("referrals"),
     "g s": () => handlePageChange("settings"),
   });
@@ -155,6 +157,7 @@ function Root() {
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
       {page === "obligations" && canShow("obligations") && <ObligationsPage />}
+      {page === "rates" && canShow("rates") && <RatesPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}

@@ -453,6 +453,8 @@ const DICT = {
     // Clients
     nav_clients: "Clients",
     nav_obligations: "Obligations",
+    nav_rates: "Rates",
+    section_rates: "Rates",
 
     // === Obligations page ===
     oblig_title: "Obligations",
@@ -1271,6 +1273,8 @@ const DICT = {
 
     nav_clients: "Клиенты",
     nav_obligations: "Долги",
+    nav_rates: "Курсы",
+    section_rates: "Курсы",
 
     // === Obligations page ===
     oblig_title: "Долги",
@@ -2087,6 +2091,8 @@ const DICT = {
 
     nav_clients: "Müşteriler",
     nav_obligations: "Borçlar",
+    nav_rates: "Kurlar",
+    section_rates: "Kurlar",
 
     // === Obligations page ===
     oblig_title: "Borçlar",
