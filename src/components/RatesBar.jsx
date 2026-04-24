@@ -117,7 +117,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
 
   const activePair = activeIdx != null ? TRADE_PAIRS[activeIdx] : null;
   const expandedBase = activePair ? activePair[0] : null;
-  const expandData = expandedBase ? ratesFromBase(expandedBase) : [];
+  // Office-aware: dropdown с cross-rates должен использовать override текущего
+  // офиса, иначе возникает рассинхрон (topline показывает office-rate, а
+  // dropdown — global).
+  const expandData = expandedBase ? ratesFromBase(expandedBase, currentOffice) : [];
   const crossPairs = expandData.filter((p) => p.to !== expandedBase);
 
   const handleToggle = (idx) => {

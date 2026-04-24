@@ -1167,14 +1167,23 @@ export async function rpcImportRates(rows, reason) {
 
 // ---------- audit (fire-and-forget) ----------
 
-export async function insertAuditEntry({ action, entity, entityId, summary }) {
+export async function insertAuditEntry({ action, entity, entityId, summary, userId, userName }) {
   if (!isSupabaseConfigured) return;
   try {
-    const { data: sess } = await supabase.auth.getSession();
-    const userId = sess?.session?.user?.id || null;
+    // Предпочитаем явно переданные userId/userName (из currentUser — это
+    // настоящее человеческое имя вроде "E. Kara"). Фолбэк — auth.getSession,
+    // который даёт только email. Раньше писали только email → в UI после
+    // reload из DB было видно почту вместо имени.
+    let effectiveUserId = userId || null;
+    let effectiveUserName = userName || "";
+    if (!effectiveUserId || !effectiveUserName) {
+      const { data: sess } = await supabase.auth.getSession();
+      effectiveUserId = effectiveUserId || sess?.session?.user?.id || null;
+      effectiveUserName = effectiveUserName || sess?.session?.user?.email || "";
+    }
     await supabase.from("audit_log").insert({
-      user_id: userId,
-      user_name: sess?.session?.user?.email || "",
+      user_id: effectiveUserId,
+      user_name: effectiveUserName,
       action,
       entity,
       entity_id: entityId || "",

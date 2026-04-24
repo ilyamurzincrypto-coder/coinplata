@@ -98,7 +98,16 @@ export function AuditProvider({ children }) {
       setLogState((prev) => [entry, ...prev]);
       // Fire-and-forget persist в БД. Не bump-им — audit не влияет на
       // остальные stores, записи подтянутся при следующем reload.
-      insertAuditEntry({ action, entity, entityId, summary });
+      // Передаём реальное имя юзера — иначе в DB писалось бы email
+      // из auth.session, и после reload в журнале был бы email а не имя.
+      insertAuditEntry({
+        action,
+        entity,
+        entityId,
+        summary,
+        userId: currentUser?.id || null,
+        userName: currentUser?.name || "",
+      });
       return entry;
     },
     [currentUser]

@@ -299,20 +299,32 @@ export function RatesProvider({ children }) {
     [pairs, channels, markModifiedIfConfirmed]
   );
 
-  // Список {to, rate} всех default-пар от base currency
+  // Список {to, rate} всех default-пар от base currency.
+  // Если передан officeId — применяем per-office override для каждой пары.
+  // Без officeId — возвращает GLOBAL rates (back-compat).
   const ratesFromBase = useCallback(
-    (base) => {
+    (base, officeId) => {
+      const officeMap =
+        officeId && officeOverrides instanceof Map
+          ? officeOverrides.get(officeId) || null
+          : null;
       const out = [];
       pairs.forEach((p) => {
         if (!p.isDefault) return;
         const fCur = resolveCurrencyOfChannel(channels, p.fromChannelId);
         if (fCur !== base) return;
         const tCur = resolveCurrencyOfChannel(channels, p.toChannelId);
-        if (tCur) out.push({ to: tCur, rate: p.rate });
+        if (!tCur) return;
+        let rate = p.rate;
+        if (officeMap) {
+          const ovr = officeMap.get(rateKey(base, tCur));
+          if (ovr && Number.isFinite(ovr.rate)) rate = ovr.rate;
+        }
+        out.push({ to: tCur, rate });
       });
       return out;
     },
-    [pairs, channels]
+    [pairs, channels, officeOverrides]
   );
 
   // ---------- Pair API (новый) ----------

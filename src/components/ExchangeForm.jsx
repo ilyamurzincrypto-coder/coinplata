@@ -1572,7 +1572,7 @@ function OutputRow({
   const { counterparties } = useTransactions();
   const o = output;
   const isCrypto = currencyDict[o.currency]?.type === "crypto";
-  // Global vs office rate для пары curIn → o.currency — для chip-выбора
+  // Global rate (без override) и эффективный rate текущего офиса
   const globalRate = getRateRaw(curIn, o.currency, null);
   const officeRate = getRateRaw(curIn, o.currency, currentOffice);
   const hasOfficeOverride =
@@ -1580,6 +1580,30 @@ function OutputRow({
     Number.isFinite(globalRate) &&
     Number.isFinite(officeRate) &&
     Math.abs(globalRate - officeRate) > 1e-9;
+
+  // Per-office rate chips: current office + другие офисы с override != global.
+  // Кассир видит "что в Стамбуле 44.8, у меня 44.5, в Анкаре = global" — может
+  // взять другой курс одним кликом.
+  const currentOfficeObj = (offices || []).find((off) => off.id === currentOffice);
+  const currentOfficeChip =
+    currentOfficeObj && Number.isFinite(officeRate)
+      ? {
+          id: currentOfficeObj.id,
+          name: currentOfficeObj.name || "Office",
+          rate: officeRate,
+          hasOverride: hasOfficeOverride,
+        }
+      : null;
+  const otherOfficeChips = (offices || [])
+    .filter((off) => off.id !== currentOffice)
+    .map((off) => {
+      const ovr = getOfficeOverride?.(off.id, curIn, o.currency);
+      if (!ovr || !Number.isFinite(ovr.rate)) return null;
+      // Скрываем если override равен global — chip был бы дублирующим
+      if (Number.isFinite(globalRate) && Math.abs(ovr.rate - globalRate) < 1e-9) return null;
+      return { id: off.id, name: off.name || "Office", rate: ovr.rate };
+    })
+    .filter(Boolean);
 
   // Check wallet status for current address + detected network
   const walletCheck = useMemo(() => {
@@ -1727,32 +1751,22 @@ function OutputRow({
       </div>
 
       {/* Rate source chips — видны всегда.
-            • Office · X.XX — курс с учётом per-office override (если есть)
-            • Global · X.XX — pairs.rate без override (если отличается)
-            • Manual — режим ручного ввода (разблокирует rate input)
-          Клик на Office/Global ставит соответствующий курс + manualRate=false.
-          Если офис = global (нет override), Office chip скрываем чтобы не дублировать. */}
+            • Global · X.XX — rate без office override
+            • <current office name> · X.XX — эффективный курс текущего офиса
+              (override или = global). Всегда виден, чтобы кассир видел
+              "откуда" берётся цифра.
+            • <other office name> · X.XX — для каждого активного офиса, у
+              которого есть override, отличающийся от global. Клик → применить
+              чужой курс к этой ноге (арбитраж / быстрая проверка).
+            • Manual — ручной ввод (разблокирует rate input).
+         Активный chip подсвечен; клик = onUpdate({rate, manualRate:false}). */}
       {(Number.isFinite(officeRate) || Number.isFinite(globalRate)) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
           <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
             {t("xf_rate_source") || "Rate source"}
           </span>
-          {hasOfficeOverride && Number.isFinite(officeRate) && (
-            <button
-              type="button"
-              onClick={() =>
-                onUpdate({ rate: String(officeRate), manualRate: false, touched: false })
-              }
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
-                !o.manualRate && Math.abs(parseFloat(o.rate) - officeRate) < 1e-9
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
-              }`}
-              title={t("xf_use_office_rate") || "Курс этого офиса (override)"}
-            >
-              {t("xf_office_rate") || "Office"} · {Number(officeRate).toFixed(4)}
-            </button>
-          )}
+
+          {/* GLOBAL — всегда */}
           {Number.isFinite(globalRate) && (
             <button
               type="button"
@@ -1769,6 +1783,51 @@ function OutputRow({
               {t("xf_global_rate") || "Global"} · {Number(globalRate).toFixed(4)}
             </button>
           )}
+
+          {/* CURRENT OFFICE — всегда (с индикатором override если отличается) */}
+          {currentOfficeChip && (
+            <button
+              type="button"
+              onClick={() =>
+                onUpdate({ rate: String(currentOfficeChip.rate), manualRate: false, touched: false })
+              }
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+                !o.manualRate && Math.abs(parseFloat(o.rate) - currentOfficeChip.rate) < 1e-9
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : currentOfficeChip.hasOverride
+                  ? "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+              title={
+                currentOfficeChip.hasOverride
+                  ? `${currentOfficeChip.name} · per-office override`
+                  : `${currentOfficeChip.name} · = Global (без override)`
+              }
+            >
+              {currentOfficeChip.name} · {Number(currentOfficeChip.rate).toFixed(4)}
+            </button>
+          )}
+
+          {/* OTHER OFFICES — только если override отличается от global */}
+          {otherOfficeChips.map((row) => (
+            <button
+              key={row.id}
+              type="button"
+              onClick={() =>
+                onUpdate({ rate: String(row.rate), manualRate: false, touched: false })
+              }
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+                !o.manualRate && Math.abs(parseFloat(o.rate) - row.rate) < 1e-9
+                  ? "bg-sky-600 text-white border-sky-600"
+                  : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+              }`}
+              title={`${row.name} · per-office override`}
+            >
+              {row.name} · {Number(row.rate).toFixed(4)}
+            </button>
+          ))}
+
+          {/* MANUAL — всегда */}
           <button
             type="button"
             onClick={() => {
