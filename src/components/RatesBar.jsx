@@ -75,7 +75,9 @@ function channelLabel(ch) {
 // Каждая пара = один блок с ДВУМЯ направлениями (buy / sell). Кассир сразу
 // видит и rate в одну сторону, и в обратную. Dropdown с cross-rates открывается
 // только по КЛИКУ (не hover — чтобы случайные движения мышью не раскрывали).
-const TRADE_PAIRS = [
+// Список пар теперь динамический (useRates.allTradePairs). Fallback ниже —
+// на случай hydration mid-load.
+const FALLBACK_PAIRS = [
   ["USDT", "TRY"],
   ["USDT", "USD"],
   ["USDT", "EUR"],
@@ -84,7 +86,8 @@ const TRADE_PAIRS = [
 ];
 
 export default function RatesBar({ onOpenRates, currentOffice }) {
-  const { getRate: getRateRaw, ratesFromBase, lastUpdated, getOfficeOverride } = useRates();
+  const { getRate: getRateRaw, ratesFromBase, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
+  const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { dict: currencyDict } = useCurrencies();
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
@@ -115,7 +118,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [activeIdx]);
 
-  const activePair = activeIdx != null ? TRADE_PAIRS[activeIdx] : null;
+  const activePair = activeIdx != null ? tradePairs[activeIdx] : null;
   const expandedBase = activePair ? activePair[0] : null;
   // Office-aware: dropdown с cross-rates должен использовать override текущего
   // офиса, иначе возникает рассинхрон (topline показывает office-rate, а
@@ -161,9 +164,11 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
           ref={wrapperRef}
           className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
-          {/* Grid из TRADE_PAIRS — каждая карточка содержит ДВА направления. */}
+          {/* Grid из tradePairs (динамический) — каждая карточка содержит
+              ДВА направления. Grid col-count держим на 5 — при большем
+              количестве пар просто переносится строками. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
-            {TRADE_PAIRS.map(([a, b], idx) => {
+            {tradePairs.map(([a, b], idx) => {
               // Bid/Ask от market rate (без инверсии 1/x).
               // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
               // buy  (bid) = market * (1 - spread) → клиент B→A получает по этой цене

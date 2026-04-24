@@ -299,6 +299,37 @@ export function RatesProvider({ children }) {
     [pairs, channels, markModifiedIfConfirmed]
   );
 
+  // Все уникальные валютные пары из default pairs — для динамического
+  // отображения в RatesBar / RatesSidebar. Дедуп: (A,B) и (B,A) считаем
+  // одной парой (показываем одной карточкой с двумя направлениями).
+  // Ordering: сначала USDT-пары, потом USD/EUR/GBP/CHF/RUB (по приоритету),
+  // TRY всегда quote. Остальные коды — по алфавиту.
+  const allTradePairs = useMemo(() => {
+    const PRIO = { USDT: 0, USD: 1, EUR: 2, GBP: 3, CHF: 4, RUB: 5, TRY: 999 };
+    const getPrio = (c) => (PRIO[c] !== undefined ? PRIO[c] : 500);
+    const seen = new Set();
+    const out = [];
+    pairs.forEach((p) => {
+      if (!p.isDefault) return;
+      const fCur = resolveCurrencyOfChannel(channels, p.fromChannelId);
+      const tCur = resolveCurrencyOfChannel(channels, p.toChannelId);
+      if (!fCur || !tCur || fCur === tCur) return;
+      const [a, b] =
+        getPrio(fCur) <= getPrio(tCur) ? [fCur, tCur] : [tCur, fCur];
+      const key = `${a}_${b}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push([a, b]);
+    });
+    return out.sort(([a1, b1], [a2, b2]) => {
+      const d = getPrio(a1) - getPrio(a2);
+      if (d !== 0) return d;
+      const d2 = getPrio(b1) - getPrio(b2);
+      if (d2 !== 0) return d2;
+      return a1.localeCompare(a2) || b1.localeCompare(b2);
+    });
+  }, [pairs, channels]);
+
   // Список {to, rate} всех default-пар от base currency.
   // Если передан officeId — применяем per-office override для каждой пары.
   // Без officeId — возвращает GLOBAL rates (back-compat).
@@ -470,6 +501,7 @@ export function RatesProvider({ children }) {
       setRate,
       deleteRate,
       ratesFromBase,
+      allTradePairs,
       lastUpdated,
       // per-office overrides
       officeOverrides,
@@ -501,6 +533,7 @@ export function RatesProvider({ children }) {
       setRate,
       deleteRate,
       ratesFromBase,
+      allTradePairs,
       lastUpdated,
       officeOverrides,
       getOfficeOverride,

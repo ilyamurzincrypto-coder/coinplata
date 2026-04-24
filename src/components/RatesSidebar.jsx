@@ -16,7 +16,9 @@ import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { getTradingRates } from "../utils/tradingRates.js";
 
-const TRADE_PAIRS = [
+// Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
+// После гидрации берём реальный динамический список из useRates.allTradePairs.
+const FALLBACK_PAIRS = [
   ["USDT", "TRY"],
   ["USDT", "USD"],
   ["USDT", "EUR"],
@@ -48,7 +50,8 @@ function shortOfficeName(name) {
 }
 
 export default function RatesSidebar({ currentOffice }) {
-  const { getRate: getRateRaw, lastUpdated, getOfficeOverride } = useRates();
+  const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
+  const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { dict: currencyDict } = useCurrencies();
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
@@ -141,8 +144,8 @@ export default function RatesSidebar({ currentOffice }) {
         })}
       </div>
 
-      <div className="p-2 space-y-1">
-        {TRADE_PAIRS.map(([a, b]) => {
+      <div className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
+        {tradePairs.map(([a, b]) => {
           const { ask: sell, bid: buy } = getTradingRates({
             getRate: getRateForTab,
             isCrypto,
