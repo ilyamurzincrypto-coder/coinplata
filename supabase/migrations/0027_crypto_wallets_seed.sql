@@ -38,8 +38,9 @@ create unique index if not exists accounts_unique_crypto_address
 -- Вставка трёх кошельков, каждый в отдельном блоке чтобы ошибка в одном
 -- не откатывала остальные.
 do $w88$
-declare v_office uuid;
-declare v_rows int := 0;
+declare
+  v_office uuid;
+  v_rows int := 0;
 begin
   select id into v_office from public.offices
     where name ilike 'mark%' and active = true
@@ -64,8 +65,9 @@ end
 $w88$;
 
 do $w89_trc$
-declare v_office uuid;
-declare v_rows int := 0;
+declare
+  v_office uuid;
+  v_rows int := 0;
 begin
   select id into v_office from public.offices
     where (name ilike '%tera%' or name ilike '%lara%') and active = true
@@ -90,8 +92,9 @@ end
 $w89_trc$;
 
 do $w89_erc$
-declare v_office uuid;
-declare v_rows int := 0;
+declare
+  v_office uuid;
+  v_rows int := 0;
 begin
   select id into v_office from public.offices
     where (name ilike '%tera%' or name ilike '%lara%') and active = true
