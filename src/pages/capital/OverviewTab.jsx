@@ -5,7 +5,7 @@
 //   • Office breakdown
 //   • Top clients / Top currencies за период
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Briefcase,
   TrendingUp,
@@ -28,6 +28,9 @@ import { OFFICES, officeName } from "../../store/data.js";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { loadDealPnl } from "../../lib/supabaseReaders.js";
+import { onDataBump } from "../../lib/dataVersion.jsx";
 
 // Считает prev period той же длины, что и текущий range (для momentum).
 function prevRange(range) {
@@ -78,6 +81,29 @@ export default function OverviewTab({ range }) {
   const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();
 
+  // Rate drift: читаем v_deal_pnl (0019) чтобы сравнить recorded profit
+  // с margin в текущих курсах. Загружаем 1 раз + на bumpDataVersion.
+  const [dealPnlMap, setDealPnlMap] = useState(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return undefined;
+    let cancelled = false;
+    const reload = () =>
+      loadDealPnl()
+        .then((m) => {
+          if (!cancelled) setDealPnlMap(m);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[deal pnl view] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
   // Obligations — на сегодня (не фильтруем по range, т.к. это текущий
   // баланс активов/пассивов, а не историческое)
   const obligationsSummary = useMemo(() => {
@@ -106,6 +132,9 @@ export default function OverviewTab({ range }) {
     dailySeries,
     topClients,
     topCurrencies,
+    rateDrift,
+    marginHistoric,
+    marginCurrent,
   } = useMemo(() => {
     const scopedTx = transactions.filter(
       (tx) => tx.status !== "deleted" && inRange(toISODate(tx.date), range)
@@ -114,6 +143,21 @@ export default function OverviewTab({ range }) {
 
     const txVolume = scopedTx.reduce((s, tx) => s + toBase(tx.amtIn, tx.curIn), 0);
     const txProfit = scopedTx.reduce((s, tx) => s + toBase(tx.profit || 0, "USD"), 0);
+
+    // Rate drift: сумма (margin_at_current - margin_in_curIn) по scoped
+    // сделкам, конвертированная в base через curIn. Положительная дельта =
+    // "если бы все сделки были сегодня по текущим курсам, маржа была бы выше".
+    let marginHistoric = 0;
+    let marginCurrent = 0;
+    if (dealPnlMap) {
+      scopedTx.forEach((tx) => {
+        const p = dealPnlMap.get(tx.id);
+        if (!p) return;
+        marginHistoric += toBase(p.marginInCurIn || 0, tx.curIn);
+        marginCurrent += toBase(p.marginAtCurrent || 0, tx.curIn);
+      });
+    }
+    const rateDrift = marginCurrent - marginHistoric;
 
     const income = scopedIE
       .filter((e) => e.type === "income")
@@ -197,8 +241,11 @@ export default function OverviewTab({ range }) {
       dailySeries,
       topClients,
       topCurrencies,
+      rateDrift,
+      marginHistoric,
+      marginCurrent,
     };
-  }, [transactions, entries, toBase, range]);
+  }, [transactions, entries, toBase, range, dealPnlMap]);
 
   const sym = curSymbol(base);
 
@@ -295,6 +342,50 @@ export default function OverviewTab({ range }) {
         )}
       </section>
 
+      {/* Rate drift — дельта между historic и current курсами для сделок в периоде */}
+      {dealPnlMap && txCount > 0 && Math.abs(rateDrift) >= 0.01 && (
+        <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2 flex-wrap">
+            <TrendingUp className="w-4 h-4 text-slate-500" />
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              {t("drift_title") || "Rate impact"}
+            </h2>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 text-[10px] font-bold uppercase tracking-wider">
+              <span className="w-1 h-1 rounded-full bg-sky-500" />
+              {t("drift_hypothetical") || "hypothetical"}
+            </span>
+            <span className="text-[11px] text-slate-400">
+              · {t("drift_hint") || "how deals would priced at today's rates"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-5">
+            <DriftStat
+              label={t("drift_recorded") || "Margin (recorded)"}
+              value={`${sym}${fmt(marginHistoric, base)}`}
+              sub={t("drift_recorded_sub") || "at rates on deal date"}
+              tone="slate"
+            />
+            <DriftStat
+              label={t("drift_now") || "Margin (at current)"}
+              value={`${sym}${fmt(marginCurrent, base)}`}
+              sub={t("drift_now_sub") || "recomputed with today's rates"}
+              tone="slate"
+            />
+            <DriftStat
+              label={t("drift_delta") || "Drift"}
+              value={`${rateDrift >= 0 ? "+" : ""}${sym}${fmt(rateDrift, base)}`}
+              sub={
+                rateDrift >= 0
+                  ? t("drift_positive") || "we'd earn more now"
+                  : t("drift_negative") || "we'd earn less now"
+              }
+              tone={rateDrift >= 0 ? "emerald" : "rose"}
+              emphasize
+            />
+          </div>
+        </section>
+      )}
+
       {/* Office breakdown */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
@@ -390,6 +481,23 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t }) {
           <Sparkline points={sparkline.map((d) => d.profit)} />
         </div>
       )}
+    </div>
+  );
+}
+
+function DriftStat({ label, value, sub, tone, emphasize }) {
+  const toneCls = {
+    emerald: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    rose: "bg-rose-50 border-rose-200 text-rose-700",
+    slate: "bg-slate-50 border-slate-200 text-slate-700",
+  }[tone] || "bg-slate-50 border-slate-200 text-slate-700";
+  return (
+    <div className={`rounded-[12px] border px-4 py-3 ${toneCls} ${emphasize ? "ring-2 ring-slate-900/5" : ""}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-wider opacity-70 mb-1">
+        {label}
+      </div>
+      <div className="text-[22px] font-bold tabular-nums tracking-tight">{value}</div>
+      {sub && <div className="text-[10px] opacity-70 mt-0.5">{sub}</div>}
     </div>
   );
 }
