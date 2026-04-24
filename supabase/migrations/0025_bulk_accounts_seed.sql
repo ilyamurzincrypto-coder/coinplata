@@ -84,7 +84,8 @@ begin
     v_cash_added := 0;
   end if;
 
-  -- 2b. Cash accounts для всех fiat × all active offices (skip existing)
+  -- 2b. Cash accounts для всех fiat × all active offices, КРОМЕ International
+  -- (International — банковский офис, наличных там не держим). Skip existing.
   with inserted as (
     insert into public.accounts
       (office_id, currency_code, type, name,
@@ -94,6 +95,7 @@ begin
     from public.offices o
     cross join public.currencies c
     where o.active = true
+      and o.id is distinct from v_intl
       and c.type = 'fiat'
       and c.active = true
       and not exists (

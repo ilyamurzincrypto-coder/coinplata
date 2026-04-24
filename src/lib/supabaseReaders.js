@@ -142,7 +142,13 @@ export async function loadAccounts() {
     bankRef: r.bank_ref,
     address: r.address,
     network: r.network_id,
-    channelId: r.network_id, // совместимость: для crypto channelId === networkId
+    // channelId НЕ ставим из r.network_id — это значения типа 'TRC20',
+    // а channel.id имеет формат 'ch_usdt_trc20'. Раньше здесь был
+    // неправильный mapping → resolveAccountChannel возвращал null для
+    // всех DB-loaded crypto accounts ("без соединения" в UI).
+    // Без channelId — fallback derivation по (currency, type, network)
+    // корректно находит channel.
+    channelId: null,
     isDeposit: r.is_deposit || false,
     isWithdrawal: r.is_withdrawal || false,
     lastCheckedBlock: num(r.last_checked_block),
