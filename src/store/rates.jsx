@@ -362,13 +362,12 @@ export function RatesProvider({ children }) {
 
   // ---------- Pair API (новый) ----------
 
-  // Добавить пару. Если default для этой пары валют уже есть — новая создаётся как non-default.
-  // В DB-режиме параллельно пишем в public.pairs (INSERT). Раньше только
-  // обновлялся local state → после refresh loadPairs возвращал из БД
-  // без свежедобавленной пары, юзерские quick-add'ы из Coverage panel
-  // (обычно с rate=1) пропадали.
+  // Добавить пару. Async в DB-режиме: awaits rpcCreatePair и возвращает
+  // { ok, warning? } только после успешного persist. Callers (AddPairPanel)
+  // обязаны await. Раньше был fire-and-forget — пары тихо пропадали если
+  // RPC падала (0031 не применён / RLS / invalid currency / etc.).
   const addPair = useCallback(
-    ({ fromChannelId, toChannelId, rate, priority = 50 }) => {
+    async ({ fromChannelId, toChannelId, rate, priority = 50 }) => {
       const fromCh = channels.find((c) => c.id === fromChannelId);
       const toCh = channels.find((c) => c.id === toChannelId);
       if (!fromCh || !toCh) {
@@ -385,7 +384,34 @@ export function RatesProvider({ children }) {
         fromCh.currencyCode,
         toCh.currencyCode
       );
-      // Оптимистичный local insert (чтобы UI сразу показал пару)
+
+      // DB mode: await RPC create_pair, только на успех пишем в local state.
+      if (isSupabaseConfigured) {
+        try {
+          await rpcCreatePair({
+            fromCurrency: fromCh.currencyCode,
+            toCurrency: toCh.currencyCode,
+            baseRate,
+            spreadPercent: 0,
+            priority,
+          });
+          // bump внутри rpcCreatePair — loadPairs перезагрузит DB rows,
+          // наша пара появится с реальным uuid. Local setPairs не нужен —
+          // dup был бы удалён bump'ом всё равно.
+          setLastUpdated(new Date());
+          markModifiedIfConfirmed();
+          emitToast("success", `Pair ${fromCh.currencyCode}→${toCh.currencyCode} saved`);
+          return { ok: true };
+        } catch (err) {
+          const msg = err?.message || String(err);
+          // eslint-disable-next-line no-console
+          console.error("[addPair] DB persist failed", msg);
+          emitToast("error", `Pair save failed: ${msg}`);
+          return { ok: false, warning: msg };
+        }
+      }
+
+      // Demo mode — только local state, без DB.
       setPairs((prev) => [
         ...prev,
         {
@@ -399,36 +425,6 @@ export function RatesProvider({ children }) {
       ]);
       setLastUpdated(new Date());
       markModifiedIfConfirmed();
-
-      // DB-режим: persist через security-definer RPC create_pair (0031).
-      // Раньше прямой insert в public.pairs молча упирался в RLS
-      // ref_write_admin policy и пара исчезала после refresh. RPC
-      // обходит RLS, проверяет caller role, бросает понятные ошибки.
-      // При фейле показываем toast И откатываем local state, чтобы не
-      // вводить юзера в заблуждение "вижу пару, а её нет".
-      if (isSupabaseConfigured) {
-        (async () => {
-          try {
-            await rpcCreatePair({
-              fromCurrency: fromCh.currencyCode,
-              toCurrency: toCh.currencyCode,
-              baseRate,
-              spreadPercent: 0,
-              priority,
-            });
-            // bump в rpcCreatePair уже дёрнут — loadPairs подтянет реальную row
-          } catch (err) {
-            const msg = err?.message || String(err);
-            // eslint-disable-next-line no-console
-            console.warn("[addPair] DB persist failed", msg);
-            emitToast("error", `Pair save failed: ${msg}`);
-            // Откатываем local state — иначе пользователь будет видеть
-            // "виртуальную" пару которой на самом деле нет в БД
-            setPairs((prev) => prev.filter((p) => p.id !== id));
-          }
-        })();
-      }
-
       return { ok: true, id };
     },
     [channels, pairs, markModifiedIfConfirmed]

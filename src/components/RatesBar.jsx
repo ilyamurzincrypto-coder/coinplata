@@ -1341,21 +1341,27 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
     toChannelId &&
     parseFloat(rate) > 0;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const res = addPair({ fromChannelId, toChannelId, rate, priority: 10 });
-    if (!res.ok) return;
-    const fromCh = channels.find((c) => c.id === fromChannelId);
-    const toCh = channels.find((c) => c.id === toChannelId);
-    logAudit({
-      action: "create",
-      entity: "rate",
-      entityId: rateKey(fromCurrency, toCurrency),
-      summary: `Added pair ${fromCurrency} (${channelLabel(fromCh)}) → ${toCurrency} (${channelLabel(
-        toCh
-      )}) @ ${rate}`,
-    });
-    onBack();
+  const [submitting, setSubmitting] = useState(false);
+  const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await addPair({ fromChannelId, toChannelId, rate, priority: 10 });
+      if (!res.ok) return;
+      const fromCh = channels.find((c) => c.id === fromChannelId);
+      const toCh = channels.find((c) => c.id === toChannelId);
+      logAudit({
+        action: "create",
+        entity: "rate",
+        entityId: rateKey(fromCurrency, toCurrency),
+        summary: `Added pair ${fromCurrency} (${channelLabel(fromCh)}) → ${toCurrency} (${channelLabel(
+          toCh
+        )}) @ ${rate}`,
+      });
+      onBack();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

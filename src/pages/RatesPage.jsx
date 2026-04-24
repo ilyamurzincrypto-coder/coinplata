@@ -781,17 +781,23 @@ function AddPairForm({ initFrom, initTo, onDone }) {
   const duplicate = pairs.some((p) => p.fromChannelId === fromChannelId && p.toChannelId === toChannelId);
   const canSubmit = !sameCurrency && !duplicate && fromChannelId && toChannelId && parseFloat(rate) > 0;
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
-    const res = addPair({ fromChannelId, toChannelId, rate, priority: 10 });
-    if (!res.ok) return;
-    logAudit({
-      action: "create",
-      entity: "pair",
-      entityId: `${fromCurrency}_${toCurrency}`,
-      summary: `Added pair ${fromCurrency}→${toCurrency}: ${rate}`,
-    });
-    onDone?.();
+  const [submitting, setSubmitting] = React.useState(false);
+  const handleSubmit = async () => {
+    if (!canSubmit || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await addPair({ fromChannelId, toChannelId, rate, priority: 10 });
+      if (!res.ok) return;
+      logAudit({
+        action: "create",
+        entity: "pair",
+        entityId: `${fromCurrency}_${toCurrency}`,
+        summary: `Added pair ${fromCurrency}→${toCurrency}: ${rate}`,
+      });
+      onDone?.();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
