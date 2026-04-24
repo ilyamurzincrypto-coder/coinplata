@@ -253,6 +253,24 @@ function mapLegToOutput(r) {
 
 // Грузим deals + legs отдельными запросами и склеиваем по deal_id.
 // Для UI shape: tx.outputs = sorted legs.
+// Historic PnL per deal — из view v_deal_pnl (0019).
+// Возвращает Map<dealId, {profitRecordedUsd, marginInCurIn, marginAtCurrent}>.
+export async function loadDealPnl() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb.from("v_deal_pnl").select("*");
+  if (error) throw error;
+  const m = new Map();
+  (data || []).forEach((r) => {
+    m.set(r.deal_id, {
+      profitRecordedUsd: num(r.profit_recorded_usd),
+      marginInCurIn: num(r.margin_in_curin),
+      marginAtCurrent: num(r.margin_at_current_rates),
+      rateSnapshotId: r.rate_snapshot_id || null,
+    });
+  });
+  return m;
+}
+
 export async function loadDealsWithLegs(usersById = {}) {
   const sb = ensureSupabase();
   const [dealsRes, legsRes] = await Promise.all([
