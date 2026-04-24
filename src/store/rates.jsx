@@ -121,27 +121,53 @@ export function RatesProvider({ children }) {
       loadPairs()
         .then((dbPairs) => {
           if (cancelled) return;
-          if (!Array.isArray(dbPairs) || dbPairs.length === 0) return;
+          if (!Array.isArray(dbPairs)) return;
+          // ПОЛНАЯ замена state — раньше делали merge только по seed pairs,
+          // новые пары (USD→CHF etc.) из БД игнорировались и тихо исчезали
+          // после refresh. Теперь строим pairs state целиком из dbPairs.
+          // Для каждой pair резолвим fromChannelId/toChannelId по валюте:
+          // используем текущий channels list (стейт хранит default + user-added),
+          // с fallback на SEED_CHANNELS и synthetic id если вообще ничего.
           setPairs((prev) => {
-            const next = prev.map((p) => ({ ...p }));
-            const channelCurrency = (chId) =>
-              SEED_CHANNELS.find((c) => c.id === chId)?.currencyCode;
-            dbPairs.forEach((db) => {
-              const match = next.find(
+            const channelForCurrency = (code) => {
+              // 1. Пытаемся сохранить channel из prev если пара уже была
+              const prevMatch = prev.find(
                 (p) =>
                   p.isDefault &&
-                  channelCurrency(p.fromChannelId) === db.fromCurrency &&
-                  channelCurrency(p.toChannelId) === db.toCurrency
+                  (prev.find((pp) => pp.id === p.id)?.fromChannelId || "") &&
+                  p.fromChannelId &&
+                  SEED_CHANNELS.find((c) => c.id === p.fromChannelId)?.currencyCode === code
               );
-              if (match) {
-                match.rate = db.rate;
-                match.baseRate = db.baseRate;
-                match.spreadPercent = db.spreadPercent;
-                match.dbId = db.id;
-                match.updatedAt = db.updatedAt;
-              }
+              if (prevMatch?.fromChannelId) return prevMatch.fromChannelId;
+              // 2. Ищем в current channels state (добавленные user'ом тоже здесь)
+              const fromChannels = channels.filter((c) => c.currencyCode === code);
+              const def = fromChannels.find((c) => c.isDefaultForCurrency) || fromChannels[0];
+              if (def?.id) return def.id;
+              // 3. Synthetic id для сохранения структуры (не ломает getRate)
+              return `ch_${code.toLowerCase()}_auto`;
+            };
+            return dbPairs.map((db) => {
+              const keyForwardId = `p_${db.fromCurrency}_${db.toCurrency}_db`;
+              const existing = prev.find(
+                (p) =>
+                  p.dbId === db.id ||
+                  (SEED_CHANNELS.find((c) => c.id === p.fromChannelId)?.currencyCode === db.fromCurrency &&
+                    SEED_CHANNELS.find((c) => c.id === p.toChannelId)?.currencyCode === db.toCurrency &&
+                    p.isDefault === db.isDefault)
+              );
+              return {
+                id: existing?.id || keyForwardId,
+                fromChannelId: existing?.fromChannelId || channelForCurrency(db.fromCurrency),
+                toChannelId: existing?.toChannelId || channelForCurrency(db.toCurrency),
+                rate: db.rate,
+                baseRate: db.baseRate,
+                spreadPercent: db.spreadPercent,
+                isDefault: db.isDefault,
+                priority: db.priority,
+                dbId: db.id,
+                updatedAt: db.updatedAt,
+              };
             });
-            return next;
           });
           setLastUpdated(new Date());
         })
@@ -155,6 +181,7 @@ export function RatesProvider({ children }) {
       cancelled = true;
       unsub();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Per-office overrides loader (0021)
