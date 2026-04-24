@@ -518,40 +518,47 @@ export async function deleteExpenseById(id) {
 
 // ---------- pairs (rates + spread editor) ----------
 
-// Обновляем pair по связке (from_currency, to_currency). База рыночный rate
-// + spread %. Итоговый rate пересчитывается generated column на сервере.
-// Либо baseRate, либо spreadPercent можно передать null/undefined — тогда
-// только другое поле обновится.
+// Обновляем pair через security-definer RPC update_pair (0037) — раньше
+// был прямой .from("pairs").update() через PostgREST, упирался в RLS
+// ref_update_admin (только owner/admin) и терял сетевые ошибки в общем
+// TypeError Fetch. RPC обходит RLS, пускает accountant, бросает clear
+// exceptions (в т.ч. P0002 "No default pair found" если пары нет).
 export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent }) {
   assertConfigured();
   const from = requireCurrency(fromCurrency, "fromCurrency");
   const to = requireCurrency(toCurrency, "toCurrency");
-  const patch = {};
+  let baseRateNum = null;
+  let spreadNum = null;
   if (baseRate != null) {
     const n = Number(baseRate);
     if (!Number.isFinite(n) || n <= 0) throw new Error("baseRate: must be > 0");
-    patch.base_rate = n;
+    baseRateNum = n;
   }
   if (spreadPercent != null) {
     const s = Number(spreadPercent);
     if (!Number.isFinite(s)) throw new Error("spreadPercent: invalid");
-    patch.spread_percent = s;
+    spreadNum = s;
   }
-  if (Object.keys(patch).length === 0) return;
+  if (baseRateNum == null && spreadNum == null) return;
 
-  // Snapshot теперь пишется автоматически через DB trigger
-  // (0017 auto_snapshot_on_pair_change) — убрали ручную запись отсюда,
-  // иначе получался дубль (frontend snapshot + trigger snapshot).
-  // Reason формируется триггером: "auto: pair updated FROM→TO rate=X".
-
-  patch.updated_at = new Date().toISOString();
-  const { error } = await supabase
-    .from("pairs")
-    .update(patch)
-    .eq("from_currency", from)
-    .eq("to_currency", to)
-    .eq("is_default", true);
-  if (error) throw new Error(formatSupabaseError(error, "update pair"));
+  const { error } = await supabase.rpc("update_pair", {
+    p_from: from,
+    p_to: to,
+    p_base_rate: baseRateNum,
+    p_spread: spreadNum,
+  });
+  if (error) {
+    // Явный differentiation сетевых ошибок от RPC-ошибок — чтобы toast
+    // показал не просто "Failed to fetch" а "Network — check Supabase
+    // status or try again".
+    const msg = error?.message || String(error);
+    if (/failed to fetch|network|err_connection/i.test(msg)) {
+      throw new Error(
+        `Network error updating ${from}→${to}: Supabase недоступен. Проверь Dashboard / попробуй снова.`
+      );
+    }
+    throw new Error(formatSupabaseError(error, "update_pair"));
+  }
   bumpDataVersion();
 }
 
