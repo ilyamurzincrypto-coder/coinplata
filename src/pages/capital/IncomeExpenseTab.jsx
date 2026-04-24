@@ -74,6 +74,18 @@ export default function IncomeExpenseTab({ range }) {
     });
   }, [scopedByRange, typeFilter, officeFilter, categoryFilter, search]);
 
+  // Totals по отфильтрованным записям — для footer
+  const totals = useMemo(() => {
+    let income = 0;
+    let expense = 0;
+    scoped.forEach((e) => {
+      const v = toBase(e.amount, e.currency);
+      if (e.type === "income") income += v;
+      else if (e.type === "expense") expense += v;
+    });
+    return { income, expense };
+  }, [scoped, toBase]);
+
   const hasActiveFilters =
     typeFilter !== "all" || officeFilter !== "all" || categoryFilter !== "all" || search.trim();
 

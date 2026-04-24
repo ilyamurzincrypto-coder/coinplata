@@ -252,11 +252,15 @@ export default function OverviewTab({ range }) {
   return (
     <div className="space-y-4">
       {/* Маркировка секции "Факт" — заметный badge перед KPI */}
-      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200">
+      <div
+        className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 border border-emerald-200 cursor-help"
+        title={t("scope_fact_tooltip") || "Показатели ниже рассчитаны только по ЗАВЕРШЁННЫМ сделкам и записанным доходам/расходам. Pending / checking сделки и обязательства НЕ учитываются (для них — секция Долги ниже)."}
+      >
         <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
         <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800">
           {t("scope_fact") || "Факт — только завершённые"}
         </span>
+        <span className="text-[10px] text-emerald-700">ⓘ</span>
       </div>
 
       {/* KPI ряд */}
@@ -302,9 +306,12 @@ export default function OverviewTab({ range }) {
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2 flex-wrap">
           <Scale className="w-4 h-4 text-slate-500" />
           <h2 className="text-[15px] font-semibold tracking-tight">{t("oblig_title")}</h2>
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider">
+          <span
+            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase tracking-wider cursor-help"
+            title={t("scope_plan_tooltip") || "Это НЕ факт, а обязательства. 'They owe' = ожидаемый приток (клиент должен занести), 'We owe' = ожидаемый отток (мы должны выплатить). Net = активы − пассивы."}
+          >
             <span className="w-1 h-1 rounded-full bg-amber-500" />
-            {t("scope_plan") || "план / ожидается"}
+            {t("scope_plan") || "план / ожидается"} ⓘ
           </span>
           <span className="text-[11px] text-slate-400">
             · {obligationsSummary.openCount} {t("oblig_open_obligations")}
@@ -354,8 +361,11 @@ export default function OverviewTab({ range }) {
               <span className="w-1 h-1 rounded-full bg-sky-500" />
               {t("drift_hypothetical") || "hypothetical"}
             </span>
-            <span className="text-[11px] text-slate-400">
-              · {t("drift_hint") || "how deals would priced at today's rates"}
+            <span
+              className="text-[11px] text-slate-400 cursor-help"
+              title={t("drift_tooltip") || "Показывает, на сколько изменились бы показатели сделок, если бы их пересчитать по актуальным курсам. Для наблюдения за курсовым риском — не влияет на фактическую прибыль."}
+            >
+              · {t("drift_hint") || "how deals would priced at today's rates"} ⓘ
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-5">

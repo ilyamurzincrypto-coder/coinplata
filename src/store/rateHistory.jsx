@@ -16,7 +16,7 @@ import {
   useMemo,
   useEffect,
 } from "react";
-import { isSupabaseConfigured } from "../lib/supabase.js";
+import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { loadRateSnapshots } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
@@ -40,9 +40,21 @@ export function RateHistoryProvider({ children }) {
         });
     reload();
     const unsub = onDataBump(reload);
+    // Direct realtime subscribe: любой INSERT в rate_snapshots (включая от
+    // auto-snapshot trigger'а из 0017, который не вызывает bumpDataVersion) —
+    // сразу reload. Требует rate_snapshots в publication (0020).
+    const channel = supabase
+      .channel("cp-rate-snapshots")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "rate_snapshots" },
+        () => reload()
+      )
+      .subscribe();
     return () => {
       cancelled = true;
       unsub();
+      try { supabase.removeChannel(channel); } catch {}
     };
   }, []);
 
