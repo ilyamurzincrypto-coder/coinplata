@@ -71,6 +71,7 @@ function channelLabel(ch) {
   if (ch.kind === "bank") return "Bank";
   if (ch.kind === "sepa") return "SEPA";
   if (ch.kind === "swift") return "SWIFT";
+  if (ch.kind === "qr") return "QR";
   return ch.kind;
 }
 
@@ -1149,12 +1150,15 @@ function AddChannelPanel({ onBack }) {
 
         {!isCrypto && (
           <Field label={t("channel_kind")}>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               <SegBtn active={fiatKind === "cash"} onClick={() => setFiatKind("cash")}>
                 💵 Cash
               </SegBtn>
               <SegBtn active={fiatKind === "bank"} onClick={() => setFiatKind("bank")}>
                 🏦 Bank
+              </SegBtn>
+              <SegBtn active={fiatKind === "qr"} onClick={() => setFiatKind("qr")}>
+                📱 QR
               </SegBtn>
             </div>
           </Field>

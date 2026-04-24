@@ -34,5 +34,6 @@ export function channelShortLabel(channel) {
   if (channel.kind === "bank") return "Bank";
   if (channel.kind === "sepa") return "SEPA";
   if (channel.kind === "swift") return "SWIFT";
+  if (channel.kind === "qr") return "QR";
   return channel.kind;
 }

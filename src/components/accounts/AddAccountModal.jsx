@@ -5,27 +5,31 @@
 // address, network, isDeposit, isWithdrawal прописываются для crypto.
 
 import React, { useState, useEffect, useMemo } from "react";
+import { Copy, Building2 } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { useRates } from "../../store/rates.jsx";
+import { useOffices } from "../../store/offices.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { channelShortLabel } from "../../utils/accountChannel.js";
+import { channelShortLabel, resolveAccountChannel } from "../../utils/accountChannel.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import { insertAccount, withToast } from "../../lib/supabaseWrite.js";
 
 function deriveType(channelKind) {
   if (channelKind === "network") return "crypto";
   if (channelKind === "sepa" || channelKind === "swift") return "bank";
+  if (channelKind === "qr") return "bank"; // QR платежи — тип bank в БД
   return channelKind || "cash";
 }
 
 export default function AddAccountModal({ open, officeId, officeName, prefill, onClose }) {
   const { t } = useTranslation();
-  const { addAccount } = useAccounts();
+  const { addAccount, accounts } = useAccounts();
   const { currencies } = useCurrencies();
   const { channels } = useRates();
+  const { offices } = useOffices();
   const { addEntry: logAudit } = useAudit();
 
   const [currency, setCurrency] = useState("USD");
@@ -73,10 +77,48 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
 
   const selectedChannel = channels.find((c) => c.id === channelId) || null;
   const isCryptoChannel = selectedChannel?.kind === "network";
+  const isQrChannel = selectedChannel?.kind === "qr";
   const isBankChannel =
     selectedChannel?.kind === "bank" ||
     selectedChannel?.kind === "sepa" ||
     selectedChannel?.kind === "swift";
+  // Для bankRef / QR reuse field общая метка — показываем в обоих случаях
+  const showBankRefField = isBankChannel || isQrChannel;
+
+  // Существующие счета выбранной валюты (все офисы) — для quick-reference и
+  // быстрого клонирования. Фильтруем по currency + active. Сортируем:
+  // current office сверху, затем остальные по имени.
+  const existingSameCurrency = useMemo(() => {
+    return accounts
+      .filter((a) => a.currency === currency && a.active)
+      .sort((a, b) => {
+        if (a.officeId === officeId && b.officeId !== officeId) return -1;
+        if (b.officeId === officeId && a.officeId !== officeId) return 1;
+        return (a.name || "").localeCompare(b.name || "");
+      });
+  }, [accounts, currency, officeId]);
+
+  const officeLookup = useMemo(() => {
+    const m = new Map();
+    (offices || []).forEach((o) => m.set(o.id, o.name || "—"));
+    return m;
+  }, [offices]);
+
+  const handleClone = (src) => {
+    // Клонируем конфиг: channel, name (+ " (copy)"), address, bankRef,
+    // deposit/withdrawal. Офис и opening balance не трогаем — они специфичны
+    // для нового счёта.
+    const srcChannel = resolveAccountChannel(src, channels);
+    if (srcChannel) {
+      setChannelId(srcChannel.id);
+    }
+    setName(`${src.name || ""}${src.name ? " (copy)" : ""}`.trim());
+    setAddress(src.address || "");
+    setBankRef(src.bankRef || "");
+    setIsDeposit(src.isDeposit !== false);
+    setIsWithdrawal(src.isWithdrawal !== false);
+    setError("");
+  };
 
   const canSubmit = name.trim().length > 0 && currency && channelId && officeId;
 
@@ -193,6 +235,63 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
           </div>
         </div>
 
+        {/* Существующие счета этой валюты — reference + quick clone.
+            Позволяет не плодить дубли имён, быстро создать "такой же" счёт в
+            другом офисе (кнопка Clone — копирует channel/name/address/bankRef,
+            office и opening balance не трогает). */}
+        {existingSameCurrency.length > 0 && (
+          <div className="border border-slate-200 rounded-[10px] bg-slate-50/60 overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-slate-200 bg-slate-100/60 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">
+                {currency} · {existingSameCurrency.length} existing
+              </span>
+              <span className="text-[10px] text-slate-400">Click Clone to copy config</span>
+            </div>
+            <div className="max-h-[140px] overflow-y-auto divide-y divide-slate-200">
+              {existingSameCurrency.map((a) => {
+                const ch = resolveAccountChannel(a, channels);
+                const sameOffice = a.officeId === officeId;
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-white transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-800 truncate">{a.name}</div>
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                        <Building2 className="w-2.5 h-2.5" />
+                        <span className={sameOffice ? "text-indigo-600 font-semibold" : ""}>
+                          {officeLookup.get(a.officeId) || "—"}
+                        </span>
+                        <span className="text-slate-300">·</span>
+                        <span className="font-mono">{channelShortLabel(ch)}</span>
+                        {(a.address || a.bankRef) && (
+                          <>
+                            <span className="text-slate-300">·</span>
+                            <span className="font-mono truncate">
+                              {(a.address || a.bankRef || "").slice(0, 18)}
+                              {(a.address || a.bankRef || "").length > 18 ? "…" : ""}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleClone(a)}
+                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                      title="Скопировать конфиг: channel, name, адрес/реквизиты"
+                    >
+                      <Copy className="w-3 h-3" />
+                      Clone
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
             {t("acc_name") || "Name"}
@@ -239,18 +338,26 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
           </>
         )}
 
-        {isBankChannel && (
+        {showBankRefField && (
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
-              Bank details (optional)
+              {isQrChannel ? "QR payload / payment link" : "Bank details (optional)"}
             </label>
             <input
               type="text"
               value={bankRef}
               onChange={(e) => setBankRef(e.target.value)}
-              placeholder="IBAN / account number"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+              placeholder={isQrChannel ? "https://… or QR data string" : "IBAN / account number"}
+              className={`w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 outline-none ${
+                isQrChannel ? "text-[12px] font-mono" : "text-[13px]"
+              }`}
             />
+            {isQrChannel && (
+              <p className="text-[10px] text-slate-500 mt-1">
+                Сохраняется как идентификатор QR-платежа. Можно вставить URL страницы оплаты
+                или payload QR-кода.
+              </p>
+            )}
           </div>
         )}
 
