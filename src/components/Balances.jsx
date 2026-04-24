@@ -21,8 +21,16 @@ import { fmt, curSymbol } from "../utils/money.js";
 import ObligationsModal from "./ObligationsModal.jsx";
 
 const NETWORK_RX = /\b(TRC20|ERC20|BEP20)\b/i;
-const detectNetwork = (name) => {
-  if (!name) return "Network";
+// Определение сети crypto-счёта:
+//   1. account.network (из DB network_id) — истинный источник, у новых счетов
+//      всегда есть
+//   2. Fallback — парсим имя (legacy-аккаунты, у которых имя типа "TRC20 Main"
+//      и возможно не было network_id)
+//   3. Последний fallback "Network" — если ничего не нашли
+const detectNetwork = (account) => {
+  const nw = account?.network;
+  if (nw) return String(nw).toUpperCase();
+  const name = account?.name || "";
   const m = name.match(NETWORK_RX);
   return m ? m[1].toUpperCase() : "Network";
 };
@@ -44,7 +52,7 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, currencyDict) {
 
     if (isCrypto) {
       if (!cryptoMap.has(a.currency)) cryptoMap.set(a.currency, new Map());
-      const nw = detectNetwork(a.name);
+      const nw = detectNetwork(a);
       const inner = cryptoMap.get(a.currency);
       const prev = inner.get(nw) || { total: 0, reserved: 0 };
       inner.set(nw, { total: prev.total + total, reserved: prev.reserved + reserved });
