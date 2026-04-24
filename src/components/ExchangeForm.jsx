@@ -1566,6 +1566,12 @@ function OutputRow({
     (from, to) => getRateRaw(from, to, currentOffice),
     [getRateRaw, currentOffice]
   );
+  const { accountsByOffice, accounts } = useAccounts();
+  const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
+  const { findWallet } = useWallets();
+  const { counterparties } = useTransactions();
+  const o = output;
+  const isCrypto = currencyDict[o.currency]?.type === "crypto";
   // Global vs office rate для пары curIn → o.currency — для chip-выбора
   const globalRate = getRateRaw(curIn, o.currency, null);
   const officeRate = getRateRaw(curIn, o.currency, currentOffice);
@@ -1574,12 +1580,6 @@ function OutputRow({
     Number.isFinite(globalRate) &&
     Number.isFinite(officeRate) &&
     Math.abs(globalRate - officeRate) > 1e-9;
-  const { accountsByOffice, accounts } = useAccounts();
-  const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
-  const { findWallet } = useWallets();
-  const { counterparties } = useTransactions();
-  const o = output;
-  const isCrypto = currencyDict[o.currency]?.type === "crypto";
 
   // Check wallet status for current address + detected network
   const walletCheck = useMemo(() => {
