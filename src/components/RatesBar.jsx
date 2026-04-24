@@ -164,10 +164,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
           ref={wrapperRef}
           className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
-          {/* Grid из tradePairs (динамический) — каждая карточка содержит
-              ДВА направления. Grid col-count держим на 5 — при большем
-              количестве пар просто переносится строками. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
+          {/* Grid из tradePairs (динамический). Держим xl:grid-cols-4 —
+              карточки шире и цифры крупнее читаются. При большем количестве
+              пар просто переносится на следующую строку. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 p-2.5 gap-2">
             {tradePairs.map(([a, b], idx) => {
               // Bid/Ask от market rate (без инверсии 1/x).
               // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
@@ -186,24 +186,24 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   key={`${a}-${b}`}
                   type="button"
                   onClick={() => handleToggle(idx)}
-                  className={`text-left px-3.5 py-3 rounded-[12px] transition-all outline-none border ${
+                  className={`text-left px-4 py-3.5 rounded-[14px] transition-all outline-none border ${
                     isActive
-                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]"
-                      : "bg-slate-50 hover:bg-white border-transparent hover:border-slate-200 hover:shadow-[0_2px_8px_-4px_rgba(15,23,42,0.08)]"
+                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_8px_20px_-6px_rgba(15,23,42,0.4)]"
+                      : "bg-slate-50 hover:bg-white border-transparent hover:border-slate-200 hover:shadow-[0_4px_12px_-4px_rgba(15,23,42,0.1)]"
                   }`}
                 >
                   <div
-                    className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center justify-between w-full ${
+                    className={`text-[11px] font-bold tracking-[0.08em] mb-2.5 inline-flex items-center justify-between w-full ${
                       isActive ? "text-slate-300" : "text-slate-500"
                     }`}
                   >
-                    <span className="inline-flex items-center gap-1">
-                      <span>{a}</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-[12px]">{a}</span>
                       <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
-                      <span>{b}</span>
+                      <span className="text-[12px]">{b}</span>
                       {(hasOverride(a, b) || hasOverride(b, a)) && (
                         <span
-                          className={`ml-0.5 text-[8px] font-bold px-1 rounded tracking-wider ${
+                          className={`ml-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded tracking-wider ${
                             isActive
                               ? "bg-indigo-500/30 text-indigo-200"
                               : "bg-indigo-100 text-indigo-700"
@@ -216,7 +216,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     </span>
                     {Math.abs(spreadPct) >= 0.05 && (
                       <span
-                        className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
+                        className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
                           isActive
                             ? "bg-slate-700 text-emerald-300"
                             : "bg-emerald-50 text-emerald-700"
@@ -227,17 +227,17 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     )}
                   </div>
 
-                  {/* SELL — клиент отдаёт A, получает B. Крупно. */}
-                  <div className="flex items-baseline justify-between mb-1">
+                  {/* SELL — клиент отдаёт A, получает B. Крупно, чёрно, главный фокус. */}
+                  <div className="flex items-baseline justify-between mb-1.5">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center ${
+                      className={`text-[11px] font-semibold inline-flex items-center ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      {a} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {b}
+                      {a} <ArrowRight className="w-3 h-3 mx-0.5" /> {b}
                     </span>
                     <span
-                      className={`text-[18px] font-bold tabular-nums tracking-tight leading-none ${
+                      className={`text-[24px] font-extrabold tabular-nums tracking-tight leading-none ${
                         isActive ? "text-white" : "text-slate-900"
                       }`}
                     >
@@ -245,18 +245,18 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     </span>
                   </div>
 
-                  {/* BUY — клиент отдаёт B, получает A. Тот же юнит (B per A). */}
+                  {/* BUY — клиент отдаёт B, получает A. Чуть меньше, но всё ещё читается. */}
                   <div className="flex items-baseline justify-between">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center ${
+                      className={`text-[11px] font-semibold inline-flex items-center ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
+                      {b} <ArrowRight className="w-3 h-3 mx-0.5" /> {a}
                     </span>
                     <span
-                      className={`text-[14px] font-bold tabular-nums tracking-tight leading-none ${
-                        isActive ? "text-slate-200" : "text-slate-600"
+                      className={`text-[17px] font-bold tabular-nums tracking-tight leading-none ${
+                        isActive ? "text-slate-200" : "text-slate-700"
                       }`}
                     >
                       {formatRate(buy)}
