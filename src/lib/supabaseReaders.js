@@ -473,6 +473,26 @@ export async function loadUsers() {
   return (data || []).map(mapUser);
 }
 
+// pending_invites — заявки на приглашение, для которых auth.users ещё не
+// создался (magic-link не клацнули или OTP упал). UsersTab показывает их
+// отдельной секцией, чтобы админ видел "что отправлено, но не доехало".
+export async function loadPendingInvites() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb
+    .from("pending_invites")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    email: r.email,
+    fullName: r.full_name || "",
+    role: r.role || "manager",
+    officeId: r.office_id || null,
+    invitedBy: r.invited_by || null,
+    createdAt: r.created_at,
+  }));
+}
+
 export function mapUser(r) {
   const fullName = r.full_name || r.email || "User";
   const initials = fullName

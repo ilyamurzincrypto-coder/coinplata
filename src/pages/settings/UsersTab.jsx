@@ -6,7 +6,7 @@
 //   — Activate (mock flow — UI для ввода пароля за invited юзера)
 // Нельзя disable себя и последнего owner'а — это проверяется в store.
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   UserPlus,
   Users as UsersIcon,
@@ -19,6 +19,8 @@ import {
   Shield,
   Crown,
   Lock,
+  Mail,
+  Trash2,
 } from "lucide-react";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import Modal from "../../components/ui/Modal.jsx";
@@ -29,6 +31,8 @@ import { useTranslation } from "../../i18n/translations.jsx";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase.js";
 import { useToast } from "../../lib/toast.jsx";
 import { rpcSetUserStatus, updateUserRow, rpcInviteUser, withToast } from "../../lib/supabaseWrite.js";
+import { loadPendingInvites } from "../../lib/supabaseReaders.js";
+import { onDataBump } from "../../lib/dataVersion.jsx";
 
 const STATUS_STYLE = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -102,6 +106,93 @@ export default function UsersTab() {
   const [activateFor, setActivateFor] = useState(null); // user object
   const [changePwFor, setChangePwFor] = useState(null); // user object
   const [toast, setToast] = useState(null);
+  // pending_invites — заявки без auth.users (magic-link не клацнули или
+  // OTP упал). Чтобы админ видел "висящие" приглашения.
+  const [pendingInvites, setPendingInvites] = useState([]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    const reload = () =>
+      loadPendingInvites()
+        .then((rows) => {
+          if (cancelled) return;
+          setPendingInvites(rows || []);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[UsersTab] loadPendingInvites failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
+  // Email'ы которые УЖЕ материализовались в public.users — чтобы не
+  // показывать их в "pending" даже если pending_invites row ещё не удалён.
+  const existingEmails = useMemo(() => {
+    const s = new Set();
+    users.forEach((u) => {
+      if (u.email) s.add(String(u.email).toLowerCase());
+    });
+    return s;
+  }, [users]);
+
+  const visiblePending = useMemo(
+    () =>
+      pendingInvites.filter(
+        (p) => p.email && !existingEmails.has(String(p.email).toLowerCase())
+      ),
+    [pendingInvites, existingEmails]
+  );
+
+  const handleResendInvite = useCallback(
+    async (inv) => {
+      if (!canManage || !inv?.email) return;
+      try {
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email: inv.email,
+          options: {
+            shouldCreateUser: true,
+            emailRedirectTo: window.location.origin,
+          },
+        });
+        if (otpErr) {
+          showToast(`Resend failed: ${otpErr.message}`);
+          return;
+        }
+        showToast("Magic link resent", "success");
+      } catch (err) {
+        showToast(`Resend failed: ${err?.message || String(err)}`);
+      }
+    },
+    [canManage]
+  );
+
+  const handleCancelInvite = useCallback(
+    async (inv) => {
+      if (!canManage || !inv?.email) return;
+      if (!confirm(`Cancel pending invite for ${inv.email}?`)) return;
+      try {
+        const { error } = await supabase
+          .from("pending_invites")
+          .delete()
+          .eq("email", inv.email);
+        if (error) {
+          showToast(`Cancel failed: ${error.message}`);
+          return;
+        }
+        setPendingInvites((prev) => prev.filter((p) => p.email !== inv.email));
+        showToast("Invite cancelled", "success");
+      } catch (err) {
+        showToast(`Cancel failed: ${err?.message || String(err)}`);
+      }
+    },
+    [canManage]
+  );
 
   const activeOffices = useMemo(
     () => offices.filter((o) => o.active !== false && o.status !== "closed"),
@@ -332,6 +423,69 @@ export default function UsersTab() {
           )}
         </div>
       </div>
+
+      {/* Pending invites — заявки без соответствующего auth.users (magic-link
+          не клацнут / OTP упал / юзер ещё не пришёл). Чтобы админ видел
+          "висячие" приглашения и мог их пересоздать/отменить. */}
+      {visiblePending.length > 0 && (
+        <div className="px-5 py-3 border-b border-slate-100 bg-amber-50/40">
+          <div className="flex items-center gap-2 mb-2">
+            <Mail className="w-3.5 h-3.5 text-amber-700" />
+            <span className="text-[11px] font-bold text-amber-900 tracking-[0.12em] uppercase">
+              Pending invites · {visiblePending.length}
+            </span>
+            <span className="text-[11px] text-amber-700">
+              — magic-link отправлен, но юзер ещё не пришёл
+            </span>
+          </div>
+          <div className="space-y-1">
+            {visiblePending.map((inv) => (
+              <div
+                key={inv.email}
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-[10px] border border-amber-200 text-[12px]"
+              >
+                <Mail className="w-3 h-3 text-amber-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-slate-900 truncate">
+                    {inv.fullName || inv.email}
+                    <span className="ml-1.5 text-[10px] font-normal text-slate-500">
+                      {inv.email}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {ROLES[inv.role]?.label || inv.role}
+                    {inv.createdAt && (
+                      <>
+                        {" · "}
+                        {new Date(inv.createdAt).toLocaleString()}
+                      </>
+                    )}
+                  </div>
+                </div>
+                {canManage && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleResendInvite(inv)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-amber-800 hover:text-amber-900 hover:bg-amber-100 transition-colors"
+                      title="Переотправить magic-link"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Resend
+                    </button>
+                    <button
+                      onClick={() => handleCancelInvite(inv)}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-rose-700 hover:text-rose-900 hover:bg-rose-50 transition-colors"
+                      title="Удалить приглашение"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
