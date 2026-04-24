@@ -55,19 +55,25 @@ export default function TopUpModal({ account, onClose }) {
       ? `[${source}] ${note.trim()}`
       : `[${source}]`;
 
+    // source="opening" → DB source_kind='opening' (отдельно от 'topup' в
+    // журнале и истории счёта). Остальные (external/bank/crypto) — source_kind='topup',
+    // метаданные источника остаются в note.
+    const sourceKind = source === "opening" ? "opening" : "topup";
+    const successMsg = source === "opening" ? "Opening balance recorded" : "Top up recorded";
+
     if (isSupabaseConfigured) {
       setBusy(true);
       try {
         const res = await withToast(
-          () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource }),
-          { success: "Top up recorded", errorPrefix: "Top up failed" }
+          () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource, sourceKind }),
+          { success: successMsg, errorPrefix: "Top up failed" }
         );
         if (res.ok) {
           logAudit({
             action: "create",
             entity: "topup",
             entityId: String(res.result || ""),
-            summary: `Top up ${account.name}: +${curSymbol(account.currency)}${fmt(amt, account.currency)} ${account.currency} · source: ${source}`,
+            summary: `${source === "opening" ? "Opening balance" : "Top up"} ${account.name}: +${curSymbol(account.currency)}${fmt(amt, account.currency)} ${account.currency} · source: ${source}`,
           });
           onClose();
         }

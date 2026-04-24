@@ -403,15 +403,17 @@ export async function rpcCreateTransfer({
   return id;
 }
 
-export async function rpcTopUp({ accountId, amount, note }) {
+export async function rpcTopUp({ accountId, amount, note, sourceKind }) {
   assertConfigured();
   const acc = requireUuid(accountId, "accountId");
   const amt = requirePositive(amount, "amount");
+  const kind = sourceKind === "opening" ? "opening" : "topup";
   const id = unwrap(
     await supabase.rpc("topup_account", {
       p_account_id: acc,
       p_amount: amt,
       p_note: note || "",
+      p_source_kind: kind,
     }),
     "topup_account"
   );
