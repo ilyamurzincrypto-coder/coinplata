@@ -664,6 +664,8 @@ const DICT = {
     cat_parent_none: "none (top-level)",
     cat_parent_hint_top: "Top-level category — no parent.",
     cat_parent_hint_sub: "Subcategory — nests under the selected parent.",
+    cat_type_locked_subcategory: "Type of subcategory must match the parent",
+    cat_type_locked_children: "This category has subcategories — changing type would orphan them",
 
     // === P&L / Cashflow ===
     pnl_revenue: "Revenue",
@@ -1485,6 +1487,8 @@ const DICT = {
     cat_parent_none: "нет (верхний уровень)",
     cat_parent_hint_top: "Верхнеуровневая категория — без родителя.",
     cat_parent_hint_sub: "Подкатегория — вложена под выбранную родительскую.",
+    cat_type_locked_subcategory: "Тип подкатегории должен совпадать с родителем",
+    cat_type_locked_children: "У этой категории есть подкатегории — смена типа сделает их orphans",
 
     // === P&L / Cashflow ===
     pnl_revenue: "Выручка",
@@ -2304,6 +2308,8 @@ const DICT = {
     cat_parent_none: "yok (üst düzey)",
     cat_parent_hint_top: "Üst düzey kategori — ebeveyn yok.",
     cat_parent_hint_sub: "Alt kategori — seçilen üst kategoriye iç içe.",
+    cat_type_locked_subcategory: "Alt kategori tipi ana kategori ile eşleşmeli",
+    cat_type_locked_children: "Bu kategorinin alt kategorileri var — tip değiştirmek onları orphan yapar",
 
     // === P&L / Cashflow ===
     pnl_revenue: "Gelir",

@@ -83,14 +83,25 @@ const TRADE_PAIRS = [
   ["USD", "TRY"],
 ];
 
-export default function RatesBar({ onOpenRates }) {
-  const { getRate, ratesFromBase, lastUpdated } = useRates();
+export default function RatesBar({ onOpenRates, currentOffice }) {
+  const { getRate: getRateRaw, ratesFromBase, lastUpdated, getOfficeOverride } = useRates();
   const { dict: currencyDict } = useCurrencies();
   const { isAdmin } = useAuth();
   const { t } = useTranslation();
   const [activeIdx, setActiveIdx] = useState(null);
   const wrapperRef = useRef(null);
   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
+
+  // Office-aware getRate — использует override (0021) если активен office tab
+  const getRate = React.useCallback(
+    (from, to) => getRateRaw(from, to, currentOffice),
+    [getRateRaw, currentOffice]
+  );
+  // Проверка override для конкретной пары — для UI индикатора "override"
+  const hasOverride = React.useCallback(
+    (from, to) => !!getOfficeOverride?.(currentOffice, from, to),
+    [getOfficeOverride, currentOffice]
+  );
 
   // Закрытие dropdown при клике вне блока.
   useEffect(() => {
@@ -182,6 +193,18 @@ export default function RatesBar({ onOpenRates }) {
                       <span>{a}</span>
                       <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
                       <span>{b}</span>
+                      {(hasOverride(a, b) || hasOverride(b, a)) && (
+                        <span
+                          className={`ml-0.5 text-[8px] font-bold px-1 rounded tracking-wider ${
+                            isActive
+                              ? "bg-indigo-500/30 text-indigo-200"
+                              : "bg-indigo-100 text-indigo-700"
+                          }`}
+                          title="Per-office override: rate различается от global"
+                        >
+                          OFC
+                        </span>
+                      )}
                     </span>
                     {Math.abs(spreadPct) >= 0.05 && (
                       <span

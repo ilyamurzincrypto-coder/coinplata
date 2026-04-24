@@ -331,7 +331,7 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
         >
-          <RatesBar onOpenRates={openRates} />
+          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
           <Balances
             currentOffice={currentOffice}
             scope={balanceScope}

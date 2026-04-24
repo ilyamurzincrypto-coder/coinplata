@@ -362,6 +362,22 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
   const canSubmit = name.trim().length > 0;
   const isSubcategory = !!parentId;
 
+  // Есть ли у редактируемой категории дочерние подкатегории?
+  // Если да — менять type нельзя (orphan'ы ломают иерархию).
+  const hasChildren = useMemo(() => {
+    if (initial?.kind !== "edit" || !initial?.data?.id || !allCategories) return false;
+    return allCategories.some((c) => c.parentId === initial.data.id);
+  }, [initial, allCategories]);
+
+  // Тип-toggle заблокирован если:
+  //   • Это subcategory (type должен совпадать с parent — парент фильтрован
+  //     по type, поэтому смена type без сброса parent создаёт mismatch)
+  //   • У редактируемой категории есть дети — смена type сделает их orphan
+  const typeLocked = isSubcategory || hasChildren;
+  const typeLockedReason = hasChildren
+    ? t("cat_type_locked_children") || "У этой категории есть подкатегории — смена типа сделает их orphans"
+    : t("cat_type_locked_subcategory") || "Тип подкатегории должен совпадать с родителем";
+
   return (
     <Modal
       open={open}
@@ -384,12 +400,19 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
-            <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full">
+            <div
+              className={`inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full ${
+                typeLocked ? "opacity-60 cursor-not-allowed" : ""
+              }`}
+              title={typeLocked ? typeLockedReason : undefined}
+            >
               {["expense", "income"].map((tp) => (
                 <button
                   key={tp}
                   type="button"
+                  disabled={typeLocked && type !== tp}
                   onClick={() => {
+                    if (typeLocked) return;
                     setType(tp);
                     // Сбрасываем parent если поменяли тип
                     if (parentId) {
@@ -399,12 +422,18 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
                   }}
                   className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
                     type === tp ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
-                  }`}
+                  } ${typeLocked && type !== tp ? "cursor-not-allowed" : ""}`}
                 >
                   {tp === "expense" ? t("cat_type_expense") : t("cat_type_income")}
                 </button>
               ))}
             </div>
+            {typeLocked && (
+              <div className="text-[10px] text-amber-700 mt-1 flex items-start gap-1">
+                <span>⚠</span>
+                <span>{typeLockedReason}</span>
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">{t("cat_group")}</label>
