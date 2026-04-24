@@ -130,16 +130,32 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
     } catch {}
   }, [showAll]);
 
-  // Пары для отображения: showAll → все, иначе favorites (если есть) или top-5
-  // из FALLBACK_PAIRS. Фильтруем FALLBACK через actual tradePairs чтобы не
-  // показать пару которой реально нет в БД (например USDT/GBP ещё не создан).
+  // Пары для отображения в свёрнутом состоянии:
+  //   • favorites ≥ MIN_COLLAPSED → показываем все favorites
+  //   • favorites < MIN_COLLAPSED → favorites + популярные (FALLBACK_PAIRS)
+  //     + остальные tradePairs, обрезаем до MIN_COLLAPSED
+  //   • нет favorites → MIN_COLLAPSED самых популярных
+  // Все кандидаты фильтруем через actual tradePairs, чтобы не показать
+  // пару которой реально нет в БД (например её удалили).
+  const MIN_COLLAPSED = 5;
   const displayPairs = useMemo(() => {
     if (showAll) return tradePairs;
     const available = new Set(tradePairs.map(([a, b]) => `${a}_${b}`));
-    if (favoritePairs && favoritePairs.length > 0) {
-      return favoritePairs.filter(([a, b]) => available.has(`${a}_${b}`));
-    }
-    return FALLBACK_PAIRS.filter(([a, b]) => available.has(`${a}_${b}`));
+    const userFavs = (favoritePairs || []).filter(([a, b]) => available.has(`${a}_${b}`));
+    if (userFavs.length >= MIN_COLLAPSED) return userFavs;
+
+    // Заполняем до минимума: сначала популярные, потом остальные
+    const shownKeys = new Set(userFavs.map(([a, b]) => `${a}_${b}`));
+    const fillers = [];
+    const pushIfNew = ([a, b]) => {
+      const k = `${a}_${b}`;
+      if (shownKeys.has(k) || !available.has(k)) return;
+      shownKeys.add(k);
+      fillers.push([a, b]);
+    };
+    FALLBACK_PAIRS.forEach(pushIfNew);
+    tradePairs.forEach(pushIfNew);
+    return [...userFavs, ...fillers].slice(0, MIN_COLLAPSED);
   }, [showAll, favoritePairs, tradePairs]);
 
   const hiddenCount = tradePairs.length - displayPairs.length;
