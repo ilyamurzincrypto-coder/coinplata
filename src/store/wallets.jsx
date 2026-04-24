@@ -21,6 +21,7 @@ import {
 } from "react";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadClientWallets } from "../lib/supabaseReaders.js";
+import { upsertClientWalletRow } from "../lib/supabaseWrite.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
 const WalletsContext = createContext(null);
@@ -108,14 +109,42 @@ export function WalletsProvider({ children }) {
     [findWallet]
   );
 
+  // Supabase-aware wrapper: local state update + fire-and-forget DB write.
+  const upsertWalletPersisted = useCallback(
+    (input) => {
+      const res = upsertWallet(input);
+      if (res.ok && isSupabaseConfigured) {
+        // Fire-and-forget — если упадёт, local state уже обновлён,
+        // следующий reload подтянет корректное состояние из БД.
+        upsertClientWalletRow({
+          clientId: input.clientId,
+          address: input.address,
+          network: input.network,
+        }).catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[upsertClientWallet DB]", err);
+        });
+      }
+      return res;
+    },
+    [upsertWallet]
+  );
+
   const walletsByClient = useCallback(
     (clientId) => wallets.filter((w) => w.clientId === clientId),
     [wallets]
   );
 
   const value = useMemo(
-    () => ({ wallets, upsertWallet, findWallet, walletsByClient }),
-    [wallets, upsertWallet, findWallet, walletsByClient]
+    () => ({
+      wallets,
+      // В прод-режиме upsertWallet = upsertWalletPersisted (БД+local).
+      // В demo — чистый local update.
+      upsertWallet: isSupabaseConfigured ? upsertWalletPersisted : upsertWallet,
+      findWallet,
+      walletsByClient,
+    }),
+    [wallets, upsertWallet, upsertWalletPersisted, findWallet, walletsByClient]
   );
 
   return <WalletsContext.Provider value={value}>{children}</WalletsContext.Provider>;

@@ -14,7 +14,15 @@ import { useAudit } from "../../store/audit.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
 import { channelShortLabel } from "../../utils/accountChannel.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { insertCategory, updateCategoryRow, deleteCategoryRow, withToast } from "../../lib/supabaseWrite.js";
+import {
+  insertCategory,
+  updateCategoryRow,
+  deleteCategoryRow,
+  insertCurrencyRow,
+  updateCurrencyRow,
+  deleteCurrencyRow,
+  withToast,
+} from "../../lib/supabaseWrite.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 
 const SECTIONS = [
@@ -454,34 +462,72 @@ function CurrenciesSection() {
   const { addEntry: logAudit } = useAudit();
   const [editing, setEditing] = useState(null);
 
-  const handleSave = (payload) => {
+  const handleSave = async (payload) => {
     if (editing?.kind === "new") {
-      const res = addCurrency(payload);
-      if (res.ok) {
-        logAudit({
-          action: "create",
-          entity: "currency",
-          entityId: res.currency.code,
-          summary: `Added currency ${res.currency.code} (${res.currency.type})`,
-        });
+      if (isSupabaseConfigured) {
+        const res = await withToast(
+          () => insertCurrencyRow(payload),
+          { success: "Currency added", errorPrefix: "Currency add failed" }
+        );
+        if (res.ok && res.result) {
+          logAudit({
+            action: "create",
+            entity: "currency",
+            entityId: res.result.code,
+            summary: `Added currency ${res.result.code} (${res.result.type})`,
+          });
+        }
       } else {
-        alert(res.warning);
+        const res = addCurrency(payload);
+        if (res.ok) {
+          logAudit({
+            action: "create",
+            entity: "currency",
+            entityId: res.currency.code,
+            summary: `Added currency ${res.currency.code} (${res.currency.type})`,
+          });
+        } else {
+          alert(res.warning);
+        }
       }
     } else if (editing?.data?.code) {
-      updateCurrency(editing.data.code, payload);
-      logAudit({
-        action: "update",
-        entity: "currency",
-        entityId: editing.data.code,
-        summary: `Updated currency ${editing.data.code}`,
-      });
+      if (isSupabaseConfigured) {
+        const res = await withToast(
+          () => updateCurrencyRow(editing.data.code, payload),
+          { success: "Currency updated", errorPrefix: "Update failed" }
+        );
+        if (res.ok) {
+          logAudit({
+            action: "update",
+            entity: "currency",
+            entityId: editing.data.code,
+            summary: `Updated currency ${editing.data.code}`,
+          });
+        }
+      } else {
+        updateCurrency(editing.data.code, payload);
+        logAudit({
+          action: "update",
+          entity: "currency",
+          entityId: editing.data.code,
+          summary: `Updated currency ${editing.data.code}`,
+        });
+      }
     }
     setEditing(null);
   };
 
-  const handleDelete = (cur) => {
+  const handleDelete = async (cur) => {
     if (!confirm(`Delete currency ${cur.code}? Existing accounts will keep the currency code but no dictionary entry.`)) return;
-    removeCurrency(cur.code);
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => deleteCurrencyRow(cur.code),
+        { success: "Currency deleted", errorPrefix: "Delete failed" }
+      );
+      if (!res.ok) return;
+    } else {
+      removeCurrency(cur.code);
+    }
     logAudit({
       action: "delete",
       entity: "currency",

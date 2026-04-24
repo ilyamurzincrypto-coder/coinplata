@@ -537,34 +537,10 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
   }
   if (Object.keys(patch).length === 0) return;
 
-  // Snapshot перед UPDATE — чтобы одиночное изменение курса тоже попало
-  // в Rate history. Reason включает пару + новое значение. Fire-and-forget:
-  // если упадёт, основной UPDATE всё равно выполнится.
-  try {
-    const { data: currentPairs } = await supabase
-      .from("pairs")
-      .select("from_currency, to_currency, rate")
-      .eq("is_default", true);
-    if (currentPairs && currentPairs.length > 0) {
-      const ratesMap = {};
-      currentPairs.forEach((p) => {
-        ratesMap[`${p.from_currency}_${p.to_currency}`] = Number(p.rate);
-      });
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess?.session?.user?.id || null;
-      const newVal = patch.base_rate ?? patch.spread_percent ?? "";
-      await supabase.from("rate_snapshots").insert({
-        created_by: userId,
-        reason: `single pair: ${from}→${to} ${baseRate != null ? `rate=${baseRate}` : ""}${spreadPercent != null ? ` spread=${spreadPercent}%` : ""}`,
-        rates: ratesMap,
-        pairs_count: currentPairs.length,
-      });
-    }
-  } catch (err) {
-    // Snapshot не критичен — логируем и продолжаем
-    // eslint-disable-next-line no-console
-    console.warn("[rate snapshot] failed", err);
-  }
+  // Snapshot теперь пишется автоматически через DB trigger
+  // (0017 auto_snapshot_on_pair_change) — убрали ручную запись отсюда,
+  // иначе получался дубль (frontend snapshot + trigger snapshot).
+  // Reason формируется триггером: "auto: pair updated FROM→TO rate=X".
 
   patch.updated_at = new Date().toISOString();
   const { error } = await supabase
@@ -687,6 +663,173 @@ export async function rpcSetUserStatus(userId, status) {
     .eq("id", validId);
   if (error) throw new Error(formatSupabaseError(error, "update user status"));
   bumpDataVersion();
+}
+
+// ---------- offices ----------
+
+export async function insertOfficeRow(payload) {
+  assertConfigured();
+  if (!payload?.name) throw new Error("Office name required");
+  const row = {
+    name: String(payload.name).trim(),
+    city: payload.city ? String(payload.city).trim() : null,
+    timezone: payload.timezone || "Europe/Istanbul",
+    working_days: Array.isArray(payload.workingDays) && payload.workingDays.length
+      ? payload.workingDays
+      : [1, 2, 3, 4, 5, 6],
+    working_hours: payload.workingHours || { start: "09:00", end: "21:00" },
+    working_hours_by_day: payload.workingHoursByDay || null,
+    holidays: Array.isArray(payload.holidays) ? payload.holidays : [],
+    temp_closed_until: payload.tempClosedUntil || null,
+    temp_closed_reason: payload.tempClosedReason || null,
+    min_fee_usd: Number(payload.minFeeUsd) || 10,
+    fee_percent: Number(payload.feePercent) || 0,
+    status: payload.status || "active",
+    active: payload.active !== false,
+  };
+  const { data, error } = await supabase
+    .from("offices")
+    .insert(row)
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(formatSupabaseError(error, "insert office"));
+  bumpDataVersion();
+  return data;
+}
+
+export async function updateOfficeRow(id, patch) {
+  assertConfigured();
+  const validId = requireUuid(id, "officeId");
+  const row = {};
+  if (patch.name != null) row.name = String(patch.name).trim();
+  if (patch.city !== undefined) row.city = patch.city ? String(patch.city).trim() : null;
+  if (patch.timezone != null) row.timezone = patch.timezone;
+  if (patch.workingDays !== undefined) row.working_days = patch.workingDays;
+  if (patch.workingHours !== undefined) row.working_hours = patch.workingHours;
+  if (patch.workingHoursByDay !== undefined) row.working_hours_by_day = patch.workingHoursByDay;
+  if (patch.holidays !== undefined) row.holidays = Array.isArray(patch.holidays) ? patch.holidays : [];
+  if (patch.tempClosedUntil !== undefined) row.temp_closed_until = patch.tempClosedUntil || null;
+  if (patch.tempClosedReason !== undefined) row.temp_closed_reason = patch.tempClosedReason || null;
+  if (patch.minFeeUsd !== undefined) row.min_fee_usd = Number(patch.minFeeUsd) || 0;
+  if (patch.feePercent !== undefined) row.fee_percent = Number(patch.feePercent) || 0;
+  if (patch.status !== undefined) row.status = patch.status;
+  if (patch.active !== undefined) row.active = !!patch.active;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from("offices").update(row).eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "update office"));
+  bumpDataVersion();
+}
+
+export async function closeOfficeRow(id) {
+  return updateOfficeRow(id, { status: "closed", active: false });
+}
+
+export async function reopenOfficeRow(id) {
+  return updateOfficeRow(id, { status: "active", active: true });
+}
+
+// ---------- currencies ----------
+
+export async function insertCurrencyRow({ code, type, symbol, name, decimals }) {
+  assertConfigured();
+  const upperCode = String(code || "").toUpperCase().trim();
+  if (!upperCode) throw new Error("Currency code required");
+  if (type !== "fiat" && type !== "crypto") {
+    throw new Error("Currency type must be fiat or crypto");
+  }
+  const { data, error } = await supabase
+    .from("currencies")
+    .insert({
+      code: upperCode,
+      type,
+      symbol: symbol || "",
+      name: name || upperCode,
+      decimals: Number.isFinite(Number(decimals)) ? Number(decimals) : 2,
+      active: true,
+    })
+    .select()
+    .maybeSingle();
+  if (error) throw new Error(formatSupabaseError(error, "insert currency"));
+  bumpDataVersion();
+  return data;
+}
+
+export async function updateCurrencyRow(code, patch) {
+  assertConfigured();
+  const upperCode = String(code || "").toUpperCase().trim();
+  if (!upperCode) throw new Error("Currency code required");
+  const row = {};
+  if (patch.symbol !== undefined) row.symbol = patch.symbol || "";
+  if (patch.name != null) row.name = String(patch.name).trim();
+  if (patch.decimals !== undefined && Number.isFinite(Number(patch.decimals))) {
+    row.decimals = Number(patch.decimals);
+  }
+  if (patch.active !== undefined) row.active = !!patch.active;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from("currencies").update(row).eq("code", upperCode);
+  if (error) throw new Error(formatSupabaseError(error, "update currency"));
+  bumpDataVersion();
+}
+
+export async function deleteCurrencyRow(code) {
+  assertConfigured();
+  const upperCode = String(code || "").toUpperCase().trim();
+  if (!upperCode) throw new Error("Currency code required");
+  const { error } = await supabase.from("currencies").delete().eq("code", upperCode);
+  if (error) throw new Error(formatSupabaseError(error, "delete currency"));
+  bumpDataVersion();
+}
+
+// ---------- client wallets ----------
+
+// upsert: если (network_id, address) уже существует → не вставляем дубль,
+// только обновляем usage_count + last_used_at. Иначе insert новый.
+export async function upsertClientWalletRow({ clientId, address, network, riskScore, riskLevel, riskFlags }) {
+  assertConfigured();
+  if (!clientId || !address || !network) return null;
+  const networkId = String(network).toLowerCase();
+  const addr = String(address).trim();
+  // Сперва пробуем обновить существующий (инкремент usage_count)
+  const { data: existing } = await supabase
+    .from("client_wallets")
+    .select("id, client_id, usage_count")
+    .eq("network_id", networkId)
+    .eq("address", addr)
+    .maybeSingle();
+  if (existing) {
+    // Conflict: другой client — не тронем (бизнес-правило)
+    if (existing.client_id !== clientId) return null;
+    await supabase
+      .from("client_wallets")
+      .update({
+        last_used_at: new Date().toISOString(),
+        usage_count: (existing.usage_count || 0) + 1,
+      })
+      .eq("id", existing.id);
+    bumpDataVersion();
+    return existing;
+  }
+  const row = {
+    client_id: clientId,
+    address: addr,
+    network_id: networkId,
+    usage_count: 1,
+  };
+  if (riskScore != null) row.risk_score = Number(riskScore);
+  if (riskLevel) row.risk_level = riskLevel;
+  if (Array.isArray(riskFlags)) row.risk_flags = riskFlags;
+  const { data, error } = await supabase
+    .from("client_wallets")
+    .insert(row)
+    .select()
+    .maybeSingle();
+  if (error) {
+    // eslint-disable-next-line no-console
+    console.warn("[upsertClientWallet]", error);
+    return null;
+  }
+  bumpDataVersion();
+  return data;
 }
 
 // ---------- accounts ----------

@@ -12,6 +12,14 @@ import { useAuth } from "../../store/auth.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { DEFAULT_OFFICE_OPS } from "../../store/data.js";
 import { getOfficeOpenState } from "../../utils/officeSchedule.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
+import {
+  insertOfficeRow,
+  updateOfficeRow,
+  closeOfficeRow,
+  reopenOfficeRow,
+  withToast,
+} from "../../lib/supabaseWrite.js";
 
 const TIMEZONES = [
   "Europe/Istanbul",
@@ -93,7 +101,7 @@ function OfficeFormModal({ open, office, onClose }) {
     name.trim().length > 0 && workingDays.length > 0 && validTimeRange;
   const isEdit = !!office;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
     const minFeeNum = Number.isFinite(Number(minFee)) ? Number(minFee) : DEFAULT_OFFICE_OPS.minFeeUsd;
     const feePctNum = Number.isFinite(Number(feePct)) ? Number(feePct) : DEFAULT_OFFICE_OPS.feePercent;
@@ -107,7 +115,15 @@ function OfficeFormModal({ open, office, onClose }) {
       feePercent: feePctNum,
     };
     if (isEdit) {
-      updateOffice(office.id, patch);
+      if (isSupabaseConfigured) {
+        const res = await withToast(
+          () => updateOfficeRow(office.id, patch),
+          { success: "Office updated", errorPrefix: "Office update failed" }
+        );
+        if (!res.ok) return;
+      } else {
+        updateOffice(office.id, patch);
+      }
       logAudit({
         action: "update",
         entity: "office",
@@ -115,14 +131,28 @@ function OfficeFormModal({ open, office, onClose }) {
         summary: `Edited office ${office.name} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime} · min fee $${minFeeNum}${feePctNum ? ` · ${feePctNum}%` : ""}`,
       });
     } else {
-      const created = addOffice(patch);
-      if (created) {
+      if (isSupabaseConfigured) {
+        const res = await withToast(
+          () => insertOfficeRow(patch),
+          { success: "Office created", errorPrefix: "Office create failed" }
+        );
+        if (!res.ok || !res.result) return;
         logAudit({
           action: "create",
           entity: "office",
-          entityId: created.id,
-          summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""} · ${timezone} · ${formatWorkingDays(workingDays)} · ${startTime}–${endTime} · min fee $${minFeeNum}`,
+          entityId: res.result.id,
+          summary: `Added office ${res.result.name}${res.result.city ? ` (${res.result.city})` : ""} · ${timezone}`,
         });
+      } else {
+        const created = addOffice(patch);
+        if (created) {
+          logAudit({
+            action: "create",
+            entity: "office",
+            entityId: created.id,
+            summary: `Added office ${created.name}${created.city ? ` (${created.city})` : ""} · ${timezone}`,
+          });
+        }
       }
     }
     onClose();
@@ -368,9 +398,17 @@ export default function OfficesTab() {
     return map;
   }, [accounts]);
 
-  const handleClose = (office) => {
+  const handleClose = async (office) => {
     if (!confirm(t("office_close_confirm"))) return;
-    closeOffice(office.id);
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => closeOfficeRow(office.id),
+        { success: "Office closed", errorPrefix: "Close failed" }
+      );
+      if (!res.ok) return;
+    } else {
+      closeOffice(office.id);
+    }
     logAudit({
       action: "delete",
       entity: "office",
@@ -379,8 +417,16 @@ export default function OfficesTab() {
     });
   };
 
-  const handleReopen = (office) => {
-    reopenOffice(office.id);
+  const handleReopen = async (office) => {
+    if (isSupabaseConfigured) {
+      const res = await withToast(
+        () => reopenOfficeRow(office.id),
+        { success: "Office reopened", errorPrefix: "Reopen failed" }
+      );
+      if (!res.ok) return;
+    } else {
+      reopenOffice(office.id);
+    }
     logAudit({
       action: "update",
       entity: "office",
