@@ -26,16 +26,22 @@ export default function TopUpModal({ account, onClose }) {
     if (account) {
       setAmount("");
       setNote("");
-      // Дефолт source по типу счёта: bank → bank, crypto → crypto, иначе external.
+      // Дефолт source:
+      //  • если баланс счёта нулевой → "opening" (первичный остаток после
+      //    создания счёта с opening_balance=0 — обычный сценарий)
+      //  • иначе по типу: bank → bank, crypto → crypto, иначе external
+      const bal = balanceOf(account.id);
       const def =
-        account.type === "bank"
+        bal === 0
+          ? "opening"
+          : account.type === "bank"
           ? "bank"
           : account.type === "crypto"
           ? "crypto"
           : "external";
       setSource(def);
     }
-  }, [account]);
+  }, [account, balanceOf]);
 
   if (!account) return null;
 
@@ -128,8 +134,9 @@ export default function TopUpModal({ account, onClose }) {
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
             Source
           </label>
-          <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full gap-0.5">
+          <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full gap-0.5 flex-wrap">
             {[
+              { id: "opening", label: "Opening" },
               { id: "external", label: "External" },
               { id: "bank", label: "Bank" },
               { id: "crypto", label: "Crypto" },

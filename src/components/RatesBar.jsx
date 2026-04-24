@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   Star,
+  Zap,
 } from "lucide-react";
+import DailyRatesModal from "./DailyRatesModal.jsx";
 import RatesImportModal from "./RatesImportModal.jsx";
 import RatesCoveragePanel from "./RatesCoveragePanel.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
@@ -95,6 +97,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
   const { isAdmin, currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
   const [activeIdx, setActiveIdx] = useState(null);
+  const [quickOpen, setQuickOpen] = useState(false);
   const wrapperRef = useRef(null);
   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
 
@@ -233,17 +236,29 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               updated {timeAgo(lastUpdated)} ago
             </span>
           </div>
-          {isAdmin && onOpenRates && (
-            <button
-              onClick={onOpenRates}
-              className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-800 active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
-            >
-              <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
-                <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
-              </div>
-              <span>{t("edit_rates") || "Редактировать курсы"}</span>
-              <ArrowRight className="w-3 h-3 opacity-60 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+          {isAdmin && (
+            <div className="inline-flex items-center gap-2">
+              <button
+                onClick={() => setQuickOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-amber-500/10 text-amber-700 border border-amber-300 text-[12px] font-bold hover:bg-amber-500/20 transition-colors"
+                title="Быстрое обновление курсов (ежедневное)"
+              >
+                <Zap className="w-3 h-3" />
+                <span>{t("quick_update") || "Быстро"}</span>
+              </button>
+              {onOpenRates && (
+                <button
+                  onClick={onOpenRates}
+                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-800 active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
+                >
+                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
+                    <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
+                  </div>
+                  <span>{t("edit_rates") || "Редактировать курсы"}</span>
+                  <ArrowRight className="w-3 h-3 opacity-60 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+              )}
+            </div>
           )}
         </div>
 
@@ -445,7 +460,9 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
       </section>
 
       {/* Edit Rates модалка удалена — теперь открывается как full-screen
-          RatesPage через onOpenRates (из CashierPage setMode("rates")) */}
+          RatesPage через onOpenRates (из CashierPage setMode("rates")).
+          Daily quick-update модалка — отдельная компактная форма. */}
+      <DailyRatesModal open={quickOpen} onClose={() => setQuickOpen(false)} />
     </>
   );
 }
