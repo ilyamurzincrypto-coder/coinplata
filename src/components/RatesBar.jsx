@@ -165,9 +165,9 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
           className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
           {/* Grid из tradePairs (динамический) — каждая карточка содержит
-              ДВА направления. Max 2 колонки (grid-cols-1 на mobile, sm+ → 2).
-              При 10+ парах просто переносится на следующую строку. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 p-2 gap-1.5">
+              ДВА направления. На xl — 5 колонок (10 пар = 2 строки).
+              При большем количестве пар переносится дополнительными строками. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
             {tradePairs.map(([a, b], idx) => {
               // Bid/Ask от market rate (без инверсии 1/x).
               // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
