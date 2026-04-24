@@ -29,26 +29,19 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
 
   const visibleNav = NAV_PAGES.filter((p) => can(p.section));
 
-  // Manager scoping: если manager и есть officeId → видит только свой офис
-  const isScopedManager =
-    currentUser?.role === "manager" && !!currentUser?.officeId;
+  // Раньше manager scoping принудительно ограничивал менеджера его
+  // собственным офисом. Задумка пересмотрена: менеджер видит счета и
+  // балансы ВСЕХ офисов (RLS расширен в 0034). Scoping отключён.
+  const isScopedManager = false;
+  const scopedOffices = activeOffices;
 
-  const scopedOffices = useMemo(() => {
-    if (isScopedManager) {
-      return activeOffices.filter((o) => o.id === currentUser.officeId);
-    }
-    return activeOffices;
-  }, [activeOffices, isScopedManager, currentUser]);
-
-  // Синхронизация currentOffice с scoped-списком:
-  // если manager и currentOffice не его — авто-переключаем на его
+  // Если currentOffice не совпадает ни с одним активным офисом — падаем
+  // на первый доступный (например офис был закрыт).
   React.useEffect(() => {
-    if (isScopedManager && currentOffice !== currentUser.officeId) {
-      onOfficeChange(currentUser.officeId);
-    } else if (!scopedOffices.some((o) => o.id === currentOffice) && scopedOffices[0]) {
+    if (!scopedOffices.some((o) => o.id === currentOffice) && scopedOffices[0]) {
       onOfficeChange(scopedOffices[0].id);
     }
-  }, [isScopedManager, currentOffice, currentUser, scopedOffices, onOfficeChange]);
+  }, [currentOffice, scopedOffices, onOfficeChange]);
 
   return (
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-slate-200/70">
