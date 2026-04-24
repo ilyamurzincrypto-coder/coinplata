@@ -467,6 +467,12 @@ const DICT = {
     rates_apply_global_tip: "Copy global rate to this office (resets spread to 0)",
     rates_reset_override: "Reset to global",
     rates_override_tip: "This office has its own rate overriding global",
+    rates_use_global: "Use global",
+    xf_rate_source: "Rate source",
+    xf_office_rate: "Office",
+    xf_global_rate: "Global",
+    xf_use_office_rate: "This office's override rate",
+    xf_use_global_rate: "Global rate (ignores office override)",
 
     // === Obligations page ===
     oblig_title: "Obligations",
@@ -1301,6 +1307,12 @@ const DICT = {
     rates_apply_global_tip: "Скопировать глобальный курс в этот офис (сбрасывает спред в 0)",
     rates_reset_override: "Вернуть на global",
     rates_override_tip: "У этого офиса свой курс поверх глобального",
+    rates_use_global: "Вернуть global",
+    xf_rate_source: "Источник курса",
+    xf_office_rate: "Офис",
+    xf_global_rate: "Глобал",
+    xf_use_office_rate: "Курс с override этого офиса",
+    xf_use_global_rate: "Общий курс без учёта override",
 
     // === Obligations page ===
     oblig_title: "Долги",
@@ -2133,6 +2145,12 @@ const DICT = {
     rates_apply_global_tip: "Global kuru bu ofise kopyala (spread sıfırlanır)",
     rates_reset_override: "Global'e döndür",
     rates_override_tip: "Bu ofisin global üzerinde kendi kuru var",
+    rates_use_global: "Global'e dön",
+    xf_rate_source: "Kur kaynağı",
+    xf_office_rate: "Ofis",
+    xf_global_rate: "Global",
+    xf_use_office_rate: "Bu ofisin override kuru",
+    xf_use_global_rate: "Override'ı yoksayan global kur",
 
     // === Obligations page ===
     oblig_title: "Borçlar",

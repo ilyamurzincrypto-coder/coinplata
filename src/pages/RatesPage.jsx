@@ -649,15 +649,30 @@ function PairRow({
           </div>
         )}
 
-        {/* Apply global → office (только в office-режиме) */}
-        {isOfficeTab && (
+        {/* Одна кнопка в зависимости от состояния:
+            • Нет override → "← Apply global" (копирует global в office базу,
+              spread=0, создаёт override)
+            • Есть override → "↺ Use global" (удаляет override — office
+              возвращается на чистый global без своего spread)
+            Раньше было 2 кнопки с разной семантикой → путаница. */}
+        {isOfficeTab && !hasOverride && (
           <button
             type="button"
             onClick={onApplyGlobal}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
-            title={t("rates_apply_global_tip") || "Скопировать global курс в этот офис (сбросит spread)"}
+            title={t("rates_apply_global_tip") || "Скопировать global курс в office base. Потом можно накрутить spread — он создаст override."}
           >
             ← {t("rates_apply_global") || "Apply global"}
+          </button>
+        )}
+        {isOfficeTab && hasOverride && (
+          <button
+            type="button"
+            onClick={onResetOverride}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200"
+            title={t("rates_reset_override") || "Вернуть на global — удаляет office override"}
+          >
+            ↺ {t("rates_use_global") || "Use global"}
           </button>
         )}
 
@@ -720,15 +735,6 @@ function PairRow({
         </div>
 
         <div className="ml-auto flex items-center gap-1">
-          {canReset && (
-            <button
-              onClick={onResetOverride}
-              className="text-[12px] text-indigo-600 hover:text-indigo-800 font-bold"
-              title={t("rates_reset_override") || "Вернуть на global"}
-            >
-              ↺
-            </button>
-          )}
           {canDelete && (
             <button
               onClick={onDelete}

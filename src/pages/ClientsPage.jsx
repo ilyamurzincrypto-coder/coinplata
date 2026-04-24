@@ -17,11 +17,23 @@ import { ClientTag } from "../components/CounterpartySelect.jsx";
 import { CLIENT_TAGS } from "../store/data.js";
 import { checkWalletRisk, riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcArchiveClient, rpcDeleteClient, insertClient, withToast, isUuid } from "../lib/supabaseWrite.js";
+import { rpcArchiveClient, rpcDeleteClient, insertClient, updateClientRow, withToast, isUuid } from "../lib/supabaseWrite.js";
 
 export default function ClientsPage() {
   const { t } = useTranslation();
-  const { transactions, counterparties, addCounterparty, updateCounterparty } = useTransactions();
+  const { transactions, counterparties, addCounterparty, updateCounterparty: updateCounterpartyLocal } = useTransactions();
+
+  // Supabase-aware wrapper: local update + fire-and-forget DB write (если UUID).
+  // Без этого tag/note менялись только в state и слетали на refresh.
+  const updateCounterparty = React.useCallback((id, patch) => {
+    updateCounterpartyLocal(id, patch);
+    if (isSupabaseConfigured && isUuid(id)) {
+      updateClientRow(id, patch).catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn("[updateCounterparty DB]", err);
+      });
+    }
+  }, [updateCounterpartyLocal]);
   const { walletsByClient } = useWallets();
   const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();

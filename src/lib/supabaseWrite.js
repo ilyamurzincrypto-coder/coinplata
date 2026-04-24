@@ -941,6 +941,29 @@ export async function deactivateAccountRow(id) {
   return updateAccountRow(id, { active: false });
 }
 
+// ---------- clients (update) ----------
+
+// Обновление полей clients. patch: {nickname, fullName, telegram, tag, note}.
+// Используется в ClientsPage → ClientProfileModal для tag/note/etc.
+export async function updateClientRow(id, patch) {
+  assertConfigured();
+  const validId = requireUuid(id, "clientId");
+  const row = {};
+  if (patch.nickname != null) row.nickname = String(patch.nickname).trim();
+  if (patch.fullName !== undefined) row.full_name = patch.fullName ? String(patch.fullName).trim() : null;
+  if (patch.name !== undefined) row.full_name = patch.name ? String(patch.name).trim() : null;
+  if (patch.telegram !== undefined) row.telegram = patch.telegram ? String(patch.telegram).trim() : null;
+  if (patch.tag !== undefined) row.tag = patch.tag || null;
+  if (patch.note !== undefined) row.note = patch.note || null;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase
+    .from("clients")
+    .update(row)
+    .eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, "update client"));
+  bumpDataVersion();
+}
+
 // ---------- clients (direct insert) ----------
 
 // Гарантирует существование client'а в БД и возвращает его uuid.

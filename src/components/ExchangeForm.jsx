@@ -1560,12 +1560,20 @@ function OutputRow({
   offices,
 }) {
   const { t } = useTranslation();
-  const { getRate: getRateRaw } = useRates();
+  const { getRate: getRateRaw, getOfficeOverride } = useRates();
   // OutputRow: getRate тоже учитывает currentOffice override
   const getRate = React.useCallback(
     (from, to) => getRateRaw(from, to, currentOffice),
     [getRateRaw, currentOffice]
   );
+  // Global vs office rate для пары curIn → o.currency — для chip-выбора
+  const globalRate = getRateRaw(curIn, o.currency, null);
+  const officeRate = getRateRaw(curIn, o.currency, currentOffice);
+  const hasOfficeOverride =
+    !!getOfficeOverride?.(currentOffice, curIn, o.currency) &&
+    Number.isFinite(globalRate) &&
+    Number.isFinite(officeRate) &&
+    Math.abs(globalRate - officeRate) > 1e-9;
   const { accountsByOffice, accounts } = useAccounts();
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
   const { findWallet } = useWallets();
@@ -1717,6 +1725,39 @@ function OutputRow({
         />
         <span className="text-slate-400 text-[11px] font-bold tracking-wider">{o.currency}</span>
       </div>
+
+      {/* Rate source chips — если есть office override, даём выбрать Global или Office */}
+      {hasOfficeOverride && (
+        <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+          <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
+            {t("xf_rate_source") || "Rate source"}
+          </span>
+          <button
+            type="button"
+            onClick={() => onUpdate({ rate: String(officeRate), manualRate: false, touched: false })}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border ${
+              Math.abs(parseFloat(o.rate) - officeRate) < 1e-9
+                ? "bg-indigo-600 text-white border-indigo-600"
+                : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
+            }`}
+            title={t("xf_use_office_rate") || "Курс этого офиса (override)"}
+          >
+            {t("xf_office_rate") || "Office"} · {Number(officeRate).toFixed(4)}
+          </button>
+          <button
+            type="button"
+            onClick={() => onUpdate({ rate: String(globalRate), manualRate: false, touched: false })}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border ${
+              Math.abs(parseFloat(o.rate) - globalRate) < 1e-9
+                ? "bg-slate-700 text-white border-slate-700"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+            title={t("xf_use_global_rate") || "Общий курс (без учёта override офиса)"}
+          >
+            {t("xf_global_rate") || "Global"} · {Number(globalRate).toFixed(4)}
+          </button>
+        </div>
+      )}
 
       <div className="mt-2 flex items-center gap-2">
         <div
