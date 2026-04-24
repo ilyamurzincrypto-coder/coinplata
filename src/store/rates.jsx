@@ -28,9 +28,9 @@ import {
   useEffect,
 } from "react";
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
-import { isSupabaseConfigured } from "../lib/supabase.js";
+import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { loadPairs, loadOfficeRateOverrides } from "../lib/supabaseReaders.js";
-import { onDataBump } from "../lib/dataVersion.jsx";
+import { onDataBump, bumpDataVersion } from "../lib/dataVersion.jsx";
 
 export const rateKey = (from, to) => `${from}_${to}`;
 
@@ -361,6 +361,10 @@ export function RatesProvider({ children }) {
   // ---------- Pair API (новый) ----------
 
   // Добавить пару. Если default для этой пары валют уже есть — новая создаётся как non-default.
+  // В DB-режиме параллельно пишем в public.pairs (INSERT). Раньше только
+  // обновлялся local state → после refresh loadPairs возвращал из БД
+  // без свежедобавленной пары, юзерские quick-add'ы из Coverage panel
+  // (обычно с rate=1) пропадали.
   const addPair = useCallback(
     ({ fromChannelId, toChannelId, rate, priority = 50 }) => {
       const fromCh = channels.find((c) => c.id === fromChannelId);
@@ -372,25 +376,55 @@ export function RatesProvider({ children }) {
         return { ok: false, warning: "From and To currencies must differ" };
       }
       const id = `p_${fromChannelId}_${toChannelId}_${Date.now()}`;
+      const baseRate = parseFloat(rate) || 0;
       const existingDefault = findDefaultPair(
         pairs,
         channels,
         fromCh.currencyCode,
         toCh.currencyCode
       );
+      // Оптимистичный local insert (чтобы UI сразу показал пару)
       setPairs((prev) => [
         ...prev,
         {
           id,
           fromChannelId,
           toChannelId,
-          rate: parseFloat(rate) || 0,
+          rate: baseRate,
           isDefault: !existingDefault,
           priority,
         },
       ]);
       setLastUpdated(new Date());
       markModifiedIfConfirmed();
+
+      // DB-режим: persist в public.pairs. Если упадёт — оставим local
+      // state (пользователь сможет повторить). bump после успеха триггерит
+      // reload — locally-created pair заменится DB-rows с реальным UUID.
+      if (isSupabaseConfigured) {
+        (async () => {
+          try {
+            const { error } = await supabase.from("pairs").insert({
+              from_currency: fromCh.currencyCode,
+              to_currency: toCh.currencyCode,
+              base_rate: baseRate,
+              spread_percent: 0,
+              is_default: !existingDefault,
+              priority,
+            });
+            if (error) {
+              // eslint-disable-next-line no-console
+              console.warn("[addPair] DB insert failed — pair only in local state", error);
+              return;
+            }
+            bumpDataVersion();
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn("[addPair] DB insert threw", err);
+          }
+        })();
+      }
+
       return { ok: true, id };
     },
     [channels, pairs, markModifiedIfConfirmed]

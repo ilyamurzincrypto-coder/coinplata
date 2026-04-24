@@ -726,7 +726,15 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 tx.counterparty ? `Client: ${tx.counterparty}` : null,
                 tx.comment ? `Comment: ${tx.comment}` : null,
                 outputs.length > 1
-                  ? `Outputs:\n${outputs.map((o, i) => `  #${i + 1} ${fmt(o.amount, o.currency)} ${o.currency}${o.accountId ? ` (${accounts.find((a) => a.id === o.accountId)?.name || o.accountId})` : " (no account)"}`).join("\n")}`
+                  ? `Outputs:\n${outputs.map((o, i) => {
+                      const acc = o.accountId ? accounts.find((a) => a.id === o.accountId) : null;
+                      const accLabel = o.accountId
+                        ? acc
+                          ? acc.name
+                          : `другой офис · #${String(o.accountId).slice(0, 8)}`
+                        : "no account";
+                      return `  #${i + 1} ${fmt(o.amount, o.currency)} ${o.currency} (${accLabel})`;
+                    }).join("\n")}`
                   : null,
               ]
                 .filter(Boolean)
@@ -1185,7 +1193,11 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
   const tooltip = outputs
     .map((o, i) => {
       const acc = o.accountId ? accounts.find((a) => a.id === o.accountId) : null;
-      const accName = acc ? acc.name : o.accountId ? "(unknown account)" : "No account";
+      const accName = acc
+        ? acc.name
+        : o.accountId
+        ? `другой офис · #${String(o.accountId).slice(0, 8)}`
+        : "No account";
       const sendInfo = o.sendStatus ? ` · ${o.sendStatus}` : "";
       const addrInfo = o.address ? ` · ${o.address.slice(0, 10)}…` : "";
       return `#${i + 1}: ${fmt(o.amount, o.currency)} ${o.currency} · ${accName}${addrInfo}${sendInfo}`;

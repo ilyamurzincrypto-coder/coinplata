@@ -308,6 +308,14 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                             <Wallet className="w-2.5 h-2.5" />
                             {legAcc.name}
                           </span>
+                        ) : leg.accountId ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-slate-400 italic"
+                            title="Account из другого офиса — недоступен по RLS"
+                          >
+                            <Wallet className="w-2.5 h-2.5" />
+                            другой офис · #{String(leg.accountId).slice(0, 8)}
+                          </span>
                         ) : (
                           <span className="text-amber-600">no account</span>
                         )}
