@@ -348,17 +348,35 @@ export default function ExchangeForm({
     }
   }, [availableAccounts, accountId]);
 
+  // При смене IN currency — пара меняется, user-pick chip'а становится
+  // неактуален. Сбрасываем ratePinned у всех outputs до того как main
+  // effect ниже подхватит новые autoRate. useEffect'ы внутри одного
+  // коммита React обрабатывает в порядке объявления.
+  useEffect(() => {
+    setOutputs((prev) => prev.map((o) => ({ ...o, ratePinned: false })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [curIn]);
+
   // --- auto-fill rates / amounts ---
   // ВАЖНО: первый output теперь заполняется как NET (gross − feeOut),
   // где feeUsd = office.minFeeUsd (per-office). "You receive" показывает финальную
   // сумму с учётом комиссии. computeRemaining ниже использует тот же fee baseline,
   // поэтому remaining = 0 и "exceeds_remaining" не ложно срабатывает.
+  //
+  // ratePinned: true — пользователь явно кликнул rate-chip (Global/Office/etc).
+  // В этом случае rate НЕ перезаписывается, но amount продолжает пересчитываться
+  // от amtIn * pinnedRate. Pin снимается только при смене curIn (см. effect выше)
+  // или при смене output.currency (в OutputRow currency picker).
   useEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
         if (o.manualRate) return o;
         const autoRate = getRate(curIn, o.currency);
-        const nextRate = autoRate !== undefined ? String(autoRate) : o.rate;
+        const nextRate = o.ratePinned
+          ? o.rate
+          : autoRate !== undefined
+          ? String(autoRate)
+          : o.rate;
         let nextAmount = o.amount;
         if (!o.touched) {
           const a = parseFloat(amtIn);
@@ -434,12 +452,13 @@ export default function ExchangeForm({
         if (o.id !== id) return o;
         const nextManual = !o.manualRate;
         if (!nextManual) {
-          // Возвращаемся к авто — сбрасываем touched и берём курс из системы
+          // Возвращаемся к авто — сбрасываем touched + ratePinned и берём курс из системы
           const autoRate = getRate(curIn, o.currency);
           return {
             ...o,
             manualRate: false,
             touched: false,
+            ratePinned: false,
             rate: autoRate !== undefined ? String(autoRate) : o.rate,
           };
         }
@@ -1709,7 +1728,8 @@ function OutputRow({
                   // Если output на auto-rate — сразу подтягиваем курс для новой пары.
                   // Это нужно потому что useEffect зависит от [curIn, amtIn], но не от outputs,
                   // поэтому смена output.currency сама по себе не триггерит пересчёт.
-                  const patch = { currency: c, touched: false };
+                  // ratePinned сбрасываем — chip-pick был для прежней пары.
+                  const patch = { currency: c, touched: false, ratePinned: false };
                   if (!o.manualRate) {
                     const next = getRate(curIn, c);
                     if (next !== undefined) patch.rate = String(next);
@@ -1783,7 +1803,7 @@ function OutputRow({
             <button
               type="button"
               onClick={() =>
-                onUpdate({ rate: String(globalRate), manualRate: false, touched: false })
+                onUpdate({ rate: String(globalRate), manualRate: false, ratePinned: true, touched: false })
               }
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
                 !o.manualRate && Math.abs(parseFloat(o.rate) - globalRate) < 1e-9
@@ -1801,7 +1821,7 @@ function OutputRow({
             <button
               type="button"
               onClick={() =>
-                onUpdate({ rate: String(currentOfficeChip.rate), manualRate: false, touched: false })
+                onUpdate({ rate: String(currentOfficeChip.rate), manualRate: false, ratePinned: true, touched: false })
               }
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
                 !o.manualRate && Math.abs(parseFloat(o.rate) - currentOfficeChip.rate) < 1e-9
@@ -1835,7 +1855,7 @@ function OutputRow({
                 key={row.id}
                 type="button"
                 onClick={() =>
-                  onUpdate({ rate: String(row.rate), manualRate: false, touched: false })
+                  onUpdate({ rate: String(row.rate), manualRate: false, ratePinned: true, touched: false })
                 }
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${baseCls}`}
                 title={
