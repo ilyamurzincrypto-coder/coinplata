@@ -640,6 +640,35 @@ export async function updateUserRow(userId, patch) {
   bumpDataVersion();
 }
 
+// Invite user — атомарная RPC (migration 0022):
+//   1. upsert pending_invites (для first-time flow: trigger on_auth_user_created
+//      прочитает роль при INSERT в auth.users)
+//   2. если public.users row для email уже существует (re-invite / legacy) —
+//      сразу update role/full_name/office_id
+// Обходит RLS, проверяет права caller'а. Возвращает existing user_id (uuid)
+// или null если юзера ещё нет.
+// Вызывать ПЕРЕД supabase.auth.signInWithOtp — тогда в любом сценарии
+// (first-time / re-invite / legacy) роль окажется правильной.
+export async function rpcInviteUser({ email, fullName, role, officeId }) {
+  assertConfigured();
+  const cleanEmail = String(email || "").trim().toLowerCase();
+  const cleanName = String(fullName || "").trim();
+  if (!cleanEmail) throw new Error("email: required");
+  if (!cleanName) throw new Error("fullName: required");
+  if (!["owner", "admin", "accountant", "manager"].includes(role)) {
+    throw new Error(`Invalid role: ${role}`);
+  }
+  const { data, error } = await supabase.rpc("invite_user", {
+    p_email: cleanEmail,
+    p_full_name: cleanName,
+    p_role: role,
+    p_office_id: officeId || null,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "invite_user"));
+  bumpDataVersion();
+  return data; // existing user_id (uuid) or null
+}
+
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
 // Принимает 'active' | 'disabled' | 'invited'. Hard-delete не делаем — для
 // этого нужен service_role (auth.users.delete), недоступный из браузера.

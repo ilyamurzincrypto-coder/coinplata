@@ -28,7 +28,7 @@ import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase.js";
 import { useToast } from "../../lib/toast.jsx";
-import { rpcSetUserStatus, updateUserRow, withToast } from "../../lib/supabaseWrite.js";
+import { rpcSetUserStatus, updateUserRow, rpcInviteUser, withToast } from "../../lib/supabaseWrite.js";
 
 const STATUS_STYLE = {
   active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
@@ -647,31 +647,28 @@ function CreateUserModal({ open, onClose, onCreated }) {
     if (!name.trim() || sending) return;
     const cleanEmail = email.trim();
 
-    // DB mode: через Supabase magic-link (shouldCreateUser: true).
-    // Это создаёт запись в auth.users + шлёт email. После клика по ссылке
-    // сработает trigger on auth.users INSERT → создаст public.users с ролью
-    // из pending_invites (migration 0005, см. ниже).
+    // DB mode: security-definer RPC invite_user (migration 0022) + magic-link.
+    //   1. invite_user — upsert pending_invites + update existing public.users.
+    //      Атомарно гарантирует правильную роль для first-time / re-invite /
+    //      legacy случаев (раньше все повторные инвайты застревали на manager).
+    //   2. signInWithOtp — шлёт magic-link (если OTP rate-limited 429, роль уже
+    //      синхнута, юзер сможет войти обычным способом).
     if (isSupabaseConfigured && cleanEmail) {
       setSending(true);
       try {
-        // 1. Запись pending_invite — trigger потом прочтёт при первом auth login
-        const { error: pendErr } = await supabase
-          .from("pending_invites")
-          .upsert(
-            {
-              email: cleanEmail.toLowerCase(),
-              full_name: name.trim(),
-              role,
-            },
-            { onConflict: "email" }
-          );
-        if (pendErr) {
-          toast.error(`${t("invite_failed")}: ${pendErr.message}`);
+        try {
+          await rpcInviteUser({
+            email: cleanEmail,
+            fullName: name.trim(),
+            role,
+            officeId: null,
+          });
+        } catch (inviteErr) {
+          toast.error(`${t("invite_failed")}: ${inviteErr?.message || String(inviteErr)}`);
           setSending(false);
           return;
         }
 
-        // 2. Шлём magic-link — Supabase auto-creates auth.users если нет
         const { error: otpErr } = await supabase.auth.signInWithOtp({
           email: cleanEmail,
           options: {
@@ -680,13 +677,16 @@ function CreateUserModal({ open, onClose, onCreated }) {
           },
         });
         if (otpErr) {
+          // Роль уже записана в БД через invite_user — при следующем login
+          // юзер получит корректные права. 429 (rate-limit) тут не откатывает
+          // invite, только сообщаем что magic-link не ушёл.
           toast.error(`${t("invite_failed")}: ${otpErr.message}`);
           setSending(false);
           return;
         }
 
         toast.success(t("invite_success"));
-        // Локально тоже добавим — чтобы сразу в списке появился
+        // Локально добавим чтобы сразу появился в списке (до refetch из DB)
         const localRes = createUser({ name, email: cleanEmail, role });
         onCreated(localRes);
       } catch (err) {
