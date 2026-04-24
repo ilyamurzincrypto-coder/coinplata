@@ -58,7 +58,9 @@ begin
       (v_mark, 'USDT', 'crypto', 'W88 Mark', 'TRC20',
        'TXyRrMNwYjmGBoK2ZhoH7L2eoyztdEpps9',
        true, true, true, 0)
-    on conflict (network_id, address) do nothing;
+    on conflict (network_id, address)
+      where network_id is not null and address is not null
+      do nothing;
     get diagnostics v_crypto_added = row_count;
   end if;
 
@@ -74,7 +76,9 @@ begin
       (v_lara, 'USDT', 'crypto', 'W89 Lara', 'ERC20',
        '0x59F2EcA1D8D2413FcA3F7E7D560CeE9C487F3101',
        true, true, true, 0)
-    on conflict (network_id, address) do nothing;
+    on conflict (network_id, address)
+      where network_id is not null and address is not null
+      do nothing;
     get diagnostics v_cash_added = row_count;  -- temp reuse var
     v_crypto_added := v_crypto_added + v_cash_added;
     v_cash_added := 0;
