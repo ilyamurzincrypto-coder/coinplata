@@ -149,6 +149,18 @@ export default function UsersTab() {
     [pendingInvites, existingEmails]
   );
 
+  const activeOffices = useMemo(
+    () => offices.filter((o) => o.active !== false && o.status !== "closed"),
+    [offices]
+  );
+
+  const canManage = isAdmin || isOwner;
+
+  const showToast = useCallback((msg, tone = "error") => {
+    setToast({ msg, tone });
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
   const handleResendInvite = useCallback(
     async (inv) => {
       if (!canManage || !inv?.email) return;
@@ -169,7 +181,7 @@ export default function UsersTab() {
         showToast(`Resend failed: ${err?.message || String(err)}`);
       }
     },
-    [canManage]
+    [canManage, showToast]
   );
 
   const handleCancelInvite = useCallback(
@@ -191,20 +203,8 @@ export default function UsersTab() {
         showToast(`Cancel failed: ${err?.message || String(err)}`);
       }
     },
-    [canManage]
+    [canManage, showToast]
   );
-
-  const activeOffices = useMemo(
-    () => offices.filter((o) => o.active !== false && o.status !== "closed"),
-    [offices]
-  );
-
-  const canManage = isAdmin || isOwner;
-
-  const showToast = (msg, tone = "error") => {
-    setToast({ msg, tone });
-    setTimeout(() => setToast(null), 3500);
-  };
 
   const handleRoleChange = async (user, newRole) => {
     if (newRole === "owner" && !isOwner) {
