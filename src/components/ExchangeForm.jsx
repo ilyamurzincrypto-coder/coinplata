@@ -31,6 +31,7 @@ import {
   Check,
   Clock,
   ChevronUp,
+  SlidersHorizontal,
 } from "lucide-react";
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
@@ -1213,30 +1214,59 @@ export default function ExchangeForm({
             (isPending ? 1 : 0) +
             (plannedLocal ? 1 : 0);
           return (
-        <section className="mt-5 bg-white border border-slate-200 rounded-[14px] shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+        <section
+          className={`mt-5 rounded-[14px] overflow-hidden border-l-4 transition-all ${
+            conditionsActiveCount > 0
+              ? "bg-emerald-50/40 border-emerald-500 border-y border-r border-y-emerald-200 border-r-emerald-200 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.15)]"
+              : "bg-slate-50/60 border-l-slate-300 border-y border-r border-y-slate-200 border-r-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+          }`}
+        >
           <button
             type="button"
             onClick={() => setConditionsOpen((v) => !v)}
-            className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+            className={`w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors ${
+              conditionsActiveCount > 0 ? "hover:bg-emerald-50" : "hover:bg-slate-100/50"
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em]">
-                {t("xf_conditions")}
-              </h3>
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`w-7 h-7 rounded-[8px] flex items-center justify-center transition-colors ${
+                  conditionsActiveCount > 0
+                    ? "bg-emerald-500 text-white shadow-[0_2px_6px_-2px_rgba(16,185,129,0.5)]"
+                    : "bg-slate-200 text-slate-500"
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col items-start">
+                <h3
+                  className={`text-[12px] font-bold tracking-tight ${
+                    conditionsActiveCount > 0 ? "text-emerald-900" : "text-slate-700"
+                  }`}
+                >
+                  {t("xf_conditions")}
+                </h3>
+                <span className="text-[10px] text-slate-500 leading-tight">
+                  {conditionsActiveCount > 0
+                    ? `${conditionsActiveCount} активн${conditionsActiveCount === 1 ? "о" : conditionsActiveCount < 5 ? "ы" : "ых"} — особые условия применяются`
+                    : t("xf_optional")}
+                </span>
+              </div>
               {conditionsActiveCount > 0 && (
-                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold tabular-nums">
+                <span className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-emerald-500 text-white text-[10px] font-bold tabular-nums shadow-[0_1px_3px_rgba(16,185,129,0.4)]">
                   {conditionsActiveCount}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {conditionsActiveCount === 0 && (
-                <span className="text-[10px] text-slate-400">{t("xf_optional")}</span>
-              )}
+            <div className="flex items-center gap-1.5">
               {conditionsOpen ? (
-                <ChevronUp className="w-4 h-4 text-slate-400" />
+                <ChevronUp
+                  className={`w-4 h-4 ${conditionsActiveCount > 0 ? "text-emerald-600" : "text-slate-400"}`}
+                />
               ) : (
-                <ChevronDown className="w-4 h-4 text-slate-400" />
+                <ChevronDown
+                  className={`w-4 h-4 ${conditionsActiveCount > 0 ? "text-emerald-600" : "text-slate-400"}`}
+                />
               )}
             </div>
           </button>
