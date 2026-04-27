@@ -274,16 +274,17 @@ export function AccountsProvider({ children }) {
     [balances, reserved]
   );
 
-  // Delta = изменение баланса с момента sinceTimestamp (например начало
-  // текущего дня). Считается из movements: sum signed amounts ПОСЛЕ
-  // sinceTimestamp, исключая reserved (pending не влияет на actual balance).
-  // Используется в Balances/AccountsPage для отображения "+$1,200 / -$300"
-  // по валютам и итогам офисов — стандартная финансовая метрика "P&L day".
+  // Delta = изменение баланса в диапазоне [sinceMs, untilMs).
+  // Если untilMs не задан — все movements после sinceMs.
+  // Применения:
+  //   * сегодня:  deltaOf(id, todayStart)
+  //   * вчера:    deltaOf(id, yesterdayStart, todayStart)
+  // Reserved (pending) пропускаем — они не влияют на actual balance.
   //
   // ВАЖНО: поле даты в movements называется `timestamp` (ISO string).
-  // Раньше я читал `m.createdAt` — это поле undefined и дельта всегда =0.
+  // Поле createdAt всегда undefined (раньше delta была =0 из-за этого).
   const deltaOf = useCallback(
-    (accountId, sinceMs) => {
+    (accountId, sinceMs, untilMs) => {
       if (!sinceMs) return 0;
       let sum = 0;
       for (const m of movements) {
@@ -292,6 +293,7 @@ export function AccountsProvider({ children }) {
         const tsRaw = m.timestamp || m.createdAt || m.created_at;
         const ts = tsRaw ? new Date(tsRaw).getTime() : 0;
         if (!ts || ts < sinceMs) continue;
+        if (untilMs && ts >= untilMs) continue;
         sum += m.direction === "in" ? m.amount : -m.amount;
       }
       return sum;

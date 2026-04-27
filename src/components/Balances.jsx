@@ -42,18 +42,28 @@ const detectNetwork = (account) => {
 };
 
 // ------- Pure group helper -------
-// Office accounts → { cash, bank, crypto } с тремя метриками + delta
-// (изменение с начала дня) на каждой позиции.
-function groupOfficeAccounts(accounts, balanceOf, reservedOf, deltaOf, dayStartMs, currencyDict) {
+// Office accounts → { cash, bank, crypto } с метриками + delta (сегодня)
+// + deltaYesterday (вчера) на каждой позиции.
+function groupOfficeAccounts(
+  accounts,
+  balanceOf,
+  reservedOf,
+  deltaOf,
+  dayStartMs,
+  yesterdayStartMs,
+  currencyDict
+) {
   const cashMap = new Map();
   const bankMap = new Map();
-  const cryptoMap = new Map(); // currency → Map<network, {total, reserved, delta}>
+  const cryptoMap = new Map();
 
   accounts.forEach((a) => {
     if (!a.active) return;
     const total = balanceOf(a.id);
     const reserved = reservedOf(a.id);
     const delta = deltaOf ? deltaOf(a.id, dayStartMs) : 0;
+    const deltaYest =
+      deltaOf && yesterdayStartMs ? deltaOf(a.id, yesterdayStartMs, dayStartMs) : 0;
 
     const meta = currencyDict[a.currency];
     const isCrypto = meta?.type === "crypto";
@@ -62,19 +72,21 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, deltaOf, dayStartM
       if (!cryptoMap.has(a.currency)) cryptoMap.set(a.currency, new Map());
       const nw = detectNetwork(a);
       const inner = cryptoMap.get(a.currency);
-      const prev = inner.get(nw) || { total: 0, reserved: 0, delta: 0 };
+      const prev = inner.get(nw) || { total: 0, reserved: 0, delta: 0, deltaYesterday: 0 };
       inner.set(nw, {
         total: prev.total + total,
         reserved: prev.reserved + reserved,
         delta: prev.delta + delta,
+        deltaYesterday: prev.deltaYesterday + deltaYest,
       });
     } else {
       const bucket = a.type === "cash" ? cashMap : bankMap;
-      const prev = bucket.get(a.currency) || { total: 0, reserved: 0, delta: 0 };
+      const prev = bucket.get(a.currency) || { total: 0, reserved: 0, delta: 0, deltaYesterday: 0 };
       bucket.set(a.currency, {
         total: prev.total + total,
         reserved: prev.reserved + reserved,
         delta: prev.delta + delta,
+        deltaYesterday: prev.deltaYesterday + deltaYest,
       });
     }
   });
@@ -87,6 +99,7 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, deltaOf, dayStartM
         reserved: v.reserved,
         available: v.total - v.reserved,
         delta: v.delta,
+        deltaYesterday: v.deltaYesterday,
       }))
       .sort((a, b) => b.total - a.total);
 
@@ -99,6 +112,7 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, deltaOf, dayStartM
         reserved: v.reserved,
         available: v.total - v.reserved,
         delta: v.delta,
+        deltaYesterday: v.deltaYesterday,
       }))
       .sort((a, b) => b.total - a.total),
   }));
@@ -124,12 +138,33 @@ function deltaClass(value) {
   return "text-slate-400";
 }
 
+// Рендер пары "сегодня / вчера" через слэш с individual цветами.
+// Если yesterday не задан — рендерится только сегодня.
+function DeltaPair({ today, yesterday, currency, size = "xs", title }) {
+  const todayStr = fmtDelta(today, currency);
+  const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
+  const sizeCls = size === "sm" ? "text-[11px]" : "text-[10px]";
+  return (
+    <span
+      className={`inline-flex items-baseline gap-1 ${sizeCls} font-bold tabular-nums`}
+      title={title || (yStr ? "сегодня / вчера" : "Изменение с начала дня")}
+    >
+      <span className={deltaClass(today)}>{todayStr}</span>
+      {yStr && (
+        <>
+          <span className="text-slate-300 font-normal">/</span>
+          <span className={deltaClass(yesterday)}>{yStr}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
 // ------- UI: one currency row (Total / Reserved / Available) -------
 
 // Строго: name слева, сумма справа, available-зеленый только если > 0 и без reserved.
-function AssetRow({ name, subtitle, amount, currency, reserved, delta }) {
+function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYesterday }) {
   const hasReserved = reserved > 0;
-  const deltaStr = fmtDelta(delta, currency);
   return (
     <div className="flex items-baseline justify-between gap-2 py-1.5 border-b border-slate-100 last:border-b-0">
       <div className="min-w-0 flex-1">
@@ -141,14 +176,7 @@ function AssetRow({ name, subtitle, amount, currency, reserved, delta }) {
       <div className="text-right shrink-0">
         <div className="text-[13px] font-semibold tabular-nums text-slate-900 inline-flex items-baseline gap-1.5">
           <span>{curSymbol(currency)}{fmt(amount, currency)}</span>
-          {deltaStr && (
-            <span
-              className={`text-[10px] font-bold tabular-nums ${deltaClass(delta)}`}
-              title="Изменение с начала дня"
-            >
-              {deltaStr}
-            </span>
-          )}
+          <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} />
         </div>
         {hasReserved && (
           <div className="text-[10px] text-amber-700 tabular-nums">
@@ -167,8 +195,7 @@ function AssetRow({ name, subtitle, amount, currency, reserved, delta }) {
 // — total
 // — divider
 // — список активов (скролл при переполнении)
-function GroupCard({ title, icon: Icon, rows, total, totalDelta, emptyText, currency }) {
-  const totalDeltaStr = fmtDelta(totalDelta, currency);
+function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYesterday, emptyText, currency }) {
   return (
     <div className="bg-white border border-slate-200 rounded-[14px] p-4 flex flex-col h-full min-h-[220px]">
       {/* Header: title */}
@@ -187,14 +214,15 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, emptyText, curr
         {curSymbol(currency)}{fmt(total, currency)}
         <span className="text-[12px] text-slate-400 font-medium ml-1.5">{currency}</span>
       </div>
-      {totalDeltaStr && (
-        <div
-          className={`mt-1 text-[11px] font-bold tabular-nums ${deltaClass(totalDelta)}`}
-          title="Изменение с начала дня"
-        >
-          {totalDeltaStr} сегодня
-        </div>
-      )}
+      <div className="mt-1">
+        <DeltaPair
+          today={totalDelta}
+          yesterday={totalDeltaYesterday}
+          currency={currency}
+          size="sm"
+          title="Сегодня / вчера (до 00:00)"
+        />
+      </div>
 
       {/* Divider */}
       <div className="mt-3 border-t border-slate-200" />
@@ -213,6 +241,7 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, emptyText, curr
               currency={r.currency}
               reserved={r.reserved}
               delta={r.delta}
+              deltaYesterday={r.deltaYesterday}
             />
           ))
         )}
@@ -235,6 +264,7 @@ function cryptoRowsFromGroups(cryptoGroups) {
         total: n.total,
         reserved: n.reserved,
         delta: n.delta,
+        deltaYesterday: n.deltaYesterday,
       });
     });
   });
@@ -250,6 +280,7 @@ function OfficeBlock({
   reservedOf,
   deltaOf,
   dayStartMs,
+  yesterdayStartMs,
   currencyDict,
   toBase,
   base,
@@ -262,32 +293,36 @@ function OfficeBlock({
         reservedOf,
         deltaOf,
         dayStartMs,
+        yesterdayStartMs,
         currencyDict
       ),
-    [accounts, balanceOf, reservedOf, deltaOf, dayStartMs, currencyDict]
+    [accounts, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, currencyDict]
   );
 
-  // Office totals в base currency + delta в base
   const allAccs = accounts.filter((a) => a.active);
   const totals = useMemo(() => {
     let total = 0;
     let reserved = 0;
     let delta = 0;
+    let deltaYesterday = 0;
     allAccs.forEach((a) => {
       total += toBase(balanceOf(a.id), a.currency);
       reserved += toBase(reservedOf(a.id), a.currency);
       delta += toBase(deltaOf(a.id, dayStartMs), a.currency);
+      deltaYesterday += toBase(
+        deltaOf(a.id, yesterdayStartMs, dayStartMs),
+        a.currency
+      );
     });
     return {
       total,
       reserved,
       available: total - reserved,
       delta,
+      deltaYesterday,
       hasReserved: reserved > 0,
     };
-  }, [allAccs, balanceOf, reservedOf, deltaOf, dayStartMs, toBase]);
-
-  const officeDeltaStr = fmtDelta(totals.delta, base);
+  }, [allAccs, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase]);
 
   return (
     <div className="space-y-3">
@@ -297,14 +332,13 @@ function OfficeBlock({
           <Building2 className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold text-slate-900">{office.name}</h3>
           <span className="text-[11px] text-slate-400">· {allAccs.length} accounts</span>
-          {officeDeltaStr && (
-            <span
-              className={`text-[11px] font-bold tabular-nums ${deltaClass(totals.delta)}`}
-              title="Сумма изменений по всем счетам с начала дня"
-            >
-              {officeDeltaStr} сегодня
-            </span>
-          )}
+          <DeltaPair
+            today={totals.delta}
+            yesterday={totals.deltaYesterday}
+            currency={base}
+            size="sm"
+            title="Сегодня / вчера по этому офису"
+          />
         </div>
         <div className="flex items-center gap-2 text-[12px] tabular-nums">
           <MiniStat label="Total" value={totals.total} sym={curSymbol(base)} tone="slate" />
@@ -331,17 +365,17 @@ function OfficeBlock({
           Каждая карточка скроллится внутри если активов много. */}
       {(() => {
         const cryptoRows = cryptoRowsFromGroups(grouped.crypto);
-        // Totals per card в base (для заголовочной суммы) + delta в base.
-        const sumBase = (rows) =>
-          rows.reduce((s, r) => s + toBase(r.total, r.currency), 0);
-        const sumDeltaBase = (rows) =>
-          rows.reduce((s, r) => s + toBase(r.delta || 0, r.currency), 0);
-        const cashTotalBase = sumBase(grouped.cash);
-        const bankTotalBase = sumBase(grouped.bank);
-        const cryptoTotalBase = sumBase(cryptoRows);
-        const cashDeltaBase = sumDeltaBase(grouped.cash);
-        const bankDeltaBase = sumDeltaBase(grouped.bank);
-        const cryptoDeltaBase = sumDeltaBase(cryptoRows);
+        const sumBase = (rows, key = "total") =>
+          rows.reduce((s, r) => s + toBase(r[key] || 0, r.currency), 0);
+        const cashTotalBase = sumBase(grouped.cash, "total");
+        const bankTotalBase = sumBase(grouped.bank, "total");
+        const cryptoTotalBase = sumBase(cryptoRows, "total");
+        const cashDeltaBase = sumBase(grouped.cash, "delta");
+        const bankDeltaBase = sumBase(grouped.bank, "delta");
+        const cryptoDeltaBase = sumBase(cryptoRows, "delta");
+        const cashDeltaYBase = sumBase(grouped.cash, "deltaYesterday");
+        const bankDeltaYBase = sumBase(grouped.bank, "deltaYesterday");
+        const cryptoDeltaYBase = sumBase(cryptoRows, "deltaYesterday");
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <GroupCard
@@ -350,6 +384,7 @@ function OfficeBlock({
               rows={grouped.cash}
               total={cashTotalBase}
               totalDelta={cashDeltaBase}
+              totalDeltaYesterday={cashDeltaYBase}
               currency={base}
               emptyText="No cash accounts"
             />
@@ -359,6 +394,7 @@ function OfficeBlock({
               rows={grouped.bank}
               total={bankTotalBase}
               totalDelta={bankDeltaBase}
+              totalDeltaYesterday={bankDeltaYBase}
               currency={base}
               emptyText="No bank accounts"
             />
@@ -368,6 +404,7 @@ function OfficeBlock({
               rows={cryptoRows}
               total={cryptoTotalBase}
               totalDelta={cryptoDeltaBase}
+              totalDeltaYesterday={cryptoDeltaYBase}
               currency={base}
               emptyText="No crypto accounts"
             />
@@ -424,15 +461,13 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     [base, getRate]
   );
 
-  // Период для расчёта delta — с начала текущего дня (local time).
-  // Стандартная финансовая метрика "изменение за сегодня".
-  // useMemo чтобы значение не пересоздавалось на каждый ре-render
-  // (но тогда delta могла бы перескакивать через полночь — это OK,
-  // юзер обновит страницу или приложение перерендерится).
-  const dayStartMs = useMemo(() => {
+  // Период для delta — сегодня (с 00:00 local) + вчера (для сравнения).
+  // dayStartMs / yesterdayStartMs computed once via useMemo.
+  const { dayStartMs, yesterdayStartMs } = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    return d.getTime();
+    const today = d.getTime();
+    return { dayStartMs: today, yesterdayStartMs: today - 24 * 60 * 60 * 1000 };
   }, []);
 
   const officesToRender = useMemo(() => {
@@ -441,7 +476,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
 
-  // Grand totals + obligations + delta
+  // Grand totals + obligations + delta (сегодня и вчера)
   const grand = useMemo(() => {
     const relevant =
       scope === "all"
@@ -450,12 +485,16 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     let total = 0;
     let reserved = 0;
     let delta = 0;
+    let deltaYesterday = 0;
     relevant.forEach((a) => {
       total += toBase(balanceOf(a.id), a.currency);
       reserved += toBase(reservedOf(a.id), a.currency);
       delta += toBase(deltaOf(a.id, dayStartMs), a.currency);
+      deltaYesterday += toBase(
+        deltaOf(a.id, yesterdayStartMs, dayStartMs),
+        a.currency
+      );
     });
-    // Obligations в scope — все open we_owe по relevant офисам в base.
     const officeIds = new Set(relevant.map((a) => a.officeId));
     const obligationsBase = obligations
       .filter((o) => o.status === "open" && o.direction === "we_owe" && officeIds.has(o.officeId))
@@ -464,12 +503,13 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       total,
       reserved,
       delta,
+      deltaYesterday,
       obligations: obligationsBase,
       available: total - reserved - obligationsBase,
       hasReserved: reserved > 0,
       hasObligations: obligationsBase > 0,
     };
-  }, [accounts, scope, currentOffice, balanceOf, reservedOf, deltaOf, dayStartMs, toBase, obligations]);
+  }, [accounts, scope, currentOffice, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase, obligations]);
 
   const sym = curSymbol(base);
 
@@ -496,22 +536,17 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                 {t("all_offices")} · {activeOffices.length}
               </>
             )}
-            {(() => {
-              const ds = fmtDelta(grand.delta, base);
-              if (!ds) return null;
-              return (
-                <span
-                  className={`text-[12px] font-bold tabular-nums px-2 py-0.5 rounded-md ${
-                    grand.delta > 0
-                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-                      : "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
-                  }`}
-                  title="Изменение по выбранному scope с начала дня"
-                >
-                  {ds} сегодня
-                </span>
-              );
-            })()}
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 ring-1 ring-slate-200"
+              title="Сегодня / вчера"
+            >
+              <DeltaPair
+                today={grand.delta}
+                yesterday={grand.deltaYesterday}
+                currency={base}
+                size="sm"
+              />
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -523,6 +558,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
               sym={sym}
               tone="slate"
               delta={grand.delta}
+              deltaYesterday={grand.deltaYesterday}
               deltaCurrency={base}
             />
             {grand.hasReserved && (
@@ -593,6 +629,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                   reservedOf={reservedOf}
                   deltaOf={deltaOf}
                   dayStartMs={dayStartMs}
+                  yesterdayStartMs={yesterdayStartMs}
                   currencyDict={currencyDict}
                   toBase={toBase}
                   base={base}
@@ -608,13 +645,23 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
 
 // ------- Header summary badge -------
 
-function SummaryBadge({ label, value, sym, tone, icon: Icon, emphasize, delta, deltaCurrency }) {
+function SummaryBadge({
+  label,
+  value,
+  sym,
+  tone,
+  icon: Icon,
+  emphasize,
+  delta,
+  deltaYesterday,
+  deltaCurrency,
+}) {
   const tones = {
     slate: "text-slate-700",
     amber: "text-amber-700 bg-amber-50",
     emerald: emphasize ? "text-emerald-700 bg-emerald-50" : "text-emerald-700",
   };
-  const deltaStr = delta != null && deltaCurrency ? fmtDelta(delta, deltaCurrency) : null;
+  const showDelta = delta != null && deltaCurrency;
   return (
     <div className={`flex flex-col items-start rounded-md px-2.5 py-1 ${tones[tone]}`}>
       <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
@@ -626,13 +673,13 @@ function SummaryBadge({ label, value, sym, tone, icon: Icon, emphasize, delta, d
           {sym}
           {fmt(value)}
         </div>
-        {deltaStr && (
-          <span
-            className={`text-[10px] font-bold tabular-nums ${deltaClass(delta)}`}
-            title="Изменение с начала дня"
-          >
-            {deltaStr}
-          </span>
+        {showDelta && (
+          <DeltaPair
+            today={delta}
+            yesterday={deltaYesterday}
+            currency={deltaCurrency}
+            size="xs"
+          />
         )}
       </div>
     </div>

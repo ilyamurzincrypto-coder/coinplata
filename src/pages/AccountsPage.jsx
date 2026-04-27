@@ -59,6 +59,27 @@ function deltaClass(value) {
   return "text-slate-400";
 }
 
+// Inline пара "сегодня / вчера" через слэш с individual цветами.
+function DeltaPair({ today, yesterday, currency, size = "xs" }) {
+  const todayStr = fmtDelta(today, currency);
+  const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
+  const sizeCls = size === "sm" ? "text-[11px]" : "text-[10px]";
+  return (
+    <span
+      className={`inline-flex items-baseline gap-1 ${sizeCls} font-bold tabular-nums`}
+      title={yStr ? "сегодня / вчера" : "Изменение с начала дня"}
+    >
+      <span className={deltaClass(today)}>{todayStr}</span>
+      {yStr && (
+        <>
+          <span className="text-slate-300 font-normal">/</span>
+          <span className={deltaClass(yesterday)}>{yStr}</span>
+        </>
+      )}
+    </span>
+  );
+}
+
 export default function AccountsPage() {
   const { t } = useTranslation();
   const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount } = useAccounts();
@@ -69,16 +90,16 @@ export default function AccountsPage() {
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
 
-  // Период для delta — с начала текущего дня (local time).
-  // "Today's P&L" по каждому счёту / валюте / офису.
-  const dayStartMs = useMemo(() => {
+  // Период для delta — сегодня + вчера (для сравнения через слэш).
+  const { dayStartMs, yesterdayStartMs } = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
-    return d.getTime();
+    const today = d.getTime();
+    return { dayStartMs: today, yesterdayStartMs: today - 24 * 60 * 60 * 1000 };
   }, []);
 
-  // Delta helpers (fmtDelta / deltaClass) — module-level, доступны
-  // также CurrencyRow и любым sub-компонентам.
+  // Delta helpers (fmtDelta / deltaClass / DeltaPair) — module-level,
+  // доступны также CurrencyRow и любым sub-компонентам.
 
   const [topUpFor, setTopUpFor] = useState(null);
   const [transferFrom, setTransferFrom] = useState(null);
@@ -183,15 +204,17 @@ export default function AccountsPage() {
         let total = 0;
         let reserved = 0;
         let delta = 0;
+        let deltaYesterday = 0;
         accsForCur.forEach((a) => {
           total += balanceOf(a.id);
           reserved += reservedOf(a.id);
           delta += deltaOf(a.id, dayStartMs);
+          deltaYesterday += deltaOf(a.id, yesterdayStartMs, dayStartMs);
         });
 
         return {
           currency: meta,
-          totals: { total, reserved, available: total - reserved, delta },
+          totals: { total, reserved, available: total - reserved, delta, deltaYesterday },
           channelBlocks,
           accountsCount: accsForCur.length,
         };
@@ -201,10 +224,15 @@ export default function AccountsPage() {
       let officeTotalBase = 0;
       let officeReservedBase = 0;
       let officeDeltaBase = 0;
+      let officeDeltaYestBase = 0;
       officeAccs.forEach((a) => {
         officeTotalBase += toBase(balanceOf(a.id), a.currency);
         officeReservedBase += toBase(reservedOf(a.id), a.currency);
         officeDeltaBase += toBase(deltaOf(a.id, dayStartMs), a.currency);
+        officeDeltaYestBase += toBase(
+          deltaOf(a.id, yesterdayStartMs, dayStartMs),
+          a.currency
+        );
       });
 
       return {
@@ -214,6 +242,7 @@ export default function AccountsPage() {
           reserved: officeReservedBase,
           available: officeTotalBase - officeReservedBase,
           delta: officeDeltaBase,
+          deltaYesterday: officeDeltaYestBase,
           hasReserved: officeReservedBase > 0,
         },
         currencyBlocks,
@@ -221,11 +250,15 @@ export default function AccountsPage() {
       };
     })
     .filter((block) => block.accsCount > 0);
-  }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, deltaOf, dayStartMs, toBase]);
+  }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase]);
 
   const grandTotal = officeBlocks.reduce((s, ob) => s + ob.totals.total, 0);
   const grandReserved = officeBlocks.reduce((s, ob) => s + ob.totals.reserved, 0);
   const grandDelta = officeBlocks.reduce((s, ob) => s + ob.totals.delta, 0);
+  const grandDeltaYesterday = officeBlocks.reduce(
+    (s, ob) => s + ob.totals.deltaYesterday,
+    0
+  );
 
   return (
     <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-4">
@@ -237,22 +270,17 @@ export default function AccountsPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
-          {(() => {
-            const ds = fmtDelta(grandDelta, base);
-            if (!ds) return null;
-            return (
-              <span
-                className={`text-[12px] font-bold tabular-nums px-2.5 py-1.5 rounded-[10px] ring-1 ${
-                  grandDelta > 0
-                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                    : "bg-rose-50 text-rose-700 ring-rose-200"
-                }`}
-                title="Сумма изменений по всем офисам с начала дня"
-              >
-                {ds} сегодня
-              </span>
-            );
-          })()}
+          <span
+            className="inline-flex items-center px-2.5 py-1.5 rounded-[10px] bg-slate-50 ring-1 ring-slate-200"
+            title="Сегодня / вчера по всем офисам"
+          >
+            <DeltaPair
+              today={grandDelta}
+              yesterday={grandDeltaYesterday}
+              currency={base}
+              size="sm"
+            />
+          </span>
           <button
             onClick={handleExportAccounts}
             disabled={accounts.length === 0}
@@ -296,18 +324,12 @@ export default function AccountsPage() {
                 <Building2 className="w-3.5 h-3.5 text-slate-500" />
                 <h2 className="text-[13px] font-semibold tracking-tight">{office.name}</h2>
                 <span className="text-[11px] text-slate-400">· {accsCount} accounts</span>
-                {(() => {
-                  const ds = fmtDelta(totals.delta, base);
-                  if (!ds) return null;
-                  return (
-                    <span
-                      className={`text-[11px] font-bold tabular-nums ${deltaClass(totals.delta)}`}
-                      title="Изменение по этому офису с начала дня"
-                    >
-                      {ds} сегодня
-                    </span>
-                  );
-                })()}
+                <DeltaPair
+                  today={totals.delta}
+                  yesterday={totals.deltaYesterday}
+                  currency={base}
+                  size="sm"
+                />
               </div>
               <div className="flex items-center gap-2 tabular-nums text-[11px]">
                 <span className="text-slate-600">
@@ -497,18 +519,11 @@ function CurrencyRow({
             {curSymbol(currency.code)}
             {fmt(totals.total, currency.code)}
           </span>
-          {(() => {
-            const ds = fmtDelta(totals.delta, currency.code);
-            if (!ds) return null;
-            return (
-              <span
-                className={`text-[11px] font-bold tabular-nums ${deltaClass(totals.delta)}`}
-                title="Изменение по этой валюте с начала дня"
-              >
-                {ds}
-              </span>
-            );
-          })()}
+          <DeltaPair
+            today={totals.delta}
+            yesterday={totals.deltaYesterday}
+            currency={currency.code}
+          />
           {hasReserved && (
             <span className="inline-flex items-center gap-0.5 text-amber-700 text-[11px]">
               <Clock className="w-2.5 h-2.5" />
