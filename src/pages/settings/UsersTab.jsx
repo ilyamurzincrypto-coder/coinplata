@@ -30,7 +30,7 @@ import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { supabase, isSupabaseConfigured } from "../../lib/supabase.js";
 import { useToast } from "../../lib/toast.jsx";
-import { rpcSetUserStatus, updateUserRow, rpcInviteUser, withToast } from "../../lib/supabaseWrite.js";
+import { rpcSetUserStatus, updateUserRow, rpcInviteUser, rpcAdminSetPassword, withToast } from "../../lib/supabaseWrite.js";
 import { loadPendingInvites } from "../../lib/supabaseReaders.js";
 import { onDataBump } from "../../lib/dataVersion.jsx";
 
@@ -347,10 +347,32 @@ export default function UsersTab() {
     });
   };
 
-  const handleChangePassword = (user, newPass) => {
+  const handleChangePassword = async (user, newPass) => {
+    // DB mode — реальная запись в auth.users через RPC admin_set_password
+    // (security definer + bcrypt). Раньше setUserPassword был in-memory
+    // моком — пароль не менялся в Supabase Auth, юзер не мог войти.
+    if (isSupabaseConfigured) {
+      try {
+        await rpcAdminSetPassword(user.id, newPass);
+      } catch (err) {
+        return { ok: false, warning: err?.message || String(err) };
+      }
+      // Локально тоже обновим status/passwordHash чтобы UI сразу отразил
+      // active state до следующего refetch из DB.
+      setUserPassword(user.id, newPass);
+      logAudit({
+        action: "set_password",
+        entity: "user",
+        entityId: user.id,
+        summary: `Password set directly for ${user.name}`,
+      });
+      showToast("Password updated", "success");
+      return { ok: true };
+    }
+
+    // Demo / no Supabase — локальный mock-flow.
     const res = setUserPassword(user.id, newPass);
     if (!res.ok) return { ok: false, warning: res.warning };
-    // Не логируем сам пароль; только факт действия.
     logAudit({
       action: "set_password",
       entity: "user",
@@ -680,20 +702,22 @@ function DirectPasswordModal({ user, onClose, onSave }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
     if (user) {
       setPassword("");
       setConfirm("");
       setError("");
+      setSaving(false);
     }
   }, [user]);
 
   if (!user) return null;
 
-  const canSubmit = password.length >= 6 && password === confirm;
+  const canSubmit = !saving && password.length >= 6 && password === confirm;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError("");
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
@@ -703,12 +727,19 @@ function DirectPasswordModal({ user, onClose, onSave }) {
       setError("Passwords don't match");
       return;
     }
-    const res = onSave(user, password);
-    if (!res.ok) {
-      setError(res.warning || "Could not set password");
-      return;
+    setSaving(true);
+    try {
+      const res = await onSave(user, password);
+      if (!res?.ok) {
+        setError(res?.warning || "Could not set password");
+        setSaving(false);
+        return;
+      }
+      onClose();
+    } catch (err) {
+      setError(err?.message || String(err));
+      setSaving(false);
     }
-    onClose();
   };
 
   return (
@@ -771,7 +802,7 @@ function DirectPasswordModal({ user, onClose, onSave }) {
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           }`}
         >
-          Save
+          {saving ? "Saving…" : "Save"}
         </button>
       </div>
     </Modal>

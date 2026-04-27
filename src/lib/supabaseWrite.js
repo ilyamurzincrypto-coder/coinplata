@@ -705,6 +705,25 @@ export async function rpcInviteUser({ email, fullName, role, officeId }) {
   return data; // existing user_id (uuid) or null
 }
 
+// Админ задаёт пароль юзеру (security-definer RPC, миграция 0040).
+// Это РЕАЛЬНЫЙ password set: пишет bcrypt hash в auth.users.encrypted_password
+// + обновляет public.users (status=active, password_set=true).
+// Раньше UsersTab → "Change password" работал только in-memory — пароль
+// в Supabase Auth не менялся, юзер не мог войти.
+export async function rpcAdminSetPassword(userId, password) {
+  assertConfigured();
+  const validId = requireUuid(userId, "userId");
+  if (typeof password !== "string" || password.length < 6) {
+    throw new Error("Password must be at least 6 characters");
+  }
+  const { error } = await supabase.rpc("admin_set_password", {
+    p_user_id: validId,
+    p_password: password,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "admin_set_password"));
+  bumpDataVersion();
+}
+
 // Меняет public.users.status в БД. Используется для Disable/Enable в UsersTab.
 // Принимает 'active' | 'disabled' | 'invited'. Hard-delete не делаем — для
 // этого нужен service_role (auth.users.delete), недоступный из браузера.
