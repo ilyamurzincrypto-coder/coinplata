@@ -51,9 +51,11 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-// Сколько пар показывать в compact mode — по умолчанию топ-6 (все базовые
-// USDT/USD, USDT/TRY, USDT/EUR, USD/TRY, USD/EUR, TRY/EUR при текущем приоритете).
-const COMPACT_LIMIT = 6;
+// Сколько пар показывать в compact mode — по умолчанию топ-4 (USDT/USD,
+// USDT/TRY, USDT/EUR, USD/TRY при текущем приоритете). Sidebar короткий,
+// в обычной высоте main column (CTA + Balances) — между Balances и
+// Transactions нет вертикального gap'а.
+const COMPACT_LIMIT = 4;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
@@ -206,39 +208,37 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         })}
       </div>
 
-      {/* Search — виден всегда. При вводе автоматически расширяет список
-          (даже в compact mode). */}
-      <div className="px-2 pt-2 pb-1 border-b border-slate-100">
-        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
-          <Search className="w-3 h-3 text-slate-400 shrink-0" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="USD, TRY, EUR…"
-            className="flex-1 min-w-0 bg-transparent outline-none text-[11px] text-slate-900 placeholder:text-slate-400"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="p-0.5 rounded hover:bg-slate-200 text-slate-500 transition-colors shrink-0"
-              title="Очистить"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
+      {/* Search — только в expanded mode. В compact показываем top 4 пар,
+          поиск не нужен — экономим высоту sidebar чтобы не растягивать
+          row1 (transactions прижмутся к Balances без gap). */}
+      {expanded && (
+        <div className="px-2 pt-2 pb-1 border-b border-slate-100">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
+            <Search className="w-3 h-3 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="USD, TRY, EUR…"
+              className="flex-1 min-w-0 bg-transparent outline-none text-[11px] text-slate-900 placeholder:text-slate-400"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="p-0.5 rounded hover:bg-slate-200 text-slate-500 transition-colors shrink-0"
+                title="Очистить"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="p-1.5 space-y-1 max-h-[70vh] overflow-y-auto">
+      <div className={`p-1 ${expanded ? "space-y-0.5 max-h-[70vh] overflow-y-auto" : "space-y-0.5"}`}>
         {visiblePairs.map(([a, b]) => {
-          // Берём ОБА направления напрямую из БД через getRateForTab.
-          // forward = a→b, backward = b→a. Это реальные сел/бай rates офиса
-          // (после 0036 в pairs хранятся обе стороны как отдельные records).
-          // Раньше тут считался искусственный ±spread, что давало числа
-          // отличные от тех что подставляла форма сделки.
-          const { forward: sell, backward: buy, backwardSynthetic } = getTradingRates({
+          const { forward: sell, backward: buy } = getTradingRates({
             getRate: getRateForTab,
             base: a,
             quote: b,
@@ -247,36 +247,31 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           return (
             <div
               key={`${a}-${b}`}
-              className={`px-3 py-2 rounded-[10px] transition-colors ${
+              className={`px-2 py-1 rounded-[8px] transition-colors ${
                 pairHasOverride ? "bg-indigo-50/60 ring-1 ring-indigo-100" : "bg-slate-50"
               }`}
             >
-              <div className="text-[9px] font-bold text-slate-500 tracking-[0.12em] mb-1.5 inline-flex items-center gap-1">
-                <span>{a}</span>
-                <span className="text-slate-400">⇄</span>
-                <span>{b}</span>
-                {pairHasOverride && (
-                  <span
-                    className="ml-0.5 px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
-                    title="Office override активен"
-                  >
-                    OFC
-                  </span>
-                )}
-              </div>
-              <div className="flex items-baseline justify-between mb-0.5">
-                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
-                  {a} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {b}
+              {pairHasOverride && (
+                <span
+                  className="float-right px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
+                  title="Office override активен"
+                >
+                  OFC
                 </span>
-                <span className="text-[13px] font-bold tabular-nums text-slate-900 leading-none">
+              )}
+              <div className="flex items-baseline justify-between gap-1 leading-tight">
+                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
+                  {a}<ArrowRight className="w-2 h-2 mx-0.5" />{b}
+                </span>
+                <span className="text-[12px] font-bold tabular-nums text-slate-900">
                   {formatRate(sell)}
                 </span>
               </div>
-              <div className="flex items-baseline justify-between">
+              <div className="flex items-baseline justify-between gap-1 leading-tight">
                 <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
-                  {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
+                  {b}<ArrowRight className="w-2 h-2 mx-0.5" />{a}
                 </span>
-                <span className="text-[12px] font-bold tabular-nums text-slate-600 leading-none">
+                <span className="text-[11px] font-bold tabular-nums text-slate-600">
                   {formatRate(buy)}
                 </span>
               </div>
