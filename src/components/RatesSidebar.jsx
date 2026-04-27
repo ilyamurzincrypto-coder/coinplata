@@ -8,7 +8,7 @@
 // override для пары — показываем его курс, иначе global fallback.
 // Бейдж OFC на паре = override активен (курс отличается от global).
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { TrendingUp, ArrowRight, Zap, Settings2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -51,11 +51,13 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-// Сколько пар показывать в compact mode — по умолчанию топ-4 (USDT/USD,
-// USDT/TRY, USDT/EUR, USD/TRY при текущем приоритете). Sidebar короткий,
-// в обычной высоте main column (CTA + Balances) — между Balances и
-// Transactions нет вертикального gap'а.
-const COMPACT_LIMIT = 4;
+// Минимум показываемых пар в compact (на случай если высоту не успели
+// измерить). Реальное число вычисляется через ResizeObserver на
+// pairs-container — столько пар сколько помещается в available
+// height без скролла.
+const COMPACT_MIN = 3;
+// Approx высота одной pair-карточки в px (px-2 py-1 + 2 строки текста).
+const PAIR_ROW_HEIGHT = 38;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
@@ -65,6 +67,33 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const [quickOpen, setQuickOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
+  // Динамически вычисляем сколько пар умещается в available height
+  // pairs-container в compact mode. ResizeObserver следит за изменениями.
+  const [fitCount, setFitCount] = useState(COMPACT_MIN);
+  const pairsRef = useRef(null);
+
+  useEffect(() => {
+    if (expanded || !pairsRef.current || typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+    const el = pairsRef.current;
+    const compute = () => {
+      const h = el.clientHeight;
+      // Учитываем padding контейнера (p-1 = 4px each side) + gap между
+      // парами (space-y-0.5 = 2px).
+      const usable = h - 8;
+      if (usable <= 0) return;
+      const count = Math.max(
+        COMPACT_MIN,
+        Math.floor(usable / (PAIR_ROW_HEIGHT + 2))
+      );
+      setFitCount((prev) => (prev === count ? prev : count));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded, tradePairs.length]);
 
   // Сообщаем родителю что expanded — он подстраивает grid columns
   // (sidebar шире → main колонка уже).
@@ -124,15 +153,16 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       });
     }
     if (!expanded && !q) {
-      // Compact mode без поиска — только базовые пары (top N по приоритету)
-      list = list.slice(0, COMPACT_LIMIT);
+      // Compact — столько пар сколько помещается в высоту без скролла
+      // (вычислено ResizeObserver'ом на pairs-container).
+      list = list.slice(0, fitCount);
     }
     return list;
-  }, [tradePairs, query, expanded]);
+  }, [tradePairs, query, expanded, fitCount]);
 
   const totalCount = tradePairs.length;
   const showingCount = visiblePairs.length;
-  const hasHidden = !expanded && !query && totalCount > COMPACT_LIMIT;
+  const hasHidden = !expanded && !query && totalCount > showingCount;
 
   return (
     <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] h-full flex flex-col">
@@ -237,8 +267,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       )}
 
       <div
+        ref={pairsRef}
         className={`p-1 space-y-0.5 ${
-          expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1"
+          expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"
         }`}
       >
         {visiblePairs.map(([a, b]) => {

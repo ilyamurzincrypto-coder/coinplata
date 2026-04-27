@@ -344,31 +344,28 @@ export default function CashierPage({
               Transactions внизу на ВСЮ ширину.
               Один mount TransactionsTable — фильтры/scroll сохраняются
               при переключении expand. */}
-          {/* Grid template areas только на lg+. На mobile — обычный
-              flow column (sidebar → main → transactions сверху вниз).
-              items-stretch (default) — позволяет aside растягиваться
-              на всю высоту своего grid-cell. Раньше items-start
-              запрещал stretch → sidebar оставался на natural height
-              и не доходил до transactions. */}
+          {/* 3-row grid layout:
+                Row 1 — CTA (full-width)
+                Row 2 — sidebar | Balances (parallel, equal height)
+                Row 3 — compact: Transactions full-width
+                        expanded: Transactions сужены в col2 (sidebar
+                                  продолжается в col1 на оба row 2+3)
+              Sidebar в row 2 = высота Balances (стретчится). Не до
+              transactions. Внутри sidebar динамически считается сколько
+              пар поместится через ResizeObserver — пустоты нет. */}
           <div
             className={`grid grid-cols-1 gap-6 lg:grid-cols-[minmax(200px,220px)_1fr] ${
               sidebarExpanded
-                ? "lg:[grid-template-areas:'sidebar_main'_'sidebar_tx']"
-                : "lg:[grid-template-areas:'sidebar_main'_'tx_tx']"
+                ? "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'sidebar_tx']"
+                : "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'tx_tx']"
             }`}
           >
-            {/* Compact: align-self default = stretch → aside растягивается
-                до высоты row1 (= main column). Negative margin -mb-6
-                занимает row-gap, низ aside физически упирается в верх
-                Transactions без зазора.
-                Expanded: sticky + self-start (sidebar длинный, скроллится
-                внутри 70vh, sticky чтобы держался в viewport при scroll
-                длинных transactions в правой колонке). */}
+            {/* Sidebar — grid-area "sidebar". Compact: только row 2
+                (рядом с Balances), height stretch до Balances height.
+                Expanded: row 2+3 (sidebar занимает оба row слева). */}
             <aside
               className={`lg:[grid-area:sidebar] ${
-                sidebarExpanded
-                  ? "lg:sticky lg:top-[88px] lg:self-start"
-                  : "lg:-mb-6"
+                sidebarExpanded ? "lg:sticky lg:top-[88px] lg:self-start" : ""
               }`}
             >
               <RatesSidebar
@@ -378,13 +375,9 @@ export default function CashierPage({
               />
             </aside>
 
-            {/* MAIN: CTA + Balances. Transactions отдельной grid-area "tx" —
-                перемещается в зависимости от expanded. */}
-            <section className="space-y-6 min-w-0 lg:[grid-area:main]">
-
-          {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
-              балансами. Видно без скролла и прямо рядом с актуальным курсом. */}
-          <section>
+            {/* CTA "+ New exchange" / "Resume" — grid-area "cta", row 1
+                full-width над sidebar и Balances. */}
+            <section className="min-w-0 lg:[grid-area:cta]">
             {formMounted ? (
               <button
                 onClick={openCreate}
@@ -435,18 +428,20 @@ export default function CashierPage({
                 </div>
               </button>
             )}
-          </section>
-
-          <Balances
-            currentOffice={currentOffice}
-            scope={balanceScope}
-            onScopeChange={setBalanceScope}
-          />
             </section>
 
-            {/* Transactions — grid-area "tx". При compact занимает
-                обе колонки (full-width), при expanded — только правую
-                колонку (сужена как Balances). */}
+            {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
+                него (col1) той же высоты. */}
+            <div className="min-w-0 lg:[grid-area:bal]">
+              <Balances
+                currentOffice={currentOffice}
+                scope={balanceScope}
+                onScopeChange={setBalanceScope}
+              />
+            </div>
+
+            {/* Transactions — grid-area "tx". Compact: row 3 full-width.
+                Expanded: row 3 col2 (рядом с продолжением sidebar). */}
             <div className="min-w-0 lg:[grid-area:tx]">
               <TransactionsTable
                 currentOffice={currentOffice}
