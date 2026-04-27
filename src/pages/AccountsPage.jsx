@@ -59,21 +59,28 @@ function deltaClass(value) {
   return "text-slate-400";
 }
 
-// Inline пара "сегодня / вчера" через слэш с individual цветами.
+// Inline пара "сегодня / вчера" через слэш с явными подписями.
 function DeltaPair({ today, yesterday, currency, size = "xs" }) {
   const todayStr = fmtDelta(today, currency);
   const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
   const sizeCls = size === "sm" ? "text-[11px]" : "text-[10px]";
+  const labelCls = size === "sm" ? "text-[9px]" : "text-[8px]";
   return (
     <span
       className={`inline-flex items-baseline gap-1 ${sizeCls} font-bold tabular-nums`}
       title={yStr ? "сегодня / вчера" : "Изменение с начала дня"}
     >
-      <span className={deltaClass(today)}>{todayStr}</span>
+      <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(today)}`}>
+        {todayStr}
+        <span className={`${labelCls} font-semibold opacity-70`}>сегодня</span>
+      </span>
       {yStr && (
         <>
           <span className="text-slate-300 font-normal">/</span>
-          <span className={deltaClass(yesterday)}>{yStr}</span>
+          <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
+            {yStr}
+            <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
+          </span>
         </>
       )}
     </span>
