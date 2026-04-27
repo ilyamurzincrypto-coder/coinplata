@@ -174,10 +174,10 @@ export default function DailyRatesModal({ open, onClose }) {
         <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
           <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
           <span>
-            Редактируете <strong>один курс</strong> на пару (master direction).
-            Обратное направление автоматически = 1 / новый курс. Пустой
-            инпут — курс остаётся прежним. Изменения атомарны + snapshot
-            в историю.
+            Введите <strong>"1 X = ? Y"</strong> — например для USDT/EUR
+            это сколько <strong>EUR</strong> вы получаете за 1 USDT
+            (≈0.85, не 1.18). Обратный курс синхронизируется автоматически.
+            Пустой инпут — курс остаётся прежним.
           </span>
         </div>
 
@@ -229,20 +229,37 @@ export default function DailyRatesModal({ open, onClose }) {
               Number.isFinite(effectiveForward) && effectiveForward > 0
                 ? 1 / effectiveForward
                 : null;
+            // Sanity warning: для USDT-пар с фиатом курс должен быть
+            // близок к 1 (USDT ≈ 1 USD ≈ 0.85-0.95 EUR ≈ 30-45 TRY).
+            // Если admin ввёл значение для master USDT→X гораздо
+            // больше "разумного" — вероятно перепутал направление.
+            const looksInverted = (() => {
+              if (!isChanged) return false;
+              if (from !== "USDT") return false;
+              if (to === "USD" && typedNum > 1.5) return true;
+              if (to === "EUR" && typedNum > 1.5) return true;
+              if (to === "GBP" && typedNum > 1.5) return true;
+              return false;
+            })();
             return (
               <div
                 key={key}
                 className={`flex flex-col gap-0.5 px-3 py-2 rounded-[10px] border transition-colors ${
-                  isChanged
+                  looksInverted
+                    ? "bg-amber-50/80 border-amber-400"
+                    : isChanged
                     ? "bg-emerald-50/60 border-emerald-300"
                     : "bg-slate-50/60 border-slate-200"
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-[12px] font-bold text-slate-700 min-w-[100px] tracking-wide">
-                    <span>{from}</span>
-                    <ArrowRight className="w-3 h-3 text-slate-400" />
-                    <span>{to}</span>
+                  {/* Явный формат "1 X = ? Y" вместо стрелки —
+                      исключает путаницу направления. Юзер сразу
+                      видит "1 USDT = ? EUR" и понимает что вводить. */}
+                  <div className="text-[11px] text-slate-700 min-w-[110px] tracking-tight">
+                    1 <span className="font-bold">{from}</span> ={" "}
+                    <span className="text-slate-400">?</span>{" "}
+                    <span className="font-bold">{to}</span>
                   </div>
                   <div className="text-[11px] text-slate-400 tabular-nums min-w-[70px]">
                     {formatRate(current)}
@@ -254,29 +271,39 @@ export default function DailyRatesModal({ open, onClose }) {
                     onChange={(e) => handleChange(from, to, e.target.value)}
                     placeholder={formatRate(current)}
                     className={`flex-1 min-w-0 bg-white border rounded-[8px] px-2.5 py-1.5 text-[13px] font-semibold tabular-nums outline-none transition-colors ${
-                      isChanged
+                      looksInverted
+                        ? "border-amber-500 focus:ring-2 focus:ring-amber-500/30"
+                        : isChanged
                         ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
                         : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
                     }`}
                   />
                 </div>
-                {/* Reverse preview: {to} → {from} = 1 / forward.
-                    Показываем всегда — менеджер видит обе стороны
-                    одновременно, понимает что reverse computed. */}
+                {/* Reverse preview: 1 {to} = X {from} — менеджер видит
+                    обратную сторону того же курса. */}
                 {reversePreview != null && (
-                  <div className="text-[10px] tabular-nums pl-[100px] flex items-center gap-1.5">
+                  <div className="text-[10px] tabular-nums pl-[110px] flex items-center gap-1.5">
                     <span className="text-slate-400">↩</span>
                     <span className="text-slate-500 font-medium">
-                      {to}→{from}
+                      1 {to} =
                     </span>
                     <span
                       className={`font-bold ${
                         isChanged ? "text-emerald-700" : "text-slate-500"
                       }`}
                     >
-                      {formatRate(reversePreview)}
+                      {formatRate(reversePreview)} {from}
                     </span>
                     <span className="text-[9px] text-slate-400 italic">auto</span>
+                  </div>
+                )}
+                {/* Sanity warning — мб admin ввёл в обратном направлении */}
+                {looksInverted && (
+                  <div className="text-[10px] text-amber-800 font-medium pl-[110px] mt-0.5">
+                    ⚠ 1 {from} = {formatRate(typedNum)} {to}? Похоже на
+                    обратный курс. Возможно вы хотели ввести 1 {to} ={" "}
+                    {formatRate(typedNum)} {from} (тогда правильно
+                    впишите {formatRate(1 / typedNum)} в это поле).
                   </div>
                 )}
                 {/* Подпись "изм. DD.MM HH:MM" — когда курс был последний раз обновлён */}
