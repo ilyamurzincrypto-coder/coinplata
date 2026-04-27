@@ -356,14 +356,17 @@ export default function CashierPage({
                 : "lg:[grid-template-areas:'sidebar_main'_'tx_tx']"
             }`}
           >
-            {/* В compact sidebar растягивается по высоте row1 (= main
-                колонка с CTA + Balances) — без self-start пустого
-                пространства между списком пар и началом transactions
-                нет. Sticky оставлен только в expanded — там sidebar
-                длинный и нужно держать его в viewport при scroll tx. */}
+            {/* Compact: sidebar растягивается по высоте row1 + занимает
+                row-gap (-mb-6) → его низ физически упирается в верх
+                Transactions. Между Balances и Transactions visual gap
+                сохраняется (он внутри main column).
+                Expanded: sticky + self-start (sidebar длинный, скролл
+                внутри 70vh). */}
             <aside
               className={`lg:[grid-area:sidebar] ${
-                sidebarExpanded ? "lg:sticky lg:top-[88px] lg:self-start" : ""
+                sidebarExpanded
+                  ? "lg:sticky lg:top-[88px] lg:self-start"
+                  : "lg:-mb-6"
               }`}
             >
               <RatesSidebar
