@@ -1,15 +1,15 @@
 // src/pages/SetPasswordPage.jsx
-// Показывается ПЕРВЫЙ раз когда приглашённый пользователь кликнул magic-link.
-// Supabase уже создал session, но пароля у него нет. Принудительно просим
-// установить пароль перед входом в систему.
+// Принудительная установка пароля. Показывается когда:
+//   а) public.users.status === 'invited' — invite flow от админа
+//   б) public.users.password_set === false — юзер ещё ни разу не установил
+//   в) PASSWORD_RECOVERY event / type=recovery в URL hash — forgot password
 //
 // После save:
-//   1. supabase.auth.updateUser({ password }) — сохраняет пароль в Supabase Auth
-//   2. UPDATE public.users SET status='active', activated_at=now()
-//   3. bumpDataVersion → AuthProvider реhydrate → currentUser.status='active'
-//   4. Root ре-рендерится → показывает основное приложение
-//
-// Отрабатывает когда public.users.status === 'invited'.
+//   1. supabase.auth.updateUser({ password }) — пишет пароль в Supabase Auth
+//   2. RPC mark_password_set() — атомарно ставит password_set=true,
+//      status='active', activated_at=now()
+//   3. clearRecovery() — сбрасывает recoveryMode в AuthGate
+//   4. bumpDataVersion → AuthProvider re-hydrate → Root показывает app
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -27,10 +27,12 @@ import { supabase } from "../lib/supabase.js";
 import { bumpDataVersion } from "../lib/dataVersion.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { useRecovery } from "../lib/recovery.jsx";
 
 export default function SetPasswordPage() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const { clearRecovery } = useRecovery();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,24 +69,34 @@ export default function SetPasswordPage() {
         return;
       }
 
-      // 2. Проставляем status='active' в public.users
-      const { data: sessionData } = await supabase.auth.getSession();
-      const uid = sessionData?.session?.user?.id;
-      if (uid) {
-        const { error: profileErr } = await supabase
-          .from("users")
-          .update({ status: "active", activated_at: new Date().toISOString() })
-          .eq("id", uid);
-        if (profileErr) {
-          // eslint-disable-next-line no-console
-          console.warn("[SetPassword] profile update failed", profileErr);
-          // Не блокируем — пароль сохранён, профиль обновится при следующем bump.
+      // 2. mark_password_set RPC — атомарно ставит password_set=true,
+      //    status='active', activated_at=now() для текущего auth.uid().
+      //    Раньше делали прямой UPDATE из клиента — сейчас RPC надёжнее
+      //    (security definer, обходит возможные RLS edge-cases).
+      const { error: rpcErr } = await supabase.rpc("mark_password_set");
+      if (rpcErr) {
+        // eslint-disable-next-line no-console
+        console.warn("[SetPassword] mark_password_set failed", rpcErr);
+        // Fallback на прямой UPDATE — если RPC ещё не задеплоена.
+        const { data: sessionData } = await supabase.auth.getSession();
+        const uid = sessionData?.session?.user?.id;
+        if (uid) {
+          await supabase
+            .from("users")
+            .update({
+              status: "active",
+              activated_at: new Date().toISOString(),
+              password_set: true,
+            })
+            .eq("id", uid);
         }
       }
 
       setSuccess(true);
-      // 3. Триггерим reload store'ов — AuthProvider подхватит status='active'
-      //    и Root переключится на основное приложение.
+      // 3. Сбрасываем recoveryMode в AuthGate.
+      clearRecovery();
+      // 4. Триггерим reload store'ов — AuthGate перечитает password_set=true
+      //    и пустит в приложение.
       setTimeout(() => bumpDataVersion(), 400);
     } catch (err) {
       setError(err?.message || "Something went wrong");

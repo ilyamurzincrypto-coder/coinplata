@@ -510,6 +510,7 @@ export function mapUser(r) {
     role: r.role,
     officeId: r.office_id || null,
     status: r.status,
+    passwordSet: r.password_set === true,
     inviteToken: r.invite_token || "",
     invitedAt: r.invited_at,
     activatedAt: r.activated_at,

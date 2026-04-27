@@ -31,6 +31,7 @@ import { ObligationsProvider } from "./store/obligations.jsx";
 import { NotificationsProvider } from "./store/notifications.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
+import { RecoveryContext, useRecovery } from "./lib/recovery.jsx";
 import { supabase, isSupabaseConfigured } from "./lib/supabase.js";
 import { useAuth } from "./store/auth.jsx";
 import { onDataBump } from "./lib/dataVersion.jsx";
@@ -56,6 +57,7 @@ function Root() {
   // Early return'ы — ТОЛЬКО после всех useXxx вызовов (Rules of Hooks).
   const { t } = useTranslation();
   const { currentUser } = useAuth();
+  const { forceSetPassword } = useRecovery();
   const [page, setPage] = useState("cashier");
   const [currentOffice, setCurrentOffice] = useState("mark");
   const [exchangeMode, setExchangeMode] = useState("dashboard");
@@ -110,8 +112,11 @@ function Root() {
   });
 
   // === Early returns AFTER all hooks ===
-  // Activation gate: invited → SetPasswordPage; _loading → ждём, чтобы
-  // invited-user не увидел основное приложение даже на долю секунды.
+  // Activation gate. forceSetPassword (из AuthGate) истина если:
+  //   а) password_set=false в public.users
+  //   б) PASSWORD_RECOVERY event / type=recovery в hash
+  // Эти случаи — magic-link / recovery flow, требуем установить пароль.
+  // _loading → ждём, чтобы invited-user не увидел приложение даже мельком.
   if (isSupabaseConfigured) {
     if (currentUser?.status === "_loading") {
       return (
@@ -120,7 +125,7 @@ function Root() {
         </div>
       );
     }
-    if (currentUser?.status === "invited") {
+    if (forceSetPassword || currentUser?.status === "invited") {
       return <SetPasswordPage />;
     }
   }
@@ -164,13 +169,20 @@ function Root() {
 // Gate перед app: если Supabase настроен и нет session → LoginPage.
 // Плюс: `?login=1` или `#login` форсит preview LoginPage без Supabase (удобно
 // смотреть дизайн до миграции).
+//
+// Дополнительно: detect-им password recovery / magic-link сценарий и
+// принудительно отправляем юзера на SetPasswordPage — независимо от
+// public.users.status. Это закрывает дыру где юзер мог зайти через
+// magic-link без когда-либо установленного пароля.
 function AuthGate({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [forcePreview, setForcePreview] = useState(false);
-  // profileStatus: undefined = loading, null = no row, 'active'|'invited'|'disabled'
-  // Нужен чтобы invited-user сразу попал на SetPasswordPage без мельканий
-  // основного приложения.
-  const [profileStatus, setProfileStatus] = useState(undefined);
+  // profile: undefined = loading, null = no row, иначе { status, password_set }
+  const [profile, setProfile] = useState(undefined);
+  // recoveryMode: true если onAuthStateChange выдал PASSWORD_RECOVERY
+  // или URL hash содержит type=recovery / type=magiclink. В этом case
+  // принудительно показываем SetPasswordPage. Сбрасывается после save.
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     // Preview-режим через URL
@@ -185,10 +197,31 @@ function AuthGate({ children }) {
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
 
+  // Supabase кладёт recovery/magic-link токены в URL hash:
+  //   #access_token=...&type=recovery&...
+  //   #access_token=...&type=magiclink&...
+  // Парсим один раз на маунте. Если нашли recovery/magiclink type — взводим
+  // recoveryMode и стираем hash чтобы при reload не зацикливаться.
+  useEffect(() => {
+    try {
+      const hash = window.location.hash || "";
+      if (!hash.startsWith("#")) return;
+      const params = new URLSearchParams(hash.slice(1));
+      const type = params.get("type");
+      if (type === "recovery" || type === "magiclink" || type === "invite") {
+        setRecoveryMode(true);
+        // Стираем hash, оставив URL чистым. Без reload.
+        try {
+          window.history.replaceState(null, "", window.location.pathname + window.location.search);
+        } catch {}
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured) {
       setSession(null);
-      setProfileStatus(null);
+      setProfile(null);
       return;
     }
     let unsub;
@@ -203,7 +236,12 @@ function AuthGate({ children }) {
           console.warn("[auth] getSession error", error);
         }
         setSession(data?.session || null);
-        const sub = supabase.auth.onAuthStateChange((_evt, s) => setSession(s));
+        const sub = supabase.auth.onAuthStateChange((evt, s) => {
+          // PASSWORD_RECOVERY — Supabase выдаёт когда юзер кликнул recovery
+          // link (resetPasswordForEmail). Форсим SetPasswordPage.
+          if (evt === "PASSWORD_RECOVERY") setRecoveryMode(true);
+          setSession(s);
+        });
         unsub = sub.data.subscription;
       } catch (err) {
         // eslint-disable-next-line no-console
@@ -217,49 +255,72 @@ function AuthGate({ children }) {
     };
   }, []);
 
-  // Fetch profile status отдельным запросом — до рендера children. Нужен для
-  // магического линка: invited-юзер должен ПРЯМО сразу попасть на
-  // SetPasswordPage, без промелькания основного приложения.
+  // Fetch profile (status + password_set) — до рендера children. Нужно
+  // чтобы invited / без пароля юзер сразу попал на SetPasswordPage,
+  // без мельканий основного приложения.
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     if (!session?.user?.id) {
-      setProfileStatus(null);
+      setProfile(null);
       return;
     }
     let cancelled = false;
-    const fetchStatus = async () => {
+    const fetchProfile = async () => {
       try {
-        const { data, error } = await supabase
+        // Сначала пробуем с password_set (миграция 0039). Если колонки нет
+        // — fallback на status-only (graceful degradation для случая когда
+        // фронт задеплоен раньше миграции БД).
+        let resp = await supabase
           .from("users")
-          .select("status")
+          .select("status, password_set")
           .eq("id", session.user.id)
           .maybeSingle();
+        let pwdSetKnown = true;
+        if (resp.error) {
+          const msg = resp.error.message || "";
+          if (/password_set|column .* does not exist/i.test(msg)) {
+            // Колонка ещё не задеплоена — fallback.
+            pwdSetKnown = false;
+            resp = await supabase
+              .from("users")
+              .select("status")
+              .eq("id", session.user.id)
+              .maybeSingle();
+          }
+        }
         if (cancelled) return;
-        if (error) {
+        if (resp.error) {
           // eslint-disable-next-line no-console
-          console.warn("[authgate] profile status error", error);
-          setProfileStatus(null);
+          console.warn("[authgate] profile fetch error", resp.error);
+          // Без profile row безопаснее: status='invited' гарантирует
+          // SetPasswordPage. password_set ставим в true чтобы не блокировать
+          // legacy active юзеров когда колонка отсутствует.
+          setProfile({ status: "invited", password_set: true });
           return;
         }
-        // Если row нет (триггер не успел / RLS заблокировал) — трактуем как
-        // invited (безопаснее): лучше лишний раз отправить на SetPasswordPage
-        // чем пустить в приложение без профиля.
-        setProfileStatus(data?.status || "invited");
+        const data = resp.data || null;
+        setProfile({
+          status: data?.status || "invited",
+          // Если колонка есть — берём её значение; если нет — считаем что
+          // password_set=true чтобы не запирать active юзеров до миграции.
+          password_set: pwdSetKnown ? !!data?.password_set : true,
+        });
       } catch (err) {
         // eslint-disable-next-line no-console
-        console.warn("[authgate] profile status threw", err);
-        setProfileStatus(null);
+        console.warn("[authgate] profile fetch threw", err);
+        setProfile({ status: "invited", password_set: true });
       }
     };
-    fetchStatus();
-    // Re-check при bumpDataVersion (сохранение пароля → status='active'
-    // → AuthGate увидит и пустит в приложение).
-    const unsub = onDataBump(fetchStatus);
+    fetchProfile();
+    // Re-check при bumpDataVersion (sehapasswordset → AuthGate обновит).
+    const unsub = onDataBump(fetchProfile);
     return () => {
       cancelled = true;
       unsub();
     };
   }, [session]);
+
+  const clearRecovery = React.useCallback(() => setRecoveryMode(false), []);
 
   // Preview форсится даже когда demo / сессия есть.
   if (forcePreview) return <LoginPage />;
@@ -274,9 +335,8 @@ function AuthGate({ children }) {
       );
     }
     if (!session) return <LoginPage />;
-    // Есть session — показываем loading до того как profileStatus подгрузится,
-    // чтобы invited-юзер не видел ни мельком основного приложения.
-    if (profileStatus === undefined) {
+    // Есть session — ждём profile.
+    if (profile === undefined) {
       return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-500 text-[13px]">
           Loading…
@@ -284,15 +344,29 @@ function AuthGate({ children }) {
       );
     }
     // disabled (отключённый админом) → обратно на login + close session.
-    if (profileStatus === "disabled") {
+    if (profile?.status === "disabled") {
       supabase.auth.signOut().catch(() => {});
       return <LoginPage />;
     }
-    // status='invited' — дальше рендерим children, но Root увидит это через
-    // useAuth().currentUser.status и покажет SetPasswordPage.
+    // forceSetPassword: recovery flow ИЛИ password_set=false ИЛИ status=invited.
+    // Эта сводная проверка делает Set Password железобетонной — даже если
+    // одна из branch'ей не сработала, другая поймает.
+    const forceSetPassword =
+      recoveryMode ||
+      profile?.status === "invited" ||
+      profile?.password_set === false;
+    return (
+      <RecoveryContext.Provider value={{ recoveryMode, clearRecovery, forceSetPassword }}>
+        {children}
+      </RecoveryContext.Provider>
+    );
   }
-  // Demo или authenticated — рендерим children (Root сам проверит invited).
-  return children;
+  // Demo — рендерим children как есть, recovery всегда false.
+  return (
+    <RecoveryContext.Provider value={{ recoveryMode: false, clearRecovery: () => {}, forceSetPassword: false }}>
+      {children}
+    </RecoveryContext.Provider>
+  );
 }
 
 export default function App() {

@@ -1,12 +1,13 @@
 // src/pages/LoginPage.jsx
-// Invite-only login. Два метода:
-//   1. Email + password → supabase.auth.signInWithPassword
-//   2. Magic link → supabase.auth.signInWithOtp
-// Регистрации нет — пользователя создаёт админ через invite flow.
+// Invite-only login. ТОЛЬКО email + password.
+//
+// Magic-link УБРАН с logingPage намеренно: он позволял зайти в систему
+// без когда-либо установленного пароля. Если юзер забыл пароль — есть
+// "Forgot password?" → resetPasswordForEmail (recovery flow), который
+// после клика на email link принудительно ведёт на SetPasswordPage.
 //
 // Работает даже когда Supabase не настроен (preview-режим): кнопки
-// блокируются с подсказкой «not configured». Это даёт возможность показать
-// дизайн страницы до того как бекенд поднят.
+// блокируются с подсказкой «not configured».
 
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -17,7 +18,6 @@ import {
   EyeOff,
   Loader2,
   ArrowRight,
-  Sparkles,
   CheckCircle2,
   AlertTriangle,
   ShieldCheck,
@@ -38,7 +38,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
 
@@ -118,7 +118,11 @@ export default function LoginPage() {
     }
   };
 
-  const handleMagicLink = async () => {
+  // Forgot password — отправляет recovery email через resetPasswordForEmail.
+  // После клика на email link Supabase создаёт session и выдаёт
+  // onAuthStateChange event=PASSWORD_RECOVERY. URL hash содержит type=recovery
+  // — AuthGate ловит оба сигнала и форсит SetPasswordPage.
+  const handleForgotPassword = async () => {
     clearMessages();
     if (!isSupabaseConfigured) {
       setError("Supabase not configured — demo mode only");
@@ -129,24 +133,20 @@ export default function LoginPage() {
       emailRef.current?.focus();
       return;
     }
-    setMagicLinkLoading(true);
+    setRecoveryLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
-        options: {
-          shouldCreateUser: false, // invite-only, не создавать нового user'а
-          emailRedirectTo: window.location.origin,
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
       });
       if (error) {
         setError(mapAuthError(error));
       } else {
-        setInfo(`Magic link sent to ${email.trim()} — check your inbox.`);
+        setInfo(`Recovery link sent to ${email.trim()} — open it to set a new password.`);
       }
     } catch (err) {
       setError(mapAuthError(err));
     } finally {
-      setMagicLinkLoading(false);
+      setRecoveryLoading(false);
     }
   };
 
@@ -298,9 +298,9 @@ export default function LoginPage() {
             {/* Primary button */}
             <button
               type="submit"
-              disabled={loading || magicLinkLoading}
+              disabled={loading || recoveryLoading}
               className={`mt-5 w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
-                loading || magicLinkLoading
+                loading || recoveryLoading
                   ? "bg-emerald-500/60 text-slate-950/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-slate-950 hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
               }`}
@@ -318,38 +318,24 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-slate-800" />
-              <span className="text-[10px] font-semibold text-slate-500 tracking-[0.2em] uppercase">
-                or
-              </span>
-              <div className="flex-1 h-px bg-slate-800" />
+            {/* Forgot password */}
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={loading || recoveryLoading}
+                className="text-[12px] font-medium text-slate-400 hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+              >
+                {recoveryLoading ? (
+                  <>
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Sending recovery link…
+                  </>
+                ) : (
+                  "Forgot password?"
+                )}
+              </button>
             </div>
-
-            {/* Magic link */}
-            <button
-              type="button"
-              onClick={handleMagicLink}
-              disabled={loading || magicLinkLoading}
-              className={`w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[13px] transition-all border ${
-                magicLinkLoading
-                  ? "border-slate-700 text-slate-500 cursor-not-allowed"
-                  : "border-slate-700 text-slate-200 hover:border-emerald-500/50 hover:bg-emerald-500/5 hover:text-emerald-300"
-              }`}
-            >
-              {magicLinkLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Sending link…
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Send magic link
-                </>
-              )}
-            </button>
           </form>
 
           <p className="mt-6 text-center text-[11px] text-slate-500 leading-relaxed">
