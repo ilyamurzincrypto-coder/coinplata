@@ -346,22 +346,24 @@ export default function CashierPage({
               при переключении expand. */}
           {/* Grid template areas только на lg+. На mobile — обычный
               flow column (sidebar → main → transactions сверху вниз).
-              Раньше inline style.gridTemplateAreas заставлял 2 колонки
-              даже на mobile (areas сами выводят column count) → узкие
-              cells, layout ломался. */}
+              items-stretch (default) — позволяет aside растягиваться
+              на всю высоту своего grid-cell. Раньше items-start
+              запрещал stretch → sidebar оставался на natural height
+              и не доходил до transactions. */}
           <div
-            className={`grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(200px,220px)_1fr] ${
+            className={`grid grid-cols-1 gap-6 lg:grid-cols-[minmax(200px,220px)_1fr] ${
               sidebarExpanded
                 ? "lg:[grid-template-areas:'sidebar_main'_'sidebar_tx']"
                 : "lg:[grid-template-areas:'sidebar_main'_'tx_tx']"
             }`}
           >
-            {/* Compact: sidebar растягивается по высоте row1 + занимает
-                row-gap (-mb-6) → его низ физически упирается в верх
-                Transactions. Между Balances и Transactions visual gap
-                сохраняется (он внутри main column).
-                Expanded: sticky + self-start (sidebar длинный, скролл
-                внутри 70vh). */}
+            {/* Compact: align-self default = stretch → aside растягивается
+                до высоты row1 (= main column). Negative margin -mb-6
+                занимает row-gap, низ aside физически упирается в верх
+                Transactions без зазора.
+                Expanded: sticky + self-start (sidebar длинный, скроллится
+                внутри 70vh, sticky чтобы держался в viewport при scroll
+                длинных transactions в правой колонке). */}
             <aside
               className={`lg:[grid-area:sidebar] ${
                 sidebarExpanded
