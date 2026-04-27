@@ -335,10 +335,11 @@ export function RatesProvider({ children }) {
   // Ordering: сначала USDT-пары, потом USD/EUR/GBP/CHF/RUB (по приоритету),
   // TRY всегда quote. Остальные коды — по алфавиту.
   const allTradePairs = useMemo(() => {
-    // Приоритетные валюты для отображения сверху списка: EUR, USD, USDT, TRY.
-    // Это рабочие валюты офиса (евро/доллар/тезер/лира) — менеджер видит
-    // их курсы в первую очередь. Остальные валюты идут после.
-    const PRIO = { EUR: 0, USD: 1, USDT: 2, TRY: 3, GBP: 10, CHF: 11, RUB: 12 };
+    // Приоритет валют для отображения и master direction. USDT первый —
+    // он наш мост между фиатом и криптой (вся работа крутится через него).
+    // Затем USD, TRY, EUR — основные рабочие фиаты. Дальше — резерв.
+    // Этот же приоритет в SQL 0047_priority_usdt_first.sql backfill.
+    const PRIO = { USDT: 0, USD: 1, TRY: 2, EUR: 3, GBP: 4, CHF: 5, RUB: 6 };
     const getPrio = (c) => (PRIO[c] !== undefined ? PRIO[c] : 500);
     const seen = new Set();
     const out = [];

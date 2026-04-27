@@ -9,22 +9,23 @@
 // Бейдж OFC на паре = override активен (курс отличается от global).
 
 import React, { useState, useEffect } from "react";
-import { TrendingUp, ArrowRight } from "lucide-react";
+import { TrendingUp, ArrowRight, Zap, Settings2 } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { getTradingRates } from "../utils/tradingRates.js";
+import DailyRatesModal from "./DailyRatesModal.jsx";
 
 // Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
 // После гидрации берём реальный динамический список из useRates.allTradePairs.
-// Порядок отражает приоритет рабочих валют: EUR > USD > USDT > TRY.
+// Порядок: USDT первая (мост), затем USD, TRY, EUR — основные рабочие пары.
 const FALLBACK_PAIRS = [
-  ["EUR", "USD"],
-  ["EUR", "USDT"],
-  ["EUR", "TRY"],
-  ["USD", "USDT"],
-  ["USD", "TRY"],
+  ["USDT", "USD"],
   ["USDT", "TRY"],
+  ["USDT", "EUR"],
+  ["USD", "TRY"],
+  ["USD", "EUR"],
+  ["TRY", "EUR"],
 ];
 
 const GLOBAL_TAB = "__global__";
@@ -50,11 +51,12 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-export default function RatesSidebar({ currentOffice }) {
+export default function RatesSidebar({ currentOffice, onOpenRates }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
+  const [quickOpen, setQuickOpen] = useState(false);
 
   // Выбранная вкладка: "__global__" или officeId. Следуем за currentOffice
   // (когда кассир меняет офис в header — sidebar тоже переключается).
@@ -92,20 +94,48 @@ export default function RatesSidebar({ currentOffice }) {
 
   return (
     <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]">
-      <header className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700">
-            <TrendingUp className="w-3 h-3" />
+      <header className="px-4 py-3 border-b border-slate-100">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700">
+              <TrendingUp className="w-3 h-3" />
+            </div>
+            <h2 className="text-[12px] font-bold text-slate-900 tracking-tight uppercase">
+              {t("rates") || "Rates"}
+            </h2>
           </div>
-          <h2 className="text-[12px] font-bold text-slate-900 tracking-tight uppercase">
-            {t("rates") || "Rates"}
-          </h2>
+          <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
+            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+            {timeAgo(lastUpdated)} ago
+          </span>
         </div>
-        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-          {timeAgo(lastUpdated)} ago
-        </span>
+        {/* Action buttons — Quick (DailyRatesModal) + Edit (RatesPage).
+            Видны только когда есть onOpenRates (т.е. в dashboard/cashier).
+            Если sidebar используется в другом контексте — кнопки скрыты. */}
+        {onOpenRates && (
+          <div className="flex gap-1.5 mt-2">
+            <button
+              type="button"
+              onClick={() => setQuickOpen(true)}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold hover:bg-amber-100 hover:border-amber-300 transition-colors"
+              title="Быстрое обновление курсов"
+            >
+              <Zap className="w-3 h-3" />
+              {t("quick") || "Quick"}
+            </button>
+            <button
+              type="button"
+              onClick={onOpenRates}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold hover:bg-slate-200 hover:border-slate-300 transition-colors"
+              title="Полная страница курсов"
+            >
+              <Settings2 className="w-3 h-3" />
+              {t("edit_rates") || "Edit"}
+            </button>
+          </div>
+        )}
       </header>
+      <DailyRatesModal open={quickOpen} onClose={() => setQuickOpen(false)} />
 
       {/* Office tabs: Global + каждый активный офис. Выбор влияет на курсы
           ниже. По дефолту подсвечен текущий офис (из header).

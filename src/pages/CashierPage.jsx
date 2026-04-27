@@ -331,9 +331,21 @@ export default function CashierPage({
       {isDashboard && (
         <div
           key="dashboard"
-          className="max-w-[1400px] mx-auto px-6 py-6 space-y-6 animate-[fadeIn_180ms_ease-out]"
+          className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
         >
-          <RatesBar onOpenRates={openRates} currentOffice={currentOffice} />
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-6 items-start">
+            {/* LEFT: вертикальный sidebar курсов — как в банке. Sticky чтобы
+                не уплывал при скролле transactions. На мобильном схлопывается
+                в верхний блок. */}
+            <aside className="lg:sticky lg:top-[88px]">
+              <RatesSidebar
+                currentOffice={currentOffice}
+                onOpenRates={openRates}
+              />
+            </aside>
+
+            {/* RIGHT: основной контент (CTA + Balances + Transactions) */}
+            <section className="space-y-6 min-w-0">
 
           {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
               балансами. Видно без скролла и прямо рядом с актуальным курсом. */}
@@ -401,6 +413,8 @@ export default function CashierPage({
             justCreatedId={justCreatedId}
             onEdit={setEditingTx}
           />
+            </section>
+          </div>
         </div>
       )}
 
