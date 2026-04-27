@@ -11,19 +11,20 @@
 import React, { useState, useEffect } from "react";
 import { TrendingUp, ArrowRight } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
-import { useCurrencies } from "../store/currencies.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { getTradingRates } from "../utils/tradingRates.js";
 
 // Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
 // После гидрации берём реальный динамический список из useRates.allTradePairs.
+// Порядок отражает приоритет рабочих валют: EUR > USD > USDT > TRY.
 const FALLBACK_PAIRS = [
-  ["USDT", "TRY"],
-  ["USDT", "USD"],
-  ["USDT", "EUR"],
-  ["USDT", "GBP"],
+  ["EUR", "USD"],
+  ["EUR", "USDT"],
+  ["EUR", "TRY"],
+  ["USD", "USDT"],
   ["USD", "TRY"],
+  ["USDT", "TRY"],
 ];
 
 const GLOBAL_TAB = "__global__";
@@ -52,10 +53,8 @@ function shortOfficeName(name) {
 export default function RatesSidebar({ currentOffice }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
-  const { dict: currencyDict } = useCurrencies();
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
-  const isCrypto = (code) => currencyDict[code]?.type === "crypto";
 
   // Выбранная вкладка: "__global__" или officeId. Следуем за currentOffice
   // (когда кассир меняет офис в header — sidebar тоже переключается).
@@ -146,9 +145,13 @@ export default function RatesSidebar({ currentOffice }) {
 
       <div className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
         {tradePairs.map(([a, b]) => {
-          const { ask: sell, bid: buy } = getTradingRates({
+          // Берём ОБА направления напрямую из БД через getRateForTab.
+          // forward = a→b, backward = b→a. Это реальные сел/бай rates офиса
+          // (после 0036 в pairs хранятся обе стороны как отдельные records).
+          // Раньше тут считался искусственный ±spread, что давало числа
+          // отличные от тех что подставляла форма сделки.
+          const { forward: sell, backward: buy, backwardSynthetic } = getTradingRates({
             getRate: getRateForTab,
-            isCrypto,
             base: a,
             quote: b,
           });

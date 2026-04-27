@@ -271,17 +271,22 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               Каждая карточка имеет ⭐ для toggle избранного. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 p-2 gap-1.5">
             {displayPairs.map(([a, b], idx) => {
-              // Bid/Ask от market rate (без инверсии 1/x).
-              // sell (ask) = market * (1 + spread) → клиент A→B получает по этой цене
-              // buy  (bid) = market * (1 - spread) → клиент B→A получает по этой цене
-              // Оба в "B per A" единице — нет значений вроде 0.025.
-              const { ask: sell, bid: buy, spread } = getTradingRates({
+              // Берём ОБА rates напрямую из БД — реальные sell/buy офиса.
+              // Раньше тут было market * (1 ± fake_spread), что давало
+              // числа отличные от тех что подставляла форма сделки
+              // (она читает чистый getRate без spread'a).
+              const { forward: sell, backward: buy } = getTradingRates({
                 getRate,
-                isCrypto,
                 base: a,
                 quote: b,
               });
-              const spreadPct = spread * 100 * 2; // полный spread = ask-bid относительно mid
+              // Реальный spread от двух rates (если backward есть в БД).
+              // sell-buy_in_sell_units = sell - 1/buy = насколько ask выше
+              // зеркального bid в "quote per base" единице.
+              const spreadPct =
+                Number.isFinite(sell) && Number.isFinite(buy) && buy > 0
+                  ? Math.abs((sell - 1 / buy) / sell) * 100
+                  : 0;
               const isActive = activeIdx === idx;
               return (
                 <button

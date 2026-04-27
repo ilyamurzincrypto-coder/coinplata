@@ -1,38 +1,37 @@
 // src/utils/tradingRates.js
-// Bid/Ask логика торговых пар. НЕ используем 1/rate инверсию — она даёт
-// кривые значения вроде 0.919118. Вместо этого:
+// Возвращает РЕАЛЬНЫЕ rates обоих направлений из БД.
 //
-//   market_rate = getRate(base, quote)          // канонический курс в "quote per base"
-//   ask (sell)  = market_rate * (1 + spread)    // выше market → мы продаём base
-//   bid (buy)   = market_rate * (1 - spread)    // ниже market → мы покупаем base
+//   forward  = getRate(base, quote)   — сколько quote за 1 base (ask)
+//   backward = getRate(quote, base)   — сколько base за 1 quote (bid)
 //
-// Оба числа — в "quote per base" единице. Нет 0.025 для TRY→USDT.
+// В БД хранятся обе пары как отдельные records (после миграции 0036),
+// каждая со своим rate. Это и есть реальные sell/buy курсы офиса.
+// Раньше тут добавлялся искусственный ±spread (0.2%/0.3%) — он давал
+// разные числа в Sidebar и RatesBar по сравнению с тем, что подставляла
+// форма создания сделки (которая берёт чистый getRate без спреда).
 //
-// Спред зависит от типа валют: crypto-пары шире (0.3%), чистый fiat уже (0.2%).
-// Админ может настраивать вручную через rates.spreadByPair (in-memory пока).
+// Если обратная пара отсутствует в БД — fallback на 1/forward
+// (математическая инверсия). Помечаем синтетическим флагом
+// backwardSynthetic=true чтобы UI мог это отобразить (например серым).
 
-export const DEFAULT_SPREAD_CRYPTO = 0.003; // 0.3%
-export const DEFAULT_SPREAD_FIAT = 0.002;   // 0.2%
-
-// Типы валют передаются через функцию isCrypto(code) — чтобы не тащить
-// сюда весь currency store. Обычно вызывается из компонента:
-//   const isCrypto = (code) => currencyDict[code]?.type === "crypto";
-export function getTradingRates({ getRate, isCrypto, base, quote, spreadOverride }) {
-  const market = getRate(base, quote);
-  if (!market || market <= 0) {
-    return { ask: null, bid: null, market: null, spread: 0 };
-  }
-  const spread =
-    spreadOverride != null
-      ? spreadOverride
-      : isCrypto && (isCrypto(base) || isCrypto(quote))
-      ? DEFAULT_SPREAD_CRYPTO
-      : DEFAULT_SPREAD_FIAT;
+export function getTradingRates({ getRate, base, quote }) {
+  const forward = getRate(base, quote);
+  const backwardRaw = getRate(quote, base);
+  const hasForward = Number.isFinite(forward) && forward > 0;
+  const hasBackwardReal = Number.isFinite(backwardRaw) && backwardRaw > 0;
+  const backward = hasBackwardReal
+    ? backwardRaw
+    : hasForward
+    ? 1 / forward
+    : null;
   return {
-    market,
-    spread,
-    ask: market * (1 + spread),
-    bid: market * (1 - spread),
+    forward: hasForward ? forward : null,
+    backward,
+    backwardSynthetic: !hasBackwardReal && hasForward,
+    // back-compat aliases (RatesBar/Sidebar читают ask/bid)
+    ask: hasForward ? forward : null,
+    bid: backward,
+    market: hasForward ? forward : null,
   };
 }
 
