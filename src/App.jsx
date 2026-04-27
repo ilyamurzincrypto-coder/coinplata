@@ -64,10 +64,16 @@ function Root() {
   const [formMounted, setFormMounted] = useState(false);
   const can = useCan();
 
-  // AUTO-MINIMIZE: при переходе на любую страницу кроме cashier —
-  // сворачиваем сделку. Draft остаётся в sessionStorage.
+  // AUTO-MINIMIZE: любой клик в Header (включая повторный "Касса" будучи
+  // на cashier) сворачивает create/rates обратно в dashboard.
+  // Сценарии которые это покрывает:
+  //   - "Создать сделку" → клик "Касса"   → главная Кассира
+  //   - "Курсы"          → клик "Касса"   → главная Кассира
+  //   - cashier+create   → клик "Капитал" → cashier dashboard сохранён
+  // Draft формы переживает, потому что formMounted остаётся true и
+  // ExchangeForm пишет в sessionStorage.
   const handlePageChange = (nextPage) => {
-    if (nextPage !== "cashier" && (exchangeMode === "create" || exchangeMode === "rates")) {
+    if (exchangeMode === "create" || exchangeMode === "rates") {
       setExchangeMode("dashboard");
     }
     setPage(nextPage);
