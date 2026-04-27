@@ -344,17 +344,20 @@ export default function CashierPage({
               Transactions внизу на ВСЮ ширину.
               Один mount TransactionsTable — фильтры/scroll сохраняются
               при переключении expand. */}
+          {/* Grid template areas только на lg+. На mobile — обычный
+              flow column (sidebar → main → transactions сверху вниз).
+              Раньше inline style.gridTemplateAreas заставлял 2 колонки
+              даже на mobile (areas сами выводят column count) → узкие
+              cells, layout ломался. */}
           <div
-            className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(200px,220px)_1fr]"
-            style={{
-              gridTemplateAreas: sidebarExpanded
-                ? `"sidebar main" "sidebar tx"`
-                : `"sidebar main" "tx tx"`,
-            }}
+            className={`grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(200px,220px)_1fr] ${
+              sidebarExpanded
+                ? "lg:[grid-template-areas:'sidebar_main'_'sidebar_tx']"
+                : "lg:[grid-template-areas:'sidebar_main'_'tx_tx']"
+            }`}
           >
             <aside
-              className="lg:sticky lg:top-[88px]"
-              style={{ gridArea: "sidebar" }}
+              className="lg:sticky lg:top-[88px] lg:[grid-area:sidebar]"
             >
               <RatesSidebar
                 currentOffice={currentOffice}
@@ -365,7 +368,7 @@ export default function CashierPage({
 
             {/* MAIN: CTA + Balances. Transactions отдельной grid-area "tx" —
                 перемещается в зависимости от expanded. */}
-            <section className="space-y-6 min-w-0" style={{ gridArea: "main" }}>
+            <section className="space-y-6 min-w-0 lg:[grid-area:main]">
 
           {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
               балансами. Видно без скролла и прямо рядом с актуальным курсом. */}
@@ -432,7 +435,7 @@ export default function CashierPage({
             {/* Transactions — grid-area "tx". При compact занимает
                 обе колонки (full-width), при expanded — только правую
                 колонку (сужена как Balances). */}
-            <div className="min-w-0" style={{ gridArea: "tx" }}>
+            <div className="min-w-0 lg:[grid-area:tx]">
               <TransactionsTable
                 currentOffice={currentOffice}
                 justCreatedId={justCreatedId}
