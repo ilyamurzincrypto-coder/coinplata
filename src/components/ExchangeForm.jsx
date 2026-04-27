@@ -1839,6 +1839,27 @@ function OutputRow({
     Number.isFinite(officeRate) &&
     Math.abs(globalRate - officeRate) > 1e-9;
 
+  // Sanity-check: ожидаемый rate через USD-triangulation.
+  // expected = rate(curIn → USD) / rate(currency → USD).
+  // Если реальный rate сильно отличается (>30%) — вероятно
+  // в DailyRatesModal курс введён в обратную сторону.
+  const expectedRateViaUsd = (() => {
+    if (curIn === o.currency) return null;
+    if (curIn === "USD") return getRateRaw("USD", o.currency, currentOffice);
+    if (o.currency === "USD") return getRateRaw(curIn, "USD", currentOffice);
+    const inToUsd = getRateRaw(curIn, "USD", currentOffice);
+    const outToUsd = getRateRaw(o.currency, "USD", currentOffice);
+    if (!Number.isFinite(inToUsd) || !Number.isFinite(outToUsd) || outToUsd === 0) return null;
+    return inToUsd / outToUsd;
+  })();
+  const actualRate = parseFloat(o.rate);
+  const rateLooksWrong = (() => {
+    if (!Number.isFinite(actualRate) || actualRate <= 0) return false;
+    if (!Number.isFinite(expectedRateViaUsd) || expectedRateViaUsd <= 0) return false;
+    const ratio = actualRate / expectedRateViaUsd;
+    return ratio > 1.4 || ratio < 0.7;
+  })();
+
   // Per-office rate chips: current office + ВСЕ другие активные офисы.
   // Админ/owner видит полный срез (где override, где = global).
   // Chip цвет:
@@ -2201,6 +2222,24 @@ function OutputRow({
           {o.manualRate ? "Manual" : "Auto"}
         </button>
       </div>
+
+      {/* Sanity warning — курс подозрительно отличается от triangulated
+          через USD. Скорее всего в DailyRatesModal введено в обратную
+          сторону (например 1.185 как USDT→EUR вместо 0.85). */}
+      {rateLooksWrong && Number.isFinite(expectedRateViaUsd) && (
+        <div className="mt-1.5 px-2.5 py-1.5 rounded-[8px] bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
+          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
+          <span>
+            Курс подозрительный. Ожидаемый по USD-триангуляции:{" "}
+            <span className="font-bold tabular-nums">
+              ≈{expectedRateViaUsd.toFixed(4)}
+            </span>{" "}
+            (1 {curIn} = {expectedRateViaUsd.toFixed(4)} {o.currency}).
+            Возможно в Quick-rates введено в обратную сторону. Текущий ввод:{" "}
+            <span className="font-bold tabular-nums">{actualRate}</span>.
+          </span>
+        </div>
+      )}
 
       {/* Account selector for this output */}
       <div className="mt-2">
