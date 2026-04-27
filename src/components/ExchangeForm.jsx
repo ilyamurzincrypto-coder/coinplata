@@ -48,7 +48,6 @@ import { useTranslation } from "../i18n/translations.jsx";
 import {
   multiplyAmount,
   percentOf,
-  applyMinFee,
   fmt,
   curSymbol,
   computeRemaining,
@@ -154,6 +153,9 @@ function initFromTx(tx) {
     partialMode: anyPartial,
     partialPayNow,
     plannedLocal,
+    // applyMinFee: явно сохранённый флаг → используем; иначе true
+    // (исторический default — все старые сделки создавались с min cap).
+    applyMinFee: typeof tx.applyMinFee === "boolean" ? tx.applyMinFee : true,
   };
 }
 
@@ -270,6 +272,13 @@ export default function ExchangeForm({
   const [plannedLocal, setPlannedLocal] = useState(
     starter?.plannedLocal || draft?.plannedLocal || ""
   );
+  // applyMinFee: галочка "применить min fee офиса" (по умолчанию on).
+  // Когда off — fee = profitFromRates (только spread-маржа), без cap.
+  // Это нужно для маленьких сделок где менеджер хочет уступить min fee
+  // клиенту, например по договорённости.
+  const [applyMinFee, setApplyMinFee] = useState(
+    starter?.applyMinFee ?? draft?.applyMinFee ?? true
+  );
 
   // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
   // Только для create mode — в edit draft не нужен.
@@ -301,13 +310,14 @@ export default function ExchangeForm({
         partialMode,
         partialPayNow,
         plannedLocal,
+        applyMinFee,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal]);
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -386,10 +396,11 @@ export default function ExchangeForm({
             // через Use remaining / manual input).
             let computed;
             if (idx === 0) {
+              // Если applyMinFee=off — fee=0, net = gross (просто amt*rate).
               computed = computeNetOutput({
                 amtIn: a,
                 rate: r,
-                feeUsd: minFeeUsd,
+                feeUsd: applyMinFee ? minFeeUsd : 0,
                 outputCurrency: o.currency,
                 getRate,
               });
@@ -404,7 +415,7 @@ export default function ExchangeForm({
         return { ...o, rate: nextRate, amount: nextAmount };
       })
     );
-  }, [curIn, amtIn, getRate, minFeeUsd]);
+  }, [curIn, amtIn, getRate, minFeeUsd, applyMinFee]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
@@ -419,18 +430,24 @@ export default function ExchangeForm({
     });
   }, [amtIn, curIn, outputs, getRate]);
 
-  // effectiveFee = max(profitFromRates, minFeeUsd)  — minFeeUsd из офиса.
-  // Если rate-margin меньше минималки (или отрицательная) — берём минималку.
+  // effectiveFee:
+  //   applyMinFee=true  → max(profitFromRates, minFeeUsd) — min cap офиса
+  //   applyMinFee=false → max(profitFromRates, 0)         — только spread-маржа
+  // Когда галочка off — комиссия может быть < минималки или 0
+  // (если spread не покрыл и пользователь решил не брать min).
   const effectiveFee = useMemo(() => {
     if (!amtIn || parseFloat(amtIn) <= 0) return 0;
-    return Math.max(profitFromRates, minFeeUsd);
-  }, [profitFromRates, minFeeUsd, amtIn]);
+    if (applyMinFee) return Math.max(profitFromRates, minFeeUsd);
+    return Math.max(profitFromRates, 0);
+  }, [profitFromRates, minFeeUsd, amtIn, applyMinFee]);
 
-  // Показать ли пометку (min) — когда минималка победила rate-margin
+  // Показать ли пометку (min) — только если cap реально сработала
+  // (применяем min И margin меньше неё).
   const minFeeApplied = useMemo(() => {
     if (!amtIn || parseFloat(amtIn) <= 0) return false;
+    if (!applyMinFee) return false;
     return profitFromRates < minFeeUsd;
-  }, [profitFromRates, minFeeUsd, amtIn]);
+  }, [profitFromRates, minFeeUsd, amtIn, applyMinFee]);
 
   // --- handlers для outputs ---
   const updateOutput = (id, patch) =>
@@ -468,10 +485,10 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Используем тот же fee-baseline (office.minFeeUsd), что применяется в auto-fill
-  // для первого output. Это даёт remaining = 0 в стандартном сценарии
-  // и устраняет ложное "exceeds_remaining".
-  const remainingFeeUsd = minFeeUsd;
+  // Используем тот же fee-baseline что применяется в auto-fill первого output.
+  // Когда applyMinFee=off — fee=0 → remaining не вычитает min (auto-fill тоже
+  // не вычитает), поэтому "exceeds_remaining" не ложно срабатывает.
+  const remainingFeeUsd = applyMinFee ? minFeeUsd : 0;
   const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
     () =>
       computeRemaining({
@@ -589,6 +606,9 @@ export default function ExchangeForm({
       amtOut: outputsClean[0].amount,
       rate: outputsClean[0].rate,
       fee: Math.round(effectiveFee * 100) / 100,
+      // Сохраняем выбор галочки чтобы edit-режим восстановил её корректно
+      // и backend (RPC) знал применять ли min cap.
+      applyMinFee,
       profit: Math.round(profit * 100) / 100,
       manager: currentUser.name,
       managerId: currentUser.id,
@@ -1275,14 +1295,32 @@ export default function ExchangeForm({
             </div>
           )}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-              {t("summary_our_fee")}
-            </span>
+            <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
+              <input
+                type="checkbox"
+                checked={applyMinFee}
+                onChange={(e) => setApplyMinFee(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
+              />
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide group-hover:text-slate-700 transition-colors">
+                {t("summary_our_fee")}
+                {minFeeUsd > 0 && (
+                  <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal">
+                    (мин ${fmt(minFeeUsd)})
+                  </span>
+                )}
+              </span>
+            </label>
             <span className="inline-flex items-center gap-1.5 text-[13px] font-bold tabular-nums text-amber-700">
               ${fmt(effectiveFee)}
               {minFeeApplied && (
                 <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
                   {t("summary_min_label")}
+                </span>
+              )}
+              {!applyMinFee && (
+                <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1 py-0.5 rounded">
+                  без мин
                 </span>
               )}
             </span>

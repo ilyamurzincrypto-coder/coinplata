@@ -152,6 +152,7 @@ export async function rpcCreateDeal({
   outputs,
   plannedAt,      // optional ISO timestamp — "ожидается к дате"
   deferredIn,     // optional bool — client will pay IN later (they_owe)
+  applyMinFee,    // optional bool (default true) — применять ли min cap офиса
 }) {
   assertConfigured();
   const validOffice = requireUuid(officeId, "officeId");
@@ -164,6 +165,9 @@ export async function rpcCreateDeal({
   // plannedAt ожидается как ISO-string из <input type="datetime-local"> +
   // приведение .toISOString(). Если null/undef — бэк использует now().
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
+  // p_skip_min_fee — инвертированный applyMinFee (default false = применять).
+  // RPC ожидает skip-флаг чтобы default-поведение было совместимым.
+  const skipMinFee = applyMinFee === false;
 
   const dealId = unwrap(
     await supabase.rpc("create_deal", {
@@ -181,6 +185,7 @@ export async function rpcCreateDeal({
       p_legs: legs,
       p_planned_at: validPlannedAt,
       p_deferred_in: !!deferredIn,
+      p_skip_min_fee: skipMinFee,
     }),
     "create_deal"
   );
@@ -203,6 +208,7 @@ export async function rpcUpdateDeal({
   outputs,
   plannedAt,   // NEW — preserved при edit
   deferredIn,  // NEW — preserved при edit
+  applyMinFee, // optional bool — применять ли min cap офиса
 }) {
   assertConfigured();
   const validDealId = requirePositive(dealId, "dealId");
@@ -212,6 +218,7 @@ export async function rpcUpdateDeal({
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
   const legs = legsToJsonb(outputs);
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
+  const skipMinFee = applyMinFee === false;
 
   unwrap(
     await supabase.rpc("update_deal", {
@@ -229,6 +236,7 @@ export async function rpcUpdateDeal({
       p_legs: legs,
       p_planned_at: validPlannedAt,
       p_deferred_in: !!deferredIn,
+      p_skip_min_fee: skipMinFee,
     }),
     "update_deal"
   );

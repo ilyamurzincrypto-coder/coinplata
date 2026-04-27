@@ -131,6 +131,8 @@ export default function CashierPage({
               // Tier-1 pending fields
               plannedAt: tx.plannedAt || null,
               deferredIn: !!tx.deferredIn,
+              // Галочка из ExchangeForm — применять ли min cap офиса (default true)
+              applyMinFee: tx.applyMinFee !== false,
             }),
           { success: "Deal created", errorPrefix: "Create deal failed" }
         );

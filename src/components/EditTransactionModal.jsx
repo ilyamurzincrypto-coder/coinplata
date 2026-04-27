@@ -65,6 +65,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
               // preserve pending fields — без этого 0003-версия сносила их в defaults
               plannedAt: updated.plannedAt || null,
               deferredIn: !!updated.deferredIn,
+              applyMinFee: updated.applyMinFee !== false,
             }),
           { success: "Deal updated", errorPrefix: "Update failed" }
         );
