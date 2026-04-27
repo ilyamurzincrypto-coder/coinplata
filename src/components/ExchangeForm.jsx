@@ -425,7 +425,7 @@ export default function ExchangeForm({
       const ratio = rawRate / expected;
       // Если rawRate сильно отличается от triangulated, и при инверсии
       // (1/rawRate) совпадает с expected лучше — используем инверсию.
-      if (ratio > 1.5 || ratio < 0.667) {
+      if (ratio > 1.25 || ratio < 0.8) {
         const invertedRatio = 1 / rawRate / expected;
         if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) {
           return 1 / rawRate;
@@ -1884,7 +1884,7 @@ function OutputRow({
     if (!Number.isFinite(raw) || raw <= 0) return raw;
     if (!Number.isFinite(expectedRateViaUsd) || expectedRateViaUsd <= 0) return raw;
     const ratio = raw / expectedRateViaUsd;
-    if (ratio > 1.5 || ratio < 0.667) {
+    if (ratio > 1.25 || ratio < 0.8) {
       const invertedRatio = 1 / raw / expectedRateViaUsd;
       if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) return 1 / raw;
     }
