@@ -279,6 +279,20 @@ export default function ExchangeForm({
   const [applyMinFee, setApplyMinFee] = useState(
     starter?.applyMinFee ?? draft?.applyMinFee ?? true
   );
+  // Conditions block — collapsable. По умолчанию свернут, при mount
+  // раскрывается если в starter/draft уже есть активные условия (edit
+  // существующей pending сделки или resume draft с заданным planned date).
+  const [conditionsOpen, setConditionsOpen] = useState(() => {
+    const src = starter || draft || {};
+    return !!(
+      src.deferredIn ||
+      src.deferredOut ||
+      src.partialMode ||
+      src.referral ||
+      src.isPending ||
+      src.plannedLocal
+    );
+  });
 
   // Сохраняем draft в sessionStorage на каждое изменение ключевых полей.
   // Только для create mode — в edit draft не нужен.
@@ -779,14 +793,44 @@ export default function ExchangeForm({
 
   // Reverse: меняет местами in и первый output. Используется в одно-выходном случае.
   // При множественных outputs берём только первый (обратимость многостороннего обмена неоднозначна).
+  //
+  // Курс берём из системы (getRate) — это РЕАЛЬНЫЙ обратный pair (например
+  // TRY→USD это другой row в pairs со своим spread, не математический 1/x).
+  // Это и есть «sell vs buy»: одна пара = sell-курс офиса, обратная =
+  // buy-курс. Если в системе нет обратной пары — fallback на 1/rate как
+  // последний шанс (с warning через manualRate=true).
+  //
+  // Amount пересчитывается от нового amtIn × нового rate, а не копируется
+  // старый. Если applyMinFee=on и idx=0 — учитываем net fee. Это даёт
+  // консистентность: amtIn × rate = amount (с поправкой на fee).
   const handleReverse = () => {
     const first = outputs[0];
     if (!first) return;
     const newCurIn = first.currency;
     const newAmtIn = first.amount || "";
     const newOutCurrency = curIn;
-    const newOutAmount = amtIn || "";
     const autoRate = getRate(newCurIn, newOutCurrency);
+    const fallbackRate =
+      first.rate && parseFloat(first.rate) > 0 ? 1 / parseFloat(first.rate) : null;
+    const finalRate = autoRate !== undefined ? autoRate : fallbackRate;
+
+    // Пересчёт amount от нового amtIn × нового rate (с учётом min fee
+    // для idx=0). Если данных не хватает — оставляем пустой (юзер
+    // увидит inputs и сам введёт).
+    let newOutAmount = "";
+    const aNum = parseFloat(newAmtIn);
+    const rNum = finalRate ? Number(finalRate) : NaN;
+    if (Number.isFinite(aNum) && aNum > 0 && Number.isFinite(rNum) && rNum > 0) {
+      const computed = computeNetOutput({
+        amtIn: aNum,
+        rate: rNum,
+        feeUsd: applyMinFee ? minFeeUsd : 0,
+        outputCurrency: newOutCurrency,
+        getRate,
+      });
+      newOutAmount = String(computed);
+    }
+
     setCurIn(newCurIn);
     setAmtIn(newAmtIn);
     setOutputs([
@@ -794,9 +838,14 @@ export default function ExchangeForm({
         id: `o_rev_${Date.now()}`,
         currency: newOutCurrency,
         amount: newOutAmount,
-        rate: autoRate !== undefined ? String(autoRate) : (first.rate ? String(1 / parseFloat(first.rate)) : ""),
+        rate: finalRate != null ? String(finalRate) : "",
+        // Если получили rate из системы → auto. Если только fallback 1/x —
+        // помечаем manual чтобы юзер мог проверить и поправить.
         manualRate: autoRate === undefined,
-        touched: !!newOutAmount,
+        touched: false,
+        accountId: "",
+        address: "",
+        networkId: "",
       },
     ]);
   };
@@ -1150,17 +1199,50 @@ export default function ExchangeForm({
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════
-            CONDITIONS block — pendingLogic, partialMode, referral, planned date
-            Чистый layout с toggle-switch'ами, группировка по смыслу.
+            CONDITIONS block — collapsable. Header-кнопка показывает counter
+            активных условий и chevron. Body показывается только когда
+            раскрыто (или есть активные условия — раскрывается автоматически
+            при mount).
             ═══════════════════════════════════════════════════════════════════ */}
-        <section className="mt-5 bg-white border border-slate-200 rounded-[14px] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em]">
-              {t("xf_conditions")}
-            </h3>
-            <span className="text-[10px] text-slate-400">{t("xf_optional")}</span>
-          </div>
+        {(() => {
+          const conditionsActiveCount =
+            (deferredIn ? 1 : 0) +
+            (deferredOut ? 1 : 0) +
+            (partialMode ? 1 : 0) +
+            (referral ? 1 : 0) +
+            (isPending ? 1 : 0) +
+            (plannedLocal ? 1 : 0);
+          return (
+        <section className="mt-5 bg-white border border-slate-200 rounded-[14px] shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setConditionsOpen((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.12em]">
+                {t("xf_conditions")}
+              </h3>
+              {conditionsActiveCount > 0 && (
+                <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold tabular-nums">
+                  {conditionsActiveCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {conditionsActiveCount === 0 && (
+                <span className="text-[10px] text-slate-400">{t("xf_optional")}</span>
+              )}
+              {conditionsOpen ? (
+                <ChevronUp className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              )}
+            </div>
+          </button>
 
+          {conditionsOpen && (
+          <div className="px-4 pb-4 animate-[cIn_160ms_ease-out]">
           <div className="space-y-2">
             <Toggle
               active={deferredIn}
@@ -1304,7 +1386,11 @@ export default function ExchangeForm({
             </p>
           )}
           </div>
+          </div>
+          )}
         </section>
+          );
+        })()}
 
         <input
           type="text"
