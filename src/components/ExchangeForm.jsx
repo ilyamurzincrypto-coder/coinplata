@@ -401,40 +401,37 @@ export default function ExchangeForm({
   // а сам input "застревал" на момент клика. Теперь pinned-источник тоже
   // следует за обновлениями системы (юзер кликнул Global → когда global pair
   // меняется в Settings, rate автоматически синхронизируется).
-  // Runtime auto-correction: если rate из БД явно перевёрнут (отличается
-  // от USD-триангуляции > 50%) — используем triangulated value вместо.
-  // Защищает форму от кривых данных в БД (admin ввёл в неправильную сторону).
-  const triangulateViaUsd = React.useCallback(
-    (from, to) => {
-      if (from === to) return 1;
-      if (from === "USD") return getRateRaw("USD", to, currentOffice);
-      if (to === "USD") return getRateRaw(from, "USD", currentOffice);
-      const inToUsd = getRateRaw(from, "USD", currentOffice);
-      const outToUsd = getRateRaw(to, "USD", currentOffice);
-      if (!Number.isFinite(inToUsd) || !Number.isFinite(outToUsd) || outToUsd === 0) return undefined;
-      return inToUsd / outToUsd;
-    },
-    [getRateRaw, currentOffice]
-  );
-
-  const correctRate = React.useCallback(
-    (rawRate, from, to) => {
-      if (!Number.isFinite(rawRate) || rawRate <= 0) return rawRate;
-      const expected = triangulateViaUsd(from, to);
-      if (!Number.isFinite(expected) || expected <= 0) return rawRate;
-      const ratio = rawRate / expected;
-      // Если rawRate сильно отличается от triangulated, и при инверсии
-      // (1/rawRate) совпадает с expected лучше — используем инверсию.
-      if (ratio > 1.25 || ratio < 0.8) {
-        const invertedRatio = 1 / rawRate / expected;
-        if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) {
-          return 1 / rawRate;
-        }
-      }
-      return rawRate;
-    },
-    [triangulateViaUsd]
-  );
+  // Hard-coded "разумные диапазоны" для известных пар. Hard guard от
+  // инвертированных rate в БД — не зависит от состояния других pairs
+  // (USD-triangulation может сломаться если USD↔X тоже кривые).
+  // Если actual rate вне диапазона, и инверсия попадает в диапазон —
+  // используем инверсию. Курсы примерные, запас широкий.
+  const correctRate = React.useCallback((rawRate, from, to) => {
+    if (!Number.isFinite(rawRate) || rawRate <= 0) return rawRate;
+    const RANGES = {
+      USDT_USD: [0.9, 1.1], USD_USDT: [0.9, 1.1],
+      USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
+      USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
+      USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
+      USDT_TRY: [20, 80],   TRY_USDT: [0.012, 0.05],
+      USDT_RUB: [50, 150],  RUB_USDT: [0.006, 0.02],
+      USD_EUR: [0.7, 1.1],  EUR_USD: [0.9, 1.4],
+      USD_GBP: [0.6, 1.0],  GBP_USD: [1.0, 1.7],
+      USD_CHF: [0.7, 1.1],  CHF_USD: [0.9, 1.4],
+      USD_TRY: [20, 80],    TRY_USD: [0.012, 0.05],
+      USD_RUB: [50, 150],   RUB_USD: [0.006, 0.02],
+      EUR_TRY: [25, 90],    TRY_EUR: [0.011, 0.04],
+      EUR_GBP: [0.7, 1.0],  GBP_EUR: [1.0, 1.4],
+      EUR_CHF: [0.85, 1.1], CHF_EUR: [0.9, 1.2],
+    };
+    const range = RANGES[`${from}_${to}`];
+    if (!range) return rawRate;
+    const [min, max] = range;
+    if (rawRate >= min && rawRate <= max) return rawRate;
+    const inverted = 1 / rawRate;
+    if (inverted >= min && inverted <= max) return inverted;
+    return rawRate;
+  }, []);
 
   const resolveAutoRate = React.useCallback(
     (output) => {
@@ -1879,15 +1876,33 @@ function OutputRow({
     return inToUsd / outToUsd;
   })();
 
-  // Auto-correct rate если он явно перевёрнут (>50% отклонение).
+  // Auto-correct rate через hardcoded reasonable ranges (hard guard).
+  // То же что correctRate в ExchangeForm — дублируем чтобы chips
+  // показывали corrected значения.
   const fixIfInverted = (raw) => {
     if (!Number.isFinite(raw) || raw <= 0) return raw;
-    if (!Number.isFinite(expectedRateViaUsd) || expectedRateViaUsd <= 0) return raw;
-    const ratio = raw / expectedRateViaUsd;
-    if (ratio > 1.25 || ratio < 0.8) {
-      const invertedRatio = 1 / raw / expectedRateViaUsd;
-      if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) return 1 / raw;
-    }
+    const RANGES = {
+      USDT_USD: [0.9, 1.1], USD_USDT: [0.9, 1.1],
+      USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
+      USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
+      USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
+      USDT_TRY: [20, 80],   TRY_USDT: [0.012, 0.05],
+      USDT_RUB: [50, 150],  RUB_USDT: [0.006, 0.02],
+      USD_EUR: [0.7, 1.1],  EUR_USD: [0.9, 1.4],
+      USD_GBP: [0.6, 1.0],  GBP_USD: [1.0, 1.7],
+      USD_CHF: [0.7, 1.1],  CHF_USD: [0.9, 1.4],
+      USD_TRY: [20, 80],    TRY_USD: [0.012, 0.05],
+      USD_RUB: [50, 150],   RUB_USD: [0.006, 0.02],
+      EUR_TRY: [25, 90],    TRY_EUR: [0.011, 0.04],
+      EUR_GBP: [0.7, 1.0],  GBP_EUR: [1.0, 1.4],
+      EUR_CHF: [0.85, 1.1], CHF_EUR: [0.9, 1.2],
+    };
+    const range = RANGES[`${curIn}_${o.currency}`];
+    if (!range) return raw;
+    const [min, max] = range;
+    if (raw >= min && raw <= max) return raw;
+    const inverted = 1 / raw;
+    if (inverted >= min && inverted <= max) return inverted;
     return raw;
   };
 
