@@ -401,19 +401,57 @@ export default function ExchangeForm({
   // а сам input "застревал" на момент клика. Теперь pinned-источник тоже
   // следует за обновлениями системы (юзер кликнул Global → когда global pair
   // меняется в Settings, rate автоматически синхронизируется).
+  // Runtime auto-correction: если rate из БД явно перевёрнут (отличается
+  // от USD-триангуляции > 50%) — используем triangulated value вместо.
+  // Защищает форму от кривых данных в БД (admin ввёл в неправильную сторону).
+  const triangulateViaUsd = React.useCallback(
+    (from, to) => {
+      if (from === to) return 1;
+      if (from === "USD") return getRateRaw("USD", to, currentOffice);
+      if (to === "USD") return getRateRaw(from, "USD", currentOffice);
+      const inToUsd = getRateRaw(from, "USD", currentOffice);
+      const outToUsd = getRateRaw(to, "USD", currentOffice);
+      if (!Number.isFinite(inToUsd) || !Number.isFinite(outToUsd) || outToUsd === 0) return undefined;
+      return inToUsd / outToUsd;
+    },
+    [getRateRaw, currentOffice]
+  );
+
+  const correctRate = React.useCallback(
+    (rawRate, from, to) => {
+      if (!Number.isFinite(rawRate) || rawRate <= 0) return rawRate;
+      const expected = triangulateViaUsd(from, to);
+      if (!Number.isFinite(expected) || expected <= 0) return rawRate;
+      const ratio = rawRate / expected;
+      // Если rawRate сильно отличается от triangulated, и при инверсии
+      // (1/rawRate) совпадает с expected лучше — используем инверсию.
+      if (ratio > 1.5 || ratio < 0.667) {
+        const invertedRatio = 1 / rawRate / expected;
+        if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) {
+          return 1 / rawRate;
+        }
+      }
+      return rawRate;
+    },
+    [triangulateViaUsd]
+  );
+
   const resolveAutoRate = React.useCallback(
     (output) => {
       const src = output.rateSource;
+      let raw;
       if (src === "global") {
-        return getRateRaw(curIn, output.currency, null);
-      }
-      if (typeof src === "string" && src.startsWith("office:")) {
+        raw = getRateRaw(curIn, output.currency, null);
+      } else if (typeof src === "string" && src.startsWith("office:")) {
         const oid = src.slice(7);
-        return getRateRaw(curIn, output.currency, oid);
+        raw = getRateRaw(curIn, output.currency, oid);
+      } else {
+        raw = getRate(curIn, output.currency); // auto = текущий office
       }
-      return getRate(curIn, output.currency); // auto = текущий office
+      // Применяем runtime correction — защита от кривых rate в БД.
+      return correctRate(raw, curIn, output.currency);
     },
-    [getRate, getRateRaw, curIn]
+    [getRate, getRateRaw, curIn, correctRate]
   );
   useEffect(() => {
     setOutputs((prev) =>
@@ -1830,19 +1868,7 @@ function OutputRow({
   const { counterparties } = useTransactions();
   const o = output;
   const isCrypto = currencyDict[o.currency]?.type === "crypto";
-  // Global rate (без override) и эффективный rate текущего офиса
-  const globalRate = getRateRaw(curIn, o.currency, null);
-  const officeRate = getRateRaw(curIn, o.currency, currentOffice);
-  const hasOfficeOverride =
-    !!getOfficeOverride?.(currentOffice, curIn, o.currency) &&
-    Number.isFinite(globalRate) &&
-    Number.isFinite(officeRate) &&
-    Math.abs(globalRate - officeRate) > 1e-9;
-
-  // Sanity-check: ожидаемый rate через USD-triangulation.
-  // expected = rate(curIn → USD) / rate(currency → USD).
-  // Если реальный rate сильно отличается (>30%) — вероятно
-  // в DailyRatesModal курс введён в обратную сторону.
+  // Triangulation через USD (для sanity check + auto-correction).
   const expectedRateViaUsd = (() => {
     if (curIn === o.currency) return null;
     if (curIn === "USD") return getRateRaw("USD", o.currency, currentOffice);
@@ -1852,6 +1878,30 @@ function OutputRow({
     if (!Number.isFinite(inToUsd) || !Number.isFinite(outToUsd) || outToUsd === 0) return null;
     return inToUsd / outToUsd;
   })();
+
+  // Auto-correct rate если он явно перевёрнут (>50% отклонение).
+  const fixIfInverted = (raw) => {
+    if (!Number.isFinite(raw) || raw <= 0) return raw;
+    if (!Number.isFinite(expectedRateViaUsd) || expectedRateViaUsd <= 0) return raw;
+    const ratio = raw / expectedRateViaUsd;
+    if (ratio > 1.5 || ratio < 0.667) {
+      const invertedRatio = 1 / raw / expectedRateViaUsd;
+      if (Math.abs(invertedRatio - 1) < Math.abs(ratio - 1)) return 1 / raw;
+    }
+    return raw;
+  };
+
+  // Global rate (без override) и эффективный rate текущего офиса —
+  // обоих прогоняем через fix-inverted чтобы chips показывали
+  // правильные значения даже при кривых данных в БД.
+  const globalRate = fixIfInverted(getRateRaw(curIn, o.currency, null));
+  const officeRate = fixIfInverted(getRateRaw(curIn, o.currency, currentOffice));
+  const hasOfficeOverride =
+    !!getOfficeOverride?.(currentOffice, curIn, o.currency) &&
+    Number.isFinite(globalRate) &&
+    Number.isFinite(officeRate) &&
+    Math.abs(globalRate - officeRate) > 1e-9;
+
   const actualRate = parseFloat(o.rate);
   const rateLooksWrong = (() => {
     if (!Number.isFinite(actualRate) || actualRate <= 0) return false;
@@ -1880,7 +1930,8 @@ function OutputRow({
     .filter((off) => off.id !== currentOffice)
     .map((off) => {
       // Эффективный курс офиса = override если есть, иначе global fallback.
-      const rate = getRateRaw(curIn, o.currency, off.id);
+      // Прогоняем через fixIfInverted — chip покажет corrected значение.
+      const rate = fixIfInverted(getRateRaw(curIn, o.currency, off.id));
       if (!Number.isFinite(rate)) return null;
       const ovr = getOfficeOverride?.(off.id, curIn, o.currency);
       const hasOverride =
