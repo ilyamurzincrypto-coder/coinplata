@@ -163,6 +163,7 @@ export function RatesProvider({ children }) {
                 baseRate: db.baseRate,
                 spreadPercent: db.spreadPercent,
                 isDefault: db.isDefault,
+                isMaster: db.isMaster === true,
                 priority: db.priority,
                 dbId: db.id,
                 updatedAt: db.updatedAt,

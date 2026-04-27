@@ -117,6 +117,7 @@ export async function loadPairs() {
     spreadPercent: num(r.spread_percent),
     rate: num(r.rate),
     isDefault: r.is_default,
+    isMaster: r.is_master === true,
     priority: r.priority ?? 50,
     updatedAt: r.updated_at,
     // legacy shape compat — frontend rates.jsx строит pair с fromChannelId/toChannelId,

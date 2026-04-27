@@ -52,7 +52,7 @@ export default function DailyRatesModal({ open, onClose }) {
     }
   }, [open]);
 
-  // Helper: найти pair по валютам и вернуть {updatedAt, rate}
+  // Helper: найти pair по валютам и вернуть {updatedAt, rate, baseRate, spreadPercent, isMaster}
   const pairInfo = useMemo(() => {
     const m = new Map();
     const channelCur = (chId) => channels.find((c) => c.id === chId)?.currencyCode;
@@ -60,20 +60,43 @@ export default function DailyRatesModal({ open, onClose }) {
       if (!p.isDefault) return;
       const f = channelCur(p.fromChannelId);
       const t = channelCur(p.toChannelId);
-      if (f && t) m.set(`${f}_${t}`, { updatedAt: p.updatedAt, rate: p.rate });
+      if (f && t) {
+        m.set(`${f}_${t}`, {
+          updatedAt: p.updatedAt,
+          rate: p.rate,
+          baseRate: p.baseRate,
+          spreadPercent: p.spreadPercent,
+          isMaster: p.isMaster === true,
+        });
+      }
     });
     return m;
   }, [pairs, channels]);
 
-  // Разворачиваем уникальные (a,b) в два направления для редактирования.
+  // НОВАЯ модель: одна строка на логическую пару = master direction.
+  // Reverse считается автоматически по 1/master через trigger в БД (0046).
+  // Если master pair найдена — используем её; если нет (legacy data до
+  // миграции) — fallback на первую существующую sторону.
   const rows = useMemo(() => {
     const out = [];
     (allTradePairs || []).forEach(([a, b]) => {
-      out.push({ from: a, to: b });
-      out.push({ from: b, to: a });
+      const ab = pairInfo.get(`${a}_${b}`);
+      const ba = pairInfo.get(`${b}_${a}`);
+      // Master direction: где is_master=true. Если ни одна не master,
+      // берём ту что соответствует приоритету (a первый в allTradePairs
+      // уже отсортирован priority-aware).
+      let from, to;
+      if (ab?.isMaster) {
+        from = a; to = b;
+      } else if (ba?.isMaster) {
+        from = b; to = a;
+      } else {
+        from = a; to = b;
+      }
+      out.push({ from, to });
     });
     return out;
-  }, [allTradePairs]);
+  }, [allTradePairs, pairInfo]);
 
   // Фильтр по поиску — match по FROM или TO (case-insensitive)
   const visibleRows = useMemo(() => {
@@ -144,14 +167,18 @@ export default function DailyRatesModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       title={t("quick_rates_title") || "Быстрое обновление курсов"}
-      subtitle={`${rows.length} направлений · обновлено ${timeAgo(lastUpdated)}`}
+      subtitle={`${rows.length} пар · обратные курсы синхронизируются автоматически · обновлено ${timeAgo(lastUpdated)}`}
       width="2xl"
     >
       <div className="p-5">
-        <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 mb-3 inline-flex items-center gap-1.5">
-          <Zap className="w-3 h-3 text-amber-500" />
-          Пустой инпут — курс остаётся текущий. Изменения сохраняются
-          атомарно + делается snapshot в историю.
+        <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
+          <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+          <span>
+            Редактируете <strong>один курс</strong> на пару (master direction).
+            Обратное направление автоматически = 1 / новый курс. Пустой
+            инпут — курс остаётся прежним. Изменения атомарны + snapshot
+            в историю.
+          </span>
         </div>
 
         {/* Поиск — более тёмный контейнер slate-200, визуально отделён
@@ -194,6 +221,14 @@ export default function DailyRatesModal({ open, onClose }) {
               Math.abs(typedNum - current) > 1e-9;
             const info = pairInfo.get(key);
             const updatedLabel = formatUpdatedAt(info?.updatedAt);
+            // Computed reverse — показываем что станет в обратной паре
+            // после применения. Если юзер ничего не ввёл — показываем
+            // текущий обратный rate из системы.
+            const effectiveForward = isChanged ? typedNum : current;
+            const reversePreview =
+              Number.isFinite(effectiveForward) && effectiveForward > 0
+                ? 1 / effectiveForward
+                : null;
             return (
               <div
                 key={key}
@@ -225,6 +260,25 @@ export default function DailyRatesModal({ open, onClose }) {
                     }`}
                   />
                 </div>
+                {/* Reverse preview: {to} → {from} = 1 / forward.
+                    Показываем всегда — менеджер видит обе стороны
+                    одновременно, понимает что reverse computed. */}
+                {reversePreview != null && (
+                  <div className="text-[10px] tabular-nums pl-[100px] flex items-center gap-1.5">
+                    <span className="text-slate-400">↩</span>
+                    <span className="text-slate-500 font-medium">
+                      {to}→{from}
+                    </span>
+                    <span
+                      className={`font-bold ${
+                        isChanged ? "text-emerald-700" : "text-slate-500"
+                      }`}
+                    >
+                      {formatRate(reversePreview)}
+                    </span>
+                    <span className="text-[9px] text-slate-400 italic">auto</span>
+                  </div>
+                )}
                 {/* Подпись "изм. DD.MM HH:MM" — когда курс был последний раз обновлён */}
                 {updatedLabel && (
                   <div className="text-[9.5px] text-slate-400 tabular-nums pl-[100px]">
