@@ -387,16 +387,18 @@ export default function ExchangeForm({
           : autoRate !== undefined
           ? String(autoRate)
           : o.rate;
+        // Пересчёт amount: либо output не touched, либо rate реально
+        // изменился (auto-обновление курса в системе) — в обоих случаях
+        // amount должен соответствовать новому rate.
+        const rateChanged = nextRate !== o.rate;
         let nextAmount = o.amount;
-        if (!o.touched) {
+        let nextTouched = o.touched;
+        if (!o.touched || rateChanged) {
           const a = parseFloat(amtIn);
           const r = parseFloat(nextRate);
           if (!isNaN(a) && !isNaN(r) && a > 0 && r > 0) {
-            // Первый output — net (минус fee). Остальные — gross (manager разделит
-            // через Use remaining / manual input).
             let computed;
             if (idx === 0) {
-              // Если applyMinFee=off — fee=0, net = gross (просто amt*rate).
               computed = computeNetOutput({
                 amtIn: a,
                 rate: r,
@@ -408,11 +410,14 @@ export default function ExchangeForm({
               computed = multiplyAmount(a, r, o.currency === "TRY" ? 0 : 2);
             }
             nextAmount = String(computed);
-          } else {
+            // После авто-пересчёта снимаем touched чтобы amtIn-изменения
+            // снова пересчитывали amount автоматически.
+            if (rateChanged) nextTouched = false;
+          } else if (!o.touched) {
             nextAmount = "";
           }
         }
-        return { ...o, rate: nextRate, amount: nextAmount };
+        return { ...o, rate: nextRate, amount: nextAmount, touched: nextTouched };
       })
     );
   }, [curIn, amtIn, getRate, minFeeUsd, applyMinFee]);
@@ -450,8 +455,47 @@ export default function ExchangeForm({
   }, [profitFromRates, minFeeUsd, amtIn, applyMinFee]);
 
   // --- handlers для outputs ---
+  // updateOutput: при изменении rate (manual input ИЛИ chip-click) пересчитываем
+  // amount даже если output был "touched" — пользователь явно дал понять что
+  // курс изменился, значит сумма должна обновиться. Это не ломает дробные
+  // сделки: ручной ввод amount оставляет touched=true, и пока юзер не
+  // тронет rate этого output — amount не перезапишется.
   const updateOutput = (id, patch) =>
-    setOutputs((prev) => prev.map((o) => (o.id === id ? { ...o, ...patch } : o)));
+    setOutputs((prev) => {
+      return prev.map((o, idx) => {
+        if (o.id !== id) return o;
+        const next = { ...o, ...patch };
+        // Триггер пересчёта amount: rate в патче явно меняется, а amount —
+        // нет. Покрывает manual input rate и chip-clicks (Global/Office/specific).
+        const rateInPatch = "rate" in patch && patch.rate !== o.rate;
+        const amountInPatch = "amount" in patch;
+        if (rateInPatch && !amountInPatch) {
+          const a = parseFloat(amtIn);
+          const r = parseFloat(next.rate);
+          if (!isNaN(a) && !isNaN(r) && a > 0 && r > 0) {
+            // idx=0 — net (минус fee если applyMinFee). Остальные — gross
+            // (для дробной сделки юзер потом перераспределит вручную).
+            const computed = idx === 0
+              ? computeNetOutput({
+                  amtIn: a,
+                  rate: r,
+                  feeUsd: applyMinFee ? minFeeUsd : 0,
+                  outputCurrency: next.currency,
+                  getRate,
+                })
+              : multiplyAmount(a, r, next.currency === "TRY" ? 0 : 2);
+            next.amount = String(computed);
+            next.touched = false;
+          } else if (!a || !r) {
+            // rate пуст / amtIn пуст → amount тоже сбрасываем (touched=false
+            // чтобы при возврате rate авто-расчёт заработал).
+            next.amount = "";
+            next.touched = false;
+          }
+        }
+        return next;
+      });
+    });
 
   const addOutput = () => {
     const existing = outputs.map((o) => o.currency);
