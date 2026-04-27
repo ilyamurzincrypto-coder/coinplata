@@ -378,7 +378,9 @@ export default function ExchangeForm({
   // effect ниже подхватит новые autoRate. useEffect'ы внутри одного
   // коммита React обрабатывает в порядке объявления.
   useEffect(() => {
-    setOutputs((prev) => prev.map((o) => ({ ...o, ratePinned: false })));
+    setOutputs((prev) =>
+      prev.map((o) => ({ ...o, ratePinned: false, rateSource: "auto" }))
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [curIn]);
 
@@ -388,20 +390,40 @@ export default function ExchangeForm({
   // сумму с учётом комиссии. computeRemaining ниже использует тот же fee baseline,
   // поэтому remaining = 0 и "exceeds_remaining" не ложно срабатывает.
   //
-  // ratePinned: true — пользователь явно кликнул rate-chip (Global/Office/etc).
-  // В этом случае rate НЕ перезаписывается, но amount продолжает пересчитываться
-  // от amtIn * pinnedRate. Pin снимается только при смене curIn (см. effect выше)
-  // или при смене output.currency (в OutputRow currency picker).
+  // rateSource (новая модель, заменяет ratePinned):
+  //   "auto"               — следуем за getRate(currentOffice). Default.
+  //   "global"             — фиксированный global pair (без office override).
+  //   "office:<UUID>"      — фиксированный rate другого офиса (other-office chip).
+  //   undefined / "auto"   — то же что auto.
+  // manualRate=true — отдельный путь (юзер вводит руками), rateSource игнорируется.
+  //
+  // Раньше ratePinned=true замораживал rate — chips показывали актуальные значения,
+  // а сам input "застревал" на момент клика. Теперь pinned-источник тоже
+  // следует за обновлениями системы (юзер кликнул Global → когда global pair
+  // меняется в Settings, rate автоматически синхронизируется).
+  const resolveAutoRate = React.useCallback(
+    (output) => {
+      const src = output.rateSource;
+      if (src === "global") {
+        return getRateRaw(curIn, output.currency, null);
+      }
+      if (typeof src === "string" && src.startsWith("office:")) {
+        const oid = src.slice(7);
+        return getRateRaw(curIn, output.currency, oid);
+      }
+      return getRate(curIn, output.currency); // auto = текущий office
+    },
+    [getRate, getRateRaw, curIn]
+  );
   useEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
         if (o.manualRate) return o;
-        const autoRate = getRate(curIn, o.currency);
-        const nextRate = o.ratePinned
-          ? o.rate
-          : autoRate !== undefined
-          ? String(autoRate)
-          : o.rate;
+        const autoRate = resolveAutoRate(o);
+        const nextRate =
+          autoRate !== undefined && Number.isFinite(autoRate)
+            ? String(autoRate)
+            : o.rate;
         // Пересчёт amount: либо output не touched, либо rate реально
         // изменился (auto-обновление курса в системе) — в обоих случаях
         // amount должен соответствовать новому rate.
@@ -435,7 +457,7 @@ export default function ExchangeForm({
         return { ...o, rate: nextRate, amount: nextAmount, touched: nextTouched };
       })
     );
-  }, [curIn, amtIn, getRate, minFeeUsd, applyMinFee]);
+  }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
@@ -535,6 +557,7 @@ export default function ExchangeForm({
             manualRate: false,
             touched: false,
             ratePinned: false,
+            rateSource: "auto",
             rate: autoRate !== undefined ? String(autoRate) : o.rate,
           };
         }
@@ -1960,8 +1983,13 @@ function OutputRow({
                   // Если output на auto-rate — сразу подтягиваем курс для новой пары.
                   // Это нужно потому что useEffect зависит от [curIn, amtIn], но не от outputs,
                   // поэтому смена output.currency сама по себе не триггерит пересчёт.
-                  // ratePinned сбрасываем — chip-pick был для прежней пары.
-                  const patch = { currency: c, touched: false, ratePinned: false };
+                  // ratePinned/rateSource сбрасываем — chip-pick был для прежней пары.
+                  const patch = {
+                    currency: c,
+                    touched: false,
+                    ratePinned: false,
+                    rateSource: "auto",
+                  };
                   if (!o.manualRate) {
                     const next = getRate(curIn, c);
                     if (next !== undefined) patch.rate = String(next);
@@ -2035,10 +2063,16 @@ function OutputRow({
             <button
               type="button"
               onClick={() =>
-                onUpdate({ rate: String(globalRate), manualRate: false, ratePinned: true, touched: false })
+                onUpdate({
+                  rate: String(globalRate),
+                  manualRate: false,
+                  rateSource: "global",
+                  ratePinned: true,
+                  touched: false,
+                })
               }
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
-                !o.manualRate && Math.abs(parseFloat(o.rate) - globalRate) < 1e-9
+                !o.manualRate && o.rateSource === "global"
                   ? "bg-slate-700 text-white border-slate-700"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
@@ -2053,10 +2087,16 @@ function OutputRow({
             <button
               type="button"
               onClick={() =>
-                onUpdate({ rate: String(currentOfficeChip.rate), manualRate: false, ratePinned: true, touched: false })
+                onUpdate({
+                  rate: String(currentOfficeChip.rate),
+                  manualRate: false,
+                  rateSource: "auto",
+                  ratePinned: false,
+                  touched: false,
+                })
               }
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
-                !o.manualRate && Math.abs(parseFloat(o.rate) - currentOfficeChip.rate) < 1e-9
+                !o.manualRate && (!o.rateSource || o.rateSource === "auto")
                   ? "bg-indigo-600 text-white border-indigo-600"
                   : currentOfficeChip.hasOverride
                   ? "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
@@ -2074,7 +2114,8 @@ function OutputRow({
 
           {/* OTHER OFFICES — все активные офисы (sky если override, slate если =global) */}
           {otherOfficeChips.map((row) => {
-            const active = !o.manualRate && Math.abs(parseFloat(o.rate) - row.rate) < 1e-9;
+            const sourceKey = `office:${row.id}`;
+            const active = !o.manualRate && o.rateSource === sourceKey;
             const baseCls = row.hasOverride
               ? active
                 ? "bg-sky-600 text-white border-sky-600"
@@ -2087,7 +2128,13 @@ function OutputRow({
                 key={row.id}
                 type="button"
                 onClick={() =>
-                  onUpdate({ rate: String(row.rate), manualRate: false, ratePinned: true, touched: false })
+                  onUpdate({
+                    rate: String(row.rate),
+                    manualRate: false,
+                    rateSource: sourceKey,
+                    ratePinned: true,
+                    touched: false,
+                  })
                 }
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${baseCls}`}
                 title={
