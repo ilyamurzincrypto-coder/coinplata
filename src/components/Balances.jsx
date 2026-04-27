@@ -106,14 +106,15 @@ function groupOfficeAccounts(accounts, balanceOf, reservedOf, deltaOf, dayStartM
   return { cash: toRows(cashMap), bank: toRows(bankMap), crypto };
 }
 
-// Форматирует delta для отображения. Возвращает null если =0.
-// Поддерживает строковые формат: "+$1,200" / "−€300" / null (если 0).
+// Форматирует delta для отображения: "+$1,200" / "−€300" / "+$0".
+// Всегда возвращает строку — нули тоже показываем (нейтральный цвет
+// через deltaClass), чтобы юзер видел что действительно нет изменений.
 function fmtDelta(value, currency, opts = {}) {
-  if (!Number.isFinite(value) || Math.abs(value) < 0.01) return null;
-  const sign = value > 0 ? "+" : "−";
-  const abs = Math.abs(value);
+  const v = Number.isFinite(value) ? value : 0;
   const sym = opts.symbol === false ? "" : curSymbol(currency);
-  return `${sign}${sym}${fmt(abs, currency)}`;
+  if (Math.abs(v) < 0.01) return `+${sym}0`;
+  const sign = v > 0 ? "+" : "−";
+  return `${sign}${sym}${fmt(Math.abs(v), currency)}`;
 }
 
 function deltaClass(value) {

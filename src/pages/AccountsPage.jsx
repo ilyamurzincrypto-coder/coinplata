@@ -43,13 +43,14 @@ const curIndex = (code) => {
 };
 
 // Delta helpers — общие правила форматирования "+$1,200" / "−€300" /
-// null (если ≈0). Цвет: emerald (>0), rose (<0), slate-400 (≈0).
+// "+$0". Всегда возвращает строку — нули показываются нейтральным
+// цветом (slate-400) чтобы юзер видел что действительно нет движений.
 function fmtDelta(value, currency, opts = {}) {
-  if (!Number.isFinite(value) || Math.abs(value) < 0.01) return null;
-  const sign = value > 0 ? "+" : "−";
-  const abs = Math.abs(value);
+  const v = Number.isFinite(value) ? value : 0;
   const symStr = opts.symbol === false ? "" : curSymbol(currency);
-  return `${sign}${symStr}${fmt(abs, currency)}`;
+  if (Math.abs(v) < 0.01) return `+${symStr}0`;
+  const sign = v > 0 ? "+" : "−";
+  return `${sign}${symStr}${fmt(Math.abs(v), currency)}`;
 }
 function deltaClass(value) {
   if (!Number.isFinite(value)) return "text-slate-400";
