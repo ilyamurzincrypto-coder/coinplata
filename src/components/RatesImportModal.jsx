@@ -33,6 +33,22 @@ import {
   downloadBlob,
 } from "../utils/xlsxRates.js";
 
+// Безопасный рендер i18n строк формата `<strong>label:</strong> body`.
+// Раньше использовали dangerouslySetInnerHTML — это работало (источник
+// hardcoded в translations.jsx), но anti-pattern: если когда-нибудь
+// перенесём i18n на загрузку из API, открывалась бы XSS.
+function renderBoldPrefix(s) {
+  if (typeof s !== "string") return s;
+  const m = /^<strong>([^<]*)<\/strong>(.*)$/.exec(s);
+  if (!m) return s;
+  return (
+    <>
+      <strong>{m[1]}</strong>
+      {m[2]}
+    </>
+  );
+}
+
 export default function RatesImportModal({ open, onClose }) {
   const { t } = useTranslation();
   const { codes } = useCurrencies();
@@ -249,20 +265,14 @@ export default function RatesImportModal({ open, onClose }) {
             </summary>
             <div className="mt-3 space-y-2 text-[12px] text-slate-600">
               <p>
-                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_row1") }} />{" "}
+                {renderBoldPrefix(t("rimport_format_row1"))}{" "}
                 <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">From</code>,{" "}
                 <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">To</code>,{" "}
                 <code className="px-1 py-0.5 bg-white border border-slate-200 rounded">Rate</code>.
               </p>
-              <p>
-                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_row") }} />
-              </p>
-              <p>
-                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_codes") }} />
-              </p>
-              <p>
-                <span dangerouslySetInnerHTML={{ __html: t("rimport_format_rate") }} />
-              </p>
+              <p>{renderBoldPrefix(t("rimport_format_row"))}</p>
+              <p>{renderBoldPrefix(t("rimport_format_codes"))}</p>
+              <p>{renderBoldPrefix(t("rimport_format_rate"))}</p>
               <div className="mt-3 border border-slate-200 bg-white rounded-md p-3 text-[11px] font-mono">
                 <div className="text-slate-500 mb-1">{t("rimport_format_example")}</div>
                 <div>From,To,Rate</div>

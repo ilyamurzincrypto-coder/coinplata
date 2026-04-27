@@ -40,6 +40,20 @@ const STATUS_STYLE = {
   disabled: "bg-slate-100 text-slate-500 ring-slate-200",
 };
 
+// Стабильный формат "DD.MM.YY HH:MM" — независимо от browser locale.
+// Раньше new Date(...).toLocaleString() показывал DD.MM.YYYY ru-юзеру и
+// MM/DD/YYYY en-юзеру, что мешало сравнить запись с другим экраном.
+function fmtDateTime(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = String(d.getFullYear()).slice(2);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}.${mm}.${yy} ${hh}:${mi}`;
+}
+
 function StatusBadge({ status }) {
   const cls = STATUS_STYLE[status] || STATUS_STYLE.active;
   const label =
@@ -479,7 +493,7 @@ export default function UsersTab() {
                     {inv.createdAt && (
                       <>
                         {" · "}
-                        {new Date(inv.createdAt).toLocaleString()}
+                        {fmtDateTime(inv.createdAt)}
                       </>
                     )}
                   </div>
