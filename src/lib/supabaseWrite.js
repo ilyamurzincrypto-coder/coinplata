@@ -1078,11 +1078,19 @@ export async function ensureClient({ nickname, telegram, counterpartyId }, loade
 
   // (4) — на случай если counterparties не долетели / race condition:
   // запрос в clients ilike nickname.
+  // SECURITY: escape ILIKE-wildcards (% и _) и запятые (split-toкen в .or()).
+  // Без escape user input "a%" находил всех начинающихся с "a" (info-leak +
+  // bypass точного matching). PostgREST .or() разделяет по запятой —
+  // запятая в input может ломать syntax / делать дополнительные условия.
+  const escapeIlike = (s) =>
+    String(s).replace(/[\\%_]/g, (m) => `\\${m}`).replace(/[,()]/g, " ");
+  const nickEsc = escapeIlike(nick);
+  const tgEsc = escapeIlike(tg || nick);
   try {
     const { data, error } = await supabase
       .from("clients")
       .select("id, nickname, telegram")
-      .or(`nickname.ilike.${nick},telegram.ilike.${tg || nick}`)
+      .or(`nickname.ilike.${nickEsc},telegram.ilike.${tgEsc}`)
       .limit(5);
     if (error) {
       // eslint-disable-next-line no-console
@@ -1118,7 +1126,7 @@ export async function ensureClient({ nickname, telegram, counterpartyId }, loade
       const { data: again } = await supabase
         .from("clients")
         .select("id")
-        .ilike("nickname", nick)
+        .ilike("nickname", nickEsc)
         .limit(1)
         .maybeSingle();
       return again?.id || null;
