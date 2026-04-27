@@ -4,11 +4,12 @@
 // Rates — в Dashboard → Edit rates.
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Coins, Info } from "lucide-react";
+import { Settings as SettingsIcon, Coins, Info, TrendingUp } from "lucide-react";
 import SegmentedControl from "../../components/ui/SegmentedControl.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
+import { useRates } from "../../store/rates.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 
 function SectionHeader({ icon, title, right }) {
@@ -28,8 +29,16 @@ export default function GeneralTab() {
   const { settings, updateSettings, isAdmin } = useAuth();
   const { codes: CURRENCIES } = useCurrencies();
   const { addEntry: logAudit } = useAudit();
+  const { getRate } = useRates();
 
   const [refPct, setRefPct] = useState(settings.referralPct);
+
+  // Курс выбранной base currency на сегодня (через USD триангуляцию).
+  // Показываем рядом с переключателем чтобы админ видел по какому курсу
+  // считается эквивалент на главной.
+  const baseCur = settings.baseCurrency || "USD";
+  const baseToUsd = baseCur === "USD" ? 1 : getRate(baseCur, "USD");
+  const usdToBase = baseCur === "USD" ? 1 : getRate("USD", baseCur);
 
   const handleBaseCurrencyChange = (newBase) => {
     const oldBase = settings.baseCurrency || "USD";
@@ -76,9 +85,36 @@ export default function GeneralTab() {
                 size="sm"
               />
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 mb-2">
               {t("base_currency_hint")}
             </p>
+            {/* Курс выбранной base на сегодня — чтобы админ видел по
+                какому курсу считаются эквиваленты на главной. Если
+                нужно — поменять курс можно через DailyRatesModal /
+                Edit rates. */}
+            {baseCur !== "USD" && (
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-emerald-50/50 border border-emerald-200 text-[12px]">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span className="text-slate-600">
+                  Курс на сегодня:{" "}
+                </span>
+                <span className="font-bold tabular-nums text-emerald-800">
+                  1 {baseCur} ={" "}
+                  {Number.isFinite(baseToUsd) ? baseToUsd.toFixed(4) : "—"} USD
+                </span>
+                {Number.isFinite(usdToBase) && (
+                  <>
+                    <span className="text-slate-300">·</span>
+                    <span className="font-bold tabular-nums text-slate-700">
+                      1 USD = {usdToBase.toFixed(4)} {baseCur}
+                    </span>
+                  </>
+                )}
+                <span className="text-[10px] text-slate-400 ml-1">
+                  изменить → Касса → Quick / Edit rates
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-slate-100" />

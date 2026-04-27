@@ -8,17 +8,23 @@
 // Data sources — только accounts store.
 // Pending сделки пишут movements с reserved:true — это меняет reservedOf автоматически.
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { Wallet, Banknote, Building2, Coins, Clock, Layers, CheckCircle2, Lock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
+import { useRates } from "../store/rates.jsx";
 import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
+import { convert } from "../utils/convert.js";
 import ObligationsModal from "./ObligationsModal.jsx";
+
+// Доступные валюты для display switch на дашборде. Локальный override
+// settings.baseCurrency — без записи в БД, только display.
+const DISPLAY_OPTIONS = ["USD", "EUR"];
 
 const NETWORK_RX = /\b(TRC20|ERC20|BEP20)\b/i;
 // Определение сети crypto-счёта:
@@ -303,9 +309,24 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
   const { accounts, balanceOf, reservedOf } = useAccounts();
   const { activeOffices, findOffice } = useOffices();
   const { dict: currencyDict } = useCurrencies();
-  const { base, toBase } = useBaseCurrency();
+  const { base: settingsBase } = useBaseCurrency();
+  const { getRate } = useRates();
   const { obligations, openCount: openObligationsCount } = useObligations();
   const [obligationsOpen, setObligationsOpen] = useState(false);
+
+  // Локальный display override — переключатель USD/EUR в шапке. По
+  // умолчанию = settings.baseCurrency. Не пишет в БД, чисто visual.
+  const [displayBase, setDisplayBase] = useState(() =>
+    DISPLAY_OPTIONS.includes(settingsBase) ? settingsBase : "USD"
+  );
+  const base = displayBase;
+  const toBase = useCallback(
+    (amount, from) => {
+      if (!from) return amount || 0;
+      return convert(amount, from, base, getRate);
+    },
+    [base, getRate]
+  );
 
   const officesToRender = useMemo(() => {
     if (scope === "all") return activeOffices;
@@ -406,6 +427,15 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
             ]}
             value={scope}
             onChange={onScopeChange}
+            size="sm"
+          />
+          {/* Display currency override — локальный переключатель USD/EUR.
+              Не меняет settings.baseCurrency; только пересчитывает
+              эквиваленты в шапке/блоках балансов. */}
+          <SegmentedControl
+            options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
+            value={displayBase}
+            onChange={setDisplayBase}
             size="sm"
           />
         </div>
