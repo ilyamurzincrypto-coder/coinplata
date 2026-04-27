@@ -35,6 +35,10 @@ export default function CashierPage({
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  // RatesSidebar expanded state — поднимаем сюда чтобы grid columns
+  // dashboard mode реактивно сужались/расширялись. Compact = top-6
+  // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   // mode / formMounted теперь lifted в App.jsx, чтобы переживать переход
   // на другие вкладки (Clients/Capital и т.д.). ExchangeForm сохраняет
@@ -333,18 +337,26 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
         >
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(260px,320px)_1fr] gap-6 items-start">
-            {/* LEFT: вертикальный sidebar курсов — как в банке. Sticky чтобы
-                не уплывал при скролле transactions. На мобильном схлопывается
-                в верхний блок. */}
+          {/* Top row: sidebar (compact 260px / expanded 480px) + (CTA + Balances).
+              Transactions ниже на full-width — даже при expanded sidebar
+              они не сужаются. */}
+          <div
+            className={`grid grid-cols-1 gap-6 items-start ${
+              sidebarExpanded
+                ? "lg:grid-cols-[minmax(360px,480px)_1fr]"
+                : "lg:grid-cols-[minmax(220px,260px)_1fr]"
+            } transition-[grid-template-columns] duration-200`}
+          >
             <aside className="lg:sticky lg:top-[88px]">
               <RatesSidebar
                 currentOffice={currentOffice}
                 onOpenRates={openRates}
+                onExpandedChange={setSidebarExpanded}
               />
             </aside>
 
-            {/* RIGHT: основной контент (CTA + Balances + Transactions) */}
+            {/* RIGHT: CTA + Balances. Transactions вынесены ниже на
+                всю ширину (см. блок mt-6 после grid). */}
             <section className="space-y-6 min-w-0">
 
           {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
@@ -407,13 +419,17 @@ export default function CashierPage({
             scope={balanceScope}
             onScopeChange={setBalanceScope}
           />
-
-          <TransactionsTable
-            currentOffice={currentOffice}
-            justCreatedId={justCreatedId}
-            onEdit={setEditingTx}
-          />
             </section>
+          </div>
+
+          {/* Transactions — полностью отдельная row на всю ширину.
+              Не сужаются при expanded sidebar — у них своё пространство. */}
+          <div className="mt-6">
+            <TransactionsTable
+              currentOffice={currentOffice}
+              justCreatedId={justCreatedId}
+              onEdit={setEditingTx}
+            />
           </div>
         </div>
       )}

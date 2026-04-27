@@ -8,8 +8,8 @@
 // override для пары — показываем его курс, иначе global fallback.
 // Бейдж OFC на паре = override активен (курс отличается от global).
 
-import React, { useState, useEffect } from "react";
-import { TrendingUp, ArrowRight, Zap, Settings2 } from "lucide-react";
+import React, { useState, useEffect, useMemo } from "react";
+import { TrendingUp, ArrowRight, Zap, Settings2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -51,12 +51,24 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-export default function RatesSidebar({ currentOffice, onOpenRates }) {
+// Сколько пар показывать в compact mode — по умолчанию топ-6 (все базовые
+// USDT/USD, USDT/TRY, USDT/EUR, USD/TRY, USD/EUR, TRY/EUR при текущем приоритете).
+const COMPACT_LIMIT = 6;
+
+export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
   const [quickOpen, setQuickOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Сообщаем родителю что expanded — он подстраивает grid columns
+  // (sidebar шире → main колонка уже).
+  useEffect(() => {
+    onExpandedChange?.(expanded);
+  }, [expanded, onExpandedChange]);
 
   // Выбранная вкладка: "__global__" или officeId. Следуем за currentOffice
   // (когда кассир меняет офис в header — sidebar тоже переключается).
@@ -91,6 +103,34 @@ export default function RatesSidebar({ currentOffice, onOpenRates }) {
     },
     [selectedOfficeId, getOfficeOverride, getRateRaw]
   );
+
+  // Visible pairs — фильтр по поисковому запросу + лимит compact mode.
+  // Поиск по обеим валютам пары (USDT/EUR matches "us", "eur", "usdt eur").
+  const visiblePairs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let list = tradePairs;
+    if (q) {
+      list = list.filter(([a, b]) => {
+        const ab = `${a} ${b}`.toLowerCase();
+        const ba = `${b} ${a}`.toLowerCase();
+        return (
+          a.toLowerCase().includes(q) ||
+          b.toLowerCase().includes(q) ||
+          ab.includes(q) ||
+          ba.includes(q)
+        );
+      });
+    }
+    if (!expanded && !q) {
+      // Compact mode без поиска — только базовые пары (top N по приоритету)
+      list = list.slice(0, COMPACT_LIMIT);
+    }
+    return list;
+  }, [tradePairs, query, expanded]);
+
+  const totalCount = tradePairs.length;
+  const showingCount = visiblePairs.length;
+  const hasHidden = !expanded && !query && totalCount > COMPACT_LIMIT;
 
   return (
     <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]">
@@ -173,8 +213,33 @@ export default function RatesSidebar({ currentOffice, onOpenRates }) {
         })}
       </div>
 
+      {/* Search — виден всегда. При вводе автоматически расширяет список
+          (даже в compact mode). */}
+      <div className="px-2 pt-2 pb-1 border-b border-slate-100">
+        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
+          <Search className="w-3 h-3 text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="USD, TRY, EUR…"
+            className="flex-1 min-w-0 bg-transparent outline-none text-[11px] text-slate-900 placeholder:text-slate-400"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              className="p-0.5 rounded hover:bg-slate-200 text-slate-500 transition-colors shrink-0"
+              title="Очистить"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      </div>
+
       <div className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
-        {tradePairs.map(([a, b]) => {
+        {visiblePairs.map(([a, b]) => {
           // Берём ОБА направления напрямую из БД через getRateForTab.
           // forward = a→b, backward = b→a. Это реальные сел/бай rates офиса
           // (после 0036 в pairs хранятся обе стороны как отдельные records).
@@ -225,7 +290,38 @@ export default function RatesSidebar({ currentOffice, onOpenRates }) {
             </div>
           );
         })}
+        {/* Empty state при поиске */}
+        {query && visiblePairs.length === 0 && (
+          <div className="text-center py-6 text-[11px] text-slate-400">
+            ничего не найдено
+          </div>
+        )}
       </div>
+
+      {/* Toggle "Show all / Compact" — внизу списка. В compact mode также
+          сообщает сколько ещё пар скрыто. Когда expanded — sidebar
+          расширяется (через onExpandedChange), главная колонка сужается. */}
+      {(hasHidden || expanded) && !query && (
+        <div className="border-t border-slate-100 px-2 py-2">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="w-3 h-3" />
+                Свернуть
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3 h-3" />
+                Показать все ({totalCount - showingCount})
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </aside>
   );
 }
