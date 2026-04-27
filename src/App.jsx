@@ -174,15 +174,49 @@ function Root() {
 // принудительно отправляем юзера на SetPasswordPage — независимо от
 // public.users.status. Это закрывает дыру где юзер мог зайти через
 // magic-link без когда-либо установленного пароля.
+// CRITICAL: парсим URL hash на module-level — синхронно при импорте App.jsx,
+// ДО того как Supabase SDK с detectSessionInUrl=true успевает его почистить.
+// Если бы парсили в useEffect, race-condition: SDK иногда чистит hash раньше
+// чем компонент маунтится → мы теряем type=magiclink и не взводим recoveryMode.
+//
+// Implicit flow Supabase кладёт в hash:
+//   #access_token=...&refresh_token=...&type=magiclink|recovery|invite|signup
+//
+// Любой из этих типов означает "юзер только что залогинился через email link
+// и должен установить/обновить пароль" — форсим SetPasswordPage.
+const INITIAL_RECOVERY_FROM_HASH = (() => {
+  if (typeof window === "undefined") return false;
+  try {
+    const hash = window.location.hash || "";
+    if (!hash.startsWith("#")) return false;
+    const params = new URLSearchParams(hash.slice(1));
+    const type = params.get("type");
+    const hasToken = !!params.get("access_token");
+    // Любой email-link login (по type) ИЛИ любой access_token в hash
+    // (defensive: если type не пришёл, но access_token есть — это всё равно
+    // magic-link / recovery, не обычный login).
+    if (
+      type === "recovery" ||
+      type === "magiclink" ||
+      type === "invite" ||
+      type === "signup" ||
+      (hasToken && !type)
+    ) {
+      return true;
+    }
+  } catch {}
+  return false;
+})();
+
 function AuthGate({ children }) {
   const [session, setSession] = useState(undefined); // undefined = loading
   const [forcePreview, setForcePreview] = useState(false);
   // profile: undefined = loading, null = no row, иначе { status, password_set }
   const [profile, setProfile] = useState(undefined);
-  // recoveryMode: true если onAuthStateChange выдал PASSWORD_RECOVERY
-  // или URL hash содержит type=recovery / type=magiclink. В этом case
-  // принудительно показываем SetPasswordPage. Сбрасывается после save.
-  const [recoveryMode, setRecoveryMode] = useState(false);
+  // recoveryMode: true если URL hash был из email-link, либо
+  // onAuthStateChange выдал PASSWORD_RECOVERY. Принудительно показываем
+  // SetPasswordPage. Сбрасывается после save через clearRecovery().
+  const [recoveryMode, setRecoveryMode] = useState(INITIAL_RECOVERY_FROM_HASH);
 
   useEffect(() => {
     // Preview-режим через URL
@@ -195,27 +229,6 @@ function AuthGate({ children }) {
     };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
-  }, []);
-
-  // Supabase кладёт recovery/magic-link токены в URL hash:
-  //   #access_token=...&type=recovery&...
-  //   #access_token=...&type=magiclink&...
-  // Парсим один раз на маунте. Если нашли recovery/magiclink type — взводим
-  // recoveryMode и стираем hash чтобы при reload не зацикливаться.
-  useEffect(() => {
-    try {
-      const hash = window.location.hash || "";
-      if (!hash.startsWith("#")) return;
-      const params = new URLSearchParams(hash.slice(1));
-      const type = params.get("type");
-      if (type === "recovery" || type === "magiclink" || type === "invite") {
-        setRecoveryMode(true);
-        // Стираем hash, оставив URL чистым. Без reload.
-        try {
-          window.history.replaceState(null, "", window.location.pathname + window.location.search);
-        } catch {}
-      }
-    } catch {}
   }, []);
 
   useEffect(() => {

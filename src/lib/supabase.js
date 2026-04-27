@@ -18,9 +18,17 @@ export const isSupabaseConfigured = Boolean(url && key);
 export const supabase = isSupabaseConfigured
   ? createClient(url, key, {
       auth: {
+        // CRITICAL: implicit flow вместо default PKCE.
+        // PKCE требует code_verifier в localStorage устройства, которое
+        // инициировало signInWithOtp/resetPasswordForEmail. Если юзер
+        // получает email и кликает magic-link с ДРУГОГО устройства
+        // (телефон), verifier там нет → exchange fails → юзер видит
+        // LoginPage без сессии. Implicit flow кладёт access_token прямо
+        // в URL hash — работает между устройствами.
+        flowType: "implicit",
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: true, // для magic link callback
+        detectSessionInUrl: true, // парсит #access_token из hash
       },
     })
   : null;
