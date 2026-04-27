@@ -274,6 +274,27 @@ export function AccountsProvider({ children }) {
     [balances, reserved]
   );
 
+  // Delta = изменение баланса с момента sinceTimestamp (например начало
+  // текущего дня). Считается из movements: sum signed amounts ПОСЛЕ
+  // sinceTimestamp, исключая reserved (pending не влияет на actual balance).
+  // Используется в Balances для отображения "+$1,200 / -$300" по валютам
+  // и итогам офисов — стандартная финансовая метрика "изменение за период".
+  const deltaOf = useCallback(
+    (accountId, sinceMs) => {
+      if (!sinceMs) return 0;
+      let sum = 0;
+      for (const m of movements) {
+        if (m.accountId !== accountId) continue;
+        if (m.reserved) continue;
+        const ts = m.createdAt ? new Date(m.createdAt).getTime() : 0;
+        if (!ts || ts < sinceMs) continue;
+        sum += m.direction === "in" ? m.amount : -m.amount;
+      }
+      return sum;
+    },
+    [movements]
+  );
+
   // --- Фильтрация ---
   const accountsByOffice = useCallback(
     (officeId, { currency, activeOnly = true } = {}) => {
@@ -344,6 +365,7 @@ export function AccountsProvider({ children }) {
       balanceOf,
       reservedOf,
       availableOf,
+      deltaOf,
       // queries
       accountsByOffice,
       findAccount,
@@ -366,6 +388,7 @@ export function AccountsProvider({ children }) {
       balanceOf,
       reservedOf,
       availableOf,
+      deltaOf,
       accountsByOffice,
       findAccount,
       movementsByAccount,
