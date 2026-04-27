@@ -89,7 +89,13 @@ function findDefaultPair(pairs, channels, fromCur, toCur) {
   });
 }
 
-// Derived rates lookup {"FROM_TO": rate} из default pairs — для обратной совместимости
+// Derived rates lookup {"FROM_TO": rate} из default pairs — для обратной совместимости.
+//
+// Master pair model (0046/0047): для каждой логической пары хранится master
+// (priority direction). Reverse pair синхронизирована trigger'ом в БД, но
+// для legacy данных может отсутствовать физически. Synthesize reverse =
+// 1/master.rate если direct reverse row не найдена → форма сделки и sidebar
+// видят оба направления даже когда БД содержит только master row.
 function buildRatesLookup(pairs, channels) {
   const out = {};
   pairs.forEach((p) => {
@@ -98,6 +104,18 @@ function buildRatesLookup(pairs, channels) {
     const tCur = resolveCurrencyOfChannel(channels, p.toChannelId);
     if (fCur && tCur) {
       out[rateKey(fCur, tCur)] = p.rate;
+    }
+  });
+  // Synthesize missing reverse: для каждого master pair проверяем что
+  // обратное направление в lookup есть; если нет — кладём 1/rate.
+  pairs.forEach((p) => {
+    if (!p.isDefault) return;
+    const fCur = resolveCurrencyOfChannel(channels, p.fromChannelId);
+    const tCur = resolveCurrencyOfChannel(channels, p.toChannelId);
+    if (!fCur || !tCur) return;
+    const reverseKey = rateKey(tCur, fCur);
+    if (out[reverseKey] === undefined && p.rate > 0) {
+      out[reverseKey] = 1 / p.rate;
     }
   });
   return out;
