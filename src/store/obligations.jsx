@@ -54,6 +54,20 @@ export function ObligationsProvider({ children }) {
   }, []);
 
   const addObligation = useCallback((input) => {
+    // Валидация: 0/NaN/Infinity/отрицательные amount → отказ. Раньше
+    // Math.abs(Number('') || 0) давал 0 — создавалось "пустое" обязательство,
+    // которое потом проходило settle без побочных эффектов и засоряло список.
+    const amountNum = Number(input.amount);
+    if (!Number.isFinite(amountNum) || amountNum <= 0) {
+      // eslint-disable-next-line no-console
+      console.warn("[addObligation] rejected: invalid amount", input.amount);
+      return null;
+    }
+    if (!input.currency) {
+      // eslint-disable-next-line no-console
+      console.warn("[addObligation] rejected: missing currency");
+      return null;
+    }
     const rec = {
       id: `ob_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       officeId: input.officeId,
@@ -61,7 +75,7 @@ export function ObligationsProvider({ children }) {
       dealLegIndex: Number.isFinite(input.dealLegIndex) ? input.dealLegIndex : null,
       clientId: input.clientId ?? null,
       currency: input.currency,
-      amount: Math.abs(Number(input.amount) || 0),
+      amount: Math.abs(amountNum),
       direction: input.direction === "they_owe" ? "they_owe" : "we_owe",
       status: "open",
       note: input.note || "",
