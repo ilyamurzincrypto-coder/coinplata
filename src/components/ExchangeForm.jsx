@@ -408,6 +408,7 @@ export default function ExchangeForm({
   // используем инверсию. Курсы примерные, запас широкий.
   const correctRate = React.useCallback((rawRate, from, to) => {
     if (!Number.isFinite(rawRate) || rawRate <= 0) return rawRate;
+    if (from === to) return rawRate;
     const RANGES = {
       USDT_USD: [0.9, 1.1], USD_USDT: [0.9, 1.1],
       USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
@@ -432,6 +433,15 @@ export default function ExchangeForm({
     if (inverted >= min && inverted <= max) return inverted;
     return rawRate;
   }, []);
+
+  // Corrected getRate — оборачивает обычный getRate авто-инверсией.
+  // Используется для всех расчётов (auto-fill, profitFromRates,
+  // computeNetOutput) — гарантирует что бизнес-логика работает с
+  // правильным rate даже когда в БД лежит инвертированное значение.
+  const correctedGetRate = React.useCallback(
+    (from, to) => correctRate(getRate(from, to), from, to),
+    [getRate, correctRate]
+  );
 
   const resolveAutoRate = React.useCallback(
     (output) => {
@@ -476,7 +486,7 @@ export default function ExchangeForm({
                 rate: r,
                 feeUsd: applyMinFee ? minFeeUsd : 0,
                 outputCurrency: o.currency,
-                getRate,
+                getRate: correctedGetRate,
               });
             } else {
               computed = multiplyAmount(a, r, o.currency === "TRY" ? 0 : 2);
@@ -492,20 +502,23 @@ export default function ExchangeForm({
         return { ...o, rate: nextRate, amount: nextAmount, touched: nextTouched };
       })
     );
-  }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate]);
+  }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate, correctedGetRate]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
   // на output хуже рыночного (в пользу офиса). Считается в USD.
+  // ВАЖНО: используем correctedGetRate (объявлен выше) — иначе если в БД
+  // rate инвертирован (1.175 вместо 0.85), margin вычисляется как разница
+  // 1.175 vs 0.85 → фиктивная комиссия 225$.
   const profitFromRates = useMemo(() => {
     if (!amtIn) return 0;
     return computeProfitFromRates({
       amtIn,
       curIn,
       outputs,
-      getRate,
+      getRate: correctedGetRate,
     });
-  }, [amtIn, curIn, outputs, getRate]);
+  }, [amtIn, curIn, outputs, correctedGetRate]);
 
   // effectiveFee:
   //   applyMinFee=true  → max(profitFromRates, minFeeUsd) — min cap офиса
