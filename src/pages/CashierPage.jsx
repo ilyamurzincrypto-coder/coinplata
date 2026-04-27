@@ -337,17 +337,25 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
         >
-          {/* Top row: sidebar (compact 260px / expanded 480px) + (CTA + Balances).
-              Transactions ниже на full-width — даже при expanded sidebar
-              они не сужаются. */}
+          {/* Layout через CSS Grid named areas. Sidebar ВСЕГДА узкий
+              (~220px). При expand → раскрывается ВНИЗ (больше пар, scroll
+              внутри), а Transactions переезжают в правую колонку рядом
+              со sidebar и сужаются (как Balances). При compact —
+              Transactions внизу на ВСЮ ширину.
+              Один mount TransactionsTable — фильтры/scroll сохраняются
+              при переключении expand. */}
           <div
-            className={`grid grid-cols-1 gap-6 items-start ${
-              sidebarExpanded
-                ? "lg:grid-cols-[minmax(360px,480px)_1fr]"
-                : "lg:grid-cols-[minmax(220px,260px)_1fr]"
-            } transition-[grid-template-columns] duration-200`}
+            className="grid grid-cols-1 gap-6 items-start lg:grid-cols-[minmax(200px,220px)_1fr]"
+            style={{
+              gridTemplateAreas: sidebarExpanded
+                ? `"sidebar main" "sidebar tx"`
+                : `"sidebar main" "tx tx"`,
+            }}
           >
-            <aside className="lg:sticky lg:top-[88px]">
+            <aside
+              className="lg:sticky lg:top-[88px]"
+              style={{ gridArea: "sidebar" }}
+            >
               <RatesSidebar
                 currentOffice={currentOffice}
                 onOpenRates={openRates}
@@ -355,9 +363,9 @@ export default function CashierPage({
               />
             </aside>
 
-            {/* RIGHT: CTA + Balances. Transactions вынесены ниже на
-                всю ширину (см. блок mt-6 после grid). */}
-            <section className="space-y-6 min-w-0">
+            {/* MAIN: CTA + Balances. Transactions отдельной grid-area "tx" —
+                перемещается в зависимости от expanded. */}
+            <section className="space-y-6 min-w-0" style={{ gridArea: "main" }}>
 
           {/* CTA "+ New exchange" / "Resume" — сразу под котировками, перед
               балансами. Видно без скролла и прямо рядом с актуальным курсом. */}
@@ -420,16 +428,17 @@ export default function CashierPage({
             onScopeChange={setBalanceScope}
           />
             </section>
-          </div>
 
-          {/* Transactions — полностью отдельная row на всю ширину.
-              Не сужаются при expanded sidebar — у них своё пространство. */}
-          <div className="mt-6">
-            <TransactionsTable
-              currentOffice={currentOffice}
-              justCreatedId={justCreatedId}
-              onEdit={setEditingTx}
-            />
+            {/* Transactions — grid-area "tx". При compact занимает
+                обе колонки (full-width), при expanded — только правую
+                колонку (сужена как Balances). */}
+            <div className="min-w-0" style={{ gridArea: "tx" }}>
+              <TransactionsTable
+                currentOffice={currentOffice}
+                justCreatedId={justCreatedId}
+                onEdit={setEditingTx}
+              />
+            </div>
           </div>
         </div>
       )}

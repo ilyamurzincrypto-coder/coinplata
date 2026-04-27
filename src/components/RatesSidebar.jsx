@@ -134,46 +134,39 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
   return (
     <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]">
-      <header className="px-4 py-3 border-b border-slate-100">
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 text-emerald-700">
-              <TrendingUp className="w-3 h-3" />
-            </div>
-            <h2 className="text-[12px] font-bold text-slate-900 tracking-tight uppercase">
+      <header className="px-2.5 py-2 border-b border-slate-100">
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0" />
+            <h2 className="text-[11px] font-bold text-slate-900 tracking-tight uppercase truncate">
               {t("rates") || "Rates"}
             </h2>
           </div>
-          <span className="inline-flex items-center gap-1 text-[10px] text-slate-400">
-            <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-            {timeAgo(lastUpdated)} ago
-          </span>
+          {onOpenRates && (
+            <div className="flex gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => setQuickOpen(true)}
+                className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                title="Быстрое обновление курсов"
+              >
+                <Zap className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                onClick={onOpenRates}
+                className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors"
+                title="Полная страница курсов"
+              >
+                <Settings2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
-        {/* Action buttons — Quick (DailyRatesModal) + Edit (RatesPage).
-            Видны только когда есть onOpenRates (т.е. в dashboard/cashier).
-            Если sidebar используется в другом контексте — кнопки скрыты. */}
-        {onOpenRates && (
-          <div className="flex gap-1.5 mt-2">
-            <button
-              type="button"
-              onClick={() => setQuickOpen(true)}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-bold hover:bg-amber-100 hover:border-amber-300 transition-colors"
-              title="Быстрое обновление курсов"
-            >
-              <Zap className="w-3 h-3" />
-              {t("quick") || "Quick"}
-            </button>
-            <button
-              type="button"
-              onClick={onOpenRates}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-[8px] bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold hover:bg-slate-200 hover:border-slate-300 transition-colors"
-              title="Полная страница курсов"
-            >
-              <Settings2 className="w-3 h-3" />
-              {t("edit_rates") || "Edit"}
-            </button>
-          </div>
-        )}
+        <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 mt-0.5">
+          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
+          {timeAgo(lastUpdated)} ago
+        </span>
       </header>
       <DailyRatesModal open={quickOpen} onClose={() => setQuickOpen(false)} />
 
@@ -238,7 +231,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       </div>
 
-      <div className="p-2 space-y-1 max-h-[70vh] overflow-y-auto">
+      <div className="p-1.5 space-y-1 max-h-[70vh] overflow-y-auto">
         {visiblePairs.map(([a, b]) => {
           // Берём ОБА направления напрямую из БД через getRateForTab.
           // forward = a→b, backward = b→a. Это реальные сел/бай rates офиса
