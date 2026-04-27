@@ -135,8 +135,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const hasHidden = !expanded && !query && totalCount > COMPACT_LIMIT;
 
   return (
-    <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]">
-      <header className="px-2.5 py-2 border-b border-slate-100">
+    <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] h-full flex flex-col">
+      <header className="px-2.5 py-2 border-b border-slate-100 shrink-0">
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <TrendingUp className="w-3 h-3 text-emerald-600 shrink-0" />
@@ -175,7 +175,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       {/* Office tabs: Global + каждый активный офис. Выбор влияет на курсы
           ниже. По дефолту подсвечен текущий офис (из header).
           flex-wrap — чтобы длинные имена / много офисов не ломали layout. */}
-      <div className="px-2 pt-2 flex flex-wrap gap-1 border-b border-slate-100 pb-2">
+      <div className="px-2 pt-2 flex flex-wrap gap-1 border-b border-slate-100 pb-2 shrink-0">
         <button
           type="button"
           onClick={() => setSelectedTab(GLOBAL_TAB)}
@@ -212,7 +212,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           поиск не нужен — экономим высоту sidebar чтобы не растягивать
           row1 (transactions прижмутся к Balances без gap). */}
       {expanded && (
-        <div className="px-2 pt-2 pb-1 border-b border-slate-100">
+        <div className="px-2 pt-2 pb-1 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
             <Search className="w-3 h-3 text-slate-400 shrink-0" />
             <input
@@ -236,7 +236,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       )}
 
-      <div className={`p-1 ${expanded ? "space-y-0.5 max-h-[70vh] overflow-y-auto" : "space-y-0.5"}`}>
+      <div
+        className={`p-1 space-y-0.5 ${
+          expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1"
+        }`}
+      >
         {visiblePairs.map(([a, b]) => {
           const { forward: sell, backward: buy } = getTradingRates({
             getRate: getRateForTab,
@@ -290,7 +294,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           сообщает сколько ещё пар скрыто. Когда expanded — sidebar
           расширяется (через onExpandedChange), главная колонка сужается. */}
       {(hasHidden || expanded) && !query && (
-        <div className="border-t border-slate-100 px-2 py-2">
+        <div className="border-t border-slate-100 px-2 py-2 shrink-0">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}

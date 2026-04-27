@@ -356,15 +356,14 @@ export default function CashierPage({
                 : "lg:[grid-template-areas:'sidebar_main'_'tx_tx']"
             }`}
           >
-            {/* Sticky только в expanded mode. В compact sticky вызывал
-                визуальный bug — sidebar в grid-area "sidebar" (row 1) с
-                position:sticky мог "наползать" на row 2 (tx) при скролле.
-                В compact sidebar короткий — sticky не критичен. В
-                expanded sidebar занимает оба row, sticky внутри tall
-                container полезен. */}
+            {/* В compact sidebar растягивается по высоте row1 (= main
+                колонка с CTA + Balances) — без self-start пустого
+                пространства между списком пар и началом transactions
+                нет. Sticky оставлен только в expanded — там sidebar
+                длинный и нужно держать его в viewport при scroll tx. */}
             <aside
-              className={`lg:[grid-area:sidebar] lg:self-start ${
-                sidebarExpanded ? "lg:sticky lg:top-[88px]" : ""
+              className={`lg:[grid-area:sidebar] ${
+                sidebarExpanded ? "lg:sticky lg:top-[88px] lg:self-start" : ""
               }`}
             >
               <RatesSidebar
