@@ -516,7 +516,14 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
         <div className="flex items-center gap-3 flex-wrap">
           {/* Tri-metric summary */}
           <div className="inline-flex gap-1 bg-white border border-slate-200 rounded-[10px] p-1">
-            <SummaryBadge label="Total" value={grand.total} sym={sym} tone="slate" />
+            <SummaryBadge
+              label="Total"
+              value={grand.total}
+              sym={sym}
+              tone="slate"
+              delta={grand.delta}
+              deltaCurrency={base}
+            />
             {grand.hasReserved && (
               <SummaryBadge label="Pending" value={grand.reserved} sym={sym} tone="amber" icon={Clock} />
             )}
@@ -600,21 +607,32 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
 
 // ------- Header summary badge -------
 
-function SummaryBadge({ label, value, sym, tone, icon: Icon, emphasize }) {
+function SummaryBadge({ label, value, sym, tone, icon: Icon, emphasize, delta, deltaCurrency }) {
   const tones = {
     slate: "text-slate-700",
     amber: "text-amber-700 bg-amber-50",
     emerald: emphasize ? "text-emerald-700 bg-emerald-50" : "text-emerald-700",
   };
+  const deltaStr = delta != null && deltaCurrency ? fmtDelta(delta, deltaCurrency) : null;
   return (
     <div className={`flex flex-col items-start rounded-md px-2.5 py-1 ${tones[tone]}`}>
       <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
         {Icon && <Icon className="w-2.5 h-2.5" />}
         {label}
       </div>
-      <div className={`tabular-nums ${emphasize ? "text-[15px] font-bold" : "text-[13px] font-semibold"}`}>
-        {sym}
-        {fmt(value)}
+      <div className="inline-flex items-baseline gap-2">
+        <div className={`tabular-nums ${emphasize ? "text-[15px] font-bold" : "text-[13px] font-semibold"}`}>
+          {sym}
+          {fmt(value)}
+        </div>
+        {deltaStr && (
+          <span
+            className={`text-[10px] font-bold tabular-nums ${deltaClass(delta)}`}
+            title="Изменение с начала дня"
+          >
+            {deltaStr}
+          </span>
+        )}
       </div>
     </div>
   );
