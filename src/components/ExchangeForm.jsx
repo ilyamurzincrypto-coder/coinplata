@@ -243,6 +243,29 @@ export default function ExchangeForm({
   const [counterparty, setCounterparty] = useState(
     starter?.counterparty || draft?.counterparty || ""
   );
+  // Recent counterparties — последние использованные клиенты в quick-bar.
+  // Persist'им в localStorage (max 8). На submit добавляется в начало.
+  const RECENT_KEY = "coinplata.recentCounterparties";
+  const [recentCounterparties, setRecentCounterparties] = useState(() => {
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter(Boolean) : [];
+    } catch {
+      return [];
+    }
+  });
+  const pushRecentCounterparty = React.useCallback((name) => {
+    const clean = String(name || "").trim();
+    if (!clean) return;
+    setRecentCounterparties((prev) => {
+      const next = [clean, ...prev.filter((p) => p !== clean)].slice(0, 8);
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
   const [referral, setReferral] = useState(
     starter?.referral ?? draft?.referral ?? false
   );
@@ -903,6 +926,10 @@ export default function ExchangeForm({
     if (mode === "create" && outputs[0]?.currency) {
       recordDealUsage(curIn, outputs[0].currency);
     }
+    // Добавляем counterparty в recent quick-bar
+    if (counterparty?.trim()) {
+      pushRecentCounterparty(counterparty.trim());
+    }
     onSubmit?.(tx);
     if (mode === "create") {
       // reset + clear draft
@@ -1112,38 +1139,55 @@ export default function ExchangeForm({
           } p-2`}
         >
           <CounterpartySelect value={counterparty} onChange={setCounterparty} />
-          {/* Quick walk-in client — для людей с улицы которые приносят
-              cash. Один клик ставит counterparty="Cash" — клиент не
-              регистрируется как полноценный, deal создаётся с
-              counterpartyId=null + nickname="Cash". */}
-          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200/70">
+          {/* Quick clients: per-office Cash client + последние использованные.
+              Office Cash — отдельный клиент на каждый офис (например
+              "Mark Cash", "Lara Cash"), удобно для отчётности.
+              Recent — 4 последних использованных клиента (из localStorage). */}
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200/70 flex-wrap">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               Быстрые:
             </span>
-            <button
-              type="button"
-              onClick={() => setCounterparty("Cash")}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-                counterparty === "Cash"
-                  ? "bg-emerald-500 text-white border-emerald-500"
-                  : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
-              }`}
-              title="Анонимный клиент с улицы — кэш"
-            >
-              💵 Cash (с улицы)
-            </button>
-            <button
-              type="button"
-              onClick={() => setCounterparty("Walk-in")}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-                counterparty === "Walk-in"
-                  ? "bg-slate-700 text-white border-slate-700"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-              }`}
-              title="Walk-in client — без регистрации"
-            >
-              🚶 Walk-in
-            </button>
+            {(() => {
+              const officeName = (office?.name || "").split(/\s+/)[0] || "Office";
+              const officeCash = `${officeName} Cash`;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setCounterparty(officeCash)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                    counterparty === officeCash
+                      ? "bg-emerald-500 text-white border-emerald-500"
+                      : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+                  }`}
+                  title={`Анонимный клиент с улицы — ${officeName}`}
+                >
+                  💵 {officeCash}
+                </button>
+              );
+            })()}
+            {/* Recent counterparties — последние 4 (из localStorage,
+                добавляются при submit). Не показываем дубль с officeCash. */}
+            {recentCounterparties
+              .filter((rc) => {
+                const officeName = (office?.name || "").split(/\s+/)[0] || "Office";
+                return rc && rc !== `${officeName} Cash`;
+              })
+              .slice(0, 4)
+              .map((rc) => (
+                <button
+                  key={rc}
+                  type="button"
+                  onClick={() => setCounterparty(rc)}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                    counterparty === rc
+                      ? "bg-slate-700 text-white border-slate-700"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  }`}
+                  title={`Recent: ${rc}`}
+                >
+                  {rc}
+                </button>
+              ))}
           </div>
         </div>
       </div>
