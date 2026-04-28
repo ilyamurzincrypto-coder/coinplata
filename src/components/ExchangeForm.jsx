@@ -1407,6 +1407,19 @@ export default function ExchangeForm({
             existing={otcResult}
             onCreated={(result) => {
               setOtcResult(result);
+              // Если OTC задним числом — синхронизируем main deal backdate,
+              // чтобы и IN client и выдача попали в тот же день. Иначе
+              // delta дашборда покажет разные дни (-X сегодня / +X вчера).
+              // Юзер может вручную переопределить backdateAt в Conditions.
+              if (result.occurredAt && !backdateAt) {
+                // ISO → datetime-local format (YYYY-MM-DDTHH:mm)
+                const d = new Date(result.occurredAt);
+                if (!isNaN(d.getTime())) {
+                  const pad = (n) => String(n).padStart(2, "0");
+                  const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                  setBackdateAt(local);
+                }
+              }
               // Auto-apply: первый OUT-leg получает данные из OTC
               setOutputs((prev) => {
                 if (prev.length === 0) {
@@ -1423,7 +1436,6 @@ export default function ExchangeForm({
                     },
                   ];
                 }
-                // Подставляем в первый output если он пустой или совпадает по валюте
                 return prev.map((o, idx) => {
                   if (idx !== 0) return o;
                   const empty = !o.amount && !o.rate && !o.accountId;
