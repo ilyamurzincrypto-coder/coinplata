@@ -373,6 +373,7 @@ function OfficeBlock({
   yesterdayStartMs,
   currencyDict,
   toBase,
+  toUsdt,
   base,
   globalCryptoTotal,
   globalCryptoDelta,
@@ -460,15 +461,18 @@ function OfficeBlock({
         const cryptoRows = cryptoRowsFromGroups(grouped.crypto);
         const sumBase = (rows, key = "total") =>
           rows.reduce((s, r) => s + toBase(r[key] || 0, r.currency), 0);
+        // Crypto totals — В USDT (нативная валюта крипто-блока), не в USD/EUR.
+        const sumUsdt = (rows, key = "total") =>
+          rows.reduce((s, r) => s + (toUsdt ? toUsdt(r[key] || 0, r.currency) : 0), 0);
         const cashTotalBase = sumBase(grouped.cash, "total");
         const bankTotalBase = sumBase(grouped.bank, "total");
-        const cryptoTotalBase = sumBase(cryptoRows, "total");
+        const cryptoTotalUsdt = sumUsdt(cryptoRows, "total");
         const cashDeltaBase = sumBase(grouped.cash, "delta");
         const bankDeltaBase = sumBase(grouped.bank, "delta");
-        const cryptoDeltaBase = sumBase(cryptoRows, "delta");
+        const cryptoDeltaUsdt = sumUsdt(cryptoRows, "delta");
         const cashDeltaYBase = sumBase(grouped.cash, "deltaYesterday");
         const bankDeltaYBase = sumBase(grouped.bank, "deltaYesterday");
-        const cryptoDeltaYBase = sumBase(cryptoRows, "deltaYesterday");
+        const cryptoDeltaYUsdt = sumUsdt(cryptoRows, "deltaYesterday");
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <GroupCard
@@ -495,10 +499,10 @@ function OfficeBlock({
               title="Crypto"
               icon={Coins}
               rows={cryptoRows}
-              total={cryptoTotalBase}
-              totalDelta={cryptoDeltaBase}
-              totalDeltaYesterday={cryptoDeltaYBase}
-              currency={base}
+              total={cryptoTotalUsdt}
+              totalDelta={cryptoDeltaUsdt}
+              totalDeltaYesterday={cryptoDeltaYUsdt}
+              currency="USDT"
               emptyText="No crypto accounts"
               split
               globalTotal={globalCryptoTotal}
@@ -575,9 +579,21 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
 
+  // Конверсия крипты в USDT (нативную валюту крипто-блока) — НЕ в USD/EUR.
+  // Для USDT → USDT = 1.0 (тривиально), для BTC/ETH → через convert().
+  // Юзер хочет видеть общий крипто-баланс в USDT, а не в долларах.
+  const toUsdt = useCallback(
+    (amount, from) => {
+      if (!from) return amount || 0;
+      if (from === "USDT") return amount || 0;
+      return convert(amount, from, "USDT", getRateFx);
+    },
+    [getRateFx]
+  );
+
   // GLOBAL crypto totals — суммируются по ВСЕМ офисам (independent от scope).
-  // Используется в верхнем sub-контейнере GroupCard "Crypto" (split=true) —
-  // юзер видит общий баланс крипты компании, переключение офиса не меняет.
+  // В USDT (не в base currency). Юзер: "общий баланс ин крипто должен
+  // быть не в долларах".
   const globalCrypto = useMemo(() => {
     let total = 0;
     let delta = 0;
@@ -585,15 +601,15 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     accounts.forEach((a) => {
       if (!a.active) return;
       if (currencyDict[a.currency]?.type !== "crypto") return;
-      total += toBase(balanceOf(a.id), a.currency);
-      delta += toBase(deltaOf(a.id, dayStartMs), a.currency);
-      deltaYesterday += toBase(
+      total += toUsdt(balanceOf(a.id), a.currency);
+      delta += toUsdt(deltaOf(a.id, dayStartMs), a.currency);
+      deltaYesterday += toUsdt(
         deltaOf(a.id, yesterdayStartMs, dayStartMs),
         a.currency
       );
     });
     return { total, delta, deltaYesterday };
-  }, [accounts, currencyDict, balanceOf, deltaOf, dayStartMs, yesterdayStartMs, toBase]);
+  }, [accounts, currencyDict, balanceOf, deltaOf, dayStartMs, yesterdayStartMs, toUsdt]);
 
   // Grand totals + obligations + delta (сегодня и вчера).
   const grand = useMemo(() => {
@@ -751,6 +767,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                   yesterdayStartMs={yesterdayStartMs}
                   currencyDict={currencyDict}
                   toBase={toBase}
+                  toUsdt={toUsdt}
                   base={base}
                   globalCryptoTotal={globalCrypto.total}
                   globalCryptoDelta={globalCrypto.delta}
