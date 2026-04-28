@@ -1239,6 +1239,22 @@ export async function updateClient(id, patch) {
 
 // ---------- bulk rates import ----------
 
+// Upsert одной записи в system_settings (key, value jsonb).
+// Используется для baseCurrency, fxRates, referralPct и т.д.
+// RLS из 0001 пропускает только admin/owner. Frontend проверяет роль до вызова.
+export async function upsertSystemSetting(key, value) {
+  assertConfigured();
+  if (!key) throw new Error("key required");
+  const { error } = await supabase
+    .from("system_settings")
+    .upsert(
+      { key, value, updated_at: new Date().toISOString() },
+      { onConflict: "key" }
+    );
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // Назначить payee (ответственного за выдачу) на existing deal.
 // Вызывается из ExchangeForm после rpcCreateDeal если interoffice OUT.
 // Не блокирует submit — если RPC failed, сделка всё равно создана.

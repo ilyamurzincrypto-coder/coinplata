@@ -95,11 +95,19 @@ export async function loadSystemSettings() {
   (data || []).forEach((r) => {
     map[r.key] = r.value;
   });
+  // fx_rates — биржевые курсы для пересчёта между display валютами на
+  // дашборде (отдельно от пар обмена офиса). Хранится как jsonb объект:
+  //   { "USD_EUR": 0.92, "EUR_USD": 1.087 }
+  const fxRates =
+    map.fx_rates && typeof map.fx_rates === "object" && !Array.isArray(map.fx_rates)
+      ? map.fx_rates
+      : {};
   return {
     referralPct: num(map.referral_pct),
     baseCurrency:
       typeof map.base_currency === "string" ? map.base_currency : "USD",
     minFeeUsd: num(map.min_fee_usd) || 10, // legacy fallback
+    fxRates,
   };
 }
 

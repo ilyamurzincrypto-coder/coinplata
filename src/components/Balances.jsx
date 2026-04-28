@@ -15,7 +15,6 @@ import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
-import { useRates } from "../store/rates.jsx";
 import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
@@ -540,8 +539,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
   const { accounts, balanceOf, reservedOf, deltaOf } = useAccounts();
   const { activeOffices, findOffice } = useOffices();
   const { dict: currencyDict } = useCurrencies();
-  const { base: settingsBase } = useBaseCurrency();
-  const { getRate } = useRates();
+  const { base: settingsBase, getRateFx } = useBaseCurrency();
   const { obligations, openCount: openObligationsCount } = useObligations();
   const [obligationsOpen, setObligationsOpen] = useState(false);
 
@@ -551,12 +549,15 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     DISPLAY_OPTIONS.includes(settingsBase) ? settingsBase : "USD"
   );
   const base = displayBase;
+  // toBase использует БИРЖЕВОЙ курс из settings.fxRates (приоритетно)
+  // через getRateFx. Если для пары нет fx-курса — fallback на офисный
+  // getRate. Это даёт чистую агрегированную метрику без офисной маржи.
   const toBase = useCallback(
     (amount, from) => {
       if (!from) return amount || 0;
-      return convert(amount, from, base, getRate);
+      return convert(amount, from, base, getRateFx);
     },
-    [base, getRate]
+    [base, getRateFx]
   );
 
   // Период для delta — сегодня (с 00:00 local) + вчера (для сравнения).

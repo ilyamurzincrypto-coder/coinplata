@@ -27,6 +27,7 @@ import { SEED_USERS } from "./data.js";
 import { hashPassword, verifyPassword, generateInviteToken } from "../utils/password.js";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import { loadUsers, loadSystemSettings } from "../lib/supabaseReaders.js";
+import { upsertSystemSetting } from "../lib/supabaseWrite.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
 export const ROLES = {
@@ -84,6 +85,11 @@ export function AuthProvider({ children }) {
     minFeeUsd: 10,
     referralPct: 0.1,
     baseCurrency: "USD",
+    // fxRates — биржевые курсы для пересчёта на главном дашборде между
+    // displayBase валютами (USD/EUR/...). Отдельно от обменных пар офиса
+    // (которые содержат маржу и spread). Format: { "USD_EUR": 0.92, ... }.
+    // Загружаются из public.system_settings.fx_rates (jsonb).
+    fxRates: {},
   });
 
   // Stage 3/4 hydration: Supabase session → public.users row, + reload on bump.
@@ -120,6 +126,7 @@ export function AuthProvider({ children }) {
             referralPct: sysSettings.referralPct || prev.referralPct,
             baseCurrency: sysSettings.baseCurrency || prev.baseCurrency,
             minFeeUsd: sysSettings.minFeeUsd || prev.minFeeUsd,
+            fxRates: sysSettings.fxRates || prev.fxRates || {},
           }));
         }
       } catch (err) {
@@ -376,8 +383,33 @@ export function AuthProvider({ children }) {
   const deactivateUser = disableUser;
   const reactivateUser = enableUser;
 
-  const updateSettings = useCallback((patch) => {
+  // Mapping из локальных ключей в system_settings.key (snake_case).
+  // jsonb значения wrap'ятся как-есть (Supabase пайплайн pg jsonb принимает
+  // массивы, объекты, числа, строки, bool).
+  const SETTINGS_KEY_MAP = {
+    referralPct: "referral_pct",
+    baseCurrency: "base_currency",
+    minFeeUsd: "min_fee_usd",
+    fxRates: "fx_rates",
+  };
+
+  const updateSettings = useCallback(async (patch) => {
+    // Optimistic local update
     setSettings((prev) => ({ ...prev, ...patch }));
+    if (!isSupabaseConfigured) return;
+    // Persist каждое поле в system_settings (jsonb-обёртка через upsert).
+    // Если RLS откажет (роль не admin/owner) — silent warning, локальный
+    // patch остаётся (UX consistency).
+    for (const [k, v] of Object.entries(patch)) {
+      const dbKey = SETTINGS_KEY_MAP[k];
+      if (!dbKey) continue;
+      try {
+        await upsertSystemSetting(dbKey, v);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(`[updateSettings] persist failed for ${k}:`, err);
+      }
+    }
   }, []);
 
   // Per-user UI preferences — merge в currentUser.preferences + persist в БД
