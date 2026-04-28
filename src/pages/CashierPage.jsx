@@ -448,15 +448,29 @@ export default function CashierPage({
                 </div>
               </button>
             )}
-            {/* Secondary CTA: OTC сделка с контрагентом (партнёром) */}
+            {/* Secondary CTA: OTC сделка с контрагентом (партнёром).
+                Кейс: приняли RUB у клиента → партнёр прислал USDT за них →
+                выдали клиенту USDT. OTC обмен с партнёром регистрируется
+                этой кнопкой (без fee/profit, можно задним числом). */}
             <button
               onClick={() => setOtcOpen(true)}
-              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 transition-colors"
-              title="OTC сделка — обмен валюты с партнёром, без клиента и fee. Поддерживает создание задним числом."
+              className="mt-2 w-full inline-flex items-center justify-between gap-3 px-4 py-3 rounded-[12px] bg-white border-2 border-indigo-300 text-slate-900 hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors shadow-sm"
+              title="OTC обмен валюты с партнёром — без клиента и fee. Можно задним числом."
             >
-              <ArrowLeftRight className="w-3 h-3" />
-              Сделка с контрагентом
-              <span className="text-[9px] text-slate-400 font-normal ml-1">OTC · backdate OK</span>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <ArrowLeftRight className="w-4 h-4 text-indigo-700" />
+                </div>
+                <div className="text-left">
+                  <div className="text-[13px] font-bold tracking-tight">
+                    Сделка с контрагентом
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    OTC обмен с партнёром · можно задним числом
+                  </div>
+                </div>
+              </div>
+              <ArrowUpRight className="w-3.5 h-3.5 text-indigo-500" />
             </button>
             </section>
 
@@ -542,6 +556,7 @@ export default function CashierPage({
                     currentOffice={currentOffice}
                     onSubmit={handleFormSubmit}
                     submitting={submitting}
+                    onOpenOtc={() => setOtcOpen(true)}
                   />
                 )}
               </div>

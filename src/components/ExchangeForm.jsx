@@ -168,6 +168,7 @@ export default function ExchangeForm({
   onSubmit,
   onCancel,
   submitting = false,
+  onOpenOtc,
 }) {
   const { t } = useTranslation();
   const { getRate: getRateRaw } = useRates();
@@ -1228,9 +1229,22 @@ export default function ExchangeForm({
               </div>
             </div>
           </div>
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-            ⌘ K
-          </kbd>
+          <div className="flex items-center gap-2">
+            {onOpenOtc && !isEdit && (
+              <button
+                type="button"
+                onClick={onOpenOtc}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 text-[11.5px] font-bold transition-colors"
+                title="OTC обмен с партнёром (например после получения денег от клиента — обмен через партнёра, без fee, можно задним числом)"
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                OTC с контрагентом
+              </button>
+            )}
+            <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+              ⌘ K
+            </kbd>
+          </div>
         </div>
       )}
 

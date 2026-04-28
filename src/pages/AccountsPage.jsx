@@ -30,6 +30,7 @@ import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
 import TransferHistoryModal from "../components/accounts/TransferHistoryModal.jsx";
+import OtcDealModal from "../components/OtcDealModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import { exportCSV } from "../utils/csv.js";
@@ -114,6 +115,7 @@ export default function AccountsPage() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
   const [transferHistoryOpen, setTransferHistoryOpen] = useState(false);
+  const [otcOpen, setOtcOpen] = useState(false);
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -316,6 +318,14 @@ export default function AccountsPage() {
             История перемещений
           </button>
           <button
+            onClick={() => setOtcOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-[12px] font-semibold transition-colors"
+            title="OTC обмен валюты с партнёром (без fee, можно задним числом)"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+            OTC с контрагентом
+          </button>
+          <button
             onClick={() => {
               setTransferFrom(null);
               setTransferOpen(true);
@@ -448,6 +458,10 @@ export default function AccountsPage() {
       <TransferHistoryModal
         open={transferHistoryOpen}
         onClose={() => setTransferHistoryOpen(false)}
+      />
+      <OtcDealModal
+        open={otcOpen}
+        onClose={() => setOtcOpen(false)}
       />
       <AddAccountModal
         open={!!addAccountFor}
