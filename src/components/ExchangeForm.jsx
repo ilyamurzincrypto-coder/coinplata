@@ -1487,34 +1487,41 @@ export default function ExchangeForm({
             </p>
           )}
           </div>
+
+          {/* Комментарий — внутри "Дополнительно" (Conditions block).
+              Редко нужен → свернут вместе с conditions по умолчанию. */}
+          <div className="mt-3">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
+              {t("comment") || "Комментарий"}
+            </label>
+            <input
+              type="text"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder={t("comment_placeholder")}
+              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-slate-400"
+            />
+          </div>
           </div>
           )}
         </section>
           );
         })()}
-
-        <input
-          type="text"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          placeholder={t("comment_placeholder")}
-          className="mt-3 w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-slate-400"
-        />
       </div>
 
-      {/* SUMMARY: You will receive / Rate / Our fee */}
+      {/* SUMMARY: курс + комиссия (с toggle на том же уровне) + итог.
+          Структура (как в финтех/трейдинг):
+            ┌─────────────────────────────────────┐
+            │ КУРС               0.85             │
+            │ КОМИССИЯ  [✓] мин  $10              │   ← toggle прямо тут
+            ├─────────────────────────────────────┤
+            │ ИТОГ КЛИЕНТУ       850 EUR  (крупно)│
+            └─────────────────────────────────────┘
+          Курс и комиссия — secondary info.
+          Итог "You receive" — крупный bold, financial focus point. */}
       {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
-        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50 space-y-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-              {t("summary_you_receive")}
-            </span>
-            <span className="text-[13px] font-bold tabular-nums text-slate-900">
-              {outputs
-                .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
-                .join(" + ")}
-            </span>
-          </div>
+        <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/60 space-y-2">
+          {/* Rate row */}
           {outputs.length === 1 && (
             <div className="flex items-center justify-between gap-2">
               <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
@@ -1525,6 +1532,8 @@ export default function ExchangeForm({
               </span>
             </div>
           )}
+          {/* Fee row с toggle "применить мин" — одна строка, переключатель
+              слева как часть label комиссии. */}
           <div className="flex items-center justify-between gap-2">
             <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
               <input
@@ -1554,6 +1563,19 @@ export default function ExchangeForm({
                   без мин
                 </span>
               )}
+            </span>
+          </div>
+          {/* Divider */}
+          <div className="border-t border-slate-200/70 my-1.5" />
+          {/* You receive — финальный итог, акцент */}
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+              {t("summary_you_receive")}
+            </span>
+            <span className="text-[16px] font-bold tabular-nums text-slate-900">
+              {outputs
+                .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
+                .join(" + ")}
             </span>
           </div>
         </div>
