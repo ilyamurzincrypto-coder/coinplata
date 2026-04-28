@@ -29,6 +29,7 @@ import { resolveAccountChannel, channelShortLabel } from "../utils/accountChanne
 import TopUpModal from "../components/accounts/TopUpModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
+import TransferHistoryModal from "../components/accounts/TransferHistoryModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import { exportCSV } from "../utils/csv.js";
@@ -112,6 +113,7 @@ export default function AccountsPage() {
   const [transferFrom, setTransferFrom] = useState(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
+  const [transferHistoryOpen, setTransferHistoryOpen] = useState(false);
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -306,6 +308,14 @@ export default function AccountsPage() {
             {t("acc_import") || "Import CSV"}
           </button>
           <button
+            onClick={() => setTransferHistoryOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold transition-colors"
+            title="История всех перемещений"
+          >
+            <HistoryIcon className="w-3.5 h-3.5" />
+            История перемещений
+          </button>
+          <button
             onClick={() => {
               setTransferFrom(null);
               setTransferOpen(true);
@@ -435,6 +445,10 @@ export default function AccountsPage() {
         }}
       />
       <AccountHistoryModal account={historyFor} onClose={() => setHistoryFor(null)} />
+      <TransferHistoryModal
+        open={transferHistoryOpen}
+        onClose={() => setTransferHistoryOpen(false)}
+      />
       <AddAccountModal
         open={!!addAccountFor}
         officeId={addAccountFor?.officeId}
