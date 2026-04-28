@@ -504,15 +504,11 @@ export default function ExchangeForm({
     );
   }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate, correctedGetRate]);
 
-  // FORCE recompute output[0] amount + rate при ЛЮБОМ изменении.
-  // Минует блокировки touched. manualRate=true — оставляем (там юзер
-  // ввёл свой rate, не трогаем).
-  //
-  // КЛЮЧЕВОЕ: rate ТОЖЕ пересчитываем через correctedGetRate.
-  // Раньше использовали o.rate из state — там мог сидеть raw 1.18
-  // (из draft / предыдущей сессии) → 1000 × 1.18 = 1180 даже после
-  // всех auto-corrections. Теперь rate всегда свежий и corrected.
-  useEffect(() => {
+  // useLayoutEffect (а не useEffect) — срабатывает СИНХРОННО до paint.
+  // Без этого юзер видел миллисекундный flicker stale value 1180 EUR
+  // пока useEffect (async) не успевал пересчитать. Layout-эффект
+  // блокирует render до завершения, никаких промежуточных кадров.
+  React.useLayoutEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
         if (idx !== 0) return o;
@@ -1242,8 +1238,8 @@ export default function ExchangeForm({
         })()}
       </div>
       <div className="px-5 pb-5">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="w-5 h-5 rounded-full bg-slate-900 flex items-center justify-center">
               <ArrowRight className="w-3 h-3 text-white" />
             </div>
@@ -1255,6 +1251,24 @@ export default function ExchangeForm({
                 {outputs.length}
               </span>
             )}
+            {/* Toggle "комиссия" — прямо возле "Выдали" чтобы юзер видел
+                переключатель в момент когда смотрит на выдачу. */}
+            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group ml-1 px-2 py-0.5 rounded-md border border-slate-200 bg-white hover:border-slate-300">
+              <input
+                type="checkbox"
+                checked={applyMinFee}
+                onChange={(e) => setApplyMinFee(e.target.checked)}
+                className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
+              />
+              <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
+                Комиссия
+                {minFeeUsd > 0 && (
+                  <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
+                    мин ${fmt(minFeeUsd)}
+                  </span>
+                )}
+              </span>
+            </label>
           </div>
           <button
             onClick={addOutput}
@@ -1338,23 +1352,12 @@ export default function ExchangeForm({
                   Спред-маржа
                 </span>
               )}
+              {/* Fee value (read-only) — toggle уже выше рядом с "Выдали".
+                  Здесь только показываем итоговую сумму с badges. */}
               <div className="inline-flex items-center gap-2">
-                <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
-                  <input
-                    type="checkbox"
-                    checked={applyMinFee}
-                    onChange={(e) => setApplyMinFee(e.target.checked)}
-                    className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
-                  />
-                  <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
-                    Комиссия
-                    {minFeeUsd > 0 && (
-                      <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
-                        мин ${fmt(minFeeUsd)}
-                      </span>
-                    )}
-                  </span>
-                </label>
+                <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em]">
+                  Комиссия
+                </span>
                 <span className="inline-flex items-center gap-1 text-[13px] font-bold tabular-nums text-amber-700">
                   ${fmt(effectiveFee)}
                   {minFeeApplied && (
