@@ -1269,48 +1269,6 @@ export default function ExchangeForm({
         </div>
       </div>
 
-      {/* Interoffice OUT — выбор payee (ответственного за выдачу).
-          Появляется когда хоть один OUT-leg использует account чужого
-          офиса. Сделка отправится со статусом payee_user_id назначен;
-          тот менеджер увидит её как "невыданную" и пометит выданной
-          после физической передачи. P2P уведомления через realtime. */}
-      {needsPayee && (
-        <div className="px-5 pt-3">
-          <div className="bg-indigo-50/60 border border-indigo-200 rounded-[12px] p-3">
-            <label className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 mb-1.5 tracking-wide uppercase">
-              <UserPlus className="w-3.5 h-3.5" />
-              Ответственный за выдачу · {findOffice(payeeOfficeId)?.name || "другой офис"}
-            </label>
-            {payeeCandidates.length === 0 ? (
-              <div className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                Нет менеджеров в принимающем офисе. Назначьте кого-то в настройках.
-              </div>
-            ) : (
-              <>
-                <select
-                  value={payeeUserId}
-                  onChange={(e) => setPayeeUserId(e.target.value)}
-                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-slate-900 outline-none cursor-pointer"
-                >
-                  {payeeCandidates.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.id === currentUser.id ? " (я)" : ""}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10.5px] text-indigo-700/80 mt-1.5">
-                  Сделка появится у выбранного менеджера как <strong>невыданная</strong>.
-                  Он подтвердит после физической выдачи денег клиенту. До этого
-                  деньги резервируются на OUT-аккаунте.
-                </p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Quick templates — показываем только в create-режиме */}
       {!isEdit && (
         <DealTemplatesBar
@@ -1481,29 +1439,76 @@ export default function ExchangeForm({
         )}
 
         <div className="space-y-3">
-          {outputs.map((o, idx) => (
-            <OutputRow
-              key={o.id}
-              output={o}
-              index={idx}
-              canRemove={outputs.length > 1}
-              isLast={idx === outputs.length - 1}
-              onUpdate={(patch) => updateOutput(o.id, patch)}
-              onRemove={() => removeOutput(o.id)}
-              onToggleManual={() => toggleManualRate(o.id)}
-              onAmountKeyDown={handleKbdOut}
-              curIn={curIn}
-              remainingIn={remainingIn}
-              availableInCurrency={officeCurrencyBalance(o.currency)}
-              currentOffice={currentOffice}
-              counterpartyId={resolveClientId(counterparty)}
-              officeBalancesByCurrency={officeBalancesByCurrency}
-              offices={activeOffices}
-              applyMinFee={applyMinFee}
-              setApplyMinFee={setApplyMinFee}
-              minFeeUsd={minFeeUsd}
-            />
-          ))}
+          {(() => {
+            // Индекс первого OUT-leg где account чужого офиса — под него
+            // рендерим блок "Ответственный за выдачу".
+            const firstInterOfficeIdx = outputs.findIndex((o) => {
+              if (!o.accountId) return false;
+              const acc = accounts.find((a) => a.id === o.accountId);
+              return acc && acc.officeId && acc.officeId !== currentOffice;
+            });
+            return outputs.map((o, idx) => (
+              <React.Fragment key={o.id}>
+                <OutputRow
+                  output={o}
+                  index={idx}
+                  canRemove={outputs.length > 1}
+                  isLast={idx === outputs.length - 1}
+                  onUpdate={(patch) => updateOutput(o.id, patch)}
+                  onRemove={() => removeOutput(o.id)}
+                  onToggleManual={() => toggleManualRate(o.id)}
+                  onAmountKeyDown={handleKbdOut}
+                  curIn={curIn}
+                  remainingIn={remainingIn}
+                  availableInCurrency={officeCurrencyBalance(o.currency)}
+                  currentOffice={currentOffice}
+                  counterpartyId={resolveClientId(counterparty)}
+                  officeBalancesByCurrency={officeBalancesByCurrency}
+                  offices={activeOffices}
+                  applyMinFee={applyMinFee}
+                  setApplyMinFee={setApplyMinFee}
+                  minFeeUsd={minFeeUsd}
+                />
+                {/* Payee селектор — рендерится ПОД конкретным OUT-leg где
+                    впервые выбран account из чужого офиса. P2P logic:
+                    выбранный менеджер получает уведомление и помечает
+                    сделку выданной после физической передачи. */}
+                {needsPayee && idx === firstInterOfficeIdx && (
+                  <div className="bg-indigo-50/60 border border-indigo-200 rounded-[12px] p-3 -mt-1">
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 mb-1.5 tracking-wide uppercase">
+                      <UserPlus className="w-3.5 h-3.5" />
+                      Ответственный за выдачу · {findOffice(payeeOfficeId)?.name || "другой офис"}
+                    </label>
+                    {payeeCandidates.length === 0 ? (
+                      <div className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        Нет менеджеров в принимающем офисе. Назначьте в настройках.
+                      </div>
+                    ) : (
+                      <>
+                        <select
+                          value={payeeUserId}
+                          onChange={(e) => setPayeeUserId(e.target.value)}
+                          className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-slate-900 outline-none cursor-pointer"
+                        >
+                          {payeeCandidates.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                              {c.id === currentUser.id ? " (я)" : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-[10.5px] text-indigo-700/80 mt-1.5">
+                          Сделка появится у выбранного менеджера как <strong>невыданная</strong>.
+                          Он подтвердит после физической выдачи денег клиенту.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </React.Fragment>
+            ));
+          })()}
         </div>
 
         {/* SUMMARY block — курс + checkbox комиссии в ОДНОЙ строке + итог.
