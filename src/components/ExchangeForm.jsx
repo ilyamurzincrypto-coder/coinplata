@@ -2193,6 +2193,26 @@ function OutputRow({
           o.amount ? "border-slate-400" : "border-slate-200 hover:border-slate-300"
         }`}
       >
+        {/* Per-output toggle "Комиссия" — СЛЕВА внутри amount block,
+            перед валютным символом. Крупная заметная pill с галочкой. */}
+        <label
+          className={`inline-flex items-center gap-1.5 cursor-pointer select-none group px-2.5 py-1.5 rounded-[8px] border-2 self-center transition-colors ${
+            o.applyFee !== false
+              ? "border-emerald-400 bg-emerald-50 text-emerald-800"
+              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
+          }`}
+          title="Применить минимальную комиссию офиса к этой выдаче"
+        >
+          <input
+            type="checkbox"
+            checked={o.applyFee !== false}
+            onChange={(e) => onUpdate({ applyFee: e.target.checked })}
+            className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
+          />
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] leading-none">
+            Комиссия
+          </span>
+        </label>
         <span className="text-slate-400 text-[16px] font-semibold">{curSymbol(o.currency)}</span>
         <input
           type="text"
@@ -2209,23 +2229,6 @@ function OutputRow({
           placeholder="0"
           className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0 leading-none"
         />
-        {/* Per-output toggle "комиссия" — слева внутри amount block,
-            прямо после числа. Юзер хотел видеть переключатель в момент
-            ввода/просмотра суммы. Каждый output independently. */}
-        <label
-          className="inline-flex items-center gap-1 cursor-pointer select-none group px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 self-center"
-          title="Применить минимальную комиссию офиса к этой выдаче"
-        >
-          <input
-            type="checkbox"
-            checked={o.applyFee !== false}
-            onChange={(e) => onUpdate({ applyFee: e.target.checked })}
-            className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
-          />
-          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900 leading-none">
-            fee
-          </span>
-        </label>
         <span className="text-slate-400 text-[11px] font-bold tracking-wider">{o.currency}</span>
       </div>
 
