@@ -17,7 +17,7 @@ import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateOtcDeal, withToast } from "../lib/supabaseWrite.js";
 
-export default function OtcDealModal({ open, currentOffice, onClose, onCreated }) {
+export default function OtcDealModal({ open, currentOffice, onClose, onCreated, initialFromAccountId }) {
   const { accounts, balanceOf } = useAccounts();
   const { currentUser } = useAuth();
   const { addEntry: logAudit } = useAudit();
@@ -36,7 +36,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
 
   useEffect(() => {
     if (open) {
-      setFromId("");
+      setFromId(initialFromAccountId || "");
       setToId("");
       setFromAmount("");
       setToAmount("");
@@ -44,7 +44,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
       setNote("");
       setOccurredAt("");
     }
-  }, [open]);
+  }, [open, initialFromAccountId]);
 
   const from = activeAccounts.find((a) => a.id === fromId);
   const to = activeAccounts.find((a) => a.id === toId);

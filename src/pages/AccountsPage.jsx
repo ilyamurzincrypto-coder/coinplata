@@ -116,6 +116,7 @@ export default function AccountsPage() {
   const [historyFor, setHistoryFor] = useState(null);
   const [transferHistoryOpen, setTransferHistoryOpen] = useState(false);
   const [otcOpen, setOtcOpen] = useState(false);
+  const [otcFromAccount, setOtcFromAccount] = useState(null);
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -427,6 +428,10 @@ export default function AccountsPage() {
                         setTransferFrom(acc);
                         setTransferOpen(true);
                       }}
+                      onOtc={(acc) => {
+                        setOtcFromAccount(acc);
+                        setOtcOpen(true);
+                      }}
                       onHistory={setHistoryFor}
                       onDelete={handleDeleteAccount}
                       onAddAccount={(prefill) =>
@@ -461,7 +466,11 @@ export default function AccountsPage() {
       />
       <OtcDealModal
         open={otcOpen}
-        onClose={() => setOtcOpen(false)}
+        initialFromAccountId={otcFromAccount?.id}
+        onClose={() => {
+          setOtcOpen(false);
+          setOtcFromAccount(null);
+        }}
       />
       <AddAccountModal
         open={!!addAccountFor}
@@ -514,6 +523,7 @@ function CurrencyRow({
   availableOf,
   onTopUp,
   onTransfer,
+  onOtc,
   onHistory,
   onDelete,
   onAddAccount,
@@ -613,6 +623,7 @@ function CurrencyRow({
                   availableOf={availableOf}
                   onTopUp={onTopUp}
                   onTransfer={onTransfer}
+                  onOtc={onOtc}
                   onHistory={onHistory}
                   onDelete={onDelete}
                   onAddAccount={onAddAccount}
@@ -636,6 +647,7 @@ function ChannelBlock({
   availableOf,
   onTopUp,
   onTransfer,
+  onOtc,
   onHistory,
   onDelete,
   onAddAccount,
@@ -685,6 +697,7 @@ function ChannelBlock({
             availableOf={availableOf}
             onTopUp={onTopUp}
             onTransfer={onTransfer}
+            onOtc={onOtc}
             onHistory={onHistory}
             onDelete={onDelete}
           />
@@ -695,7 +708,7 @@ function ChannelBlock({
 }
 
 // -------- AccountCard (compact) --------
-function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onTransfer, onHistory, onDelete }) {
+function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onTransfer, onOtc, onHistory, onDelete }) {
   const total = balanceOf(a.id);
   const reserved = reservedOf(a.id);
   const available = availableOf(a.id);
@@ -756,6 +769,16 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
           <ArrowLeftRight className="w-2.5 h-2.5" />
           Transfer
         </button>
+        {onOtc && (
+          <button
+            onClick={() => onOtc(a)}
+            className="flex-1 text-[9px] font-semibold text-indigo-700 hover:bg-indigo-50 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+            title="OTC сделка с контрагентом — обмен валюты с партнёра, можно задним числом"
+          >
+            <ArrowLeftRight className="w-2.5 h-2.5" />
+            OTC
+          </button>
+        )}
         <button
           onClick={() => onHistory(a)}
           className="text-[9px] font-semibold text-slate-500 hover:bg-slate-100 rounded-[4px] px-1 py-0.5 transition-colors"
