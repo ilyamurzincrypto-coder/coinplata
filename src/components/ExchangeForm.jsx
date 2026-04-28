@@ -504,6 +504,35 @@ export default function ExchangeForm({
     );
   }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate, correctedGetRate]);
 
+  // FORCE recompute output[0] amount при ЛЮБОМ изменении applyMinFee/amtIn/rate.
+  // Минует все блокировки (touched, manualRate) — гарантирует что amount
+  // ВСЕГДА = amtIn × rate − fee (или gross если applyMinFee=off).
+  // Без этого initial render может показать stale amount из draft (например
+  // 1180 EUR с raw rate 1.18) пока юзер не toggle'нет применить-min-fee.
+  useEffect(() => {
+    setOutputs((prev) =>
+      prev.map((o, idx) => {
+        if (idx !== 0) return o; // только первый output — net с fee adjustments
+        if (o.manualRate) return o; // ручной rate — не вмешиваемся
+        const a = parseFloat(amtIn);
+        const r = parseFloat(o.rate);
+        if (!Number.isFinite(a) || !Number.isFinite(r) || a <= 0 || r <= 0) return o;
+        const computed = computeNetOutput({
+          amtIn: a,
+          rate: r,
+          feeUsd: applyMinFee ? minFeeUsd : 0,
+          outputCurrency: o.currency,
+          getRate: correctedGetRate,
+        });
+        const computedStr = String(computed);
+        if (computedStr === o.amount) return o; // ничего не изменилось
+        return { ...o, amount: computedStr, touched: false };
+      })
+    );
+    // Только применять при изменении этих deps — не на каждый ре-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyMinFee, amtIn, minFeeUsd]);
+
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
   // на output хуже рыночного (в пользу офиса). Считается в USD.
