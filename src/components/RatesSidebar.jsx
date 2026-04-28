@@ -315,12 +315,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         }`}
       >
         {visiblePairs.map(([a, b], idx) => {
-          // Auto-инверсия для удобства: банковский стиль "1 крупная = X мелкой".
-          // Если master rate < 1 (типа TRY→EUR = 0.019), показываем направление
-          // EUR→TRY (= 52.6) — крупное число лучше читается.
-          const masterRate = getRateForTab(a, b);
-          const flipDisplay = Number.isFinite(masterRate) && masterRate < 1;
-          const [from, to] = flipDisplay ? [b, a] : [a, b];
           const fav = isFavorite(a, b);
           // Divider после последнего favorite — визуально отделить группу.
           const isLastFav =
@@ -328,27 +322,14 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             !query &&
             idx + 1 < visiblePairs.length &&
             !isFavorite(visiblePairs[idx + 1][0], visiblePairs[idx + 1][1]);
-          // Sell rate = 1 from → to (что офис продаёт за валюту from).
-          // Buy rate = 1 to → from (что офис покупает — обратное направление).
-          const sellRate = getRateForTab(from, to);
-          const buyRateRaw = getRateForTab(to, from);
-          // Buy показываем в той же шкале что sell — "1 from = X to" — для
-          // быстрого визуального сравнения (Sell vs Buy в одной размерности).
-          // 1/buyRateRaw = "сколько to за 1 from через обратный курс", т.е.
-          // если офис покупает 1 to за buyRateRaw from — то 1 from = 1/buyRateRaw to.
-          const buyInForwardScale =
-            Number.isFinite(buyRateRaw) && buyRateRaw > 0 ? 1 / buyRateRaw : null;
-          const pairHasOverride = hasOverride(from, to) || hasOverride(to, from);
-          // spread = насколько sell > buy (в той же шкале). Если данные
-          // отсутствуют — null, бейдж не показываем.
-          const spreadPct =
-            Number.isFinite(sellRate) &&
-            Number.isFinite(buyInForwardScale) &&
-            buyInForwardScale > 0
-              ? ((sellRate - buyInForwardScale) / buyInForwardScale) * 100
-              : null;
+          // Два направления — каждое со своим курсом из БД.
+          // a→b и b→a показываются независимо. Никакой sell/buy метки —
+          // юзер сразу видит "USD → USDT 1.0000" и "USDT → USD 1.0200".
+          const rateAB = getRateForTab(a, b);
+          const rateBA = getRateForTab(b, a);
+          const pairHasOverride = hasOverride(a, b) || hasOverride(b, a);
           return (
-            <React.Fragment key={`${from}-${to}`}>
+            <React.Fragment key={`${a}-${b}`}>
             <div
               className={`px-2 py-1 rounded-[8px] transition-colors ${
                 fav
@@ -358,62 +339,52 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                   : "bg-slate-50"
               }`}
             >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-[10px] font-bold text-slate-700 inline-flex items-center gap-0.5 tracking-tight">
-                  <button
-                    type="button"
-                    onClick={(e) => toggleFavorite(a, b, e)}
-                    className={`mr-0.5 transition-colors ${
-                      fav
-                        ? "text-amber-500 hover:text-amber-600"
-                        : "text-slate-300 hover:text-amber-500"
-                    }`}
-                    title={fav ? "Убрать из избранного" : "В избранное"}
-                  >
-                    <Star className={`w-2.5 h-2.5 ${fav ? "fill-amber-400" : ""}`} />
-                  </button>
-                  {from}
-                  <ArrowRight className="w-2 h-2 mx-0.5 text-slate-400" />
-                  {to}
-                  {pairHasOverride && (
-                    <span
-                      className="ml-1 px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
-                      title="Office override активен"
-                    >
-                      OFC
-                    </span>
-                  )}
+              {/* Header: ⭐ + override-бейдж. Без sell/buy и без spread. */}
+              <div className="flex items-center gap-1 mb-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => toggleFavorite(a, b, e)}
+                  className={`shrink-0 transition-colors ${
+                    fav
+                      ? "text-amber-500 hover:text-amber-600"
+                      : "text-slate-300 hover:text-amber-500"
+                  }`}
+                  title={fav ? "Убрать из избранного" : "В избранное"}
+                >
+                  <Star className={`w-2.5 h-2.5 ${fav ? "fill-amber-400" : ""}`} />
+                </button>
+                <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
+                  {a} / {b}
                 </span>
-                {spreadPct != null && Math.abs(spreadPct) >= 0.1 && (
+                {pairHasOverride && (
                   <span
-                    className={`text-[8px] font-bold px-1 py-px rounded tabular-nums ${
-                      spreadPct > 0
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                    title="Sell vs Buy spread"
+                    className="ml-auto px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
+                    title="Office override активен"
                   >
-                    {spreadPct > 0 ? "+" : ""}
-                    {spreadPct.toFixed(2)}%
+                    OFC
                   </span>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 mt-0.5">
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 tracking-wider uppercase">
-                  Sell
+              {/* Direction 1: a → b */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10.5px] font-semibold text-slate-700 inline-flex items-center gap-0.5 tracking-tight">
+                  {a}
+                  <ArrowRight className="w-2 h-2 mx-0.5 text-slate-400" />
+                  {b}
                 </span>
                 <span className="text-[11.5px] font-bold tabular-nums text-slate-900">
-                  {formatRate(sellRate)}
+                  {formatRate(rateAB)}
                 </span>
               </div>
+              {/* Direction 2: b → a */}
               <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-sky-700 tracking-wider uppercase">
-                  Buy
+                <span className="text-[10.5px] font-semibold text-slate-700 inline-flex items-center gap-0.5 tracking-tight">
+                  {b}
+                  <ArrowRight className="w-2 h-2 mx-0.5 text-slate-400" />
+                  {a}
                 </span>
-                <span className="text-[11.5px] font-bold tabular-nums text-slate-700">
-                  {buyInForwardScale != null
-                    ? formatRate(buyInForwardScale)
-                    : "—"}
+                <span className="text-[11.5px] font-bold tabular-nums text-slate-900">
+                  {formatRate(rateBA)}
                 </span>
               </div>
             </div>
