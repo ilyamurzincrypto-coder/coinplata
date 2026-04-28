@@ -177,7 +177,21 @@ export default function ExchangeForm({
     (from, to) => getRateRaw(from, to, currentOffice),
     [getRateRaw, currentOffice]
   );
-  const { currentUser, settings } = useAuth();
+  const { currentUser, settings, users, isOwner, isAdmin } = useAuth();
+  const canPickManager = isOwner || isAdmin;
+  // Список доступных "от имени" — все active manager-роли + сам
+  // owner/admin (он по умолчанию). Иначе только сам пользователь.
+  const managerCandidates = useMemo(() => {
+    if (!canPickManager) return [{ id: currentUser.id, name: currentUser.name }];
+    const allowedRoles = new Set(["manager", "admin", "owner"]);
+    const list = (users || [])
+      .filter((u) => u && allowedRoles.has(u.role) && u.active !== false)
+      .map((u) => ({ id: u.id, name: u.name || u.email || u.id }));
+    if (!list.find((u) => u.id === currentUser.id)) {
+      list.unshift({ id: currentUser.id, name: currentUser.name });
+    }
+    return list;
+  }, [canPickManager, users, currentUser.id, currentUser.name]);
   const { addCounterparty, counterparties } = useTransactions();
   const { accountsByOffice, balanceOf, accounts } = useAccounts();
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
@@ -243,6 +257,16 @@ export default function ExchangeForm({
   const [counterparty, setCounterparty] = useState(
     starter?.counterparty || draft?.counterparty || ""
   );
+  // Manager selector — только для owner/admin. По умолчанию текущий
+  // пользователь, но он может выбрать менеджера от имени которого
+  // создаётся сделка. На submit → tx.managerId.
+  const [selectedManagerId, setSelectedManagerId] = useState(
+    initialData?.managerId || draft?.managerId || currentUser.id
+  );
+  // Если currentUser сменился (логин/выход) — синхронизируем дефолт.
+  useEffect(() => {
+    if (!canPickManager) setSelectedManagerId(currentUser.id);
+  }, [canPickManager, currentUser.id]);
   // Recent counterparties — последние использованные клиенты в quick-bar.
   // Persist'им в localStorage (max 8). На submit добавляется в начало.
   const RECENT_KEY = "coinplata.recentCounterparties";
@@ -352,13 +376,14 @@ export default function ExchangeForm({
         partialPayNow,
         plannedLocal,
         applyMinFee,
+        managerId: selectedManagerId,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee]);
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -832,8 +857,10 @@ export default function ExchangeForm({
       // distribution fee между legs делается на фронте через output.applyFee.
       applyMinFee: applyMinFee && outputs.some((o) => o.applyFee !== false),
       profit: Math.round(profit * 100) / 100,
-      manager: currentUser.name,
-      managerId: currentUser.id,
+      manager:
+        managerCandidates.find((m) => m.id === selectedManagerId)?.name ||
+        currentUser.name,
+      managerId: selectedManagerId || currentUser.id,
       counterparty,
       counterpartyId: clientId || null,
       referral,
@@ -1107,9 +1134,32 @@ export default function ExchangeForm({
               <h2 className="text-[17px] font-bold tracking-tight text-slate-900 leading-none">
                 {t("new_exchange")}
               </h2>
-              <p className="text-[11px] text-slate-500 mt-1">
-                {officeName(currentOffice)} · {currentUser.name}
-              </p>
+              <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
+                <span>{officeName(currentOffice)}</span>
+                <span className="text-slate-300">·</span>
+                {canPickManager && managerCandidates.length > 1 ? (
+                  <label className="inline-flex items-center gap-1.5">
+                    <span className="text-[10px] uppercase tracking-wider text-indigo-600 font-bold">
+                      Менеджер:
+                    </span>
+                    <select
+                      value={selectedManagerId}
+                      onChange={(e) => setSelectedManagerId(e.target.value)}
+                      className="bg-indigo-50 border border-indigo-200 rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer hover:bg-indigo-100 transition-colors"
+                      title="Создать сделку от имени"
+                    >
+                      {managerCandidates.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name}
+                          {m.id === currentUser.id ? " (я)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span>{currentUser.name}</span>
+                )}
+              </div>
             </div>
           </div>
           <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">

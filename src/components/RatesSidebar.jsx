@@ -56,8 +56,8 @@ function shortOfficeName(name) {
 // pairs-container — столько пар сколько помещается в available
 // height без скролла.
 const COMPACT_MIN = 3;
-// Approx высота одной pair-карточки в px (одна строка a→b rate).
-const PAIR_ROW_HEIGHT = 30;
+// Approx высота одной pair-карточки в px (header + 2 строки sell/buy).
+const PAIR_ROW_HEIGHT = 56;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
@@ -273,33 +273,84 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         }`}
       >
         {visiblePairs.map(([a, b]) => {
-          // Одна карточка = одна пара (master direction). Без перевернутого
-          // двойного отображения — четкая позиция a → b.
-          const rate = getRateForTab(a, b);
-          const pairHasOverride = hasOverride(a, b);
+          // Auto-инверсия для удобства: банковский стиль "1 крупная = X мелкой".
+          // Если master rate < 1 (типа TRY→EUR = 0.019), показываем направление
+          // EUR→TRY (= 52.6) — крупное число лучше читается.
+          const masterRate = getRateForTab(a, b);
+          const flipDisplay = Number.isFinite(masterRate) && masterRate < 1;
+          const [from, to] = flipDisplay ? [b, a] : [a, b];
+          // Sell rate = 1 from → to (что офис продаёт за валюту from).
+          // Buy rate = 1 to → from (что офис покупает — обратное направление).
+          const sellRate = getRateForTab(from, to);
+          const buyRateRaw = getRateForTab(to, from);
+          // Buy показываем в той же шкале что sell — "1 from = X to" — для
+          // быстрого визуального сравнения (Sell vs Buy в одной размерности).
+          // 1/buyRateRaw = "сколько to за 1 from через обратный курс", т.е.
+          // если офис покупает 1 to за buyRateRaw from — то 1 from = 1/buyRateRaw to.
+          const buyInForwardScale =
+            Number.isFinite(buyRateRaw) && buyRateRaw > 0 ? 1 / buyRateRaw : null;
+          const pairHasOverride = hasOverride(from, to) || hasOverride(to, from);
+          // spread = насколько sell > buy (в той же шкале). Если данные
+          // отсутствуют — null, бейдж не показываем.
+          const spreadPct =
+            Number.isFinite(sellRate) &&
+            Number.isFinite(buyInForwardScale) &&
+            buyInForwardScale > 0
+              ? ((sellRate - buyInForwardScale) / buyInForwardScale) * 100
+              : null;
           return (
             <div
-              key={`${a}-${b}`}
-              className={`px-2 py-1.5 rounded-[8px] transition-colors flex items-baseline justify-between gap-2 ${
+              key={`${from}-${to}`}
+              className={`px-2 py-1 rounded-[8px] transition-colors ${
                 pairHasOverride ? "bg-indigo-50/60 ring-1 ring-indigo-100" : "bg-slate-50"
               }`}
             >
-              <span className="text-[11px] font-semibold text-slate-700 inline-flex items-center gap-0.5">
-                {a}
-                <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
-                {b}
-                {pairHasOverride && (
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[10px] font-bold text-slate-700 inline-flex items-center gap-0.5 tracking-tight">
+                  {from}
+                  <ArrowRight className="w-2 h-2 mx-0.5 text-slate-400" />
+                  {to}
+                  {pairHasOverride && (
+                    <span
+                      className="ml-1 px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
+                      title="Office override активен"
+                    >
+                      OFC
+                    </span>
+                  )}
+                </span>
+                {spreadPct != null && Math.abs(spreadPct) >= 0.1 && (
                   <span
-                    className="ml-1 px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
-                    title="Office override активен"
+                    className={`text-[8px] font-bold px-1 py-px rounded tabular-nums ${
+                      spreadPct > 0
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                    title="Sell vs Buy spread"
                   >
-                    OFC
+                    {spreadPct > 0 ? "+" : ""}
+                    {spreadPct.toFixed(2)}%
                   </span>
                 )}
-              </span>
-              <span className="text-[12px] font-bold tabular-nums text-slate-900">
-                {formatRate(rate)}
-              </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-0.5">
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 tracking-wider uppercase">
+                  Sell
+                </span>
+                <span className="text-[11.5px] font-bold tabular-nums text-slate-900">
+                  {formatRate(sellRate)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-sky-700 tracking-wider uppercase">
+                  Buy
+                </span>
+                <span className="text-[11.5px] font-bold tabular-nums text-slate-700">
+                  {buyInForwardScale != null
+                    ? formatRate(buyInForwardScale)
+                    : "—"}
+                </span>
+              </div>
             </div>
           );
         })}

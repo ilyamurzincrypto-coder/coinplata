@@ -118,7 +118,9 @@ export default function CashierPage({
           () =>
             rpcCreateDeal({
               officeId: uuidOrNull(tx.officeId),
-              managerId: currentUser.id,
+              // tx.managerId выставляется в ExchangeForm: для owner/admin —
+              // выбранный в dropdown менеджер, для остальных — currentUser.id.
+              managerId: tx.managerId || currentUser.id,
               clientId: resolvedClientId,
               clientNickname: tx.counterparty || null,
               currencyIn: tx.curIn,

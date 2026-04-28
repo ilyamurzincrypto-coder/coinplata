@@ -99,6 +99,9 @@ function Root() {
     n: () => {
       if (!canShow("cashier")) return;
       if (page !== "cashier") setPage("cashier");
+      // ВАЖНО: открыть форму = setFormMounted(true) + setMode("create").
+      // Без mounted=true ExchangeForm не рендерится (см. CashierPage.openCreate).
+      setFormMounted(true);
       setExchangeMode("create");
     },
     "/": () => {

@@ -202,9 +202,14 @@ function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYest
 // — total
 // — divider
 // — список активов (скролл при переполнении)
-function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYesterday, emptyText, currency }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-[14px] p-4 flex flex-col h-full min-h-[220px]">
+//
+// split=true → визуально разделяет верхнюю часть (header+total+delta) и
+// нижнюю (assets list) на два sub-контейнера. Используется для Crypto:
+// верх = "общий остаток", низ = "стата по офису". Внешний bordered card
+// и общая высота сохраняются — layout не прыгает.
+function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYesterday, emptyText, currency, split = false }) {
+  const headerBlock = (
+    <>
       {/* Header: title */}
       <div className="flex items-center gap-1.5">
         <Icon className="w-3.5 h-3.5 text-slate-400" />
@@ -230,10 +235,53 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYeste
           title="Сегодня / вчера (до 00:00)"
         />
       </div>
+    </>
+  );
 
+  const assetsBlock = (
+    <div className="overflow-y-auto flex-1" style={{ maxHeight: 220 }}>
+      {rows.length === 0 ? (
+        <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
+      ) : (
+        rows.map((r, i) => (
+          <AssetRow
+            key={`${r.currency}_${r.subtitle || i}`}
+            name={r.currency}
+            subtitle={r.subtitle}
+            amount={r.total}
+            currency={r.currency}
+            reserved={r.reserved}
+            delta={r.delta}
+            deltaYesterday={r.deltaYesterday}
+          />
+        ))
+      )}
+    </div>
+  );
+
+  if (split) {
+    // Двух-контейнерный layout: общий остаток (sub-card slate) + assets (sub-card white).
+    // Тот же внешний bordered card → тот же визуальный footprint и высота.
+    return (
+      <div className="bg-white border border-slate-200 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2">
+        <div className="bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5">
+          {headerBlock}
+        </div>
+        <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2 flex flex-col flex-1 min-h-0">
+          <div className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase mb-1">
+            По офису
+          </div>
+          {assetsBlock}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-[14px] p-4 flex flex-col h-full min-h-[220px]">
+      {headerBlock}
       {/* Divider */}
       <div className="mt-3 border-t border-slate-200" />
-
       {/* Assets list with scroll */}
       <div className="mt-2 overflow-y-auto flex-1" style={{ maxHeight: 220 }}>
         {rows.length === 0 ? (
@@ -414,6 +462,7 @@ function OfficeBlock({
               totalDeltaYesterday={cryptoDeltaYBase}
               currency={base}
               emptyText="No crypto accounts"
+              split
             />
           </div>
         );
