@@ -368,23 +368,20 @@ function OfficeBlock({
         </div>
       </div>
 
-      {/* 3 равные колонки — стабильный layout независимо от количества валют.
-          Каждая карточка скроллится внутри если активов много. */}
+      {/* Office blocks показывают только Cash + Bank. Crypto теперь
+          отдельный GLOBAL уровень сверху (treasury модель — крипта
+          это общий пул ликвидности, не привязка к офису). */}
       {(() => {
-        const cryptoRows = cryptoRowsFromGroups(grouped.crypto);
         const sumBase = (rows, key = "total") =>
           rows.reduce((s, r) => s + toBase(r[key] || 0, r.currency), 0);
         const cashTotalBase = sumBase(grouped.cash, "total");
         const bankTotalBase = sumBase(grouped.bank, "total");
-        const cryptoTotalBase = sumBase(cryptoRows, "total");
         const cashDeltaBase = sumBase(grouped.cash, "delta");
         const bankDeltaBase = sumBase(grouped.bank, "delta");
-        const cryptoDeltaBase = sumBase(cryptoRows, "delta");
         const cashDeltaYBase = sumBase(grouped.cash, "deltaYesterday");
         const bankDeltaYBase = sumBase(grouped.bank, "deltaYesterday");
-        const cryptoDeltaYBase = sumBase(cryptoRows, "deltaYesterday");
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <GroupCard
               title="Cash"
               icon={Banknote}
@@ -404,16 +401,6 @@ function OfficeBlock({
               totalDeltaYesterday={bankDeltaYBase}
               currency={base}
               emptyText="No bank accounts"
-            />
-            <GroupCard
-              title="Crypto"
-              icon={Coins}
-              rows={cryptoRows}
-              total={cryptoTotalBase}
-              totalDelta={cryptoDeltaBase}
-              totalDeltaYesterday={cryptoDeltaYBase}
-              currency={base}
-              emptyText="No crypto accounts"
             />
           </div>
         );
@@ -483,12 +470,15 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
 
-  // Grand totals + obligations + delta (сегодня и вчера)
+  // Grand totals + obligations + delta (сегодня и вчера).
+  // Crypto exclude из grand totals — она отдельно в GLOBAL CRYPTO BALANCE
+  // (treasury уровень). Иначе была бы двойная сумма.
   const grand = useMemo(() => {
+    const isFiat = (cur) => currencyDict[cur]?.type !== "crypto";
     const relevant =
       scope === "all"
-        ? accounts.filter((a) => a.active)
-        : accounts.filter((a) => a.active && a.officeId === currentOffice);
+        ? accounts.filter((a) => a.active && isFiat(a.currency))
+        : accounts.filter((a) => a.active && a.officeId === currentOffice && isFiat(a.currency));
     let total = 0;
     let reserved = 0;
     let delta = 0;
@@ -516,7 +506,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       hasReserved: reserved > 0,
       hasObligations: obligationsBase > 0,
     };
-  }, [accounts, scope, currentOffice, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase, obligations]);
+  }, [accounts, scope, currentOffice, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase, obligations, currencyDict]);
 
   const sym = curSymbol(base);
 
@@ -618,6 +608,73 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       </div>
 
       <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
+
+      {/* GLOBAL CRYPTO BALANCE — treasury уровень. Крипта это общий пул
+          ликвидности, не привязка к офису. Агрегируется по ВСЕМ офисам
+          (независимо от scope toggle "selected/all" — крипта всегда
+          глобально). */}
+      {(() => {
+        const allActive = accounts.filter((a) => a.active);
+        const cryptoAccs = allActive.filter(
+          (a) => currencyDict[a.currency]?.type === "crypto"
+        );
+        if (cryptoAccs.length === 0) return null;
+        const grouped = groupOfficeAccounts(
+          cryptoAccs,
+          balanceOf,
+          reservedOf,
+          deltaOf,
+          dayStartMs,
+          yesterdayStartMs,
+          currencyDict
+        );
+        const cryptoRows = cryptoRowsFromGroups(grouped.crypto);
+        const sumBase = (rows, key = "total") =>
+          rows.reduce((s, r) => s + toBase(r[key] || 0, r.currency), 0);
+        const totalBase = sumBase(cryptoRows, "total");
+        const deltaBase = sumBase(cryptoRows, "delta");
+        const deltaYBase = sumBase(cryptoRows, "deltaYesterday");
+        return (
+          <div className="mb-4 p-4 md:p-5 rounded-[14px] border border-indigo-200 bg-gradient-to-br from-indigo-50/60 via-white to-white">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="inline-flex items-center justify-center w-7 h-7 rounded-[8px] bg-indigo-500 text-white shadow-[0_2px_8px_-2px_rgba(99,102,241,0.5)]">
+                <Coins className="w-4 h-4" strokeWidth={2.5} />
+              </div>
+              <div className="flex flex-col">
+                <h2 className="text-[12px] font-bold tracking-tight text-indigo-900">
+                  GLOBAL CRYPTO BALANCE
+                </h2>
+                <span className="text-[10px] text-slate-500">
+                  Treasury — общий пул по всем офисам
+                </span>
+              </div>
+              <div className="ml-auto text-right">
+                <div className="text-[20px] font-bold tabular-nums text-indigo-900 leading-none">
+                  {curSymbol(base)}{fmt(totalBase)}
+                </div>
+                <div className="mt-0.5">
+                  <DeltaPair
+                    today={deltaBase}
+                    yesterday={deltaYBase}
+                    currency={base}
+                    size="sm"
+                  />
+                </div>
+              </div>
+            </div>
+            <GroupCard
+              title="Crypto wallets"
+              icon={Coins}
+              rows={cryptoRows}
+              total={totalBase}
+              totalDelta={deltaBase}
+              totalDeltaYesterday={deltaYBase}
+              currency={base}
+              emptyText="No crypto accounts"
+            />
+          </div>
+        );
+      })()}
 
       {/* Unified container */}
       <div className="w-full bg-white rounded-[14px] border border-slate-200/70 p-4 md:p-5">
