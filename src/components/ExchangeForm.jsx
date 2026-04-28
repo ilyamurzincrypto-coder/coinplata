@@ -1112,6 +1112,39 @@ export default function ExchangeForm({
           } p-2`}
         >
           <CounterpartySelect value={counterparty} onChange={setCounterparty} />
+          {/* Quick walk-in client — для людей с улицы которые приносят
+              cash. Один клик ставит counterparty="Cash" — клиент не
+              регистрируется как полноценный, deal создаётся с
+              counterpartyId=null + nickname="Cash". */}
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200/70">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Быстрые:
+            </span>
+            <button
+              type="button"
+              onClick={() => setCounterparty("Cash")}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                counterparty === "Cash"
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
+              }`}
+              title="Анонимный клиент с улицы — кэш"
+            >
+              💵 Cash (с улицы)
+            </button>
+            <button
+              type="button"
+              onClick={() => setCounterparty("Walk-in")}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                counterparty === "Walk-in"
+                  ? "bg-slate-700 text-white border-slate-700"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+              }`}
+              title="Walk-in client — без регистрации"
+            >
+              🚶 Walk-in
+            </button>
+          </div>
         </div>
       </div>
 
