@@ -387,6 +387,7 @@ export async function rpcCreateTransfer({
   toAmount,
   rate,
   note,
+  toManagerId,
 }) {
   assertConfigured();
   const from = requireUuid(fromAccountId, "fromAccountId");
@@ -395,6 +396,9 @@ export async function rpcCreateTransfer({
   const fromAmt = requirePositive(fromAmount, "fromAmount");
   const toAmt = requirePositive(toAmount, "toAmount");
   const rateNum = rate == null ? null : requirePositive(rate, "rate");
+  // toManagerId — опциональный; для interoffice — обязательный (P2P logic
+  // 0052: transfer.pending до confirm от назначенного менеджера).
+  const toMgr = toManagerId ? requireUuid(toManagerId, "toManagerId") : null;
 
   const id = unwrap(
     await supabase.rpc("create_transfer", {
@@ -404,6 +408,7 @@ export async function rpcCreateTransfer({
       p_to_amount: toAmt,
       p_rate: rateNum,
       p_note: note || "",
+      p_to_manager_id: toMgr,
     }),
     "create_transfer"
   );

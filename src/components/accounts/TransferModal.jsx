@@ -2,7 +2,7 @@
 // Перевод между счетами. Поддерживает cross-currency через явный rate.
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowRight, AlertCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, Users } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import GroupedAccountSelect from "../GroupedAccountSelect.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
@@ -18,7 +18,7 @@ import { rpcCreateTransfer, withToast } from "../../lib/supabaseWrite.js";
 export default function TransferModal({ open, fromAccount, onClose }) {
   const { t } = useTranslation();
   const { accounts, transfer, balanceOf } = useAccounts();
-  const { currentUser } = useAuth();
+  const { currentUser, users } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const { getRate } = useRates();
 
@@ -29,6 +29,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   const [fromAmount, setFromAmount] = useState("");
   const [rate, setRate] = useState("");
   const [note, setNote] = useState("");
+  const [toManagerId, setToManagerId] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       setFromAmount("");
       setRate("");
       setNote("");
+      setToManagerId("");
     }
   }, [open, fromAccount]);
 
@@ -45,6 +47,32 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   const to = activeAccounts.find((a) => a.id === toId);
   const sameCurrency = from && to && from.currency === to.currency;
   const needsRate = from && to && from.currency !== to.currency;
+  // Interoffice = OUT и IN счета принадлежат разным офисам. Тогда требуется
+  // явно выбрать ответственного менеджера на принимающей стороне (P2P).
+  // Transfer пишется как pending → confirmed после подтверждения от него.
+  const isInterOffice = from && to && from.officeId !== to.officeId;
+  // Кандидаты — active manager/admin/owner принимающего офиса. Если у
+  // юзера есть officeId — фильтруем по нему. Если у нескольких юзеров нет
+  // officeId (admin/owner globally) — тоже добавляем (могут принять везде).
+  const recipientCandidates = useMemo(() => {
+    if (!isInterOffice || !to) return [];
+    const allowedRoles = new Set(["manager", "admin", "owner"]);
+    return (users || [])
+      .filter((u) => u && u.active !== false && allowedRoles.has(u.role))
+      .filter((u) => !u.officeId || u.officeId === to.officeId)
+      .map((u) => ({ id: u.id, name: u.name || u.email || u.id }));
+  }, [isInterOffice, to, users]);
+  // Auto-pick первого кандидата при смене to-account
+  useEffect(() => {
+    if (!isInterOffice) {
+      setToManagerId("");
+      return;
+    }
+    if (toManagerId && recipientCandidates.find((c) => c.id === toManagerId)) return;
+    if (recipientCandidates.length > 0) {
+      setToManagerId(recipientCandidates[0].id);
+    }
+  }, [isInterOffice, recipientCandidates, toManagerId]);
 
   // Auto-pull rate для cross-currency
   useEffect(() => {
@@ -75,7 +103,9 @@ export default function TransferModal({ open, fromAccount, onClose }) {
     to &&
     !sameAccount &&
     fromAmt > 0 &&
-    (sameCurrency || (needsRate && rateNum > 0));
+    (sameCurrency || (needsRate && rateNum > 0)) &&
+    // Interoffice: получатель-менеджер обязателен
+    (!isInterOffice || !!toManagerId);
 
   const handleSubmit = async () => {
     if (!canSubmit || busy) return;
@@ -92,15 +122,22 @@ export default function TransferModal({ open, fromAccount, onClose }) {
               toAmount,
               rate: sameCurrency ? null : rateNum,
               note: note.trim(),
+              toManagerId: isInterOffice ? toManagerId : null,
             }),
-          { success: "Transfer recorded", errorPrefix: "Transfer failed" }
+          {
+            success: isInterOffice
+              ? "Перевод отправлен — ждёт подтверждения получателя"
+              : "Transfer recorded",
+            errorPrefix: "Transfer failed",
+          }
         );
         if (res.ok) {
+          const recipient = recipientCandidates.find((c) => c.id === toManagerId);
           logAudit({
             action: "create",
             entity: "transfer",
             entityId: String(res.result || ""),
-            summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}`,
+            summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}${isInterOffice && recipient ? ` · ожидает ${recipient.name}` : ""}`,
           });
           onClose();
         }
@@ -228,6 +265,45 @@ export default function TransferModal({ open, fromAccount, onClose }) {
               className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
             />
             <p className="text-[11px] text-slate-500 mt-1">{t("transfer_cross_hint")}</p>
+          </div>
+        )}
+
+        {/* Interoffice → ответственный менеджер на принимающей стороне.
+            P2P logic (миграция 0052): transfer создаётся как pending,
+            подтверждается выбранным менеджером. Ему приходит уведомление. */}
+        {isInterOffice && (
+          <div className="bg-indigo-50/60 border border-indigo-200 rounded-[12px] p-3">
+            <label className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 mb-1.5 tracking-wide uppercase">
+              <Users className="w-3.5 h-3.5" />
+              Ответственный менеджер · {officeName(to.officeId)}
+            </label>
+            {recipientCandidates.length === 0 ? (
+              <div className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Нет доступных менеджеров в офисе получателе. Назначьте
+                кого-то на этот офис в настройках.
+              </div>
+            ) : (
+              <>
+                <select
+                  value={toManagerId}
+                  onChange={(e) => setToManagerId(e.target.value)}
+                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-slate-900 outline-none cursor-pointer"
+                >
+                  {recipientCandidates.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.id === currentUser.id ? " (я)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10.5px] text-indigo-700/80 mt-1.5">
+                  Перевод отправится со статусом <strong>pending</strong>.
+                  Получатель увидит уведомление и должен подтвердить —
+                  только после этого деньги зачисляются.
+                </p>
+              </>
+            )}
           </div>
         )}
 
