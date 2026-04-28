@@ -1204,33 +1204,33 @@ export default function ExchangeForm({
 
   return (
     <div
-      className={`relative bg-white rounded-[18px] border border-slate-200 shadow-[0_12px_40px_-12px_rgba(15,23,42,0.12),0_0_0_1px_rgba(15,23,42,0.02)] overflow-hidden transition-all ${
+      className={`relative bg-white rounded-[20px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
         flash ? "ring-4 ring-emerald-400/50" : ""
       }`}
     >
-      {/* Header (only for create — modal has its own) */}
+      {/* Header — Apple-style: avatar circle + stack title/subtitle */}
       {!isEdit && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center shadow-sm">
-              <ArrowLeftRight className="w-4 h-4 text-white" />
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/60 bg-gradient-to-b from-slate-50/40 to-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.3)] ring-1 ring-slate-900/10">
+              <ArrowLeftRight className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
             <div>
               <h2 className="text-[17px] font-bold tracking-tight text-slate-900 leading-none">
                 {t("new_exchange")}
               </h2>
-              <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500">
-                <span>{officeName(currentOffice)}</span>
+              <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500">
+                <span className="font-medium">{officeName(currentOffice)}</span>
                 <span className="text-slate-300">·</span>
                 {canPickManager && managerCandidates.length > 1 ? (
                   <label className="inline-flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-wider text-indigo-600 font-bold">
-                      Менеджер:
+                    <span className="text-[9.5px] uppercase tracking-[0.1em] text-indigo-600 font-bold">
+                      Менеджер
                     </span>
                     <select
                       value={selectedManagerId}
                       onChange={(e) => setSelectedManagerId(e.target.value)}
-                      className="bg-indigo-50 border border-indigo-200 rounded-[6px] px-1.5 py-0.5 text-[11px] font-semibold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer hover:bg-indigo-100 transition-colors"
+                      className="bg-indigo-50/70 border border-indigo-200/70 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer hover:bg-indigo-100 transition-colors"
                       title="Создать сделку от имени"
                     >
                       {managerCandidates.map((m) => (
@@ -1242,12 +1242,12 @@ export default function ExchangeForm({
                     </select>
                   </label>
                 ) : (
-                  <span>{currentUser.name}</span>
+                  <span className="font-medium">{currentUser.name}</span>
                 )}
               </div>
             </div>
           </div>
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200/80 rounded-lg px-2 py-1 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
             ⌘ K
           </kbd>
         </div>
@@ -1256,22 +1256,22 @@ export default function ExchangeForm({
       {/* CLIENT — обязательное поле, всегда первое */}
       <div className="px-5 pt-5">
         <div className="flex items-center gap-2 mb-2">
-          <div className="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center">
-            <UserPlus className="w-3 h-3 text-white" />
+          <div className="w-6 h-6 rounded-full bg-indigo-100 ring-1 ring-indigo-200/60 flex items-center justify-center">
+            <UserPlus className="w-3 h-3 text-indigo-700" />
           </div>
-          <span className="text-[11px] font-bold tracking-[0.15em] text-indigo-700 uppercase">
-            Client
+          <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-700 uppercase">
+            Клиент
           </span>
-          <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
+          <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
             required
           </span>
         </div>
         <div
-          className={`rounded-[12px] border-2 transition-colors ${
+          className={`rounded-[14px] border transition-colors p-2 ${
             counterparty.trim()
-              ? "border-indigo-200 bg-indigo-50/30"
-              : "border-amber-300 bg-amber-50/40"
-          } p-2`}
+              ? "border-indigo-200/80 bg-gradient-to-br from-indigo-50/40 to-white"
+              : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
+          }`}
         >
           {/* Quick picks — per-office Cash + recent (max 6) — выводятся
               ВНУТРИ dropdown'а CounterpartySelect наверху, до search results.
@@ -1310,24 +1310,22 @@ export default function ExchangeForm({
         />
       )}
 
-      {/* RECEIVED */}
+      {/* RECEIVED — Apple-style "Принимаем" panel */}
       <div className="px-5 pt-5">
-        <div className="flex items-center mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
-              <ArrowDown className="w-3 h-3 text-white" />
-            </div>
-            <span className="text-[11px] font-bold tracking-[0.15em] text-emerald-700 uppercase">
-              {t("you_received")}
-            </span>
+        <div className="flex items-center mb-3 gap-2">
+          <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
+            <ArrowDown className="w-3 h-3 text-emerald-700" strokeWidth={2.5} />
           </div>
+          <span className="text-[10.5px] font-bold tracking-[0.12em] text-emerald-700 uppercase">
+            {t("you_received")}
+          </span>
         </div>
         <CurrencyTabs value={curIn} onChange={setCurIn} accent="emerald" />
         <div
-          className={`relative flex items-baseline gap-2 bg-white rounded-[14px] border-2 transition-all px-4 py-4 mt-3 ${
+          className={`relative flex items-baseline gap-2 rounded-[16px] border transition-all px-4 py-4 mt-3 ${
             amtIn
-              ? "border-emerald-400 shadow-[0_0_0_4px_rgba(16,185,129,0.08)]"
-              : "border-slate-200 hover:border-slate-300"
+              ? "bg-gradient-to-br from-emerald-50/60 to-white border-emerald-300 shadow-[0_0_0_4px_rgba(16,185,129,0.06)]"
+              : "bg-white border-slate-200 hover:border-slate-300"
           }`}
         >
           <span className="text-slate-400 text-[22px] font-semibold">{curSymbol(curIn)}</span>
@@ -1341,39 +1339,39 @@ export default function ExchangeForm({
             placeholder="0"
             className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[30px] font-bold tracking-tight min-w-0 leading-none"
           />
-          <span className="text-slate-400 text-[12px] font-bold tracking-wider">{curIn}</span>
+          <span className="text-slate-400 text-[12px] font-bold tracking-[0.08em]">{curIn}</span>
         </div>
-        <div className="flex items-center justify-between mt-1.5 px-1">
-          <span className="text-[11px] text-slate-400">{t("current_balance")}</span>
-          <span className="text-[11px] font-semibold text-slate-600 tabular-nums">
+        <div className="flex items-center justify-between mt-2 px-1.5">
+          <span className="text-[10.5px] text-slate-400 uppercase tracking-wider font-semibold">
+            {t("current_balance")}
+          </span>
+          <span className="text-[11.5px] font-semibold text-slate-600 tabular-nums">
             {curSymbol(curIn)}
-            {fmt(officeCurrencyBalance(curIn), curIn)} {curIn}
+            {fmt(officeCurrencyBalance(curIn), curIn)}{" "}
+            <span className="opacity-60">{curIn}</span>
           </span>
         </div>
 
-        {/* Deposit to account — searchable dropdown с заметной рамкой состояния.
-            Всегда виден — если нет подходящих счетов, AccountSelect показывает
-            empty-state. Раньше прятался через length>0 → селект исчезал
-            когда в офисе не было аккаунта с нужной валютой. */}
+        {/* Deposit to account */}
         {!deferredIn && (
           <div
-            className={`mt-3 p-2.5 rounded-[12px] border-2 transition-colors ${
+            className={`mt-3 p-3 rounded-[14px] border transition-colors ${
               accountId
-                ? "bg-emerald-50/50 border-emerald-300"
-                : "bg-amber-50/40 border-amber-300"
+                ? "bg-gradient-to-br from-emerald-50/40 to-white border-emerald-200/80"
+                : "bg-gradient-to-br from-amber-50/60 to-white border-amber-300/80"
             }`}
           >
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="text-[10px] font-bold text-slate-600 tracking-[0.15em] uppercase">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] font-bold text-slate-600 tracking-[0.12em] uppercase">
                 {t("deposit_to")}
               </div>
               {accountId ? (
-                <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-700">
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 px-2 py-0.5 rounded-full bg-emerald-100/70">
                   <Check className="w-2.5 h-2.5" />
                   {t("account_selected")}
                 </span>
               ) : (
-                <span className="text-[10px] font-semibold text-amber-700">
+                <span className="text-[10px] font-semibold text-amber-700 px-2 py-0.5 rounded-full bg-amber-100/70">
                   {t("select_account_warning")}
                 </span>
               )}
@@ -1471,8 +1469,7 @@ export default function ExchangeForm({
         </div>
       )}
 
-      {/* Reverse rates button (swaps RECEIVED ↔ first ISSUED).
-          Текстовая кнопка вместо непонятной иконки — действие должно читаться. */}
+      {/* Reverse rates — Apple pill button */}
       <div className="flex justify-center my-3 relative z-10">
         {(() => {
           const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
@@ -1488,10 +1485,10 @@ export default function ExchangeForm({
               onClick={handleReverse}
               disabled={disabled}
               title={title}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold border transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-semibold border transition-all ${
                 disabled
                   ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                  : "bg-white border-slate-300 text-slate-700 hover:border-slate-900 hover:text-slate-900"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_2px_8px_-2px_rgba(15,23,42,0.12)]"
               }`}
             >
               <ArrowUpDown className="w-3 h-3" />
@@ -1503,21 +1500,21 @@ export default function ExchangeForm({
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="w-5 h-5 rounded-full bg-slate-900 flex items-center justify-center">
-              <ArrowRight className="w-3 h-3 text-white" />
+            <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center ring-1 ring-slate-900/10">
+              <ArrowRight className="w-3 h-3 text-white" strokeWidth={2.5} />
             </div>
-            <span className="text-[11px] font-bold tracking-[0.15em] text-slate-700 uppercase">
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-slate-700 uppercase">
               {t("you_gave")}
             </span>
             {outputs.length > 1 && (
-              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 rounded-md px-1.5 py-0.5">
+              <span className="text-[9.5px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5 tabular-nums">
                 {outputs.length}
               </span>
             )}
           </div>
           <button
             onClick={addOutput}
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-[8px] px-2 py-1 transition-colors"
+            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-2.5 py-1 transition-colors"
           >
             <Plus className="w-3 h-3" />
             {t("add_output")}
@@ -1711,25 +1708,25 @@ export default function ExchangeForm({
             (inTxHash.trim() ? 1 : 0);
           return (
         <section
-          className={`mt-5 rounded-[14px] overflow-hidden border-l-4 transition-all ${
+          className={`mt-5 rounded-[16px] overflow-hidden border transition-all ${
             conditionsActiveCount > 0
-              ? "bg-emerald-50/40 border-emerald-500 border-y border-r border-y-emerald-200 border-r-emerald-200 shadow-[0_2px_8px_-2px_rgba(16,185,129,0.15)]"
-              : "bg-slate-50/60 border-l-slate-300 border-y border-r border-y-slate-200 border-r-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.03)]"
+              ? "bg-gradient-to-br from-emerald-50/50 to-white border-emerald-300/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_16px_-8px_rgba(16,185,129,0.18)]"
+              : "bg-gradient-to-br from-slate-50/40 to-white border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
           }`}
         >
           <button
             type="button"
             onClick={() => setConditionsOpen((v) => !v)}
             className={`w-full flex items-center justify-between gap-3 px-4 py-3 transition-colors ${
-              conditionsActiveCount > 0 ? "hover:bg-emerald-50" : "hover:bg-slate-100/50"
+              conditionsActiveCount > 0 ? "hover:bg-emerald-50/40" : "hover:bg-slate-50/60"
             }`}
           >
             <div className="flex items-center gap-2.5">
               <div
-                className={`w-7 h-7 rounded-[8px] flex items-center justify-center transition-colors ${
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
                   conditionsActiveCount > 0
-                    ? "bg-emerald-500 text-white shadow-[0_2px_6px_-2px_rgba(16,185,129,0.5)]"
-                    : "bg-slate-200 text-slate-500"
+                    ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/60"
+                    : "bg-slate-100 text-slate-400 ring-1 ring-slate-200/60"
                 }`}
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -2030,7 +2027,7 @@ export default function ExchangeForm({
           {isEdit && (
             <button
               onClick={onCancel}
-              className="px-4 py-3.5 rounded-[12px] bg-slate-100 text-slate-700 text-[14px] font-semibold hover:bg-slate-200 transition-colors"
+              className="px-4 py-3.5 rounded-[14px] bg-white border border-slate-200 text-slate-700 text-[14px] font-semibold hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
             >
               {t("cancel")}
             </button>
@@ -2057,27 +2054,30 @@ export default function ExchangeForm({
           />
         </div>
         {!canSubmit && (
-          <p className="text-[11px] text-slate-400 text-center mt-2">
-            {!hasClient
-              ? "Select a client to continue"
-              : !amtIn
-              ? t("enter_amount_received")
-              : !hasAllRates
-              ? t("enter_exchange_rate")
-              : !noSameCurrency
-              ? t("currencies_must_differ")
-              : exceedsInput
-              ? t("exceeds_remaining")
-              : needsPayee && !payeeUserId
-              ? "Выберите ответственного за выдачу"
-              : t("complete_the_form")}
-          </p>
+          <div className="mt-3 inline-flex items-center gap-1.5 mx-auto text-[11px] text-slate-500 bg-slate-50/80 border border-slate-200/70 rounded-full px-3 py-1.5 w-fit">
+            <AlertCircle className="w-3 h-3 text-slate-400" />
+            <span>
+              {!hasClient
+                ? "Выберите клиента, чтобы продолжить"
+                : !amtIn
+                ? t("enter_amount_received")
+                : !hasAllRates
+                ? t("enter_exchange_rate")
+                : !noSameCurrency
+                ? t("currencies_must_differ")
+                : exceedsInput
+                ? t("exceeds_remaining")
+                : needsPayee && !payeeUserId
+                ? "Выберите ответственного за выдачу"
+                : t("complete_the_form")}
+            </span>
+          </div>
         )}
 
-        {/* Account warnings — не блокируют submit, но заметны */}
+        {/* Account warnings — soft amber pill */}
         {accountWarnings.length > 0 && (
-          <div className="mt-3 p-2.5 rounded-[10px] bg-amber-50 border border-amber-200">
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-800 mb-1.5">
+          <div className="mt-3 p-3 rounded-[14px] bg-gradient-to-br from-amber-50/60 to-white border border-amber-200/80">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 mb-1.5 tracking-tight">
               <AlertCircle className="w-3 h-3" />
               {t("account_warning_count").replace("{n}", String(accountWarnings.length))}
             </div>
@@ -2088,7 +2088,7 @@ export default function ExchangeForm({
                 </li>
               ))}
             </ul>
-            <div className="mt-1.5 text-[10px] text-amber-600 italic">
+            <div className="mt-1.5 text-[10px] text-amber-600/80 italic">
               Balances won't be updated for missing accounts.
             </div>
           </div>
@@ -2531,10 +2531,10 @@ function OutputRow({
   return (
     <div
       data-output-row
-      className={`rounded-[14px] border p-3 ${
+      className={`rounded-[16px] border p-3.5 transition-colors ${
         o.otcDealId
-          ? "bg-emerald-50/40 border-emerald-300"
-          : "bg-slate-50/60 border-slate-200"
+          ? "bg-gradient-to-br from-emerald-50/50 to-white border-emerald-300/80"
+          : "bg-gradient-to-br from-slate-50/40 to-white border-slate-200/80"
       }`}
     >
       <div className="flex items-center justify-between mb-2">
