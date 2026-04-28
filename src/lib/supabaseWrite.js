@@ -536,12 +536,13 @@ export async function deleteExpenseById(id) {
 // ref_update_admin (только owner/admin) и терял сетевые ошибки в общем
 // TypeError Fetch. RPC обходит RLS, пускает accountant, бросает clear
 // exceptions (в т.ч. P0002 "No default pair found" если пары нет).
-export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent }) {
+export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent, reverseRate }) {
   assertConfigured();
   const from = requireCurrency(fromCurrency, "fromCurrency");
   const to = requireCurrency(toCurrency, "toCurrency");
   let baseRateNum = null;
   let spreadNum = null;
+  let reverseRateNum = null;
   if (baseRate != null) {
     const n = Number(baseRate);
     if (!Number.isFinite(n) || n <= 0) throw new Error("baseRate: must be > 0");
@@ -552,13 +553,19 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
     if (!Number.isFinite(s)) throw new Error("spreadPercent: invalid");
     spreadNum = s;
   }
-  if (baseRateNum == null && spreadNum == null) return;
+  if (reverseRate != null) {
+    const r = Number(reverseRate);
+    if (!Number.isFinite(r) || r <= 0) throw new Error("reverseRate: must be > 0");
+    reverseRateNum = r;
+  }
+  if (baseRateNum == null && spreadNum == null && reverseRateNum == null) return;
 
   const { error } = await supabase.rpc("update_pair", {
     p_from: from,
     p_to: to,
     p_base_rate: baseRateNum,
     p_spread: spreadNum,
+    p_reverse_rate: reverseRateNum,
   });
   if (error) {
     // Явный differentiation сетевых ошибок от RPC-ошибок — чтобы toast

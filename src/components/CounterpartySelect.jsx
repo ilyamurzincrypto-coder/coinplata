@@ -30,7 +30,7 @@ export function ClientTag({ tag, size = "sm" }) {
   );
 }
 
-export default function CounterpartySelect({ value, onChange }) {
+export default function CounterpartySelect({ value, onChange, quickPicks = [] }) {
   const { t } = useTranslation();
   const { counterparties, addCounterparty } = useTransactions();
   const [open, setOpen] = useState(false);
@@ -133,10 +133,68 @@ export default function CounterpartySelect({ value, onChange }) {
       </div>
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-[10px] shadow-xl shadow-slate-900/10 py-1 max-h-64 overflow-auto">
-          {!hasQuery && (
+        <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-[10px] shadow-xl shadow-slate-900/10 py-1 max-h-72 overflow-auto">
+          {/* Quick picks (Cash + recent) — наверху dropdown'а. Отдельная
+              секция с лейблом "Быстрый выбор", показывается только когда
+              нет search-query (чтобы не мешать обычному поиску). */}
+          {!hasQuery && quickPicks.length > 0 && (
+            <>
+              <div className="px-3 pt-1.5 pb-1 text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
+                Быстрый выбор
+              </div>
+              <div className="px-1">
+                {quickPicks.map((qp) => (
+                  <button
+                    key={`qp_${qp.kind}_${qp.value}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(qp.value);
+                      setQuery(qp.value);
+                      setOpen(false);
+                    }}
+                    className={`w-full text-left px-2 py-1.5 rounded-[8px] hover:bg-slate-50 flex items-center gap-2 group ${
+                      value === qp.value ? "bg-slate-50" : ""
+                    }`}
+                  >
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                        qp.kind === "cash"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {qp.icon || (qp.label || "?").charAt(0).toUpperCase()}
+                    </div>
+                    <span className="flex-1 text-[12.5px] font-semibold text-slate-800 truncate">
+                      {qp.label}
+                    </span>
+                    {qp.kind === "cash" && (
+                      <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">
+                        Cash
+                      </span>
+                    )}
+                    {qp.kind === "recent" && (
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                        Recent
+                      </span>
+                    )}
+                    {value === qp.value && (
+                      <Check className="w-3.5 h-3.5 text-slate-900 shrink-0" />
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="border-t border-slate-100 my-1" />
+            </>
+          )}
+          {!hasQuery && quickPicks.length === 0 && (
             <div className="px-3 py-6 text-center text-[12px] text-slate-400">
               Start typing to search clients
+            </div>
+          )}
+          {!hasQuery && quickPicks.length > 0 && (
+            <div className="px-3 py-2 text-center text-[11px] text-slate-400">
+              Или начните вводить имя для поиска
             </div>
           )}
           {noMatches && (

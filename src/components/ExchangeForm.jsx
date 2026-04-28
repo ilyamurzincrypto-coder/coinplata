@@ -474,7 +474,10 @@ export default function ExchangeForm({
     if (!Number.isFinite(rawRate) || rawRate <= 0) return rawRate;
     if (from === to) return rawRate;
     const RANGES = {
-      USDT_USD: [0.9, 1.1], USD_USDT: [0.9, 1.1],
+      // USDT обычно торгуется с premium 0–5% к USD на cash-rynke,
+      // не идентична USD. Диапазон [0.95, 1.10] позволяет admin'у
+      // ставить разные курсы и не триггерит auto-инверсию.
+      USDT_USD: [0.95, 1.10], USD_USDT: [0.90, 1.05],
       USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
       USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
       USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
@@ -1188,57 +1191,31 @@ export default function ExchangeForm({
               : "border-amber-300 bg-amber-50/40"
           } p-2`}
         >
-          <CounterpartySelect value={counterparty} onChange={setCounterparty} />
-          {/* Quick clients: per-office Cash client + последние использованные.
-              Office Cash — отдельный клиент на каждый офис (например
-              "Mark Cash", "Lara Cash"), удобно для отчётности.
-              Recent — 4 последних использованных клиента (из localStorage). */}
-          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-200/70 flex-wrap">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Быстрые:
-            </span>
-            {(() => {
-              const officeName = (office?.name || "").split(/\s+/)[0] || "Office";
-              const officeCash = `${officeName} Cash`;
-              return (
-                <button
-                  type="button"
-                  onClick={() => setCounterparty(officeCash)}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-                    counterparty === officeCash
-                      ? "bg-emerald-500 text-white border-emerald-500"
-                      : "bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50 hover:border-emerald-300"
-                  }`}
-                  title={`Анонимный клиент с улицы — ${officeName}`}
-                >
-                  💵 {officeCash}
-                </button>
-              );
-            })()}
-            {/* Recent counterparties — последние 4 (из localStorage,
-                добавляются при submit). Не показываем дубль с officeCash. */}
-            {recentCounterparties
-              .filter((rc) => {
-                const officeName = (office?.name || "").split(/\s+/)[0] || "Office";
-                return rc && rc !== `${officeName} Cash`;
-              })
-              .slice(0, 4)
-              .map((rc) => (
-                <button
-                  key={rc}
-                  type="button"
-                  onClick={() => setCounterparty(rc)}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-                    counterparty === rc
-                      ? "bg-slate-700 text-white border-slate-700"
-                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
-                  }`}
-                  title={`Recent: ${rc}`}
-                >
-                  {rc}
-                </button>
-              ))}
-          </div>
+          {/* Quick picks — per-office Cash + recent (max 6) — выводятся
+              ВНУТРИ dropdown'а CounterpartySelect наверху, до search results.
+              Не отдельным чипсетом снаружи. */}
+          {(() => {
+            const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
+            const officeCash = `${officeShort} Cash`;
+            const cashPick = {
+              label: officeCash,
+              value: officeCash,
+              icon: "💵",
+              kind: "cash",
+            };
+            const recentPicks = recentCounterparties
+              .filter((rc) => rc && rc !== officeCash)
+              .slice(0, 6)
+              .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
+            const quickPicks = [cashPick, ...recentPicks];
+            return (
+              <CounterpartySelect
+                value={counterparty}
+                onChange={setCounterparty}
+                quickPicks={quickPicks}
+              />
+            );
+          })()}
         </div>
       </div>
 
@@ -2122,7 +2099,10 @@ function OutputRow({
   const fixIfInverted = (raw) => {
     if (!Number.isFinite(raw) || raw <= 0) return raw;
     const RANGES = {
-      USDT_USD: [0.9, 1.1], USD_USDT: [0.9, 1.1],
+      // USDT обычно торгуется с premium 0–5% к USD на cash-rynke,
+      // не идентична USD. Диапазон [0.95, 1.10] позволяет admin'у
+      // ставить разные курсы и не триггерит auto-инверсию.
+      USDT_USD: [0.95, 1.10], USD_USDT: [0.90, 1.05],
       USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
       USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
       USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
