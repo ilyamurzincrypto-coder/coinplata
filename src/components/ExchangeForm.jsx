@@ -417,11 +417,24 @@ export default function ExchangeForm({
   );
 
   // Computed: суммарный баланс всех active аккаунтов офиса в заданной валюте.
-  // Используется для "Current balance" (RECEIVED) и "Available" (OUTPUT).
+  // Используется для "Current balance" (RECEIVED) когда account ещё не выбран.
   const officeCurrencyBalance = (currency) => {
     return accounts
       .filter((a) => a.officeId === currentOffice && a.currency === currency && a.active)
       .reduce((sum, a) => sum + balanceOf(a.id), 0);
+  };
+
+  // Resolved available balance для OUT-leg:
+  //   - если account выбран → его реальный balanceOf (даже если он в чужом офисе)
+  //   - если не выбран → суммарный баланс current office в этой валюте
+  // Раньше всегда возвращался currentOffice сумма, что давало неверный
+  // "Available" при interoffice OUT.
+  const resolveLegBalance = (output) => {
+    if (output.accountId) {
+      const acc = accounts.find((a) => a.id === output.accountId);
+      if (acc) return balanceOf(acc.id);
+    }
+    return officeCurrencyBalance(output.currency);
   };
 
   // При смене валюты/офиса:
@@ -1460,7 +1473,7 @@ export default function ExchangeForm({
                   onAmountKeyDown={handleKbdOut}
                   curIn={curIn}
                   remainingIn={remainingIn}
-                  availableInCurrency={officeCurrencyBalance(o.currency)}
+                  availableInCurrency={resolveLegBalance(o)}
                   currentOffice={currentOffice}
                   counterpartyId={resolveClientId(counterparty)}
                   officeBalancesByCurrency={officeBalancesByCurrency}

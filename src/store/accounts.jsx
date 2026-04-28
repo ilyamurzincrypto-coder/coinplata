@@ -41,6 +41,7 @@ import {
   loadAccounts,
   loadAccountBalances,
   loadMovements,
+  loadTransfers,
 } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
@@ -81,12 +82,18 @@ export function AccountsProvider({ children }) {
     if (!isSupabaseConfigured) return;
     let cancelled = false;
     const reload = () =>
-      Promise.all([loadAccounts(), loadAccountBalances(), loadMovements()])
-        .then(([accRows, balMap, mvRows]) => {
+      Promise.all([
+        loadAccounts(),
+        loadAccountBalances(),
+        loadMovements(),
+        loadTransfers().catch(() => []),
+      ])
+        .then(([accRows, balMap, mvRows, trRows]) => {
           if (cancelled) return;
           if (Array.isArray(accRows)) setAccounts(accRows);
           if (balMap) setDbBalances(balMap);
           if (Array.isArray(mvRows)) setMovements(mvRows);
+          if (Array.isArray(trRows)) setTransfers(trRows);
         })
         .catch((err) => {
           // eslint-disable-next-line no-console

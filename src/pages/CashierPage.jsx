@@ -7,6 +7,7 @@ import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
+import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -460,6 +461,7 @@ export default function CashierPage({
             {/* Transactions — grid-area "tx". Compact: row 3 full-width.
                 Expanded: row 3 col2 (рядом с продолжением sidebar). */}
             <div className="min-w-0 lg:[grid-area:tx]">
+              <PendingTransfersBar />
               <TransactionsTable
                 currentOffice={currentOffice}
                 justCreatedId={justCreatedId}

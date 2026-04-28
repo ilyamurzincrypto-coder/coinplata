@@ -364,6 +364,38 @@ export async function loadDealsWithLegs(usersById = {}) {
   });
 }
 
+// ---------- transfers ----------
+
+// Загружает все transfers для UI. Включает pending interoffice (P2P 0052) +
+// historical confirmed/rejected/cancelled. Status field управляет рендером.
+// Joining делается через usersById на frontend.
+export async function loadTransfers() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb
+    .from("transfers")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    id: r.id,
+    fromAccountId: r.from_account_id,
+    toAccountId: r.to_account_id,
+    fromAmount: num(r.from_amount),
+    toAmount: num(r.to_amount),
+    rate: r.rate != null ? num(r.rate) : null,
+    note: r.note || "",
+    status: r.status || "confirmed",
+    toManagerId: r.to_manager_id || null,
+    confirmedAt: r.confirmed_at || null,
+    rejectedAt: r.rejected_at || null,
+    cancelledAt: r.cancelled_at || null,
+    confirmationNote: r.confirmation_note || "",
+    createdAt: r.created_at,
+    createdBy: r.created_by || null,
+  }));
+}
+
 // ---------- obligations ----------
 
 export async function loadObligations() {

@@ -1239,6 +1239,43 @@ export async function updateClient(id, patch) {
 
 // ---------- bulk rates import ----------
 
+// P2P transfer flow (0052): receiver подтверждает входящий pending transfer.
+// IN-движение создаётся, OUT.reserved=false, status→confirmed.
+export async function rpcConfirmTransfer({ transferId, note }) {
+  assertConfigured();
+  const id = requireUuid(transferId, "transferId");
+  const { error } = await supabase.rpc("confirm_transfer", {
+    p_transfer_id: id,
+    p_note: note || null,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
+// receiver отклоняет входящий pending transfer. OUT удаляется → status=rejected.
+export async function rpcRejectTransfer({ transferId, note }) {
+  assertConfigured();
+  const id = requireUuid(transferId, "transferId");
+  const { error } = await supabase.rpc("reject_transfer", {
+    p_transfer_id: id,
+    p_note: note || null,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
+// sender отменяет свой pending transfer (до confirm). OUT удаляется → cancelled.
+export async function rpcCancelTransfer({ transferId, note }) {
+  assertConfigured();
+  const id = requireUuid(transferId, "transferId");
+  const { error } = await supabase.rpc("cancel_transfer", {
+    p_transfer_id: id,
+    p_note: note || null,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // Upsert одной записи в system_settings (key, value jsonb).
 // Используется для baseCurrency, fxRates, referralPct и т.д.
 // RLS из 0001 пропускает только admin/owner. Frontend проверяет роль до вызова.
