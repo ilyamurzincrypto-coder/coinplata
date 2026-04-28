@@ -504,34 +504,41 @@ export default function ExchangeForm({
     );
   }, [curIn, amtIn, getRate, getRateRaw, minFeeUsd, applyMinFee, resolveAutoRate, correctedGetRate]);
 
-  // FORCE recompute output[0] amount при ЛЮБОМ изменении applyMinFee/amtIn/rate.
-  // Минует все блокировки (touched, manualRate) — гарантирует что amount
-  // ВСЕГДА = amtIn × rate − fee (или gross если applyMinFee=off).
-  // Без этого initial render может показать stale amount из draft (например
-  // 1180 EUR с raw rate 1.18) пока юзер не toggle'нет применить-min-fee.
+  // FORCE recompute output[0] amount + rate при ЛЮБОМ изменении.
+  // Минует блокировки touched. manualRate=true — оставляем (там юзер
+  // ввёл свой rate, не трогаем).
+  //
+  // КЛЮЧЕВОЕ: rate ТОЖЕ пересчитываем через correctedGetRate.
+  // Раньше использовали o.rate из state — там мог сидеть raw 1.18
+  // (из draft / предыдущей сессии) → 1000 × 1.18 = 1180 даже после
+  // всех auto-corrections. Теперь rate всегда свежий и corrected.
   useEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
-        if (idx !== 0) return o; // только первый output — net с fee adjustments
-        if (o.manualRate) return o; // ручной rate — не вмешиваемся
+        if (idx !== 0) return o;
+        if (o.manualRate) return o;
         const a = parseFloat(amtIn);
-        const r = parseFloat(o.rate);
-        if (!Number.isFinite(a) || !Number.isFinite(r) || a <= 0 || r <= 0) return o;
+        if (!Number.isFinite(a) || a <= 0) return o;
+        // Rate берём ИЗ get-rate-функции, корректируем через correctRate.
+        // Не доверяем o.rate — он может быть stale из draft.
+        const freshRaw = getRate(curIn, o.currency);
+        const freshCorrected = correctRate(freshRaw, curIn, o.currency);
+        if (!Number.isFinite(freshCorrected) || freshCorrected <= 0) return o;
         const computed = computeNetOutput({
           amtIn: a,
-          rate: r,
+          rate: freshCorrected,
           feeUsd: applyMinFee ? minFeeUsd : 0,
           outputCurrency: o.currency,
           getRate: correctedGetRate,
         });
         const computedStr = String(computed);
-        if (computedStr === o.amount) return o; // ничего не изменилось
-        return { ...o, amount: computedStr, touched: false };
+        const rateStr = String(freshCorrected);
+        if (computedStr === o.amount && rateStr === o.rate) return o;
+        return { ...o, amount: computedStr, rate: rateStr, touched: false };
       })
     );
-    // Только применять при изменении этих deps — не на каждый ре-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyMinFee, amtIn, minFeeUsd]);
+  }, [applyMinFee, amtIn, minFeeUsd, curIn]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
