@@ -73,8 +73,9 @@ const emptyOutput = (currency = "TRY") => ({
   rate: "",
   manualRate: false,
   touched: false,
-  accountId: "", // выбирается менеджером отдельно
-  address: "",   // crypto recipient; используется только для crypto-валют
+  accountId: "",
+  address: "",
+  applyFee: true, // per-output toggle: вычитать ли мин fee из этого output
 });
 
 // Иконки для типов счетов (дублирует data.js ACCOUNT_TYPES.icon, но здесь локально для UI скорости)
@@ -513,34 +514,33 @@ export default function ExchangeForm({
   React.useLayoutEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
-        if (idx !== 0) return o;
         if (o.manualRate) return o;
         const a = parseFloat(amtIn);
         if (!Number.isFinite(a) || a <= 0) return o;
-        // Rate берём ИЗ get-rate-функции, корректируем через correctRate.
-        // Не доверяем o.rate — он может быть stale из draft.
         const freshRaw = getRate(curIn, o.currency);
         const freshCorrected = correctRate(freshRaw, curIn, o.currency);
         if (!Number.isFinite(freshCorrected) || freshCorrected <= 0) return o;
-        const computed = computeNetOutput({
-          amtIn: a,
-          rate: freshCorrected,
-          feeUsd: applyMinFee ? minFeeUsd : 0,
-          outputCurrency: o.currency,
-          getRate: correctedGetRate,
-        });
+        // Per-output applyFee: каждый output решает сам, вычитать ли fee
+        // из своей суммы. Применяется только если output.applyFee=true
+        // И global applyMinFee=true (двойной gate).
+        const useFee = (o.applyFee !== false) && applyMinFee;
+        const computed = idx === 0
+          ? computeNetOutput({
+              amtIn: a,
+              rate: freshCorrected,
+              feeUsd: useFee ? minFeeUsd : 0,
+              outputCurrency: o.currency,
+              getRate: correctedGetRate,
+            })
+          : multiplyAmount(a, freshCorrected, o.currency === "TRY" ? 0 : 2);
         const computedStr = String(computed);
         const rateStr = String(freshCorrected);
         if (computedStr === o.amount && rateStr === o.rate) return o;
         return { ...o, amount: computedStr, rate: rateStr, touched: false };
       })
     );
-    // Зависим от curIn + outputs[0]?.currency чтобы любое изменение пары
-    // (включая переключение output.currency между TRY/EUR/USD) триггерило
-    // recompute. Без этого draft со stale rate из предыдущей пары
-    // восстанавливался без коррекции.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyMinFee, amtIn, minFeeUsd, curIn, outputs[0]?.currency]);
+  }, [applyMinFee, amtIn, minFeeUsd, curIn, outputs.map(o => `${o.currency}|${o.applyFee !== false}`).join(",")]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
@@ -774,9 +774,10 @@ export default function ExchangeForm({
       amtOut: outputsClean[0].amount,
       rate: outputsClean[0].rate,
       fee: Math.round(effectiveFee * 100) / 100,
-      // Сохраняем выбор галочки чтобы edit-режим восстановил её корректно
-      // и backend (RPC) знал применять ли min cap.
-      applyMinFee,
+      // Глобальный applyMinFee для бэкенда: true если хоть один output
+      // имеет applyFee=true. Бэкенд RPC принимает один skipMinFee bool —
+      // distribution fee между legs делается на фронте через output.applyFee.
+      applyMinFee: applyMinFee && outputs.some((o) => o.applyFee !== false),
       profit: Math.round(profit * 100) / 100,
       manager: currentUser.name,
       managerId: currentUser.id,
@@ -2176,38 +2177,15 @@ function OutputRow({
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Toggle "комиссия" — у каждого output отдельно. Все
-              синхронизированы через общий applyMinFee state, так что
-              переключение ЛЮБОГО toggle меняет fee у всех. */}
-          {setApplyMinFee && (
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-md border border-slate-200 bg-white hover:border-slate-300">
-              <input
-                type="checkbox"
-                checked={applyMinFee}
-                onChange={(e) => setApplyMinFee(e.target.checked)}
-                className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
-              />
-              <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
-                Комиссия
-                {minFeeUsd > 0 && (
-                  <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
-                    ${fmt(minFeeUsd)}
-                  </span>
-                )}
-              </span>
-            </label>
-          )}
-          {canRemove && (
-            <button
-              onClick={onRemove}
-              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-              aria-label={t("remove")}
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+        {canRemove && (
+          <button
+            onClick={onRemove}
+            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            aria-label={t("remove")}
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       <div
@@ -2231,6 +2209,23 @@ function OutputRow({
           placeholder="0"
           className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0 leading-none"
         />
+        {/* Per-output toggle "комиссия" — слева внутри amount block,
+            прямо после числа. Юзер хотел видеть переключатель в момент
+            ввода/просмотра суммы. Каждый output independently. */}
+        <label
+          className="inline-flex items-center gap-1 cursor-pointer select-none group px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 self-center"
+          title="Применить минимальную комиссию офиса к этой выдаче"
+        >
+          <input
+            type="checkbox"
+            checked={o.applyFee !== false}
+            onChange={(e) => onUpdate({ applyFee: e.target.checked })}
+            className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
+          />
+          <span className="text-[9px] font-bold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900 leading-none">
+            fee
+          </span>
+        </label>
         <span className="text-slate-400 text-[11px] font-bold tracking-wider">{o.currency}</span>
       </div>
 
