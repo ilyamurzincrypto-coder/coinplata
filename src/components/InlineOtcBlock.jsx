@@ -339,7 +339,7 @@ export default function InlineOtcBlock({
               Сделка с контрагентом
             </div>
             <div className="text-[10.5px] text-slate-500 mt-0.5">
-              OTC обмен через партнёра
+              OTC обмен через партнёра · любые валюты (фиат / крипта)
             </div>
           </div>
         </div>
