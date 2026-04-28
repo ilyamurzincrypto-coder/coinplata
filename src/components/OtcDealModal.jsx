@@ -8,6 +8,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { ArrowDown, AlertCircle, Calendar, Users } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
+import PartnerSelect from "./PartnerSelect.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -133,19 +134,13 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
       width="lg"
     >
       <div className="p-5 space-y-3">
-        {/* Counterparty */}
+        {/* Counterparty — селектор партнёров с поиском и созданием */}
         <div>
           <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 mb-1.5 tracking-wide uppercase">
             <Users className="w-3.5 h-3.5" />
             Контрагент / Партнёр
           </label>
-          <input
-            type="text"
-            value={counterparty}
-            onChange={(e) => setCounterparty(e.target.value)}
-            placeholder="Имя партнёра / Название компании"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors"
-          />
+          <PartnerSelect value={counterparty} onChange={setCounterparty} />
         </div>
 
         {/* From */}

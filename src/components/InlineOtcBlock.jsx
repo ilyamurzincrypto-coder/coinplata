@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
+import PartnerSelect from "./PartnerSelect.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useRates } from "../store/rates.jsx";
@@ -186,18 +187,12 @@ export default function InlineOtcBlock() {
       </div>
 
       <div className="space-y-2.5">
-        {/* Counterparty */}
+        {/* Counterparty — селектор с поиском и созданием inline */}
         <div>
           <label className="block text-[10px] font-bold text-slate-500 mb-1 tracking-wide uppercase">
             Контрагент / Партнёр
           </label>
-          <input
-            type="text"
-            value={counterparty}
-            onChange={(e) => setCounterparty(e.target.value)}
-            placeholder="Имя партнёра / Название компании"
-            className="w-full bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-1.5 text-[12.5px] outline-none"
-          />
+          <PartnerSelect value={counterparty} onChange={setCounterparty} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">

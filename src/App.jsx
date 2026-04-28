@@ -29,6 +29,7 @@ import { CategoriesProvider } from "./store/categories.jsx";
 import { RateHistoryProvider } from "./store/rateHistory.jsx";
 import { ObligationsProvider } from "./store/obligations.jsx";
 import { NotificationsProvider } from "./store/notifications.jsx";
+import { PartnersProvider } from "./store/partners.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { RecoveryContext, useRecovery } from "./lib/recovery.jsx";
@@ -412,11 +413,13 @@ export default function App() {
                             <TransactionsProvider>
                               <ObligationsProvider>
                               <NotificationsProvider>
+                              <PartnersProvider>
                               <WalletsProvider>
                                 <MonitoringProvider>
                                   <Root />
                                 </MonitoringProvider>
                               </WalletsProvider>
+                              </PartnersProvider>
                               </NotificationsProvider>
                               </ObligationsProvider>
                             </TransactionsProvider>

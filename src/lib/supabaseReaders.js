@@ -364,6 +364,28 @@ export async function loadDealsWithLegs(usersById = {}) {
   });
 }
 
+// ---------- partners (контрагенты для OTC) ----------
+
+export async function loadPartners() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb
+    .from("partners")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    telegram: r.telegram || "",
+    phone: r.phone || "",
+    note: r.note || "",
+    active: r.active !== false,
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    updatedAt: r.updated_at,
+  }));
+}
+
 // ---------- transfers ----------
 
 // Загружает все transfers для UI. Включает pending interoffice (P2P 0052) +

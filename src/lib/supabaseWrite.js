@@ -1264,6 +1264,49 @@ export async function rpcCancelTransfer({ transferId, note }) {
   bumpDataVersion();
 }
 
+// Partners (контрагенты для OTC) — CRUD wrappers.
+export async function rpcInsertPartner({ name, telegram, phone, note }) {
+  assertConfigured();
+  const cleanName = (name || "").trim();
+  if (!cleanName) throw new Error("name required");
+  const { data, error } = await supabase
+    .from("partners")
+    .insert({
+      name: cleanName,
+      telegram: (telegram || "").trim() || null,
+      phone: (phone || "").trim() || null,
+      note: (note || "").trim() || null,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+  return data;
+}
+
+export async function rpcUpdatePartner(id, patch) {
+  assertConfigured();
+  const partnerId = requireUuid(id, "partnerId");
+  const { error } = await supabase
+    .from("partners")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", partnerId);
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
+export async function rpcDeletePartner(id) {
+  assertConfigured();
+  const partnerId = requireUuid(id, "partnerId");
+  // Soft delete — active=false
+  const { error } = await supabase
+    .from("partners")
+    .update({ active: false, updated_at: new Date().toISOString() })
+    .eq("id", partnerId);
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // OTC сделка с контрагентом (миграция 0069). Простой обмен валюты с
 // партнёром — без fee/profit/AML. Поддерживает backdate через occurredAt.
 export async function rpcCreateOtcDeal({
