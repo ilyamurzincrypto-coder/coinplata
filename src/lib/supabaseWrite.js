@@ -1319,6 +1319,7 @@ export async function rpcCreateOtcDeal({
   counterparty,
   note,
   occurredAt,
+  partnerPaysClient,
 }) {
   assertConfigured();
   const office = requireUuid(officeId, "officeId");
@@ -1331,18 +1332,25 @@ export async function rpcCreateOtcDeal({
   const cp = (counterparty || "").trim();
   if (!cp) throw new Error("counterparty required");
 
+  // p_partner_pays_client отсылаем только когда true — defensive payload
+  // для совместимости с pre-0072 версией функции (PostgREST overload resolve).
+  const payload = {
+    p_office_id: office,
+    p_from_account_id: from,
+    p_from_amount: fromAmt,
+    p_to_account_id: to,
+    p_to_amount: toAmt,
+    p_rate: rateNum,
+    p_counterparty: cp,
+    p_note: note || null,
+    p_occurred_at: occurredAt || null,
+  };
+  if (partnerPaysClient) {
+    payload.p_partner_pays_client = true;
+  }
+
   const dealId = unwrap(
-    await supabase.rpc("create_otc_deal", {
-      p_office_id: office,
-      p_from_account_id: from,
-      p_from_amount: fromAmt,
-      p_to_account_id: to,
-      p_to_amount: toAmt,
-      p_rate: rateNum,
-      p_counterparty: cp,
-      p_note: note || null,
-      p_occurred_at: occurredAt || null,
-    }),
+    await supabase.rpc("create_otc_deal", payload),
     "create_otc_deal"
   );
   bumpDataVersion();

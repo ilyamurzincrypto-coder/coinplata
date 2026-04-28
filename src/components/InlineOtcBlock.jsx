@@ -49,6 +49,10 @@ export default function InlineOtcBlock({
   const [note, setNote] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
   const [busy, setBusy] = useState(false);
+  // Режим расчёта:
+  //   "self" — партнёр зачислил нам USDT (стандарт, IN movement создаётся)
+  //   "partner_pays_client" — партнёр выдаёт клиенту напрямую (IN не создаётся)
+  const [mode, setMode] = useState("self");
 
   // Сбрасываем форму когда блок свернут.
   useEffect(() => {
@@ -58,6 +62,7 @@ export default function InlineOtcBlock({
       setCounterparty("");
       setNote("");
       setOccurredAt("");
+      setMode("self");
     }
   }, [open]);
 
@@ -103,9 +108,15 @@ export default function InlineOtcBlock({
             counterparty: counterparty.trim(),
             note: note.trim(),
             occurredAt: occurredIso,
+            partnerPaysClient: mode === "partner_pays_client",
           }),
         {
-          success: occurredIso ? "OTC оформлена задним числом" : "OTC создана",
+          success:
+            mode === "partner_pays_client"
+              ? "OTC создана · партнёр выдаёт клиенту"
+              : occurredIso
+              ? "OTC оформлена задним числом"
+              : "OTC создана",
           errorPrefix: "OTC failed",
         }
       );
@@ -114,9 +125,8 @@ export default function InlineOtcBlock({
           action: "create",
           entity: "transaction",
           entityId: String(res.result || ""),
-          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} → ${fmt(toAmt, toAcc.currency)} ${toAcc.currency}${occurredIso ? " (бэкдейт)" : ""}`,
+          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} → ${fmt(toAmt, toAcc.currency)} ${toAcc.currency}${mode === "partner_pays_client" ? " · partner pays client" : ""}${occurredIso ? " (бэкдейт)" : ""}`,
         });
-        // Передаём результат наверх — ExchangeForm применит к outputs.
         onCreated?.({
           dealId: res.result,
           partnerName: counterparty.trim(),
@@ -128,6 +138,7 @@ export default function InlineOtcBlock({
           toCurrency: toAcc.currency,
           rate: computedRate,
           occurredAt: occurredIso,
+          partnerPaysClient: mode === "partner_pays_client",
         });
         setOpen(false);
       }
@@ -138,19 +149,49 @@ export default function InlineOtcBlock({
 
   // Свернутый вид + есть existing — показываем краткую инфу.
   if (existing && !open) {
+    const isPpc = !!existing.partnerPaysClient;
     return (
-      <div className="my-3 bg-emerald-50/40 border border-emerald-200 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap">
-        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+      <div
+        className={`my-3 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap border ${
+          isPpc
+            ? "bg-amber-50/40 border-amber-200"
+            : "bg-emerald-50/40 border-emerald-200"
+        }`}
+      >
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+            isPpc ? "bg-amber-100" : "bg-emerald-100"
+          }`}
+        >
+          <CheckCircle2 className={`w-4 h-4 ${isPpc ? "text-amber-700" : "text-emerald-700"}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12.5px] font-bold text-emerald-900 inline-flex items-center gap-2 flex-wrap">
+          <div
+            className={`text-[12.5px] font-bold inline-flex items-center gap-2 flex-wrap ${
+              isPpc ? "text-amber-900" : "text-emerald-900"
+            }`}
+          >
             <span>OTC #{existing.dealId} создана</span>
-            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+            <span
+              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
+                isPpc
+                  ? "text-amber-800 bg-amber-100"
+                  : "text-emerald-700 bg-emerald-100"
+              }`}
+            >
               {existing.partnerName}
             </span>
+            {isPpc && (
+              <span className="text-[9.5px] font-bold text-amber-800 bg-amber-200/60 px-1.5 py-0.5 rounded uppercase">
+                партнёр выдаёт клиенту
+              </span>
+            )}
           </div>
-          <div className="text-[11px] text-emerald-800/80 inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums">
+          <div
+            className={`text-[11px] inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums ${
+              isPpc ? "text-amber-800/80" : "text-emerald-800/80"
+            }`}
+          >
             <span>
               {curSymbol(existing.fromCurrency)}
               {fmt(existing.fromAmount, existing.fromCurrency)} {existing.fromCurrency}
@@ -160,14 +201,16 @@ export default function InlineOtcBlock({
               {curSymbol(existing.toCurrency)}
               {fmt(existing.toAmount, existing.toCurrency)} {existing.toCurrency}
             </span>
-            <span className="text-emerald-600">·</span>
+            <span className="opacity-70">·</span>
             <span>курс {existing.rate.toFixed(4)}</span>
           </div>
         </div>
         <button
           type="button"
           onClick={onClear}
-          className="text-[10.5px] font-semibold text-emerald-700 hover:text-emerald-900 underline"
+          className={`text-[10.5px] font-semibold underline ${
+            isPpc ? "text-amber-700 hover:text-amber-900" : "text-emerald-700 hover:text-emerald-900"
+          }`}
         >
           Сбросить
         </button>
@@ -243,6 +286,43 @@ export default function InlineOtcBlock({
           <PartnerSelect value={counterparty} onChange={setCounterparty} />
         </div>
 
+        {/* Режим расчёта */}
+        <div>
+          <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-wide uppercase">
+            Расчёт с партнёром
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMode("self")}
+              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
+                mode === "self"
+                  ? "bg-indigo-50 border-indigo-400 text-indigo-900"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <div className="text-[11.5px] font-bold">Партнёр зачислил нам</div>
+              <div className="text-[9.5px] opacity-80 mt-0.5">
+                USDT партнёра приходит на наш счёт. Затем выдаём клиенту со своего.
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("partner_pays_client")}
+              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
+                mode === "partner_pays_client"
+                  ? "bg-amber-50 border-amber-400 text-amber-900"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <div className="text-[11.5px] font-bold">Партнёр выдаёт клиенту</div>
+              <div className="text-[9.5px] opacity-80 mt-0.5">
+                USDT партнёр передаёт напрямую клиенту. У нас IN-зачисления нет.
+              </div>
+            </button>
+          </div>
+        </div>
+
         {/* Отдаём (auto from IN) + Получаем */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
           {/* Отдаём — read-only display из IN section */}
@@ -270,16 +350,23 @@ export default function InlineOtcBlock({
             )}
           </div>
 
-          {/* Получаем — input */}
+          {/* Получаем — input. В режиме "partner_pays_client" toAccount нужен
+              для учёта (валюта/курс), но фактически IN-движение не создаётся. */}
           <div>
-            <label className="block text-[10px] font-bold text-emerald-700 mb-1 tracking-wide uppercase">
-              Получаем от партнёра
+            <label className={`block text-[10px] font-bold mb-1 tracking-wide uppercase ${
+              mode === "partner_pays_client" ? "text-amber-700" : "text-emerald-700"
+            }`}>
+              {mode === "partner_pays_client" ? "Партнёр выдаёт клиенту" : "Получаем от партнёра"}
             </label>
             <GroupedAccountSelect
               accounts={activeAccounts.filter((a) => a.id !== fromAccountId)}
               value={toId}
               onChange={setToId}
-              placeholder="Счёт зачисления"
+              placeholder={
+                mode === "partner_pays_client"
+                  ? "Счёт-валюта (для отчётности)"
+                  : "Счёт зачисления"
+              }
             />
             {toAcc && (
               <input
@@ -290,8 +377,17 @@ export default function InlineOtcBlock({
                   setToAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                 }
                 placeholder={`0 ${toAcc.currency}`}
-                className="mt-1.5 w-full bg-white border-2 border-emerald-200 focus:border-emerald-400 rounded-[8px] px-2.5 py-1.5 text-[15px] font-bold tabular-nums outline-none"
+                className={`mt-1.5 w-full bg-white border-2 rounded-[8px] px-2.5 py-1.5 text-[15px] font-bold tabular-nums outline-none ${
+                  mode === "partner_pays_client"
+                    ? "border-amber-200 focus:border-amber-400"
+                    : "border-emerald-200 focus:border-emerald-400"
+                }`}
               />
+            )}
+            {mode === "partner_pays_client" && toAcc && (
+              <p className="mt-1 text-[9.5px] text-amber-700/90">
+                ⚠ На наш счёт зачисления НЕ будет. Партнёр выдаёт {toAcc.currency} клиенту напрямую.
+              </p>
             )}
           </div>
         </div>
