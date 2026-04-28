@@ -50,8 +50,10 @@ import {
   rpcConfirmDealLeg,
   rpcMarkDealSent,
   rpcCancelObligation,
+  rpcMarkDealPayedOut,
   withToast,
 } from "../lib/supabaseWrite.js";
+import { HandCoins } from "lucide-react";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {
   const { t } = useTranslation();
@@ -913,18 +915,67 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     )}
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap hidden xl:table-cell">
-                    <div className="flex items-center gap-1.5">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
-                        {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                          {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
+                        </div>
+                        <span className="text-slate-700 text-[13px]">{tx.manager}</span>
+                        {tx.payeeName && (
+                          <>
+                            <span className="text-[10px] text-slate-300">→</span>
+                            <span
+                              className="text-[12px] font-semibold text-indigo-700"
+                              title={`Payee: ${tx.payeeName}${tx.payeeOfficeId ? ` · ${officeName(tx.payeeOfficeId)}` : ""}`}
+                            >
+                              {tx.payeeName}
+                            </span>
+                          </>
+                        )}
                       </div>
-                      <span className="text-slate-700 text-[13px]">{tx.manager}</span>
-                      {isAdmin && tx.managerId !== undefined && (
-                        <span className="text-[9px] text-slate-400">·</span>
+                      {tx.payeeUserId && !tx.payedOutAt && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 uppercase tracking-wider w-fit"
+                          title="Ожидает выдачи назначенным менеджером"
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                          Невыданная
+                        </span>
+                      )}
+                      {tx.payedOutAt && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 uppercase tracking-wider w-fit"
+                          title={`Выдано ${new Date(tx.payedOutAt).toLocaleString()}`}
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Выдано
+                        </span>
                       )}
                     </div>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-1">
+                      {/* Payee mark-as-payed-out: показывается только назначенному
+                          payee (или admin/owner) пока сделка не выдана. */}
+                      {tx.payeeUserId && !tx.payedOutAt &&
+                        (tx.payeeUserId === currentUser.id || isAdmin) && (
+                        <button
+                          onClick={async () => {
+                            if (!isSupabaseConfigured) return;
+                            const note = prompt("Заметка к выдаче (опционально):");
+                            if (note === null) return; // cancel
+                            await withToast(
+                              () => rpcMarkDealPayedOut({ dealId: tx.id, note }),
+                              { success: "Выдано", errorPrefix: "Ошибка" }
+                            );
+                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                          title="Подтвердить физическую выдачу денег клиенту"
+                        >
+                          <HandCoins className="w-3 h-3" />
+                          Выдать
+                        </button>
+                      )}
                       {tx.status === "pending" && canEdit && (
                         <button
                           onClick={() => handleComplete(tx)}

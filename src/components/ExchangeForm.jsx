@@ -267,6 +267,12 @@ export default function ExchangeForm({
   useEffect(() => {
     if (!canPickManager) setSelectedManagerId(currentUser.id);
   }, [canPickManager, currentUser.id]);
+
+  // Payee — менеджер ответственный за ВЫДАЧУ денег. Required если хоть один
+  // OUT-leg в чужом офисе. На submit передаётся в rpcSetDealPayee.
+  const [payeeUserId, setPayeeUserId] = useState(
+    initialData?.payeeUserId || draft?.payeeUserId || ""
+  );
   // Recent counterparties — последние использованные клиенты в quick-bar.
   // Persist'им в localStorage (max 8). На submit добавляется в начало.
   const RECENT_KEY = "coinplata.recentCounterparties";
@@ -377,13 +383,14 @@ export default function ExchangeForm({
         plannedLocal,
         applyMinFee,
         managerId: selectedManagerId,
+        payeeUserId,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId]);
+  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId]);
 
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
@@ -481,14 +488,17 @@ export default function ExchangeForm({
       USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
       USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
       USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
-      USDT_TRY: [20, 80],   TRY_USDT: [0.012, 0.05],
-      USDT_RUB: [50, 150],  RUB_USDT: [0.006, 0.02],
+      // Расширил TRY/RUB до реалистичных диапазонов на 2025–2026:
+      // лира 30-100, рубль 70-200. Раньше при USD_RUB > 150 авто-инверсия
+      // ломала курс на extreme movements.
+      USDT_TRY: [20, 100],  TRY_USDT: [0.010, 0.05],
+      USDT_RUB: [50, 200],  RUB_USDT: [0.005, 0.02],
       USD_EUR: [0.7, 1.1],  EUR_USD: [0.9, 1.4],
       USD_GBP: [0.6, 1.0],  GBP_USD: [1.0, 1.7],
       USD_CHF: [0.7, 1.1],  CHF_USD: [0.9, 1.4],
-      USD_TRY: [20, 80],    TRY_USD: [0.012, 0.05],
-      USD_RUB: [50, 150],   RUB_USD: [0.006, 0.02],
-      EUR_TRY: [25, 90],    TRY_EUR: [0.011, 0.04],
+      USD_TRY: [20, 100],   TRY_USD: [0.010, 0.05],
+      USD_RUB: [50, 200],   RUB_USD: [0.005, 0.02],
+      EUR_TRY: [25, 110],   TRY_EUR: [0.009, 0.04],
       EUR_GBP: [0.7, 1.0],  GBP_EUR: [1.0, 1.4],
       EUR_CHF: [0.85, 1.1], CHF_EUR: [0.9, 1.2],
     };
@@ -757,8 +767,44 @@ export default function ExchangeForm({
   const hasAllAmounts = outputs.every((o) => o.amount && parseFloat(o.amount) > 0);
   const noSameCurrency = outputs.every((o) => o.currency !== curIn);
   const hasClient = counterparty.trim().length > 0;
+
+  // Interoffice OUT: хоть один OUT-leg использует account из чужого офиса.
+  // Берём office из самого первого OUT-leg-account (один deal — один payee
+  // office; если нужны разные — это два деала).
+  const payeeOfficeId = useMemo(() => {
+    for (const o of outputs) {
+      if (!o.accountId) continue;
+      const acc = accounts.find((a) => a.id === o.accountId);
+      if (acc && acc.officeId && acc.officeId !== currentOffice) {
+        return acc.officeId;
+      }
+    }
+    return null;
+  }, [outputs, accounts, currentOffice]);
+  const needsPayee = !!payeeOfficeId;
+  // Кандидаты на payee — active manager/admin/owner принимающего офиса.
+  // Global admin/owner (без officeId) тоже допускаются.
+  const payeeCandidates = useMemo(() => {
+    if (!needsPayee) return [];
+    const allowedRoles = new Set(["manager", "admin", "owner"]);
+    return (users || [])
+      .filter((u) => u && u.active !== false && allowedRoles.has(u.role))
+      .filter((u) => !u.officeId || u.officeId === payeeOfficeId)
+      .map((u) => ({ id: u.id, name: u.name || u.email || u.id }));
+  }, [needsPayee, payeeOfficeId, users]);
+  // Auto-pick первого кандидата при появлении interoffice
+  useEffect(() => {
+    if (!needsPayee) {
+      setPayeeUserId("");
+      return;
+    }
+    if (payeeUserId && payeeCandidates.find((c) => c.id === payeeUserId)) return;
+    if (payeeCandidates.length > 0) setPayeeUserId(payeeCandidates[0].id);
+  }, [needsPayee, payeeCandidates, payeeUserId]);
+
   const canSubmit =
-    amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput && hasClient;
+    amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput && hasClient &&
+    (!needsPayee || !!payeeUserId);
 
   // --- account warnings (non-blocking) ---
   // Список объектов {kind, label} для рендера под Submit.
@@ -864,6 +910,10 @@ export default function ExchangeForm({
         managerCandidates.find((m) => m.id === selectedManagerId)?.name ||
         currentUser.name,
       managerId: selectedManagerId || currentUser.id,
+      // Payee — кто выдаёт деньги. Заполняется только при interoffice OUT.
+      // CashierPage после rpcCreateDeal вызовет rpcSetDealPayee(dealId, payeeUserId).
+      payeeUserId: needsPayee ? payeeUserId : null,
+      payeeOfficeId: needsPayee ? payeeOfficeId : null,
       counterparty,
       counterpartyId: clientId || null,
       referral,
@@ -1218,6 +1268,48 @@ export default function ExchangeForm({
           })()}
         </div>
       </div>
+
+      {/* Interoffice OUT — выбор payee (ответственного за выдачу).
+          Появляется когда хоть один OUT-leg использует account чужого
+          офиса. Сделка отправится со статусом payee_user_id назначен;
+          тот менеджер увидит её как "невыданную" и пометит выданной
+          после физической передачи. P2P уведомления через realtime. */}
+      {needsPayee && (
+        <div className="px-5 pt-3">
+          <div className="bg-indigo-50/60 border border-indigo-200 rounded-[12px] p-3">
+            <label className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 mb-1.5 tracking-wide uppercase">
+              <UserPlus className="w-3.5 h-3.5" />
+              Ответственный за выдачу · {findOffice(payeeOfficeId)?.name || "другой офис"}
+            </label>
+            {payeeCandidates.length === 0 ? (
+              <div className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                Нет менеджеров в принимающем офисе. Назначьте кого-то в настройках.
+              </div>
+            ) : (
+              <>
+                <select
+                  value={payeeUserId}
+                  onChange={(e) => setPayeeUserId(e.target.value)}
+                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-slate-900 outline-none cursor-pointer"
+                >
+                  {payeeCandidates.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.id === currentUser.id ? " (я)" : ""}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10.5px] text-indigo-700/80 mt-1.5">
+                  Сделка появится у выбранного менеджера как <strong>невыданная</strong>.
+                  Он подтвердит после физической выдачи денег клиенту. До этого
+                  деньги резервируются на OUT-аккаунте.
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Quick templates — показываем только в create-режиме */}
       {!isEdit && (
@@ -1829,6 +1921,8 @@ export default function ExchangeForm({
               ? t("currencies_must_differ")
               : exceedsInput
               ? t("exceeds_remaining")
+              : needsPayee && !payeeUserId
+              ? "Выберите ответственного за выдачу"
               : t("complete_the_form")}
           </p>
         )}
@@ -2106,14 +2200,17 @@ function OutputRow({
       USDT_EUR: [0.7, 1.1], EUR_USDT: [0.9, 1.4],
       USDT_GBP: [0.6, 1.0], GBP_USDT: [1.0, 1.7],
       USDT_CHF: [0.7, 1.1], CHF_USDT: [0.9, 1.4],
-      USDT_TRY: [20, 80],   TRY_USDT: [0.012, 0.05],
-      USDT_RUB: [50, 150],  RUB_USDT: [0.006, 0.02],
+      // Расширил TRY/RUB до реалистичных диапазонов на 2025–2026:
+      // лира 30-100, рубль 70-200. Раньше при USD_RUB > 150 авто-инверсия
+      // ломала курс на extreme movements.
+      USDT_TRY: [20, 100],  TRY_USDT: [0.010, 0.05],
+      USDT_RUB: [50, 200],  RUB_USDT: [0.005, 0.02],
       USD_EUR: [0.7, 1.1],  EUR_USD: [0.9, 1.4],
       USD_GBP: [0.6, 1.0],  GBP_USD: [1.0, 1.7],
       USD_CHF: [0.7, 1.1],  CHF_USD: [0.9, 1.4],
-      USD_TRY: [20, 80],    TRY_USD: [0.012, 0.05],
-      USD_RUB: [50, 150],   RUB_USD: [0.006, 0.02],
-      EUR_TRY: [25, 90],    TRY_EUR: [0.011, 0.04],
+      USD_TRY: [20, 100],   TRY_USD: [0.010, 0.05],
+      USD_RUB: [50, 200],   RUB_USD: [0.005, 0.02],
+      EUR_TRY: [25, 110],   TRY_EUR: [0.009, 0.04],
       EUR_GBP: [0.7, 1.0],  GBP_EUR: [1.0, 1.4],
       EUR_CHF: [0.85, 1.1], CHF_EUR: [0.9, 1.2],
     };

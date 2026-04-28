@@ -17,7 +17,7 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcCreateDeal, rpcSetDealPayee, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { supabase } from "../lib/supabase.js";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -148,11 +148,26 @@ export default function CashierPage({
           const outStr = (tx.outputs || [])
             .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
             .join(" + ");
+          // Если задан payee (interoffice OUT) — назначаем его. RPC может
+          // упасть если backend ещё не мигрирован на 0063, но это не должно
+          // блокировать сделку — отдельный try/catch.
+          if (tx.payeeUserId) {
+            try {
+              await rpcSetDealPayee({
+                dealId: res.result,
+                payeeUserId: tx.payeeUserId,
+                payeeOfficeId: tx.payeeOfficeId,
+              });
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("[set_deal_payee] failed", e);
+            }
+          }
           logAudit({
             action: "create",
             entity: "transaction",
             entityId: String(res.result),
-            summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}`,
+            summary: `${fmt(tx.amtIn, tx.curIn)} ${tx.curIn} → ${outStr}${tx.payeeUserId ? " · payee assigned" : ""}`,
           });
 
           // Manual rate → snapshot. Если любой output имеет rate отличный

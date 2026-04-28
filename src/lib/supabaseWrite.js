@@ -1225,6 +1225,34 @@ export async function updateClient(id, patch) {
 
 // ---------- bulk rates import ----------
 
+// Назначить payee (ответственного за выдачу) на existing deal.
+// Вызывается из ExchangeForm после rpcCreateDeal если interoffice OUT.
+// Не блокирует submit — если RPC failed, сделка всё равно создана.
+export async function rpcSetDealPayee({ dealId, payeeUserId, payeeOfficeId }) {
+  assertConfigured();
+  if (!dealId) throw new Error("dealId required");
+  if (!payeeUserId) throw new Error("payeeUserId required");
+  const { error } = await supabase.rpc("set_deal_payee", {
+    p_deal_id: typeof dealId === "string" ? Number(dealId) : dealId,
+    p_payee_user_id: requireUuid(payeeUserId, "payeeUserId"),
+    p_payee_office_id: payeeOfficeId ? requireUuid(payeeOfficeId, "payeeOfficeId") : null,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
+// Payee помечает сделку как выданную (после физической передачи денег клиенту).
+export async function rpcMarkDealPayedOut({ dealId, note }) {
+  assertConfigured();
+  if (!dealId) throw new Error("dealId required");
+  const { error } = await supabase.rpc("mark_deal_payed_out", {
+    p_deal_id: typeof dealId === "string" ? Number(dealId) : dealId,
+    p_note: note || null,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // Вызывает RPC import_rates (atomic update + snapshot).
 // rows: [{from, to, rate, buy_rate?}, ...]  — только валидные, проверенные на фронте.
 // buy_rate (optional): явный курс обратного направления (B→A). Если не задан,

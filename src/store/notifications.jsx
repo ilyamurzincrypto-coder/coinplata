@@ -157,6 +157,8 @@ export function NotificationsProvider({ children }) {
             });
             return;
           }
+          // Payee notify: payee_user_id ставится отдельным RPC после
+          // INSERT. Поэтому слушаем UPDATE (см. ниже отдельный канал).
           // Старый кейс: pending/checking чужой сделки
           if (row.manager_id === me) return; // свои не показываем
           if (row.status !== "pending" && row.status !== "checking") return;
@@ -167,6 +169,50 @@ export function NotificationsProvider({ children }) {
             body: `${row.amount_in} ${row.currency_in} · by ${by?.name || "someone"}`,
             link: "cashier",
           });
+        }
+      )
+      .subscribe();
+
+    // 2c) deals UPDATE — payee_user_id назначен (отдельным RPC после INSERT).
+    //     Если payee_user_id поставили на меня и я не creator → уведомление.
+    //     Также реагируем на payed_out_at — creator видит когда payee выдал.
+    const dealsUpdateCh = supabase
+      .channel("cp-notif-deals-upd")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "deals" },
+        (payload) => {
+          const row = payload.new || {};
+          const old = payload.old || {};
+          const me = currentUserRef.current?.id;
+          if (!me) return;
+          // Назначили payee = меня
+          const newlyAssignedPayee =
+            row.payee_user_id === me &&
+            old.payee_user_id !== me &&
+            row.created_by_user_id !== me;
+          if (newlyAssignedPayee) {
+            const creator = (usersRef.current || []).find((u) => u.id === row.created_by_user_id);
+            pushNotification({
+              type: "deal_payee_assigned",
+              title: `Невыданная сделка #${row.id}`,
+              body: `Выдать ${row.amount_in} ${row.currency_in} · от ${creator?.name || "коллеги"}`,
+              link: "cashier",
+            });
+            return;
+          }
+          // Сделку выдали (для creator'а)
+          const justPayedOut =
+            row.payed_out_at && !old.payed_out_at && row.created_by_user_id === me && row.payed_out_by !== me;
+          if (justPayedOut) {
+            const payee = (usersRef.current || []).find((u) => u.id === row.payed_out_by);
+            pushNotification({
+              type: "deal_payed_out",
+              title: `Сделка #${row.id} выдана`,
+              body: `${payee?.name || "Менеджер"} подтвердил выдачу`,
+              link: "cashier",
+            });
+          }
         }
       )
       .subscribe();
@@ -218,6 +264,7 @@ export function NotificationsProvider({ children }) {
     return () => {
       try { supabase.removeChannel(pairsCh); } catch {}
       try { supabase.removeChannel(dealsCh); } catch {}
+      try { supabase.removeChannel(dealsUpdateCh); } catch {}
       try { supabase.removeChannel(transfersCh); } catch {}
       try { supabase.removeChannel(obCh); } catch {}
     };

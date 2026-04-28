@@ -299,6 +299,8 @@ export async function loadDealsWithLegs(usersById = {}) {
       .map(mapLegToOutput);
     const created = new Date(d.created_at);
     const manager = usersById[d.manager_id];
+    const payee = d.payee_user_id ? usersById[d.payee_user_id] : null;
+    const creator = d.created_by_user_id ? usersById[d.created_by_user_id] : null;
     return {
       id: d.id,
       time: created.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
@@ -315,6 +317,17 @@ export async function loadDealsWithLegs(usersById = {}) {
       profit: num(d.profit_usd),
       manager: manager?.full_name || "—",
       managerId: d.manager_id,
+      // Payee — ответственный за выдачу (interoffice flow). Если задан и
+      // payedOutAt=null → сделка "невыданная".
+      payeeUserId: d.payee_user_id || null,
+      payeeName: payee?.full_name || null,
+      payeeOfficeId: d.payee_office_id || null,
+      payedOutAt: d.payed_out_at || null,
+      payedOutBy: d.payed_out_by || null,
+      payedOutNote: d.payed_out_note || null,
+      // Creator — кто реально нажал "создать" (admin от имени менеджера).
+      createdByUserId: d.created_by_user_id || null,
+      createdByName: creator?.full_name || null,
       counterparty: d.client_nickname || "",
       counterpartyId: d.client_id,
       referral: d.referral,
