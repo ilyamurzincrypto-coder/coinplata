@@ -31,7 +31,7 @@ import { rpcCreateOtcDeal, withToast } from "../lib/supabaseWrite.js";
 const MODE_THEME = {
   self: {
     label: "Зачислил нам",
-    sub: "USDT уже на нашем счёте — выдаём клиенту со своего",
+    sub: "Валюта уже на нашем счёте — выдаём клиенту со своего",
     icon: ArrowDownToLine,
     // success-bar
     successWrap: "bg-gradient-to-br from-indigo-50/60 to-white border-indigo-200/80",
@@ -48,7 +48,7 @@ const MODE_THEME = {
   },
   partner_pays_client: {
     label: "Выдаёт клиенту",
-    sub: "Партнёр передаёт USDT клиенту напрямую — у нас IN нет",
+    sub: "Партнёр передаёт валюту клиенту напрямую — у нас IN нет",
     icon: ArrowUpFromLine,
     successWrap: "bg-gradient-to-br from-amber-50/60 to-white border-amber-200/80",
     successIconWrap: "bg-amber-100 ring-1 ring-amber-200/60",

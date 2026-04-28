@@ -595,7 +595,12 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     (amount, from) => {
       if (!from) return amount || 0;
       if (from === "USDT") return amount || 0;
-      return convert(amount, from, "USDT", getRateFx);
+      // Stablecoin → USDT 1:1 — display assumption когда нет явного fx-курса.
+      // USDC, DAI, BUSD котируются ≈ 1:1 к USDT/USD на cash markets.
+      const STABLES = new Set(["USDC", "DAI", "BUSD"]);
+      if (STABLES.has(from)) return amount || 0;
+      const v = convert(amount, from, "USDT", getRateFx);
+      return Number.isFinite(v) ? v : 0;
     },
     [getRateFx]
   );
