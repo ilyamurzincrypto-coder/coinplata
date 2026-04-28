@@ -2348,28 +2348,17 @@ function OutputRow({
             );
           })}
 
-          {/* MANUAL — всегда */}
-          <button
-            type="button"
-            onClick={() => {
-              if (!o.manualRate) onToggleManual?.();
-            }}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold border transition-colors ${
-              o.manualRate
-                ? "bg-amber-500 text-white border-amber-500"
-                : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50"
-            }`}
-            title={t("xf_manual_rate_tip") || "Ввести курс вручную — нестандартный для этой сделки"}
-          >
-            {t("xf_manual_rate") || "Manual"}
-          </button>
         </div>
       )}
 
+      {/* Rate input. Всегда editable. Любое нажатие в input → manualRate=true
+          автоматически (юзер начал ручной ввод). Chip-clicks выше
+          возвращают в auto-mode (manualRate=false). Никакого отдельного
+          Auto/Manual toggle — лишнее действие. */}
       <div className="mt-2 flex items-center gap-2">
         <div
-          className={`flex-1 flex items-center rounded-[10px] border transition-all px-3 py-1.5 ${
-            o.manualRate ? "bg-white border-slate-300" : "bg-slate-100 border-slate-200"
+          className={`flex-1 flex items-center rounded-[10px] border transition-all px-3 py-1.5 bg-white ${
+            o.manualRate ? "border-amber-300" : "border-slate-300"
           }`}
         >
           <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] mr-2">{t("rate")}</span>
@@ -2377,29 +2366,27 @@ function OutputRow({
             type="text"
             inputMode="decimal"
             value={o.rate}
-            disabled={!o.manualRate}
             onChange={(e) =>
               onUpdate({
                 rate: e.target.value.replace(/[^\d.,]/g, "").replace(",", "."),
+                manualRate: true,
+                rateSource: "manual",
+                ratePinned: false,
                 touched: false,
               })
             }
             placeholder="0.00"
-            className="flex-1 bg-transparent outline-none text-[13px] font-bold text-slate-900 placeholder:text-slate-300 tabular-nums disabled:text-slate-600 min-w-0"
+            className="flex-1 bg-transparent outline-none text-[13px] font-bold text-slate-900 placeholder:text-slate-300 tabular-nums min-w-0"
           />
+          {o.manualRate && (
+            <span
+              className="ml-1.5 text-[9px] font-bold text-amber-700 tracking-wider uppercase"
+              title="Курс введён вручную"
+            >
+              manual
+            </span>
+          )}
         </div>
-        <button
-          onClick={onToggleManual}
-          className={`inline-flex items-center gap-1 px-2 py-1.5 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-            o.manualRate
-              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-              : "bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300"
-          }`}
-          title={o.manualRate ? t("manual_rate") : t("auto_rate")}
-        >
-          {o.manualRate ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-          {o.manualRate ? "Manual" : "Auto"}
-        </button>
       </div>
 
       {/* Sanity warning — курс подозрительно отличается от triangulated
