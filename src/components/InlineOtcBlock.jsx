@@ -1,12 +1,10 @@
 // src/components/InlineOtcBlock.jsx
-// Inline OTC сделка с контрагентом — встраивается ВНУТРЬ ExchangeForm
-// после IN section. Сценарий: кассир принял RUB у клиента, тут же
-// оформляет OTC обмен с партнёром (RUB → USDT через партнёра), затем
-// продолжает основную сделку (выдаёт USDT клиенту).
+// Inline OTC сделка — встраивается ВНУТРЬ ExchangeForm после IN section.
+// Сценарий: кассир принял RUB у клиента, тут же оформляет OTC обмен с
+// партнёром (RUB → USDT через партнёра), затем выдача USDT клиенту.
 //
-// Collapsible. Submit пишет отдельный deal через rpcCreateOtcDeal —
-// независимо от основной сделки. После создания блок схлопывается с
-// success badge.
+// "Отдаём" auto-filled из IN section (что только что приняли от клиента).
+// Юзер вводит только: партнёр + получаем (счёт + сумма).
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -21,71 +19,69 @@ import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
 import PartnerSelect from "./PartnerSelect.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAudit } from "../store/audit.jsx";
-import { useRates } from "../store/rates.jsx";
-import { fmt, curSymbol, multiplyAmount } from "../utils/money.js";
+import { fmt, curSymbol } from "../utils/money.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateOtcDeal, withToast } from "../lib/supabaseWrite.js";
 
-export default function InlineOtcBlock() {
+export default function InlineOtcBlock({
+  // From IN section: что приняли от клиента — это и есть "отдаём партнёру"
+  fromAccountId,
+  fromAmount,
+  fromCurrency,
+  // Callback после успешного создания OTC — ExchangeForm пишет в state и
+  // показывает options в outputs ("это OTC-сделка").
+  onCreated,
+  // Уже созданная OTC (после submit) — для свернутого вида с инфой
+  existing,
+  // Сброс existing — если юзер хочет пересоздать
+  onClear,
+}) {
   const { accounts, balanceOf } = useAccounts();
   const { addEntry: logAudit } = useAudit();
-  const { getRate } = useRates();
 
   const activeAccounts = useMemo(() => accounts.filter((a) => a.active), [accounts]);
 
   const [open, setOpen] = useState(false);
-  const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
-  const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [counterparty, setCounterparty] = useState("");
   const [note, setNote] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
   const [busy, setBusy] = useState(false);
-  const [lastCreatedId, setLastCreatedId] = useState(null);
 
-  const reset = () => {
-    setFromId("");
-    setToId("");
-    setFromAmount("");
-    setToAmount("");
-    setCounterparty("");
-    setNote("");
-    setOccurredAt("");
-  };
-
-  const from = activeAccounts.find((a) => a.id === fromId);
-  const to = activeAccounts.find((a) => a.id === toId);
-  const fromBalance = from ? balanceOf(from.id) : 0;
-  const fromAmt = parseFloat(String(fromAmount).replace(",", ".")) || 0;
-  const toAmt = parseFloat(String(toAmount).replace(",", ".")) || 0;
-  const insufficient = from && fromAmt > fromBalance;
-  const sameAccount = fromId && toId && fromId === toId;
-
-  const computedRate = useMemo(() => {
-    if (!from || !to) return 0;
-    if (from.currency === to.currency) return 1;
-    if (fromAmt > 0 && toAmt > 0) return toAmt / fromAmt;
-    return 0;
-  }, [from, to, fromAmt, toAmt]);
-
-  // Auto-fill toAmount по market rate как подсказка
+  // Сбрасываем форму когда блок свернут.
   useEffect(() => {
-    if (fromAmt > 0 && !toAmount && from && to && from.currency !== to.currency) {
-      const r = getRate(from.currency, to.currency);
-      if (r && Number.isFinite(r) && r > 0) {
-        setToAmount(String(multiplyAmount(fromAmt, r, 2)));
-      }
+    if (!open) {
+      setToId("");
+      setToAmount("");
+      setCounterparty("");
+      setNote("");
+      setOccurredAt("");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromAmt, from, to]);
+  }, [open]);
+
+  const fromAcc = activeAccounts.find((a) => a.id === fromAccountId);
+  const fromAmtNum = parseFloat(String(fromAmount).replace(",", ".")) || 0;
+  const fromBalance = fromAcc ? balanceOf(fromAcc.id) : 0;
+  const insufficient = fromAcc && fromAmtNum > fromBalance;
+  const fromReady = fromAcc && fromAmtNum > 0;
+
+  const toAcc = activeAccounts.find((a) => a.id === toId);
+  const toAmt = parseFloat(String(toAmount).replace(",", ".")) || 0;
+
+  // Курс вычисляется автоматически из сумм.
+  const computedRate = useMemo(() => {
+    if (!fromAcc || !toAcc) return 0;
+    if (fromAcc.currency === toAcc.currency) return 1;
+    if (fromAmtNum > 0 && toAmt > 0) return toAmt / fromAmtNum;
+    return 0;
+  }, [fromAcc, toAcc, fromAmtNum, toAmt]);
 
   const canSubmit =
-    from &&
-    to &&
-    !sameAccount &&
-    fromAmt > 0 &&
+    fromReady &&
+    toAcc &&
+    fromAcc.id !== toAcc.id &&
     toAmt > 0 &&
     computedRate > 0 &&
     counterparty.trim().length > 0;
@@ -98,10 +94,10 @@ export default function InlineOtcBlock() {
       const res = await withToast(
         () =>
           rpcCreateOtcDeal({
-            officeId: from.officeId,
-            fromAccountId: from.id,
-            fromAmount: fromAmt,
-            toAccountId: to.id,
+            officeId: fromAcc.officeId,
+            fromAccountId: fromAcc.id,
+            fromAmount: fromAmtNum,
+            toAccountId: toAcc.id,
             toAmount: toAmt,
             rate: computedRate,
             counterparty: counterparty.trim(),
@@ -109,7 +105,7 @@ export default function InlineOtcBlock() {
             occurredAt: occurredIso,
           }),
         {
-          success: occurredIso ? "OTC оформлена задним числом" : "OTC сделка создана",
+          success: occurredIso ? "OTC оформлена задним числом" : "OTC создана",
           errorPrefix: "OTC failed",
         }
       );
@@ -118,10 +114,21 @@ export default function InlineOtcBlock() {
           action: "create",
           entity: "transaction",
           entityId: String(res.result || ""),
-          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmt, from.currency)} ${from.currency} → ${fmt(toAmt, to.currency)} ${to.currency}${occurredIso ? ` (бэкдейт)` : ""}`,
+          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} → ${fmt(toAmt, toAcc.currency)} ${toAcc.currency}${occurredIso ? " (бэкдейт)" : ""}`,
         });
-        setLastCreatedId(res.result);
-        reset();
+        // Передаём результат наверх — ExchangeForm применит к outputs.
+        onCreated?.({
+          dealId: res.result,
+          partnerName: counterparty.trim(),
+          fromAccountId: fromAcc.id,
+          fromAmount: fromAmtNum,
+          fromCurrency: fromAcc.currency,
+          toAccountId: toAcc.id,
+          toAmount: toAmt,
+          toCurrency: toAcc.currency,
+          rate: computedRate,
+          occurredAt: occurredIso,
+        });
         setOpen(false);
       }
     } finally {
@@ -129,41 +136,82 @@ export default function InlineOtcBlock() {
     }
   };
 
+  // Свернутый вид + есть existing — показываем краткую инфу.
+  if (existing && !open) {
+    return (
+      <div className="my-3 bg-emerald-50/40 border border-emerald-200 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap">
+        <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+          <CheckCircle2 className="w-4 h-4 text-emerald-700" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[12.5px] font-bold text-emerald-900 inline-flex items-center gap-2 flex-wrap">
+            <span>OTC #{existing.dealId} создана</span>
+            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded uppercase tracking-wider">
+              {existing.partnerName}
+            </span>
+          </div>
+          <div className="text-[11px] text-emerald-800/80 inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums">
+            <span>
+              {curSymbol(existing.fromCurrency)}
+              {fmt(existing.fromAmount, existing.fromCurrency)} {existing.fromCurrency}
+            </span>
+            <ArrowLeftRight className="w-3 h-3" />
+            <span className="font-semibold">
+              {curSymbol(existing.toCurrency)}
+              {fmt(existing.toAmount, existing.toCurrency)} {existing.toCurrency}
+            </span>
+            <span className="text-emerald-600">·</span>
+            <span>курс {existing.rate.toFixed(4)}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[10.5px] font-semibold text-emerald-700 hover:text-emerald-900 underline"
+        >
+          Сбросить
+        </button>
+      </div>
+    );
+  }
+
+  // Свернутый без existing — кнопка раскрытия.
   if (!open) {
     return (
       <div className="my-3">
         <button
           type="button"
-          onClick={() => {
-            setOpen(true);
-            setLastCreatedId(null);
-          }}
-          className="w-full inline-flex items-center justify-between gap-3 px-4 py-2.5 rounded-[10px] bg-indigo-50/60 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 transition-colors"
-          title="OTC обмен с партнёром: например приняли RUB → партнёр прислал USDT. Без fee, можно задним числом."
+          onClick={() => setOpen(true)}
+          disabled={!fromReady}
+          className={`w-full inline-flex items-center justify-between gap-3 px-4 py-2.5 rounded-[10px] border transition-colors ${
+            fromReady
+              ? "bg-indigo-50/60 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300"
+              : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+          }`}
+          title={
+            fromReady
+              ? "Оформить OTC обмен через партнёра"
+              : "Заполните 'Принимаем' выше — сначала укажите счёт и сумму, которые приняли от клиента"
+          }
         >
           <div className="flex items-center gap-2">
             <ArrowLeftRight className="w-4 h-4" />
             <span className="text-[12.5px] font-bold">
               Сделка с контрагентом (OTC)
             </span>
-            <span className="text-[10.5px] font-normal text-indigo-600/80">
-              · обмен через партнёра, можно задним числом
+            <span className="text-[10.5px] font-normal opacity-80">
+              {fromReady
+                ? `· обменять ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} через партнёра`
+                : "· сначала заполните «Принимаем»"}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            {lastCreatedId && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-1.5 py-0.5">
-                <CheckCircle2 className="w-2.5 h-2.5" />
-                #{lastCreatedId} создана
-              </span>
-            )}
-            <ChevronDown className="w-3.5 h-3.5" />
-          </div>
+          <ChevronDown className="w-3.5 h-3.5" />
         </button>
       </div>
     );
   }
 
+  // Раскрытый вид формы.
   return (
     <div className="my-3 bg-indigo-50/40 border-2 border-indigo-200 rounded-[12px] p-4">
       <div className="flex items-center justify-between mb-3">
@@ -187,7 +235,7 @@ export default function InlineOtcBlock() {
       </div>
 
       <div className="space-y-2.5">
-        {/* Counterparty — селектор с поиском и созданием inline */}
+        {/* Контрагент */}
         <div>
           <label className="block text-[10px] font-bold text-slate-500 mb-1 tracking-wide uppercase">
             Контрагент / Партнёр
@@ -195,58 +243,45 @@ export default function InlineOtcBlock() {
           <PartnerSelect value={counterparty} onChange={setCounterparty} />
         </div>
 
+        {/* Отдаём (auto from IN) + Получаем */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {/* From */}
+          {/* Отдаём — read-only display из IN section */}
           <div>
             <label className="block text-[10px] font-bold text-rose-700 mb-1 tracking-wide uppercase">
-              Отдаём
+              Отдаём партнёру
             </label>
-            <GroupedAccountSelect
-              accounts={activeAccounts}
-              value={fromId}
-              onChange={setFromId}
-              placeholder="Счёт списания"
-            />
-            {from && (
-              <input
-                type="text"
-                inputMode="decimal"
-                value={fromAmount}
-                onChange={(e) =>
-                  setFromAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
-                }
-                placeholder={`0 ${from.currency}`}
-                className={`mt-1.5 w-full bg-white border-2 rounded-[8px] px-2.5 py-1.5 text-[14px] font-bold tabular-nums outline-none ${
-                  insufficient ? "border-amber-400" : "border-rose-200 focus:border-rose-400"
-                }`}
-              />
-            )}
-            {from && (
-              <div className="mt-1 text-[10px] text-slate-500 tabular-nums">
-                {officeName(from.officeId)} · {curSymbol(from.currency)}
-                {fmt(fromBalance, from.currency)} в наличии
+            <div className="bg-white border-2 border-rose-200 rounded-[8px] px-2.5 py-1.5">
+              <div className="text-[11px] text-slate-500 truncate">
+                {fromAcc ? `${officeName(fromAcc.officeId)} · ${fromAcc.name}` : "—"}
               </div>
-            )}
+              <div className="text-[15px] font-bold tabular-nums text-slate-900">
+                {curSymbol(fromAcc?.currency)}
+                {fmt(fromAmtNum, fromAcc?.currency)} {fromAcc?.currency}
+              </div>
+              <div className="text-[10px] text-slate-500 mt-0.5">
+                из «Принимаем» — то что приняли от клиента
+              </div>
+            </div>
             {insufficient && (
               <div className="mt-1 text-[10px] font-medium text-amber-700 inline-flex items-center gap-1">
                 <AlertCircle className="w-2.5 h-2.5" />
-                Недостаточно средств
+                Недостаточно средств · в наличии {fmt(fromBalance, fromAcc?.currency)}
               </div>
             )}
           </div>
 
-          {/* To */}
+          {/* Получаем — input */}
           <div>
             <label className="block text-[10px] font-bold text-emerald-700 mb-1 tracking-wide uppercase">
-              Получаем
+              Получаем от партнёра
             </label>
             <GroupedAccountSelect
-              accounts={activeAccounts.filter((a) => a.id !== fromId)}
+              accounts={activeAccounts.filter((a) => a.id !== fromAccountId)}
               value={toId}
               onChange={setToId}
               placeholder="Счёт зачисления"
             />
-            {to && (
+            {toAcc && (
               <input
                 type="text"
                 inputMode="decimal"
@@ -254,21 +289,21 @@ export default function InlineOtcBlock() {
                 onChange={(e) =>
                   setToAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                 }
-                placeholder={`0 ${to.currency}`}
-                className="mt-1.5 w-full bg-white border-2 border-emerald-200 focus:border-emerald-400 rounded-[8px] px-2.5 py-1.5 text-[14px] font-bold tabular-nums outline-none"
+                placeholder={`0 ${toAcc.currency}`}
+                className="mt-1.5 w-full bg-white border-2 border-emerald-200 focus:border-emerald-400 rounded-[8px] px-2.5 py-1.5 text-[15px] font-bold tabular-nums outline-none"
               />
             )}
           </div>
         </div>
 
-        {/* Computed rate */}
-        {from && to && fromAmt > 0 && toAmt > 0 && from.currency !== to.currency && (
+        {/* Эфф. курс */}
+        {fromAcc && toAcc && fromAmtNum > 0 && toAmt > 0 && fromAcc.currency !== toAcc.currency && (
           <div className="bg-white border border-slate-200 rounded-[8px] px-2.5 py-1.5 flex items-center justify-between">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
               Эфф. курс
             </span>
             <span className="text-[11.5px] font-bold tabular-nums text-slate-800">
-              1 {from.currency} = {computedRate.toFixed(6)} {to.currency}
+              1 {fromAcc.currency} = {computedRate.toFixed(6)} {toAcc.currency}
             </span>
           </div>
         )}
@@ -301,16 +336,12 @@ export default function InlineOtcBlock() {
           </div>
         </div>
 
-        {/* Submit */}
         <div className="flex items-center justify-end gap-2 pt-1">
           <button
             type="button"
-            onClick={() => {
-              reset();
-              setOpen(false);
-            }}
+            onClick={() => setOpen(false)}
             disabled={busy}
-            className="px-3 py-1.5 rounded-[8px] bg-white border border-slate-200 text-slate-700 text-[11.5px] font-semibold hover:bg-slate-50 transition-colors disabled:opacity-60"
+            className="px-3 py-1.5 rounded-[8px] bg-white border border-slate-200 text-slate-700 text-[11.5px] font-semibold hover:bg-slate-50 disabled:opacity-60"
           >
             Отмена
           </button>
@@ -328,7 +359,7 @@ export default function InlineOtcBlock() {
               ? "Создание…"
               : occurredAt
               ? "Создать (задним числом)"
-              : "Создать OTC сделку"}
+              : "Создать OTC"}
           </button>
         </div>
       </div>

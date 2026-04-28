@@ -281,6 +281,11 @@ export default function ExchangeForm({
   const [backdateAt, setBackdateAt] = useState(
     initialData?.backdateAt || draft?.backdateAt || ""
   );
+
+  // OTC result — после submit InlineOtcBlock сюда пишется инфа о созданной
+  // OTC сделке. Используется для (a) показа краткой инфы под IN section,
+  // (b) auto-fill outputs кнопкой "Применить из OTC".
+  const [otcResult, setOtcResult] = useState(null);
   // Recent counterparties — последние использованные клиенты в quick-bar.
   // Persist'им в localStorage (max 8). На submit добавляется в начало.
   const RECENT_KEY = "coinplata.recentCounterparties";
@@ -1392,10 +1397,63 @@ export default function ExchangeForm({
 
       {/* OTC inline блок — после IN section, перед outputs. Сценарий:
           приняли деньги от клиента → партнёр конвертирует → партнёр прислал
-          другую валюту. Эту партнёрскую сделку оформляем тут же inline. */}
+          другую валюту. "Отдаём партнёру" auto = то что приняли в IN. */}
       {!isEdit && (
         <div className="px-5">
-          <InlineOtcBlock />
+          <InlineOtcBlock
+            fromAccountId={accountId}
+            fromAmount={amtIn}
+            fromCurrency={curIn}
+            existing={otcResult}
+            onCreated={(result) => {
+              setOtcResult(result);
+              // Auto-apply: первый OUT-leg получает данные из OTC
+              setOutputs((prev) => {
+                if (prev.length === 0) {
+                  return [
+                    {
+                      ...emptyOutput(result.toCurrency),
+                      currency: result.toCurrency,
+                      amount: String(result.toAmount),
+                      rate: String(result.rate),
+                      manualRate: true,
+                      touched: true,
+                      accountId: result.toAccountId,
+                      otcDealId: result.dealId,
+                    },
+                  ];
+                }
+                // Подставляем в первый output если он пустой или совпадает по валюте
+                return prev.map((o, idx) => {
+                  if (idx !== 0) return o;
+                  const empty = !o.amount && !o.rate && !o.accountId;
+                  if (empty || o.currency === result.toCurrency) {
+                    return {
+                      ...o,
+                      currency: result.toCurrency,
+                      amount: String(result.toAmount),
+                      rate: String(result.rate),
+                      manualRate: true,
+                      touched: true,
+                      accountId: result.toAccountId,
+                      otcDealId: result.dealId,
+                    };
+                  }
+                  return o;
+                });
+              });
+            }}
+            onClear={() => {
+              setOtcResult(null);
+              setOutputs((prev) =>
+                prev.map((o) => {
+                  if (!o.otcDealId) return o;
+                  const { otcDealId, ...rest } = o;
+                  return rest;
+                })
+              );
+            }}
+          />
         </div>
       )}
 
@@ -2457,12 +2515,28 @@ function OutputRow({
   };
 
   return (
-    <div data-output-row className="bg-slate-50/60 rounded-[14px] border border-slate-200 p-3">
+    <div
+      data-output-row
+      className={`rounded-[14px] border p-3 ${
+        o.otcDealId
+          ? "bg-emerald-50/40 border-emerald-300"
+          : "bg-slate-50/60 border-slate-200"
+      }`}
+    >
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
             #{index + 1}
           </span>
+          {o.otcDealId && (
+            <span
+              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
+              title={`Получено из OTC сделки #${o.otcDealId}. Сумма и курс взяты автоматически.`}
+            >
+              <ArrowLeftRight className="w-2.5 h-2.5" />
+              OTC #{o.otcDealId}
+            </span>
+          )}
           <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px] gap-0.5">
             {otherCurrencies.map((c) => (
               <button
