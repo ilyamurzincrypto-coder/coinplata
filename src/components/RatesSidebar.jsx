@@ -56,8 +56,8 @@ function shortOfficeName(name) {
 // pairs-container — столько пар сколько помещается в available
 // height без скролла.
 const COMPACT_MIN = 3;
-// Approx высота одной pair-карточки в px (px-2 py-1 + 2 строки текста).
-const PAIR_ROW_HEIGHT = 38;
+// Approx высота одной pair-карточки в px (одна строка a→b rate).
+const PAIR_ROW_HEIGHT = 30;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
@@ -273,43 +273,33 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         }`}
       >
         {visiblePairs.map(([a, b]) => {
-          const { forward: sell, backward: buy } = getTradingRates({
-            getRate: getRateForTab,
-            base: a,
-            quote: b,
-          });
-          const pairHasOverride = hasOverride(a, b) || hasOverride(b, a);
+          // Одна карточка = одна пара (master direction). Без перевернутого
+          // двойного отображения — четкая позиция a → b.
+          const rate = getRateForTab(a, b);
+          const pairHasOverride = hasOverride(a, b);
           return (
             <div
               key={`${a}-${b}`}
-              className={`px-2 py-1 rounded-[8px] transition-colors ${
+              className={`px-2 py-1.5 rounded-[8px] transition-colors flex items-baseline justify-between gap-2 ${
                 pairHasOverride ? "bg-indigo-50/60 ring-1 ring-indigo-100" : "bg-slate-50"
               }`}
             >
-              {pairHasOverride && (
-                <span
-                  className="float-right px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
-                  title="Office override активен"
-                >
-                  OFC
-                </span>
-              )}
-              <div className="flex items-baseline justify-between gap-1 leading-tight">
-                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
-                  {a}<ArrowRight className="w-2 h-2 mx-0.5" />{b}
-                </span>
-                <span className="text-[12px] font-bold tabular-nums text-slate-900">
-                  {formatRate(sell)}
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between gap-1 leading-tight">
-                <span className="text-[10px] font-semibold text-slate-500 inline-flex items-center">
-                  {b}<ArrowRight className="w-2 h-2 mx-0.5" />{a}
-                </span>
-                <span className="text-[11px] font-bold tabular-nums text-slate-600">
-                  {formatRate(buy)}
-                </span>
-              </div>
+              <span className="text-[11px] font-semibold text-slate-700 inline-flex items-center gap-0.5">
+                {a}
+                <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
+                {b}
+                {pairHasOverride && (
+                  <span
+                    className="ml-1 px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
+                    title="Office override активен"
+                  >
+                    OFC
+                  </span>
+                )}
+              </span>
+              <span className="text-[12px] font-bold tabular-nums text-slate-900">
+                {formatRate(rate)}
+              </span>
             </div>
           );
         })}
