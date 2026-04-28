@@ -1270,6 +1270,91 @@ export default function ExchangeForm({
           ))}
         </div>
 
+        {/* SUMMARY block — курс + checkbox комиссии в ОДНОЙ строке + итог.
+            Структура:
+              ┌─────────────────────────────────────────────────┐
+              │ КУРС  0.85    [✓] комиссия (мин)  $10           │
+              ├─────────────────────────────────────────────────┤
+              │ ИТОГ КЛИЕНТУ              850 EUR  (16px bold)  │
+              │ 1000 × 0.850000 = 850 (breakdown математики)    │
+              └─────────────────────────────────────────────────┘
+            Размещён ВЫШЕ Conditions — это центр принятия решения.
+            Conditions ниже — свернутые "дополнительные условия". */}
+        {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
+          <div className="mt-5 px-5 py-4 rounded-[14px] border border-slate-200 bg-slate-50/60 space-y-2">
+            {/* Rate + Fee toggle + Fee value — single row */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              {outputs.length === 1 ? (
+                <div className="inline-flex items-baseline gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
+                    {t("summary_rate")}
+                  </span>
+                  <span className="text-[13px] font-semibold tabular-nums text-slate-800">
+                    {parseFloat(outputs[0].rate).toLocaleString("en-US", { maximumFractionDigits: 6 })}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
+                  Спред-маржа
+                </span>
+              )}
+              <div className="inline-flex items-center gap-2">
+                <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
+                  <input
+                    type="checkbox"
+                    checked={applyMinFee}
+                    onChange={(e) => setApplyMinFee(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
+                  />
+                  <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
+                    Комиссия
+                    {minFeeUsd > 0 && (
+                      <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
+                        мин ${fmt(minFeeUsd)}
+                      </span>
+                    )}
+                  </span>
+                </label>
+                <span className="inline-flex items-center gap-1 text-[13px] font-bold tabular-nums text-amber-700">
+                  ${fmt(effectiveFee)}
+                  {minFeeApplied && (
+                    <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
+                      {t("summary_min_label")}
+                    </span>
+                  )}
+                  {!applyMinFee && (
+                    <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1 py-0.5 rounded">
+                      без мин
+                    </span>
+                  )}
+                </span>
+              </div>
+            </div>
+            <div className="border-t border-slate-200/70 my-1.5" />
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                {t("summary_you_receive")}
+              </span>
+              <span className="text-[16px] font-bold tabular-nums text-slate-900">
+                {outputs
+                  .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
+                  .join(" + ")}
+              </span>
+            </div>
+            {outputs.length === 1 && parseFloat(outputs[0].rate) > 0 && (
+              <div className="text-[10px] text-slate-400 tabular-nums text-right font-mono">
+                {fmt(parseFloat(amtIn), curIn)} × {parseFloat(outputs[0].rate).toFixed(6)}
+                {!applyMinFee || effectiveFee === 0 ? null : (
+                  <>
+                    {" "}− ${fmt(effectiveFee)} fee
+                  </>
+                )}
+                {" "}= {fmt(parseFloat(outputs[0].amount) || 0, outputs[0].currency)}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ═══════════════════════════════════════════════════════════════════
             CONDITIONS block — collapsable. Header-кнопка показывает counter
             активных условий и chevron. Body показывается только когда
@@ -1509,95 +1594,6 @@ export default function ExchangeForm({
         })()}
       </div>
 
-      {/* SUMMARY: курс + checkbox комиссии в ОДНОЙ строке + fee + итог.
-          Структура:
-            ┌─────────────────────────────────────────────────┐
-            │ КУРС  0.85    [✓] комиссия (мин)  $10           │
-            ├─────────────────────────────────────────────────┤
-            │ ИТОГ КЛИЕНТУ              850 EUR  (16px bold)  │
-            └─────────────────────────────────────────────────┘ */}
-      {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
-        <div className="px-5 py-4 border-t border-slate-100 bg-slate-50/60 space-y-2">
-          {/* Rate + Fee toggle + Fee value — single row */}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            {/* LEFT: rate */}
-            {outputs.length === 1 ? (
-              <div className="inline-flex items-baseline gap-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
-                  {t("summary_rate")}
-                </span>
-                <span className="text-[13px] font-semibold tabular-nums text-slate-800">
-                  {parseFloat(outputs[0].rate).toLocaleString("en-US", { maximumFractionDigits: 6 })}
-                </span>
-              </div>
-            ) : (
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
-                Спред-маржа
-              </span>
-            )}
-            {/* RIGHT: fee toggle + value */}
-            <div className="inline-flex items-center gap-2">
-              <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group">
-                <input
-                  type="checkbox"
-                  checked={applyMinFee}
-                  onChange={(e) => setApplyMinFee(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
-                />
-                <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
-                  Комиссия
-                  {minFeeUsd > 0 && (
-                    <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
-                      мин ${fmt(minFeeUsd)}
-                    </span>
-                  )}
-                </span>
-              </label>
-              <span className="inline-flex items-center gap-1 text-[13px] font-bold tabular-nums text-amber-700">
-                ${fmt(effectiveFee)}
-                {minFeeApplied && (
-                  <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
-                    {t("summary_min_label")}
-                  </span>
-                )}
-                {!applyMinFee && (
-                  <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1 py-0.5 rounded">
-                    без мин
-                  </span>
-                )}
-              </span>
-            </div>
-          </div>
-          {/* Divider */}
-          <div className="border-t border-slate-200/70 my-1.5" />
-          {/* You receive — финальный итог, акцент */}
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-              {t("summary_you_receive")}
-            </span>
-            <span className="text-[16px] font-bold tabular-nums text-slate-900">
-              {outputs
-                .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
-                .join(" + ")}
-            </span>
-          </div>
-          {/* Breakdown математики — чтобы видно что и почему получается.
-              Если результат не совпадает с ожиданиями — сразу понятно
-              что rate в БД именно такой (округление / спред / неточный
-              ввод admin'ом). */}
-          {outputs.length === 1 && parseFloat(outputs[0].rate) > 0 && (
-            <div className="text-[10px] text-slate-400 tabular-nums text-right font-mono">
-              {fmt(parseFloat(amtIn), curIn)} × {parseFloat(outputs[0].rate).toFixed(6)}
-              {!applyMinFee || effectiveFee === 0 ? null : (
-                <>
-                  {" "}− ${fmt(effectiveFee)} fee
-                </>
-              )}
-              {" "}= {fmt(parseFloat(outputs[0].amount) || 0, outputs[0].currency)}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* CTA */}
       <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4">
