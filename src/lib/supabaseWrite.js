@@ -1253,12 +1253,14 @@ export async function rpcConfirmTransfer({ transferId, note }) {
 }
 
 // receiver отклоняет входящий pending transfer. OUT удаляется → status=rejected.
+// NB: reject_transfer / cancel_transfer принимают p_reason (а confirm_transfer
+// принимает p_note). Не путать — PostgREST не найдёт функцию по неправильному имени.
 export async function rpcRejectTransfer({ transferId, note }) {
   assertConfigured();
   const id = requireUuid(transferId, "transferId");
   const { error } = await supabase.rpc("reject_transfer", {
     p_transfer_id: id,
-    p_note: note || null,
+    p_reason: note || null,
   });
   if (error) throw new Error(error.message || String(error));
   bumpDataVersion();
@@ -1270,7 +1272,7 @@ export async function rpcCancelTransfer({ transferId, note }) {
   const id = requireUuid(transferId, "transferId");
   const { error } = await supabase.rpc("cancel_transfer", {
     p_transfer_id: id,
-    p_note: note || null,
+    p_reason: note || null,
   });
   if (error) throw new Error(error.message || String(error));
   bumpDataVersion();
