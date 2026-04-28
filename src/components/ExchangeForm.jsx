@@ -291,7 +291,9 @@ export default function ExchangeForm({
       src.partialMode ||
       src.referral ||
       src.isPending ||
-      src.plannedLocal
+      src.plannedLocal ||
+      (src.comment && String(src.comment).trim()) ||
+      (src.inTxHash && String(src.inTxHash).trim())
     );
   });
 
@@ -1174,38 +1176,6 @@ export default function ExchangeForm({
           </div>
         )}
 
-        {/* Incoming crypto — manual TX hash override.
-            НЕ обязателен: blockchain monitoring сам найдёт входящую tx и подтвердит сделку.
-            Ввод хеша = быстрый ручной confirm (минует status=checking). */}
-        {isCryptoCode(curIn) && (
-          <details className="mt-3 group">
-            <summary className="flex items-center gap-1.5 cursor-pointer text-[10px] font-bold text-slate-500 tracking-[0.15em] uppercase select-none hover:text-slate-700">
-              <ChevronDown className="w-3 h-3 transition-transform group-open:-rotate-180" />
-              Manual TX hash · optional
-            </summary>
-            <div className="mt-2">
-              <input
-                type="text"
-                value={inTxHash}
-                onChange={(e) => setInTxHash(e.target.value.trim())}
-                placeholder="0x… or TRON 64-hex"
-                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
-              />
-              <p className="text-[10px] text-slate-500 mt-1">
-                Leave empty — polling will auto-confirm the deal when the incoming tx arrives.
-              </p>
-              {inWalletCheck && (
-                <WalletHint
-                  status={inWalletCheck.status}
-                  address={inWalletCheck.resolved?.from_address}
-                  network={inWalletCheck.resolved?.network}
-                  conflict={inWalletCheck.existing}
-                  counterparties={counterparties}
-                />
-              )}
-            </div>
-          </details>
-        )}
       </div>
 
       {/* Reverse rates button (swaps RECEIVED ↔ first ISSUED).
@@ -1411,7 +1381,9 @@ export default function ExchangeForm({
             (partialMode ? 1 : 0) +
             (referral ? 1 : 0) +
             (isPending ? 1 : 0) +
-            (plannedLocal ? 1 : 0);
+            (plannedLocal ? 1 : 0) +
+            (comment.trim() ? 1 : 0) +
+            (inTxHash.trim() ? 1 : 0);
           return (
         <section
           className={`mt-5 rounded-[14px] overflow-hidden border-l-4 transition-all ${
@@ -1630,6 +1602,36 @@ export default function ExchangeForm({
               className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors placeholder:text-slate-400"
             />
           </div>
+
+          {/* Manual TX hash — опционально, для crypto curIn. Раньше
+              торчал отдельным <details> между IN-блоком и outputs,
+              визуально шумел. Теперь — часть "Дополнительно". */}
+          {isCryptoCode(curIn) && (
+            <div className="mt-3">
+              <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
+                Manual TX hash · optional
+              </label>
+              <input
+                type="text"
+                value={inTxHash}
+                onChange={(e) => setInTxHash(e.target.value.trim())}
+                placeholder="0x… or TRON 64-hex"
+                className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Пусто = polling автоподтвердит сделку при поступлении tx.
+              </p>
+              {inWalletCheck && (
+                <WalletHint
+                  status={inWalletCheck.status}
+                  address={inWalletCheck.resolved?.from_address}
+                  network={inWalletCheck.resolved?.network}
+                  conflict={inWalletCheck.existing}
+                  counterparties={counterparties}
+                />
+              )}
+            </div>
+          )}
           </div>
           )}
         </section>
