@@ -288,16 +288,18 @@ export function AccountsProvider({ children }) {
   //   * вчера:    deltaOf(id, yesterdayStart, todayStart)
   // Reserved (pending) пропускаем.
   //
-  // ВАЖНО: opening movements исключаются из delta — это initial
-  // setup аккаунта (seed/reset), не P&L event. Если admin сегодня
-  // применил миграцию reset balances (0053/0054), opening movement
-  // создаётся с timestamp=now() и без этого фильтра показывал бы
-  // initial balance как фейковый "профит сегодня" (+166283 USD).
+  // ВАЖНО: opening и adjustment movements исключаются из delta — это
+  // initial setup аккаунта (seed/reset) или ручная коррекция баланса
+  // админом, НЕ P&L event. Если admin сегодня применил миграцию reset
+  // balances (0053/0054/0067/0075), такое движение создаётся с
+  // timestamp=now() и без этого фильтра показывал бы как фейковый
+  // профит/убыток (+166283 / -11597 в delta дашборда).
   //
   // Topup НЕ исключаем — это реальное добавление средств (админ внёс
   // наличку в счёт), legitimate операционное движение.
   //
   // Поле даты в movements называется `timestamp` (ISO string).
+  const NON_PNL_KINDS = new Set(["opening", "adjustment"]);
   const deltaOf = useCallback(
     (accountId, sinceMs, untilMs) => {
       if (!sinceMs) return 0;
@@ -305,7 +307,7 @@ export function AccountsProvider({ children }) {
       for (const m of movements) {
         if (m.accountId !== accountId) continue;
         if (m.reserved) continue;
-        if (m.source?.kind === "opening") continue;
+        if (NON_PNL_KINDS.has(m.source?.kind)) continue;
         const tsRaw = m.timestamp || m.createdAt || m.created_at;
         const ts = tsRaw ? new Date(tsRaw).getTime() : 0;
         if (!ts || ts < sinceMs) continue;
