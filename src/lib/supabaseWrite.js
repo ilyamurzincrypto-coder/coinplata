@@ -1338,6 +1338,21 @@ export async function rpcSetDealPayee({ dealId, payeeUserId, payeeOfficeId }) {
   bumpDataVersion();
 }
 
+// Backdate — оформить сделку задним числом. RPC обновляет deal.created_at,
+// movements.created_at и deal_legs.planned_at/completed_at. Manager может
+// только свои сделки.
+export async function rpcSetDealCreatedAt({ dealId, createdAt }) {
+  assertConfigured();
+  if (!dealId) throw new Error("dealId required");
+  if (!createdAt) throw new Error("createdAt required");
+  const { error } = await supabase.rpc("set_deal_created_at", {
+    p_deal_id: typeof dealId === "string" ? Number(dealId) : dealId,
+    p_created_at: createdAt,
+  });
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // Payee помечает сделку как выданную (после физической передачи денег клиенту).
 export async function rpcMarkDealPayedOut({ dealId, note }) {
   assertConfigured();

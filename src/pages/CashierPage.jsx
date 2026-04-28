@@ -19,7 +19,7 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, rpcSetDealPayee, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcCreateDeal, rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { supabase } from "../lib/supabase.js";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -164,6 +164,20 @@ export default function CashierPage({
             } catch (e) {
               // eslint-disable-next-line no-console
               console.warn("[set_deal_payee] failed", e);
+            }
+          }
+          // Backdate — если задано, обновляем created_at сделки и связанных
+          // движений через RPC. Если migration 0070 не применена — silent fail,
+          // не блокирует основное создание.
+          if (tx.backdateAt) {
+            try {
+              await rpcSetDealCreatedAt({
+                dealId: res.result,
+                createdAt: tx.backdateAt,
+              });
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("[set_deal_created_at] failed", e);
             }
           }
           logAudit({

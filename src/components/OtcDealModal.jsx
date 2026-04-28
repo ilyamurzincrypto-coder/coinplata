@@ -29,7 +29,6 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
   const [toId, setToId] = useState("");
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
-  const [rate, setRate] = useState("");
   const [counterparty, setCounterparty] = useState("");
   const [note, setNote] = useState("");
   const [occurredAt, setOccurredAt] = useState(""); // datetime-local string
@@ -41,7 +40,6 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
       setToId("");
       setFromAmount("");
       setToAmount("");
-      setRate("");
       setCounterparty("");
       setNote("");
       setOccurredAt("");
@@ -54,25 +52,26 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
   const fromBalance = from ? balanceOf(from.id) : 0;
   const fromAmt = parseFloat(String(fromAmount).replace(",", ".")) || 0;
   const toAmt = parseFloat(String(toAmount).replace(",", ".")) || 0;
-  const rateNum = parseFloat(String(rate).replace(",", ".")) || 0;
   const insufficient = from && fromAmt > fromBalance;
+  // Курс вычисляется автоматически из сумм (юзер не вводит rate отдельно).
+  // Для same-currency = 1. Для cross-currency = toAmt / fromAmt.
+  const computedRate = useMemo(() => {
+    if (!from || !to) return 0;
+    if (from.currency === to.currency) return 1;
+    if (fromAmt > 0 && toAmt > 0) return toAmt / fromAmt;
+    return 0;
+  }, [from, to, fromAmt, toAmt]);
 
-  // Auto-pull rate from system если from и to валюты различаются
+  // Auto-fill toAmount по market rate (подсказка) если пусто
   useEffect(() => {
-    if (from && to && from.currency !== to.currency && !rate) {
+    if (fromAmt > 0 && !toAmount && from && to && from.currency !== to.currency) {
       const r = getRate(from.currency, to.currency);
-      if (r && Number.isFinite(r) && r > 0) setRate(String(r));
-    }
-  }, [from, to, rate, getRate]);
-
-  // Auto-fill toAmount = fromAmount * rate если rate задан и toAmount пуст
-  useEffect(() => {
-    if (fromAmt > 0 && rateNum > 0 && !toAmount && from && to) {
-      const computed = multiplyAmount(fromAmt, rateNum, 2);
-      setToAmount(String(computed));
+      if (r && Number.isFinite(r) && r > 0) {
+        setToAmount(String(multiplyAmount(fromAmt, r, 2)));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fromAmt, rateNum]);
+  }, [fromAmt, from, to]);
 
   const canSubmit =
     from &&
@@ -80,7 +79,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
     !sameAccount &&
     fromAmt > 0 &&
     toAmt > 0 &&
-    rateNum > 0 &&
+    computedRate > 0 &&
     counterparty.trim().length > 0;
 
   const handleSubmit = async () => {
@@ -98,7 +97,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
             fromAmount: fromAmt,
             toAccountId: to.id,
             toAmount: toAmt,
-            rate: rateNum,
+            rate: computedRate,
             counterparty: counterparty.trim(),
             note: note.trim(),
             occurredAt: occurredIso,
@@ -115,7 +114,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
           action: "create",
           entity: "transaction",
           entityId: String(res.result || ""),
-          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmt, from.currency)} ${from.currency} → ${fmt(toAmt, to.currency)} ${to.currency} @ ${rateNum}${occurredIso ? ` (бэкдейт ${occurredAt})` : ""}`,
+          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmt, from.currency)} ${from.currency} → ${fmt(toAmt, to.currency)} ${to.currency} @ ${computedRate.toFixed(6)}${occurredIso ? ` (бэкдейт ${occurredAt})` : ""}`,
         });
         onCreated?.(res.result);
         onClose();
@@ -237,32 +236,15 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated }
           )}
         </div>
 
-        {/* Rate */}
-        {from && to && (
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 mb-1.5 tracking-wide uppercase">
-              Курс ({from.currency} → {to.currency})
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) =>
-                setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
-              }
-              placeholder="0.00"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
-            />
-            <p className="text-[10.5px] text-slate-500 mt-1">
-              {fromAmt > 0 && rateNum > 0 && (
-                <>
-                  {fmt(fromAmt, from.currency)} {from.currency} × {rateNum} ={" "}
-                  <span className="font-bold text-slate-700">
-                    {fmt(multiplyAmount(fromAmt, rateNum, 2), to.currency)} {to.currency}
-                  </span>
-                </>
-              )}
-            </p>
+        {/* Эффективный курс (computed, read-only) */}
+        {from && to && fromAmt > 0 && toAmt > 0 && from.currency !== to.currency && (
+          <div className="bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Эффективный курс
+            </span>
+            <span className="text-[12.5px] font-bold tabular-nums text-slate-800">
+              1 {from.currency} = {computedRate.toFixed(6)} {to.currency}
+            </span>
           </div>
         )}
 
