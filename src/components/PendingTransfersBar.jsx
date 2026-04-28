@@ -31,19 +31,23 @@ import {
 
 export default function PendingTransfersBar() {
   const { transfers, accounts } = useAccounts();
-  const { currentUser, users } = useAuth();
+  const { currentUser, users, isAdmin, isOwner } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const [busyId, setBusyId] = useState(null);
 
   const me = currentUser?.id;
+  const canSeeAll = isAdmin || isOwner;
 
-  // Pending transfers где я — получатель или отправитель.
+  // Pending transfers — admin/owner видят все в системе; manager/accountant
+  // только те где он sender или receiver. Это и есть "перемещения в
+  // транзакциях которые требуют подтверждения" (P2P миграция 0052).
   const myPending = useMemo(() => {
-    if (!Array.isArray(transfers) || !me) return [];
-    return transfers
-      .filter((t) => t.status === "pending")
-      .filter((t) => t.toManagerId === me || t.createdBy === me);
-  }, [transfers, me]);
+    if (!Array.isArray(transfers)) return [];
+    const pending = transfers.filter((t) => t.status === "pending");
+    if (canSeeAll) return pending;
+    if (!me) return [];
+    return pending.filter((t) => t.toManagerId === me || t.createdBy === me);
+  }, [transfers, me, canSeeAll]);
 
   if (myPending.length === 0) return null;
 
@@ -92,15 +96,20 @@ export default function PendingTransfersBar() {
       <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
         <Clock className="w-4 h-4 text-amber-700" />
         <span className="text-[13px] font-bold text-amber-900">
-          Pending переводы
+          Перемещения · ожидают подтверждения
         </span>
         <span className="text-[10px] text-amber-700/70 uppercase tracking-wider">
-          {myPending.length} · ожидают подтверждения
+          {myPending.length} {canSeeAll ? "· все офисы" : "· мои"}
         </span>
       </div>
       <div className="divide-y divide-amber-100 bg-white">
         {myPending.map((tr) => {
           const isIncoming = tr.toManagerId === me;
+          const isOutgoing = tr.createdBy === me;
+          // Admin/owner может confirm/reject любой pending. Иначе только
+          // receiver. Cancel — только sender (или admin/owner).
+          const canConfirmReject = isIncoming || canSeeAll;
+          const canCancel = isOutgoing || canSeeAll;
           const fromAcc = accById(tr.fromAccountId);
           const toAcc = accById(tr.toAccountId);
           const sender = userById(tr.createdBy);
@@ -156,8 +165,8 @@ export default function PendingTransfersBar() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {isIncoming ? (
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                {canConfirmReject && (
                   <>
                     <button
                       onClick={() => run("confirm", tr)}
@@ -176,7 +185,8 @@ export default function PendingTransfersBar() {
                       Отклонить
                     </button>
                   </>
-                ) : (
+                )}
+                {canCancel && (
                   <button
                     onClick={() => run("cancel", tr)}
                     disabled={busyId === tr.id}
