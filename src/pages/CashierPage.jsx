@@ -1,6 +1,6 @@
 // src/pages/CashierPage.jsx
 import React, { useState } from "react";
-import { Plus, ArrowUpRight, X, Minus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
 import RatesPage from "./RatesPage.jsx";
@@ -8,6 +8,7 @@ import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
+import OtcDealModal from "../components/OtcDealModal.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -40,6 +41,7 @@ export default function CashierPage({
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
   // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [otcOpen, setOtcOpen] = useState(false);
 
   // mode / formMounted теперь lifted в App.jsx, чтобы переживать переход
   // на другие вкладки (Clients/Capital и т.д.). ExchangeForm сохраняет
@@ -446,6 +448,16 @@ export default function CashierPage({
                 </div>
               </button>
             )}
+            {/* Secondary CTA: OTC сделка с контрагентом (партнёром) */}
+            <button
+              onClick={() => setOtcOpen(true)}
+              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[11px] font-semibold text-slate-600 bg-white border border-slate-200 hover:text-slate-900 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+              title="OTC сделка — обмен валюты с партнёром, без клиента и fee. Поддерживает создание задним числом."
+            >
+              <ArrowLeftRight className="w-3 h-3" />
+              Сделка с контрагентом
+              <span className="text-[9px] text-slate-400 font-normal ml-1">OTC · backdate OK</span>
+            </button>
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
@@ -539,6 +551,15 @@ export default function CashierPage({
       </div>
 
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
+      <OtcDealModal
+        open={otcOpen}
+        currentOffice={currentOffice}
+        onClose={() => setOtcOpen(false)}
+        onCreated={(id) => {
+          setJustCreatedId(id);
+          setTimeout(() => setJustCreatedId(null), 2500);
+        }}
+      />
 
       {/* Глобальные keyframes для fadeIn анимации. */}
       <style>{`
