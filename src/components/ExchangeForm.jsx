@@ -484,10 +484,15 @@ export default function ExchangeForm({
           if (!isNaN(a) && !isNaN(r) && a > 0 && r > 0) {
             let computed;
             if (idx === 0) {
+              // Manual rate подразумевает что admin уже включил
+              // fee/маржу в курс — не вычитаем min fee автоматически.
+              // Auto rate (системный) — fee вычитается если applyFee=true.
+              const useFee =
+                !o.manualRate && (o.applyFee !== false) && applyMinFee;
               computed = computeNetOutput({
                 amtIn: a,
                 rate: r,
-                feeUsd: applyMinFee ? minFeeUsd : 0,
+                feeUsd: useFee ? minFeeUsd : 0,
                 outputCurrency: o.currency,
                 getRate: correctedGetRate,
               });
@@ -596,13 +601,18 @@ export default function ExchangeForm({
           const a = parseFloat(amtIn);
           const r = parseFloat(next.rate);
           if (!isNaN(a) && !isNaN(r) && a > 0 && r > 0) {
-            // idx=0 — net (минус fee если applyMinFee). Остальные — gross
-            // (для дробной сделки юзер потом перераспределит вручную).
+            // Manual rate подразумевает что admin уже включил fee/маржу
+            // в курс — не вычитаем min fee. Auto-rate с галочкой fee=on
+            // — вычитаем как раньше.
+            const useFee =
+              !next.manualRate &&
+              (next.applyFee !== false) &&
+              applyMinFee;
             const computed = idx === 0
               ? computeNetOutput({
                   amtIn: a,
                   rate: r,
-                  feeUsd: applyMinFee ? minFeeUsd : 0,
+                  feeUsd: useFee ? minFeeUsd : 0,
                   outputCurrency: next.currency,
                   getRate,
                 })
