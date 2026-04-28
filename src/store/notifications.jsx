@@ -127,7 +127,13 @@ export function NotificationsProvider({ children }) {
       )
       .subscribe();
 
-    // 2) deals INSERT where status in (pending, checking)
+    // 2) deals INSERT — два случая:
+    //    a) "Назначено мне" — manager_id === current и created_by_user_id !== current
+    //       (admin/owner создал сделку от моего имени) → ВСЕГДА уведомление,
+    //       не зависит от status. Это P2P-логика: менеджер должен узнать что
+    //       за ним закрепили деал.
+    //    b) Pending/checking от чужого менеджера (старая логика для accountant'ов
+    //       которые мониторят пайплайн). Свои не показываем.
     const dealsCh = supabase
       .channel("cp-notif-deals")
       .on(
@@ -135,13 +141,54 @@ export function NotificationsProvider({ children }) {
         { event: "INSERT", schema: "public", table: "deals" },
         (payload) => {
           const row = payload.new || {};
-          if (row.manager_id && row.manager_id === currentUserRef.current?.id) return;
+          const me = currentUserRef.current?.id;
+          if (!me) return;
+          const assignedToMe =
+            row.manager_id === me &&
+            row.created_by_user_id &&
+            row.created_by_user_id !== me;
+          if (assignedToMe) {
+            const creator = (usersRef.current || []).find((u) => u.id === row.created_by_user_id);
+            pushNotification({
+              type: "deal_assigned",
+              title: `На вас назначена сделка #${row.id}`,
+              body: `${row.amount_in} ${row.currency_in} · от ${creator?.name || "admin"}`,
+              link: "cashier",
+            });
+            return;
+          }
+          // Старый кейс: pending/checking чужой сделки
+          if (row.manager_id === me) return; // свои не показываем
           if (row.status !== "pending" && row.status !== "checking") return;
           const by = (usersRef.current || []).find((u) => u.id === row.manager_id);
           pushNotification({
             type: "new_pending",
             title: `New ${row.status} deal #${row.id}`,
             body: `${row.amount_in} ${row.currency_in} · by ${by?.name || "someone"}`,
+            link: "cashier",
+          });
+        }
+      )
+      .subscribe();
+
+    // 2b) transfers INSERT pending — interoffice P2P transfer.
+    //     Получатель (to_manager_id) видит уведомление "ожидает подтверждения".
+    const transfersCh = supabase
+      .channel("cp-notif-transfers")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "transfers" },
+        (payload) => {
+          const row = payload.new || {};
+          const me = currentUserRef.current?.id;
+          if (!me) return;
+          if (row.status !== "pending") return;
+          if (row.to_manager_id !== me) return;
+          const sender = (usersRef.current || []).find((u) => u.id === row.created_by);
+          pushNotification({
+            type: "transfer_pending",
+            title: `Входящий перевод`,
+            body: `Ожидает подтверждения · от ${sender?.name || "коллеги"}`,
             link: "cashier",
           });
         }
@@ -171,6 +218,7 @@ export function NotificationsProvider({ children }) {
     return () => {
       try { supabase.removeChannel(pairsCh); } catch {}
       try { supabase.removeChannel(dealsCh); } catch {}
+      try { supabase.removeChannel(transfersCh); } catch {}
       try { supabase.removeChannel(obCh); } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

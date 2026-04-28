@@ -20,7 +20,12 @@ import {
   CheckCircle2,
   Building2,
   Download,
+  Star,
 } from "lucide-react";
+
+// Per-user favorites для editor курсов — отдельный ключ от dashboardFavorites.
+// Хранится в users.preferences.editorFavorites как [["from","to"], ...].
+const EDITOR_FAV_KEY = "editorFavorites";
 import { useRates } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -61,8 +66,38 @@ export default function RatesPage({ onBack }) {
   } = useRates();
   const { currencies } = useCurrencies();
   const { activeOffices } = useOffices();
-  const { isAdmin, isOwner } = useAuth();
+  const { isAdmin, isOwner, currentUser, updatePreferences } = useAuth();
   const { addEntry: logAudit } = useAudit();
+
+  // --- Editor favorites ---
+  const editorFavorites = useMemo(() => {
+    const raw = currentUser?.preferences?.[EDITOR_FAV_KEY];
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+      (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === "string" && typeof p[1] === "string"
+    );
+  }, [currentUser]);
+  const editorFavKeys = useMemo(() => {
+    const set = new Set();
+    editorFavorites.forEach(([a, b]) => set.add(`${a}_${b}`));
+    return set;
+  }, [editorFavorites]);
+  const isEditorFav = React.useCallback(
+    (a, b) => editorFavKeys.has(`${a}_${b}`),
+    [editorFavKeys]
+  );
+  const toggleEditorFav = React.useCallback(
+    async (a, b) => {
+      if (!updatePreferences) return;
+      const key = `${a}_${b}`;
+      const exists = editorFavKeys.has(key);
+      const next = exists
+        ? editorFavorites.filter((p) => !(p[0] === a && p[1] === b))
+        : [...editorFavorites, [a, b]];
+      await updatePreferences({ [EDITOR_FAV_KEY]: next });
+    },
+    [editorFavKeys, editorFavorites, updatePreferences]
+  );
 
   // Active office tab — визуальный scope (курсы пока общие в БД).
   const [activeOffice, setActiveOffice] = useState("all");
@@ -452,6 +487,64 @@ export default function RatesPage({ onBack }) {
               </div>
             </div>
 
+            {/* Favorites — sticky top-секция. Каждый юзер сам выбирает свои
+                избранные пары (per-user, server-persisted в preferences).
+                Отдельно от dashboardFavorites — RatesSidebar и редактор не
+                делят список. ⭐ toggle есть и здесь и на каждой паре в общем
+                списке снизу. */}
+            {editorFavorites.length > 0 && (() => {
+              // Берём только те favorites которые реально существуют в pairs
+              const favRows = editorFavorites
+                .map(([from, to]) => existingPairs.find((p) => p.from === from && p.to === to))
+                .filter(Boolean);
+              if (favRows.length === 0) return null;
+              return (
+                <section className="bg-amber-50/40 rounded-[14px] border border-amber-200 overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <span className="text-[13px] font-bold text-amber-900">
+                      Избранное
+                    </span>
+                    <span className="text-[10px] text-amber-700/70 uppercase tracking-wider">
+                      {favRows.length} · быстрое редактирование
+                    </span>
+                  </div>
+                  <div className="divide-y divide-amber-100 bg-white">
+                    {favRows.map((p) => {
+                      const isOfficeTab = activeOffice !== "all";
+                      const override = isOfficeTab
+                        ? getOfficeOverride(activeOffice, p.from, p.to)
+                        : null;
+                      const globalPair = allPairs.find((pp) => {
+                        const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
+                        const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
+                        return pp.isDefault && f === p.from && t2 === p.to;
+                      });
+                      return (
+                        <PairRow
+                          key={`fav_${p.key}`}
+                          from={p.from}
+                          to={p.to}
+                          globalValue={getRate(p.from, p.to, "all")}
+                          globalPair={globalPair}
+                          officeOverride={override}
+                          isOfficeTab={isOfficeTab}
+                          canReset={isOfficeTab && !!override}
+                          onUpdate={(patch) => handleSetRate(p.from, p.to, patch)}
+                          onApplyGlobal={() => handleApplyGlobal(p.from, p.to)}
+                          onDelete={() => handleDeletePair(p.from, p.to)}
+                          onResetOverride={() => handleResetOverride(p.from, p.to)}
+                          canDelete={(isOwner || isAdmin) && !isOfficeTab}
+                          isFavorite={true}
+                          onToggleFavorite={() => toggleEditorFav(p.from, p.to)}
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })()}
+
             {/* Groups (pairs table by FROM currency) */}
             {groups.length === 0 ? (
               <div className="bg-white rounded-[14px] border border-slate-200 p-10 text-center text-[13px] text-slate-400">
@@ -498,6 +591,8 @@ export default function RatesPage({ onBack }) {
                             onDelete={() => handleDeletePair(p.from, p.to)}
                             onResetOverride={() => handleResetOverride(p.from, p.to)}
                             canDelete={(isOwner || isAdmin) && !isOfficeTab}
+                            isFavorite={isEditorFav(p.from, p.to)}
+                            onToggleFavorite={() => toggleEditorFav(p.from, p.to)}
                           />
                         );
                       })}
@@ -568,6 +663,8 @@ function PairRow({
   onResetOverride,    // () => void
   onDelete,
   canDelete,
+  isFavorite = false,
+  onToggleFavorite,
 }) {
   const { t } = useTranslation();
 
@@ -621,6 +718,20 @@ function PairRow({
       <div className="flex items-center gap-3 flex-wrap">
         {/* Pair label */}
         <div className="flex items-center gap-2 min-w-[110px]">
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={onToggleFavorite}
+              className={`shrink-0 transition-colors ${
+                isFavorite
+                  ? "text-amber-500 hover:text-amber-600"
+                  : "text-slate-300 hover:text-amber-500"
+              }`}
+              title={isFavorite ? "Убрать из избранного" : "В избранное"}
+            >
+              <Star className={`w-3.5 h-3.5 ${isFavorite ? "fill-amber-400" : ""}`} />
+            </button>
+          )}
           <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
           <span className="text-slate-400">→</span>
           <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>

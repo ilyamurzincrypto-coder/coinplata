@@ -9,12 +9,17 @@
 // Бейдж OFC на паре = override активен (курс отличается от global).
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { TrendingUp, ArrowRight, Zap, Settings2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, ArrowRight, Star, Settings2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
+import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
-import { getTradingRates } from "../utils/tradingRates.js";
-import DailyRatesModal from "./DailyRatesModal.jsx";
+
+// Per-user избранные пары для дашборда — отдельный ключ от editor's
+// favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
+// как массив пар [["A","B"], ...]. Если есть избранные — они всегда сверху
+// списка, остальные пары следуют за ними.
+const DASHBOARD_FAV_KEY = "dashboardFavorites";
 
 // Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
 // После гидрации берём реальный динамический список из useRates.allTradePairs.
@@ -63,10 +68,49 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
+  const { currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
-  const [quickOpen, setQuickOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
+
+  // --- Dashboard favorites (per-user, server-persisted) ---
+  const dashboardFavorites = useMemo(() => {
+    const raw = currentUser?.preferences?.[DASHBOARD_FAV_KEY];
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(
+      (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === "string" && typeof p[1] === "string"
+    );
+  }, [currentUser]);
+  const favKeys = useMemo(() => {
+    const set = new Set();
+    dashboardFavorites.forEach(([a, b]) => {
+      // Сохраняем ключ как ОТСОРТИРОВАННАЯ пара чтобы matched независимо
+      // от direction (auto-flip для удобных чисел не должен ломать ⭐).
+      const key = [a, b].sort().join("_");
+      set.add(key);
+    });
+    return set;
+  }, [dashboardFavorites]);
+  const isFavorite = React.useCallback(
+    (a, b) => favKeys.has([a, b].sort().join("_")),
+    [favKeys]
+  );
+  const toggleFavorite = React.useCallback(
+    async (a, b, e) => {
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
+      if (!updatePreferences) return;
+      const key = [a, b].sort().join("_");
+      const exists = favKeys.has(key);
+      const next = exists
+        ? dashboardFavorites.filter((p) => [p[0], p[1]].sort().join("_") !== key)
+        : [...dashboardFavorites, [a, b]];
+      await updatePreferences({ [DASHBOARD_FAV_KEY]: next });
+    },
+    [favKeys, dashboardFavorites, updatePreferences]
+  );
   // Динамически вычисляем сколько пар умещается в available height
   // pairs-container в compact mode. ResizeObserver следит за изменениями.
   const [fitCount, setFitCount] = useState(COMPACT_MIN);
@@ -135,8 +179,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     [selectedOfficeId, getOfficeOverride, getRateRaw]
   );
 
-  // Visible pairs — фильтр по поисковому запросу + лимит compact mode.
-  // Поиск по обеим валютам пары (USDT/EUR matches "us", "eur", "usdt eur").
+  // Visible pairs — фильтр по поиску + sort: favorites первыми + лимит compact.
+  // Внутри favorites порядок такой как сохранён в preferences (юзерский).
+  // Внутри non-favorites — порядок исходного tradePairs (priority-based).
   const visiblePairs = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = tradePairs;
@@ -152,13 +197,21 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         );
       });
     }
+    // Сортируем: favorites первыми (в порядке preferences), затем остальные.
+    if (favKeys.size > 0) {
+      const favs = [];
+      const rest = [];
+      list.forEach(([a, b]) => {
+        if (isFavorite(a, b)) favs.push([a, b]);
+        else rest.push([a, b]);
+      });
+      list = [...favs, ...rest];
+    }
     if (!expanded && !q) {
-      // Compact — столько пар сколько помещается в высоту без скролла
-      // (вычислено ResizeObserver'ом на pairs-container).
       list = list.slice(0, fitCount);
     }
     return list;
-  }, [tradePairs, query, expanded, fitCount]);
+  }, [tradePairs, query, expanded, fitCount, favKeys, isFavorite]);
 
   const totalCount = tradePairs.length;
   const showingCount = visiblePairs.length;
@@ -175,24 +228,14 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             </h2>
           </div>
           {onOpenRates && (
-            <div className="flex gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={() => setQuickOpen(true)}
-                className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
-                title="Быстрое обновление курсов"
-              >
-                <Zap className="w-3 h-3" />
-              </button>
-              <button
-                type="button"
-                onClick={onOpenRates}
-                className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors"
-                title="Полная страница курсов"
-              >
-                <Settings2 className="w-3 h-3" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onOpenRates}
+              className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors shrink-0"
+              title="Полная страница курсов"
+            >
+              <Settings2 className="w-3 h-3" />
+            </button>
           )}
         </div>
         <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 mt-0.5">
@@ -200,7 +243,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           {timeAgo(lastUpdated)} ago
         </span>
       </header>
-      <DailyRatesModal open={quickOpen} onClose={() => setQuickOpen(false)} />
 
       {/* Office tabs: Global + каждый активный офис. Выбор влияет на курсы
           ниже. По дефолту подсвечен текущий офис (из header).
@@ -272,13 +314,20 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"
         }`}
       >
-        {visiblePairs.map(([a, b]) => {
+        {visiblePairs.map(([a, b], idx) => {
           // Auto-инверсия для удобства: банковский стиль "1 крупная = X мелкой".
           // Если master rate < 1 (типа TRY→EUR = 0.019), показываем направление
           // EUR→TRY (= 52.6) — крупное число лучше читается.
           const masterRate = getRateForTab(a, b);
           const flipDisplay = Number.isFinite(masterRate) && masterRate < 1;
           const [from, to] = flipDisplay ? [b, a] : [a, b];
+          const fav = isFavorite(a, b);
+          // Divider после последнего favorite — визуально отделить группу.
+          const isLastFav =
+            fav &&
+            !query &&
+            idx + 1 < visiblePairs.length &&
+            !isFavorite(visiblePairs[idx + 1][0], visiblePairs[idx + 1][1]);
           // Sell rate = 1 from → to (что офис продаёт за валюту from).
           // Buy rate = 1 to → from (что офис покупает — обратное направление).
           const sellRate = getRateForTab(from, to);
@@ -299,14 +348,30 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               ? ((sellRate - buyInForwardScale) / buyInForwardScale) * 100
               : null;
           return (
+            <React.Fragment key={`${from}-${to}`}>
             <div
-              key={`${from}-${to}`}
               className={`px-2 py-1 rounded-[8px] transition-colors ${
-                pairHasOverride ? "bg-indigo-50/60 ring-1 ring-indigo-100" : "bg-slate-50"
+                fav
+                  ? "bg-amber-50/70 ring-1 ring-amber-200"
+                  : pairHasOverride
+                  ? "bg-indigo-50/60 ring-1 ring-indigo-100"
+                  : "bg-slate-50"
               }`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[10px] font-bold text-slate-700 inline-flex items-center gap-0.5 tracking-tight">
+                  <button
+                    type="button"
+                    onClick={(e) => toggleFavorite(a, b, e)}
+                    className={`mr-0.5 transition-colors ${
+                      fav
+                        ? "text-amber-500 hover:text-amber-600"
+                        : "text-slate-300 hover:text-amber-500"
+                    }`}
+                    title={fav ? "Убрать из избранного" : "В избранное"}
+                  >
+                    <Star className={`w-2.5 h-2.5 ${fav ? "fill-amber-400" : ""}`} />
+                  </button>
                   {from}
                   <ArrowRight className="w-2 h-2 mx-0.5 text-slate-400" />
                   {to}
@@ -352,6 +417,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 </span>
               </div>
             </div>
+            {isLastFav && (
+              <div className="my-1 border-t border-dashed border-slate-200" />
+            )}
+            </React.Fragment>
           );
         })}
         {/* Empty state при поиске */}
