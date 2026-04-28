@@ -1,10 +1,8 @@
 // src/components/InlineOtcBlock.jsx
 // Inline OTC сделка — встраивается ВНУТРЬ ExchangeForm после IN section.
-// Сценарий: кассир принял RUB у клиента, тут же оформляет OTC обмен с
-// партнёром (RUB → USDT через партнёра), затем выдача USDT клиенту.
-//
-// "Отдаём" auto-filled из IN section (что только что приняли от клиента).
-// Юзер вводит только: партнёр + получаем (счёт + сумма).
+// Apple-style polish: gradient panels, мягкие тени, segmented control,
+// чёткая визуальная иерархия. Цвета: indigo (primary) / emerald (in) /
+// rose (out) / amber (partner-pays) / cyan (deferred).
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
@@ -14,6 +12,10 @@ import {
   CheckCircle2,
   Calendar,
   AlertCircle,
+  Handshake,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Sparkles,
 } from "lucide-react";
 import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
 import PartnerSelect from "./PartnerSelect.jsx";
@@ -24,17 +26,64 @@ import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateOtcDeal, withToast } from "../lib/supabaseWrite.js";
 
+// Палитра режимов. Tailwind JIT требует статичные classnames — поэтому
+// храним полные строки, а не интерполируем.
+const MODE_THEME = {
+  self: {
+    label: "Зачислил нам",
+    sub: "USDT уже на нашем счёте — выдаём клиенту со своего",
+    icon: ArrowDownToLine,
+    // success-bar
+    successWrap: "bg-gradient-to-br from-indigo-50/60 to-white border-indigo-200/80",
+    successIconWrap: "bg-indigo-100 ring-1 ring-indigo-200/60",
+    successIcon: "text-indigo-700",
+    successTitle: "text-indigo-900",
+    successChip: "bg-indigo-100 text-indigo-800",
+    successSubChip: "bg-indigo-200/70 text-indigo-900",
+    successBody: "text-indigo-800/85",
+    successBtn: "text-indigo-700 hover:text-indigo-900",
+    // mode card active
+    cardActive: "bg-gradient-to-br from-indigo-50 to-white border-indigo-300",
+    cardIconActive: "bg-indigo-100 text-indigo-700",
+  },
+  partner_pays_client: {
+    label: "Выдаёт клиенту",
+    sub: "Партнёр передаёт USDT клиенту напрямую — у нас IN нет",
+    icon: ArrowUpFromLine,
+    successWrap: "bg-gradient-to-br from-amber-50/60 to-white border-amber-200/80",
+    successIconWrap: "bg-amber-100 ring-1 ring-amber-200/60",
+    successIcon: "text-amber-700",
+    successTitle: "text-amber-900",
+    successChip: "bg-amber-100 text-amber-800",
+    successSubChip: "bg-amber-200/70 text-amber-900",
+    successBody: "text-amber-800/85",
+    successBtn: "text-amber-700 hover:text-amber-900",
+    cardActive: "bg-gradient-to-br from-amber-50 to-white border-amber-300",
+    cardIconActive: "bg-amber-100 text-amber-700",
+  },
+  partner_deferred: {
+    label: "Зачислит позже",
+    sub: "Партнёр должен зачислить позже — создастся долг",
+    icon: Handshake,
+    successWrap: "bg-gradient-to-br from-cyan-50/60 to-white border-cyan-200/80",
+    successIconWrap: "bg-cyan-100 ring-1 ring-cyan-200/60",
+    successIcon: "text-cyan-700",
+    successTitle: "text-cyan-900",
+    successChip: "bg-cyan-100 text-cyan-800",
+    successSubChip: "bg-cyan-200/70 text-cyan-900",
+    successBody: "text-cyan-800/85",
+    successBtn: "text-cyan-700 hover:text-cyan-900",
+    cardActive: "bg-gradient-to-br from-cyan-50 to-white border-cyan-300",
+    cardIconActive: "bg-cyan-100 text-cyan-700",
+  },
+};
+
 export default function InlineOtcBlock({
-  // From IN section: что приняли от клиента — это и есть "отдаём партнёру"
   fromAccountId,
   fromAmount,
   fromCurrency,
-  // Callback после успешного создания OTC — ExchangeForm пишет в state и
-  // показывает options в outputs ("это OTC-сделка").
   onCreated,
-  // Уже созданная OTC (после submit) — для свернутого вида с инфой
   existing,
-  // Сброс existing — если юзер хочет пересоздать
   onClear,
 }) {
   const { accounts, balanceOf } = useAccounts();
@@ -49,14 +98,8 @@ export default function InlineOtcBlock({
   const [note, setNote] = useState("");
   const [occurredAt, setOccurredAt] = useState("");
   const [busy, setBusy] = useState(false);
-  // Режим расчёта:
-  //   "self" — партнёр зачислил нам USDT (стандарт, IN movement)
-  //   "partner_pays_client" — партнёр выдаёт клиенту напрямую (IN не создаётся)
-  //   "partner_deferred" — партнёр обещал, но ещё не зачислил
-  //                        (IN не создаётся, создаётся obligation they_owe)
   const [mode, setMode] = useState("self");
 
-  // Сбрасываем форму когда блок свернут.
   useEffect(() => {
     if (!open) {
       setToId("");
@@ -77,7 +120,6 @@ export default function InlineOtcBlock({
   const toAcc = activeAccounts.find((a) => a.id === toId);
   const toAmt = parseFloat(String(toAmount).replace(",", ".")) || 0;
 
-  // Курс вычисляется автоматически из сумм.
   const computedRate = useMemo(() => {
     if (!fromAcc || !toAcc) return 0;
     if (fromAcc.currency === toAcc.currency) return 1;
@@ -92,6 +134,8 @@ export default function InlineOtcBlock({
     toAmt > 0 &&
     computedRate > 0 &&
     counterparty.trim().length > 0;
+
+  const theme = MODE_THEME[mode];
 
   const handleSubmit = async () => {
     if (!canSubmit || busy || !isSupabaseConfigured) return;
@@ -118,7 +162,7 @@ export default function InlineOtcBlock({
             mode === "partner_pays_client"
               ? "OTC создана · партнёр выдаёт клиенту"
               : mode === "partner_deferred"
-              ? "OTC создана · партнёр должен зачислить (создан долг)"
+              ? "OTC создана · долг зафиксирован"
               : occurredIso
               ? "OTC оформлена задним числом"
               : "OTC создана",
@@ -159,55 +203,69 @@ export default function InlineOtcBlock({
     }
   };
 
-  // Свернутый вид + есть existing — показываем краткую инфу.
+  // ─────────────────────────────────────────────────────────────────
+  // SUCCESS BAR (свернуто, после создания OTC)
+  // ─────────────────────────────────────────────────────────────────
   if (existing && !open) {
-    const isPpc = !!existing.partnerPaysClient;
-    const isDef = !!existing.partnerDeferred;
-    const palette = isPpc
-      ? { bg: "bg-amber-50/40", border: "border-amber-200", iconBg: "bg-amber-100", iconColor: "text-amber-700", title: "text-amber-900", body: "text-amber-800/80", chip: "text-amber-800 bg-amber-100", subChip: "text-amber-800 bg-amber-200/60", btn: "text-amber-700 hover:text-amber-900" }
-      : isDef
-      ? { bg: "bg-cyan-50/40", border: "border-cyan-200", iconBg: "bg-cyan-100", iconColor: "text-cyan-700", title: "text-cyan-900", body: "text-cyan-800/80", chip: "text-cyan-800 bg-cyan-100", subChip: "text-cyan-800 bg-cyan-200/60", btn: "text-cyan-700 hover:text-cyan-900" }
-      : { bg: "bg-emerald-50/40", border: "border-emerald-200", iconBg: "bg-emerald-100", iconColor: "text-emerald-700", title: "text-emerald-900", body: "text-emerald-800/80", chip: "text-emerald-700 bg-emerald-100", subChip: "", btn: "text-emerald-700 hover:text-emerald-900" };
-    const subChipLabel = isPpc ? "партнёр выдаёт клиенту" : isDef ? "долг — зачислит позже" : null;
+    const exMode = existing.partnerPaysClient
+      ? "partner_pays_client"
+      : existing.partnerDeferred
+      ? "partner_deferred"
+      : "self";
+    const exTheme = MODE_THEME[exMode];
     return (
-      <div className={`my-3 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap border ${palette.bg} ${palette.border}`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${palette.iconBg}`}>
-          <CheckCircle2 className={`w-4 h-4 ${palette.iconColor}`} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className={`text-[12.5px] font-bold inline-flex items-center gap-2 flex-wrap ${palette.title}`}>
-            <span>OTC #{existing.dealId} создана</span>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${palette.chip}`}>
-              {existing.partnerName}
-            </span>
-            {subChipLabel && (
-              <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded uppercase ${palette.subChip}`}>
-                {subChipLabel}
+      <div
+        className={`my-3 rounded-[14px] overflow-hidden border shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.04)] ${exTheme.successWrap}`}
+      >
+        <div className="px-4 py-3 flex items-center gap-3 flex-wrap">
+          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${exTheme.successIconWrap}`}>
+            <CheckCircle2 className={`w-4 h-4 ${exTheme.successIcon}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`text-[13px] font-bold tracking-tight ${exTheme.successTitle}`}>
+                OTC #{existing.dealId}
               </span>
-            )}
+              <span className={`text-[10px] font-bold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full ${exTheme.successChip}`}>
+                {existing.partnerName}
+              </span>
+              {exMode !== "self" && (
+                <span className={`text-[9.5px] font-bold uppercase tracking-[0.08em] px-1.5 py-0.5 rounded-full ${exTheme.successSubChip}`}>
+                  {exTheme.label}
+                </span>
+              )}
+            </div>
+            <div className={`text-[11.5px] mt-1 inline-flex items-center gap-1.5 flex-wrap tabular-nums ${exTheme.successBody}`}>
+              <span className="font-medium">
+                {curSymbol(existing.fromCurrency)}
+                {fmt(existing.fromAmount, existing.fromCurrency)}{" "}
+                <span className="opacity-60">{existing.fromCurrency}</span>
+              </span>
+              <ArrowLeftRight className="w-3 h-3 opacity-50" />
+              <span className="font-bold">
+                {curSymbol(existing.toCurrency)}
+                {fmt(existing.toAmount, existing.toCurrency)}{" "}
+                <span className="opacity-60">{existing.toCurrency}</span>
+              </span>
+              <span className="opacity-40">·</span>
+              <span className="opacity-80">@ {existing.rate.toFixed(4)}</span>
+            </div>
           </div>
-          <div className={`text-[11px] inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums ${palette.body}`}>
-            <span>
-              {curSymbol(existing.fromCurrency)}
-              {fmt(existing.fromAmount, existing.fromCurrency)} {existing.fromCurrency}
-            </span>
-            <ArrowLeftRight className="w-3 h-3" />
-            <span className="font-semibold">
-              {curSymbol(existing.toCurrency)}
-              {fmt(existing.toAmount, existing.toCurrency)} {existing.toCurrency}
-            </span>
-            <span className="opacity-70">·</span>
-            <span>курс {existing.rate.toFixed(4)}</span>
-          </div>
+          <button
+            type="button"
+            onClick={onClear}
+            className={`text-[10.5px] font-semibold tracking-tight px-2.5 py-1.5 rounded-full bg-white/60 hover:bg-white transition-colors ${exTheme.successBtn}`}
+          >
+            Сбросить
+          </button>
         </div>
-        <button type="button" onClick={onClear} className={`text-[10.5px] font-semibold underline ${palette.btn}`}>
-          Сбросить
-        </button>
       </div>
     );
   }
 
-  // Свернутый без existing — кнопка раскрытия.
+  // ─────────────────────────────────────────────────────────────────
+  // COLLAPSED CTA (нет existing) — apple-style call-to-action card
+  // ─────────────────────────────────────────────────────────────────
   if (!open) {
     return (
       <div className="my-3">
@@ -215,171 +273,219 @@ export default function InlineOtcBlock({
           type="button"
           onClick={() => setOpen(true)}
           disabled={!fromReady}
-          className={`w-full inline-flex items-center justify-between gap-3 px-4 py-2.5 rounded-[10px] border transition-colors ${
+          className={`group w-full flex items-center justify-between gap-3 px-4 py-3 rounded-[14px] border transition-all ${
             fromReady
-              ? "bg-indigo-50/60 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300"
-              : "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-gradient-to-br from-indigo-50/70 via-white to-white border-indigo-200/80 hover:border-indigo-300 hover:from-indigo-50 hover:shadow-[0_1px_2px_rgba(79,70,229,0.06),0_8px_24px_-12px_rgba(79,70,229,0.18)]"
+              : "bg-slate-50/60 border-slate-200/70 cursor-not-allowed"
           }`}
           title={
             fromReady
               ? "Оформить OTC обмен через партнёра"
-              : "Заполните 'Принимаем' выше — сначала укажите счёт и сумму, которые приняли от клиента"
+              : "Заполните «Принимаем» выше — счёт и сумму, которые приняли от клиента"
           }
         >
-          <div className="flex items-center gap-2">
-            <ArrowLeftRight className="w-4 h-4" />
-            <span className="text-[12.5px] font-bold">
-              Сделка с контрагентом (OTC)
-            </span>
-            <span className="text-[10.5px] font-normal opacity-80">
-              {fromReady
-                ? `· обменять ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} через партнёра`
-                : "· сначала заполните «Принимаем»"}
-            </span>
+          <div className="flex items-center gap-3 min-w-0">
+            <div
+              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                fromReady
+                  ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200/60"
+                  : "bg-slate-100 text-slate-400"
+              }`}
+            >
+              <Handshake className="w-4 h-4" />
+            </div>
+            <div className="text-left min-w-0">
+              <div
+                className={`text-[13px] font-bold tracking-tight ${
+                  fromReady ? "text-slate-900" : "text-slate-400"
+                }`}
+              >
+                Сделка с контрагентом
+              </div>
+              <div
+                className={`text-[11px] mt-0.5 truncate ${
+                  fromReady ? "text-slate-500" : "text-slate-400"
+                }`}
+              >
+                {fromReady
+                  ? `Обменять ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} через партнёра`
+                  : "Сначала заполните «Принимаем»"}
+              </div>
+            </div>
           </div>
-          <ChevronDown className="w-3.5 h-3.5" />
+          <ChevronDown
+            className={`w-4 h-4 transition-transform group-hover:translate-y-0.5 ${
+              fromReady ? "text-indigo-500" : "text-slate-300"
+            }`}
+          />
         </button>
       </div>
     );
   }
 
-  // Раскрытый вид формы.
+  // ─────────────────────────────────────────────────────────────────
+  // EXPANDED FORM
+  // ─────────────────────────────────────────────────────────────────
   return (
-    <div className="my-3 bg-indigo-50/40 border-2 border-indigo-200 rounded-[12px] p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <ArrowLeftRight className="w-4 h-4 text-indigo-700" />
-          <span className="text-[13px] font-bold text-indigo-900">
-            OTC с контрагентом
-          </span>
-          <span className="text-[10px] text-indigo-700/70 uppercase tracking-wider">
-            обмен через партнёра
-          </span>
+    <div className="my-3 rounded-[16px] overflow-hidden border border-slate-200/80 bg-gradient-to-br from-indigo-50/40 via-white to-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_-12px_rgba(15,23,42,0.08)]">
+      {/* Header */}
+      <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-slate-200/60">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-indigo-100 ring-1 ring-indigo-200/60 flex items-center justify-center">
+            <Handshake className="w-4 h-4 text-indigo-700" />
+          </div>
+          <div>
+            <div className="text-[14px] font-bold text-slate-900 tracking-tight">
+              Сделка с контрагентом
+            </div>
+            <div className="text-[10.5px] text-slate-500 mt-0.5">
+              OTC обмен через партнёра
+            </div>
+          </div>
         </div>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="text-indigo-600 hover:text-indigo-900 text-[11px] font-semibold inline-flex items-center gap-1"
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-slate-900 px-2 py-1 rounded-[8px] hover:bg-slate-100/80 transition-colors"
         >
-          <ChevronUp className="w-3 h-3" />
+          <ChevronUp className="w-3.5 h-3.5" />
           Свернуть
         </button>
       </div>
 
-      <div className="space-y-2.5">
-        {/* Контрагент */}
+      <div className="px-5 py-4 space-y-4">
+        {/* Партнёр */}
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 mb-1 tracking-wide uppercase">
-            Контрагент / Партнёр
+          <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            Партнёр
           </label>
           <PartnerSelect value={counterparty} onChange={setCounterparty} />
         </div>
 
-        {/* Режим расчёта */}
+        {/* Mode segmented control — iOS style */}
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-wide uppercase">
-            Расчёт с партнёром
+          <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            Расчёт
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-            <button
-              type="button"
-              onClick={() => setMode("self")}
-              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
-                mode === "self"
-                  ? "bg-indigo-50 border-indigo-400 text-indigo-900"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              <div className="text-[11.5px] font-bold">Зачислил нам</div>
-              <div className="text-[9.5px] opacity-80 mt-0.5">
-                USDT уже на нашем счёте. Выдаём клиенту со своего.
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("partner_pays_client")}
-              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
-                mode === "partner_pays_client"
-                  ? "bg-amber-50 border-amber-400 text-amber-900"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              <div className="text-[11.5px] font-bold">Выдаёт клиенту</div>
-              <div className="text-[9.5px] opacity-80 mt-0.5">
-                Партнёр передаёт USDT клиенту напрямую. У нас IN нет.
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("partner_deferred")}
-              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
-                mode === "partner_deferred"
-                  ? "bg-cyan-50 border-cyan-400 text-cyan-900"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
-              }`}
-            >
-              <div className="text-[11.5px] font-bold">Зачислит позже</div>
-              <div className="text-[9.5px] opacity-80 mt-0.5">
-                Партнёр должен зачислить позже. Создастся долг (they_owe).
-              </div>
-            </button>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {Object.entries(MODE_THEME).map(([id, t]) => {
+              const Icon = t.icon;
+              const active = mode === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setMode(id)}
+                  className={`text-left p-3 rounded-[12px] border transition-all ${
+                    active
+                      ? `${t.cardActive} shadow-[0_1px_2px_rgba(15,23,42,0.04),0_2px_8px_-4px_rgba(15,23,42,0.08)]`
+                      : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <div
+                      className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                        active ? t.cardIconActive : "bg-slate-100 text-slate-400"
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" />
+                    </div>
+                    <span
+                      className={`text-[12px] font-bold tracking-tight ${
+                        active ? "text-slate-900" : "text-slate-700"
+                      }`}
+                    >
+                      {t.label}
+                    </span>
+                  </div>
+                  <div className="text-[10.5px] text-slate-500 leading-snug">
+                    {t.sub}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Отдаём (auto from IN) + Получаем */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-          {/* Отдаём — read-only display из IN section */}
-          <div>
-            <label className="block text-[10px] font-bold text-rose-700 mb-1 tracking-wide uppercase">
-              Отдаём партнёру
-            </label>
-            <div className="bg-white border-2 border-rose-200 rounded-[8px] px-2.5 py-1.5">
-              <div className="text-[11px] text-slate-500 truncate">
-                {fromAcc ? `${officeName(fromAcc.officeId)} · ${fromAcc.name}` : "—"}
-              </div>
-              <div className="text-[15px] font-bold tabular-nums text-slate-900">
-                {curSymbol(fromAcc?.currency)}
-                {fmt(fromAmtNum, fromAcc?.currency)} {fromAcc?.currency}
-              </div>
-              <div className="text-[10px] text-slate-500 mt-0.5">
-                из «Принимаем» — то что приняли от клиента
-              </div>
+        {/* From + To carded layout */}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-2 items-stretch">
+          {/* Отдаём */}
+          <div className="rounded-[14px] bg-gradient-to-br from-rose-50/40 to-white border border-rose-200/70 p-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <ArrowUpFromLine className="w-3 h-3 text-rose-600" />
+              <span className="text-[9.5px] font-bold text-rose-700 tracking-[0.1em] uppercase">
+                Отдаём партнёру
+              </span>
+            </div>
+            <div className="text-[10.5px] text-slate-500 truncate">
+              {fromAcc ? `${officeName(fromAcc.officeId)} · ${fromAcc.name}` : "—"}
+            </div>
+            <div className="text-[20px] font-bold tabular-nums tracking-tight text-slate-900 mt-0.5 leading-none">
+              {curSymbol(fromAcc?.currency)}
+              {fmt(fromAmtNum, fromAcc?.currency)}
+              <span className="text-[11px] text-slate-400 font-medium ml-1">
+                {fromAcc?.currency}
+              </span>
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">
+              из «Принимаем» — что приняли от клиента
             </div>
             {insufficient && (
-              <div className="mt-1 text-[10px] font-medium text-amber-700 inline-flex items-center gap-1">
+              <div className="mt-1.5 text-[10px] text-amber-700 inline-flex items-center gap-1">
                 <AlertCircle className="w-2.5 h-2.5" />
-                Недостаточно средств · в наличии {fmt(fromBalance, fromAcc?.currency)}
+                Недостаточно — есть {fmt(fromBalance, fromAcc?.currency)}
               </div>
             )}
           </div>
 
-          {/* Получаем — input. В режимах ppc/deferred toAccount нужен для
-              учёта (валюта/курс), но IN-движение не создаётся. */}
-          <div>
-            <label
-              className={`block text-[10px] font-bold mb-1 tracking-wide uppercase ${
-                mode === "partner_pays_client"
-                  ? "text-amber-700"
-                  : mode === "partner_deferred"
-                  ? "text-cyan-700"
-                  : "text-emerald-700"
-              }`}
-            >
-              {mode === "partner_pays_client"
-                ? "Партнёр выдаёт клиенту"
+          {/* Center arrow */}
+          <div className="hidden md:flex items-center justify-center px-1">
+            <div className="w-8 h-8 rounded-full bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
+            </div>
+          </div>
+
+          {/* Получаем */}
+          <div
+            className={`rounded-[14px] bg-gradient-to-br to-white border p-3 ${
+              mode === "partner_pays_client"
+                ? "from-amber-50/40 border-amber-200/70"
                 : mode === "partner_deferred"
-                ? "Должен зачислить (долг)"
-                : "Получаем от партнёра"}
-            </label>
+                ? "from-cyan-50/40 border-cyan-200/70"
+                : "from-emerald-50/40 border-emerald-200/70"
+            }`}
+          >
+            <div className="flex items-center gap-1.5 mb-2">
+              <ArrowDownToLine
+                className={`w-3 h-3 ${
+                  mode === "partner_pays_client"
+                    ? "text-amber-600"
+                    : mode === "partner_deferred"
+                    ? "text-cyan-600"
+                    : "text-emerald-600"
+                }`}
+              />
+              <span
+                className={`text-[9.5px] font-bold tracking-[0.1em] uppercase ${
+                  mode === "partner_pays_client"
+                    ? "text-amber-700"
+                    : mode === "partner_deferred"
+                    ? "text-cyan-700"
+                    : "text-emerald-700"
+                }`}
+              >
+                {mode === "partner_pays_client"
+                  ? "Партнёр выдаёт клиенту"
+                  : mode === "partner_deferred"
+                  ? "Должен зачислить"
+                  : "Получаем от партнёра"}
+              </span>
+            </div>
             <GroupedAccountSelect
               accounts={activeAccounts.filter((a) => a.id !== fromAccountId)}
               value={toId}
               onChange={setToId}
-              placeholder={
-                mode === "self"
-                  ? "Счёт зачисления"
-                  : "Счёт-валюта (для отчётности)"
-              }
+              placeholder={mode === "self" ? "Счёт зачисления" : "Валюта (учёт)"}
             />
             {toAcc && (
               <input
@@ -390,57 +496,71 @@ export default function InlineOtcBlock({
                   setToAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                 }
                 placeholder={`0 ${toAcc.currency}`}
-                className={`mt-1.5 w-full bg-white border-2 rounded-[8px] px-2.5 py-1.5 text-[15px] font-bold tabular-nums outline-none ${
+                className={`mt-2 w-full bg-white border rounded-[10px] px-3 py-2 text-[16px] font-bold tabular-nums tracking-tight outline-none transition-colors ${
                   mode === "partner_pays_client"
-                    ? "border-amber-200 focus:border-amber-400"
+                    ? "border-amber-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/15"
                     : mode === "partner_deferred"
-                    ? "border-cyan-200 focus:border-cyan-400"
-                    : "border-emerald-200 focus:border-emerald-400"
+                    ? "border-cyan-200 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/15"
+                    : "border-emerald-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/15"
                 }`}
               />
-            )}
-            {mode === "partner_pays_client" && toAcc && (
-              <p className="mt-1 text-[9.5px] text-amber-700/90">
-                ⚠ На наш счёт зачисления НЕ будет. Партнёр выдаёт {toAcc.currency} клиенту напрямую.
-              </p>
-            )}
-            {mode === "partner_deferred" && toAcc && (
-              <p className="mt-1 text-[9.5px] text-cyan-700/90">
-                💸 Зачисления нет, но создастся долг — партнёр должен нам {toAcc.currency}.
-                Виден в Obligations с фильтром «they_owe».
-              </p>
             )}
           </div>
         </div>
 
-        {/* Эфф. курс */}
+        {/* Эфф. курс — appears smoothly */}
         {fromAcc && toAcc && fromAmtNum > 0 && toAmt > 0 && fromAcc.currency !== toAcc.currency && (
-          <div className="bg-white border border-slate-200 rounded-[8px] px-2.5 py-1.5 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-              Эфф. курс
+          <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/70 border border-slate-200/70 rounded-[12px]">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-slate-400" />
+              <span className="text-[10.5px] font-bold text-slate-500 tracking-[0.1em] uppercase">
+                Эфф. курс
+              </span>
+            </div>
+            <span className="text-[13px] font-bold tabular-nums tracking-tight text-slate-900">
+              1 {fromAcc.currency} ={" "}
+              <span className="text-indigo-700">{computedRate.toFixed(6)}</span>{" "}
+              <span className="text-slate-400 font-medium">{toAcc.currency}</span>
             </span>
-            <span className="text-[11.5px] font-bold tabular-nums text-slate-800">
-              1 {fromAcc.currency} = {computedRate.toFixed(6)} {toAcc.currency}
+          </div>
+        )}
+
+        {/* Hints — apple-like info row */}
+        {mode === "partner_pays_client" && toAcc && (
+          <div className="px-3 py-2 rounded-[10px] bg-amber-50/60 border border-amber-200/60 text-[11px] text-amber-800 inline-flex items-start gap-1.5">
+            <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+            <span>
+              На наш счёт зачисления не будет — партнёр передаёт{" "}
+              <strong>{toAcc.currency}</strong> клиенту напрямую.
+            </span>
+          </div>
+        )}
+        {mode === "partner_deferred" && toAcc && (
+          <div className="px-3 py-2 rounded-[10px] bg-cyan-50/60 border border-cyan-200/60 text-[11px] text-cyan-800 inline-flex items-start gap-1.5">
+            <Handshake className="w-3 h-3 mt-0.5 shrink-0" />
+            <span>
+              Зачисления нет — создастся долг. Партнёр должен нам{" "}
+              <strong>{toAcc.currency}</strong>. Виден в Obligations → they_owe.
             </span>
           </div>
         )}
 
         {/* Backdate + note */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
-            <label className="flex items-center gap-1 text-[10px] font-bold text-slate-500 mb-1 tracking-wide uppercase">
+            <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
               <Calendar className="w-3 h-3" />
-              Задним числом (опц.)
+              Задним числом
             </label>
             <input
               type="datetime-local"
               value={occurredAt}
               onChange={(e) => setOccurredAt(e.target.value)}
-              className="w-full bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-1.5 text-[12px] tabular-nums outline-none"
+              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/15 rounded-[10px] px-3 py-2 text-[12.5px] tabular-nums outline-none transition-colors"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-bold text-slate-500 mb-1 tracking-wide uppercase">
+            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
               Заметка
             </label>
             <input
@@ -448,37 +568,34 @@ export default function InlineOtcBlock({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="—"
-              className="w-full bg-white border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-1.5 text-[12px] outline-none"
+              className="w-full bg-white border border-slate-200 hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/15 rounded-[10px] px-3 py-2 text-[12.5px] outline-none transition-colors"
             />
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            disabled={busy}
-            className="px-3 py-1.5 rounded-[8px] bg-white border border-slate-200 text-slate-700 text-[11.5px] font-semibold hover:bg-slate-50 disabled:opacity-60"
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit || busy}
-            className={`px-3 py-1.5 rounded-[8px] text-[11.5px] font-bold transition-colors ${
-              canSubmit && !busy
-                ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
-            }`}
-          >
-            {busy
-              ? "Создание…"
-              : occurredAt
-              ? "Создать (задним числом)"
-              : "Создать OTC"}
-          </button>
-        </div>
+      {/* Footer actions */}
+      <div className="px-5 py-3.5 border-t border-slate-200/60 bg-slate-50/40 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          disabled={busy}
+          className="px-4 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 text-[12.5px] font-semibold hover:bg-slate-50 hover:border-slate-300 disabled:opacity-60 transition-colors"
+        >
+          Отмена
+        </button>
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSubmit || busy}
+          className={`px-4 py-2 rounded-[10px] text-[12.5px] font-bold tracking-tight transition-all ${
+            canSubmit && !busy
+              ? "bg-slate-900 text-white hover:bg-slate-800 shadow-[0_1px_2px_rgba(15,23,42,0.18),0_4px_12px_-4px_rgba(15,23,42,0.18)] hover:shadow-[0_2px_4px_rgba(15,23,42,0.2),0_8px_20px_-6px_rgba(15,23,42,0.24)]"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+          }`}
+        >
+          {busy ? "Создание…" : occurredAt ? "Создать (задним числом)" : "Создать OTC"}
+        </button>
       </div>
     </div>
   );
