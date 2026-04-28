@@ -220,6 +220,10 @@ function GroupCard({
   globalTotal,
   globalDelta,
   globalDeltaYesterday,
+  // Для split-режима — отдельная валюта/значение нижнего "По офису" блока
+  // (Crypto: верх = global USDT, низ = local в USD/EUR base).
+  splitLocalTotal,
+  splitLocalCurrency,
 }) {
   // В split режиме верхний блок показывает GLOBAL значения (по всем офисам).
   // Если global props не переданы — fallback на локальные total/delta.
@@ -303,7 +307,8 @@ function GroupCard({
               По офису
             </span>
             <span className="text-[11px] font-bold tabular-nums text-slate-700">
-              {curSymbol(currency)}{fmt(total, currency)}
+              {curSymbol(splitLocalCurrency || currency)}
+              {fmt(splitLocalTotal != null ? splitLocalTotal : total, splitLocalCurrency || currency)}
             </span>
           </div>
           {assetsBlock}
@@ -467,6 +472,8 @@ function OfficeBlock({
         const cashTotalBase = sumBase(grouped.cash, "total");
         const bankTotalBase = sumBase(grouped.bank, "total");
         const cryptoTotalUsdt = sumUsdt(cryptoRows, "total");
+        // Per-office crypto в base (USD/EUR) — для нижнего "По офису" блока
+        const cryptoTotalBase = sumBase(cryptoRows, "total");
         const cashDeltaBase = sumBase(grouped.cash, "delta");
         const bankDeltaBase = sumBase(grouped.bank, "delta");
         const cryptoDeltaUsdt = sumUsdt(cryptoRows, "delta");
@@ -508,6 +515,8 @@ function OfficeBlock({
               globalTotal={globalCryptoTotal}
               globalDelta={globalCryptoDelta}
               globalDeltaYesterday={globalCryptoDeltaYesterday}
+              splitLocalTotal={cryptoTotalBase}
+              splitLocalCurrency={base}
             />
           </div>
         );
