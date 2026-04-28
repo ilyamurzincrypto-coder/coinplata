@@ -369,12 +369,25 @@ export default function ExchangeForm({
       .reduce((sum, a) => sum + balanceOf(a.id), 0);
   };
 
-  // При смене валюты/офиса сбрасываем выбор если текущий account не подходит
+  // При смене валюты/офиса:
+  //   1. Если текущий account не подходит → сбрасываем.
+  //   2. Если account пустой и есть единственный/первый аккаунт текущего
+  //      офиса с этой валютой — авто-подставляем (default by office).
+  //      Юзеру не нужно лишний раз тыкать селектор.
   useEffect(() => {
     if (accountId && !availableAccounts.some((a) => a.id === accountId)) {
       setAccountId("");
+      return;
     }
-  }, [availableAccounts, accountId]);
+    if (!accountId && availableAccounts.length > 0) {
+      // Приоритет: account текущего офиса. Если несколько — первый
+      // active. Если в текущем офисе нет — берём любой подходящий.
+      const officeAcc = availableAccounts.find((a) => a.officeId === currentOffice);
+      const fallback = availableAccounts[0];
+      const pick = officeAcc || fallback;
+      if (pick) setAccountId(pick.id);
+    }
+  }, [availableAccounts, accountId, currentOffice]);
 
   // При смене IN currency — пара меняется, user-pick chip'а становится
   // неактуален. Сбрасываем ratePinned у всех outputs до того как main
@@ -663,10 +676,17 @@ export default function ExchangeForm({
   };
 
   // --- remaining amount (в валюте curIn) ---
-  // Используем тот же fee-baseline что применяется в auto-fill первого output.
-  // Когда applyMinFee=off — fee=0 → remaining не вычитает min (auto-fill тоже
-  // не вычитает), поэтому "exceeds_remaining" не ложно срабатывает.
-  const remainingFeeUsd = applyMinFee ? minFeeUsd : 0;
+  // Fee добавляется к consumed только если первый output реально вычитает
+  // fee из своего amount. Условия как в computeNetOutput: !manualRate &&
+  // applyFee && applyMinFee. Иначе fee=0 — не вычитаем (admin уже включил
+  // в курс / галочка off / output gross).
+  const firstOutput = outputs[0];
+  const firstOutputUsesFee =
+    firstOutput &&
+    !firstOutput.manualRate &&
+    firstOutput.applyFee !== false &&
+    applyMinFee;
+  const remainingFeeUsd = firstOutputUsesFee ? minFeeUsd : 0;
   const { remaining: remainingIn, feeInCurIn, exceedsInput } = useMemo(
     () =>
       computeRemaining({
@@ -2085,13 +2105,23 @@ function OutputRow({
     [accounts, o.currency]
   );
 
-  // При смене валюты output — сбрасываем accountId если он больше не подходит
+  // При смене валюты output:
+  //   1. Если accountId не подходит — сбрасываем.
+  //   2. Если accountId пустой и есть подходящий — auto-pick:
+  //      приоритет account текущего офиса, иначе первый.
+  //      Юзеру не нужно тыкать селектор лишний раз.
   useEffect(() => {
     if (o.accountId && !outAccounts.some((a) => a.id === o.accountId)) {
       onUpdate({ accountId: "" });
+      return;
+    }
+    if (!o.accountId && outAccounts.length > 0) {
+      const officeAcc = outAccounts.find((a) => a.officeId === currentOffice);
+      const pick = officeAcc || outAccounts[0];
+      if (pick) onUpdate({ accountId: pick.id });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [o.currency, outAccounts.length]);
+  }, [o.currency, outAccounts.length, currentOffice]);
 
   // Available warning: если сумма вывода больше, чем суммарный баланс аккаунтов офиса в этой валюте
   const outAmount = parseFloat(o.amount) || 0;
