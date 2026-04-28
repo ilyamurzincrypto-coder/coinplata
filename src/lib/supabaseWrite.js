@@ -541,13 +541,12 @@ export async function deleteExpenseById(id) {
 // ref_update_admin (только owner/admin) и терял сетевые ошибки в общем
 // TypeError Fetch. RPC обходит RLS, пускает accountant, бросает clear
 // exceptions (в т.ч. P0002 "No default pair found" если пары нет).
-export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent, reverseRate }) {
+export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent }) {
   assertConfigured();
   const from = requireCurrency(fromCurrency, "fromCurrency");
   const to = requireCurrency(toCurrency, "toCurrency");
   let baseRateNum = null;
   let spreadNum = null;
-  let reverseRateNum = null;
   if (baseRate != null) {
     const n = Number(baseRate);
     if (!Number.isFinite(n) || n <= 0) throw new Error("baseRate: must be > 0");
@@ -558,29 +557,16 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
     if (!Number.isFinite(s)) throw new Error("spreadPercent: invalid");
     spreadNum = s;
   }
-  if (reverseRate != null) {
-    const r = Number(reverseRate);
-    if (!Number.isFinite(r) || r <= 0) throw new Error("reverseRate: must be > 0");
-    reverseRateNum = r;
-  }
-  if (baseRateNum == null && spreadNum == null && reverseRateNum == null) return;
+  if (baseRateNum == null && spreadNum == null) return;
 
-  // PostgREST resolve'ит overloaded функции по именам параметров. Если
-  // p_reverse_rate отсылается всегда (даже null), но в БД ещё нет миграции
-  // 0063 — найдётся только старая сигнатура (p_base_rate, p_from, p_spread,
-  // p_to) и PostgREST бросит "function not found". Поэтому добавляем
-  // p_reverse_rate в payload ТОЛЬКО когда юзер реально его задал — иначе
-  // старая сигнатура resolve'ит OK.
-  const payload = {
+  // После миграции 0065 update_pair изменяет ТОЛЬКО переданную пару — без
+  // авто-синхронизации reverse. Sell и buy полностью независимы.
+  const { error } = await supabase.rpc("update_pair", {
     p_from: from,
     p_to: to,
     p_base_rate: baseRateNum,
     p_spread: spreadNum,
-  };
-  if (reverseRateNum != null) {
-    payload.p_reverse_rate = reverseRateNum;
-  }
-  const { error } = await supabase.rpc("update_pair", payload);
+  });
   if (error) {
     // Явный differentiation сетевых ошибок от RPC-ошибок — чтобы toast
     // показал не просто "Failed to fetch" а "Network — check Supabase

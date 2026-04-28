@@ -164,21 +164,16 @@ export default function RatesPage({ onBack }) {
     }));
   }, [existingPairs]);
 
-  // Унифицированный updater: передать {baseRate?, spreadPercent?, reverseRate?}.
-  // В office-режиме пишет override (oba поля сразу), в global — обновляет pairs.
-  // reverseRate — независимый курс обратной пары (миграция 0063). Если задан,
-  // выставляет reverse_locked=true и запоминает значение независимо от
-  // sync_reverse_pair триггера. Без него reverse = 1/baseRate.
-  const handleSetRate = async (from, to, { baseRate, spreadPercent, reverseRate } = {}) => {
+  // Унифицированный updater: передать {baseRate?, spreadPercent?}.
+  // После миграции 0065 update_pair изменяет ТОЛЬКО переданную пару —
+  // sell и buy полностью независимы (без auto-sync через триггер).
+  // Чтобы изменить обратную пару, явно вызови handleSetRate(to, from, ...).
+  const handleSetRate = async (from, to, { baseRate, spreadPercent } = {}) => {
     if (baseRate != null) {
       const n = Number(baseRate);
       if (!Number.isFinite(n) || n <= 0) return;
     }
     if (spreadPercent != null && !Number.isFinite(Number(spreadPercent))) return;
-    if (reverseRate != null) {
-      const r = Number(reverseRate);
-      if (!Number.isFinite(r) || r <= 0) return;
-    }
 
     if (isSupabaseConfigured && activeOffice !== "all") {
       // Office override — нужны оба поля; если одно не передано — берём из текущего состояния
@@ -220,7 +215,6 @@ export default function RatesPage({ onBack }) {
             toCurrency: to,
             ...(baseRate != null ? { baseRate: Number(baseRate) } : {}),
             ...(spreadPercent != null ? { spreadPercent: Number(spreadPercent) } : {}),
-            ...(reverseRate != null ? { reverseRate: Number(reverseRate) } : {}),
           }),
         { success: null, errorPrefix: "Update failed" }
       );
