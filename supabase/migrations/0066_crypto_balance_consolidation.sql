@@ -5,16 +5,20 @@
 -- один счёт — Mark Antalya / USDT / TRC20. Вечером планируется разбивка
 -- через отдельную миграцию.
 --
+-- Исправления к v1 (failed на column "active" does not exist):
+--   • users: status='active' (не active=true)
+--   • accounts: currency_code (не currency), network_id (не network),
+--     opening_balance (не balance), нет updated_at
+--   • accounts INSERT: нет created_by
+--
 -- Логика:
---   1. Находим целевой счёт (office name LIKE '%Mark%Antalya%' OR
---      '%Mark%' OR '%Antalya%', currency='USDT', type='crypto', network='TRC20').
---   2. Если не существует — auto-create.
---   3. Удаляем opening/topup movements у ВСЕХ USDT crypto-счетов (чтобы
---      обнулить старые остатки, иначе total = old + new).
+--   1. Находим Mark Antalya office.
+--   2. Ищем USDT TRC20 счёт. Если нет — auto-create.
+--   3. Удаляем opening/topup movements у ВСЕХ USDT crypto-счетов.
 --   4. INSERT opening 228 538.65 на целевой счёт.
 --
 -- ВАЖНО: deal-movements (exchange_in/out, transfer_in/out) НЕ трогаем —
--- они часть бизнес-истории. Удаляются только seed-уровневые opening/topup.
+-- они часть бизнес-истории.
 -- ============================================================================
 
 do $consolidation$
@@ -36,7 +40,7 @@ begin
   if v_office_id is null then
     select id into v_office_id
       from public.offices
-      where lower(name) like '%mark%' or lower(name) like '%antalya%'
+      where lower(name) like '%antalya%' or lower(name) like '%mark%'
       order by
         case
           when lower(name) like '%antalya%' then 1
@@ -50,18 +54,19 @@ begin
     raise exception 'Не найден офис Mark/Antalya. Проверь public.offices.';
   end if;
 
-  -- 2. Любой owner/admin для updated_by
+  -- 2. Любой owner/admin для created_by в movement
   select id into v_admin_id from public.users
-    where role in ('owner', 'admin') and active = true limit 1;
+    where role in ('owner', 'admin') and status = 'active'
+    limit 1;
 
   -- 3. Ищем USDT TRC20 счёт в найденном офисе
   select id into v_target_account_id
     from public.accounts
     where office_id = v_office_id
-      and currency = 'USDT'
+      and currency_code = 'USDT'
       and active = true
       and (
-        upper(coalesce(network, '')) = 'TRC20'
+        upper(coalesce(network_id, '')) = 'TRC20'
         or upper(coalesce(name, '')) like '%TRC20%'
       )
     limit 1;
@@ -69,10 +74,10 @@ begin
   -- 4. Если не существует — создаём
   if v_target_account_id is null then
     insert into public.accounts (
-      id, office_id, name, type, currency, network, active, balance, created_by
+      id, office_id, name, type, currency_code, network_id, active, opening_balance
     ) values (
       gen_random_uuid(), v_office_id, 'USDT TRC20', 'crypto', 'USDT', 'TRC20',
-      true, 0, v_admin_id
+      true, 0
     ) returning id into v_target_account_id;
     raise notice 'Created USDT TRC20 account in office %', v_office_id;
   end if;
@@ -84,7 +89,7 @@ begin
   delete from public.account_movements
     where account_id in (
       select id from public.accounts
-      where currency = 'USDT'
+      where currency_code = 'USDT'
     )
     and source_kind in ('opening', 'topup');
   get diagnostics v_deleted = row_count;
@@ -106,22 +111,21 @@ begin
     v_now
   );
 
-  -- 7. Обновляем accounts.balance (опц., balanceOf считается из movements)
+  -- 7. Обновляем accounts.opening_balance (legacy seed-поле)
   update public.accounts
-    set balance = v_target_amount,
-        updated_at = v_now
+    set opening_balance = v_target_amount
     where id = v_target_account_id;
 
   raise notice 'Crypto consolidation done: % USDT on account %', v_target_amount, v_target_account_id;
 end
 $consolidation$;
 
--- Проверка
+-- Проверка: показать все USDT счета с computed balance из movements
 select
   o.name as office,
   a.name as account,
-  a.currency,
-  a.network,
+  a.currency_code,
+  a.network_id,
   coalesce((
     select sum(case when m.direction = 'in' then m.amount else -m.amount end)
     from public.account_movements m
@@ -134,5 +138,5 @@ select
   ) as movements_count
 from public.accounts a
 join public.offices o on o.id = a.office_id
-where a.currency = 'USDT' and a.active = true
+where a.currency_code = 'USDT' and a.active = true
 order by balance desc;
