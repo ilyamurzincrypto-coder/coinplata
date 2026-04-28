@@ -1214,7 +1214,9 @@ export async function updateClient(id, patch) {
 // ---------- bulk rates import ----------
 
 // Вызывает RPC import_rates (atomic update + snapshot).
-// rows: [{from, to, rate}, ...]  — только валидные, проверенные на фронте.
+// rows: [{from, to, rate, buy_rate?}, ...]  — только валидные, проверенные на фронте.
+// buy_rate (optional): явный курс обратного направления (B→A). Если не задан,
+// reverse pair синхронизируется автоматом через trigger как 1/rate.
 // reason: произвольная пометка (показывается в audit).
 // Возвращает { ok, result: { updated, inserted, snapshot_id } } | { ok: false, error }
 export async function rpcImportRates(rows, reason) {
@@ -1222,11 +1224,17 @@ export async function rpcImportRates(rows, reason) {
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("No rows to import");
   }
-  const payload = rows.map((r) => ({
-    from: String(r.from || "").toUpperCase(),
-    to: String(r.to || "").toUpperCase(),
-    rate: Number(r.rate),
-  }));
+  const payload = rows.map((r) => {
+    const row = {
+      from: String(r.from || "").toUpperCase(),
+      to: String(r.to || "").toUpperCase(),
+      rate: Number(r.rate),
+    };
+    if (r.buy_rate != null && Number.isFinite(Number(r.buy_rate)) && Number(r.buy_rate) > 0) {
+      row.buy_rate = Number(r.buy_rate);
+    }
+    return row;
+  });
   const res = await supabase.rpc("import_rates", {
     p_rows: payload,
     p_reason: reason || "xlsx import",

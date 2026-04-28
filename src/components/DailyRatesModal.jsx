@@ -5,7 +5,7 @@
 // На submit батчом через rpcImportRates (atomic + snapshot для истории).
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Zap, ArrowRight, Search, X } from "lucide-react";
+import { Zap, Search, X } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import { useRates } from "../store/rates.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -41,7 +41,10 @@ export default function DailyRatesModal({ open, onClose }) {
   const { t } = useTranslation();
   const { allTradePairs, getRate, lastUpdated, pairs, channels } = useRates();
   const { addEntry: logAudit } = useAudit();
-  const [inputs, setInputs] = useState({}); // { "FROM_TO": "value" }
+  // { "FROM_TO": { sell, buy } } — sell = master direction, buy = reverse direction.
+  // Обе стороны редактируются независимо. Если buy не введён — reverse
+  // синхронизируется автоматом через trigger (= 1/sell со spread'ом).
+  const [inputs, setInputs] = useState({});
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -112,25 +115,54 @@ export default function DailyRatesModal({ open, onClose }) {
     );
   }, [rows, query]);
 
-  // Собираем "изменения" — только заполненные и != текущему.
+  // Собираем "изменения" — sell и/или buy для каждой пары.
+  // - Если sell изменён → отправляем rate (master direction).
+  // - Если buy изменён → отправляем buy_rate (reverse direction).
+  //   При этом sell тоже передаётся (текущий или новый) — backend
+  //   сначала пишет master, trigger синхронизирует reverse, затем
+  //   наш buy_rate override'ит reverse.
   const changes = useMemo(() => {
     const list = [];
-    Object.entries(inputs).forEach(([key, val]) => {
-      const s = String(val || "").trim().replace(",", ".");
-      if (!s) return;
-      const n = Number(s);
-      if (!Number.isFinite(n) || n <= 0) return;
+    Object.entries(inputs).forEach(([key, vals]) => {
       const [from, to] = key.split("_");
-      const current = getRate(from, to);
-      if (!Number.isFinite(current) || Math.abs(n - current) > 1e-9) {
-        list.push({ from, to, rate: n });
-      }
+      const currentSell = getRate(from, to);
+      const currentBuy = getRate(to, from);
+
+      const sellStr = String(vals?.sell || "").trim().replace(",", ".");
+      const sellNum = sellStr ? Number(sellStr) : NaN;
+      const sellChanged =
+        sellStr !== "" &&
+        Number.isFinite(sellNum) &&
+        sellNum > 0 &&
+        (!Number.isFinite(currentSell) || Math.abs(sellNum - currentSell) > 1e-9);
+
+      const buyStr = String(vals?.buy || "").trim().replace(",", ".");
+      const buyNum = buyStr ? Number(buyStr) : NaN;
+      const buyChanged =
+        buyStr !== "" &&
+        Number.isFinite(buyNum) &&
+        buyNum > 0 &&
+        (!Number.isFinite(currentBuy) || Math.abs(buyNum - currentBuy) > 1e-9);
+
+      if (!sellChanged && !buyChanged) return;
+
+      // Если sell не менялся, передаём текущий rate чтобы master не переписался зря,
+      // но import_rates всё равно сделает UPDATE. OK — base_rate тот же.
+      const finalSell = sellChanged ? sellNum : currentSell;
+      if (!Number.isFinite(finalSell) || finalSell <= 0) return; // защита
+
+      const item = { from, to, rate: finalSell };
+      if (buyChanged) item.buy_rate = buyNum;
+      list.push(item);
     });
     return list;
   }, [inputs, getRate]);
 
-  const handleChange = (from, to, val) => {
-    setInputs((prev) => ({ ...prev, [`${from}_${to}`]: val }));
+  const handleChange = (from, to, side, val) => {
+    setInputs((prev) => {
+      const key = `${from}_${to}`;
+      return { ...prev, [key]: { ...(prev[key] || {}), [side]: val } };
+    });
   };
 
   const handleSubmit = async () => {
@@ -152,7 +184,11 @@ export default function DailyRatesModal({ open, onClose }) {
           entity: "rate",
           entityId: `daily_${today}`,
           summary: `Daily update: ${changes
-            .map((c) => `${c.from}→${c.to}=${c.rate}`)
+            .map((c) =>
+              c.buy_rate != null
+                ? `${c.from}→${c.to}=${c.rate}/buy=${c.buy_rate}`
+                : `${c.from}→${c.to}=${c.rate}`
+            )
             .join(", ")}`,
         });
         onClose();
@@ -167,17 +203,18 @@ export default function DailyRatesModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       title={t("quick_rates_title") || "Быстрое обновление курсов"}
-      subtitle={`${rows.length} пар · обратные курсы синхронизируются автоматически · обновлено ${timeAgo(lastUpdated)}`}
+      subtitle={`${rows.length} пар · sell/buy раздельно · обновлено ${timeAgo(lastUpdated)}`}
       width="2xl"
     >
       <div className="p-5">
         <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
           <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
           <span>
-            Введите <strong>"1 X = ? Y"</strong> — например для USDT/EUR
-            это сколько <strong>EUR</strong> вы получаете за 1 USDT
-            (≈0.85, не 1.18). Обратный курс синхронизируется автоматически.
-            Пустой инпут — курс остаётся прежним.
+            <strong className="text-emerald-700">Sell</strong> — продажа{" "}
+            (1 X → Y), <strong className="text-sky-700">Buy</strong> —{" "}
+            покупка (1 Y → X). Если Buy пустой — синхронизируется
+            автоматически (1/Sell со спредом). Если задан — сохранится
+            как независимый override. Пустые инпуты не трогаем.
           </span>
         </div>
 
@@ -209,131 +246,185 @@ export default function DailyRatesModal({ open, onClose }) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
           {visibleRows.map(({ from, to }) => {
-            const current = getRate(from, to);
             const key = `${from}_${to}`;
-            const typed = inputs[key] || "";
-            const typedNum = Number(String(typed).trim().replace(",", "."));
-            const isChanged =
-              typed !== "" &&
-              Number.isFinite(typedNum) &&
-              typedNum > 0 &&
-              Number.isFinite(current) &&
-              Math.abs(typedNum - current) > 1e-9;
+            const currentSell = getRate(from, to);    // master rate (forward)
+            const currentBuy = getRate(to, from);     // reverse rate
+            const vals = inputs[key] || {};
+            const typedSell = vals.sell ?? "";
+            const typedBuy = vals.buy ?? "";
+            const sellNum = Number(String(typedSell).trim().replace(",", "."));
+            const buyNum = Number(String(typedBuy).trim().replace(",", "."));
+            const sellChanged =
+              typedSell !== "" &&
+              Number.isFinite(sellNum) &&
+              sellNum > 0 &&
+              Number.isFinite(currentSell) &&
+              Math.abs(sellNum - currentSell) > 1e-9;
+            const buyChanged =
+              typedBuy !== "" &&
+              Number.isFinite(buyNum) &&
+              buyNum > 0 &&
+              Number.isFinite(currentBuy) &&
+              Math.abs(buyNum - currentBuy) > 1e-9;
             const info = pairInfo.get(key);
             const updatedLabel = formatUpdatedAt(info?.updatedAt);
-            // Computed reverse: учитывает spread в обе стороны.
-            // Master хранится как base_rate. Forward.rate = base*(1+s/100).
-            // Reverse.base_rate = 1/master.base_rate. Trigger sync_reverse
-            // ставит reverse.spread = master.spread, тогда:
-            //   reverse.rate = (1/base) * (1+s/100)
-            // Это правильное обратное направление со spread'ом — клиент
-            // получает меньше базы за quote (margin для офиса).
-            //
-            // Если юзер вводит "новый rate" — это будет новый base_rate.
-            // Forward.rate станет input * (1+s/100), reverse.rate станет
-            // (1/input) * (1+s/100).
+            // Auto-buy preview: что подставится если admin не введёт buy
+            // явно. Используем effective sell base + spread (1+s/100) / sell.
             const spreadPct = info?.spreadPercent != null ? info.spreadPercent : 0;
             const spreadFactor = 1 + spreadPct / 100;
-            const effectiveForwardBase = isChanged
-              ? typedNum
+            const effectiveSellBase = sellChanged
+              ? sellNum
               : info?.baseRate != null
               ? info.baseRate
-              : current; // fallback
-            const reversePreview =
-              Number.isFinite(effectiveForwardBase) && effectiveForwardBase > 0
-                ? (1 / effectiveForwardBase) * spreadFactor
+              : currentSell;
+            const autoBuy =
+              Number.isFinite(effectiveSellBase) && effectiveSellBase > 0
+                ? (1 / effectiveSellBase) * spreadFactor
                 : null;
-            // Forward rate с учётом spread (то что фактически будет в
-            // системе после сохранения).
-            const forwardRateWithSpread =
-              Number.isFinite(effectiveForwardBase) && effectiveForwardBase > 0
-                ? effectiveForwardBase * spreadFactor
-                : null;
-            // Sanity warning: для USDT-пар с фиатом курс должен быть
-            // близок к 1 (USDT ≈ 1 USD ≈ 0.85-0.95 EUR ≈ 30-45 TRY).
-            // Если admin ввёл значение для master USDT→X гораздо
-            // больше "разумного" — вероятно перепутал направление.
+            // Sanity warning: USDT→fiat должен быть < ~1.5
             const looksInverted = (() => {
-              if (!isChanged) return false;
+              if (!sellChanged) return false;
               if (from !== "USDT") return false;
-              if (to === "USD" && typedNum > 1.5) return true;
-              if (to === "EUR" && typedNum > 1.5) return true;
-              if (to === "GBP" && typedNum > 1.5) return true;
+              if (to === "USD" && sellNum > 1.5) return true;
+              if (to === "EUR" && sellNum > 1.5) return true;
+              if (to === "GBP" && sellNum > 1.5) return true;
               return false;
             })();
+            const anyChanged = sellChanged || buyChanged;
             return (
               <div
                 key={key}
-                className={`flex flex-col gap-0.5 px-3 py-2 rounded-[10px] border transition-colors ${
+                className={`flex flex-col gap-1.5 p-2 rounded-[10px] border transition-colors ${
                   looksInverted
                     ? "bg-amber-50/80 border-amber-400"
-                    : isChanged
-                    ? "bg-emerald-50/60 border-emerald-300"
+                    : anyChanged
+                    ? "bg-emerald-50/40 border-emerald-300"
                     : "bg-slate-50/60 border-slate-200"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  {/* Явный формат "1 X = ? Y" вместо стрелки —
-                      исключает путаницу направления. Юзер сразу
-                      видит "1 USDT = ? EUR" и понимает что вводить. */}
-                  <div className="text-[11px] text-slate-700 min-w-[110px] tracking-tight">
-                    1 <span className="font-bold">{from}</span> ={" "}
-                    <span className="text-slate-400">?</span>{" "}
-                    <span className="font-bold">{to}</span>
-                  </div>
-                  <div className="text-[11px] text-slate-400 tabular-nums min-w-[70px]">
-                    {formatRate(current)}
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={typed}
-                    onChange={(e) => handleChange(from, to, e.target.value)}
-                    placeholder={formatRate(current)}
-                    className={`flex-1 min-w-0 bg-white border rounded-[8px] px-2.5 py-1.5 text-[13px] font-semibold tabular-nums outline-none transition-colors ${
-                      looksInverted
-                        ? "border-amber-500 focus:ring-2 focus:ring-amber-500/30"
-                        : isChanged
-                        ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                        : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
-                    }`}
-                  />
+                {/* Заголовок пары + время последнего изменения */}
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="font-semibold text-slate-700 tracking-tight">
+                    {from} <span className="text-slate-400">↔</span> {to}
+                  </span>
+                  {updatedLabel && (
+                    <span className="text-slate-400 tabular-nums">
+                      изм. {updatedLabel}
+                    </span>
+                  )}
                 </div>
-                {/* Forward + reverse preview с учётом spread. */}
-                {reversePreview != null && (
-                  <div className="text-[10px] tabular-nums pl-[110px] flex items-center gap-1.5 flex-wrap">
-                    <span className="text-slate-400">↩</span>
-                    <span className="text-slate-500 font-medium">
-                      1 {to} =
-                    </span>
-                    <span
-                      className={`font-bold ${
-                        isChanged ? "text-emerald-700" : "text-slate-500"
+
+                {/* Два контейнера: SELL + BUY */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  {/* SELL — master direction (from → to) */}
+                  <div
+                    className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
+                      sellChanged
+                        ? "bg-emerald-50 border-emerald-300"
+                        : "bg-white border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">
+                        Sell
+                      </span>
+                      <span className="text-[9px] text-slate-400 tabular-nums">
+                        {formatRate(currentSell)}
+                      </span>
+                    </div>
+                    <div className="text-[9px] text-slate-500">
+                      1 <span className="font-semibold text-slate-700">{from}</span>
+                      {" → "}
+                      <span className="font-semibold text-slate-700">{to}</span>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={typedSell}
+                      onChange={(e) => handleChange(from, to, "sell", e.target.value)}
+                      placeholder={formatRate(currentSell)}
+                      className={`w-full min-w-0 bg-white border rounded-[6px] px-2 py-1 text-[12.5px] font-semibold tabular-nums outline-none transition-colors ${
+                        looksInverted
+                          ? "border-amber-500 focus:ring-2 focus:ring-amber-500/30"
+                          : sellChanged
+                          ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+                          : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
                       }`}
-                    >
-                      {formatRate(reversePreview)} {from}
-                    </span>
-                    {spreadPct > 0 && (
-                      <span className="text-[9px] text-amber-700 font-semibold">
-                        spread {spreadPct}%
+                    />
+                  </div>
+
+                  {/* BUY — reverse direction (to → from) */}
+                  <div
+                    className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
+                      buyChanged
+                        ? "bg-sky-50 border-sky-300"
+                        : "bg-white border-slate-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-bold text-sky-700 uppercase tracking-wider">
+                        Buy
+                      </span>
+                      <span className="text-[9px] text-slate-400 tabular-nums">
+                        {formatRate(currentBuy)}
+                      </span>
+                    </div>
+                    <div className="text-[9px] text-slate-500">
+                      1 <span className="font-semibold text-slate-700">{to}</span>
+                      {" → "}
+                      <span className="font-semibold text-slate-700">{from}</span>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={typedBuy}
+                      onChange={(e) => handleChange(from, to, "buy", e.target.value)}
+                      placeholder={autoBuy != null ? formatRate(autoBuy) : formatRate(currentBuy)}
+                      className={`w-full min-w-0 bg-white border rounded-[6px] px-2 py-1 text-[12.5px] font-semibold tabular-nums outline-none transition-colors ${
+                        buyChanged
+                          ? "border-sky-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                          : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Подсказка: если buy пустой и sell изменён — auto-sync,
+                    если buy введён — будет explicit override. */}
+                {(sellChanged || buyChanged) && (
+                  <div className="flex items-center justify-between text-[9px] text-slate-500 tabular-nums">
+                    {!buyChanged && autoBuy != null && (
+                      <span>
+                        <span className="text-slate-400">↩ buy auto =</span>{" "}
+                        <span className="font-semibold text-slate-700">
+                          {formatRate(autoBuy)}
+                        </span>
+                        {spreadPct > 0 && (
+                          <span className="text-amber-700 font-semibold">
+                            {" "}spread {spreadPct}%
+                          </span>
+                        )}
                       </span>
                     )}
-                    <span className="text-[9px] text-slate-400 italic">auto</span>
+                    {buyChanged && (
+                      <span className="text-sky-700 font-semibold">
+                        ✓ buy override
+                      </span>
+                    )}
+                    {sellChanged && (
+                      <span className="text-emerald-700 font-semibold">
+                        ✓ sell {formatRate(sellNum)}
+                      </span>
+                    )}
                   </div>
                 )}
-                {/* Sanity warning — мб admin ввёл в обратном направлении */}
+
+                {/* Sanity warning по sell */}
                 {looksInverted && (
-                  <div className="text-[10px] text-amber-800 font-medium pl-[110px] mt-0.5">
-                    ⚠ 1 {from} = {formatRate(typedNum)} {to}? Похоже на
-                    обратный курс. Возможно вы хотели ввести 1 {to} ={" "}
-                    {formatRate(typedNum)} {from} (тогда правильно
-                    впишите {formatRate(1 / typedNum)} в это поле).
-                  </div>
-                )}
-                {/* Подпись "изм. DD.MM HH:MM" — когда курс был последний раз обновлён */}
-                {updatedLabel && (
-                  <div className="text-[9.5px] text-slate-400 tabular-nums pl-[100px]">
-                    изм. {updatedLabel}
+                  <div className="text-[10px] text-amber-800 font-medium">
+                    ⚠ 1 {from} = {formatRate(sellNum)} {to}? Похоже на
+                    обратный курс. Возможно правильно вписать{" "}
+                    {formatRate(1 / sellNum)} в Sell.
                   </div>
                 )}
               </div>
