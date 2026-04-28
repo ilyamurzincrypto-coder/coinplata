@@ -221,13 +221,33 @@ export default function DailyRatesModal({ open, onClose }) {
               Math.abs(typedNum - current) > 1e-9;
             const info = pairInfo.get(key);
             const updatedLabel = formatUpdatedAt(info?.updatedAt);
-            // Computed reverse — показываем что станет в обратной паре
-            // после применения. Если юзер ничего не ввёл — показываем
-            // текущий обратный rate из системы.
-            const effectiveForward = isChanged ? typedNum : current;
+            // Computed reverse: учитывает spread в обе стороны.
+            // Master хранится как base_rate. Forward.rate = base*(1+s/100).
+            // Reverse.base_rate = 1/master.base_rate. Trigger sync_reverse
+            // ставит reverse.spread = master.spread, тогда:
+            //   reverse.rate = (1/base) * (1+s/100)
+            // Это правильное обратное направление со spread'ом — клиент
+            // получает меньше базы за quote (margin для офиса).
+            //
+            // Если юзер вводит "новый rate" — это будет новый base_rate.
+            // Forward.rate станет input * (1+s/100), reverse.rate станет
+            // (1/input) * (1+s/100).
+            const spreadPct = info?.spreadPercent != null ? info.spreadPercent : 0;
+            const spreadFactor = 1 + spreadPct / 100;
+            const effectiveForwardBase = isChanged
+              ? typedNum
+              : info?.baseRate != null
+              ? info.baseRate
+              : current; // fallback
             const reversePreview =
-              Number.isFinite(effectiveForward) && effectiveForward > 0
-                ? 1 / effectiveForward
+              Number.isFinite(effectiveForwardBase) && effectiveForwardBase > 0
+                ? (1 / effectiveForwardBase) * spreadFactor
+                : null;
+            // Forward rate с учётом spread (то что фактически будет в
+            // системе после сохранения).
+            const forwardRateWithSpread =
+              Number.isFinite(effectiveForwardBase) && effectiveForwardBase > 0
+                ? effectiveForwardBase * spreadFactor
                 : null;
             // Sanity warning: для USDT-пар с фиатом курс должен быть
             // близок к 1 (USDT ≈ 1 USD ≈ 0.85-0.95 EUR ≈ 30-45 TRY).
@@ -279,10 +299,9 @@ export default function DailyRatesModal({ open, onClose }) {
                     }`}
                   />
                 </div>
-                {/* Reverse preview: 1 {to} = X {from} — менеджер видит
-                    обратную сторону того же курса. */}
+                {/* Forward + reverse preview с учётом spread. */}
                 {reversePreview != null && (
-                  <div className="text-[10px] tabular-nums pl-[110px] flex items-center gap-1.5">
+                  <div className="text-[10px] tabular-nums pl-[110px] flex items-center gap-1.5 flex-wrap">
                     <span className="text-slate-400">↩</span>
                     <span className="text-slate-500 font-medium">
                       1 {to} =
@@ -294,6 +313,11 @@ export default function DailyRatesModal({ open, onClose }) {
                     >
                       {formatRate(reversePreview)} {from}
                     </span>
+                    {spreadPct > 0 && (
+                      <span className="text-[9px] text-amber-700 font-semibold">
+                        spread {spreadPct}%
+                      </span>
+                    )}
                     <span className="text-[9px] text-slate-400 italic">auto</span>
                   </div>
                 )}
