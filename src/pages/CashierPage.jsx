@@ -8,7 +8,6 @@ import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
-import OtcDealModal from "../components/OtcDealModal.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -41,7 +40,6 @@ export default function CashierPage({
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
   // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
-  const [otcOpen, setOtcOpen] = useState(false);
 
   // mode / formMounted теперь lifted в App.jsx, чтобы переживать переход
   // на другие вкладки (Clients/Capital и т.д.). ExchangeForm сохраняет
@@ -462,30 +460,6 @@ export default function CashierPage({
                 </div>
               </button>
             )}
-            {/* Secondary CTA: OTC сделка с контрагентом (партнёром).
-                Кейс: приняли RUB у клиента → партнёр прислал USDT за них →
-                выдали клиенту USDT. OTC обмен с партнёром регистрируется
-                этой кнопкой (без fee/profit, можно задним числом). */}
-            <button
-              onClick={() => setOtcOpen(true)}
-              className="mt-2 w-full inline-flex items-center justify-between gap-3 px-4 py-3 rounded-[12px] bg-white border-2 border-indigo-300 text-slate-900 hover:border-indigo-400 hover:bg-indigo-50/40 transition-colors shadow-sm"
-              title="OTC обмен валюты с партнёром — без клиента и fee. Можно задним числом."
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <ArrowLeftRight className="w-4 h-4 text-indigo-700" />
-                </div>
-                <div className="text-left">
-                  <div className="text-[13px] font-bold tracking-tight">
-                    Сделка с контрагентом
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    OTC обмен с партнёром · можно задним числом
-                  </div>
-                </div>
-              </div>
-              <ArrowUpRight className="w-3.5 h-3.5 text-indigo-500" />
-            </button>
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
@@ -570,7 +544,6 @@ export default function CashierPage({
                     currentOffice={currentOffice}
                     onSubmit={handleFormSubmit}
                     submitting={submitting}
-                    onOpenOtc={() => setOtcOpen(true)}
                   />
                 )}
               </div>
@@ -580,15 +553,6 @@ export default function CashierPage({
       </div>
 
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
-      <OtcDealModal
-        open={otcOpen}
-        currentOffice={currentOffice}
-        onClose={() => setOtcOpen(false)}
-        onCreated={(id) => {
-          setJustCreatedId(id);
-          setTimeout(() => setJustCreatedId(null), 2500);
-        }}
-      />
 
       {/* Глобальные keyframes для fadeIn анимации. */}
       <style>{`
