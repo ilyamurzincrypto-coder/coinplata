@@ -373,7 +373,15 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
         )}
         <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
           <span>Deal #{o.dealId}</span>
-          {deal?.counterparty && (
+          {o.counterpartyName && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="font-semibold text-indigo-700">
+                partner {o.counterpartyName}
+              </span>
+            </>
+          )}
+          {!o.counterpartyName && deal?.counterparty && (
             <>
               <span className="text-slate-300">·</span>
               <span>client {deal.counterparty}</span>

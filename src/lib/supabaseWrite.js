@@ -1320,6 +1320,7 @@ export async function rpcCreateOtcDeal({
   note,
   occurredAt,
   partnerPaysClient,
+  partnerDeferred,
 }) {
   assertConfigured();
   const office = requireUuid(officeId, "officeId");
@@ -1331,9 +1332,12 @@ export async function rpcCreateOtcDeal({
   const rateNum = requirePositive(rate, "rate");
   const cp = (counterparty || "").trim();
   if (!cp) throw new Error("counterparty required");
+  if (partnerPaysClient && partnerDeferred) {
+    throw new Error("partner_pays_client и partner_deferred — взаимоисключающие");
+  }
 
-  // p_partner_pays_client отсылаем только когда true — defensive payload
-  // для совместимости с pre-0072 версией функции (PostgREST overload resolve).
+  // Optional named params отсылаем только когда true — defensive payload
+  // для совместимости со старыми версиями RPC (PostgREST overload resolve).
   const payload = {
     p_office_id: office,
     p_from_account_id: from,
@@ -1347,6 +1351,9 @@ export async function rpcCreateOtcDeal({
   };
   if (partnerPaysClient) {
     payload.p_partner_pays_client = true;
+  }
+  if (partnerDeferred) {
+    payload.p_partner_deferred = true;
   }
 
   const dealId = unwrap(

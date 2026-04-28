@@ -50,8 +50,10 @@ export default function InlineOtcBlock({
   const [occurredAt, setOccurredAt] = useState("");
   const [busy, setBusy] = useState(false);
   // Режим расчёта:
-  //   "self" — партнёр зачислил нам USDT (стандарт, IN movement создаётся)
+  //   "self" — партнёр зачислил нам USDT (стандарт, IN movement)
   //   "partner_pays_client" — партнёр выдаёт клиенту напрямую (IN не создаётся)
+  //   "partner_deferred" — партнёр обещал, но ещё не зачислил
+  //                        (IN не создаётся, создаётся obligation they_owe)
   const [mode, setMode] = useState("self");
 
   // Сбрасываем форму когда блок свернут.
@@ -109,11 +111,14 @@ export default function InlineOtcBlock({
             note: note.trim(),
             occurredAt: occurredIso,
             partnerPaysClient: mode === "partner_pays_client",
+            partnerDeferred: mode === "partner_deferred",
           }),
         {
           success:
             mode === "partner_pays_client"
               ? "OTC создана · партнёр выдаёт клиенту"
+              : mode === "partner_deferred"
+              ? "OTC создана · партнёр должен зачислить (создан долг)"
               : occurredIso
               ? "OTC оформлена задним числом"
               : "OTC создана",
@@ -121,11 +126,17 @@ export default function InlineOtcBlock({
         }
       );
       if (res.ok) {
+        const modeLabel =
+          mode === "partner_pays_client"
+            ? " · partner pays client"
+            : mode === "partner_deferred"
+            ? " · partner deferred"
+            : "";
         logAudit({
           action: "create",
           entity: "transaction",
           entityId: String(res.result || ""),
-          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} → ${fmt(toAmt, toAcc.currency)} ${toAcc.currency}${mode === "partner_pays_client" ? " · partner pays client" : ""}${occurredIso ? " (бэкдейт)" : ""}`,
+          summary: `OTC ${counterparty.trim()}: ${fmt(fromAmtNum, fromAcc.currency)} ${fromAcc.currency} → ${fmt(toAmt, toAcc.currency)} ${toAcc.currency}${modeLabel}${occurredIso ? " (бэкдейт)" : ""}`,
         });
         onCreated?.({
           dealId: res.result,
@@ -139,6 +150,7 @@ export default function InlineOtcBlock({
           rate: computedRate,
           occurredAt: occurredIso,
           partnerPaysClient: mode === "partner_pays_client",
+          partnerDeferred: mode === "partner_deferred",
         });
         setOpen(false);
       }
@@ -150,48 +162,31 @@ export default function InlineOtcBlock({
   // Свернутый вид + есть existing — показываем краткую инфу.
   if (existing && !open) {
     const isPpc = !!existing.partnerPaysClient;
+    const isDef = !!existing.partnerDeferred;
+    const palette = isPpc
+      ? { bg: "bg-amber-50/40", border: "border-amber-200", iconBg: "bg-amber-100", iconColor: "text-amber-700", title: "text-amber-900", body: "text-amber-800/80", chip: "text-amber-800 bg-amber-100", subChip: "text-amber-800 bg-amber-200/60", btn: "text-amber-700 hover:text-amber-900" }
+      : isDef
+      ? { bg: "bg-cyan-50/40", border: "border-cyan-200", iconBg: "bg-cyan-100", iconColor: "text-cyan-700", title: "text-cyan-900", body: "text-cyan-800/80", chip: "text-cyan-800 bg-cyan-100", subChip: "text-cyan-800 bg-cyan-200/60", btn: "text-cyan-700 hover:text-cyan-900" }
+      : { bg: "bg-emerald-50/40", border: "border-emerald-200", iconBg: "bg-emerald-100", iconColor: "text-emerald-700", title: "text-emerald-900", body: "text-emerald-800/80", chip: "text-emerald-700 bg-emerald-100", subChip: "", btn: "text-emerald-700 hover:text-emerald-900" };
+    const subChipLabel = isPpc ? "партнёр выдаёт клиенту" : isDef ? "долг — зачислит позже" : null;
     return (
-      <div
-        className={`my-3 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap border ${
-          isPpc
-            ? "bg-amber-50/40 border-amber-200"
-            : "bg-emerald-50/40 border-emerald-200"
-        }`}
-      >
-        <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-            isPpc ? "bg-amber-100" : "bg-emerald-100"
-          }`}
-        >
-          <CheckCircle2 className={`w-4 h-4 ${isPpc ? "text-amber-700" : "text-emerald-700"}`} />
+      <div className={`my-3 rounded-[12px] px-4 py-2.5 flex items-center gap-3 flex-wrap border ${palette.bg} ${palette.border}`}>
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${palette.iconBg}`}>
+          <CheckCircle2 className={`w-4 h-4 ${palette.iconColor}`} />
         </div>
         <div className="flex-1 min-w-0">
-          <div
-            className={`text-[12.5px] font-bold inline-flex items-center gap-2 flex-wrap ${
-              isPpc ? "text-amber-900" : "text-emerald-900"
-            }`}
-          >
+          <div className={`text-[12.5px] font-bold inline-flex items-center gap-2 flex-wrap ${palette.title}`}>
             <span>OTC #{existing.dealId} создана</span>
-            <span
-              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                isPpc
-                  ? "text-amber-800 bg-amber-100"
-                  : "text-emerald-700 bg-emerald-100"
-              }`}
-            >
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${palette.chip}`}>
               {existing.partnerName}
             </span>
-            {isPpc && (
-              <span className="text-[9.5px] font-bold text-amber-800 bg-amber-200/60 px-1.5 py-0.5 rounded uppercase">
-                партнёр выдаёт клиенту
+            {subChipLabel && (
+              <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded uppercase ${palette.subChip}`}>
+                {subChipLabel}
               </span>
             )}
           </div>
-          <div
-            className={`text-[11px] inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums ${
-              isPpc ? "text-amber-800/80" : "text-emerald-800/80"
-            }`}
-          >
+          <div className={`text-[11px] inline-flex items-center gap-1.5 flex-wrap mt-0.5 tabular-nums ${palette.body}`}>
             <span>
               {curSymbol(existing.fromCurrency)}
               {fmt(existing.fromAmount, existing.fromCurrency)} {existing.fromCurrency}
@@ -205,13 +200,7 @@ export default function InlineOtcBlock({
             <span>курс {existing.rate.toFixed(4)}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClear}
-          className={`text-[10.5px] font-semibold underline ${
-            isPpc ? "text-amber-700 hover:text-amber-900" : "text-emerald-700 hover:text-emerald-900"
-          }`}
-        >
+        <button type="button" onClick={onClear} className={`text-[10.5px] font-semibold underline ${palette.btn}`}>
           Сбросить
         </button>
       </div>
@@ -291,7 +280,7 @@ export default function InlineOtcBlock({
           <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-wide uppercase">
             Расчёт с партнёром
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
             <button
               type="button"
               onClick={() => setMode("self")}
@@ -301,9 +290,9 @@ export default function InlineOtcBlock({
                   : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
               }`}
             >
-              <div className="text-[11.5px] font-bold">Партнёр зачислил нам</div>
+              <div className="text-[11.5px] font-bold">Зачислил нам</div>
               <div className="text-[9.5px] opacity-80 mt-0.5">
-                USDT партнёра приходит на наш счёт. Затем выдаём клиенту со своего.
+                USDT уже на нашем счёте. Выдаём клиенту со своего.
               </div>
             </button>
             <button
@@ -315,9 +304,23 @@ export default function InlineOtcBlock({
                   : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
               }`}
             >
-              <div className="text-[11.5px] font-bold">Партнёр выдаёт клиенту</div>
+              <div className="text-[11.5px] font-bold">Выдаёт клиенту</div>
               <div className="text-[9.5px] opacity-80 mt-0.5">
-                USDT партнёр передаёт напрямую клиенту. У нас IN-зачисления нет.
+                Партнёр передаёт USDT клиенту напрямую. У нас IN нет.
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("partner_deferred")}
+              className={`text-left px-2.5 py-2 rounded-[8px] border-2 transition-colors ${
+                mode === "partner_deferred"
+                  ? "bg-cyan-50 border-cyan-400 text-cyan-900"
+                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+              }`}
+            >
+              <div className="text-[11.5px] font-bold">Зачислит позже</div>
+              <div className="text-[9.5px] opacity-80 mt-0.5">
+                Партнёр должен зачислить позже. Создастся долг (they_owe).
               </div>
             </button>
           </div>
@@ -350,22 +353,32 @@ export default function InlineOtcBlock({
             )}
           </div>
 
-          {/* Получаем — input. В режиме "partner_pays_client" toAccount нужен
-              для учёта (валюта/курс), но фактически IN-движение не создаётся. */}
+          {/* Получаем — input. В режимах ppc/deferred toAccount нужен для
+              учёта (валюта/курс), но IN-движение не создаётся. */}
           <div>
-            <label className={`block text-[10px] font-bold mb-1 tracking-wide uppercase ${
-              mode === "partner_pays_client" ? "text-amber-700" : "text-emerald-700"
-            }`}>
-              {mode === "partner_pays_client" ? "Партнёр выдаёт клиенту" : "Получаем от партнёра"}
+            <label
+              className={`block text-[10px] font-bold mb-1 tracking-wide uppercase ${
+                mode === "partner_pays_client"
+                  ? "text-amber-700"
+                  : mode === "partner_deferred"
+                  ? "text-cyan-700"
+                  : "text-emerald-700"
+              }`}
+            >
+              {mode === "partner_pays_client"
+                ? "Партнёр выдаёт клиенту"
+                : mode === "partner_deferred"
+                ? "Должен зачислить (долг)"
+                : "Получаем от партнёра"}
             </label>
             <GroupedAccountSelect
               accounts={activeAccounts.filter((a) => a.id !== fromAccountId)}
               value={toId}
               onChange={setToId}
               placeholder={
-                mode === "partner_pays_client"
-                  ? "Счёт-валюта (для отчётности)"
-                  : "Счёт зачисления"
+                mode === "self"
+                  ? "Счёт зачисления"
+                  : "Счёт-валюта (для отчётности)"
               }
             />
             {toAcc && (
@@ -380,6 +393,8 @@ export default function InlineOtcBlock({
                 className={`mt-1.5 w-full bg-white border-2 rounded-[8px] px-2.5 py-1.5 text-[15px] font-bold tabular-nums outline-none ${
                   mode === "partner_pays_client"
                     ? "border-amber-200 focus:border-amber-400"
+                    : mode === "partner_deferred"
+                    ? "border-cyan-200 focus:border-cyan-400"
                     : "border-emerald-200 focus:border-emerald-400"
                 }`}
               />
@@ -387,6 +402,12 @@ export default function InlineOtcBlock({
             {mode === "partner_pays_client" && toAcc && (
               <p className="mt-1 text-[9.5px] text-amber-700/90">
                 ⚠ На наш счёт зачисления НЕ будет. Партнёр выдаёт {toAcc.currency} клиенту напрямую.
+              </p>
+            )}
+            {mode === "partner_deferred" && toAcc && (
+              <p className="mt-1 text-[9.5px] text-cyan-700/90">
+                💸 Зачисления нет, но создастся долг — партнёр должен нам {toAcc.currency}.
+                Виден в Obligations с фильтром «they_owe».
               </p>
             )}
           </div>

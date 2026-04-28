@@ -434,6 +434,7 @@ export async function loadObligations() {
     dealLegIndex: null,
     dealLegId: r.deal_leg_id,
     clientId: r.client_id,
+    counterpartyName: r.counterparty_name || null,
     currency: r.currency_code,
     amount: num(r.amount),
     paidAmount: num(r.paid_amount),
