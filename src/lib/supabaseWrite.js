@@ -400,16 +400,21 @@ export async function rpcCreateTransfer({
   // 0052: transfer.pending до confirm от назначенного менеджера).
   const toMgr = toManagerId ? requireUuid(toManagerId, "toManagerId") : null;
 
+  // p_to_manager_id отсылаем только когда задан — старая 0001 сигнатура
+  // create_transfer без него; PostgREST overload resolution по именам.
+  const payload = {
+    p_from_account_id: from,
+    p_to_account_id: to,
+    p_from_amount: fromAmt,
+    p_to_amount: toAmt,
+    p_rate: rateNum,
+    p_note: note || "",
+  };
+  if (toMgr) {
+    payload.p_to_manager_id = toMgr;
+  }
   const id = unwrap(
-    await supabase.rpc("create_transfer", {
-      p_from_account_id: from,
-      p_to_account_id: to,
-      p_from_amount: fromAmt,
-      p_to_amount: toAmt,
-      p_rate: rateNum,
-      p_note: note || "",
-      p_to_manager_id: toMgr,
-    }),
+    await supabase.rpc("create_transfer", payload),
     "create_transfer"
   );
   bumpDataVersion();
@@ -560,13 +565,22 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
   }
   if (baseRateNum == null && spreadNum == null && reverseRateNum == null) return;
 
-  const { error } = await supabase.rpc("update_pair", {
+  // PostgREST resolve'ит overloaded функции по именам параметров. Если
+  // p_reverse_rate отсылается всегда (даже null), но в БД ещё нет миграции
+  // 0063 — найдётся только старая сигнатура (p_base_rate, p_from, p_spread,
+  // p_to) и PostgREST бросит "function not found". Поэтому добавляем
+  // p_reverse_rate в payload ТОЛЬКО когда юзер реально его задал — иначе
+  // старая сигнатура resolve'ит OK.
+  const payload = {
     p_from: from,
     p_to: to,
     p_base_rate: baseRateNum,
     p_spread: spreadNum,
-    p_reverse_rate: reverseRateNum,
-  });
+  };
+  if (reverseRateNum != null) {
+    payload.p_reverse_rate = reverseRateNum;
+  }
+  const { error } = await supabase.rpc("update_pair", payload);
   if (error) {
     // Явный differentiation сетевых ошибок от RPC-ошибок — чтобы toast
     // показал не просто "Failed to fetch" а "Network — check Supabase
