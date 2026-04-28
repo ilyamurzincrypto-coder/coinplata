@@ -537,8 +537,12 @@ export default function ExchangeForm({
         return { ...o, amount: computedStr, rate: rateStr, touched: false };
       })
     );
+    // Зависим от curIn + outputs[0]?.currency чтобы любое изменение пары
+    // (включая переключение output.currency между TRY/EUR/USD) триггерило
+    // recompute. Без этого draft со stale rate из предыдущей пары
+    // восстанавливался без коррекции.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyMinFee, amtIn, minFeeUsd, curIn]);
+  }, [applyMinFee, amtIn, minFeeUsd, curIn, outputs[0]?.currency]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
