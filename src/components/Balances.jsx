@@ -205,9 +205,30 @@ function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYest
 //
 // split=true → визуально разделяет верхнюю часть (header+total+delta) и
 // нижнюю (assets list) на два sub-контейнера. Используется для Crypto:
-// верх = "общий остаток", низ = "стата по офису". Внешний bordered card
-// и общая высота сохраняются — layout не прыгает.
-function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYesterday, emptyText, currency, split = false }) {
+// верх = "общий остаток ПО ВСЕМ офисам" (через globalTotal/Delta props),
+// низ = "стата по этому офису" (rows + локальные total). Внешний bordered
+// card и общая высота сохраняются — layout не прыгает.
+function GroupCard({
+  title,
+  icon: Icon,
+  rows,
+  total,
+  totalDelta,
+  totalDeltaYesterday,
+  emptyText,
+  currency,
+  split = false,
+  globalTotal,
+  globalDelta,
+  globalDeltaYesterday,
+}) {
+  // В split режиме верхний блок показывает GLOBAL значения (по всем офисам).
+  // Если global props не переданы — fallback на локальные total/delta.
+  const headerTotal = split && globalTotal != null ? globalTotal : total;
+  const headerDelta = split && globalDelta != null ? globalDelta : totalDelta;
+  const headerDeltaY =
+    split && globalDeltaYesterday != null ? globalDeltaYesterday : totalDeltaYesterday;
+
   const headerBlock = (
     <>
       {/* Header: title */}
@@ -216,6 +237,14 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYeste
         <span className="text-[11px] font-bold text-slate-600 tracking-[0.15em] uppercase">
           {title}
         </span>
+        {split && (
+          <span
+            className="text-[8px] font-bold text-slate-400 uppercase tracking-wider px-1 py-px rounded bg-slate-200/60"
+            title="Общий остаток по всем офисам"
+          >
+            All offices
+          </span>
+        )}
         <span className="ml-auto text-[10px] font-semibold text-slate-400 tabular-nums">
           {rows.length}
         </span>
@@ -223,16 +252,16 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYeste
 
       {/* Total amount — one line, right-aligned via block */}
       <div className="mt-2 text-[24px] font-bold tabular-nums tracking-tight text-slate-900 leading-none">
-        {curSymbol(currency)}{fmt(total, currency)}
+        {curSymbol(currency)}{fmt(headerTotal, currency)}
         <span className="text-[12px] text-slate-400 font-medium ml-1.5">{currency}</span>
       </div>
       <div className="mt-1">
         <DeltaPair
-          today={totalDelta}
-          yesterday={totalDeltaYesterday}
+          today={headerDelta}
+          yesterday={headerDeltaY}
           currency={currency}
           size="sm"
-          title="Сегодня / вчера (до 00:00)"
+          title={split ? "Общий по всем офисам · сегодня / вчера" : "Сегодня / вчера (до 00:00)"}
         />
       </div>
     </>
@@ -260,7 +289,9 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYeste
   );
 
   if (split) {
-    // Двух-контейнерный layout: общий остаток (sub-card slate) + assets (sub-card white).
+    // Двух-контейнерный layout:
+    //   верх (slate) = общий остаток по всем офисам (globalTotal)
+    //   низ (white)  = вклад этого офиса (total + assets list)
     // Тот же внешний bordered card → тот же визуальный footprint и высота.
     return (
       <div className="bg-white border border-slate-200 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2">
@@ -268,8 +299,13 @@ function GroupCard({ title, icon: Icon, rows, total, totalDelta, totalDeltaYeste
           {headerBlock}
         </div>
         <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2 flex flex-col flex-1 min-h-0">
-          <div className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase mb-1">
-            По офису
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
+              По офису
+            </span>
+            <span className="text-[11px] font-bold tabular-nums text-slate-700">
+              {curSymbol(currency)}{fmt(total, currency)}
+            </span>
           </div>
           {assetsBlock}
         </div>
@@ -339,6 +375,9 @@ function OfficeBlock({
   currencyDict,
   toBase,
   base,
+  globalCryptoTotal,
+  globalCryptoDelta,
+  globalCryptoDeltaYesterday,
 }) {
   const grouped = useMemo(
     () =>
@@ -463,6 +502,9 @@ function OfficeBlock({
               currency={base}
               emptyText="No crypto accounts"
               split
+              globalTotal={globalCryptoTotal}
+              globalDelta={globalCryptoDelta}
+              globalDeltaYesterday={globalCryptoDeltaYesterday}
             />
           </div>
         );
@@ -531,6 +573,26 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     const o = findOffice(currentOffice);
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
+
+  // GLOBAL crypto totals — суммируются по ВСЕМ офисам (independent от scope).
+  // Используется в верхнем sub-контейнере GroupCard "Crypto" (split=true) —
+  // юзер видит общий баланс крипты компании, переключение офиса не меняет.
+  const globalCrypto = useMemo(() => {
+    let total = 0;
+    let delta = 0;
+    let deltaYesterday = 0;
+    accounts.forEach((a) => {
+      if (!a.active) return;
+      if (currencyDict[a.currency]?.type !== "crypto") return;
+      total += toBase(balanceOf(a.id), a.currency);
+      delta += toBase(deltaOf(a.id, dayStartMs), a.currency);
+      deltaYesterday += toBase(
+        deltaOf(a.id, yesterdayStartMs, dayStartMs),
+        a.currency
+      );
+    });
+    return { total, delta, deltaYesterday };
+  }, [accounts, currencyDict, balanceOf, deltaOf, dayStartMs, yesterdayStartMs, toBase]);
 
   // Grand totals + obligations + delta (сегодня и вчера).
   const grand = useMemo(() => {
@@ -689,6 +751,9 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                   currencyDict={currencyDict}
                   toBase={toBase}
                   base={base}
+                  globalCryptoTotal={globalCrypto.total}
+                  globalCryptoDelta={globalCrypto.delta}
+                  globalCryptoDeltaYesterday={globalCrypto.deltaYesterday}
                 />
               );
             })}
