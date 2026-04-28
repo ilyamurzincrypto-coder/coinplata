@@ -1221,24 +1221,6 @@ export default function ExchangeForm({
                 {outputs.length}
               </span>
             )}
-            {/* Toggle "комиссия" — прямо возле "Выдали" чтобы юзер видел
-                переключатель в момент когда смотрит на выдачу. */}
-            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group ml-1 px-2 py-0.5 rounded-md border border-slate-200 bg-white hover:border-slate-300">
-              <input
-                type="checkbox"
-                checked={applyMinFee}
-                onChange={(e) => setApplyMinFee(e.target.checked)}
-                className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
-              />
-              <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
-                Комиссия
-                {minFeeUsd > 0 && (
-                  <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
-                    мин ${fmt(minFeeUsd)}
-                  </span>
-                )}
-              </span>
-            </label>
           </div>
           <button
             onClick={addOutput}
@@ -1290,6 +1272,9 @@ export default function ExchangeForm({
               counterpartyId={resolveClientId(counterparty)}
               officeBalancesByCurrency={officeBalancesByCurrency}
               offices={activeOffices}
+              applyMinFee={applyMinFee}
+              setApplyMinFee={setApplyMinFee}
+              minFeeUsd={minFeeUsd}
             />
           ))}
         </div>
@@ -1943,8 +1928,11 @@ function OutputRow({
   availableInCurrency,
   currentOffice,
   counterpartyId,
-  officeBalancesByCurrency, // Map<"officeId_currency", balance> across all offices
+  officeBalancesByCurrency,
   offices,
+  applyMinFee,
+  setApplyMinFee,
+  minFeeUsd,
 }) {
   const { t } = useTranslation();
   const { getRate: getRateRaw, getOfficeOverride } = useRates();
@@ -2188,15 +2176,38 @@ function OutputRow({
             ))}
           </div>
         </div>
-        {canRemove && (
-          <button
-            onClick={onRemove}
-            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-            aria-label={t("remove")}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Toggle "комиссия" — у каждого output отдельно. Все
+              синхронизированы через общий applyMinFee state, так что
+              переключение ЛЮБОГО toggle меняет fee у всех. */}
+          {setApplyMinFee && (
+            <label className="inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-0.5 rounded-md border border-slate-200 bg-white hover:border-slate-300">
+              <input
+                type="checkbox"
+                checked={applyMinFee}
+                onChange={(e) => setApplyMinFee(e.target.checked)}
+                className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-1 focus:ring-emerald-500/40 cursor-pointer"
+              />
+              <span className="text-[10px] font-semibold text-slate-600 uppercase tracking-[0.08em] group-hover:text-slate-900">
+                Комиссия
+                {minFeeUsd > 0 && (
+                  <span className="ml-1 text-slate-400 normal-case font-medium tracking-normal lowercase">
+                    ${fmt(minFeeUsd)}
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
+          {canRemove && (
+            <button
+              onClick={onRemove}
+              className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+              aria-label={t("remove")}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div
