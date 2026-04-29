@@ -351,20 +351,24 @@ select
   o.debtor_id,
   case o.debtor_kind
     when 'us'      then 'Мы'
-    when 'client'  then coalesce((select c.name from public.clients c where c.id = o.debtor_id),
-                                  o.counterparty_name, 'Клиент')
-    when 'partner' then coalesce((select p.name from public.partners p where p.id = o.debtor_id),
-                                  o.counterparty_name, 'Партнёр')
+    when 'client'  then coalesce(
+                          (select coalesce(c.full_name, c.nickname) from public.clients c where c.id = o.debtor_id),
+                          o.counterparty_name, 'Клиент')
+    when 'partner' then coalesce(
+                          (select p.name from public.partners p where p.id = o.debtor_id),
+                          o.counterparty_name, 'Партнёр')
     else null
   end as debtor_name,
   o.creditor_kind,
   o.creditor_id,
   case o.creditor_kind
     when 'us'      then 'Мы'
-    when 'client'  then coalesce((select c.name from public.clients c where c.id = o.creditor_id),
-                                  o.counterparty_name, 'Клиент')
-    when 'partner' then coalesce((select p.name from public.partners p where p.id = o.creditor_id),
-                                  o.counterparty_name, 'Партнёр')
+    when 'client'  then coalesce(
+                          (select coalesce(c.full_name, c.nickname) from public.clients c where c.id = o.creditor_id),
+                          o.counterparty_name, 'Клиент')
+    when 'partner' then coalesce(
+                          (select p.name from public.partners p where p.id = o.creditor_id),
+                          o.counterparty_name, 'Партнёр')
     else null
   end as creditor_name,
   -- 6-канальная классификация для UI-фильтров
