@@ -97,6 +97,41 @@ export function uuidOrNull(value) {
 //   * 0           → defer out (полный we_owe, OUT movement не создаётся)
 //   * 0 < x < amount → partial (платим x сейчас, остаток we_owe)
 //   * == amount   → эквивалент auto (full payout forced)
+// 0081-aware: каждая leg теперь может иметь out_kind ∈
+// {ours_now, ours_later, partner_now, partner_later} и payments[] —
+// массив частичных оплат вида {amount, kind, account_id?, partner_account_id?, paid_at?, note?}.
+// Старые поля (accountId/partnerAccountId/payNow) продолжают работать.
+const OUT_KINDS = new Set(["ours_now", "ours_later", "partner_now", "partner_later"]);
+
+function paymentsToJsonb(payments, ctxLabel) {
+  if (!Array.isArray(payments) || payments.length === 0) return [];
+  return payments.map((p, i) => {
+    const amount = Number(p.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error(`${ctxLabel} payment ${i + 1}: invalid amount (${p.amount})`);
+    }
+    const kind = p.kind || "ours_now";
+    if (!["ours_now", "partner_now"].includes(kind)) {
+      throw new Error(`${ctxLabel} payment ${i + 1}: kind должен быть ours_now или partner_now`);
+    }
+    const out = { amount, kind };
+    if (kind === "ours_now") {
+      if (!p.accountId) {
+        throw new Error(`${ctxLabel} payment ${i + 1}: account_id required for ours_now`);
+      }
+      out.account_id = p.accountId;
+    } else {
+      if (!p.partnerAccountId) {
+        throw new Error(`${ctxLabel} payment ${i + 1}: partner_account_id required for partner_now`);
+      }
+      out.partner_account_id = p.partnerAccountId;
+    }
+    if (p.paidAt) out.paid_at = String(p.paidAt);
+    if (p.note != null && String(p.note).trim()) out.note = String(p.note).trim();
+    return out;
+  });
+}
+
 export function legsToJsonb(outputs) {
   if (!Array.isArray(outputs) || outputs.length === 0) {
     throw new Error("Deal must have at least one output");
@@ -113,21 +148,35 @@ export function legsToJsonb(outputs) {
     if (typeof o.currency !== "string" || o.currency.length < 2) {
       throw new Error(`Output ${idx + 1}: missing currency`);
     }
-    // CHECK constraint в БД (миграция 0077): account_id и partner_account_id —
-    // взаимоисключающие. Если задан partner_account_id, account_id должен быть null.
     if (o.accountId && o.partnerAccountId) {
       throw new Error(`Output ${idx + 1}: либо наш счёт либо партнёрский, не оба`);
     }
+    // out_kind: явный, либо derive
+    let outKind = o.outKind || null;
+    if (outKind && !OUT_KINDS.has(outKind)) {
+      throw new Error(`Output ${idx + 1}: unknown out_kind=${outKind}`);
+    }
+    if (!outKind) {
+      if (o.partnerAccountId) outKind = "partner_now";
+      else if (o.accountId) outKind = "ours_now";
+      else outKind = "ours_later";
+    }
+    // _later → ни account, ни partner_account
+    const isLater = outKind === "ours_later" || outKind === "partner_later";
     const leg = {
       currency: o.currency.toUpperCase(),
       amount,
       rate,
-      account_id: o.partnerAccountId ? null : (o.accountId || null),
-      partner_account_id: o.partnerAccountId || null,
+      out_kind: outKind,
+      account_id: isLater ? null : (o.partnerAccountId ? null : (o.accountId || null)),
+      partner_account_id: isLater ? null : (o.partnerAccountId || null),
       address: o.address ? String(o.address).trim() : null,
       network_id: o.network || null,
     };
-    // pay_now добавляем только если явно задан (не undefined/null)
+    // payments[] — multi-payment поддержка (0081)
+    if (Array.isArray(o.payments) && o.payments.length > 0) {
+      leg.payments = paymentsToJsonb(o.payments, `Output ${idx + 1}`);
+    }
     if (o.payNow != null) {
       const pn = Number(o.payNow);
       if (!Number.isFinite(pn) || pn < 0) {
@@ -139,9 +188,15 @@ export function legsToJsonb(outputs) {
   });
 }
 
+// Экспортируем для wizard'а (он строит p_in_payments и leg.payments)
+export { paymentsToJsonb };
+
 // ---------- deals ----------
 
 const DEAL_STATUSES = new Set(["completed", "pending", "checking", "deleted"]);
+
+const IN_KINDS = new Set(["ours_now", "ours_later", "partner_now", "partner_later"]);
+const DEAL_KINDS = new Set(["regular", "otc", "broker"]);
 
 export async function rpcCreateDeal({
   officeId,
@@ -151,7 +206,7 @@ export async function rpcCreateDeal({
   currencyIn,
   amountIn,
   inAccountId,
-  inPartnerAccountId,   // OTC: IN через счёт партнёра (миграция 0078)
+  inPartnerAccountId,
   inTxHash,
   referral,
   comment,
@@ -160,7 +215,10 @@ export async function rpcCreateDeal({
   plannedAt,
   deferredIn,
   applyMinFee,
-  commissionUsd,        // OTC: брокеридж (миграция 0078)
+  commissionUsd,
+  inKind,           // 0081: ours_now/ours_later/partner_now/partner_later
+  inPayments,       // 0081: [{amount, kind, accountId?, partnerAccountId?, paidAt?, note?}]
+  kind,             // 0081: regular/otc/broker
 }) {
   assertConfigured();
   const validOffice = requireUuid(officeId, "officeId");
@@ -171,13 +229,16 @@ export async function rpcCreateDeal({
   if (inAccountId && inPartnerAccountId) {
     throw new Error("Either inAccountId or inPartnerAccountId, not both");
   }
+  if (inKind && !IN_KINDS.has(inKind)) throw new Error(`unknown inKind: ${inKind}`);
+  if (kind && !DEAL_KINDS.has(kind)) throw new Error(`unknown kind: ${kind}`);
   const legs = legsToJsonb(outputs);
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
   const skipMinFee = applyMinFee === false;
   const validCommission = commissionUsd != null ? Number(commissionUsd) : 0;
+  const validInPayments = Array.isArray(inPayments) && inPayments.length > 0
+    ? paymentsToJsonb(inPayments, "IN")
+    : [];
 
-  // Defensive payload — новые партнёрские параметры отсылаем только если
-  // заданы. Совместимость со старой 0045-сигнатурой пока 0078 не применена.
   const payload = {
     p_office_id: validOffice,
     p_manager_id: validManager,
@@ -201,6 +262,9 @@ export async function rpcCreateDeal({
   if (validCommission > 0) {
     payload.p_commission_usd = validCommission;
   }
+  if (inKind) payload.p_in_kind = inKind;
+  if (validInPayments.length > 0) payload.p_in_payments = validInPayments;
+  if (kind) payload.p_kind = kind;
 
   const dealId = unwrap(await supabase.rpc("create_deal", payload), "create_deal");
   bumpDataVersion();
@@ -225,6 +289,9 @@ export async function rpcUpdateDeal({
   deferredIn,
   applyMinFee,
   commissionUsd,
+  inKind,
+  inPayments,
+  kind,
 }) {
   assertConfigured();
   const validDealId = requirePositive(dealId, "dealId");
@@ -235,10 +302,15 @@ export async function rpcUpdateDeal({
   if (inAccountId && inPartnerAccountId) {
     throw new Error("Either inAccountId or inPartnerAccountId, not both");
   }
+  if (inKind && !IN_KINDS.has(inKind)) throw new Error(`unknown inKind: ${inKind}`);
+  if (kind && !DEAL_KINDS.has(kind)) throw new Error(`unknown kind: ${kind}`);
   const legs = legsToJsonb(outputs);
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
   const skipMinFee = applyMinFee === false;
   const validCommission = commissionUsd != null ? Number(commissionUsd) : 0;
+  const validInPayments = Array.isArray(inPayments) && inPayments.length > 0
+    ? paymentsToJsonb(inPayments, "IN")
+    : [];
 
   const payload = {
     p_deal_id: validDealId,
@@ -263,9 +335,60 @@ export async function rpcUpdateDeal({
   if (validCommission > 0) {
     payload.p_commission_usd = validCommission;
   }
+  if (inKind) payload.p_in_kind = inKind;
+  if (validInPayments.length > 0) payload.p_in_payments = validInPayments;
+  if (kind) payload.p_kind = kind;
 
   unwrap(await supabase.rpc("update_deal", payload), "update_deal");
   bumpDataVersion();
+}
+
+// ---------- post-creation payments (0081) ----------
+
+export async function rpcAddDealInPayment({
+  dealId, amount, kind, accountId, partnerAccountId, paidAt, note,
+}) {
+  assertConfigured();
+  const id = requirePositive(dealId, "dealId");
+  const amt = requirePositive(amount, "amount");
+  if (!["ours_now", "partner_now"].includes(kind)) {
+    throw new Error(`kind must be ours_now or partner_now (got ${kind})`);
+  }
+  const payload = {
+    p_deal_id: id,
+    p_amount: amt,
+    p_kind: kind,
+    p_account_id: kind === "ours_now" ? requireUuid(accountId, "accountId") : null,
+    p_partner_account_id: kind === "partner_now" ? requireUuid(partnerAccountId, "partnerAccountId") : null,
+    p_paid_at: paidAt ? String(paidAt) : null,
+    p_note: note ? String(note).trim() : null,
+  };
+  const paymentId = unwrap(await supabase.rpc("add_deal_in_payment", payload), "add_deal_in_payment");
+  bumpDataVersion();
+  return paymentId;
+}
+
+export async function rpcAddDealLegPayment({
+  dealLegId, amount, kind, accountId, partnerAccountId, paidAt, note,
+}) {
+  assertConfigured();
+  const id = requireUuid(dealLegId, "dealLegId");
+  const amt = requirePositive(amount, "amount");
+  if (!["ours_now", "partner_now"].includes(kind)) {
+    throw new Error(`kind must be ours_now or partner_now (got ${kind})`);
+  }
+  const payload = {
+    p_deal_leg_id: id,
+    p_amount: amt,
+    p_kind: kind,
+    p_account_id: kind === "ours_now" ? requireUuid(accountId, "accountId") : null,
+    p_partner_account_id: kind === "partner_now" ? requireUuid(partnerAccountId, "partnerAccountId") : null,
+    p_paid_at: paidAt ? String(paidAt) : null,
+    p_note: note ? String(note).trim() : null,
+  };
+  const paymentId = unwrap(await supabase.rpc("add_deal_leg_payment", payload), "add_deal_leg_payment");
+  bumpDataVersion();
+  return paymentId;
 }
 
 export async function rpcCompleteDeal(dealId) {

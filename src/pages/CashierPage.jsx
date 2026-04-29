@@ -6,6 +6,7 @@ import RatesBar from "../components/RatesBar.jsx";
 import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
+import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
@@ -36,6 +37,7 @@ export default function CashierPage({
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [otcWizardOpen, setOtcWizardOpen] = useState(false);
   // RatesSidebar expanded state — поднимаем сюда чтобы grid columns
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
   // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
@@ -416,8 +418,9 @@ export default function CashierPage({
             </aside>
 
             {/* CTA "+ New exchange" / "Resume" — grid-area "cta", row 1
-                full-width над sidebar и Balances. */}
-            <section className="min-w-0 lg:[grid-area:cta]">
+                full-width над sidebar и Balances. + OTC wizard button рядом. */}
+            <section className="min-w-0 lg:[grid-area:cta] flex items-stretch gap-2">
+              <div className="flex-1 min-w-0">
             {formMounted ? (
               <button
                 onClick={openCreate}
@@ -468,6 +471,16 @@ export default function CashierPage({
                 </div>
               </button>
             )}
+              </div>
+              <button
+                onClick={() => setOtcWizardOpen(true)}
+                title="Открыть OTC wizard — сделка с партнёром, multi-payment, все 16 IN/OUT сценариев"
+                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 transition-colors shrink-0"
+              >
+                <ArrowLeftRight className="w-5 h-5 mb-1" strokeWidth={2.5} />
+                <span className="text-[11px] font-bold tracking-tight">OTC</span>
+                <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">с партнёром</span>
+              </button>
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
@@ -561,6 +574,16 @@ export default function CashierPage({
       </div>
 
       <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
+
+      <OtcDealWizard
+        open={otcWizardOpen}
+        currentOffice={currentOffice}
+        onClose={() => setOtcWizardOpen(false)}
+        onCreated={(dealId) => {
+          if (dealId) setJustCreatedId(String(dealId));
+        }}
+      />
+
 
       {/* Глобальные keyframes для fadeIn анимации. */}
       <style>{`
