@@ -29,6 +29,18 @@
 -- Идемпотентен — повторный запуск не делает повторных изменений (where kind = 'regular').
 -- ============================================================================
 
+-- 0. Pre-flight: убедиться что 0079 была применена (она добавляет deals.kind).
+-- Если колонки нет — выводим понятную ошибку вместо cryptic "column does not exist".
+do $$
+begin
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'deals' and column_name = 'kind'
+  ) then
+    raise exception 'Column deals.kind missing. Apply migration 0079 first (затем 0080, 0081, потом 0082).';
+  end if;
+end $$;
+
 -- 1. Pre-check: counts before
 select 'before' as snapshot,
        sum(case when kind = 'regular' then 1 else 0 end) as regular,
