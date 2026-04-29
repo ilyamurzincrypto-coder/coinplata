@@ -4,18 +4,48 @@
 // редактировать и деактивировать.
 
 import React, { useState, useMemo } from "react";
-import { Handshake, UserPlus, Search, X, Edit2, Trash2, Send, Phone } from "lucide-react";
+import {
+  Handshake, UserPlus, Search, X, Edit2, Trash2, Send, Phone,
+  ChevronDown, ChevronUp, Plus, Banknote, Building2, Coins, Wallet,
+} from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { usePartners } from "../../store/partners.jsx";
+import { usePartnerAccounts } from "../../store/partnerAccounts.jsx";
 import { useAuth } from "../../store/auth.jsx";
+import { fmt, curSymbol } from "../../utils/money.js";
+import PartnerAccountFormModal from "../../components/settings/PartnerAccountFormModal.jsx";
+
+const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
 
 export default function PartnersTab() {
   const { partners, addPartner, updatePartner, removePartner } = usePartners();
+  const {
+    accounts: partnerAccounts,
+    balanceOf: partnerBalanceOf,
+    accountsByPartner,
+    addPartnerAccount,
+    updatePartnerAccount,
+    removePartnerAccount,
+  } = usePartnerAccounts();
   const { isAdmin, isOwner } = useAuth();
   const canEdit = isAdmin || isOwner;
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  // Состояние раскрытых партнёров (показ счетов)
+  const [expandedSet, setExpandedSet] = useState(() => new Set());
+  // Модалки счетов партнёра
+  const [accountModalState, setAccountModalState] = useState(null);
+  // { mode: 'add' | 'edit', partnerId, accountId? }
+
+  const toggleExpanded = (id) => {
+    setExpandedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -58,6 +88,38 @@ export default function PartnersTab() {
       alert("Ошибка: " + (e?.message || e));
     }
   };
+
+  const handleAccountSubmit = async (data) => {
+    if (!accountModalState) return;
+    try {
+      if (accountModalState.mode === "add") {
+        await addPartnerAccount({ partnerId: accountModalState.partnerId, ...data });
+      } else if (accountModalState.mode === "edit" && accountModalState.accountId) {
+        await updatePartnerAccount(accountModalState.accountId, data);
+      }
+    } catch (e) {
+      alert("Ошибка: " + (e?.message || e));
+    }
+    setAccountModalState(null);
+  };
+
+  const handleAccountDelete = async (acc) => {
+    if (!confirm(`Деактивировать счёт «${acc.name}»?`)) return;
+    try {
+      await removePartnerAccount(acc.id);
+    } catch (e) {
+      alert("Ошибка: " + (e?.message || e));
+    }
+  };
+
+  const editingAccount =
+    accountModalState?.mode === "edit"
+      ? partnerAccounts.find((a) => a.id === accountModalState.accountId)
+      : null;
+  const accountModalPartnerName =
+    accountModalState
+      ? partners.find((p) => p.id === accountModalState.partnerId)?.name || ""
+      : "";
 
   return (
     <div className="divide-y divide-slate-100">
@@ -102,63 +164,163 @@ export default function PartnersTab() {
             </div>
           ) : (
             <div className="divide-y divide-slate-100 bg-slate-50/40 rounded-[10px] border border-slate-200 overflow-hidden">
-              {filtered.map((p) => (
-                <div
-                  key={p.id}
-                  className={`px-3 py-2.5 flex items-center gap-3 ${
-                    p.active ? "" : "opacity-60"
-                  }`}
-                >
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shrink-0">
-                    {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-semibold text-slate-900 inline-flex items-center gap-2 flex-wrap">
-                      {p.name}
-                      {!p.active && (
-                        <span className="text-[9px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
-                          deactivated
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-500 inline-flex items-center gap-2 flex-wrap">
-                      {p.telegram && (
-                        <span className="inline-flex items-center gap-0.5 text-sky-600">
-                          <Send className="w-2.5 h-2.5" />
-                          {p.telegram}
-                        </span>
-                      )}
-                      {p.phone && (
-                        <span className="inline-flex items-center gap-0.5">
-                          <Phone className="w-2.5 h-2.5" />
-                          {p.phone}
-                        </span>
-                      )}
-                      {p.note && <span className="italic truncate">{p.note}</span>}
-                    </div>
-                  </div>
-                  {canEdit && (
-                    <div className="flex items-center gap-1 shrink-0">
+              {filtered.map((p) => {
+                const accs = accountsByPartner(p.id);
+                const activeAccs = accs.filter((a) => a.active);
+                const isOpen = expandedSet.has(p.id);
+                return (
+                  <div key={p.id} className={p.active ? "" : "opacity-70"}>
+                    {/* Header row */}
+                    <div className="px-3 py-2.5 flex items-center gap-3">
                       <button
-                        onClick={() => setEditingId(p.id)}
-                        className="p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                        title="Редактировать"
+                        type="button"
+                        onClick={() => toggleExpanded(p.id)}
+                        className="w-6 h-6 rounded-full hover:bg-slate-200/70 flex items-center justify-center text-slate-500"
+                        title={isOpen ? "Свернуть счета" : "Показать счета"}
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
-                      {p.active && (
-                        <button
-                          onClick={() => handleDelete(p.id, p.name)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                          title="Деактивировать"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shrink-0">
+                        {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold text-slate-900 inline-flex items-center gap-2 flex-wrap">
+                          {p.name}
+                          {!p.active && (
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+                              deactivated
+                            </span>
+                          )}
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5"
+                            title={`${activeAccs.length} active accounts`}
+                          >
+                            <Wallet className="w-2.5 h-2.5" />
+                            {activeAccs.length}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 inline-flex items-center gap-2 flex-wrap">
+                          {p.telegram && (
+                            <span className="inline-flex items-center gap-0.5 text-sky-600">
+                              <Send className="w-2.5 h-2.5" />
+                              {p.telegram}
+                            </span>
+                          )}
+                          {p.phone && (
+                            <span className="inline-flex items-center gap-0.5">
+                              <Phone className="w-2.5 h-2.5" />
+                              {p.phone}
+                            </span>
+                          )}
+                          {p.note && <span className="italic truncate">{p.note}</span>}
+                        </div>
+                      </div>
+                      {canEdit && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => setAccountModalState({ mode: "add", partnerId: p.id })}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
+                            title="Добавить счёт партнёру"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Счёт
+                          </button>
+                          <button
+                            onClick={() => setEditingId(p.id)}
+                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                            title="Редактировать партнёра"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          {p.active && (
+                            <button
+                              onClick={() => handleDelete(p.id, p.name)}
+                              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              title="Деактивировать"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              ))}
+
+                    {/* Expanded — accounts list */}
+                    {isOpen && (
+                      <div className="px-3 pb-3 pt-1 bg-white border-t border-slate-100">
+                        {accs.length === 0 ? (
+                          <div className="text-[11.5px] text-slate-400 italic py-2 text-center">
+                            Нет счетов. Добавьте первый — нажми кнопку «Счёт» справа.
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                            {accs.map((a) => {
+                              const Icon = TYPE_ICONS[a.type] || Wallet;
+                              const bal = partnerBalanceOf(a.id);
+                              return (
+                                <div
+                                  key={a.id}
+                                  className={`flex items-center gap-2 px-2.5 py-2 rounded-[10px] border ${
+                                    a.active
+                                      ? "bg-slate-50/60 border-slate-200"
+                                      : "bg-slate-100/60 border-slate-200 opacity-60"
+                                  }`}
+                                >
+                                  <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                    <Icon className="w-3.5 h-3.5" />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-[12px] font-semibold text-slate-900 truncate">
+                                      {a.name}
+                                      {!a.active && (
+                                        <span className="ml-1.5 text-[8.5px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+                                          off
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 tabular-nums">
+                                      {curSymbol(a.currency)}
+                                      {fmt(bal, a.currency)}{" "}
+                                      <span className="opacity-60">{a.currency}</span>
+                                      {a.networkId && (
+                                        <span className="ml-1 text-slate-400">· {a.networkId}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {canEdit && (
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        onClick={() => setAccountModalState({
+                                          mode: "edit",
+                                          partnerId: p.id,
+                                          accountId: a.id,
+                                        })}
+                                        className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                        title="Редактировать"
+                                      >
+                                        <Edit2 className="w-3 h-3" />
+                                      </button>
+                                      {a.active && (
+                                        <button
+                                          onClick={() => handleAccountDelete(a)}
+                                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                          title="Деактивировать"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -176,6 +338,13 @@ export default function PartnersTab() {
         onClose={() => setEditingId(null)}
         onSubmit={handleEdit}
         title="Редактировать партнёра"
+      />
+      <PartnerAccountFormModal
+        open={!!accountModalState}
+        initial={editingAccount}
+        partnerName={accountModalPartnerName}
+        onClose={() => setAccountModalState(null)}
+        onSubmit={handleAccountSubmit}
       />
     </div>
   );
