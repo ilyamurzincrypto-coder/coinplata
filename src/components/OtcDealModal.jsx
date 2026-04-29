@@ -1,8 +1,11 @@
 // src/components/OtcDealModal.jsx
-// OTC сделка с контрагентом (партнёром) — упрощённая форма обмена валюты.
-// Сценарий: обмен валюты с партнёром (любые валюты). Без fee/profit/AML.
-// Поддерживает backdate (создание задним числом). Пишется в БД через
-// rpcCreateOtcDeal (0069 RPC), создаёт deal + 2 movements.
+// Быстрая OTC сделка между двумя нашими счетами: «Отдаём X из A → Получаем Y на B».
+// Контрагент — text nickname. Поддерживает backdate.
+//
+// 2026-04-29: мигрирована на новый rpcCreateDeal (0081). Семантика:
+//   from-account → OUT (leg.account_id), to-account → IN (in_account_id)
+// kind='otc' для видимости в Capital фильтрах.
+// Margin/fee рассчитываются из реальных курсов (для fair-rate ≈ 0).
 
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowDown, AlertCircle, Calendar, Users } from "lucide-react";
@@ -16,7 +19,7 @@ import { useRates } from "../store/rates.jsx";
 import { fmt, curSymbol, multiplyAmount } from "../utils/money.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateOtcDeal, withToast } from "../lib/supabaseWrite.js";
+import { rpcCreateDeal, rpcSetDealCreatedAt, withToast } from "../lib/supabaseWrite.js";
 
 export default function OtcDealModal({ open, currentOffice, onClose, onCreated, initialFromAccountId }) {
   const { accounts, balanceOf } = useAccounts();
@@ -90,18 +93,34 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
       const occurredIso = occurredAt
         ? new Date(occurredAt).toISOString()
         : null;
+      // Семантика new rpcCreateDeal:
+      //   to-account = IN  (deal.in_account_id, deal.amount_in)
+      //   from-account = OUT leg (leg.account_id, leg.amount)
+      //   leg.rate = fromAmt / toAmt  (per-unit-of-IN в leg-currency)
+      const legRate = toAmt > 0 ? fromAmt / toAmt : 0;
       const res = await withToast(
         () =>
-          rpcCreateOtcDeal({
+          rpcCreateDeal({
             officeId: from.officeId,
-            fromAccountId: from.id,
-            fromAmount: fromAmt,
-            toAccountId: to.id,
-            toAmount: toAmt,
-            rate: computedRate,
-            counterparty: counterparty.trim(),
-            note: note.trim(),
-            occurredAt: occurredIso,
+            managerId: currentUser.id,
+            clientId: null,
+            clientNickname: counterparty.trim(),
+            currencyIn: to.currency,
+            amountIn: toAmt,
+            inAccountId: to.id,
+            referral: false,
+            comment: note.trim() || `OTC · ${counterparty.trim()}`,
+            status: "completed",
+            outputs: [{
+              currency: from.currency,
+              amount: fromAmt,
+              rate: legRate,
+              accountId: from.id,
+              outKind: "ours_now",
+            }],
+            inKind: "ours_now",
+            kind: "otc",
+            applyMinFee: false, // OTC swap — без min-fee enforcement
           }),
         {
           success: occurredIso
@@ -111,6 +130,14 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
         }
       );
       if (res.ok) {
+        // Backdate: сетим created_at если указан occurredAt
+        if (occurredIso && res.result) {
+          try {
+            await rpcSetDealCreatedAt({ dealId: res.result, createdAt: occurredIso });
+          } catch (e) {
+            console.warn("[OtcDealModal] set_deal_created_at failed", e);
+          }
+        }
         logAudit({
           action: "create",
           entity: "transaction",

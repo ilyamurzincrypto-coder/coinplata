@@ -1528,63 +1528,6 @@ export async function rpcDeletePartner(id) {
   bumpDataVersion();
 }
 
-// OTC сделка с контрагентом (миграция 0069). Простой обмен валюты с
-// партнёром — без fee/profit/AML. Поддерживает backdate через occurredAt.
-export async function rpcCreateOtcDeal({
-  officeId,
-  fromAccountId,
-  fromAmount,
-  toAccountId,
-  toAmount,
-  rate,
-  counterparty,
-  note,
-  occurredAt,
-  partnerPaysClient,
-  partnerDeferred,
-}) {
-  assertConfigured();
-  const office = requireUuid(officeId, "officeId");
-  const from = requireUuid(fromAccountId, "fromAccountId");
-  const to = requireUuid(toAccountId, "toAccountId");
-  if (from === to) throw new Error("From and To accounts must differ");
-  const fromAmt = requirePositive(fromAmount, "fromAmount");
-  const toAmt = requirePositive(toAmount, "toAmount");
-  const rateNum = requirePositive(rate, "rate");
-  const cp = (counterparty || "").trim();
-  if (!cp) throw new Error("counterparty required");
-  if (partnerPaysClient && partnerDeferred) {
-    throw new Error("partner_pays_client и partner_deferred — взаимоисключающие");
-  }
-
-  // Optional named params отсылаем только когда true — defensive payload
-  // для совместимости со старыми версиями RPC (PostgREST overload resolve).
-  const payload = {
-    p_office_id: office,
-    p_from_account_id: from,
-    p_from_amount: fromAmt,
-    p_to_account_id: to,
-    p_to_amount: toAmt,
-    p_rate: rateNum,
-    p_counterparty: cp,
-    p_note: note || null,
-    p_occurred_at: occurredAt || null,
-  };
-  if (partnerPaysClient) {
-    payload.p_partner_pays_client = true;
-  }
-  if (partnerDeferred) {
-    payload.p_partner_deferred = true;
-  }
-
-  const dealId = unwrap(
-    await supabase.rpc("create_otc_deal", payload),
-    "create_otc_deal"
-  );
-  bumpDataVersion();
-  return dealId;
-}
-
 // Upsert одной записи в system_settings (key, value jsonb).
 // Используется для baseCurrency, fxRates, referralPct и т.д.
 // RLS из 0001 пропускает только admin/owner. Frontend проверяет роль до вызова.
