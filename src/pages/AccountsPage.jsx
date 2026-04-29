@@ -8,6 +8,7 @@ import {
   Plus,
   ArrowLeftRight,
   History as HistoryIcon,
+  Scale,
   Building2,
   Network as NetworkIcon,
   Clock,
@@ -27,6 +28,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { resolveAccountChannel, channelShortLabel } from "../utils/accountChannel.js";
 import TopUpModal from "../components/accounts/TopUpModal.jsx";
+import BalanceAdjustmentModal from "../components/accounts/BalanceAdjustmentModal.jsx";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx";
 import TransferHistoryModal from "../components/accounts/TransferHistoryModal.jsx";
@@ -111,6 +113,7 @@ export default function AccountsPage() {
   // доступны также CurrencyRow и любым sub-компонентам.
 
   const [topUpFor, setTopUpFor] = useState(null);
+  const [adjustFor, setAdjustFor] = useState(null);
   const [transferFrom, setTransferFrom] = useState(null);
   const [transferOpen, setTransferOpen] = useState(false);
   const [historyFor, setHistoryFor] = useState(null);
@@ -424,6 +427,7 @@ export default function AccountsPage() {
                       reservedOf={reservedOf}
                       availableOf={availableOf}
                       onTopUp={setTopUpFor}
+                      onAdjust={setAdjustFor}
                       onTransfer={(acc) => {
                         setTransferFrom(acc);
                         setTransferOpen(true);
@@ -451,6 +455,11 @@ export default function AccountsPage() {
       })}
 
       <TopUpModal account={topUpFor} onClose={() => setTopUpFor(null)} />
+      <BalanceAdjustmentModal
+        open={!!adjustFor}
+        account={adjustFor}
+        onClose={() => setAdjustFor(null)}
+      />
       <TransferModal
         open={transferOpen}
         fromAccount={transferFrom}
@@ -522,6 +531,7 @@ function CurrencyRow({
   reservedOf,
   availableOf,
   onTopUp,
+  onAdjust,
   onTransfer,
   onOtc,
   onHistory,
@@ -622,6 +632,7 @@ function CurrencyRow({
                   reservedOf={reservedOf}
                   availableOf={availableOf}
                   onTopUp={onTopUp}
+                  onAdjust={onAdjust}
                   onTransfer={onTransfer}
                   onOtc={onOtc}
                   onHistory={onHistory}
@@ -646,6 +657,7 @@ function ChannelBlock({
   reservedOf,
   availableOf,
   onTopUp,
+  onAdjust,
   onTransfer,
   onOtc,
   onHistory,
@@ -696,6 +708,7 @@ function ChannelBlock({
             reservedOf={reservedOf}
             availableOf={availableOf}
             onTopUp={onTopUp}
+            onAdjust={onAdjust}
             onTransfer={onTransfer}
             onOtc={onOtc}
             onHistory={onHistory}
@@ -708,7 +721,7 @@ function ChannelBlock({
 }
 
 // -------- AccountCard (compact) --------
-function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onTransfer, onOtc, onHistory, onDelete }) {
+function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onAdjust, onTransfer, onOtc, onHistory, onDelete }) {
   const total = balanceOf(a.id);
   const reserved = reservedOf(a.id);
   const available = availableOf(a.id);
@@ -777,6 +790,15 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
           >
             <ArrowLeftRight className="w-2.5 h-2.5" />
             OTC
+          </button>
+        )}
+        {onAdjust && (
+          <button
+            onClick={() => onAdjust(a)}
+            className="text-[9px] font-semibold text-amber-700 hover:bg-amber-50 rounded-[4px] px-1 py-0.5 transition-colors"
+            title="Скорректировать баланс — поправить остаток без изменения P&L"
+          >
+            <Scale className="w-2.5 h-2.5" />
           </button>
         )}
         <button

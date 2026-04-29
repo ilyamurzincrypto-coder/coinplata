@@ -569,6 +569,34 @@ export async function rpcCreateTransfer({
   return id;
 }
 
+// Initial balance adjustment (миграция 0084).
+// Изменяет баланс счёта НЕ напрямую, а через эмиссию account_movement
+// с source_kind='adjustment'. Записывает row в balance_adjustments
+// с историей (old/new/diff/note/who/when).
+//
+// НЕ влияет на P&L. Доступно только admin/owner/accountant.
+export async function rpcCreateBalanceAdjustment({ accountId, newBalance, note }) {
+  assertConfigured();
+  const acc = requireUuid(accountId, "accountId");
+  const nb = Number(newBalance);
+  if (!Number.isFinite(nb)) {
+    throw new Error(`newBalance: must be a finite number (got ${newBalance})`);
+  }
+  if (typeof note !== "string" || note.trim().length === 0) {
+    throw new Error("note: required (комментарий обязателен)");
+  }
+  const id = unwrap(
+    await supabase.rpc("create_balance_adjustment", {
+      p_account_id: acc,
+      p_new_balance: nb,
+      p_note: note.trim(),
+    }),
+    "create_balance_adjustment"
+  );
+  bumpDataVersion();
+  return id;
+}
+
 export async function rpcTopUp({ accountId, amount, note, sourceKind }) {
   assertConfigured();
   const acc = requireUuid(accountId, "accountId");

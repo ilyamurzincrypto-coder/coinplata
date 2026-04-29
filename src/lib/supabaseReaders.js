@@ -527,6 +527,36 @@ function deriveObligationFlow(r) {
   return "unknown";
 }
 
+// Balance adjustments history (миграция 0084).
+// Опционально per-account фильтр.
+export async function loadBalanceAdjustments(accountId = null) {
+  const sb = ensureSupabase();
+  let query = sb.from("v_balance_adjustments").select("*")
+    .order("created_at", { ascending: false });
+  if (accountId) query = query.eq("account_id", accountId);
+  const { data, error } = await query;
+  if (error) {
+    // graceful fallback если миграция 0084 ещё не применена
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    accountId: r.account_id,
+    accountName: r.account_name || "",
+    officeId: r.office_id || null,
+    currency: r.currency_code,
+    oldBalance: num(r.old_balance),
+    newBalance: num(r.new_balance),
+    difference: num(r.difference),
+    note: r.note || "",
+    movementId: r.movement_id || null,
+    createdAt: r.created_at,
+    createdBy: r.created_by || null,
+    createdByName: r.created_by_name || "",
+  }));
+}
+
 export async function loadObligations() {
   const sb = ensureSupabase();
   const { data, error } = await sb
