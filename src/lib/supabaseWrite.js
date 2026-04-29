@@ -1264,6 +1264,79 @@ export async function rpcCancelTransfer({ transferId, note }) {
   bumpDataVersion();
 }
 
+// Partner accounts (виртуальные счета партнёров) — CRUD wrappers.
+// RLS: read=auth, write=admin/owner (миграция 0077).
+export async function rpcInsertPartnerAccount({
+  partnerId, name, currency, type, networkId, address, note, openingBalance,
+}) {
+  assertConfigured();
+  const pid = requireUuid(partnerId, "partnerId");
+  const cleanName = (name || "").trim();
+  if (!cleanName) throw new Error("name required");
+  const cleanCur = (currency || "").trim().toUpperCase();
+  if (!cleanCur) throw new Error("currency required");
+  if (!["cash", "bank", "crypto"].includes(type)) {
+    throw new Error("type must be cash/bank/crypto");
+  }
+  const ob = openingBalance != null ? Number(openingBalance) : 0;
+  if (!Number.isFinite(ob) || ob < 0) throw new Error("opening_balance must be >= 0");
+
+  const { data, error } = await supabase
+    .from("partner_accounts")
+    .insert({
+      partner_id: pid,
+      name: cleanName,
+      currency_code: cleanCur,
+      type,
+      network_id: (networkId || "").trim() || null,
+      address: (address || "").trim() || null,
+      note: (note || "").trim() || null,
+      opening_balance: ob,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+  return data;
+}
+
+export async function rpcUpdatePartnerAccount(id, patch) {
+  assertConfigured();
+  const accId = requireUuid(id, "partner_account.id");
+  // Маппинг camelCase → snake_case для известных полей
+  const dbPatch = {};
+  if (patch.name != null) dbPatch.name = String(patch.name).trim();
+  if (patch.currency != null) dbPatch.currency_code = String(patch.currency).trim().toUpperCase();
+  if (patch.type != null) {
+    if (!["cash", "bank", "crypto"].includes(patch.type)) {
+      throw new Error("type must be cash/bank/crypto");
+    }
+    dbPatch.type = patch.type;
+  }
+  if (patch.networkId !== undefined) dbPatch.network_id = patch.networkId || null;
+  if (patch.address !== undefined) dbPatch.address = patch.address || null;
+  if (patch.note !== undefined) dbPatch.note = patch.note || null;
+  if (patch.active != null) dbPatch.active = !!patch.active;
+  if (patch.openingBalance != null) {
+    const ob = Number(patch.openingBalance);
+    if (!Number.isFinite(ob) || ob < 0) throw new Error("opening_balance must be >= 0");
+    dbPatch.opening_balance = ob;
+  }
+  dbPatch.updated_at = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("partner_accounts")
+    .update(dbPatch)
+    .eq("id", accId);
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
+export async function rpcDeletePartnerAccount(id) {
+  // Soft delete — active=false. Жёсткое DELETE не делаем (FK от obligations/legs).
+  return rpcUpdatePartnerAccount(id, { active: false });
+}
+
 // Partners (контрагенты для OTC) — CRUD wrappers.
 export async function rpcInsertPartner({ name, telegram, phone, note }) {
   assertConfigured();

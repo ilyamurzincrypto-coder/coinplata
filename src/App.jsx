@@ -30,6 +30,7 @@ import { RateHistoryProvider } from "./store/rateHistory.jsx";
 import { ObligationsProvider } from "./store/obligations.jsx";
 import { NotificationsProvider } from "./store/notifications.jsx";
 import { PartnersProvider } from "./store/partners.jsx";
+import { PartnerAccountsProvider } from "./store/partnerAccounts.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { RecoveryContext, useRecovery } from "./lib/recovery.jsx";
@@ -414,11 +415,13 @@ export default function App() {
                               <ObligationsProvider>
                               <NotificationsProvider>
                               <PartnersProvider>
+                              <PartnerAccountsProvider>
                               <WalletsProvider>
                                 <MonitoringProvider>
                                   <Root />
                                 </MonitoringProvider>
                               </WalletsProvider>
+                              </PartnerAccountsProvider>
                               </PartnersProvider>
                               </NotificationsProvider>
                               </ObligationsProvider>

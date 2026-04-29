@@ -364,6 +364,47 @@ export async function loadDealsWithLegs(usersById = {}) {
   });
 }
 
+// ---------- partner_accounts (виртуальные счета партнёров для OTC) ----------
+
+export async function loadPartnerAccounts() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb
+    .from("partner_accounts")
+    .select("*")
+    .order("name", { ascending: true });
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    id: r.id,
+    partnerId: r.partner_id,
+    name: r.name,
+    currency: r.currency_code,
+    type: r.type,
+    networkId: r.network_id || null,
+    address: r.address || "",
+    note: r.note || "",
+    active: r.active !== false,
+    openingBalance: num(r.opening_balance),
+    createdAt: r.created_at,
+    createdBy: r.created_by,
+    updatedAt: r.updated_at,
+  }));
+}
+
+// Балансы партнёрских счетов (из v_partner_account_balances).
+// Возвращает Map<partner_account_id, { total }>.
+export async function loadPartnerAccountBalances() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb
+    .from("v_partner_account_balances")
+    .select("*");
+  if (error) throw error;
+  const m = new Map();
+  (data || []).forEach((r) => {
+    m.set(r.partner_account_id, { total: num(r.total) });
+  });
+  return m;
+}
+
 // ---------- partners (контрагенты для OTC) ----------
 
 export async function loadPartners() {
