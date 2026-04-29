@@ -99,9 +99,12 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
   const { getRate } = useRates();
   const { codes: currencyCodes } = useCurrencies();
 
+  // currentOffice — строка-id (см. App.jsx:64). Не объект.
+  const officeId = typeof currentOffice === "string" ? currentOffice : currentOffice?.id;
+
   const activeAccounts = useMemo(
-    () => accounts.filter((a) => a.active && a.officeId === currentOffice?.id),
-    [accounts, currentOffice?.id]
+    () => accounts.filter((a) => a.active && a.officeId === officeId),
+    [accounts, officeId]
   );
 
   const [stepIdx, setStepIdx] = useState(0);
@@ -248,9 +251,21 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
         };
       });
 
+      // officeId derive из выбранного in-аккаунта если есть; иначе — currentOffice (строка)
+      const inAcc = inKind === "ours_now" ? activeAccounts.find((a) => a.id === inAccountId) : null;
+      const firstLegAcc = legs[0]?.outKind === "ours_now"
+        ? activeAccounts.find((a) => a.id === legs[0].accountId)
+        : null;
+      const resolvedOfficeId = inAcc?.officeId || firstLegAcc?.officeId || officeId;
+      if (!resolvedOfficeId) {
+        alert("Не выбран ни один наш счёт и текущий офис не задан. Откройте Cashier, выберите офис в шапке, и попробуйте снова.");
+        setBusy(false);
+        return;
+      }
+
       const res = await withToast(
         () => rpcCreateDeal({
-          officeId: currentOffice.id,
+          officeId: resolvedOfficeId,
           managerId: currentUser.id,
           clientId,
           clientNickname: clientNickname.trim() || partnerName,
