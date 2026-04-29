@@ -113,11 +113,17 @@ export function legsToJsonb(outputs) {
     if (typeof o.currency !== "string" || o.currency.length < 2) {
       throw new Error(`Output ${idx + 1}: missing currency`);
     }
+    // CHECK constraint в БД (миграция 0077): account_id и partner_account_id —
+    // взаимоисключающие. Если задан partner_account_id, account_id должен быть null.
+    if (o.accountId && o.partnerAccountId) {
+      throw new Error(`Output ${idx + 1}: либо наш счёт либо партнёрский, не оба`);
+    }
     const leg = {
       currency: o.currency.toUpperCase(),
       amount,
       rate,
-      account_id: o.accountId || null,
+      account_id: o.partnerAccountId ? null : (o.accountId || null),
+      partner_account_id: o.partnerAccountId || null,
       address: o.address ? String(o.address).trim() : null,
       network_id: o.network || null,
     };
@@ -145,14 +151,16 @@ export async function rpcCreateDeal({
   currencyIn,
   amountIn,
   inAccountId,
+  inPartnerAccountId,   // OTC: IN через счёт партнёра (миграция 0078)
   inTxHash,
   referral,
   comment,
   status,
   outputs,
-  plannedAt,      // optional ISO timestamp — "ожидается к дате"
-  deferredIn,     // optional bool — client will pay IN later (they_owe)
-  applyMinFee,    // optional bool (default true) — применять ли min cap офиса
+  plannedAt,
+  deferredIn,
+  applyMinFee,
+  commissionUsd,        // OTC: брокеридж (миграция 0078)
 }) {
   assertConfigured();
   const validOffice = requireUuid(officeId, "officeId");
@@ -160,35 +168,41 @@ export async function rpcCreateDeal({
   const validCur = requireCurrency(currencyIn, "currencyIn");
   const validAmt = requirePositive(amountIn, "amountIn");
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
+  if (inAccountId && inPartnerAccountId) {
+    throw new Error("Either inAccountId or inPartnerAccountId, not both");
+  }
   const legs = legsToJsonb(outputs);
-
-  // plannedAt ожидается как ISO-string из <input type="datetime-local"> +
-  // приведение .toISOString(). Если null/undef — бэк использует now().
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
-  // p_skip_min_fee — инвертированный applyMinFee (default false = применять).
-  // RPC ожидает skip-флаг чтобы default-поведение было совместимым.
   const skipMinFee = applyMinFee === false;
+  const validCommission = commissionUsd != null ? Number(commissionUsd) : 0;
 
-  const dealId = unwrap(
-    await supabase.rpc("create_deal", {
-      p_office_id: validOffice,
-      p_manager_id: validManager,
-      p_client_id: clientId || null,
-      p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
-      p_currency_in: validCur,
-      p_amount_in: validAmt,
-      p_in_account_id: inAccountId || null,
-      p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
-      p_referral: !!referral,
-      p_comment: comment || "",
-      p_status: validStatus,
-      p_legs: legs,
-      p_planned_at: validPlannedAt,
-      p_deferred_in: !!deferredIn,
-      p_skip_min_fee: skipMinFee,
-    }),
-    "create_deal"
-  );
+  // Defensive payload — новые партнёрские параметры отсылаем только если
+  // заданы. Совместимость со старой 0045-сигнатурой пока 0078 не применена.
+  const payload = {
+    p_office_id: validOffice,
+    p_manager_id: validManager,
+    p_client_id: clientId || null,
+    p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
+    p_currency_in: validCur,
+    p_amount_in: validAmt,
+    p_in_account_id: inAccountId || null,
+    p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
+    p_referral: !!referral,
+    p_comment: comment || "",
+    p_status: validStatus,
+    p_legs: legs,
+    p_planned_at: validPlannedAt,
+    p_deferred_in: !!deferredIn,
+    p_skip_min_fee: skipMinFee,
+  };
+  if (inPartnerAccountId) {
+    payload.p_in_partner_account_id = requireUuid(inPartnerAccountId, "inPartnerAccountId");
+  }
+  if (validCommission > 0) {
+    payload.p_commission_usd = validCommission;
+  }
+
+  const dealId = unwrap(await supabase.rpc("create_deal", payload), "create_deal");
   bumpDataVersion();
   return dealId;
 }
@@ -201,14 +215,16 @@ export async function rpcUpdateDeal({
   currencyIn,
   amountIn,
   inAccountId,
+  inPartnerAccountId,
   inTxHash,
   referral,
   comment,
   status,
   outputs,
-  plannedAt,   // NEW — preserved при edit
-  deferredIn,  // NEW — preserved при edit
-  applyMinFee, // optional bool — применять ли min cap офиса
+  plannedAt,
+  deferredIn,
+  applyMinFee,
+  commissionUsd,
 }) {
   assertConfigured();
   const validDealId = requirePositive(dealId, "dealId");
@@ -216,30 +232,39 @@ export async function rpcUpdateDeal({
   const validCur = requireCurrency(currencyIn, "currencyIn");
   const validAmt = requirePositive(amountIn, "amountIn");
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
+  if (inAccountId && inPartnerAccountId) {
+    throw new Error("Either inAccountId or inPartnerAccountId, not both");
+  }
   const legs = legsToJsonb(outputs);
   const validPlannedAt = plannedAt ? String(plannedAt) : null;
   const skipMinFee = applyMinFee === false;
+  const validCommission = commissionUsd != null ? Number(commissionUsd) : 0;
 
-  unwrap(
-    await supabase.rpc("update_deal", {
-      p_deal_id: validDealId,
-      p_office_id: validOffice,
-      p_client_id: clientId || null,
-      p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
-      p_currency_in: validCur,
-      p_amount_in: validAmt,
-      p_in_account_id: inAccountId || null,
-      p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
-      p_referral: !!referral,
-      p_comment: comment || "",
-      p_status: validStatus,
-      p_legs: legs,
-      p_planned_at: validPlannedAt,
-      p_deferred_in: !!deferredIn,
-      p_skip_min_fee: skipMinFee,
-    }),
-    "update_deal"
-  );
+  const payload = {
+    p_deal_id: validDealId,
+    p_office_id: validOffice,
+    p_client_id: clientId || null,
+    p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
+    p_currency_in: validCur,
+    p_amount_in: validAmt,
+    p_in_account_id: inAccountId || null,
+    p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
+    p_referral: !!referral,
+    p_comment: comment || "",
+    p_status: validStatus,
+    p_legs: legs,
+    p_planned_at: validPlannedAt,
+    p_deferred_in: !!deferredIn,
+    p_skip_min_fee: skipMinFee,
+  };
+  if (inPartnerAccountId) {
+    payload.p_in_partner_account_id = requireUuid(inPartnerAccountId, "inPartnerAccountId");
+  }
+  if (validCommission > 0) {
+    payload.p_commission_usd = validCommission;
+  }
+
+  unwrap(await supabase.rpc("update_deal", payload), "update_deal");
   bumpDataVersion();
 }
 

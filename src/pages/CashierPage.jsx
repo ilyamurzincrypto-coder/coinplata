@@ -127,6 +127,9 @@ export default function CashierPage({
               currencyIn: tx.curIn,
               amountIn: tx.amtIn,
               inAccountId: uuidOrNull(tx.accountId),
+              // OTC: IN через счёт партнёра (миграция 0078). Взаимоисключающее
+              // с inAccountId; rpcCreateDeal сама валидирует.
+              inPartnerAccountId: uuidOrNull(tx.inPartnerAccountId),
               inTxHash: tx.inTxHash || null,
               referral: !!tx.referral,
               comment: tx.comment || "",
@@ -134,12 +137,17 @@ export default function CashierPage({
               outputs: (tx.outputs || []).map((o) => ({
                 ...o,
                 accountId: uuidOrNull(o.accountId),
+                // OTC: OUT через счёт партнёра. legsToJsonb сама валидирует
+                // что либо account_id либо partner_account_id, не оба.
+                partnerAccountId: uuidOrNull(o.partnerAccountId),
               })),
               // Tier-1 pending fields
               plannedAt: tx.plannedAt || null,
               deferredIn: !!tx.deferredIn,
               // Галочка из ExchangeForm — применять ли min cap офиса (default true)
               applyMinFee: tx.applyMinFee !== false,
+              // OTC брокеридж — наш заработок за сведение клиента и партнёра.
+              commissionUsd: tx.commissionUsd != null ? Number(tx.commissionUsd) : 0,
             }),
           { success: "Deal created", errorPrefix: "Create deal failed" }
         );

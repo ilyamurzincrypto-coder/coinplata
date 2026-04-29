@@ -1,0 +1,223 @@
+// src/components/PartnerAccountSelect.jsx
+// Двухступенчатый селектор: сначала партнёр, затем его счёт.
+// Используется в ExchangeForm для IN-стороны и каждого OUT-leg в режимах
+// B/C/D OTC сделок.
+//
+// Фильтрация:
+//   - currency: показывает только счета с currency_code = currency.
+//   - active=true: деактивированные счета скрываются.
+//
+// value/onChange — partner_account_id (UUID).
+
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { ChevronDown, Handshake, Wallet, Banknote, Building2, Coins, Search, X } from "lucide-react";
+import { usePartners } from "../store/partners.jsx";
+import { usePartnerAccounts } from "../store/partnerAccounts.jsx";
+import { fmt, curSymbol } from "../utils/money.js";
+
+const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
+
+export default function PartnerAccountSelect({
+  value,                  // partner_account_id (uuid) | ""
+  onChange,               // (partnerAccountId) => void
+  currency,               // обязательный фильтр по валюте счёта
+  placeholder = "Счёт партнёра",
+}) {
+  const { activePartners } = usePartners();
+  const { activeByCurrency, balanceOf, accounts } = usePartnerAccounts();
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const rootRef = useRef(null);
+
+  // Доступные счета по валюте
+  const availableAccs = useMemo(() => {
+    if (!currency) return [];
+    return activeByCurrency(currency);
+  }, [activeByCurrency, currency]);
+
+  // Группируем по партнёру
+  const grouped = useMemo(() => {
+    const m = new Map();
+    availableAccs.forEach((a) => {
+      const partner = activePartners.find((p) => p.id === a.partnerId);
+      if (!partner) return;
+      if (!m.has(partner.id)) {
+        m.set(partner.id, { partner, accounts: [] });
+      }
+      m.get(partner.id).accounts.push(a);
+    });
+    let groups = [...m.values()];
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      groups = groups
+        .map((g) => ({
+          ...g,
+          accounts: g.accounts.filter(
+            (a) =>
+              a.name.toLowerCase().includes(q) ||
+              g.partner.name.toLowerCase().includes(q)
+          ),
+        }))
+        .filter((g) => g.accounts.length > 0);
+    }
+    return groups;
+  }, [availableAccs, activePartners, query]);
+
+  // Selected account для отображения
+  const selectedAcc = useMemo(
+    () => (value ? accounts.find((a) => a.id === value) : null),
+    [value, accounts]
+  );
+  const selectedPartner = useMemo(
+    () => (selectedAcc ? activePartners.find((p) => p.id === selectedAcc.partnerId) : null),
+    [selectedAcc, activePartners]
+  );
+
+  // Закрытие по клику вне
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (rootRef.current && !rootRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Если value стало невалидным (например currency сменился) — очистить
+  useEffect(() => {
+    if (value && selectedAcc && currency && selectedAcc.currency !== currency) {
+      onChange?.("");
+    }
+  }, [value, selectedAcc, currency, onChange]);
+
+  const pick = (accId) => {
+    onChange?.(accId);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] border transition-colors ${
+          selectedAcc
+            ? "bg-white border-indigo-300 hover:border-indigo-400"
+            : "bg-slate-50 border-slate-200 hover:border-slate-300"
+        }`}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 shrink-0">
+            <Handshake className="w-3.5 h-3.5" />
+          </div>
+          <div className="text-left min-w-0 flex-1">
+            {selectedAcc && selectedPartner ? (
+              <>
+                <div className="text-[12px] font-bold text-slate-900 truncate">
+                  {selectedPartner.name} · {selectedAcc.name}
+                </div>
+                <div className="text-[10px] text-slate-500 tabular-nums">
+                  {curSymbol(selectedAcc.currency)}
+                  {fmt(balanceOf(selectedAcc.id), selectedAcc.currency)}{" "}
+                  <span className="opacity-60">{selectedAcc.currency}</span>
+                  {selectedAcc.networkId && (
+                    <span className="ml-1 text-slate-400">· {selectedAcc.networkId}</span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-[12px] text-slate-400">
+                {currency ? `${placeholder} · ${currency}` : placeholder}
+              </div>
+            )}
+          </div>
+        </div>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-[12px] shadow-xl shadow-slate-900/10 max-h-72 overflow-auto">
+          {/* Search */}
+          <div className="p-2 border-b border-slate-100">
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1.5">
+              <Search className="w-3 h-3 text-slate-400 shrink-0" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Поиск партнёра / счёта"
+                className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 placeholder:text-slate-400 min-w-0"
+                autoFocus
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="p-0.5 rounded hover:bg-slate-200 text-slate-500 shrink-0"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {grouped.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <Wallet className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
+              <div className="text-[12px] text-slate-500 font-medium">
+                {availableAccs.length === 0
+                  ? `Нет счетов партнёров в ${currency || "этой валюте"}`
+                  : "Ничего не найдено"}
+              </div>
+              <div className="text-[10.5px] text-slate-400 mt-1">
+                Создайте счёт в Settings → Партнёры → раскрой партнёра → +Счёт
+              </div>
+            </div>
+          ) : (
+            <div className="py-1">
+              {grouped.map((g) => (
+                <div key={g.partner.id}>
+                  <div className="px-3 py-1.5 text-[9.5px] font-bold text-slate-400 tracking-[0.12em] uppercase bg-slate-50/60 border-y border-slate-100">
+                    {g.partner.name}
+                  </div>
+                  {g.accounts.map((a) => {
+                    const Icon = TYPE_ICONS[a.type] || Wallet;
+                    const isSelected = a.id === value;
+                    return (
+                      <button
+                        key={a.id}
+                        type="button"
+                        onClick={() => pick(a.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50/40 transition-colors ${
+                          isSelected ? "bg-indigo-50/60" : ""
+                        }`}
+                      >
+                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                          <Icon className="w-3 h-3" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <div className="text-[12px] font-semibold text-slate-900 truncate">
+                            {a.name}
+                            {a.networkId && (
+                              <span className="ml-1 text-[10px] text-slate-400">· {a.networkId}</span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-slate-500 tabular-nums">
+                            {curSymbol(a.currency)}
+                            {fmt(balanceOf(a.id), a.currency)}{" "}
+                            <span className="opacity-60">{a.currency}</span>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
