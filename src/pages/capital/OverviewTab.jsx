@@ -124,6 +124,9 @@ export default function OverviewTab({ range }) {
   const {
     txVolume,
     txProfit,
+    txMargin,
+    txCommission,
+    txReferral,
     txCount,
     income,
     expense,
@@ -143,6 +146,10 @@ export default function OverviewTab({ range }) {
 
     const txVolume = scopedTx.reduce((s, tx) => s + toBase(tx.amtIn, tx.curIn), 0);
     const txProfit = scopedTx.reduce((s, tx) => s + toBase(tx.profit || 0, "USD"), 0);
+    // Breakdown: profit = margin (fee) + commission − referral
+    const txMargin = scopedTx.reduce((s, tx) => s + toBase(tx.fee || 0, "USD"), 0);
+    const txCommission = scopedTx.reduce((s, tx) => s + toBase(tx.commissionUsd || 0, "USD"), 0);
+    const txReferral = txMargin + txCommission - txProfit;  // implicit, всегда ≥ 0
 
     // Rate drift: сумма (margin_at_current - margin_in_curIn) по scoped
     // сделкам, конвертированная в base через curIn. Положительная дельта =
@@ -227,6 +234,9 @@ export default function OverviewTab({ range }) {
     return {
       txVolume,
       txProfit,
+      txMargin,
+      txCommission,
+      txReferral,
       txCount: scopedTx.length,
       income,
       expense,
@@ -272,6 +282,7 @@ export default function OverviewTab({ range }) {
           icon={<Briefcase className="w-3.5 h-3.5" />}
           delta={pctDelta(txVolume, prev.txVolume)}
           t={t}
+          tooltip="Объём — общая сумма всех IN-сторон сделок (что пришло в кассу). НЕ доход — это движение денег. Доход см. в карточке справа."
         />
         <KPI
           label={t("kpi_deals_profit")}
@@ -281,6 +292,12 @@ export default function OverviewTab({ range }) {
           delta={pctDelta(txProfit, prev.txProfit)}
           sparkline={dailySeries}
           t={t}
+          tooltip={`Прибыль = маржа курса + комиссия − реферальный бонус.\n\nMargin: ${sym}${fmt(txMargin, base)}\nCommission: ${sym}${fmt(txCommission, base)}\nReferral: −${sym}${fmt(txReferral, base)}\n\nОбъём (volume) НЕ доход — он показан в карточке слева.`}
+          breakdown={
+            txCommission > 0 || txReferral > 0
+              ? `${sym}${fmt(txMargin, base)} margin + ${sym}${fmt(txCommission, base)} comm${txReferral > 0 ? ` − ${sym}${fmt(txReferral, base)} ref` : ""}`
+              : null
+          }
         />
         <KPI
           label={t("kpi_income_expense")}
@@ -468,7 +485,7 @@ export default function OverviewTab({ range }) {
   );
 }
 
-function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t }) {
+function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t, tooltip, breakdown }) {
   const accentCls =
     accent === "emerald"
       ? "text-emerald-700"
@@ -477,15 +494,24 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t }) {
       : "text-slate-900";
   return (
     <div className={`bg-white border border-slate-200 rounded-[12px] p-4 ${big ? "ring-2 ring-emerald-100" : ""}`}>
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+      <div
+        className={`flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 ${tooltip ? "cursor-help" : ""}`}
+        title={tooltip || undefined}
+      >
         {icon}
         {label}
+        {tooltip && <span className="text-[10px] text-slate-400">ⓘ</span>}
       </div>
       <div className={`text-[22px] font-bold tabular-nums tracking-tight ${accentCls}`}>{value}</div>
       <div className="flex items-center gap-2 mt-0.5">
         {sub && <span className="text-[11px] text-slate-500 tabular-nums">{sub}</span>}
         {delta !== null && delta !== undefined && <DeltaPill delta={delta} t={t} />}
       </div>
+      {breakdown && (
+        <div className="text-[10.5px] text-slate-500 tabular-nums mt-1 leading-tight" title={tooltip || undefined}>
+          {breakdown}
+        </div>
+      )}
       {sparkline && sparkline.length > 1 && (
         <div className="mt-2 -mb-1">
           <Sparkline points={sparkline.map((d) => d.profit)} />

@@ -508,6 +508,25 @@ export async function loadTransfers() {
 
 // ---------- obligations ----------
 
+// 0079: 6-direction model.
+// flow ∈ us_to_client | client_to_us | us_to_partner | partner_to_us
+//      | client_to_partner | partner_to_client
+function deriveObligationFlow(r) {
+  const dk = r.debtor_kind;
+  const ck = r.creditor_kind;
+  if (dk && ck) return `${dk}_to_${ck}`;
+  // Legacy fallback из direction + наличия client_id/partner_id
+  if (r.direction === "we_owe") {
+    if (r.partner_id) return "us_to_partner";
+    return "us_to_client";
+  }
+  if (r.direction === "they_owe") {
+    if (r.partner_id) return "partner_to_us";
+    return "client_to_us";
+  }
+  return "unknown";
+}
+
 export async function loadObligations() {
   const sb = ensureSupabase();
   const { data, error } = await sb
@@ -522,11 +541,18 @@ export async function loadObligations() {
     dealLegIndex: null,
     dealLegId: r.deal_leg_id,
     clientId: r.client_id,
+    partnerId: r.partner_id || null,
+    partnerAccountId: r.partner_account_id || null,
     counterpartyName: r.counterparty_name || null,
     currency: r.currency_code,
     amount: num(r.amount),
     paidAmount: num(r.paid_amount),
     direction: r.direction,
+    debtorKind: r.debtor_kind || null,
+    creditorKind: r.creditor_kind || null,
+    debtorId: r.debtor_id || null,
+    creditorId: r.creditor_id || null,
+    flow: deriveObligationFlow(r),
     status: r.status,
     note: r.note || "",
     createdAt: r.created_at,

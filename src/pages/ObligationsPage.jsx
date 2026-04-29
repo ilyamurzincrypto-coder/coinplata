@@ -51,7 +51,10 @@ export default function ObligationsPage() {
   const sym = curSymbol(base);
   const { addEntry: logAudit } = useAudit();
 
-  const [directionFilter, setDirectionFilter] = useState("all"); // all|we_owe|they_owe
+  // 0079: 6-direction flow filter.
+  // all | us_to_client | client_to_us | us_to_partner | partner_to_us
+  //     | client_to_partner | partner_to_client
+  const [flowFilter, setFlowFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
   const [currencyFilter, setCurrencyFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("open");
@@ -76,7 +79,7 @@ export default function ObligationsPage() {
   const filtered = useMemo(() => {
     return obligations.filter((o) => {
       if (statusFilter !== "all" && o.status !== statusFilter) return false;
-      if (directionFilter !== "all" && o.direction !== directionFilter) return false;
+      if (flowFilter !== "all" && o.flow !== flowFilter) return false;
       if (officeFilter !== "all" && o.officeId !== officeFilter) return false;
       if (currencyFilter !== "all" && o.currency !== currencyFilter) return false;
       if (search.trim()) {
@@ -89,7 +92,23 @@ export default function ObligationsPage() {
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [obligations, directionFilter, officeFilter, currencyFilter, statusFilter, search, counterparties]);
+  }, [obligations, flowFilter, officeFilter, currencyFilter, statusFilter, search, counterparties]);
+
+  // Counters per flow для бейджей в filter chips.
+  const flowCounts = useMemo(() => {
+    const c = {
+      all: 0,
+      us_to_client: 0, client_to_us: 0,
+      us_to_partner: 0, partner_to_us: 0,
+      client_to_partner: 0, partner_to_client: 0,
+    };
+    obligations.forEach((o) => {
+      if (statusFilter !== "all" && o.status !== statusFilter) return;
+      c.all += 1;
+      if (c[o.flow] !== undefined) c[o.flow] += 1;
+    });
+    return c;
+  }, [obligations, statusFilter]);
 
   // Summary: только по открытым — главный use case
   const summary = useMemo(() => {
@@ -200,22 +219,68 @@ export default function ObligationsPage() {
         />
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-1.5 text-slate-400">
-          <Filter className="w-3.5 h-3.5" />
+      {/* Filter bar — 6-direction flow chips */}
+      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 text-slate-400">
+            <Filter className="w-3.5 h-3.5" />
+          </div>
+          <FlowChip active={flowFilter === "all"} onClick={() => setFlowFilter("all")} count={flowCounts.all}>
+            Все
+          </FlowChip>
+          <span className="text-[10px] font-bold text-slate-400 ml-1">Клиент:</span>
+          <FlowChip
+            active={flowFilter === "us_to_client"}
+            onClick={() => setFlowFilter("us_to_client")}
+            count={flowCounts.us_to_client}
+            tone="rose"
+          >
+            Мы → клиент
+          </FlowChip>
+          <FlowChip
+            active={flowFilter === "client_to_us"}
+            onClick={() => setFlowFilter("client_to_us")}
+            count={flowCounts.client_to_us}
+            tone="emerald"
+          >
+            Клиент → нам
+          </FlowChip>
+          <span className="text-[10px] font-bold text-slate-400 ml-1">Партнёр:</span>
+          <FlowChip
+            active={flowFilter === "us_to_partner"}
+            onClick={() => setFlowFilter("us_to_partner")}
+            count={flowCounts.us_to_partner}
+            tone="rose"
+          >
+            Мы → партнёр
+          </FlowChip>
+          <FlowChip
+            active={flowFilter === "partner_to_us"}
+            onClick={() => setFlowFilter("partner_to_us")}
+            count={flowCounts.partner_to_us}
+            tone="emerald"
+          >
+            Партнёр → нам
+          </FlowChip>
+          <span className="text-[10px] font-bold text-slate-400 ml-1">Внешние:</span>
+          <FlowChip
+            active={flowFilter === "client_to_partner"}
+            onClick={() => setFlowFilter("client_to_partner")}
+            count={flowCounts.client_to_partner}
+            tone="slate"
+          >
+            Клиент → партнёр
+          </FlowChip>
+          <FlowChip
+            active={flowFilter === "partner_to_client"}
+            onClick={() => setFlowFilter("partner_to_client")}
+            count={flowCounts.partner_to_client}
+            tone="slate"
+          >
+            Партнёр → клиент
+          </FlowChip>
         </div>
-        <SegBtn active={directionFilter === "all"} onClick={() => setDirectionFilter("all")}>
-          {t("oblig_all")}
-        </SegBtn>
-        <SegBtn active={directionFilter === "we_owe"} onClick={() => setDirectionFilter("we_owe")}>
-          {t("oblig_we_owe")}
-        </SegBtn>
-        <SegBtn active={directionFilter === "they_owe"} onClick={() => setDirectionFilter("they_owe")}>
-          {t("oblig_they_owe")}
-        </SegBtn>
-
-        <div className="h-5 w-px bg-slate-200 mx-1" />
+      <div className="flex items-center gap-2 flex-wrap">
 
         <Select
           value={statusFilter}
@@ -260,6 +325,7 @@ export default function ObligationsPage() {
         >
           {t("export_csv")}
         </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -405,6 +471,38 @@ function SegBtn({ active, onClick, children }) {
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+// 6-direction flow chip с counter и tone (asset=emerald / liability=rose / external=slate).
+function FlowChip({ active, onClick, count = 0, tone = "slate", children }) {
+  const toneActive = {
+    rose:    "bg-rose-600 text-white border-rose-600",
+    emerald: "bg-emerald-600 text-white border-emerald-600",
+    slate:   "bg-slate-900 text-white border-slate-900",
+  }[tone];
+  const toneIdle = {
+    rose:    "bg-white text-rose-700 border-rose-200 hover:border-rose-300 hover:bg-rose-50",
+    emerald: "bg-white text-emerald-700 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50",
+    slate:   "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+  }[tone];
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border text-[11.5px] font-semibold transition-colors ${
+        active ? toneActive : toneIdle
+      }`}
+    >
+      <span>{children}</span>
+      {count > 0 && (
+        <span className={`text-[9.5px] font-bold tabular-nums px-1 rounded ${
+          active ? "bg-white/20" : "bg-slate-100"
+        }`}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
