@@ -250,6 +250,7 @@ export async function loadClientWallets() {
 
 function mapLegToOutput(r) {
   return {
+    legId: r.id,
     currency: r.currency,
     amount: num(r.amount),
     plannedAmount: num(r.amount),
@@ -258,11 +259,14 @@ function mapLegToOutput(r) {
     completedAt: r.completed_at,
     rate: num(r.rate),
     accountId: r.account_id || "",
+    partnerAccountId: r.partner_account_id || "",
+    outKind: r.out_kind || (r.partner_account_id ? "partner_now" : (r.account_id ? "ours_now" : "ours_later")),
     address: r.address || "",
     network: r.network_id || null,
     sendStatus: r.send_status || undefined,
     sendTxHash: r.send_tx_hash || "",
     isInternal: r.is_internal || false,
+    payments: [],  // заполняется в loadDealsWithLegs
   };
 }
 
@@ -288,9 +292,15 @@ export async function loadDealPnl() {
 
 export async function loadDealsWithLegs(usersById = {}) {
   const sb = ensureSupabase();
-  const [dealsRes, legsRes] = await Promise.all([
+  // 0080: deal_in_payments / deal_leg_payments. На старых базах этих таблиц
+  // ещё нет — gracefully fallback на пустой результат вместо throw.
+  const [dealsRes, legsRes, inPaysRes, legPaysRes] = await Promise.all([
     sb.from("deals").select("*").order("created_at", { ascending: false }).limit(2000),
     sb.from("deal_legs").select("*"),
+    sb.from("deal_in_payments").select("*").order("paid_at", { ascending: true })
+      .then((r) => r, () => ({ data: [], error: null })),
+    sb.from("deal_leg_payments").select("*").order("paid_at", { ascending: true })
+      .then((r) => r, () => ({ data: [], error: null })),
   ]);
   if (dealsRes.error) throw dealsRes.error;
   if (legsRes.error) throw legsRes.error;
@@ -301,10 +311,45 @@ export async function loadDealsWithLegs(usersById = {}) {
     legsByDeal.get(l.deal_id).push(l);
   });
 
+  const inPaysByDeal = new Map();
+  (inPaysRes.data || []).forEach((p) => {
+    const arr = inPaysByDeal.get(p.deal_id) || [];
+    arr.push({
+      id: p.id,
+      amount: num(p.amount),
+      currency: p.currency_code,
+      paidAt: p.paid_at,
+      kind: p.kind,
+      accountId: p.account_id || null,
+      partnerAccountId: p.partner_account_id || null,
+      note: p.note || "",
+    });
+    inPaysByDeal.set(p.deal_id, arr);
+  });
+
+  const legPaysByLeg = new Map();
+  (legPaysRes.data || []).forEach((p) => {
+    const arr = legPaysByLeg.get(p.deal_leg_id) || [];
+    arr.push({
+      id: p.id,
+      amount: num(p.amount),
+      currency: p.currency_code,
+      paidAt: p.paid_at,
+      kind: p.kind,
+      accountId: p.account_id || null,
+      partnerAccountId: p.partner_account_id || null,
+      note: p.note || "",
+    });
+    legPaysByLeg.set(p.deal_leg_id, arr);
+  });
+
   return (dealsRes.data || []).map((d) => {
     const legs = (legsByDeal.get(d.id) || [])
       .sort((a, b) => a.leg_index - b.leg_index)
-      .map(mapLegToOutput);
+      .map((l) => ({
+        ...mapLegToOutput(l),
+        payments: legPaysByLeg.get(l.id) || [],
+      }));
     const created = new Date(d.created_at);
     const manager = usersById[d.manager_id];
     const payee = d.payee_user_id ? usersById[d.payee_user_id] : null;
@@ -315,6 +360,8 @@ export async function loadDealsWithLegs(usersById = {}) {
       date: created.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       officeId: d.office_id,
       type: d.type,
+      kind: d.kind || "regular",
+      inKind: d.in_kind || (d.in_partner_account_id ? "partner_now" : (d.in_account_id ? "ours_now" : "ours_later")),
       curIn: d.currency_in,
       amtIn: num(d.amount_in),
       outputs: legs,
@@ -323,17 +370,15 @@ export async function loadDealsWithLegs(usersById = {}) {
       rate: legs[0]?.rate,
       fee: num(d.fee_usd),
       profit: num(d.profit_usd),
+      commissionUsd: num(d.commission_usd),
       manager: manager?.full_name || "—",
       managerId: d.manager_id,
-      // Payee — ответственный за выдачу (interoffice flow). Если задан и
-      // payedOutAt=null → сделка "невыданная".
       payeeUserId: d.payee_user_id || null,
       payeeName: payee?.full_name || null,
       payeeOfficeId: d.payee_office_id || null,
       payedOutAt: d.payed_out_at || null,
       payedOutBy: d.payed_out_by || null,
       payedOutNote: d.payed_out_note || null,
-      // Creator — кто реально нажал "создать" (admin от имени менеджера).
       createdByUserId: d.created_by_user_id || null,
       createdByName: creator?.full_name || null,
       counterparty: d.client_nickname || "",
@@ -341,6 +386,7 @@ export async function loadDealsWithLegs(usersById = {}) {
       referral: d.referral,
       comment: d.comment || "",
       accountId: d.in_account_id || "",
+      inPartnerAccountId: d.in_partner_account_id || "",
       inTxHash: d.in_tx_hash || "",
       status: d.status,
       confirmedAt: d.confirmed_at,
@@ -350,6 +396,7 @@ export async function loadDealsWithLegs(usersById = {}) {
       inActualAmount: num(d.in_actual_amount),
       inPlannedAt: d.in_planned_at,
       inCompletedAt: d.in_completed_at,
+      inPayments: inPaysByDeal.get(d.id) || [],
       pinned: d.pinned,
       riskScore: d.risk_score,
       riskLevel: d.risk_level,

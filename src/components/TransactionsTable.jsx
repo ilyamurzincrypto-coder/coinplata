@@ -40,6 +40,7 @@ import { fmt, curSymbol } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
+import { KindPill } from "../utils/dealKind.jsx";
 import { Shield } from "lucide-react";
 import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -769,7 +770,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     <div className="text-[11px] text-slate-400">{tx.date}</div>
                   </td>
                   <td className="px-3 py-3 hidden sm:table-cell">
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
                           tx.type === "EXCHANGE"
@@ -782,6 +783,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         {tx.type === "EXCHANGE" && <ArrowLeftRight className="w-2.5 h-2.5" />}
                         {tx.type}
                       </span>
+                      <KindPill type="deal" kind={tx.kind} />
                       {tx.status === "pending" && (
                         <span
                           className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 ring-1 ring-amber-200"
@@ -870,6 +872,11 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
                     <div className="font-semibold text-slate-900">{fmt(tx.amtIn, tx.curIn)}</div>
                     <div className="text-[11px] text-slate-400 font-medium">{tx.curIn}</div>
+                    {tx.inKind && tx.inKind !== "ours_now" && (
+                      <div className="mt-0.5">
+                        <KindPill type="in" kind={tx.inKind} compact />
+                      </div>
+                    )}
                     <InStatusLine tx={tx} />
                   </td>
                   {/* RATE посередине — между IN и OUT, как просил кассир. */}
@@ -1262,6 +1269,11 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
       <div title={tooltip}>
         <div className="font-semibold text-slate-900">{fmt(o.amount, o.currency)}</div>
         <div className="text-[11px] text-slate-400 font-medium">{o.currency}</div>
+        {o.outKind && o.outKind !== "ours_now" && (
+          <div className="mt-0.5">
+            <KindPill type="out" kind={o.outKind} compact />
+          </div>
+        )}
       </div>
     );
   }
@@ -1335,6 +1347,9 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
           ✓ {formatShortDate(o.completedAt)}
         </span>
       )}
+
+      {/* OUT kind (только для не-стандартных) */}
+      {o.outKind && o.outKind !== "ours_now" && <KindPill type="out" kind={o.outKind} compact />}
 
       {/* Crypto send badge (TRC20/ERC20 lifecycle) */}
       {isCryptoOut && <SendStatusBadge status={o.sendStatus} />}
