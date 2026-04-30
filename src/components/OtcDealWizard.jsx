@@ -27,6 +27,7 @@ import Modal from "./ui/Modal.jsx";
 import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
 import PartnerAccountSelect from "./PartnerAccountSelect.jsx";
 import PartnerSelect from "./PartnerSelect.jsx";
+import CounterpartySelect from "./CounterpartySelect.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
@@ -175,11 +176,20 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
   }, [open]);
 
   // ─── Auto-fill rate from market on currency change ───────────────
+  // ВСЕГДА перезаписываем market rate при смене валют — иначе старый rate
+  // остаётся когда юзер меняет пару (Bug #4).
   useEffect(() => {
-    if (!currencyIn || !currencyOut || currencyIn === currencyOut) return;
-    if (!rate) {
-      const r = getRate(currencyIn, currencyOut);
-      if (r > 0) setRate(fmtNum(r, 6));
+    if (!currencyIn || !currencyOut) return;
+    if (currencyIn === currencyOut) {
+      setRate("1");
+      return;
+    }
+    const r = getRate(currencyIn, currencyOut);
+    if (r > 0) {
+      setRate(fmtNum(r, 6));
+      // Если amountIn задан — пересчитываем amountOut через новый rate
+      const inN = numberOrZero(amountIn);
+      if (inN > 0) setAmountOut(fmtNum(inN * r, 4));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currencyIn, currencyOut]);
@@ -231,29 +241,46 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
   };
 
   // ─── Available balance display ───────────────────────────────────
-  const availableForCurrencyOut = useMemo(() => {
-    // total + breakdown по всем активным нашим счетам в currencyOut
+  // Имеет смысл показывать только если хотя бы часть OUT уйдёт с НАШИХ
+  // счетов. Если IN принимает партнёр И в OUT нет ours_* — наш баланс
+  // нерелевантен.
+  const availableOurOut = useMemo(() => {
     const matched = accounts.filter((a) => a.active && a.currency === currencyOut);
     const total = matched.reduce((s, a) => s + (balanceOf(a.id) || 0), 0);
     return { total, accounts: matched };
   }, [accounts, currencyOut, balanceOf]);
 
-  // ─── Coverage check ──────────────────────────────────────────────
-  // Required = sum amounts of legs where out_kind == 'ours_now'
-  // Available = balance в currencyOut по нашим счетам в текущем офисе
+  // Подсказка: показывать ли наш баланс на шаге OUT.
+  // Если деньги у партнёра (IN partner_*) И ни одной leg ours_now — наш
+  // баланс к этой сделке не имеет отношения.
+  const hasOursNowLeg = legs.some((l) => l.outKind === "ours_now");
+  const showOurBalanceHint = !(inKind === "partner_now" || inKind === "partner_later") || hasOursNowLeg || legs.length === 0;
+
+  // ─── Coverage check (split: наши vs партнёр) ─────────────────────
+  // Considers где деньги ДОЛЖНЫ быть для каждого типа leg:
+  //   ours_now    → наш счёт нужен. Available = sum(our accounts in currencyOut).
+  //   partner_now → партнёрский счёт нужен. Available показываем отдельно.
+  //   *_later     → не требует ликвидности здесь и сейчас.
   const coverage = useMemo(() => {
-    const required = legs
+    const requiredOurs = legs
       .filter((l) => l.outKind === "ours_now")
       .reduce((s, l) => s + numberOrZero(l.amount), 0);
-    const available = activeAccounts
+    const requiredPartner = legs
+      .filter((l) => l.outKind === "partner_now")
+      .reduce((s, l) => s + numberOrZero(l.amount), 0);
+
+    const availableOurs = activeAccounts
       .filter((a) => a.currency === currencyOut)
       .reduce((s, a) => s + (balanceOf(a.id) || 0), 0);
+
     return {
-      required,
-      available,
-      shortfall: Math.max(0, required - available),
-      surplus: Math.max(0, available - required),
-      ok: available + 0.00000001 >= required,
+      requiredOurs,
+      requiredPartner,
+      availableOurs,
+      shortfallOurs: Math.max(0, requiredOurs - availableOurs),
+      surplusOurs: Math.max(0, availableOurs - requiredOurs),
+      okOurs: availableOurs + 0.00000001 >= requiredOurs,
+      hasAnyRequirement: requiredOurs > 0 || requiredPartner > 0,
     };
   }, [legs, activeAccounts, currencyOut, balanceOf]);
 
@@ -457,7 +484,9 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
             amountOut={amountOut} onChangeAmountOut={onChangeAmountOut}
             rate={rate} onChangeRate={onChangeRate}
             currencyCodes={currencyCodes}
-            availableForCurrencyOut={availableForCurrencyOut}
+            availableOurOut={availableOurOut}
+            showOurBalanceHint={showOurBalanceHint}
+            inKind={inKind}
             getRate={getRate}
           />
         )}
@@ -635,14 +664,8 @@ function StepParty({ partnerName, setPartnerName, clientNickname, setClientNickn
         </div>
       )}
 
-      <SectionTitle icon={Banknote} text={kind === "broker" ? "Клиент (опционально)" : "Клиент"} hint={kind === "broker" ? "Для брокериджа клиент часто не нужен." : "Конечный получатель сделки."} />
-      <input
-        type="text"
-        value={clientNickname}
-        onChange={(e) => setClientNickname(e.target.value)}
-        placeholder="Ник или имя клиента (опционально)"
-        className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
-      />
+      <SectionTitle icon={Banknote} text={kind === "broker" ? "Клиент (опционально)" : "Клиент"} hint={kind === "broker" ? "Для брокериджа клиент часто не нужен." : "Конечный получатель сделки. Можно выбрать существующего или создать."} />
+      <CounterpartySelect value={clientNickname} onChange={setClientNickname} />
     </div>
   );
 }
@@ -656,8 +679,8 @@ function StepIn({ currencyIn, setCurrencyIn, amountIn, onChangeAmountIn, inKind,
 
       <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-3">
         <CurrencyPicker value={currencyIn} onChange={setCurrencyIn} codes={currencyCodes} />
-        <div className="relative flex items-baseline gap-2 bg-rose-50/60 rounded-[12px] border-2 border-rose-200 px-4 py-3">
-          <span className="text-rose-500 text-[18px] font-semibold">{curSymbol(currencyIn)}</span>
+        <div className="relative flex items-baseline gap-2 bg-white rounded-[12px] border-2 border-slate-200 focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-900/10 px-4 py-3 transition-colors">
+          <span className="text-slate-400 text-[18px] font-semibold">{curSymbol(currencyIn)}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -666,7 +689,7 @@ function StepIn({ currencyIn, setCurrencyIn, amountIn, onChangeAmountIn, inKind,
             placeholder="0"
             className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[20px] font-bold tracking-tight min-w-0"
           />
-          <span className="text-rose-500 text-[12px] font-bold tracking-wider">{currencyIn}</span>
+          <span className="text-slate-400 text-[12px] font-bold tracking-wider">{currencyIn}</span>
         </div>
       </div>
 
@@ -702,7 +725,9 @@ function StepOut({
   amountOut, onChangeAmountOut,
   rate, onChangeRate,
   currencyCodes,
-  availableForCurrencyOut,
+  availableOurOut,
+  showOurBalanceHint,
+  inKind,
   getRate,
 }) {
   const market = currencyIn !== currencyOut ? getRate(currencyIn, currencyOut) : 1;
@@ -713,34 +738,35 @@ function StepOut({
     <div className="space-y-4">
       <SectionTitle icon={ArrowDown} text="Что получает клиент" hint="Валюта + сумма + курс. Любое поле меняешь — остальные пересчитаются." />
 
-      {/* Available balance — sidebar info */}
-      {currencyOut && (
+      {/* Hint про источник денег — показываем только если наш баланс релевантен */}
+      {currencyOut && showOurBalanceHint && (
         <div className="rounded-[12px] border border-slate-200 bg-slate-50/60 p-3">
           <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
             <Wallet className="w-3 h-3" />
             Доступно по нашим счетам в {currencyOut}
           </div>
           <div className="text-[18px] font-bold text-slate-900 tabular-nums">
-            {curSymbol(currencyOut)}{fmt(availableForCurrencyOut.total, currencyOut)}
+            {curSymbol(currencyOut)}{fmt(availableOurOut.total, currencyOut)}
             <span className="ml-2 text-[12px] text-slate-400 font-semibold">{currencyOut}</span>
           </div>
-          {availableForCurrencyOut.accounts.length > 0 && (
-            <div className="text-[10.5px] text-slate-500 mt-1 space-x-2">
-              {availableForCurrencyOut.accounts.slice(0, 3).map((a) => (
-                <span key={a.id}>
-                  {a.name}: <span className="tabular-nums font-semibold">{fmt(0, a.currency)}</span>
-                  <span className="tabular-nums font-semibold ml-0.5">{fmt(Math.max(0, 0), a.currency)}</span>
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="text-[10.5px] text-slate-400 mt-0.5">
+            Это сумма по нашим счетам — пригодится, если выдавать со своего.
+            На шаге Реализация можно разнести по партнёрам.
+          </div>
+        </div>
+      )}
+      {currencyOut && !showOurBalanceHint && (
+        <div className="rounded-[12px] border border-indigo-200 bg-indigo-50/40 p-3 text-[11.5px] text-indigo-900 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          IN принимает партнёр — наш баланс {currencyOut} к этой сделке не относится.
+          Кто будет выдавать клиенту — настроишь на шаге Реализация.
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-3">
         <CurrencyPicker value={currencyOut} onChange={setCurrencyOut} codes={currencyCodes} />
-        <div className="relative flex items-baseline gap-2 bg-emerald-50/60 rounded-[12px] border-2 border-emerald-200 px-4 py-3">
-          <span className="text-emerald-600 text-[18px] font-semibold">{curSymbol(currencyOut)}</span>
+        <div className="relative flex items-baseline gap-2 bg-white rounded-[12px] border-2 border-slate-200 focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-slate-900/10 px-4 py-3 transition-colors">
+          <span className="text-slate-400 text-[18px] font-semibold">{curSymbol(currencyOut)}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -749,7 +775,7 @@ function StepOut({
             placeholder="0"
             className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[20px] font-bold tracking-tight min-w-0"
           />
-          <span className="text-emerald-600 text-[12px] font-bold tracking-wider">{currencyOut}</span>
+          <span className="text-slate-400 text-[12px] font-bold tracking-wider">{currencyOut}</span>
         </div>
       </div>
 
@@ -879,38 +905,81 @@ function StepExecution({
         </div>
       )}
 
-      {/* Coverage check */}
+      {/* Coverage check — раздельно: наши счета и партнёрские */}
       <div className={`rounded-[12px] border-2 p-3 ${
-        coverage.required <= 0
+        !coverage.hasAnyRequirement
           ? "border-slate-200 bg-slate-50"
-          : coverage.ok
+          : coverage.okOurs
             ? "border-emerald-200 bg-emerald-50"
             : "border-rose-200 bg-rose-50"
       }`}>
         <div className="flex items-center gap-2 mb-2">
-          {coverage.required <= 0 ? (
+          {!coverage.hasAnyRequirement ? (
             <AlertCircle className="w-4 h-4 text-slate-400" />
-          ) : coverage.ok ? (
+          ) : coverage.okOurs ? (
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           ) : (
             <AlertTriangle className="w-4 h-4 text-rose-600" />
           )}
           <span className="text-[12px] font-bold">
-            {coverage.required <= 0 ? "Нет наших OUT-выдач" : coverage.ok ? "Хватает ликвидности" : "Не хватает ликвидности"}
+            {!coverage.hasAnyRequirement
+              ? "Нет немедленных выдач (всё отложено)"
+              : coverage.okOurs
+                ? "Ликвидность OK"
+                : "Не хватает на наших счетах"}
           </span>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <Stat label="Требуется (наш OUT)" value={`${curSymbol(currencyOut)}${fmt(coverage.required, currencyOut)}`} tone="slate" />
-          <Stat label="Доступно" value={`${curSymbol(currencyOut)}${fmt(coverage.available, currencyOut)}`} tone={coverage.ok ? "emerald" : "rose"} />
-          <Stat
-            label={coverage.ok ? "Surplus" : "Shortfall"}
-            value={`${coverage.ok ? "+" : "−"}${curSymbol(currencyOut)}${fmt(coverage.ok ? coverage.surplus : coverage.shortfall, currencyOut)}`}
-            tone={coverage.ok ? "emerald" : "rose"}
-          />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Наши счета */}
+          <div className="rounded-[8px] border border-slate-200 bg-white p-2.5">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              С наших счетов
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div>
+                <div className="text-[9px] text-slate-500 mb-0.5">Требуется</div>
+                <div className="text-[13px] font-bold text-slate-900 tabular-nums">
+                  {curSymbol(currencyOut)}{fmt(coverage.requiredOurs, currencyOut)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] text-slate-500 mb-0.5">Доступно</div>
+                <div className={`text-[13px] font-bold tabular-nums ${coverage.okOurs ? "text-emerald-700" : "text-rose-700"}`}>
+                  {curSymbol(currencyOut)}{fmt(coverage.availableOurs, currencyOut)}
+                </div>
+              </div>
+            </div>
+            {coverage.requiredOurs > 0 && (
+              <div className={`mt-1.5 text-[10px] font-bold tabular-nums text-center ${coverage.okOurs ? "text-emerald-700" : "text-rose-700"}`}>
+                {coverage.okOurs
+                  ? `Запас +${fmt(coverage.surplusOurs, currencyOut)}`
+                  : `Не хватает −${fmt(coverage.shortfallOurs, currencyOut)}`}
+              </div>
+            )}
+          </div>
+          {/* Партнёр */}
+          <div className="rounded-[8px] border border-slate-200 bg-white p-2.5">
+            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              С партнёрских счетов
+            </div>
+            <div className="text-center">
+              <div className="text-[9px] text-slate-500 mb-0.5">Требуется</div>
+              <div className="text-[13px] font-bold text-slate-900 tabular-nums">
+                {curSymbol(currencyOut)}{fmt(coverage.requiredPartner, currencyOut)}
+              </div>
+              <div className="text-[9.5px] text-slate-400 mt-1">
+                {coverage.requiredPartner > 0
+                  ? "Баланс конкретного счёта виден в leg-карточке ниже"
+                  : "Партнёрские leg'и не требуются"}
+              </div>
+            </div>
+          </div>
         </div>
-        {!coverage.ok && coverage.required > 0 && (
+
+        {!coverage.okOurs && coverage.requiredOurs > 0 && (
           <div className="mt-2 text-[10.5px] text-rose-700">
-            💡 Чтобы провести сделку: разбей OUT на legs (часть с нашего счёта, часть через партнёра / отложено)
+            💡 Раздели leg на части: что-то с нашего счёта, остальное через партнёра или отложенно.
           </div>
         )}
       </div>
