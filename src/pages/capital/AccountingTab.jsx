@@ -16,7 +16,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2, XCircle, Clock, AlertCircle, Filter, Search, Building2,
   User, Tag, ChevronDown, ChevronRight, FileText, RotateCcw, ListChecks,
-  ArrowDownLeft, ArrowUpRight,
+  ArrowDownLeft, ArrowUpRight, Trash2,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import Select from "../../components/ui/Select.jsx";
@@ -33,6 +33,7 @@ import { onDataBump } from "../../lib/dataVersion.jsx";
 import {
   rpcAccountingReview,
   rpcAccountingReviewBulk,
+  rpcDeleteEntity,
   withToast,
 } from "../../lib/supabaseWrite.js";
 import DealDetailPanel from "../../components/DealDetailPanel.jsx";
@@ -403,6 +404,12 @@ export default function AccountingTab({ range }) {
                               Пересмотреть
                             </button>
                           )}
+                          {/* Universal delete — для admin/owner. Удаляет
+                              запись со всеми связанными движениями/audit. */}
+                          <DeleteEntityInlineBtn
+                            entityType={r.entityType}
+                            entityId={r.entityId}
+                          />
                         </td>
                       </tr>
                       {isExpanded && (
@@ -752,4 +759,66 @@ function formatDate(iso) {
   const d = new Date(iso);
   if (!Number.isFinite(d.getTime())) return "—";
   return `${d.toLocaleDateString("ru-RU")} ${d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`;
+}
+
+// ─── Universal delete (inline) ────────────────────────────────────────
+//
+// 2-tap confirm. Только admin/owner. Делает rpcDeleteEntity(type, id):
+// под капотом — соответствующий delete-RPC по entity_type:
+//   deal              → rpcDeleteDeal (откатывает все ledgers + audit)
+//   transfer          → rpcDeleteTransfer (откатывает 2 movements + audit)
+//   expense           → deleteExpenseById + audit cleanup
+//   balance_adjustment→ rpcDeleteBalanceAdjustment (откатывает adjustment movement)
+//   cash_closure      → rpcCancelCashClosure (soft cancel — 5-min undo окно)
+
+function DeleteEntityInlineBtn({ entityType, entityId }) {
+  const { users } = useAuth();
+  const { currentUser } = useAuth();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  if (!currentUser || !["admin", "owner"].includes(currentUser.role)) {
+    return null;
+  }
+
+  const handleClick = async (e) => {
+    e.stopPropagation();
+    if (busy) return;
+    if (!confirm) {
+      setConfirm(true);
+      setTimeout(() => setConfirm(false), 3000);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await withToast(
+        () => rpcDeleteEntity({ entityType, entityId }),
+        {
+          success: `Запись удалена · все связи откатаны`,
+          errorPrefix: "Delete failed",
+        }
+      );
+      // Feed автообновится через onDataBump в parent useEffect
+    } finally {
+      setBusy(false);
+      setConfirm(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={busy}
+      onBlur={() => setConfirm(false)}
+      title={confirm ? "Подтвердить удаление" : "Удалить запись (откатит все связанные движения)"}
+      className={`ml-1 inline-flex items-center justify-center p-1 rounded-[6px] transition-colors ${
+        confirm
+          ? "bg-rose-500 text-white hover:bg-rose-600"
+          : "text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+      } ${busy ? "opacity-60 cursor-wait" : ""}`}
+    >
+      <Trash2 className="w-3 h-3" />
+    </button>
+  );
 }

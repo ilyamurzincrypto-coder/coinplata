@@ -634,6 +634,38 @@ export async function rpcAccountingReviewBulk({ items, action, reason, notes }) 
   return count;
 }
 
+// Удаление балансовой корректировки с откатом эмитированного movement (0094).
+// Доступ: admin / owner. Баланс возвращается к pre-correction состоянию.
+export async function rpcDeleteBalanceAdjustment(id) {
+  assertConfigured();
+  const aid = requireUuid(id, "id");
+  unwrap(
+    await supabase.rpc("delete_balance_adjustment", { p_id: aid }),
+    "delete_balance_adjustment"
+  );
+  bumpDataVersion();
+}
+
+// Universal delete entity — wrapper над всеми delete-RPC по entity_type.
+// Используется в AccountingTab чтобы удалить любую запись из feed.
+export async function rpcDeleteEntity({ entityType, entityId }) {
+  if (!entityId) throw new Error("entityId required");
+  switch (entityType) {
+    case "deal":
+      return rpcDeleteDeal(entityId, "manual from accounting report");
+    case "transfer":
+      return rpcDeleteTransfer(entityId);
+    case "expense":
+      return deleteExpenseById(entityId);
+    case "balance_adjustment":
+      return rpcDeleteBalanceAdjustment(entityId);
+    case "cash_closure":
+      return rpcCancelCashClosure(entityId);
+    default:
+      throw new Error(`Unknown entity_type: ${entityType}`);
+  }
+}
+
 // Удаление перемещения с откатом обоих movements (миграция 0093).
 // Доступ: admin / owner. Балансы счетов восстанавливаются.
 export async function rpcDeleteTransfer(id) {
