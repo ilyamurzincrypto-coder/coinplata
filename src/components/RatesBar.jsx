@@ -36,6 +36,7 @@ import { NETWORKS } from "../store/data.js";
 import { getTradingRates } from "../utils/tradingRates.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
+import { useNow } from "../hooks/useNow.js";
 import { FreshnessChip } from "../utils/rateFreshness.jsx";
 import Modal from "./ui/Modal.jsx";
 import {
@@ -59,8 +60,8 @@ function formatRate(value) {
   return value.toFixed(6);
 }
 
-function timeAgo(date) {
-  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+function timeAgo(date, nowMs = Date.now()) {
+  const diff = Math.floor((nowMs - date.getTime()) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   return `${Math.floor(diff / 3600)}h`;
@@ -94,6 +95,9 @@ const FALLBACK_PAIRS = [
 export default function RatesBar({ onOpenRates, currentOffice }) {
   const { getRate: getRateRaw, ratesFromBase, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
+  // Тикер 30s — чтобы строка "updated Xm ago" обновлялась без перерендера
+  // от внешних причин (юзер видел зависшее значение).
+  const nowMs = useNow(30_000);
   const { dict: currencyDict } = useCurrencies();
   const { isAdmin, currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
@@ -234,7 +238,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             </h2>
             <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-              updated {timeAgo(lastUpdated)} ago
+              updated {timeAgo(lastUpdated, nowMs)} ago
             </span>
           </div>
           {isAdmin && (

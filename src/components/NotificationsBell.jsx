@@ -15,10 +15,11 @@ import {
 } from "lucide-react";
 import { useNotifications } from "../store/notifications.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { useNow } from "../hooks/useNow.js";
 
-function timeAgo(iso) {
+function timeAgo(iso, nowMs = Date.now()) {
   const stamp = new Date(iso).getTime();
-  const diff = Math.floor((Date.now() - stamp) / 1000);
+  const diff = Math.floor((nowMs - stamp) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
@@ -42,6 +43,7 @@ export default function NotificationsBell({ onNavigate }) {
   const { notifications, unreadCount, markAllRead, markOneRead, clearAll } = useNotifications();
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const nowMs = useNow(30_000);
 
   // Закрывать по клику снаружи
   useEffect(() => {
@@ -167,7 +169,7 @@ export default function NotificationsBell({ onNavigate }) {
                       </div>
                       <div className="text-[11px] text-slate-600 truncate mt-0.5">{n.body}</div>
                       <div className="text-[10px] text-slate-400 mt-0.5 tabular-nums">
-                        {timeAgo(n.createdAt)} {t("notif_ago")}
+                        {timeAgo(n.createdAt, nowMs)} {t("notif_ago")}
                       </div>
                     </div>
                   </button>

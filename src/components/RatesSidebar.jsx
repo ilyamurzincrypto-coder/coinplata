@@ -15,6 +15,7 @@ import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { FreshnessChip } from "../utils/rateFreshness.jsx";
+import { useNow } from "../hooks/useNow.js";
 
 // Per-user избранные пары для дашборда — отдельный ключ от editor's
 // favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
@@ -43,8 +44,8 @@ function formatRate(value) {
   return value.toFixed(6);
 }
 
-function timeAgo(date) {
-  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+function timeAgo(date, nowMs = Date.now()) {
+  const diff = Math.floor((nowMs - date.getTime()) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   return `${Math.floor(diff / 3600)}h`;
@@ -93,6 +94,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const { activeOffices } = useOffices();
   const { currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
+  const nowMs = useNow(30_000);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -263,7 +265,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
         <span className="inline-flex items-center gap-1 text-[9px] text-slate-400 mt-0.5">
           <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-          {timeAgo(lastUpdated)} ago
+          {timeAgo(lastUpdated, nowMs)} ago
         </span>
       </header>
 

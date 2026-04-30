@@ -62,8 +62,31 @@ function Root() {
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { forceSetPassword } = useRecovery();
-  const [page, setPage] = useState("cashier");
-  const [currentOffice, setCurrentOffice] = useState("mark");
+  // Persist текущей страницы и офиса в localStorage чтобы F5 не сбрасывал
+  // юзера на дефолт. PAGE_SECTION гард ниже всё равно отбрасывает на
+  // cashier если у роли нет прав на сохранённую страницу.
+  const [page, setPage] = useState(() => {
+    try {
+      const saved = localStorage.getItem("coinplata.page");
+      return saved && PAGE_SECTION[saved] !== undefined ? saved : "cashier";
+    } catch {
+      return "cashier";
+    }
+  });
+  const [currentOffice, setCurrentOffice] = useState(() => {
+    try {
+      return localStorage.getItem("coinplata.office") || "mark";
+    } catch {
+      return "mark";
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("coinplata.page", page); } catch {}
+  }, [page]);
+  useEffect(() => {
+    try { localStorage.setItem("coinplata.office", currentOffice); } catch {}
+  }, [currentOffice]);
   const [exchangeMode, setExchangeMode] = useState("dashboard");
   const [formMounted, setFormMounted] = useState(false);
   const can = useCan();

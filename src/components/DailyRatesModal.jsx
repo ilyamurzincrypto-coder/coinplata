@@ -12,6 +12,7 @@ import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcImportRates, withToast } from "../lib/supabaseWrite.js";
+import { useNow } from "../hooks/useNow.js";
 
 function formatRate(v) {
   if (v == null || !Number.isFinite(v)) return "—";
@@ -20,9 +21,9 @@ function formatRate(v) {
   return v.toFixed(6);
 }
 
-function timeAgo(date) {
+function timeAgo(date, nowMs = Date.now()) {
   if (!date) return "—";
-  const diff = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  const diff = Math.floor((nowMs - new Date(date).getTime()) / 1000);
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   return `${Math.floor(diff / 3600)}h ago`;
@@ -47,6 +48,7 @@ export default function DailyRatesModal({ open, onClose }) {
   const [inputs, setInputs] = useState({});
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
+  const nowMs = useNow(30_000);
 
   useEffect(() => {
     if (!open) {
@@ -203,7 +205,7 @@ export default function DailyRatesModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       title={t("quick_rates_title") || "Быстрое обновление курсов"}
-      subtitle={`${rows.length} пар · sell/buy раздельно · обновлено ${timeAgo(lastUpdated)}`}
+      subtitle={`${rows.length} пар · sell/buy раздельно · обновлено ${timeAgo(lastUpdated, nowMs)}`}
       width="2xl"
     >
       <div className="p-5">
