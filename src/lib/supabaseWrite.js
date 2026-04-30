@@ -634,6 +634,18 @@ export async function rpcAccountingReviewBulk({ items, action, reason, notes }) 
   return count;
 }
 
+// Удаление перемещения с откатом обоих movements (миграция 0093).
+// Доступ: admin / owner. Балансы счетов восстанавливаются.
+export async function rpcDeleteTransfer(id) {
+  assertConfigured();
+  const tid = requireUuid(id, "id");
+  unwrap(
+    await supabase.rpc("delete_transfer", { p_transfer_id: tid }),
+    "delete_transfer"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcCancelCashClosure(id) {
   assertConfigured();
   const cid = requireUuid(id, "id");

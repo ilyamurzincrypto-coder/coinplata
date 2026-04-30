@@ -38,6 +38,7 @@ import TransferHistoryModal from "../components/accounts/TransferHistoryModal.js
 import OtcDealModal from "../components/OtcDealModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
 import DeleteDealButton from "../components/DeleteDealButton.jsx";
+import DeleteTransferButton from "../components/DeleteTransferButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
@@ -966,12 +967,17 @@ function OtcHistoryPanel({ transactions, accountsById }) {
 // Все transfers (interoffice + inter-account).
 
 function TransfersPanel({ transfers, accountsById }) {
+  // Локально храним список — после delete оптимистично убираем строку
+  // (полный refresh идёт через bumpDataVersion → useAccounts reload).
+  const [removedIds, setRemovedIds] = useState(() => new Set());
   const sorted = useMemo(
-    () => (transfers || []).slice().sort((a, b) =>
+    () => (transfers || []).filter((t) => !removedIds.has(t.id)).slice().sort((a, b) =>
       new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
     ),
-    [transfers]
+    [transfers, removedIds]
   );
+
+  const handleDeleted = (id) => setRemovedIds((s) => new Set(s).add(id));
 
   if (sorted.length === 0) {
     return (
@@ -999,6 +1005,7 @@ function TransfersPanel({ transfers, accountsById }) {
               <th className="px-3 py-2 text-right">Сумма</th>
               <th className="px-3 py-2 text-right">Получено</th>
               <th className="px-3 py-2 text-left">Заметка</th>
+              <th className="px-3 py-2 w-10"></th>
             </tr>
           </thead>
           <tbody>
@@ -1031,6 +1038,9 @@ function TransfersPanel({ transfers, accountsById }) {
                     <span className="text-[10px] text-slate-400 ml-1">{tr.toCurrency}</span>
                   </td>
                   <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{tr.note || "—"}</td>
+                  <td className="px-3 py-2.5 text-right">
+                    <DeleteTransferButton transferId={tr.id} onDeleted={handleDeleted} />
+                  </td>
                 </tr>
               );
             })}
