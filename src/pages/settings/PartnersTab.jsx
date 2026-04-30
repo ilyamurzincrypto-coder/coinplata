@@ -7,6 +7,7 @@ import React, { useState, useMemo } from "react";
 import {
   Handshake, UserPlus, Search, X, Edit2, Trash2, Send, Phone, History as HistoryIcon,
   ChevronDown, ChevronUp, Plus, Banknote, Building2, Coins, Wallet,
+  ArrowDownLeft, ArrowUpRight,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { usePartners } from "../../store/partners.jsx";
@@ -15,6 +16,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import PartnerAccountFormModal from "../../components/settings/PartnerAccountFormModal.jsx";
 import PartnerAccountHistoryModal from "../../components/settings/PartnerAccountHistoryModal.jsx";
+import PartnerSettlementModal from "../../components/settings/PartnerSettlementModal.jsx";
 import DeleteDealButton from "../../components/DeleteDealButton.jsx";
 import { loadDealsForPartner } from "../../lib/supabaseReaders.js";
 
@@ -40,6 +42,8 @@ export default function PartnersTab() {
   // Модалки счетов партнёра
   const [accountModalState, setAccountModalState] = useState(null);
   const [historyAccount, setHistoryAccount] = useState(null);
+  // { account, partnerName, mode: 'inflow'|'outflow' }
+  const [settlementState, setSettlementState] = useState(null);
   // { mode: 'add' | 'edit', partnerId, accountId? }
 
   const toggleExpanded = (id) => {
@@ -292,6 +296,30 @@ export default function PartnersTab() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-0.5 shrink-0">
+                                    {a.active && (
+                                      <>
+                                        <button
+                                          onClick={() => setSettlementState({
+                                            account: a, partnerName: p.name, mode: "inflow",
+                                          })}
+                                          className="px-1.5 py-1 rounded text-emerald-700 hover:bg-emerald-50 inline-flex items-center gap-0.5 text-[10px] font-bold"
+                                          title="Контрагент внёс — фиксируем только partner-side"
+                                        >
+                                          <ArrowDownLeft className="w-3 h-3" />
+                                          Внёс
+                                        </button>
+                                        <button
+                                          onClick={() => setSettlementState({
+                                            account: a, partnerName: p.name, mode: "outflow",
+                                          })}
+                                          className="px-1.5 py-1 rounded text-rose-700 hover:bg-rose-50 inline-flex items-center gap-0.5 text-[10px] font-bold"
+                                          title="Контрагент забрал у нас — указываем с какой кассы"
+                                        >
+                                          <ArrowUpRight className="w-3 h-3" />
+                                          Забрал
+                                        </button>
+                                      </>
+                                    )}
                                     <button
                                       onClick={() => setHistoryAccount({ ...a, partnerName: p.name })}
                                       className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
@@ -365,6 +393,13 @@ export default function PartnersTab() {
         open={!!historyAccount}
         account={historyAccount}
         onClose={() => setHistoryAccount(null)}
+      />
+      <PartnerSettlementModal
+        open={!!settlementState}
+        mode={settlementState?.mode}
+        partnerAccount={settlementState?.account}
+        partnerName={settlementState?.partnerName}
+        onClose={() => setSettlementState(null)}
       />
     </div>
   );

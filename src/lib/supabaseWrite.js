@@ -753,6 +753,70 @@ export async function rpcCreateBalanceAdjustment({ accountId, newBalance, note }
   return id;
 }
 
+// Partner settlement — одностороннее inflow (контрагент внёс).
+// Создаёт partner_account_movement (in, source_kind='settle'). Наш счёт
+// не трогаем.
+export async function rpcRecordPartnerInflow({ partnerAccountId, amount, currency, note }) {
+  assertConfigured();
+  const pa = requireUuid(partnerAccountId, "partnerAccountId");
+  const amt = requirePositive(amount, "amount");
+  const id = unwrap(
+    await supabase.rpc("record_partner_inflow", {
+      p_partner_account_id: pa,
+      p_amount: amt,
+      p_currency: currency || null,
+      p_note: note ? String(note).trim() : null,
+    }),
+    "record_partner_inflow"
+  );
+  bumpDataVersion();
+  return id;
+}
+
+// Partner settlement — парный outflow (контрагент забрал у нас кеш).
+// Создаёт partner_account_movement (out) + наш account_movement (out)
+// с общим movement_group_id. Указывается с какой кассы выдали.
+export async function rpcRecordPartnerOutflow({
+  partnerAccountId, amount, currency, fromAccountId, note,
+}) {
+  assertConfigured();
+  const pa = requireUuid(partnerAccountId, "partnerAccountId");
+  const acc = requireUuid(fromAccountId, "fromAccountId");
+  const amt = requirePositive(amount, "amount");
+  const groupId = unwrap(
+    await supabase.rpc("record_partner_outflow", {
+      p_partner_account_id: pa,
+      p_amount: amt,
+      p_currency: currency || null,
+      p_from_account_id: acc,
+      p_note: note ? String(note).trim() : null,
+    }),
+    "record_partner_outflow"
+  );
+  bumpDataVersion();
+  return groupId;
+}
+
+export async function rpcDeletePartnerInflow(movementId) {
+  assertConfigured();
+  const id = requireUuid(movementId, "movementId");
+  unwrap(
+    await supabase.rpc("delete_partner_inflow", { p_movement_id: id }),
+    "delete_partner_inflow"
+  );
+  bumpDataVersion();
+}
+
+export async function rpcDeletePartnerSettlementGroup(groupId) {
+  assertConfigured();
+  const id = requireUuid(groupId, "groupId");
+  unwrap(
+    await supabase.rpc("delete_partner_settlement_group", { p_group_id: id }),
+    "delete_partner_settlement_group"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcTopUp({ accountId, amount, note, sourceKind }) {
   assertConfigured();
   const acc = requireUuid(accountId, "accountId");
