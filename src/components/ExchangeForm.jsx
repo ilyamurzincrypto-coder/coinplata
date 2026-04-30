@@ -720,13 +720,46 @@ export default function ExchangeForm({
   // тронет rate этого output — amount не перезапишется.
   const updateOutput = (id, patch) =>
     setOutputs((prev) => {
+      const isSingleOutput = prev.length === 1;
       return prev.map((o, idx) => {
         if (o.id !== id) return o;
         const next = { ...o, ...patch };
         // Триггер пересчёта amount: rate в патче явно меняется, а amount —
         // нет. Покрывает manual input rate и chip-clicks (Global/Office/specific).
         const rateInPatch = "rate" in patch && patch.rate !== o.rate;
-        const amountInPatch = "amount" in patch;
+        const amountInPatch = "amount" in patch && patch.amount !== o.amount;
+
+        // ─── Auto-derive rate из введённой суммы ──────────────────────
+        // Когда юзер вручную меняет amount при ОДНОМ output и amtIn задан —
+        // подгоняем rate так, чтобы remaining = 0 (= amount / amtIn).
+        // Срабатывает только если иначе бы получилось "превышает остаток"
+        // (consumed > amtIn по текущему rate). Иначе оставляем как есть —
+        // не ломает сценарии где юзер хочет видеть конкретный rate.
+        if (amountInPatch && !rateInPatch && isSingleOutput && idx === 0) {
+          const a = parseFloat(amtIn);
+          const amtNum = parseFloat(next.amount);
+          const curRate = parseFloat(next.rate);
+          if (
+            Number.isFinite(a) && a > 0 &&
+            Number.isFinite(amtNum) && amtNum > 0
+          ) {
+            const consumed = Number.isFinite(curRate) && curRate > 0
+              ? amtNum / curRate
+              : Infinity;
+            // Превышение по текущему курсу → подгоняем под введённую сумму
+            if (consumed > a + 1e-6) {
+              const implied = amtNum / a;
+              if (Number.isFinite(implied) && implied > 0) {
+                next.rate = String(Number(implied.toFixed(8)));
+                next.manualRate = true;
+                next.touched = true;
+                next.rateSource = "manual";
+              }
+            }
+          }
+          return next;
+        }
+
         if (rateInPatch && !amountInPatch) {
           const a = parseFloat(amtIn);
           const r = parseFloat(next.rate);
