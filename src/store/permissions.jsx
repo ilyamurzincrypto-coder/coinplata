@@ -18,6 +18,7 @@ export const SECTIONS = [
   "capital",
   "accounts",
   "clients",
+  "counterparties",  // OTC партнёры — отдельный раздел
   "obligations",
   "referrals",
   "income_expense",
@@ -43,6 +44,7 @@ const ROLE_DEFAULTS = {
     settings: "edit",
     audit: "edit",
     accounting: "edit",
+    counterparties: "edit",
   },
   admin: {
     transactions: "edit",
@@ -55,6 +57,7 @@ const ROLE_DEFAULTS = {
     settings: "edit",
     audit: "edit",
     accounting: "view",  // admin видит, но approve/reject — только accountant/owner
+    counterparties: "edit",
   },
   manager: {
     transactions: "edit",
@@ -67,6 +70,7 @@ const ROLE_DEFAULTS = {
     settings: "disabled",
     audit: "disabled",
     accounting: "disabled",
+    counterparties: "view",  // менеджер видит партнёров для OTC сделок
   },
   accountant: {
     transactions: "view",

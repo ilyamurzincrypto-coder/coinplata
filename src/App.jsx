@@ -8,6 +8,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import ReferralsPage from "./pages/ReferralsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
+import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import ObligationsPage from "./pages/ObligationsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
@@ -49,6 +50,7 @@ const PAGE_SECTION = {
   capital: "capital",
   accounts: "accounts",
   clients: "clients",
+  counterparties: "counterparties",
   obligations: "obligations",
   referrals: "referrals",
   settings: "settings",
@@ -169,6 +171,7 @@ function Root() {
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "clients" && canShow("clients") && <ClientsPage />}
+      {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
       {page === "obligations" && canShow("obligations") && <ObligationsPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "referrals" && canShow("referrals") && <ReferralsPage />}

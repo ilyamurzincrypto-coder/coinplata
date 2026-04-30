@@ -452,6 +452,7 @@ const DICT = {
 
     // Clients
     nav_clients: "Clients",
+    nav_counterparties: "Counterparties",
     nav_obligations: "Obligations",
     nav_rates: "Rates",
     section_rates: "Rates",
@@ -1369,6 +1370,7 @@ const DICT = {
     office_breakdown: "Разбивка по офисам",
 
     nav_clients: "Клиенты",
+    nav_counterparties: "Контрагенты",
     nav_obligations: "Долги",
     nav_rates: "Курсы",
     section_rates: "Курсы",
@@ -2284,6 +2286,7 @@ const DICT = {
     office_breakdown: "Ofis dağılımı",
 
     nav_clients: "Müşteriler",
+    nav_counterparties: "Karşı taraflar",
     nav_obligations: "Borçlar",
     nav_rates: "Kurlar",
     section_rates: "Kurlar",
