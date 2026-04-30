@@ -28,7 +28,6 @@ import { officeName } from "../../store/data.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import {
   loadAccountingFeed,
-  loadAccountingDealDetail,
 } from "../../lib/supabaseReaders.js";
 import {
   rpcAccountingReview,
@@ -527,113 +526,6 @@ function ExpandedDetail({ row, accountsById, usersById }) {
         <DetailRow label="Причина отклонения" value={row.rejectionReason} tone="rose" />
       )}
       {row.reviewerNotes && <DetailRow label="Заметка бухгалтера" value={row.reviewerNotes} />}
-    </div>
-  );
-}
-
-function DealDetail({ row, accountsById }) {
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let cancelled = false;
-    loadAccountingDealDetail(row.entityId)
-      .then((d) => !cancelled && setDetail(d))
-      .catch((e) => !cancelled && console.warn("[AccountingTab] dealDetail", e))
-      .finally(() => !cancelled && setLoading(false));
-    return () => { cancelled = true; };
-  }, [row.entityId]);
-
-  if (loading) return <div className="text-[12px] text-slate-400">Загрузка деталей сделки…</div>;
-  if (!detail) return <div className="text-[12px] text-slate-400">Не удалось загрузить детали.</div>;
-
-  const accLabel = (id) => accountsById[id]?.name || (id ? `#${String(id).slice(0, 8)}` : "—");
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 text-[12px]">
-      {/* IN side */}
-      <div className="rounded-[8px] border border-slate-200 bg-white p-3">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-          <ArrowDownLeft className="w-3 h-3 text-rose-500" />
-          IN — клиент отдал
-        </div>
-        <div className="text-[15px] font-bold text-slate-900 tabular-nums mb-1">
-          {fmt(row.primaryAmount, row.primaryCurrency)} {row.primaryCurrency}
-        </div>
-        <div className="text-[10.5px] text-slate-500">
-          Тип: {row.dealInKind || "—"}
-        </div>
-        {detail.inPayments.length > 0 && (
-          <div className="mt-2 space-y-1">
-            <div className="text-[9.5px] font-bold text-slate-400 uppercase">Платежи</div>
-            {detail.inPayments.map((p) => (
-              <div key={p.id} className="text-[10.5px] text-slate-600 flex items-center justify-between">
-                <span>{formatDate(p.paidAt)} · {p.kind === "ours_now" ? accLabel(p.accountId) : `Партнёр #${String(p.partnerAccountId || "").slice(0, 8)}`}</span>
-                <span className="font-semibold tabular-nums">{fmt(p.amount, p.currency)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* OUT legs */}
-      <div className="rounded-[8px] border border-slate-200 bg-white p-3">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-          <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-          OUT — клиент получил
-        </div>
-        {detail.legs.length === 0 && <div className="text-[11px] text-slate-400">Нет legs</div>}
-        {detail.legs.map((l) => (
-          <div key={l.id} className="border-b border-slate-100 last:border-0 py-1">
-            <div className="flex items-center justify-between text-[11.5px]">
-              <div>
-                <span className="font-semibold tabular-nums">{fmt(l.amount, l.currency)} {l.currency}</span>
-                <span className="text-slate-400 ml-1.5">@ {l.rate}</span>
-              </div>
-              <span className="text-[9.5px] text-slate-500">{l.outKind}</span>
-            </div>
-            <div className="text-[10px] text-slate-500">
-              {l.outKind === "ours_now" ? accLabel(l.accountId) : l.outKind === "partner_now" ? `Партнёр #${String(l.partnerAccountId || "").slice(0, 8)}` : "—"}
-              {l.completedAt ? <span className="text-emerald-600 ml-1">✓</span> : <span className="text-amber-600 ml-1">⏳</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Obligations */}
-      <div className="rounded-[8px] border border-slate-200 bg-white p-3">
-        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-          Обязательства
-        </div>
-        {detail.obligations.length === 0 && <div className="text-[11px] text-slate-400">Нет</div>}
-        {detail.obligations.map((o) => {
-          const remaining = o.amount - o.paidAmount;
-          return (
-            <div key={o.id} className="border-b border-slate-100 last:border-0 py-1 text-[11px]">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold">
-                  {o.direction === "we_owe" ? "Мы должны" : "Должны нам"} ·
-                  <span className="text-slate-500 ml-1">{o.counterpartyName || "—"}</span>
-                </span>
-                <span className="tabular-nums font-bold">{fmt(remaining, o.currency)} {o.currency}</span>
-              </div>
-              <div className="text-[9.5px] text-slate-500">
-                {o.status} · paid {fmt(o.paidAmount, o.currency)} / {fmt(o.amount, o.currency)}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Comment / reviewer notes */}
-      {(row.comment || row.rejectionReason || row.reviewerNotes) && (
-        <div className="lg:col-span-3 rounded-[8px] border border-slate-200 bg-white p-3 text-[11.5px] space-y-1.5">
-          {row.comment && <DetailRow label="Комментарий" value={row.comment} />}
-          {row.rejectionReason && (
-            <DetailRow label="Причина отклонения" value={row.rejectionReason} tone="rose" />
-          )}
-          {row.reviewerNotes && <DetailRow label="Заметка бухгалтера" value={row.reviewerNotes} />}
-        </div>
-      )}
     </div>
   );
 }

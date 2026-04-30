@@ -36,6 +36,7 @@ import { NETWORKS } from "../store/data.js";
 import { getTradingRates } from "../utils/tradingRates.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
+import { FreshnessChip } from "../utils/rateFreshness.jsx";
 import Modal from "./ui/Modal.jsx";
 import {
   computeSpread,
@@ -856,8 +857,11 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
 
   return (
     <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 transition-colors">
-      <span className="text-[12px] font-semibold text-slate-600 tracking-wide min-w-[90px]">
-        {from} <span className="text-slate-400">→</span> {to}
+      <span className="inline-flex items-center gap-1.5 min-w-[90px]">
+        <span className="text-[12px] font-semibold text-slate-600 tracking-wide">
+          {from} <span className="text-slate-400">→</span> {to}
+        </span>
+        {pair?.updatedAt && <FreshnessChip updatedAt={pair.updatedAt} />}
       </span>
       <input
         type="text"

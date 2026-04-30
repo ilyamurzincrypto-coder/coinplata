@@ -187,7 +187,7 @@ export default function PnlTab({ range, onRangeChange }) {
   return (
     <div className="space-y-4">
       {/* Period switcher */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex items-center justify-between flex-wrap gap-3">
+      <div className="bg-white border border-slate-200/70 rounded-[14px] p-3 flex items-center justify-between flex-wrap gap-3">
         <div
           className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5"
           title={t("pnl_period_tip") || "Период для расчёта П&У. Custom — открывает date-picker в шапке Capital."}
