@@ -52,6 +52,10 @@ export async function loadOffices() {
     tempClosedReason: r.temp_closed_reason || "",
     minFeeUsd: num(r.min_fee_usd),
     feePercent: num(r.fee_percent),
+    // 0089: per-office popular currencies для формы закрытия кассы.
+    popularCurrencies: Array.isArray(r.popular_currencies) && r.popular_currencies.length > 0
+      ? r.popular_currencies
+      : ["TRY", "USD", "RUB"],
   }));
 }
 

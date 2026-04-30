@@ -634,6 +634,16 @@ export async function rpcAccountingReviewBulk({ items, action, reason, notes }) 
   return count;
 }
 
+export async function rpcCancelCashClosure(id) {
+  assertConfigured();
+  const cid = requireUuid(id, "id");
+  unwrap(
+    await supabase.rpc("cancel_cash_closure", { p_id: cid }),
+    "cancel_cash_closure"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcCreateCashClosure({ officeId, closureDate, details, comment }) {
   assertConfigured();
   const office = requireUuid(officeId, "officeId");
