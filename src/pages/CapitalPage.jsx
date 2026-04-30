@@ -33,10 +33,11 @@ export default function CapitalPage() {
   const can = useCan();
   const TABS = ALL_TABS.filter((tab) => !tab.requiresAccounting || can("accounting"));
   const [active, setActive] = useState("overview");
-  // Default — week
+  // Default — month (week ранее резал сегодняшние записи через date-only
+  // фильтр; month шире и надёжнее как стартовая выборка).
   const [range, setRange] = useState(() => {
-    const r = rangeForPreset("week");
-    return { preset: "week", ...r };
+    const r = rangeForPreset("month");
+    return { preset: "month", ...r };
   });
 
   const ActiveComponent = TABS.find((x) => x.id === active)?.component || OverviewTab;
