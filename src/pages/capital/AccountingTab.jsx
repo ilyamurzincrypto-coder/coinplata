@@ -34,6 +34,7 @@ import {
   rpcAccountingReviewBulk,
   withToast,
 } from "../../lib/supabaseWrite.js";
+import DealDetailPanel from "../../components/DealDetailPanel.jsx";
 
 const ENTITY_TYPE_LABELS = {
   deal: "Сделка",
@@ -499,7 +500,20 @@ function EntityBadge({ type, dealKind }) {
 
 function ExpandedDetail({ row, accountsById, usersById }) {
   if (row.entityType === "deal") {
-    return <DealDetail row={row} accountsById={accountsById} usersById={usersById} />;
+    return (
+      <DealDetailPanel
+        dealId={row.entityId}
+        hint={{
+          amountIn: row.primaryAmount,
+          currencyIn: row.primaryCurrency,
+          inKind: row.dealInKind,
+          feeUsd: row.feeUsd,
+          commissionUsd: row.commissionUsd,
+          profit: row.profitUsd,
+        }}
+        accountsById={accountsById}
+      />
+    );
   }
   return (
     <div className="space-y-1.5 text-[12px]">

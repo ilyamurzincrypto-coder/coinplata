@@ -83,12 +83,14 @@ export default function CashClosureBadge({ currentOffice }) {
   if (!officeId) return null;
 
   const { state, lastDate } = classifyStatus(latest);
+  // Apple-style: тот же визуальный язык что OfficeSwitcher рядом —
+  // bg-white, border-slate-200, rounded-[10px], px-3 py-1.5, text-[13px].
+  // Состояние выражается ТОЛЬКО через цветную точку слева. Без цветных фонов.
   const config = {
     closed: {
       label: t("cc_badge_closed"),
       sub: lastDate ? `${relativeDay(lastDate)} ${formatTime(lastDate)}` : "",
       icon: CheckCircle2,
-      cls: "bg-slate-50 text-slate-700 hover:bg-slate-100 ring-slate-200",
       iconCls: "text-emerald-500",
       dot: "bg-emerald-500",
     },
@@ -96,16 +98,14 @@ export default function CashClosureBadge({ currentOffice }) {
       label: t("cc_badge_close"),
       sub: lastDate ? relativeDay(lastDate) : t("cc_never_closed"),
       icon: Lock,
-      cls: "bg-amber-50/80 text-amber-900 hover:bg-amber-100 ring-amber-200/70",
-      iconCls: "text-amber-600",
+      iconCls: "text-slate-400",
       dot: "bg-amber-500",
     },
     overdue: {
       label: t("cc_badge_overdue"),
       sub: lastDate ? `${t("cc_overdue_sub")} · ${relativeDay(lastDate)}` : t("cc_never_closed"),
       icon: AlertTriangle,
-      cls: "bg-rose-50/90 text-rose-900 hover:bg-rose-100 ring-rose-200",
-      iconCls: "text-rose-600",
+      iconCls: "text-rose-500",
       dot: "bg-rose-500 animate-pulse",
     },
   }[state];
@@ -118,18 +118,17 @@ export default function CashClosureBadge({ currentOffice }) {
         type="button"
         onClick={() => setModalOpen(true)}
         title={`${config.label} · ${config.sub}`}
-        className={`group inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full ring-1 ${config.cls} transition-all duration-150 active:scale-[0.97]`}
+        className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-[10px] border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
       >
-        <span className={`w-1.5 h-1.5 rounded-full ${config.dot} shrink-0`} />
-        <Icon className={`w-3 h-3 shrink-0 ${config.iconCls}`} />
-        <span className="text-[11.5px] font-semibold tracking-tight hidden md:inline">
+        <span className="relative flex items-center justify-center shrink-0">
+          <span className={`w-2 h-2 rounded-full ${config.dot}`} />
+        </span>
+        <Icon className={`w-3.5 h-3.5 shrink-0 ${config.iconCls}`} />
+        <span className="text-[13px] font-semibold truncate hidden md:inline">
           {config.label}
         </span>
-        <span className="text-[10px] opacity-60 hidden lg:inline tabular-nums">
-          {config.sub}
-        </span>
-        <span className="text-[11.5px] font-semibold tracking-tight md:hidden">
-          {state === "closed" ? "✓" : "Закрыть"}
+        <span className="text-[13px] font-semibold md:hidden">
+          {state === "closed" ? "✓" : t("cc_badge_close")}
         </span>
       </button>
 

@@ -1099,13 +1099,17 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 </tr>
                 {isExpanded && (
                   <tr className="border-b border-slate-200 bg-slate-50/60">
-                    <td colSpan={11} className="px-5 py-3">
+                    <td colSpan={11} className="px-5 py-4">
                       <DealDetailPanel
                         dealId={tx.id}
                         hint={{
                           amountIn: tx.amtIn,
                           currencyIn: tx.curIn,
                           inKind: tx.inKind,
+                          inAccountId: tx.accountId,
+                          feeUsd: tx.fee,
+                          commissionUsd: tx.commissionUsd,
+                          profit: tx.profit,
                         }}
                         accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))}
                       />

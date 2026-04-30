@@ -1,32 +1,39 @@
 // src/components/DealDetailPanel.jsx
 //
-// Раскрывающаяся панель с детализацией сделки: IN side, OUT legs,
-// Obligations. Используется в:
+// Полный flow OTC сделки в виде вертикального timeline:
+//
+//   ① CLIENT GIVES        — что клиент отдал, кто принял, статус
+//   ② CONVERSION (OTC)    — курс, fee, profit
+//   ③ CLIENT RECEIVES     — что клиент получил, кто выдал, статус
+//   ④ OBLIGATIONS         — кто кому остался должен (если есть)
+//   ⑤ EXECUTION LEGS      — детальная разбивка выдачи на legs
+//
+// Используется в:
+//   - TransactionsTable (Cashier dashboard) — раскрытие строки
 //   - AccountingTab (Capital → Бухгалтерский репорт)
-//   - TransactionsTable (Cashier dashboard) — раскрытие строки сделки
 //
 // Источник: loadAccountingDealDetail(dealId) → {legs, inPayments, legPayments, obligations}.
-//
-// UX: компактные блоки IN / OUT / Obligations с per-side статусом. Для
-// non-deal entity (transfer/expense/...) показывает упрощённый view.
 
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ArrowDownLeft, ArrowUpRight, AlertCircle, CheckCircle2, Clock, Scale,
+  Repeat, Coins,
 } from "lucide-react";
 import { fmt, curSymbol } from "../utils/money.js";
 import { loadAccountingDealDetail } from "../lib/supabaseReaders.js";
 
-// Tone helpers
-const STATUS_CLS = {
+// ─── Status helpers ────────────────────────────────────────────────────
+
+const STATUS_PILL = {
   completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
   partial:   "bg-violet-50 text-violet-700 ring-violet-200",
   pending:   "bg-amber-50 text-amber-700 ring-amber-200",
 };
+
 const STATUS_LABEL = {
-  completed: "Получено",
-  partial:   "Частично",
-  pending:   "Ожидание",
+  completed: "Completed",
+  partial:   "Partial",
+  pending:   "Pending",
 };
 
 function sideStatus(planned, actual) {
@@ -37,15 +44,40 @@ function sideStatus(planned, actual) {
   return "pending";
 }
 
+function StatusPill({ status }) {
+  const cls = STATUS_PILL[status] || STATUS_PILL.pending;
+  const Icon = status === "completed" ? CheckCircle2 : Clock;
+  return (
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold ring-1 ${cls}`}>
+      <Icon className="w-2.5 h-2.5" />
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+// ─── Kind labels ───────────────────────────────────────────────────────
+
+const IN_KIND = {
+  ours_now:      { label: "Принимает наш счёт",      tone: "emerald" },
+  partner_now:   { label: "Принимает контрагент",    tone: "indigo"  },
+  ours_later:    { label: "Клиент должен нам",       tone: "amber"   },
+  partner_later: { label: "Контрагент должен нам",   tone: "amber"   },
+};
+
+const OUT_KIND = {
+  ours_now:      { label: "С нашего счёта",          tone: "emerald" },
+  partner_now:   { label: "Со счёта контрагента",    tone: "indigo"  },
+  ours_later:    { label: "Мы должны клиенту",       tone: "amber"   },
+  partner_later: { label: "Контрагент должен клиенту", tone: "amber" },
+};
+
+// ─── Main panel ────────────────────────────────────────────────────────
+
 export default function DealDetailPanel({
   dealId,
-  // optional — если уже загружено наверху (TransactionsTable сразу даёт outputs/etc)
-  // тогда детали догружаем только legs/payments/obligations не в outputs
   hint = {},
   accountsById = {},
   partnerAccountsById = {},
-  // показывать ли всю детализацию (true для AccountingTab) или сжатую (false)
-  expanded = true,
 }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -65,114 +97,239 @@ export default function DealDetailPanel({
     return () => { cancelled = true; };
   }, [dealId]);
 
+  if (loading) {
+    return <div className="text-[12px] text-slate-400 p-3">Загрузка деталей…</div>;
+  }
+  if (!detail) {
+    return <div className="text-[12px] text-slate-400 p-3">Не удалось загрузить детали.</div>;
+  }
+
   const accLabel = (id) => accountsById[id]?.name || (id ? `#${String(id).slice(0, 8)}` : "—");
-  const partnerAccLabel = (id) => {
+  const partnerLabel = (id) => {
     const acc = partnerAccountsById[id];
     if (acc) return `${acc.partnerName || "Партнёр"} · ${acc.name}`;
     return id ? `Партнёр #${String(id).slice(0, 8)}` : "—";
   };
 
-  if (loading) {
-    return (
-      <div className="text-[12px] text-slate-400 p-3">Загрузка деталей…</div>
-    );
-  }
-  if (!detail) {
-    return (
-      <div className="text-[12px] text-slate-400 p-3">Не удалось загрузить детали.</div>
-    );
-  }
-
-  // IN aggregates
+  // IN aggregate
   const inPlanned = Number(hint.amountIn) || 0;
   const inPaid = (detail.inPayments || []).reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const inSt = sideStatus(inPlanned, inPaid);
+  const inSt = inPlanned > 0 ? sideStatus(inPlanned, inPaid) : "completed";
 
-  // OUT aggregates: суммируем по legs
+  // OUT aggregate
   const totalOutPlanned = (detail.legs || []).reduce((s, l) => s + (Number(l.amount) || 0), 0);
   const totalOutPaid = (detail.legs || []).reduce((s, l) => s + (Number(l.actualAmount) || 0), 0);
-  // status каждой leg отдельно — берём worst
   const legStatuses = (detail.legs || []).map((l) => sideStatus(l.amount, l.actualAmount));
-  const outSt = legStatuses.includes("pending")
-    ? legStatuses.includes("completed") ? "partial" : "pending"
-    : legStatuses.includes("partial")
-      ? "partial"
-      : legStatuses.length > 0 ? "completed" : "pending";
+  const outSt = legStatuses.length === 0 ? "pending"
+    : legStatuses.every((s) => s === "completed") ? "completed"
+    : legStatuses.some((s) => s === "completed" || s === "partial") ? "partial"
+    : "pending";
+
+  // OUT side primary destination для подзаголовка ("Sent by ...")
+  const firstLeg = detail.legs[0];
+  const outCurrency = firstLeg?.currency || "—";
+
+  // Determine "received by" for IN side
+  const inReceivedBy = (() => {
+    if (hint.inKind === "ours_now") {
+      // first payment account
+      const firstPay = (detail.inPayments || []).find((p) => p.accountId);
+      return firstPay ? accLabel(firstPay.accountId) : (hint.inAccountId ? accLabel(hint.inAccountId) : "наш счёт");
+    }
+    if (hint.inKind === "partner_now") {
+      const firstPay = (detail.inPayments || []).find((p) => p.partnerAccountId);
+      return firstPay ? partnerLabel(firstPay.partnerAccountId) : "контрагент";
+    }
+    if (hint.inKind === "ours_later") return "клиент (отложено)";
+    if (hint.inKind === "partner_later") return "контрагент (отложено)";
+    return "—";
+  })();
+
+  // Open obligations only — closed скрываем по дефолту
+  const openObligations = detail.obligations.filter((o) => o.status !== "cancelled");
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 text-[12px]">
-      {/* IN side */}
-      <div className="rounded-[10px] border border-slate-200 bg-white p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            <ArrowDownLeft className="w-3 h-3 text-rose-500" />
-            IN — клиент отдал
-          </div>
-          <StatusPill status={inSt} />
-        </div>
+    <div className="space-y-0">
+      {/* ─── STEP 1: CLIENT GIVES ─────────────────────────────────── */}
+      <TimelineStep
+        index={1}
+        tone="rose"
+        title="Client gives"
+        icon={ArrowDownLeft}
+        last={false}
+      >
         <div className="text-[15px] font-bold text-slate-900 tabular-nums mb-1">
-          {fmt(inPlanned, hint.currencyIn)} {hint.currencyIn || ""}
+          {fmt(inPlanned, hint.currencyIn)} {hint.currencyIn}
         </div>
-        {hint.inKind && hint.inKind !== "ours_now" && (
-          <div className="text-[10px] text-slate-500 mb-1">
-            Тип: {inKindLabel(hint.inKind)}
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-start">
+          <div className="space-y-0.5 text-[11.5px]">
+            <FieldRow label="Received by" value={inReceivedBy} bold />
+            {hint.inKind && (
+              <FieldRow label="Type" value={IN_KIND[hint.inKind]?.label || hint.inKind} />
+            )}
+          </div>
+          <div className="md:text-right">
+            <StatusPill status={inSt} />
+          </div>
+        </div>
+        {detail.inPayments.length > 1 && (
+          <div className="mt-2 pt-2 border-t border-slate-100 space-y-1">
+            <div className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider">
+              Payments ({detail.inPayments.length})
+            </div>
+            {detail.inPayments.map((p) => (
+              <PaymentRow key={p.id} payment={p} accLabel={accLabel} partnerLabel={partnerLabel} />
+            ))}
           </div>
         )}
-        {detail.inPayments.length > 0 ? (
-          <div className="mt-2 space-y-1">
-            <div className="text-[9.5px] font-bold text-slate-400 uppercase">Платежи</div>
-            {detail.inPayments.map((p) => (
-              <PaymentRow
-                key={p.id}
-                payment={p}
-                accLabel={accLabel}
-                partnerAccLabel={partnerAccLabel}
-              />
-            ))}
-            <div className="border-t border-slate-100 pt-1 mt-1 flex justify-between text-[10.5px] font-bold tabular-nums">
-              <span className="text-slate-500">Итого получено:</span>
-              <span className="text-slate-900">{fmt(inPaid, hint.currencyIn)} / {fmt(inPlanned, hint.currencyIn)}</span>
-            </div>
-          </div>
-        ) : inSt === "pending" ? (
-          <div className="mt-2 text-[10.5px] text-amber-700 italic">
-            Платежей ещё не было — обязательство «{inKindLabel(hint.inKind)}»
-          </div>
-        ) : null}
-      </div>
+      </TimelineStep>
 
-      {/* OUT legs */}
-      <div className="rounded-[10px] border border-slate-200 bg-white p-3">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            <ArrowUpRight className="w-3 h-3 text-emerald-500" />
-            OUT — клиент получил
+      {/* ─── STEP 2: CONVERSION ───────────────────────────────────── */}
+      {firstLeg && hint.currencyIn && firstLeg.currency !== hint.currencyIn && (
+        <TimelineStep
+          index={2}
+          tone="indigo"
+          title="OTC conversion"
+          icon={Repeat}
+          last={false}
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rate</div>
+              <div className="text-[13px] font-bold text-slate-900 tabular-nums">
+                1 {hint.currencyIn} = {Number(firstLeg.rate).toFixed(6)} {firstLeg.currency}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Inverse</div>
+              <div className="text-[13px] font-bold text-slate-700 tabular-nums">
+                1 {firstLeg.currency} = {firstLeg.rate > 0 ? (1 / Number(firstLeg.rate)).toFixed(6) : "—"} {hint.currencyIn}
+              </div>
+            </div>
+            {hint.feeUsd != null && (
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fee</div>
+                <div className="text-[13px] font-bold text-slate-900 tabular-nums">
+                  ${fmt(hint.feeUsd, "USD")}
+                </div>
+              </div>
+            )}
+            {hint.commissionUsd != null && hint.commissionUsd > 0 && (
+              <div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Commission</div>
+                <div className="text-[13px] font-bold text-slate-900 tabular-nums">
+                  ${fmt(hint.commissionUsd, "USD")}
+                </div>
+              </div>
+            )}
+            {hint.profit != null && (
+              <div className="col-span-2 pt-1.5 border-t border-slate-100">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Profit</div>
+                <div className={`text-[15px] font-bold tabular-nums ${hint.profit > 0 ? "text-emerald-700" : hint.profit < 0 ? "text-rose-700" : "text-slate-700"}`}>
+                  {hint.profit > 0 ? "+" : ""}${fmt(hint.profit, "USD")}
+                </div>
+              </div>
+            )}
           </div>
-          <StatusPill status={outSt} />
+        </TimelineStep>
+      )}
+
+      {/* ─── STEP 3: CLIENT RECEIVES ──────────────────────────────── */}
+      <TimelineStep
+        index={firstLeg && hint.currencyIn !== firstLeg.currency ? 3 : 2}
+        tone="emerald"
+        title="Client receives"
+        icon={ArrowUpRight}
+        last={openObligations.length === 0 && detail.legs.length <= 1}
+      >
+        <div className="text-[15px] font-bold text-slate-900 tabular-nums mb-1">
+          {fmt(totalOutPlanned, outCurrency)} {outCurrency}
         </div>
-        {detail.legs.length === 0 ? (
-          <div className="text-[11px] text-slate-400">Нет legs</div>
-        ) : (
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-start">
+          <div className="space-y-0.5 text-[11.5px]">
+            {detail.legs.length === 1 ? (
+              <FieldRow label="Sent by" value={outDestinationLabel(firstLeg, accLabel, partnerLabel)} bold />
+            ) : (
+              <FieldRow label="Sent by" value={`${detail.legs.length} legs (см. ниже)`} bold />
+            )}
+            {detail.legs.length === 1 && firstLeg.outKind && (
+              <FieldRow label="Type" value={OUT_KIND[firstLeg.outKind]?.label || firstLeg.outKind} />
+            )}
+            {totalOutPaid > 0 && totalOutPaid < totalOutPlanned && (
+              <FieldRow label="Paid" value={`${fmt(totalOutPaid, outCurrency)} / ${fmt(totalOutPlanned, outCurrency)}`} />
+            )}
+          </div>
+          <div className="md:text-right">
+            <StatusPill status={outSt} />
+          </div>
+        </div>
+      </TimelineStep>
+
+      {/* ─── STEP 4: OBLIGATIONS ──────────────────────────────────── */}
+      {openObligations.length > 0 && (
+        <TimelineStep
+          index={(firstLeg && hint.currencyIn !== firstLeg.currency ? 4 : 3)}
+          tone="amber"
+          title="Obligations"
+          icon={Scale}
+          last={detail.legs.length <= 1}
+        >
           <div className="space-y-1.5">
-            {detail.legs.map((l) => {
+            {openObligations.map((o) => {
+              const remaining = o.amount - o.paidAmount;
+              const isWeOwe = o.direction === "we_owe";
+              const isClosed = o.status === "closed";
+              return (
+                <div
+                  key={o.id}
+                  className={`flex items-center justify-between gap-2 ${isClosed ? "opacity-60" : ""}`}
+                >
+                  <div className="min-w-0">
+                    <div className={`text-[12.5px] font-semibold truncate ${isWeOwe ? "text-rose-700" : "text-emerald-700"}`}>
+                      {isWeOwe ? "Мы должны" : "Должны нам"}
+                      {o.counterpartyName ? <span className="text-slate-500 font-normal"> · {o.counterpartyName}</span> : ""}
+                    </div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">
+                      paid {fmt(o.paidAmount, o.currency)} / {fmt(o.amount, o.currency)}
+                      {isClosed && <span className="ml-1 text-emerald-600 font-bold">✓ closed</span>}
+                    </div>
+                  </div>
+                  <div className="text-[13px] font-bold tabular-nums shrink-0">
+                    {fmt(remaining, o.currency)} {o.currency}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </TimelineStep>
+      )}
+
+      {/* ─── STEP 5: EXECUTION (legs) ──────────────────────────────── */}
+      {detail.legs.length > 1 && (
+        <TimelineStep
+          index={(firstLeg && hint.currencyIn !== firstLeg.currency ? 5 : 4) - (openObligations.length === 0 ? 1 : 0)}
+          tone="slate"
+          title={`Execution · ${detail.legs.length} legs`}
+          icon={Coins}
+          last
+        >
+          <div className="space-y-2">
+            {detail.legs.map((l, i) => {
               const st = sideStatus(l.amount, l.actualAmount);
               return (
-                <div key={l.id} className="border-b border-slate-100 last:border-0 pb-1.5 last:pb-0">
-                  <div className="flex items-baseline justify-between text-[11.5px]">
-                    <span className="font-semibold tabular-nums">
-                      {fmt(l.amount, l.currency)} {l.currency}
-                      <span className="text-slate-400 font-normal text-[10px] ml-1.5">@ {l.rate}</span>
-                    </span>
-                    <span className="text-[9.5px] text-slate-500">{outKindLabel(l.outKind)}</span>
+                <div key={l.id} className="rounded-[8px] border border-slate-200 bg-white p-2.5">
+                  <div className="flex items-baseline justify-between mb-1 gap-2">
+                    <div className="text-[10.5px] font-bold text-slate-500 tracking-wider uppercase">
+                      Leg {i + 1}
+                    </div>
+                    <StatusPill status={st} />
                   </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 mt-0.5">
-                    <span>
-                      {l.outKind === "ours_now" ? `→ ${accLabel(l.accountId)}` :
-                       l.outKind === "partner_now" ? `→ ${partnerAccLabel(l.partnerAccountId)}` :
-                       l.outKind === "ours_later" ? "→ мы должны клиенту" :
-                       "→ партнёр должен клиенту"}
-                    </span>
-                    <StatusPill status={st} compact />
+                  <div className="text-[13px] font-bold text-slate-900 tabular-nums mb-0.5">
+                    {fmt(l.amount, l.currency)} {l.currency}
+                    <span className="text-[10px] text-slate-400 font-normal ml-1.5">@ {l.rate}</span>
+                  </div>
+                  <div className="text-[10.5px] text-slate-500">
+                    → {outDestinationLabel(l, accLabel, partnerLabel)}
                   </div>
                   {st === "partial" && (
                     <div className="text-[10px] text-violet-700 font-bold tabular-nums mt-0.5">
@@ -182,80 +339,68 @@ export default function DealDetailPanel({
                 </div>
               );
             })}
-            <div className="border-t border-slate-200 pt-1 flex justify-between text-[10.5px] font-bold tabular-nums">
-              <span className="text-slate-500">Итого выдано:</span>
-              <span className="text-slate-900">{fmt(totalOutPaid, detail.legs[0]?.currency)} / {fmt(totalOutPlanned, detail.legs[0]?.currency)}</span>
-            </div>
           </div>
+        </TimelineStep>
+      )}
+    </div>
+  );
+}
+
+// ─── Timeline step wrapper ──────────────────────────────────────────────
+
+const TONE_RING = {
+  rose:    "ring-rose-200 bg-rose-50 text-rose-700",
+  indigo:  "ring-indigo-200 bg-indigo-50 text-indigo-700",
+  emerald: "ring-emerald-200 bg-emerald-50 text-emerald-700",
+  amber:   "ring-amber-200 bg-amber-50 text-amber-700",
+  slate:   "ring-slate-200 bg-slate-50 text-slate-700",
+};
+
+const TONE_LINE = {
+  rose:    "bg-rose-200/60",
+  indigo:  "bg-indigo-200/60",
+  emerald: "bg-emerald-200/60",
+  amber:   "bg-amber-200/60",
+  slate:   "bg-slate-200/60",
+};
+
+function TimelineStep({ index, tone, title, icon: Icon, last, children }) {
+  return (
+    <div className="flex gap-3">
+      {/* Left column: number circle + connecting line */}
+      <div className="flex flex-col items-center shrink-0">
+        <div
+          className={`w-7 h-7 rounded-full ring-2 flex items-center justify-center text-[11px] font-bold ${TONE_RING[tone] || TONE_RING.slate}`}
+        >
+          <Icon className="w-3.5 h-3.5" />
+        </div>
+        {!last && (
+          <div className={`w-px flex-1 my-1 min-h-[20px] ${TONE_LINE[tone] || TONE_LINE.slate}`} />
         )}
       </div>
-
-      {/* Obligations */}
-      <div className="rounded-[10px] border border-slate-200 bg-white p-3">
-        <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-          <Scale className="w-3 h-3" />
-          Обязательства
+      {/* Right column: card */}
+      <div className="flex-1 min-w-0 pb-4">
+        <div className="text-[10.5px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+          Step {index} · {title}
         </div>
-        {detail.obligations.length === 0 ? (
-          <div className="text-[11px] text-slate-400">Нет открытых обязательств</div>
-        ) : (
-          <div className="space-y-1.5">
-            {detail.obligations.map((o) => {
-              const remaining = o.amount - o.paidAmount;
-              const isWeOwe = o.direction === "we_owe";
-              const isClosed = o.status === "closed";
-              return (
-                <div
-                  key={o.id}
-                  className={`border-b border-slate-100 last:border-0 pb-1.5 last:pb-0 ${
-                    isClosed ? "opacity-60" : ""
-                  }`}
-                >
-                  <div className="flex items-baseline justify-between text-[11.5px]">
-                    <span className={`font-semibold ${isWeOwe ? "text-rose-700" : "text-emerald-700"}`}>
-                      {isWeOwe ? "Мы должны" : "Должны нам"}
-                    </span>
-                    <span className="font-bold tabular-nums">
-                      {fmt(remaining, o.currency)} {o.currency}
-                    </span>
-                  </div>
-                  <div className="text-[10px] text-slate-500">
-                    {o.counterpartyName ? `${o.counterpartyName} · ` : ""}
-                    paid {fmt(o.paidAmount, o.currency)} / {fmt(o.amount, o.currency)}
-                    {isClosed && <span className="ml-1 text-emerald-600 font-bold">✓ closed</span>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <div className="rounded-[10px] border border-slate-200 bg-white p-3">
+          {children}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────
-
-function StatusPill({ status, compact = false }) {
-  const cls = STATUS_CLS[status] || STATUS_CLS.pending;
-  const label = STATUS_LABEL[status] || "—";
-  const Icon = status === "completed" ? CheckCircle2 : status === "partial" ? Clock : Clock;
-  if (compact) {
-    return (
-      <span className={`inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 ${cls}`}>
-        {label}
-      </span>
-    );
-  }
+function FieldRow({ label, value, bold }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold ring-1 ${cls}`}>
-      <Icon className="w-2.5 h-2.5" />
-      {label}
-    </span>
+    <div className="flex items-baseline gap-2">
+      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider w-24 shrink-0">{label}</span>
+      <span className={`text-[12px] ${bold ? "font-bold text-slate-900" : "text-slate-700"}`}>{value}</span>
+    </div>
   );
 }
 
-function PaymentRow({ payment, accLabel, partnerAccLabel }) {
+function PaymentRow({ payment, accLabel, partnerLabel }) {
   const d = new Date(payment.paidAt);
   const dateStr = Number.isFinite(d.getTime())
     ? `${d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })} ${d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`
@@ -263,32 +408,22 @@ function PaymentRow({ payment, accLabel, partnerAccLabel }) {
   const dest = payment.kind === "ours_now"
     ? accLabel(payment.accountId)
     : payment.kind === "partner_now"
-      ? partnerAccLabel(payment.partnerAccountId)
+      ? partnerLabel(payment.partnerAccountId)
       : "—";
   return (
-    <div className="text-[10.5px] text-slate-600 flex items-center justify-between">
+    <div className="text-[10.5px] text-slate-600 flex items-center justify-between gap-2">
       <span className="truncate">{dateStr} · {dest}</span>
-      <span className="font-semibold tabular-nums shrink-0 ml-2">
+      <span className="font-semibold tabular-nums shrink-0">
         {fmt(payment.amount, payment.currency)} {payment.currency}
       </span>
     </div>
   );
 }
 
-function inKindLabel(k) {
-  return {
-    ours_now: "Принимаем сейчас",
-    partner_now: "Принимает партнёр",
-    ours_later: "Клиент должен нам",
-    partner_later: "Партнёр должен нам",
-  }[k] || k || "—";
-}
-
-function outKindLabel(k) {
-  return {
-    ours_now: "Наш счёт",
-    partner_now: "Счёт партнёра",
-    ours_later: "Мы должны клиенту",
-    partner_later: "Партнёр должен клиенту",
-  }[k] || k || "—";
+function outDestinationLabel(leg, accLabel, partnerLabel) {
+  if (leg.outKind === "ours_now") return accLabel(leg.accountId);
+  if (leg.outKind === "partner_now") return partnerLabel(leg.partnerAccountId);
+  if (leg.outKind === "ours_later") return "мы должны клиенту";
+  if (leg.outKind === "partner_later") return "контрагент должен клиенту";
+  return "—";
 }
