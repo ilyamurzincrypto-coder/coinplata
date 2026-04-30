@@ -37,7 +37,6 @@ export default function AccountHistoryModal({ account, onClose }) {
   const { t } = useTranslation();
   const { movementsByAccount, balanceOf } = useAccounts();
   const [relatedDeals, setRelatedDeals] = useState([]);
-  const [showRelated, setShowRelated] = useState(false);
   const [loadingRelated, setLoadingRelated] = useState(false);
 
   const movements = useMemo(
@@ -45,18 +44,18 @@ export default function AccountHistoryModal({ account, onClose }) {
     [account, movementsByAccount]
   );
 
-  // Загружаем связанные сделки on-demand при первом раскрытии panel'и
+  // Загружаем связанные сделки сразу при открытии модалки (default-visible)
   useEffect(() => {
-    if (!showRelated || !account?.id) return;
-    if (relatedDeals.length > 0) return;
+    if (!account?.id) return;
     let cancelled = false;
     setLoadingRelated(true);
+    setRelatedDeals([]);
     loadDealsForAccount(account.id, 100)
       .then((d) => { if (!cancelled) setRelatedDeals(d); })
       .catch((e) => { if (!cancelled) console.warn("[AccountHistoryModal]", e); })
       .finally(() => { if (!cancelled) setLoadingRelated(false); });
     return () => { cancelled = true; };
-  }, [showRelated, account?.id, relatedDeals.length]);
+  }, [account?.id]);
 
   if (!account) return null;
 
@@ -82,68 +81,60 @@ export default function AccountHistoryModal({ account, onClose }) {
         </div>
       </div>
 
-      {/* Toggle: связанные сделки (включая partner-only OTC) */}
-      <div className="px-5 py-2 border-b border-slate-100 bg-white flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => setShowRelated((v) => !v)}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-          title="Сделки в которых участвовал этот счёт (включая partner-only OTC где наших movements нет)"
-        >
+      {/* Связанные сделки — default visible (не toggle) */}
+      <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+        <div className="inline-flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-2">
           <Link2 className="w-3 h-3" />
-          {showRelated ? "Скрыть связанные сделки" : "Показать связанные сделки"}
-          {relatedDeals.length > 0 && (
-            <span className="text-[10px] text-slate-400 tabular-nums">({relatedDeals.length})</span>
-          )}
-        </button>
-      </div>
-
-      {showRelated && (
-        <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-          {loadingRelated ? (
-            <div className="text-[12px] text-slate-400 text-center py-4">Загрузка…</div>
-          ) : relatedDeals.length === 0 ? (
-            <div className="text-[12px] text-slate-400 text-center py-4">Нет сделок с этим счётом</div>
-          ) : (
-            <div className="space-y-1.5 max-h-48 overflow-auto">
-              {relatedDeals.map((d) => {
-                const isOtc = d.kind === "otc" || d.kind === "broker";
-                const dt = new Date(d.createdAt);
-                return (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
-                  >
-                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
-                        {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
-                      </span>
-                      {isOtc && (
-                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
-                          {d.kind === "broker" ? "BROKER" : "OTC"}
-                        </span>
-                      )}
-                      <span className="text-slate-600 truncate">
-                        {d.counterparty || "—"}
-                      </span>
-                    </div>
-                    <div className="text-right tabular-nums shrink-0">
-                      <div className="font-semibold text-slate-900">
-                        {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
-                      </div>
-                      {d.profit !== 0 && (
-                        <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                          {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          Сделки на этом счёте
+          {!loadingRelated && (
+            <span className="text-[10px] text-slate-400 normal-case font-semibold tracking-normal">
+              · {relatedDeals.length}
+            </span>
           )}
         </div>
-      )}
+        {loadingRelated ? (
+          <div className="text-[12px] text-slate-400 text-center py-3">Загрузка…</div>
+        ) : relatedDeals.length === 0 ? (
+          <div className="text-[12px] text-slate-400 text-center py-2">Нет сделок с этим счётом</div>
+        ) : (
+          <div className="space-y-1 max-h-40 overflow-auto">
+            {relatedDeals.map((d) => {
+              const isOtc = d.kind === "otc" || d.kind === "broker";
+              const dt = new Date(d.createdAt);
+              return (
+                <div
+                  key={d.id}
+                  className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
+                      {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                    </span>
+                    {isOtc && (
+                      <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                        {d.kind === "broker" ? "BROKER" : "OTC"}
+                      </span>
+                    )}
+                    <span className="text-slate-600 truncate">
+                      {d.counterparty || "—"}
+                    </span>
+                  </div>
+                  <div className="text-right tabular-nums shrink-0">
+                    <div className="font-semibold text-slate-900">
+                      {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
+                    </div>
+                    {d.profit !== 0 && (
+                      <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                        {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="max-h-[60vh] overflow-auto">
         {movements.length === 0 ? (
