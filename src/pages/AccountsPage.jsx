@@ -326,18 +326,31 @@ export default function AccountsPage() {
         </div>
       </div>
 
-      {/* Actions bar — primary action слева, secondary справа */}
+      {/* Actions bar — primary actions слева, secondary справа */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <button
-          onClick={() => {
-            setTransferFrom(null);
-            setTransferOpen(true);
-          }}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
-        >
-          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-          {t("acc_transfer") || "Перевод"}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              setTransferFrom(null);
+              setTransferOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+            {t("acc_transfer") || "Перевод"}
+          </button>
+          <button
+            onClick={() => {
+              setOtcFromAccount(null);
+              setOtcOpen(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_2px_8px_rgba(79,70,229,0.25)]"
+            title="OTC сделка — обмен между счетами / с контрагентом, можно задним числом"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+            OTC сделка
+          </button>
+        </div>
 
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
