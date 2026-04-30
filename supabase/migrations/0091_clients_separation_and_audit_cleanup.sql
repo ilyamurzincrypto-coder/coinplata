@@ -76,7 +76,13 @@ delete from public.accounting_audits
 
 -- ============================================================================
 -- 3. Расширяем repair_orphan_movements чтобы включал accounting_audits
+--
+-- DROP перед CREATE — потому что меняем return-type signature
+-- (из 0090 было 3 OUT columns, теперь 4). PostgreSQL не разрешает
+-- CREATE OR REPLACE с разным набором колонок.
 -- ============================================================================
+
+drop function if exists public.repair_orphan_movements();
 
 create or replace function public.repair_orphan_movements()
 returns table (deal_id bigint, partner_movements_deleted int, payments_deleted int, audits_deleted int)
