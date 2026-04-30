@@ -1331,7 +1331,9 @@ export async function insertAccount(payload) {
     name: String(payload.name).trim(),
     bank_ref: payload.bankRef || null,
     address: payload.address || null,
-    network_id: payload.networkId || (payload.network ? payload.network.toLowerCase() : null),
+    // network_id в БД в UPPERCASE ('TRC20'/'ERC20'/'BEP20'), FK на networks(id).
+    // Раньше .toLowerCase() ломал FK при создании крипто-счёта.
+    network_id: payload.networkId || (payload.network ? payload.network.toUpperCase() : null),
     is_deposit: !!payload.isDeposit,
     is_withdrawal: !!payload.isWithdrawal,
     active: payload.active !== false,
