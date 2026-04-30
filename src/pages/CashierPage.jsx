@@ -7,6 +7,7 @@ import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
+import CashClosureModal from "../components/CashClosureModal.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
@@ -38,6 +39,7 @@ export default function CashierPage({
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [otcWizardOpen, setOtcWizardOpen] = useState(false);
+  const [cashClosureOpen, setCashClosureOpen] = useState(false);
   // RatesSidebar expanded state — поднимаем сюда чтобы grid columns
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
   // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
@@ -481,6 +483,15 @@ export default function CashierPage({
                 <span className="text-[11px] font-bold tracking-tight">OTC</span>
                 <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">с партнёром</span>
               </button>
+              <button
+                onClick={() => setCashClosureOpen(true)}
+                title="Закрытие кассы — сверка системного и фактического остатка в конце дня"
+                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-colors shrink-0"
+              >
+                <Plus className="w-5 h-5 mb-1" strokeWidth={2.5} />
+                <span className="text-[11px] font-bold tracking-tight">Закрыть</span>
+                <span className="text-[9px] text-amber-600 font-semibold mt-0.5">кассу</span>
+              </button>
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
@@ -582,6 +593,12 @@ export default function CashierPage({
         onCreated={(dealId) => {
           if (dealId) setJustCreatedId(String(dealId));
         }}
+      />
+
+      <CashClosureModal
+        open={cashClosureOpen}
+        currentOffice={currentOffice}
+        onClose={() => setCashClosureOpen(false)}
       />
 
 
