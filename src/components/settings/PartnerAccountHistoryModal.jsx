@@ -10,6 +10,7 @@ import { History, ArrowDownLeft, ArrowUpRight, Coins, Link2 } from "lucide-react
 import Modal from "../ui/Modal.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { loadPartnerAccountMovements, loadDealsForPartnerAccount } from "../../lib/supabaseReaders.js";
+import DeleteDealButton from "../DeleteDealButton.jsx";
 
 const SOURCE_KIND_LABEL = {
   opening: "Стартовый остаток",
@@ -150,15 +151,21 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
                           {d.counterparty || "—"}
                         </span>
                       </div>
-                      <div className="text-right tabular-nums shrink-0">
-                        <div className="font-semibold text-slate-900">
-                          {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
-                        </div>
-                        {d.profit !== 0 && (
-                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                            {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="text-right tabular-nums">
+                          <div className="font-semibold text-slate-900">
+                            {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                           </div>
-                        )}
+                          {d.profit !== 0 && (
+                            <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                              {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                            </div>
+                          )}
+                        </div>
+                        <DeleteDealButton
+                          dealId={d.id}
+                          onDeleted={(id) => setRelatedDeals((arr) => arr.filter((x) => x.id !== id))}
+                        />
                       </div>
                     </div>
                   );

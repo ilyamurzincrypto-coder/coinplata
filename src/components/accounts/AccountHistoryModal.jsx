@@ -13,6 +13,7 @@ import { useAccounts } from "../../store/accounts.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { loadDealsForAccount } from "../../lib/supabaseReaders.js";
+import DeleteDealButton from "../DeleteDealButton.jsx";
 
 const SOURCE_STYLES = {
   opening: "bg-slate-100 text-slate-700",
@@ -119,15 +120,21 @@ export default function AccountHistoryModal({ account, onClose }) {
                       {d.counterparty || "—"}
                     </span>
                   </div>
-                  <div className="text-right tabular-nums shrink-0">
-                    <div className="font-semibold text-slate-900">
-                      {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
-                    </div>
-                    {d.profit !== 0 && (
-                      <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                        {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="text-right tabular-nums">
+                      <div className="font-semibold text-slate-900">
+                        {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                       </div>
-                    )}
+                      {d.profit !== 0 && (
+                        <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                          {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                        </div>
+                      )}
+                    </div>
+                    <DeleteDealButton
+                      dealId={d.id}
+                      onDeleted={(id) => setRelatedDeals((arr) => arr.filter((x) => x.id !== id))}
+                    />
                   </div>
                 </div>
               );

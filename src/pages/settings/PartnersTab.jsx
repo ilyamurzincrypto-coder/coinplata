@@ -15,6 +15,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import PartnerAccountFormModal from "../../components/settings/PartnerAccountFormModal.jsx";
 import PartnerAccountHistoryModal from "../../components/settings/PartnerAccountHistoryModal.jsx";
+import DeleteDealButton from "../../components/DeleteDealButton.jsx";
 import { loadDealsForPartner } from "../../lib/supabaseReaders.js";
 
 const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
@@ -489,6 +490,10 @@ function PartnerDealsSection({ partnerId, partnerName }) {
     return () => { cancelled = true; };
   }, [open, loaded, partnerId]);
 
+  const handleDeleted = (dealId) => {
+    setDeals((arr) => arr.filter((d) => d.id !== dealId));
+  };
+
   return (
     <div className="mt-2 pt-2 border-t border-slate-100">
       <button
@@ -534,15 +539,18 @@ function PartnerDealsSection({ partnerId, partnerName }) {
                         {d.counterparty || "—"}
                       </span>
                     </div>
-                    <div className="text-right tabular-nums shrink-0">
-                      <div className="font-semibold text-slate-900">
-                        {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
-                      </div>
-                      {d.profit !== 0 && (
-                        <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
-                          {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="text-right tabular-nums">
+                        <div className="font-semibold text-slate-900">
+                          {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                         </div>
-                      )}
+                        {d.profit !== 0 && (
+                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                            {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                          </div>
+                        )}
+                      </div>
+                      <DeleteDealButton dealId={d.id} onDeleted={handleDeleted} />
                     </div>
                   </div>
                 );
