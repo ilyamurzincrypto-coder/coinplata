@@ -23,6 +23,7 @@ import {
 import { useAccounts } from "../store/accounts.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
+import { useAuth } from "../store/auth.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useRates } from "../store/rates.jsx";
@@ -101,6 +102,8 @@ export default function AccountsPage() {
   const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount, movements, transfers } = useAccounts();
   const { transactions } = useTransactions();
   const { addEntry: logAudit } = useAudit();
+  const { currentUser } = useAuth();
+  const canManageOffices = currentUser?.role === "admin" || currentUser?.role === "owner";
   const { activeOffices } = useOffices();
   const { dict: curDict } = useCurrencies();
   const { channels } = useRates();
@@ -186,9 +189,11 @@ export default function AccountsPage() {
     setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Группировка: office → currencies. Показываем только currencies, для которых
-  // есть хотя бы один active account в этом офисе. Сами office-блоки без
-  // аккаунтов вообще не рендерим (для scoped менеджеров RLS режет видимость —
-  // раньше они видели пустые "карточки-тени" остальных офисов).
+  // есть хотя бы один active account в этом офисе. Office-блоки без аккаунтов:
+  //   - admin/owner — рендерим (чтобы свежесозданный офис был виден и можно
+  //     было сразу добавить в него счёт);
+  //   - остальные — скрываем (для scoped менеджеров RLS режет accounts, но
+  //     не offices — без скрытия они видели "карточки-тени" чужих офисов).
   const officeBlocks = useMemo(() => {
     return activeOffices
       .map((office) => {
@@ -271,8 +276,8 @@ export default function AccountsPage() {
         accsCount: officeAccs.length,
       };
     })
-    .filter((block) => block.accsCount > 0);
-  }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase]);
+    .filter((block) => canManageOffices || block.accsCount > 0);
+  }, [accounts, activeOffices, channels, curDict, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, toBase, canManageOffices]);
 
   const grandTotal = officeBlocks.reduce((s, ob) => s + ob.totals.total, 0);
   const grandReserved = officeBlocks.reduce((s, ob) => s + ob.totals.reserved, 0);
