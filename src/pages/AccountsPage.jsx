@@ -52,6 +52,11 @@ const curIndex = (code) => {
   return i === -1 ? 999 : i;
 };
 
+// Excel-style единая сетка для Office strip и CurrencyRow.
+// Колонки: name(1fr) | today | yesterday | reserved | total | available | actions
+// Цифры в одинаковых колонках = вертикальное выравнивание под Office.
+const ACCT_GRID_COLS = "minmax(180px,1fr) 110px 110px 100px 130px 130px 70px";
+
 // Delta helpers — общие правила форматирования "+$1,200" / "−€300" /
 // "+$0". Всегда возвращает строку — нули показываются нейтральным
 // цветом (slate-400) чтобы юзер видел что действительно нет движений.
@@ -67,6 +72,16 @@ function deltaClass(value) {
   if (value > 0.01) return "text-emerald-600";
   if (value < -0.01) return "text-rose-600";
   return "text-slate-400";
+}
+
+// Одна delta-ячейка для Excel-style сетки. Без подписи, цвет по знаку.
+function DeltaCell({ value, currency, className = "" }) {
+  const cls = deltaClass(value);
+  return (
+    <span className={`tabular-nums text-[11px] font-semibold ${cls} ${className}`}>
+      {fmtDelta(value, currency)}
+    </span>
+  );
 }
 
 // Inline пара "сегодня / вчера" через слэш с явными подписями.
@@ -378,41 +393,54 @@ export default function AccountsPage() {
             key={office.id}
             className="bg-white rounded-[12px] border border-slate-200/70 overflow-hidden"
           >
-            {/* Office strip */}
-            <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Building2 className="w-3.5 h-3.5 text-slate-500" />
-                <h2 className="text-[13px] font-semibold tracking-tight">{office.name}</h2>
-                <span className="text-[11px] text-slate-400">· {accsCount} accounts</span>
-                <DeltaPair
-                  today={totals.delta}
-                  yesterday={totals.deltaYesterday}
-                  currency={base}
-                  size="sm"
-                />
+            {/* Office strip — Excel-style grid */}
+            <div
+              className="px-4 py-2 border-b border-slate-100 grid items-center gap-x-3 bg-slate-50/40"
+              style={{ gridTemplateColumns: ACCT_GRID_COLS }}
+            >
+              {/* Col 1: имя */}
+              <div className="flex items-center gap-2 min-w-0">
+                <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <h2 className="text-[13px] font-semibold tracking-tight truncate">{office.name}</h2>
+                <span className="text-[10px] text-slate-400 shrink-0">· {accsCount}</span>
               </div>
-              <div className="flex items-center gap-2 tabular-nums text-[11px]">
-                <span className="text-slate-600">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1">
-                    Total
+              {/* Col 2: сегодня */}
+              <div className="text-right">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">сегодня</div>
+                <DeltaCell value={totals.delta} currency={base} />
+              </div>
+              {/* Col 3: вчера */}
+              <div className="text-right">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">вчера</div>
+                <DeltaCell value={totals.deltaYesterday} currency={base} />
+              </div>
+              {/* Col 4: reserved */}
+              <div className="text-right">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">резерв</div>
+                {totals.hasReserved ? (
+                  <span className="tabular-nums text-[11px] font-semibold text-amber-700">
+                    {sym}{fmt(totals.reserved)}
                   </span>
-                  <span className="font-bold text-slate-900">
-                    {sym}
-                    {fmt(totals.total)}
-                  </span>
-                </span>
-                {totals.hasReserved && (
-                  <span className="text-amber-700 inline-flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" />
-                    {sym}
-                    {fmt(totals.reserved)}
-                  </span>
+                ) : (
+                  <span className="text-slate-300 text-[11px]">—</span>
                 )}
-                <span className="text-emerald-700 inline-flex items-center gap-0.5">
-                  <CheckCircle2 className="w-2.5 h-2.5" />
-                  {sym}
-                  {fmt(totals.available)}
+              </div>
+              {/* Col 5: total */}
+              <div className="text-right">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">total</div>
+                <span className="tabular-nums text-[12px] font-bold text-slate-900">
+                  {sym}{fmt(totals.total)}
                 </span>
+              </div>
+              {/* Col 6: available */}
+              <div className="text-right">
+                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">доступно</div>
+                <span className="tabular-nums text-[12px] font-semibold text-emerald-700">
+                  {sym}{fmt(totals.available)}
+                </span>
+              </div>
+              {/* Col 7: action */}
+              <div className="flex justify-end">
                 <button
                   onClick={() =>
                     setAddAccountFor({ officeId: office.id, officeName: office.name })
@@ -586,54 +614,69 @@ function CurrencyRow({
   const isCrypto = currency.type === "crypto";
   const hasReserved = totals.reserved > 0;
 
+  const symCcy = curSymbol(currency.code);
   return (
     <div>
-      {/* Summary row (always visible, clickable) */}
+      {/* Summary row — единая Excel-style сетка с Office strip */}
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+        className="w-full px-4 py-2.5 grid items-center gap-x-3 hover:bg-slate-50 transition-colors text-left"
+        style={{ gridTemplateColumns: ACCT_GRID_COLS }}
       >
-        <ChevronRight
-          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
-            isOpen ? "rotate-90" : ""
-          }`}
-        />
-        <div
-          className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-bold shrink-0 ${
-            isCrypto ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"
-          }`}
-        >
-          {currency.symbol || currency.code[0]}
-        </div>
-        <span className="text-[13px] font-bold tracking-wider text-slate-900 min-w-[48px]">
-          {currency.code}
-        </span>
-        <span className="text-[10px] text-slate-400">
-          {accountsCount > 0 ? `${accountsCount} acc` : "—"}
-        </span>
-
-        <span className="ml-auto flex items-center gap-3 tabular-nums text-[12px]">
-          <span className="font-bold text-slate-900">
-            {curSymbol(currency.code)}
-            {fmt(totals.total, currency.code)}
-          </span>
-          <DeltaPair
-            today={totals.delta}
-            yesterday={totals.deltaYesterday}
-            currency={currency.code}
+        {/* Col 1: имя валюты */}
+        <div className="flex items-center gap-2 min-w-0">
+          <ChevronRight
+            className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+              isOpen ? "rotate-90" : ""
+            }`}
           />
-          {hasReserved && (
-            <span className="inline-flex items-center gap-0.5 text-amber-700 text-[11px]">
-              <Clock className="w-2.5 h-2.5" />
-              {fmt(totals.reserved, currency.code)}
-            </span>
-          )}
-          <span className="inline-flex items-center gap-0.5 text-emerald-700 text-[11px]">
-            <CheckCircle2 className="w-2.5 h-2.5" />
-            {fmt(totals.available, currency.code)}
+          <div
+            className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-bold shrink-0 ${
+              isCrypto ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {currency.symbol || currency.code[0]}
+          </div>
+          <span className="text-[13px] font-bold tracking-wider text-slate-900">
+            {currency.code}
           </span>
-        </span>
+          <span className="text-[10px] text-slate-400 shrink-0">
+            {accountsCount > 0 ? `${accountsCount} acc` : "—"}
+          </span>
+        </div>
+        {/* Col 2: today */}
+        <div className="text-right">
+          <DeltaCell value={totals.delta} currency={currency.code} />
+        </div>
+        {/* Col 3: yesterday */}
+        <div className="text-right">
+          <DeltaCell value={totals.deltaYesterday} currency={currency.code} />
+        </div>
+        {/* Col 4: reserved */}
+        <div className="text-right">
+          {hasReserved ? (
+            <span className="tabular-nums text-[11px] font-semibold text-amber-700">
+              {symCcy}{fmt(totals.reserved, currency.code)}
+            </span>
+          ) : (
+            <span className="text-slate-300 text-[11px]">—</span>
+          )}
+        </div>
+        {/* Col 5: total */}
+        <div className="text-right">
+          <span className="tabular-nums text-[12px] font-bold text-slate-900">
+            {symCcy}{fmt(totals.total, currency.code)}
+          </span>
+        </div>
+        {/* Col 6: available */}
+        <div className="text-right">
+          <span className="tabular-nums text-[12px] font-semibold text-emerald-700">
+            {symCcy}{fmt(totals.available, currency.code)}
+          </span>
+        </div>
+        {/* Col 7: пусто (выровнено с кнопкой Add в Office strip) */}
+        <div />
       </button>
 
       {/* Expanded content */}
