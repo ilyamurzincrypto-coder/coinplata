@@ -17,8 +17,11 @@ import {
   Trash2,
   Download,
   Upload,
+  ArrowLeftRight as ArrowLeftRightIcon,
+  Wallet as WalletIcon,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
+import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -34,6 +37,7 @@ import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx"
 import TransferHistoryModal from "../components/accounts/TransferHistoryModal.jsx";
 import OtcDealModal from "../components/OtcDealModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
+import DeleteDealButton from "../components/DeleteDealButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
@@ -93,7 +97,8 @@ function DeltaPair({ today, yesterday, currency, size = "xs" }) {
 
 export default function AccountsPage() {
   const { t } = useTranslation();
-  const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount } = useAccounts();
+  const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount, movements, transfers } = useAccounts();
+  const { transactions } = useTransactions();
   const { addEntry: logAudit } = useAudit();
   const { activeOffices } = useOffices();
   const { dict: curDict } = useCurrencies();
@@ -122,6 +127,7 @@ export default function AccountsPage() {
   const [otcFromAccount, setOtcFromAccount] = useState(null);
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("operations");
 
   const handleExportAccounts = () => {
     if (accounts.length === 0) return;
@@ -277,7 +283,7 @@ export default function AccountsPage() {
 
   return (
     <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-4">
-      {/* Top bar */}
+      {/* Header — title + totals */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
@@ -296,53 +302,70 @@ export default function AccountsPage() {
               size="sm"
             />
           </span>
-          <button
-            onClick={handleExportAccounts}
-            disabled={accounts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title={t("acc_export_tip") || "Export accounts to CSV"}
-          >
-            <Download className="w-3.5 h-3.5" />
-            {t("export_csv")}
-          </button>
+        </div>
+      </div>
+
+      {/* Actions bar — primary action слева, secondary справа */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <button
+          onClick={() => {
+            setTransferFrom(null);
+            setTransferOpen(true);
+          }}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
+        >
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          {t("acc_transfer") || "Перевод"}
+        </button>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12.5px] font-semibold transition-colors"
             title={t("acc_import_tip") || "Import accounts from CSV"}
           >
             <Upload className="w-3.5 h-3.5" />
-            {t("acc_import") || "Import CSV"}
+            {t("acc_import") || "Импорт"}
           </button>
           <button
-            onClick={() => setTransferHistoryOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12px] font-semibold transition-colors"
-            title="История всех перемещений"
+            onClick={handleExportAccounts}
+            disabled={accounts.length === 0}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title={t("acc_export_tip") || "Export accounts to CSV"}
           >
-            <HistoryIcon className="w-3.5 h-3.5" />
-            История перемещений
-          </button>
-          <button
-            onClick={() => setOtcOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-100 text-[12px] font-semibold transition-colors"
-            title="OTC обмен валюты с партнёром (без fee, можно задним числом)"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-            OTC с контрагентом
-          </button>
-          <button
-            onClick={() => {
-              setTransferFrom(null);
-              setTransferOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" />
-            {t("acc_transfer")}
+            <Download className="w-3.5 h-3.5" />
+            {t("export_csv") || "Экспорт"}
           </button>
         </div>
       </div>
 
-      {officeBlocks.map((block) => {
+      {/* Tabs */}
+      <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+        {[
+          { id: "operations", label: "Операции" },
+          { id: "otc", label: "История OTC" },
+          { id: "transfers", label: "Перемещения" },
+          { id: "ledger", label: "Журнал" },
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+                isActive
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* TAB: Операции (default) — current grid по офисам/валютам/каналам */}
+      {activeTab === "operations" && officeBlocks.map((block) => {
         const { office, totals, currencyBlocks, accsCount } = block;
         return (
           <section
@@ -453,6 +476,21 @@ export default function AccountsPage() {
           </section>
         );
       })}
+
+      {/* TAB: История OTC */}
+      {activeTab === "otc" && (
+        <OtcHistoryPanel transactions={transactions} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
+      )}
+
+      {/* TAB: Перемещения */}
+      {activeTab === "transfers" && (
+        <TransfersPanel transfers={transfers} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
+      )}
+
+      {/* TAB: Журнал — все movements */}
+      {activeTab === "ledger" && (
+        <LedgerPanel movements={movements} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
+      )}
 
       <TopUpModal account={topUpFor} onClose={() => setTopUpFor(null)} />
       <BalanceAdjustmentModal
@@ -820,4 +858,265 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
       </div>
     </div>
   );
+}
+
+// ─── Tab: История OTC ─────────────────────────────────────────────────
+//
+// Показывает только OTC/broker сделки со всех счетов с раскрытием по клику.
+
+function OtcHistoryPanel({ transactions, accountsById }) {
+  const otcDeals = useMemo(
+    () => (transactions || []).filter((t) =>
+      (t.kind === "otc" || t.kind === "broker") && t.status !== "deleted"
+    ),
+    [transactions]
+  );
+
+  if (otcDeals.length === 0) {
+    return (
+      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
+        <ArrowLeftRightIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+        <div className="text-[13px] text-slate-500">Нет OTC сделок</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ArrowLeftRightIcon className="w-3.5 h-3.5 text-indigo-500" />
+          <h2 className="text-[13px] font-semibold tracking-tight">История OTC</h2>
+          <span className="text-[11px] text-slate-400">· {otcDeals.length} сделок</span>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12.5px]">
+          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+            <tr>
+              <th className="px-3 py-2 text-left">Дата</th>
+              <th className="px-3 py-2 text-left">Тип</th>
+              <th className="px-3 py-2 text-left">Контрагент</th>
+              <th className="px-3 py-2 text-right">IN</th>
+              <th className="px-3 py-2 text-right">OUT</th>
+              <th className="px-3 py-2 text-right">Profit</th>
+              <th className="px-3 py-2 text-left">Status</th>
+              <th className="px-3 py-2 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {otcDeals.map((tx) => {
+              const dt = new Date(tx.createdAtMs || tx.time || Date.now());
+              const firstOut = (tx.outputs || [])[0];
+              return (
+                <tr key={tx.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <div className="font-semibold tabular-nums text-slate-700">
+                      {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                    </div>
+                    <div className="text-[10px] text-slate-400 tabular-nums">
+                      {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                      {tx.kind === "broker" ? "BROKER" : "OTC"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-600 max-w-[180px] truncate">
+                    {tx.counterparty || "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                    <span className="font-semibold">{fmt(tx.amtIn, tx.curIn)}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">{tx.curIn}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                    {firstOut ? (
+                      <>
+                        <span className="font-semibold">{fmt(firstOut.amount, firstOut.currency)}</span>
+                        <span className="text-[10px] text-slate-400 ml-1">{firstOut.currency}</span>
+                      </>
+                    ) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                    {tx.profit > 0 ? (
+                      <span className="text-emerald-700 font-bold">+${fmt(tx.profit, "USD")}</span>
+                    ) : tx.profit < 0 ? (
+                      <span className="text-rose-700 font-bold">−${fmt(Math.abs(tx.profit), "USD")}</span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="text-[10.5px] text-slate-500">{tx.status || "—"}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right">
+                    <DeleteDealButtonInline dealId={tx.id} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ─── Tab: Перемещения ────────────────────────────────────────────────
+//
+// Все transfers (interoffice + inter-account).
+
+function TransfersPanel({ transfers, accountsById }) {
+  const sorted = useMemo(
+    () => (transfers || []).slice().sort((a, b) =>
+      new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+    ),
+    [transfers]
+  );
+
+  if (sorted.length === 0) {
+    return (
+      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
+        <WalletIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+        <div className="text-[13px] text-slate-500">Нет перемещений</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+        <ArrowLeftRightIcon className="w-3.5 h-3.5 text-sky-500" />
+        <h2 className="text-[13px] font-semibold tracking-tight">Перемещения</h2>
+        <span className="text-[11px] text-slate-400">· {sorted.length}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12.5px]">
+          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+            <tr>
+              <th className="px-3 py-2 text-left">Дата</th>
+              <th className="px-3 py-2 text-left">Откуда</th>
+              <th className="px-3 py-2 text-left">Куда</th>
+              <th className="px-3 py-2 text-right">Сумма</th>
+              <th className="px-3 py-2 text-right">Получено</th>
+              <th className="px-3 py-2 text-left">Заметка</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((tr) => {
+              const from = accountsById[tr.fromAccountId];
+              const to = accountsById[tr.toAccountId];
+              const dt = new Date(tr.createdAt || 0);
+              return (
+                <tr key={tr.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <div className="font-semibold tabular-nums text-slate-700">
+                      {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                    </div>
+                    <div className="text-[10px] text-slate-400 tabular-nums">
+                      {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                    {from?.name || "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                    {to?.name || "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                    <span className="font-semibold text-rose-700">−{fmt(tr.fromAmount, tr.fromCurrency)}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">{tr.fromCurrency}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
+                    <span className="font-semibold text-emerald-700">+{fmt(tr.toAmount, tr.toCurrency)}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">{tr.toCurrency}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{tr.note || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// ─── Tab: Журнал — полный ledger ────────────────────────────────────
+//
+// Все account_movements за последний период (limit 1000 для перформанса).
+
+function LedgerPanel({ movements, accountsById }) {
+  const sorted = useMemo(
+    () => (movements || []).slice(0, 500),
+    [movements]
+  );
+
+  if (sorted.length === 0) {
+    return (
+      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
+        <HistoryIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+        <div className="text-[13px] text-slate-500">Нет операций</div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+        <HistoryIcon className="w-3.5 h-3.5 text-slate-500" />
+        <h2 className="text-[13px] font-semibold tracking-tight">Журнал</h2>
+        <span className="text-[11px] text-slate-400">· {sorted.length} (последние)</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12.5px]">
+          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+            <tr>
+              <th className="px-3 py-2 text-left">Дата</th>
+              <th className="px-3 py-2 text-left">Счёт</th>
+              <th className="px-3 py-2 text-left">Тип</th>
+              <th className="px-3 py-2 text-right">Изменение</th>
+              <th className="px-3 py-2 text-left">Заметка</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((m) => {
+              const acc = accountsById[m.accountId];
+              const dt = new Date(m.timestamp || 0);
+              const isIn = m.direction === "in";
+              return (
+                <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-3 py-2.5 whitespace-nowrap">
+                    <div className="font-semibold tabular-nums text-slate-700">
+                      {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                    </div>
+                    <div className="text-[10px] text-slate-400 tabular-nums">
+                      {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                    {acc?.name || "—"}
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                      {m.source?.kind || "—"}
+                    </span>
+                  </td>
+                  <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${isIn ? "text-emerald-700" : "text-rose-700"}`}>
+                    {isIn ? "+" : "−"}{fmt(m.amount, m.currency)}
+                    <span className="text-[10px] text-slate-400 font-normal ml-1">{m.currency}</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{m.source?.note || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+// Inline delete для table-row — без size-prop
+function DeleteDealButtonInline({ dealId }) {
+  return <DeleteDealButton dealId={dealId} />;
 }
