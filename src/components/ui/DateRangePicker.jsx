@@ -16,20 +16,29 @@ const PRESETS = [
 ];
 
 // Возвращает range для preset
+// Локальная YYYY-MM-DD (без UTC сдвига). Раньше использовали .toISOString()
+// который при TZ != UTC выдавал вчерашний день и резал сегодняшние записи.
+function localYMD(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function rangeForPreset(preset) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = localYMD(today);
   if (preset === "today") return { from: todayStr, to: todayStr };
   if (preset === "week") {
     const d = new Date(today);
     d.setDate(d.getDate() - 6);
-    return { from: d.toISOString().slice(0, 10), to: todayStr };
+    return { from: localYMD(d), to: todayStr };
   }
   if (preset === "month") {
     const d = new Date(today);
     d.setDate(1);
-    return { from: d.toISOString().slice(0, 10), to: todayStr };
+    return { from: localYMD(d), to: todayStr };
   }
   return { from: null, to: null }; // custom / all
 }

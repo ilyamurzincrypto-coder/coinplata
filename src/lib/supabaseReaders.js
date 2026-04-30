@@ -718,12 +718,19 @@ export async function loadAccountingFeed(filters = {}) {
     .order("occurred_at", { ascending: false })
     .limit(500);
 
-  if (filters.from) query = query.gte("occurred_at", filters.from);
-  // to: date-only "YYYY-MM-DD" парсится PG как 00:00:00 UTC и режет всё
-  // что создано в течение этого дня. Расширяем до конца дня.
+  // Date-only "YYYY-MM-DD" интерпретируем как ЛОКАЛЬНЫЙ день и
+  // конвертируем в UTC ISO для сравнения с timestamptz в БД.
+  // Иначе при TZ != UTC сегодняшние записи (created_at в 10:30 UTC при
+  // локальном 2026-04-30) могут оказаться вне диапазона.
+  if (filters.from) {
+    const fromBound = /^\d{4}-\d{2}-\d{2}$/.test(filters.from)
+      ? new Date(`${filters.from}T00:00:00`).toISOString()
+      : filters.from;
+    query = query.gte("occurred_at", fromBound);
+  }
   if (filters.to) {
     const toBound = /^\d{4}-\d{2}-\d{2}$/.test(filters.to)
-      ? `${filters.to}T23:59:59.999Z`
+      ? new Date(`${filters.to}T23:59:59.999`).toISOString()
       : filters.to;
     query = query.lte("occurred_at", toBound);
   }
