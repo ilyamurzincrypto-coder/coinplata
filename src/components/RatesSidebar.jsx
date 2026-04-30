@@ -14,6 +14,7 @@ import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { FreshnessDot } from "../utils/rateFreshness.jsx";
 
 // Per-user избранные пары для дашборда — отдельный ключ от editor's
 // favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
@@ -65,7 +66,29 @@ const COMPACT_MIN = 3;
 const PAIR_ROW_HEIGHT = 56;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
-  const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs } = useRates();
+  const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs, pairs, channels } = useRates();
+
+  // Lookup updatedAt для пары (a,b) — берём максимум из обоих направлений.
+  const pairUpdatedAt = React.useCallback((a, b) => {
+    if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
+    const matches = pairs.filter((p) => {
+      const fromCh = channels.find((c) => c.id === p.fromChannelId);
+      const toCh = channels.find((c) => c.id === p.toChannelId);
+      const fromCur = fromCh?.currencyCode;
+      const toCur = toCh?.currencyCode;
+      return p.isDefault && (
+        (fromCur === a && toCur === b) || (fromCur === b && toCur === a)
+      );
+    });
+    if (matches.length === 0) return null;
+    let latest = null;
+    matches.forEach((m) => {
+      if (!m.updatedAt) return;
+      const t = new Date(m.updatedAt).getTime();
+      if (Number.isFinite(t) && (!latest || t > latest)) latest = t;
+    });
+    return latest ? new Date(latest) : null;
+  }, [pairs, channels]);
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { currentUser, updatePreferences } = useAuth();
@@ -339,7 +362,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                   : "bg-slate-50"
               }`}
             >
-              {/* Header: ⭐ + override-бейдж. Без sell/buy и без spread. */}
+              {/* Header: ⭐ + freshness dot + override-бейдж. */}
               <div className="flex items-center gap-1 mb-0.5">
                 <button
                   type="button"
@@ -356,6 +379,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
                   {a} / {b}
                 </span>
+                <FreshnessDot updatedAt={pairUpdatedAt(a, b)} />
                 {pairHasOverride && (
                   <span
                     className="ml-auto px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"

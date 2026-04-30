@@ -8,6 +8,7 @@ import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
+import RatesFreshnessBanner from "../components/RatesFreshnessBanner.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
@@ -381,6 +382,11 @@ export default function CashierPage({
           key="dashboard"
           className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
         >
+          {/* Freshness banner — показывается только если есть устаревающие/устаревшие курсы */}
+          <div className="mb-4">
+            <RatesFreshnessBanner onOpenRates={openRates} />
+          </div>
+
           {/* Layout через CSS Grid named areas. Sidebar ВСЕГДА узкий
               (~220px). При expand → раскрывается ВНИЗ (больше пар, scroll
               внутри), а Transactions переезжают в правую колонку рядом
