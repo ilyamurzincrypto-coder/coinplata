@@ -29,6 +29,7 @@ import { useTranslation } from "../../i18n/translations.jsx";
 import {
   loadAccountingFeed,
 } from "../../lib/supabaseReaders.js";
+import { onDataBump } from "../../lib/dataVersion.jsx";
 import {
   rpcAccountingReview,
   rpcAccountingReviewBulk,
@@ -77,6 +78,15 @@ export default function AccountingTab({ range }) {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkAction, setBulkAction] = useState(null); // 'approve' | 'reject'
   const [refreshTick, setRefreshTick] = useState(0);
+  const refreshFeed = React.useCallback(() => setRefreshTick((t) => t + 1), []);
+
+  // Auto-refresh после ЛЮБОГО data-mutation (delete deal/transfer/expense
+  // /balance_adjustment/cash_closure → bumpDataVersion). Раньше feed
+  // загружался только на mount + filter changes; удалённые сделки висели.
+  useEffect(() => {
+    const unsub = onDataBump(refreshFeed);
+    return () => unsub?.();
+  }, [refreshFeed]);
 
   // Load feed
   useEffect(() => {
@@ -132,8 +142,6 @@ export default function AccountingTab({ range }) {
     setSelectedIds(new Set(visible.map((r) => `${r.entityType}:${r.entityId}`)));
   };
   const clearSelection = () => setSelectedIds(new Set());
-
-  const refreshFeed = () => setRefreshTick((t) => t + 1);
 
   return (
     <div className="space-y-4">

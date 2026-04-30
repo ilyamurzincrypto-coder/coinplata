@@ -831,6 +831,15 @@ export async function deleteExpenseById(id) {
   const validId = requireUuid(id, "id");
   const { error } = await supabase.from("expenses").delete().eq("id", validId);
   if (error) throw new Error(formatSupabaseError(error, "delete expense"));
+  // Чистим accounting_audit для этой записи (если был approve)
+  try {
+    await supabase.from("accounting_audits")
+      .delete()
+      .eq("entity_type", "expense")
+      .eq("entity_id", validId);
+  } catch (e) {
+    console.warn("[deleteExpense] audit cleanup failed", e);
+  }
   bumpDataVersion();
 }
 
