@@ -740,10 +740,6 @@ export async function loadAccountingFeed(filters = {}) {
   if (filters.accountingStatus) query = query.eq("accounting_status", filters.accountingStatus);
 
   const { data, error } = await query;
-  // Diagnostic — оставлено для отладки бага "ничего не отображается".
-  // Удалить после подтверждения что репорт работает.
-  // eslint-disable-next-line no-console
-  console.log("[loadAccountingFeed]", { filters, rows: (data || []).length, error });
   if (error) {
     if (String(error.message || "").includes("does not exist")) return [];
     throw error;
