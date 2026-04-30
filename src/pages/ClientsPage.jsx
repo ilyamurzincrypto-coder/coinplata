@@ -195,7 +195,7 @@ export default function ClientsPage() {
       const cp = (tx.counterparty || "").trim();
       if (!cp) return;
       if (tx.status === "deleted") return;
-      const iso = toISODate(tx.date);
+      const iso = tx.dateISO || toISODate(tx.date);
       const m = monthKey(iso);
       const key = cp.toLowerCase();
       if (!firstSeen.has(key) || firstSeen.get(key) > m) firstSeen.set(key, m);

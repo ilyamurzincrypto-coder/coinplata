@@ -369,6 +369,14 @@ export async function loadDealsWithLegs(usersById = {}) {
       id: d.id,
       time: created.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
       date: created.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      // Точная локальная YYYY-MM-DD для корректной агрегации в графиках/репортах.
+      // Не использовать toISOString().slice(0,10) — даёт UTC-сдвиг.
+      dateISO: (() => {
+        const y = created.getFullYear();
+        const m = String(created.getMonth() + 1).padStart(2, "0");
+        const day = String(created.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      })(),
       officeId: d.office_id,
       type: d.type,
       kind: d.kind || "regular",
