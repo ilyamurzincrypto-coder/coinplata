@@ -41,6 +41,7 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
 import { KindPill } from "../utils/dealKind.jsx";
+import DealDetailPanel from "./DealDetailPanel.jsx";
 import { Shield } from "lucide-react";
 import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -310,6 +311,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   };
 
+  const [expandedDealId, setExpandedDealId] = useState(null);
   const [filterCurrency, setFilterCurrency] = useState("All");
   const [filterManager, setFilterManager] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -725,6 +727,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               const outputs = tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut, rate: tx.rate }];
               const firstOut = outputs[0];
               const isDeleted = tx.status === "deleted";
+              const isExpanded = expandedDealId === tx.id;
               const rowTooltip = [
                 tx.counterparty ? `Client: ${tx.counterparty}` : null,
                 tx.comment ? `Comment: ${tx.comment}` : null,
@@ -743,14 +746,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 .filter(Boolean)
                 .join("\n");
               return (
+                <React.Fragment key={tx.id}>
                 <tr
-                  key={tx.id}
                   title={rowTooltip || undefined}
                   className={`border-b border-slate-100 hover:bg-slate-50 transition-colors group ${
                     isNew ? "bg-emerald-50/60" : ""
                   } ${isDeleted ? "opacity-50 grayscale line-through" : ""} ${
                     tx.pinned ? "bg-indigo-50/40" : ""
-                  }`}
+                  } ${isExpanded ? "bg-slate-50" : ""}`}
                 >
                   <td className="pl-5 pr-2 py-3 align-top">
                     <input
@@ -766,8 +769,23 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     />
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap">
-                    <div className="font-semibold text-slate-900 tabular-nums">{tx.time}</div>
-                    <div className="text-[11px] text-slate-400">{tx.date}</div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedDealId(isExpanded ? null : tx.id);
+                      }}
+                      className="text-left hover:bg-slate-100 -m-1 p-1 rounded transition-colors group/expand"
+                      title={isExpanded ? "Свернуть детали" : "Развернуть детали (IN/OUT/legs/obligations)"}
+                    >
+                      <div className="font-semibold text-slate-900 tabular-nums flex items-center gap-1">
+                        <span className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""} text-slate-400 text-[10px]`}>
+                          ▶
+                        </span>
+                        {tx.time}
+                      </div>
+                      <div className="text-[11px] text-slate-400">{tx.date}</div>
+                    </button>
                   </td>
                   <td className="px-3 py-3 hidden sm:table-cell">
                     <div className="flex items-center gap-1 flex-wrap">
@@ -1079,6 +1097,22 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     </div>
                   </td>
                 </tr>
+                {isExpanded && (
+                  <tr className="border-b border-slate-200 bg-slate-50/60">
+                    <td colSpan={11} className="px-5 py-3">
+                      <DealDetailPanel
+                        dealId={tx.id}
+                        hint={{
+                          amountIn: tx.amtIn,
+                          currencyIn: tx.curIn,
+                          inKind: tx.inKind,
+                        }}
+                        accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))}
+                      />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
             {filtered.length === 0 && (

@@ -21,7 +21,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   ChevronLeft, ChevronRight, Check, X, Plus, Trash2, Wallet,
   Handshake, Coins, Calculator, Calendar, Banknote, AlertCircle, ArrowDown,
-  TrendingUp, TrendingDown, CheckCircle2, AlertTriangle,
+  TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ArrowLeftRight,
 } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import GroupedAccountSelect from "./GroupedAccountSelect.jsx";
@@ -748,6 +748,29 @@ function StepOut({
   const isOurNow = outKind === "ours_now";
   const isPartnerNow = outKind === "partner_now";
 
+  // Flip rate display — каноническое хранение остаётся out_per_in, меняется
+  // только direction отображения. При вводе во flipped режиме конвертим обратно.
+  const [rateFlipped, setRateFlipped] = React.useState(false);
+  const displayedRate = useMemo(() => {
+    if (!rateFlipped) return rate;
+    if (!userRate || userRate <= 0) return "";
+    return fmtNum(1 / userRate, 6);
+  }, [rate, rateFlipped, userRate]);
+  const handleRateChange = (val) => {
+    if (!rateFlipped) {
+      onChangeRate(val);
+      return;
+    }
+    const v = numberOrZero(cleanInput(val));
+    if (v <= 0) {
+      onChangeRate(val);
+      return;
+    }
+    onChangeRate(fmtNum(1 / v, 6));
+  };
+  const fromLabel = rateFlipped ? currencyOut : currencyIn;
+  const toLabel = rateFlipped ? currencyIn : currencyOut;
+
   return (
     <div className="space-y-4">
       <SectionTitle icon={ArrowDown} text="Что получает клиент" hint="Валюта + сумма + курс. Любое поле меняешь — остальные пересчитаются." />
@@ -768,23 +791,44 @@ function StepOut({
         </div>
       </div>
 
-      {/* Rate */}
+      {/* Rate с flip-кнопкой (P2P-style direction toggle) */}
       <div>
-        <label className="block text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-1.5">
-          Курс OTC ({currencyIn} → {currencyOut})
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="block text-[11px] font-bold text-slate-500 tracking-wide uppercase">
+            Курс OTC ({fromLabel} → {toLabel})
+          </label>
+          <button
+            type="button"
+            onClick={() => setRateFlipped((f) => !f)}
+            disabled={!userRate || userRate <= 0}
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold transition-colors ${
+              userRate > 0
+                ? "text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 cursor-pointer"
+                : "text-slate-300 cursor-not-allowed"
+            }`}
+            title="Перевернуть направление курса"
+          >
+            <ArrowLeftRight className="w-3 h-3" />
+            Flip
+          </button>
+        </div>
         <div className="flex items-baseline gap-2 bg-slate-50 rounded-[12px] border-2 border-slate-200 px-4 py-3">
-          <span className="text-slate-400 text-[10px] font-bold tracking-wider uppercase">1 {currencyIn} =</span>
+          <span className="text-slate-400 text-[10px] font-bold tracking-wider uppercase">1 {fromLabel} =</span>
           <input
             type="text"
             inputMode="decimal"
-            value={rate}
-            onChange={(e) => onChangeRate(e.target.value)}
+            value={displayedRate}
+            onChange={(e) => handleRateChange(e.target.value)}
             placeholder="0.0000"
             className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[16px] font-bold tracking-tight min-w-0"
           />
-          <span className="text-slate-400 text-[10px] font-bold tracking-wider">{currencyOut}</span>
+          <span className="text-slate-400 text-[10px] font-bold tracking-wider">{toLabel}</span>
         </div>
+        {rateFlipped && userRate > 0 && (
+          <div className="text-[10px] text-slate-400 mt-1 tabular-nums">
+            каноническое: 1 {currencyIn} = {fmtNum(userRate, 6)} {currencyOut}
+          </div>
+        )}
       </div>
 
       {/* Market vs OTC rate comparison */}
