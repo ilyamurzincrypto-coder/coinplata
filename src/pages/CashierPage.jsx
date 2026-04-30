@@ -119,6 +119,20 @@ export default function CashierPage({
           counterparties
         );
 
+        // Признак OTC: партнёрский счёт в IN или в любой из ног.
+        // Без него явно проставляем kind='regular', чтобы БД-derive не
+        // ошибочно выводила 'otc' от случайно оставшегося partnerAccountId
+        // в state'е формы.
+        const inPartnerCleaned = uuidOrNull(tx.inPartnerAccountId);
+        const cleanedOutputs = (tx.outputs || []).map((o) => ({
+          ...o,
+          accountId: uuidOrNull(o.accountId),
+          partnerAccountId: uuidOrNull(o.partnerAccountId),
+        }));
+        const hasOtcMarker =
+          !!inPartnerCleaned ||
+          cleanedOutputs.some((o) => !!o.partnerAccountId);
+
         const res = await withToast(
           () =>
             rpcCreateDeal({
@@ -133,18 +147,16 @@ export default function CashierPage({
               inAccountId: uuidOrNull(tx.accountId),
               // OTC: IN через счёт партнёра (миграция 0078). Взаимоисключающее
               // с inAccountId; rpcCreateDeal сама валидирует.
-              inPartnerAccountId: uuidOrNull(tx.inPartnerAccountId),
+              inPartnerAccountId: inPartnerCleaned,
               inTxHash: tx.inTxHash || null,
               referral: !!tx.referral,
               comment: tx.comment || "",
               status: tx.status || "completed",
-              outputs: (tx.outputs || []).map((o) => ({
-                ...o,
-                accountId: uuidOrNull(o.accountId),
-                // OTC: OUT через счёт партнёра. legsToJsonb сама валидирует
-                // что либо account_id либо partner_account_id, не оба.
-                partnerAccountId: uuidOrNull(o.partnerAccountId),
-              })),
+              outputs: cleanedOutputs,
+              // Явный kind: regular когда нет partner-маркеров (исключаем
+              // ошибочный derive в БД из остаточного state). Если OTC —
+              // не передаём, БД сама определит.
+              kind: hasOtcMarker ? undefined : "regular",
               // Tier-1 pending fields
               plannedAt: tx.plannedAt || null,
               deferredIn: !!tx.deferredIn,

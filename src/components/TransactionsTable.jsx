@@ -886,10 +886,12 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                     </div>
                   </td>
-                  {/* IN: сумма сверху (крупно), валюта под ней (лейбл). */}
+                  {/* IN: сумма + валюта в одну строку. */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
-                    <div className="font-semibold text-slate-900">{fmt(tx.amtIn, tx.curIn)}</div>
-                    <div className="text-[11px] text-slate-400 font-medium">{tx.curIn}</div>
+                    <div className="font-semibold text-slate-900">
+                      {fmt(tx.amtIn, tx.curIn)}{" "}
+                      <span className="text-slate-400 font-medium text-[11px]">{tx.curIn}</span>
+                    </div>
                     {tx.inKind && tx.inKind !== "ours_now" && (
                       <div className="mt-0.5">
                         <KindPill type="in" kind={tx.inKind} compact />
@@ -1300,13 +1302,15 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
     })
     .join("\n");
 
-  // Single output без crypto flow — компактное отображение.
+  // Single output без crypto flow — сумма + валюта в одну строку.
   if (outputs.length === 1 && !outputs[0].sendStatus) {
     const o = outputs[0];
     return (
       <div title={tooltip}>
-        <div className="font-semibold text-slate-900">{fmt(o.amount, o.currency)}</div>
-        <div className="text-[11px] text-slate-400 font-medium">{o.currency}</div>
+        <div className="font-semibold text-slate-900">
+          {fmt(o.amount, o.currency)}{" "}
+          <span className="text-slate-400 font-medium text-[11px]">{o.currency}</span>
+        </div>
         {o.outKind && o.outKind !== "ours_now" && (
           <div className="mt-0.5">
             <KindPill type="out" kind={o.outKind} compact />
