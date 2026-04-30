@@ -44,6 +44,34 @@ export function relativeTime(ageMs) {
   return `${days}д назад`;
 }
 
+// Сверх-короткая подпись для chip: «5m / 2h / 3d / now».
+export function shortAge(ageMs) {
+  if (!Number.isFinite(ageMs) || ageMs < 0) return "—";
+  const sec = Math.floor(ageMs / 1000);
+  if (sec < 60) return "now";
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hours = Math.floor(min / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+// Точное время для tooltip: «Обновлено сегодня в 14:32» / «вчера 09:15» / «28 апр 14:32».
+export function tooltipFor(updatedAt) {
+  if (!updatedAt) return "Не обновлялось";
+  const d = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
+  if (!Number.isFinite(d.getTime())) return "Не обновлялось";
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const dateStr = d.toISOString().slice(0, 10);
+  const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+  if (dateStr === today) return `Обновлено сегодня в ${time}`;
+  if (dateStr === yesterday) return `Обновлено вчера в ${time}`;
+  const dateNice = d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return `Обновлено ${dateNice} в ${time}`;
+}
+
 const TONE_BG = {
   fresh:    "bg-emerald-500",
   stale:    "bg-amber-500",
@@ -85,6 +113,33 @@ export function FreshnessDot({ updatedAt, showLabel = false, size = "sm" }) {
           {label}
         </span>
       )}
+    </span>
+  );
+}
+
+// Компактный chip с короткой меткой времени и цветом по состоянию.
+// Идеально для inline-отображения рядом с курсами.
+//   <FreshnessChip updatedAt={pair.updatedAt} />  → [2h]
+//
+// Цвета фона:
+//   fresh    — emerald-50 / emerald-700
+//   stale    — amber-50 / amber-700
+//   outdated — rose-50 / rose-700
+//
+// Tooltip с точным временем «Обновлено сегодня в 14:32».
+export function FreshnessChip({ updatedAt }) {
+  const { state, ageMs } = freshnessOf(updatedAt);
+  const cls = {
+    fresh:    "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    stale:    "bg-amber-50 text-amber-700 ring-amber-200",
+    outdated: "bg-rose-50 text-rose-700 ring-rose-200",
+  }[state];
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-px rounded text-[9px] font-bold tabular-nums ring-1 ${cls}`}
+      title={tooltipFor(updatedAt)}
+    >
+      {shortAge(ageMs)}
     </span>
   );
 }

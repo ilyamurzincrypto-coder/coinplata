@@ -14,7 +14,7 @@ import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
-import { FreshnessDot } from "../utils/rateFreshness.jsx";
+import { FreshnessChip } from "../utils/rateFreshness.jsx";
 
 // Per-user избранные пары для дашборда — отдельный ключ от editor's
 // favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
@@ -379,7 +379,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 <span className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
                   {a} / {b}
                 </span>
-                <FreshnessDot updatedAt={pairUpdatedAt(a, b)} />
+                <FreshnessChip updatedAt={pairUpdatedAt(a, b)} />
                 {pairHasOverride && (
                   <span
                     className="ml-auto px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
