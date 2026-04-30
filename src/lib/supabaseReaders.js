@@ -441,6 +441,35 @@ export async function loadPartnerAccounts() {
   }));
 }
 
+// Партнёрские account_movements — для UI истории партнёрского счёта
+// (миграция 0077). Опциональный фильтр по partner_account_id.
+export async function loadPartnerAccountMovements(partnerAccountId = null, limit = 500) {
+  const sb = ensureSupabase();
+  let query = sb.from("partner_account_movements").select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (partnerAccountId) query = query.eq("partner_account_id", partnerAccountId);
+  const { data, error } = await query;
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    partnerAccountId: r.partner_account_id,
+    amount: num(r.amount),
+    direction: r.direction,
+    currency: r.currency_code,
+    sourceKind: r.source_kind,
+    sourceRefId: r.source_ref_id,
+    sourceLegIndex: r.source_leg_index,
+    movementGroupId: r.movement_group_id,
+    note: r.note || "",
+    createdBy: r.created_by,
+    createdAt: r.created_at,
+  }));
+}
+
 // Балансы партнёрских счетов (из v_partner_account_balances).
 // Возвращает Map<partner_account_id, { total }>.
 export async function loadPartnerAccountBalances() {

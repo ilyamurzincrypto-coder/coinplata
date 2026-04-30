@@ -5,7 +5,7 @@
 
 import React, { useState, useMemo } from "react";
 import {
-  Handshake, UserPlus, Search, X, Edit2, Trash2, Send, Phone,
+  Handshake, UserPlus, Search, X, Edit2, Trash2, Send, Phone, History as HistoryIcon,
   ChevronDown, ChevronUp, Plus, Banknote, Building2, Coins, Wallet,
 } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
@@ -14,6 +14,7 @@ import { usePartnerAccounts } from "../../store/partnerAccounts.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import PartnerAccountFormModal from "../../components/settings/PartnerAccountFormModal.jsx";
+import PartnerAccountHistoryModal from "../../components/settings/PartnerAccountHistoryModal.jsx";
 
 const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
 
@@ -36,6 +37,7 @@ export default function PartnersTab() {
   const [expandedSet, setExpandedSet] = useState(() => new Set());
   // Модалки счетов партнёра
   const [accountModalState, setAccountModalState] = useState(null);
+  const [historyAccount, setHistoryAccount] = useState(null);
   // { mode: 'add' | 'edit', partnerId, accountId? }
 
   const toggleExpanded = (id) => {
@@ -287,30 +289,39 @@ export default function PartnersTab() {
                                       )}
                                     </div>
                                   </div>
-                                  {canEdit && (
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                      <button
-                                        onClick={() => setAccountModalState({
-                                          mode: "edit",
-                                          partnerId: p.id,
-                                          accountId: a.id,
-                                        })}
-                                        className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
-                                        title="Редактировать"
-                                      >
-                                        <Edit2 className="w-3 h-3" />
-                                      </button>
-                                      {a.active && (
+                                  <div className="flex items-center gap-0.5 shrink-0">
+                                    <button
+                                      onClick={() => setHistoryAccount({ ...a, partnerName: p.name })}
+                                      className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                      title="История движений"
+                                    >
+                                      <HistoryIcon className="w-3 h-3" />
+                                    </button>
+                                    {canEdit && (
+                                      <>
                                         <button
-                                          onClick={() => handleAccountDelete(a)}
-                                          className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                          title="Деактивировать"
+                                          onClick={() => setAccountModalState({
+                                            mode: "edit",
+                                            partnerId: p.id,
+                                            accountId: a.id,
+                                          })}
+                                          className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                          title="Редактировать"
                                         >
-                                          <Trash2 className="w-3 h-3" />
+                                          <Edit2 className="w-3 h-3" />
                                         </button>
-                                      )}
-                                    </div>
-                                  )}
+                                        {a.active && (
+                                          <button
+                                            onClick={() => handleAccountDelete(a)}
+                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                            title="Деактивировать"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -345,6 +356,11 @@ export default function PartnersTab() {
         partnerName={accountModalPartnerName}
         onClose={() => setAccountModalState(null)}
         onSubmit={handleAccountSubmit}
+      />
+      <PartnerAccountHistoryModal
+        open={!!historyAccount}
+        account={historyAccount}
+        onClose={() => setHistoryAccount(null)}
       />
     </div>
   );
