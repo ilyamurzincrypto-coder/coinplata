@@ -376,10 +376,13 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
     if (!canSubmit || busy || !isSupabaseConfigured) return;
     setBusy(true);
     try {
+      // ВАЖНО: ensureClient принимает ОБЪЕКТ {nickname, ...}, не строку.
+      // Раньше передавалась строка — destructure давал nickname=undefined,
+      // ensureClient тихо возвращал null. Теперь — корректно.
       let clientId = null;
       if (clientNickname.trim()) {
         try {
-          clientId = await ensureClient(clientNickname.trim());
+          clientId = await ensureClient({ nickname: clientNickname.trim() });
         } catch (e) {
           console.warn("[OtcWizard] ensureClient failed", e);
         }
@@ -429,7 +432,10 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
           officeId: resolvedOfficeId,
           managerId: currentUser.id,
           clientId,
-          clientNickname: clientNickname.trim() || partnerName,
+          // Не подставляем partnerName в client_nickname — partner хранится
+          // через partner_account_id и приджойнивается в UI отдельно.
+          // Иначе counterparties dropdown засоряется именами партнёров.
+          clientNickname: clientNickname.trim() || null,
           currencyIn,
           amountIn: numberOrZero(amountIn),
           inAccountId: inKind === "ours_now" ? uuidOrNull(inAccountId) : null,

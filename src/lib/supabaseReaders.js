@@ -229,6 +229,8 @@ export async function loadClients() {
     riskLevel: r.risk_level,
     createdAt: r.created_at,
     archivedAt: r.archived_at || null,
+    // 0091: OTC partner-флаг для разделения от обычных клиентов
+    isOtcPartner: r.is_otc_partner === true,
   }));
 }
 

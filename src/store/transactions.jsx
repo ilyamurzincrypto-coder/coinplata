@@ -37,7 +37,12 @@ export function TransactionsProvider({ children }) {
         ]);
         if (cancelled) return;
         if (Array.isArray(deals)) setTransactions(deals);
-        if (Array.isArray(clients) && clients.length > 0) setCounterparties(clients);
+        if (Array.isArray(clients) && clients.length > 0) {
+          // 0091: исключаем OTC-partner клиентов из общего counterparties pool —
+          // они появляются в PartnerSelect отдельно. CounterpartySelect — только
+          // обычные клиенты.
+          setCounterparties(clients.filter((c) => !c.isOtcPartner));
+        }
       } catch (err) {
         // eslint-disable-next-line no-console
         console.warn("[transactions] load failed — keeping seed", err);
