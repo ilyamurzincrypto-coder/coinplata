@@ -69,6 +69,7 @@ export default function AccountingTab({ range }) {
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState(null);
   const [statusTab, setStatusTab] = useState("pending_review");
   const [filterOffice, setFilterOffice] = useState("all");
   const [filterManager, setFilterManager] = useState("all");
@@ -94,21 +95,29 @@ export default function AccountingTab({ range }) {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    loadAccountingFeed({
+    const debugFilters = {
       from: range?.from,
       to: range?.to,
       officeId: filterOffice !== "all" ? filterOffice : null,
       managerId: filterManager !== "all" ? filterManager : null,
       entityType: filterType !== "all" ? filterType : null,
       search,
-    })
+    };
+    loadAccountingFeed(debugFilters)
       .then((data) => {
         if (cancelled) return;
         setFeed(data);
+        const counts = data.reduce((acc, r) => {
+          acc[r.entityType] = (acc[r.entityType] || 0) + 1;
+          acc[`status:${r.accountingStatus}`] = (acc[`status:${r.accountingStatus}`] || 0) + 1;
+          return acc;
+        }, {});
+        setDebugInfo({ total: data.length, counts, filters: debugFilters });
       })
       .catch((e) => {
         if (cancelled) return;
         setError(e.message || String(e));
+        setDebugInfo({ error: e.message || String(e), filters: debugFilters });
       })
       .finally(() => {
         if (cancelled) return;
@@ -257,6 +266,20 @@ export default function AccountingTab({ range }) {
               Отклонить выбранные
             </button>
           </div>
+        </div>
+      )}
+
+      {/* DEBUG банер — удалить когда репорт заработает */}
+      {debugInfo && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-[10px] p-3 text-[11px] font-mono text-yellow-900 break-all">
+          <div className="font-bold mb-1">DEBUG: loadAccountingFeed</div>
+          <div>total rows from API: <b>{debugInfo.total ?? 0}</b></div>
+          {debugInfo.error && (
+            <div className="text-rose-700">error: {debugInfo.error}</div>
+          )}
+          <div>counts: {JSON.stringify(debugInfo.counts || {})}</div>
+          <div>filters: {JSON.stringify(debugInfo.filters || {})}</div>
+          <div>statusTab(active): <b>{statusTab}</b> → visible after status filter: <b>{visible.length}</b></div>
         </div>
       )}
 
