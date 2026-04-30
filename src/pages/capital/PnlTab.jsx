@@ -357,6 +357,7 @@ export default function PnlTab({ range, onRangeChange }) {
         toBase={toBase}
         base={base}
         sym={sym}
+        officeNameOf={officeNameOf}
       />
 
       {/* Breakdown by currency */}
@@ -433,7 +434,7 @@ function PnlCard({ label, value, sub, icon, tone, emphasize, onClick, tooltip })
 //   — для net: summary блок + список сделок
 //   — для office: всё выше, но только для одного офиса
 // =========================================================================
-function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }) {
+function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym, officeNameOf }) {
   const { t } = useTranslation();
   if (!drill) return null;
 
