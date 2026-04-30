@@ -15,6 +15,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import PartnerAccountFormModal from "../../components/settings/PartnerAccountFormModal.jsx";
 import PartnerAccountHistoryModal from "../../components/settings/PartnerAccountHistoryModal.jsx";
+import { loadDealsForPartner } from "../../lib/supabaseReaders.js";
 
 const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
 
@@ -327,6 +328,8 @@ export default function PartnersTab() {
                             })}
                           </div>
                         )}
+                        {/* Сделки с этим партнёром (внешние OTC) */}
+                        <PartnerDealsSection partnerId={p.id} partnerName={p.name} />
                       </div>
                     )}
                   </div>
@@ -461,5 +464,93 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
         </button>
       </div>
     </Modal>
+  );
+}
+
+// ─── Партнёрские сделки (OTC внешние) ────────────────────────────────
+//
+// Lazy-load: тянет deals только когда секция раскрыта пользователем.
+// Кэш в локальном state — повторного клика не будет fetch'ить заново.
+
+function PartnerDealsSection({ partnerId, partnerName }) {
+  const [open, setOpen] = useState(false);
+  const [deals, setDeals] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  React.useEffect(() => {
+    if (!open || loaded) return;
+    let cancelled = false;
+    setLoading(true);
+    loadDealsForPartner(partnerId, 100)
+      .then((d) => { if (!cancelled) { setDeals(d); setLoaded(true); } })
+      .catch((e) => { if (!cancelled) console.warn("[PartnerDeals]", e); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [open, loaded, partnerId]);
+
+  return (
+    <div className="mt-2 pt-2 border-t border-slate-100">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+      >
+        <span className={`text-slate-400 text-[10px] transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+        Сделки с этим контрагентом
+        {loaded && (
+          <span className="text-[10px] text-slate-400 tabular-nums">({deals.length})</span>
+        )}
+      </button>
+
+      {open && (
+        <div className="mt-2 rounded-[10px] border border-slate-200 bg-slate-50/60 p-2">
+          {loading ? (
+            <div className="text-[12px] text-slate-400 text-center py-3">Загрузка…</div>
+          ) : deals.length === 0 ? (
+            <div className="text-[12px] text-slate-400 text-center py-3">
+              Сделок с {partnerName} ещё не было
+            </div>
+          ) : (
+            <div className="space-y-1 max-h-56 overflow-auto">
+              {deals.map((d) => {
+                const dt = new Date(d.createdAt);
+                const isOtc = d.kind === "otc" || d.kind === "broker";
+                return (
+                  <div
+                    key={d.id}
+                    className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
+                        {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                      </span>
+                      {isOtc && (
+                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                          {d.kind === "broker" ? "BROKER" : "OTC"}
+                        </span>
+                      )}
+                      <span className="text-slate-600 truncate">
+                        {d.counterparty || "—"}
+                      </span>
+                    </div>
+                    <div className="text-right tabular-nums shrink-0">
+                      <div className="font-semibold text-slate-900">
+                        {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
+                      </div>
+                      {d.profit !== 0 && (
+                        <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                          {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -448,6 +448,59 @@ export async function loadPartnerAccounts() {
   }));
 }
 
+// loadDealsForPartner — все сделки где ЛЮБОЙ счёт этого партнёра
+// участвует. Используется на странице Counterparties для показа
+// «все сделки с этим партнёром» при раскрытии его карточки.
+export async function loadDealsForPartner(partnerId, limit = 200) {
+  const sb = ensureSupabase();
+  if (!partnerId) return [];
+  // Получим все partner_account.id для этого партнёра
+  const accRes = await sb.from("partner_accounts")
+    .select("id").eq("partner_id", partnerId);
+  if (accRes.error) throw accRes.error;
+  const accIds = (accRes.data || []).map((a) => a.id);
+  if (accIds.length === 0) return [];
+
+  // Сделки где любой из этих счетов = in_partner_account_id
+  const inDealsRes = await sb.from("deals")
+    .select("id")
+    .in("in_partner_account_id", accIds)
+    .neq("status", "deleted");
+  // Сделки через legs.partner_account_id ∈ accIds
+  const legsRes = await sb.from("deal_legs")
+    .select("deal_id")
+    .in("partner_account_id", accIds);
+  if (inDealsRes.error) throw inDealsRes.error;
+  if (legsRes.error) throw legsRes.error;
+
+  const dealIds = new Set([
+    ...(inDealsRes.data || []).map((d) => d.id),
+    ...(legsRes.data || []).map((l) => l.deal_id),
+  ]);
+  if (dealIds.size === 0) return [];
+
+  const { data: full, error } = await sb.from("deals")
+    .select("id, kind, in_kind, currency_in, amount_in, status, comment, created_at, client_nickname, profit_usd, fee_usd")
+    .in("id", [...dealIds])
+    .neq("status", "deleted")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (full || []).map((d) => ({
+    id: d.id,
+    kind: d.kind || "regular",
+    inKind: d.in_kind,
+    currencyIn: d.currency_in,
+    amountIn: num(d.amount_in),
+    status: d.status,
+    comment: d.comment || "",
+    createdAt: d.created_at,
+    counterparty: d.client_nickname || "",
+    profit: num(d.profit_usd),
+    fee: num(d.fee_usd),
+  }));
+}
+
 // loadDealsForPartnerAccount — все сделки где данный партнёрский счёт
 // участвует (in_partner_account_id ИЛИ legs.partner_account_id).
 // Аналог loadDealsForAccount но для партнёрских счетов.
