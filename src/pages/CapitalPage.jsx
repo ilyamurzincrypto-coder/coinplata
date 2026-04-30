@@ -25,7 +25,7 @@ const ALL_TABS = [
   { id: "manager", key: "tab_by_manager", icon: Users, component: ByManagerTab },
   { id: "rate_history", key: "tab_rate_history", icon: History, component: RateHistoryTab },
   // accounting — гард в runtime, видна только при can('accounting','view')+
-  { id: "accounting", label: "Бухгалтерский репорт", icon: FileText, component: AccountingTab, requiresAccounting: true },
+  { id: "accounting", key: "acc_title", icon: FileText, component: AccountingTab, requiresAccounting: true },
 ];
 
 export default function CapitalPage() {

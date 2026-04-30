@@ -185,13 +185,18 @@ export async function loadAccountBalances() {
 
 // Movements нужны для истории по конкретному аккаунту. Грузим все разом —
 // для MVP масштаб ОК, для прода добавим пагинацию.
-export async function loadMovements() {
+// loadMovements — global feed (limit 5000 для общего пула) ИЛИ per-account
+// (без ограничений — если accountId задан, серверный фильтр и большой limit).
+export async function loadMovements(accountId = null) {
   const sb = ensureSupabase();
-  const { data, error } = await sb
-    .from("account_movements")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(5000);
+  let query = sb.from("account_movements").select("*")
+    .order("created_at", { ascending: false });
+  if (accountId) {
+    query = query.eq("account_id", accountId).limit(50000);  // полная история счёта
+  } else {
+    query = query.limit(5000);  // общий feed для balance-аггрегатов
+  }
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []).map((r) => ({
     id: r.id,
@@ -440,6 +445,49 @@ export async function loadPartnerAccounts() {
     createdAt: r.created_at,
     createdBy: r.created_by,
     updatedAt: r.updated_at,
+  }));
+}
+
+// loadDealsForAccount — все сделки где данный наш счёт участвует
+// (как in_account_id ИЛИ через любую из legs.account_id).
+// Используется в AccountHistoryModal: «связанные сделки» панель.
+export async function loadDealsForAccount(accountId, limit = 100) {
+  const sb = ensureSupabase();
+  if (!accountId) return [];
+  // 1. Deals где in_account_id = X
+  const inDealsRes = await sb.from("deals")
+    .select("id, kind, in_kind, currency_in, amount_in, status, kind, comment, created_at, client_nickname, profit_usd")
+    .eq("in_account_id", accountId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  // 2. Deals через legs.account_id = X
+  const legsRes = await sb.from("deal_legs")
+    .select("deal_id, currency, amount")
+    .eq("account_id", accountId)
+    .limit(limit);
+  if (inDealsRes.error) throw inDealsRes.error;
+  if (legsRes.error) throw legsRes.error;
+  const dealIds = new Set([
+    ...(inDealsRes.data || []).map((d) => d.id),
+    ...(legsRes.data || []).map((l) => l.deal_id),
+  ]);
+  if (dealIds.size === 0) return [];
+  const { data: full, error } = await sb.from("deals")
+    .select("id, kind, in_kind, currency_in, amount_in, status, comment, created_at, client_nickname, profit_usd")
+    .in("id", [...dealIds])
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (full || []).map((d) => ({
+    id: d.id,
+    kind: d.kind || "regular",
+    inKind: d.in_kind,
+    currencyIn: d.currency_in,
+    amountIn: num(d.amount_in),
+    status: d.status,
+    comment: d.comment || "",
+    createdAt: d.created_at,
+    counterparty: d.client_nickname || "",
+    profit: num(d.profit_usd),
   }));
 }
 

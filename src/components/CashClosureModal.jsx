@@ -39,6 +39,7 @@ import {
   rpcCancelCashClosure,
   withToast,
 } from "../lib/supabaseWrite.js";
+import { useTranslation } from "../i18n/translations.jsx";
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ const numberOrZero = (v) => {
 // ─── Main component ────────────────────────────────────────────────────
 
 export default function CashClosureModal({ open, currentOffice, onClose, onCreated }) {
+  const { t } = useTranslation();
   const { accounts, balanceOf } = useAccounts();
   const { offices } = useOffices();
   const { currentUser } = useAuth();
@@ -231,13 +233,13 @@ export default function CashClosureModal({ open, currentOffice, onClose, onCreat
       open={open}
       onClose={step === "success" ? onClose : (busy ? undefined : onClose)}
       title={
-        step === "input"   ? "Закрытие кассы" :
-        step === "summary" ? "Подтверждение" :
-        "Касса закрыта"
+        step === "input"   ? t("cc_step_input") :
+        step === "summary" ? t("cc_step_summary") :
+        t("cc_step_success")
       }
       subtitle={
         step === "input" ? `${officeName(officeId) || "—"} · ${formatDateRu(closureDate)}` :
-        step === "summary" ? "Проверь и подтверди" :
+        step === "summary" ? t("cc_modal_title") :
         ""
       }
       width="2xl"

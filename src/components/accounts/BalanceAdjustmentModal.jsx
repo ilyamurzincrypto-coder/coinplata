@@ -24,8 +24,10 @@ import { fmt, curSymbol } from "../../utils/money.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import { rpcCreateBalanceAdjustment, withToast } from "../../lib/supabaseWrite.js";
 import { loadBalanceAdjustments } from "../../lib/supabaseReaders.js";
+import { useTranslation } from "../../i18n/translations.jsx";
 
 export default function BalanceAdjustmentModal({ open, account, onClose, onAdjusted }) {
+  const { t } = useTranslation();
   const { balanceOf } = useAccounts();
   const [newBalanceInput, setNewBalanceInput] = useState("");
   const [note, setNote] = useState("");
@@ -110,7 +112,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
     <Modal
       open={open}
       onClose={onClose}
-      title="Корректировка начального баланса"
+      title={t("ba_title")}
       subtitle={`${account.name} · ${account.currency}`}
       width="md"
     >

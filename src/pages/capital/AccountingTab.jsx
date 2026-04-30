@@ -25,6 +25,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { officeName } from "../../store/data.js";
+import { useTranslation } from "../../i18n/translations.jsx";
 import {
   loadAccountingFeed,
   loadAccountingDealDetail,
@@ -57,6 +58,7 @@ const STATUS_TONE = {
 };
 
 export default function AccountingTab({ range }) {
+  const { t } = useTranslation();
   const { offices } = useOffices();
   const { users } = useAuth();
   const { accounts } = useAccounts();
@@ -139,8 +141,8 @@ export default function AccountingTab({ range }) {
       {/* Header / counters */}
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex items-center gap-3 flex-wrap">
         <FileText className="w-4 h-4 text-slate-500" />
-        <span className="text-[14px] font-bold text-slate-900">Бухгалтерский репорт</span>
-        <span className="text-[11px] text-slate-500">— проверка операций менеджеров</span>
+        <span className="text-[14px] font-bold text-slate-900">{t("acc_title")}</span>
+        <span className="text-[11px] text-slate-500">— {t("acc_subtitle")}</span>
         <div className="ml-auto flex items-center gap-1">
           <StatusTab
             active={statusTab === "pending_review"}
