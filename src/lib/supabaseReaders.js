@@ -719,7 +719,14 @@ export async function loadAccountingFeed(filters = {}) {
     .limit(500);
 
   if (filters.from) query = query.gte("occurred_at", filters.from);
-  if (filters.to) query = query.lte("occurred_at", filters.to);
+  // to: date-only "YYYY-MM-DD" парсится PG как 00:00:00 UTC и режет всё
+  // что создано в течение этого дня. Расширяем до конца дня.
+  if (filters.to) {
+    const toBound = /^\d{4}-\d{2}-\d{2}$/.test(filters.to)
+      ? `${filters.to}T23:59:59.999Z`
+      : filters.to;
+    query = query.lte("occurred_at", toBound);
+  }
   if (filters.officeId) query = query.eq("office_id", filters.officeId);
   if (filters.managerId) query = query.eq("manager_id", filters.managerId);
   if (filters.entityType) query = query.eq("entity_type", filters.entityType);
