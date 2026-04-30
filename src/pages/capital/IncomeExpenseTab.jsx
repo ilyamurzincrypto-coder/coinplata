@@ -13,7 +13,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { OFFICES, officeName } from "../../store/data.js";
+import { useOffices } from "../../store/offices.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
@@ -28,6 +28,11 @@ export default function IncomeExpenseTab({ range }) {
   const { currentUser } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const { base, toBase } = useBaseCurrency();
+  const { activeOffices } = useOffices();
+  const officeNameOf = useMemo(() => {
+    const map = Object.fromEntries(activeOffices.map((o) => [o.id, o.name]));
+    return (id) => map[id] || id || "";
+  }, [activeOffices]);
   const sym = curSymbol(base);
 
   const [addType, setAddType] = useState(null); // null | "income" | "expense"
@@ -159,7 +164,7 @@ export default function IncomeExpenseTab({ range }) {
                     category: e.category || "",
                     amount: e.amount,
                     currency: e.currency,
-                    office: officeName(e.officeId) || "",
+                    office: officeNameOf(e.officeId) || "",
                     account: findAccount(e.accountId)?.name || "",
                     note: e.note || "",
                   })),
@@ -220,7 +225,7 @@ export default function IncomeExpenseTab({ range }) {
             <option value="all">{t("oblig_all_offices")}</option>
             {uniqueOffices.map((oid) => (
               <option key={oid} value={oid}>
-                {officeName(oid) || oid}
+                {officeNameOf(oid) || oid}
               </option>
             ))}
           </select>
@@ -303,7 +308,7 @@ export default function IncomeExpenseTab({ range }) {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-slate-700">{e.category}</td>
-                    <td className="px-3 py-3 text-slate-600">{officeName(e.officeId)}</td>
+                    <td className="px-3 py-3 text-slate-600">{officeNameOf(e.officeId)}</td>
                     <td className="px-3 py-3 text-slate-600">{acc?.name || "—"}</td>
                     <td className="px-3 py-3 text-right whitespace-nowrap">
                       <span
@@ -376,8 +381,13 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   const { accountsByOffice, addMovement } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
   const { categories: allCategories, addCategory: localAddCategory } = useCategories();
+  const { activeOffices } = useOffices();
+  const officeNameOf = useMemo(() => {
+    const map = Object.fromEntries(activeOffices.map((o) => [o.id, o.name]));
+    return (id) => map[id] || id || "";
+  }, [activeOffices]);
 
-  const [officeId, setOfficeId] = useState(OFFICES[0].id);
+  const [officeId, setOfficeId] = useState(activeOffices[0]?.id || "");
   const [currency, setCurrency] = useState("USD");
   const [accountId, setAccountId] = useState("");
   // Category hierarchy: user picks parent → optionally picks subcategory
@@ -396,7 +406,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
   // Reset when opened
   React.useEffect(() => {
     if (type) {
-      setOfficeId(OFFICES[0].id);
+      setOfficeId(activeOffices[0]?.id || "");
       setCurrency("USD");
       setAccountId("");
       setParentCatId("");
@@ -500,7 +510,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
             action: "create",
             entity: type,
             entityId: res.result?.id || "",
-            summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+            summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeNameOf(officeId)})`,
           });
           onClose();
         }
@@ -535,7 +545,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
       action: "create",
       entity: type,
       entityId: entry.id,
-      summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeName(officeId)})`,
+      summary: `${summaryPath}: ${curSymbol(currency)}${fmt(amt, currency)} ${currency} (${officeNameOf(officeId)})`,
     });
     onClose();
   };
@@ -561,7 +571,7 @@ function AddEntryModal({ type, onClose, currentUser, onLog }) {
               onChange={(e) => setOfficeId(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
             >
-              {OFFICES.map((o) => (
+              {activeOffices.map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
                 </option>

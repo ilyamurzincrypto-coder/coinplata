@@ -24,7 +24,6 @@ import { useOffices } from "../../store/offices.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
-import { officeName } from "../../store/data.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import {
   loadAccountingFeed,
@@ -65,6 +64,10 @@ export default function AccountingTab({ range }) {
   const { accounts } = useAccounts();
   const usersById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u])), [users]);
   const accountsById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+  const officeNameOf = useMemo(() => {
+    const map = Object.fromEntries((offices || []).map((o) => [o.id, o.name]));
+    return (id) => map[id] || id || "—";
+  }, [offices]);
 
   const [feed, setFeed] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -339,7 +342,7 @@ export default function AccountingTab({ range }) {
                         <td className="px-3 py-2.5">
                           <EntityBadge type={r.entityType} dealKind={r.dealKind} />
                         </td>
-                        <td className="px-3 py-2.5 text-slate-600">{officeName(r.officeId) || "—"}</td>
+                        <td className="px-3 py-2.5 text-slate-600">{officeNameOf(r.officeId)}</td>
                         <td className="px-3 py-2.5 text-slate-600">
                           {manager?.full_name || (r.createdBy ? usersById[r.createdBy]?.full_name : "—") || "—"}
                         </td>

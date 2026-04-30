@@ -7,8 +7,8 @@ import { Building2 } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useOffices } from "../../store/offices.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { OFFICES, officeName } from "../../store/data.js";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
@@ -18,10 +18,11 @@ export default function ByOfficeTab({ range }) {
   const { transactions } = useTransactions();
   const { entries } = useIncomeExpense();
   const { base, toBase } = useBaseCurrency();
+  const { activeOffices } = useOffices();
   const sym = curSymbol(base);
 
   const stats = useMemo(() => {
-    return OFFICES.map((o) => {
+    return activeOffices.map((o) => {
       const tx = transactions.filter(
         (t) => t.officeId === o.id && inRange(toISODate(t.date), range)
       );
@@ -40,7 +41,7 @@ export default function ByOfficeTab({ range }) {
 
       return { office: o, deals: tx.length, volume, dealsProfit, income, expense, net };
     }).sort((a, b) => b.volume - a.volume);
-  }, [transactions, entries, toBase, range]);
+  }, [transactions, entries, toBase, range, activeOffices]);
 
   const totalVolume = stats.reduce((s, x) => s + x.volume, 0);
 
@@ -73,7 +74,7 @@ export default function ByOfficeTab({ range }) {
                   className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
                 >
                   <td className="px-5 py-3">
-                    <div className="font-semibold text-slate-900">{officeName(x.office.id)}</div>
+                    <div className="font-semibold text-slate-900">{x.office.name || x.office.id}</div>
                     <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden w-40">
                       <div
                         className="h-full bg-slate-900 rounded-full"

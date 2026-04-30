@@ -23,8 +23,8 @@ import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useObligations } from "../../store/obligations.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useOffices } from "../../store/offices.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { OFFICES, officeName } from "../../store/data.js";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { inRange } from "../../components/ui/DateRangePicker.jsx";
@@ -80,6 +80,7 @@ export default function OverviewTab({ range }) {
   const { entries } = useIncomeExpense();
   const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();
+  const { activeOffices } = useOffices();
 
   // Rate drift: читаем v_deal_pnl (0019) чтобы сравнить recorded profit
   // с margin в текущих курсах. Загружаем 1 раз + на bumpDataVersion.
@@ -420,7 +421,7 @@ export default function OverviewTab({ range }) {
           <h2 className="text-[15px] font-semibold tracking-tight">{t("office_breakdown")}</h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-5">
-          {OFFICES.map((o) => {
+          {activeOffices.map((o) => {
             const officeTx = transactions.filter(
               (tx) =>
                 tx.status !== "deleted" &&
@@ -432,7 +433,7 @@ export default function OverviewTab({ range }) {
             const pct = txVolume > 0 ? (volume / txVolume) * 100 : 0;
             return (
               <div key={o.id} className="bg-slate-50/60 border border-slate-200 rounded-[12px] p-4">
-                <div className="text-[12px] font-semibold text-slate-500 mb-0.5">{officeName(o.id)}</div>
+                <div className="text-[12px] font-semibold text-slate-500 mb-0.5">{o.name}</div>
                 <div className="text-[22px] font-bold tabular-nums tracking-tight text-slate-900">
                   {sym}{fmt(volume, base)}
                 </div>

@@ -11,7 +11,6 @@ import { useTransactions } from "../../store/transactions.jsx";
 import { useIncomeExpense } from "../../store/incomeExpense.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
-import { officeName } from "../../store/data.js";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import DateRangePicker, { rangeForPreset, inRange } from "../../components/ui/DateRangePicker.jsx";
@@ -26,7 +25,11 @@ export default function PnlTab({ range, onRangeChange }) {
   const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { entries } = useIncomeExpense();
-  const { offices } = useOffices();
+  const { offices, activeOffices } = useOffices();
+  const officeNameOf = useMemo(() => {
+    const map = Object.fromEntries((offices || activeOffices || []).map((o) => [o.id, o.name]));
+    return (id) => map[id] || id || "";
+  }, [offices, activeOffices]);
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
 
@@ -96,7 +99,7 @@ export default function PnlTab({ range, onRangeChange }) {
     const byOffice = [...byOfficeMap.entries()]
       .map(([id, b]) => ({
         officeId: id,
-        name: officeName(id) || id,
+        name: officeNameOf(id) || id,
         revenue: b.revenue,
         income: b.income,
         expense: b.expense,
@@ -446,14 +449,14 @@ function PnlDrillModal({ drill, onClose, scopedTx, scopedIE, toBase, base, sym }
   const income = ies.filter((e) => e.type === "income").reduce((s, e) => s + toBase(e.amount, e.currency), 0);
   const expense = ies.filter((e) => e.type === "expense").reduce((s, e) => s + toBase(e.amount, e.currency), 0);
 
-  const officeLabel = drill.officeId ? officeName(drill.officeId) : t("pnl_all_offices");
+  const officeLabel = drill.officeId ? officeNameOf(drill.officeId) : t("pnl_all_offices");
   const title =
     drill.kind === "revenue"
       ? `${t("pnl_revenue")} · ${officeLabel}`
       : drill.kind === "expenses"
       ? `${t("pnl_expenses")} · ${officeLabel}`
       : drill.kind === "office"
-      ? `P&L · ${officeName(drill.officeId)}`
+      ? `P&L · ${officeNameOf(drill.officeId)}`
       : `${t("pnl_net_profit")} · ${officeLabel}`;
 
   const showRevenueBreakdown = drill.kind === "revenue" || drill.kind === "net" || drill.kind === "office";
