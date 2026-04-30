@@ -448,6 +448,48 @@ export async function loadPartnerAccounts() {
   }));
 }
 
+// loadDealsForPartnerAccount — все сделки где данный партнёрский счёт
+// участвует (in_partner_account_id ИЛИ legs.partner_account_id).
+// Аналог loadDealsForAccount но для партнёрских счетов.
+export async function loadDealsForPartnerAccount(partnerAccountId, limit = 100) {
+  const sb = ensureSupabase();
+  if (!partnerAccountId) return [];
+  const inDealsRes = await sb.from("deals")
+    .select("id, kind, in_kind, currency_in, amount_in, status, comment, created_at, client_nickname, profit_usd")
+    .eq("in_partner_account_id", partnerAccountId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const legsRes = await sb.from("deal_legs")
+    .select("deal_id, currency, amount")
+    .eq("partner_account_id", partnerAccountId)
+    .limit(limit);
+  if (inDealsRes.error) throw inDealsRes.error;
+  if (legsRes.error) throw legsRes.error;
+  const dealIds = new Set([
+    ...(inDealsRes.data || []).map((d) => d.id),
+    ...(legsRes.data || []).map((l) => l.deal_id),
+  ]);
+  if (dealIds.size === 0) return [];
+  const { data: full, error } = await sb.from("deals")
+    .select("id, kind, in_kind, currency_in, amount_in, status, comment, created_at, client_nickname, profit_usd")
+    .in("id", [...dealIds])
+    .neq("status", "deleted")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (full || []).map((d) => ({
+    id: d.id,
+    kind: d.kind || "regular",
+    inKind: d.in_kind,
+    currencyIn: d.currency_in,
+    amountIn: num(d.amount_in),
+    status: d.status,
+    comment: d.comment || "",
+    createdAt: d.created_at,
+    counterparty: d.client_nickname || "",
+    profit: num(d.profit_usd),
+  }));
+}
+
 // loadDealsForAccount — все сделки где данный наш счёт участвует
 // (как in_account_id ИЛИ через любую из legs.account_id).
 // Используется в AccountHistoryModal: «связанные сделки» панель.

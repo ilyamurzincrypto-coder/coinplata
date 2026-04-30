@@ -6,10 +6,10 @@
 // Источник: loadPartnerAccountMovements(partner_account_id).
 
 import React, { useEffect, useState } from "react";
-import { History, ArrowDownLeft, ArrowUpRight, Coins } from "lucide-react";
+import { History, ArrowDownLeft, ArrowUpRight, Coins, Link2 } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
-import { loadPartnerAccountMovements } from "../../lib/supabaseReaders.js";
+import { loadPartnerAccountMovements, loadDealsForPartnerAccount } from "../../lib/supabaseReaders.js";
 
 const SOURCE_KIND_LABEL = {
   opening: "Стартовый остаток",
@@ -31,6 +31,9 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showRelated, setShowRelated] = useState(false);
+  const [relatedDeals, setRelatedDeals] = useState([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
 
   useEffect(() => {
     if (!open || !account?.id) return;
@@ -49,6 +52,19 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
       });
     return () => { cancelled = true; };
   }, [open, account?.id]);
+
+  // On-demand: load related deals when toggle открыт
+  useEffect(() => {
+    if (!showRelated || !account?.id) return;
+    if (relatedDeals.length > 0) return;
+    let cancelled = false;
+    setLoadingRelated(true);
+    loadDealsForPartnerAccount(account.id, 100)
+      .then((d) => { if (!cancelled) setRelatedDeals(d); })
+      .catch((e) => { if (!cancelled) console.warn("[PartnerHistory]", e); })
+      .finally(() => { if (!cancelled) setLoadingRelated(false); });
+    return () => { cancelled = true; };
+  }, [showRelated, account?.id, relatedDeals.length]);
 
   if (!account) return null;
 
@@ -88,6 +104,69 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
             tone="emerald"
           />
         </div>
+
+        {/* Related deals toggle */}
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setShowRelated((v) => !v)}
+            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+            title="Сделки в которых участвовал этот партнёрский счёт"
+          >
+            <Link2 className="w-3 h-3" />
+            {showRelated ? "Скрыть связанные сделки" : "Показать связанные сделки"}
+            {relatedDeals.length > 0 && (
+              <span className="text-[10px] text-slate-400 tabular-nums">({relatedDeals.length})</span>
+            )}
+          </button>
+        </div>
+
+        {showRelated && (
+          <div className="rounded-[10px] border border-slate-200 bg-slate-50/50 p-3">
+            {loadingRelated ? (
+              <div className="text-[12px] text-slate-400 text-center py-4">Загрузка…</div>
+            ) : relatedDeals.length === 0 ? (
+              <div className="text-[12px] text-slate-400 text-center py-4">Нет сделок с этим счётом</div>
+            ) : (
+              <div className="space-y-1.5 max-h-48 overflow-auto">
+                {relatedDeals.map((d) => {
+                  const isOtc = d.kind === "otc" || d.kind === "broker";
+                  const dt = new Date(d.createdAt);
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
+                          {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
+                        </span>
+                        {isOtc && (
+                          <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                            {d.kind === "broker" ? "BROKER" : "OTC"}
+                          </span>
+                        )}
+                        <span className="text-slate-600 truncate">
+                          {d.counterparty || "—"}
+                        </span>
+                      </div>
+                      <div className="text-right tabular-nums shrink-0">
+                        <div className="font-semibold text-slate-900">
+                          {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
+                        </div>
+                        {d.profit !== 0 && (
+                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                            {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Table */}
         <div className="rounded-[12px] border border-slate-200 bg-white overflow-hidden">
