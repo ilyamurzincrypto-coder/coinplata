@@ -493,7 +493,7 @@ function KPI({ label, value, sub, accent, icon, big, delta, sparkline, t, toolti
       ? "text-rose-700"
       : "text-slate-900";
   return (
-    <div className={`bg-white border border-slate-200 rounded-[12px] p-4 ${big ? "ring-2 ring-emerald-100" : ""}`}>
+    <div className={`bg-white border border-slate-200/70 rounded-[14px] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_4px_12px_rgba(15,23,42,0.06)] transition-shadow duration-150 ${big ? "ring-1 ring-emerald-200" : ""}`}>
       <div
         className={`flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1 ${tooltip ? "cursor-help" : ""}`}
         title={tooltip || undefined}

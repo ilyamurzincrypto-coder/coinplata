@@ -37,16 +37,18 @@ import { useCurrencies } from "../store/currencies.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcCreateDeal, withToast, ensureClient, uuidOrNull } from "../lib/supabaseWrite.js";
+import { useTranslation } from "../i18n/translations.jsx";
 
 // ─── Constants ─────────────────────────────────────────────────────────
 
-const STEPS = [
-  { id: "type",      label: "Тип" },
-  { id: "party",     label: "Контрагент" },
-  { id: "in",        label: "Клиент отдаёт" },
-  { id: "out",       label: "Клиент получает" },
-  { id: "execution", label: "Реализация" },
-  { id: "confirm",   label: "Подтверждение" },
+// STEP_KEYS — i18n keys; labels берутся через t() в Stepper'е.
+const STEP_KEYS = [
+  { id: "type",      key: "otc_step_type" },
+  { id: "party",     key: "otc_step_party" },
+  { id: "in",        key: "otc_step_in" },
+  { id: "out",       key: "otc_step_out" },
+  { id: "execution", key: "otc_step_exec" },
+  { id: "confirm",   key: "otc_step_confirm" },
 ];
 
 const IN_KIND_OPTIONS = [
@@ -103,6 +105,8 @@ const emptyLeg = (currency = "TRY", amount = "") => ({
 // ─── Main wizard ────────────────────────────────────────────────────────
 
 export default function OtcDealWizard({ open, currentOffice, onClose, onCreated }) {
+  const { t } = useTranslation();
+  const STEPS = useMemo(() => STEP_KEYS.map((s) => ({ id: s.id, label: t(s.key) })), [t]);
   const { currentUser } = useAuth();
   const { addEntry: logAudit } = useAudit();
   const { accounts, balanceOf } = useAccounts();
@@ -468,8 +472,8 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
     <Modal
       open={open}
       onClose={onClose}
-      title="OTC сделка"
-      subtitle="План → Реализация: разделяем что обещаем клиенту и как исполняем"
+      title={t("otc_modal_title")}
+      subtitle={t("otc_modal_subtitle")}
       width="3xl"
     >
       <Stepper currentIdx={stepIdx} steps={STEPS} stepValid={stepValid} onStepClick={setStepIdx} />
@@ -565,7 +569,7 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
             }`}
           >
             <Check className="w-3.5 h-3.5" />
-            {busy ? "Создание…" : "Создать сделку"}
+            {busy ? t("otc_creating") : t("otc_create")}
           </button>
         )}
       </div>
@@ -644,18 +648,27 @@ function StepType({ kind, setKind }) {
 }
 
 function KindCard({ selected, onClick, tone, title, hint, example }) {
+  // Apple-style: soft surface на hover, без harsh ring. Selected состояние —
+  // мягкий tint + аккуратный shadow.
+  const selectedCls = {
+    indigo: "bg-indigo-50/70 border-indigo-200 shadow-[0_2px_8px_rgba(99,102,241,0.08)]",
+    amber: "bg-amber-50/70 border-amber-200 shadow-[0_2px_8px_rgba(245,158,11,0.08)]",
+    emerald: "bg-emerald-50/70 border-emerald-200 shadow-[0_2px_8px_rgba(16,185,129,0.08)]",
+  }[tone] || "bg-slate-50 border-slate-200";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`w-full text-left p-4 rounded-[14px] border-2 transition-all ${
-        selected ? `${TONE_CLS[tone]} ring-2 ring-offset-1 ring-${tone}-300` : "border-slate-200 hover:border-slate-300 bg-white"
+      className={`w-full text-left p-4 rounded-[14px] border transition-all duration-150 ${
+        selected
+          ? selectedCls
+          : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 bg-white"
       }`}
     >
       <div className="flex items-center gap-2 mb-1.5">
         <div className={`w-2 h-2 rounded-full ${TONE_DOT[tone]}`} />
-        <div className="text-[13px] font-bold text-slate-900">{title}</div>
-        {selected && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto" strokeWidth={3} />}
+        <div className="text-[13px] font-semibold text-slate-900 tracking-tight">{title}</div>
+        {selected && <Check className="w-3.5 h-3.5 text-emerald-600 ml-auto" strokeWidth={2.5} />}
       </div>
       <div className="text-[11.5px] text-slate-600 leading-relaxed mb-1.5">{hint}</div>
       <div className="text-[10.5px] text-slate-500 italic">{example}</div>
@@ -1308,18 +1321,23 @@ function CurrencyPicker({ value, onChange, codes }) {
 }
 
 function KindOption({ id, title, hint, tone, selected, onClick }) {
+  const selectedCls = {
+    indigo: "bg-indigo-50/70 border-indigo-200",
+    amber: "bg-amber-50/70 border-amber-200",
+    emerald: "bg-emerald-50/70 border-emerald-200",
+  }[tone] || "bg-slate-50 border-slate-200";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`text-left p-2.5 rounded-[10px] border-2 transition-all ${
-        selected ? `${TONE_CLS[tone]} ring-1 ring-${tone}-300` : "border-slate-200 hover:border-slate-300 bg-white"
+      className={`text-left p-2.5 rounded-[10px] border transition-all duration-150 ${
+        selected ? selectedCls : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/60 bg-white"
       }`}
     >
       <div className="flex items-center gap-1.5 mb-0.5">
         <div className={`w-1.5 h-1.5 rounded-full ${TONE_DOT[tone]}`} />
-        <div className="text-[12px] font-bold text-slate-900">{title}</div>
-        {selected && <Check className="w-3 h-3 text-emerald-600 ml-auto" strokeWidth={3} />}
+        <div className="text-[12px] font-semibold text-slate-900 tracking-tight">{title}</div>
+        {selected && <Check className="w-3 h-3 text-emerald-600 ml-auto" strokeWidth={2.5} />}
       </div>
       <div className="text-[10.5px] text-slate-500 leading-snug">{hint}</div>
     </button>

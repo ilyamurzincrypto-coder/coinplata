@@ -17,6 +17,7 @@ import { CheckCircle2, AlertTriangle, Lock } from "lucide-react";
 import CashClosureModal from "./CashClosureModal.jsx";
 import { loadLatestCashClosure } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 
 function classifyStatus(latest) {
   if (!latest) return { state: "open", lastDate: null };
@@ -50,6 +51,7 @@ function relativeDay(iso) {
 }
 
 export default function CashClosureBadge({ currentOffice }) {
+  const { t } = useTranslation();
   const officeId = typeof currentOffice === "string" ? currentOffice : currentOffice?.id;
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -83,24 +85,27 @@ export default function CashClosureBadge({ currentOffice }) {
   const { state, lastDate } = classifyStatus(latest);
   const config = {
     closed: {
-      label: "Касса закрыта",
-      sub: lastDate ? `${relativeDay(lastDate)} в ${formatTime(lastDate)}` : "сегодня",
+      label: t("cc_badge_closed"),
+      sub: lastDate ? `${relativeDay(lastDate)} ${formatTime(lastDate)}` : "",
       icon: CheckCircle2,
-      cls: "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100",
+      cls: "bg-slate-50 text-slate-700 hover:bg-slate-100 ring-slate-200",
+      iconCls: "text-emerald-500",
       dot: "bg-emerald-500",
     },
     open: {
-      label: "Закрыть кассу",
-      sub: lastDate ? `Последний раз: ${relativeDay(lastDate)}` : "ещё не закрывали",
+      label: t("cc_badge_close"),
+      sub: lastDate ? relativeDay(lastDate) : t("cc_never_closed"),
       icon: Lock,
-      cls: "bg-amber-50 border-amber-300 text-amber-900 hover:bg-amber-100",
+      cls: "bg-amber-50/80 text-amber-900 hover:bg-amber-100 ring-amber-200/70",
+      iconCls: "text-amber-600",
       dot: "bg-amber-500",
     },
     overdue: {
-      label: "Закрыть кассу",
-      sub: lastDate ? `Просрочено · ${relativeDay(lastDate)}` : "никогда не закрывали",
+      label: t("cc_badge_overdue"),
+      sub: lastDate ? `${t("cc_overdue_sub")} · ${relativeDay(lastDate)}` : t("cc_never_closed"),
       icon: AlertTriangle,
-      cls: "bg-rose-50 border-rose-300 text-rose-900 hover:bg-rose-100",
+      cls: "bg-rose-50/90 text-rose-900 hover:bg-rose-100 ring-rose-200",
+      iconCls: "text-rose-600",
       dot: "bg-rose-500 animate-pulse",
     },
   }[state];
@@ -113,19 +118,17 @@ export default function CashClosureBadge({ currentOffice }) {
         type="button"
         onClick={() => setModalOpen(true)}
         title={`${config.label} · ${config.sub}`}
-        className={`group relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border ${config.cls} transition-colors`}
+        className={`group inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1 rounded-full ring-1 ${config.cls} transition-all duration-150 active:scale-[0.97]`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${config.dot} shrink-0`} />
-        <Icon className="w-3 h-3 shrink-0" />
-        <div className="text-left leading-none hidden md:block">
-          <div className="text-[11.5px] font-bold tracking-tight">
-            {config.label}
-          </div>
-          <div className="text-[9.5px] opacity-75 mt-0.5 font-semibold">
-            {config.sub}
-          </div>
-        </div>
-        <span className="text-[11.5px] font-bold tracking-tight md:hidden">
+        <Icon className={`w-3 h-3 shrink-0 ${config.iconCls}`} />
+        <span className="text-[11.5px] font-semibold tracking-tight hidden md:inline">
+          {config.label}
+        </span>
+        <span className="text-[10px] opacity-60 hidden lg:inline tabular-nums">
+          {config.sub}
+        </span>
+        <span className="text-[11.5px] font-semibold tracking-tight md:hidden">
           {state === "closed" ? "✓" : "Закрыть"}
         </span>
       </button>
