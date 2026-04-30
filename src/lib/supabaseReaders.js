@@ -527,6 +527,182 @@ function deriveObligationFlow(r) {
   return "unknown";
 }
 
+// ============================================================================
+// Accounting feed (миграции 0086-0088)
+// ============================================================================
+
+// loadAccountingFeed — единый список операций для бухгалтерского репорта.
+// Поддерживает фильтры: from/to (даты), officeId, managerId, entityType,
+// accountingStatus, search.
+export async function loadAccountingFeed(filters = {}) {
+  const sb = ensureSupabase();
+  let query = sb.from("v_accounting_feed").select("*")
+    .order("occurred_at", { ascending: false })
+    .limit(500);
+
+  if (filters.from) query = query.gte("occurred_at", filters.from);
+  if (filters.to) query = query.lte("occurred_at", filters.to);
+  if (filters.officeId) query = query.eq("office_id", filters.officeId);
+  if (filters.managerId) query = query.eq("manager_id", filters.managerId);
+  if (filters.entityType) query = query.eq("entity_type", filters.entityType);
+  if (filters.accountingStatus) query = query.eq("accounting_status", filters.accountingStatus);
+
+  const { data, error } = await query;
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  let rows = (data || []).map((r) => ({
+    entityType: r.entity_type,
+    entityId: r.entity_id,
+    occurredAt: r.occurred_at,
+    officeId: r.office_id,
+    managerId: r.manager_id,
+    clientId: r.client_id,
+    counterpartyLabel: r.counterparty_label || "",
+    dealKind: r.deal_kind,
+    dealInKind: r.deal_in_kind,
+    transferKind: r.transfer_kind,
+    expenseType: r.expense_type,
+    primaryAmount: num(r.primary_amount),
+    primaryCurrency: r.primary_currency,
+    secondaryAmount: num(r.secondary_amount),
+    secondaryCurrency: r.secondary_currency,
+    feeUsd: num(r.fee_usd),
+    profitUsd: num(r.profit_usd),
+    commissionUsd: num(r.commission_usd),
+    referral: r.referral,
+    opStatus: r.op_status,
+    comment: r.comment || "",
+    accountingStatus: r.accounting_status,
+    approvedBy: r.approved_by,
+    approvedAt: r.approved_at,
+    rejectionReason: r.rejection_reason,
+    reviewerNotes: r.reviewer_notes,
+    underlyingUpdatedAt: r.underlying_updated_at,
+    createdBy: r.created_by,
+  }));
+
+  // Client-side search (simple)
+  if (filters.search) {
+    const q = filters.search.trim().toLowerCase();
+    if (q) {
+      rows = rows.filter((r) =>
+        (r.counterpartyLabel || "").toLowerCase().includes(q) ||
+        (r.comment || "").toLowerCase().includes(q) ||
+        (r.entityId || "").toLowerCase().includes(q) ||
+        (r.primaryCurrency || "").toLowerCase().includes(q) ||
+        (r.secondaryCurrency || "").toLowerCase().includes(q)
+      );
+    }
+  }
+  return rows;
+}
+
+// loadAccountingDealDetail — для раскрытия deal-строки. Тащит legs +
+// payments + obligations.
+export async function loadAccountingDealDetail(dealId) {
+  const sb = ensureSupabase();
+  const id = Number(dealId);
+  if (!Number.isFinite(id)) throw new Error(`Invalid dealId: ${dealId}`);
+
+  const [legsRes, inPayRes, legPayRes, obligRes] = await Promise.all([
+    sb.from("deal_legs").select("*").eq("deal_id", id).order("leg_index"),
+    sb.from("deal_in_payments").select("*").eq("deal_id", id).order("paid_at")
+      .then((r) => r, () => ({ data: [], error: null })),
+    sb.from("deal_legs").select("id").eq("deal_id", id),
+    sb.from("obligations").select("*").eq("deal_id", id),
+  ]);
+
+  if (legsRes.error) throw legsRes.error;
+  const legs = legsRes.data || [];
+  const legIds = (legPayRes.data || []).map((l) => l.id);
+
+  let legPayments = [];
+  if (legIds.length > 0) {
+    const lpRes = await sb.from("deal_leg_payments").select("*")
+      .in("deal_leg_id", legIds).order("paid_at");
+    if (!lpRes.error) legPayments = lpRes.data || [];
+  }
+
+  return {
+    legs: legs.map((l) => ({
+      id: l.id,
+      legIndex: l.leg_index,
+      currency: l.currency,
+      amount: num(l.amount),
+      actualAmount: num(l.actual_amount),
+      rate: num(l.rate),
+      accountId: l.account_id,
+      partnerAccountId: l.partner_account_id,
+      outKind: l.out_kind,
+      address: l.address,
+      networkId: l.network_id,
+      sendStatus: l.send_status,
+      completedAt: l.completed_at,
+    })),
+    inPayments: (inPayRes.data || []).map((p) => ({
+      id: p.id,
+      amount: num(p.amount),
+      currency: p.currency_code,
+      paidAt: p.paid_at,
+      kind: p.kind,
+      accountId: p.account_id,
+      partnerAccountId: p.partner_account_id,
+      note: p.note || "",
+    })),
+    legPayments: legPayments.map((p) => ({
+      id: p.id,
+      legId: p.deal_leg_id,
+      amount: num(p.amount),
+      currency: p.currency_code,
+      paidAt: p.paid_at,
+      kind: p.kind,
+      accountId: p.account_id,
+      partnerAccountId: p.partner_account_id,
+      note: p.note || "",
+    })),
+    obligations: (obligRes.data || []).map((o) => ({
+      id: o.id,
+      currency: o.currency_code,
+      amount: num(o.amount),
+      paidAmount: num(o.paid_amount),
+      direction: o.direction,
+      debtorKind: o.debtor_kind,
+      creditorKind: o.creditor_kind,
+      status: o.status,
+      note: o.note,
+      counterpartyName: o.counterparty_name,
+      partnerId: o.partner_id,
+      clientId: o.client_id,
+    })),
+  };
+}
+
+// loadCashClosures — список закрытий кассы (для AccountingTab + раскрытия)
+export async function loadCashClosures(filters = {}) {
+  const sb = ensureSupabase();
+  let query = sb.from("cash_closures").select("*")
+    .order("closure_date", { ascending: false })
+    .limit(200);
+  if (filters.officeId) query = query.eq("office_id", filters.officeId);
+  if (filters.managerId) query = query.eq("manager_id", filters.managerId);
+  const { data, error } = await query;
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    officeId: r.office_id,
+    managerId: r.manager_id,
+    closureDate: r.closure_date,
+    details: r.details || [],
+    managerComment: r.manager_comment || "",
+    createdAt: r.created_at,
+  }));
+}
+
 // Balance adjustments history (миграция 0084).
 // Опционально per-account фильтр.
 export async function loadBalanceAdjustments(accountId = null) {

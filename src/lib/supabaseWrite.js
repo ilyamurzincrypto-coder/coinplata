@@ -569,6 +569,108 @@ export async function rpcCreateTransfer({
   return id;
 }
 
+// ============================================================================
+// Accounting review (миграция 0086) + cash closure (0087)
+// ============================================================================
+
+const ACCOUNTING_ENTITY_TYPES = new Set([
+  "deal", "transfer", "expense", "balance_adjustment", "cash_closure",
+]);
+const ACCOUNTING_ACTIONS = new Set(["approve", "reject", "reset"]);
+
+export async function rpcAccountingReview({ entityType, entityId, action, reason, notes }) {
+  assertConfigured();
+  if (!ACCOUNTING_ENTITY_TYPES.has(entityType)) {
+    throw new Error(`Unknown entity_type: ${entityType}`);
+  }
+  if (!entityId) throw new Error("entityId required");
+  if (!ACCOUNTING_ACTIONS.has(action)) {
+    throw new Error(`action must be approve | reject | reset (got ${action})`);
+  }
+  if (action === "reject" && (!reason || !String(reason).trim())) {
+    throw new Error("rejection reason required");
+  }
+  const id = unwrap(
+    await supabase.rpc("accounting_review", {
+      p_entity_type: entityType,
+      p_entity_id: String(entityId),
+      p_action: action,
+      p_reason: reason ? String(reason).trim() : null,
+      p_notes: notes ? String(notes).trim() : null,
+    }),
+    "accounting_review"
+  );
+  bumpDataVersion();
+  return id;
+}
+
+export async function rpcAccountingReviewBulk({ items, action, reason, notes }) {
+  assertConfigured();
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error("items: non-empty array required");
+  }
+  if (!ACCOUNTING_ACTIONS.has(action)) {
+    throw new Error(`action must be approve | reject | reset`);
+  }
+  if (action === "reject" && (!reason || !String(reason).trim())) {
+    throw new Error("rejection reason required");
+  }
+  const payload = items.map((it) => {
+    if (!ACCOUNTING_ENTITY_TYPES.has(it.entityType)) {
+      throw new Error(`Unknown entity_type: ${it.entityType}`);
+    }
+    return { entity_type: it.entityType, entity_id: String(it.entityId) };
+  });
+  const count = unwrap(
+    await supabase.rpc("accounting_review_bulk", {
+      p_items: payload,
+      p_action: action,
+      p_reason: reason ? String(reason).trim() : null,
+      p_notes: notes ? String(notes).trim() : null,
+    }),
+    "accounting_review_bulk"
+  );
+  bumpDataVersion();
+  return count;
+}
+
+export async function rpcCreateCashClosure({ officeId, closureDate, details, comment }) {
+  assertConfigured();
+  const office = requireUuid(officeId, "officeId");
+  if (!closureDate) throw new Error("closureDate required (YYYY-MM-DD)");
+  if (!Array.isArray(details) || details.length === 0) {
+    throw new Error("details: non-empty array required");
+  }
+  // Sanitize details
+  const sanitized = details.map((d, i) => {
+    if (!d.currency || String(d.currency).length < 2) {
+      throw new Error(`details[${i}].currency required`);
+    }
+    const sys = Number(d.systemTotal);
+    const act = Number(d.actualTotal);
+    if (!Number.isFinite(sys)) throw new Error(`details[${i}].systemTotal invalid`);
+    if (!Number.isFinite(act)) throw new Error(`details[${i}].actualTotal invalid`);
+    return {
+      currency: String(d.currency).toUpperCase(),
+      system_total: sys,
+      actual_total: act,
+      diff: act - sys,
+      note: d.note ? String(d.note).trim() : null,
+    };
+  });
+  const id = unwrap(
+    await supabase.rpc("create_cash_closure", {
+      p_office_id: office,
+      p_closure_date: String(closureDate),
+      p_details: sanitized,
+      p_comment: comment ? String(comment).trim() : null,
+    }),
+    "create_cash_closure"
+  );
+  bumpDataVersion();
+  return id;
+}
+
 // Initial balance adjustment (миграция 0084).
 // Изменяет баланс счёта НЕ напрямую, а через эмиссию account_movement
 // с source_kind='adjustment'. Записывает row в balance_adjustments

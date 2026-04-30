@@ -23,6 +23,7 @@ export const SECTIONS = [
   "income_expense",
   "settings",
   "audit",
+  "accounting",  // 0086: бухгалтерский репорт — только owner/accountant
 ];
 
 export const LEVELS = ["disabled", "view", "edit"];
@@ -41,6 +42,7 @@ const ROLE_DEFAULTS = {
     income_expense: "edit",
     settings: "edit",
     audit: "edit",
+    accounting: "edit",
   },
   admin: {
     transactions: "edit",
@@ -52,6 +54,7 @@ const ROLE_DEFAULTS = {
     income_expense: "edit",
     settings: "edit",
     audit: "edit",
+    accounting: "view",  // admin видит, но approve/reject — только accountant/owner
   },
   manager: {
     transactions: "edit",
@@ -63,6 +66,7 @@ const ROLE_DEFAULTS = {
     income_expense: "disabled",
     settings: "disabled",
     audit: "disabled",
+    accounting: "disabled",
   },
   accountant: {
     transactions: "view",
@@ -74,6 +78,7 @@ const ROLE_DEFAULTS = {
     income_expense: "edit",
     settings: "view",
     audit: "view",
+    accounting: "edit",
   },
 };
 
