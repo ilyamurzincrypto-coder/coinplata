@@ -136,6 +136,9 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
   const [currencyOut, setCurrencyOut] = useState("TRY");
   const [amountOut, setAmountOut] = useState("");
   const [rate, setRate] = useState("");
+  // Кто выдаёт OUT (primary intent). Влияет на отображение баланса в Step 4
+  // и default outKind для legs в Step 5. Per-leg можно переопределить.
+  const [outKind, setOutKind] = useState("ours_now");
 
   // ─── Execution-level state ───────────────────────────────────────
   // IN account (только если in_kind ∈ {ours_now, partner_now})
@@ -164,6 +167,7 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
       setCurrencyOut("TRY");
       setAmountOut("");
       setRate("");
+      setOutKind("ours_now");
       setInAccountId("");
       setInPartnerAccountId("");
       setLegs([]);
@@ -197,16 +201,32 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
   // ─── Auto-init legs when entering Step 5 (Execution) ─────────────
   useEffect(() => {
     if (stepIdx === 4 && legs.length === 0 && amountOut) {
-      setLegs([emptyLeg(currencyOut, amountOut)]);
+      setLegs([{ ...emptyLeg(currencyOut, amountOut), outKind }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stepIdx, currencyOut, amountOut]);
+  }, [stepIdx, currencyOut, amountOut, outKind]);
 
   // Sync legs[].currency when currencyOut changes
   useEffect(() => {
     setLegs((arr) => arr.map((l) => ({ ...l, currency: currencyOut, accountId: "", partnerAccountId: "" })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currencyOut]);
+
+  // При смене top-level outKind — сбрасываем legs к одному с новым default kind.
+  // Так пользователь не путается со старыми account_id из прошлого режима.
+  useEffect(() => {
+    setLegs((arr) => {
+      if (arr.length === 0) return arr;
+      // Берём текущую сумму legs[0] чтобы не потерять введённое;
+      // если ещё пусто — будет amountOut.
+      const currAmount = arr[0].amount || amountOut;
+      return [{
+        ...emptyLeg(currencyOut, currAmount),
+        outKind,
+      }];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [outKind]);
 
   // ─── Smart IN/OUT/Rate sync ──────────────────────────────────────
   // out = in × rate.  Меняешь IN — если rate задан, пересчитываем OUT.
@@ -249,12 +269,6 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
     const total = matched.reduce((s, a) => s + (balanceOf(a.id) || 0), 0);
     return { total, accounts: matched };
   }, [accounts, currencyOut, balanceOf]);
-
-  // Подсказка: показывать ли наш баланс на шаге OUT.
-  // Если деньги у партнёра (IN partner_*) И ни одной leg ours_now — наш
-  // баланс к этой сделке не имеет отношения.
-  const hasOursNowLeg = legs.some((l) => l.outKind === "ours_now");
-  const showOurBalanceHint = !(inKind === "partner_now" || inKind === "partner_later") || hasOursNowLeg || legs.length === 0;
 
   // ─── Coverage check (split: наши vs партнёр) ─────────────────────
   // Considers где деньги ДОЛЖНЫ быть для каждого типа leg:
@@ -483,10 +497,9 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
             currencyOut={currencyOut} setCurrencyOut={setCurrencyOut}
             amountOut={amountOut} onChangeAmountOut={onChangeAmountOut}
             rate={rate} onChangeRate={onChangeRate}
+            outKind={outKind} setOutKind={setOutKind}
             currencyCodes={currencyCodes}
             availableOurOut={availableOurOut}
-            showOurBalanceHint={showOurBalanceHint}
-            inKind={inKind}
             getRate={getRate}
           />
         )}
@@ -495,10 +508,10 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
             inKind={inKind} currencyIn={currencyIn} amountIn={amountIn}
             inAccountId={inAccountId} setInAccountId={setInAccountId}
             inPartnerAccountId={inPartnerAccountId} setInPartnerAccountId={setInPartnerAccountId}
+            outKind={outKind}
             currencyOut={currencyOut} amountOut={amountOut}
             legs={legs} setLegs={setLegs}
             legsSum={legsSum} legsValid={legsValid}
-            coverage={coverage}
             activeAccounts={activeAccounts}
             balanceOf={balanceOf}
           />
@@ -724,44 +737,20 @@ function StepOut({
   currencyOut, setCurrencyOut,
   amountOut, onChangeAmountOut,
   rate, onChangeRate,
+  outKind, setOutKind,
   currencyCodes,
   availableOurOut,
-  showOurBalanceHint,
-  inKind,
   getRate,
 }) {
   const market = currencyIn !== currencyOut ? getRate(currencyIn, currencyOut) : 1;
   const userRate = numberOrZero(rate);
   const spread = userRate > 0 && market > 0 ? ((userRate - market) / market) * 100 : null;
+  const isOurNow = outKind === "ours_now";
+  const isPartnerNow = outKind === "partner_now";
 
   return (
     <div className="space-y-4">
       <SectionTitle icon={ArrowDown} text="Что получает клиент" hint="Валюта + сумма + курс. Любое поле меняешь — остальные пересчитаются." />
-
-      {/* Hint про источник денег — показываем только если наш баланс релевантен */}
-      {currencyOut && showOurBalanceHint && (
-        <div className="rounded-[12px] border border-slate-200 bg-slate-50/60 p-3">
-          <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-            <Wallet className="w-3 h-3" />
-            Доступно по нашим счетам в {currencyOut}
-          </div>
-          <div className="text-[18px] font-bold text-slate-900 tabular-nums">
-            {curSymbol(currencyOut)}{fmt(availableOurOut.total, currencyOut)}
-            <span className="ml-2 text-[12px] text-slate-400 font-semibold">{currencyOut}</span>
-          </div>
-          <div className="text-[10.5px] text-slate-400 mt-0.5">
-            Это сумма по нашим счетам — пригодится, если выдавать со своего.
-            На шаге Реализация можно разнести по партнёрам.
-          </div>
-        </div>
-      )}
-      {currencyOut && !showOurBalanceHint && (
-        <div className="rounded-[12px] border border-indigo-200 bg-indigo-50/40 p-3 text-[11.5px] text-indigo-900 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          IN принимает партнёр — наш баланс {currencyOut} к этой сделке не относится.
-          Кто будет выдавать клиенту — настроишь на шаге Реализация.
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[140px_1fr] gap-3">
         <CurrencyPicker value={currencyOut} onChange={setCurrencyOut} codes={currencyCodes} />
@@ -832,6 +821,63 @@ function StepOut({
           Same-currency обмен: курс = 1.0
         </div>
       )}
+
+      {/* Sent by selector — primary OUT execution intent */}
+      <div>
+        <div className="text-[11px] font-bold text-slate-500 tracking-wide uppercase mb-2">
+          Кто выдаёт клиенту
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          {OUT_KIND_OPTIONS.map((opt) => (
+            <KindOption
+              key={opt.id}
+              selected={outKind === opt.id}
+              onClick={() => setOutKind(opt.id)}
+              {...opt}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Условный баланс — только если выдаём со СВОЕГО счёта */}
+      {currencyOut && isOurNow && (
+        <div className="rounded-[12px] border border-slate-200 bg-slate-50/60 p-3">
+          <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            <Wallet className="w-3 h-3" />
+            Доступно на наших счетах в {currencyOut}
+          </div>
+          <div className="text-[18px] font-bold text-slate-900 tabular-nums">
+            {curSymbol(currencyOut)}{fmt(availableOurOut.total, currencyOut)}
+            <span className="ml-2 text-[12px] text-slate-400 font-semibold">{currencyOut}</span>
+          </div>
+          {numberOrZero(amountOut) > availableOurOut.total && (
+            <div className="text-[10.5px] text-rose-700 font-bold mt-1">
+              ⚠ Не хватает {fmt(numberOrZero(amountOut) - availableOurOut.total, currencyOut)} {currencyOut}
+              — на шаге Реализация можно разбить на legs (часть нашими, часть через партнёра).
+            </div>
+          )}
+        </div>
+      )}
+      {currencyOut && isPartnerNow && (
+        <div className="rounded-[12px] border border-indigo-200 bg-indigo-50/40 p-3 text-[11.5px] text-indigo-900 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            Выдаёт партнёр со своего счёта.
+            <span className="block opacity-80 mt-0.5">Конкретный счёт выберешь на шаге Реализация. Наш баланс к этой сделке не относится.</span>
+          </div>
+        </div>
+      )}
+      {currencyOut && (outKind === "ours_later" || outKind === "partner_later") && (
+        <div className="rounded-[12px] border border-amber-200 bg-amber-50/50 p-3 text-[11.5px] text-amber-900 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div>
+            {outKind === "ours_later"
+              ? "Выдадим клиенту позже — будет создано обязательство «мы должны клиенту»."
+              : "Партнёр обязался выдать клиенту позже — будет создано внешнее обязательство «партнёр → клиент»."}
+            <span className="block opacity-70 mt-0.5">Деньги сейчас не двигаются. Никакой баланс не нужен.</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -842,10 +888,10 @@ function StepExecution({
   inKind, currencyIn, amountIn,
   inAccountId, setInAccountId,
   inPartnerAccountId, setInPartnerAccountId,
+  outKind,
   currencyOut, amountOut,
   legs, setLegs,
   legsSum, legsValid,
-  coverage,
   activeAccounts,
   balanceOf,
 }) {
@@ -855,30 +901,34 @@ function StepExecution({
   );
 
   const updateLeg = (id, patch) => setLegs((arr) => arr.map((l) => l.id === id ? { ...l, ...patch } : l));
-  const addLeg = () => setLegs((arr) => [...arr, emptyLeg(currencyOut, "")]);
   const removeLeg = (id) => setLegs((arr) => arr.length > 1 ? arr.filter((l) => l.id !== id) : arr);
 
-  // Auto-distribute: split equally
-  const autoDistribute = () => {
-    const out = numberOrZero(amountOut);
-    if (out <= 0 || legs.length === 0) return;
-    const per = out / legs.length;
-    setLegs((arr) => arr.map((l, i) => ({
-      ...l,
-      amount: i === arr.length - 1
-        ? fmtNum(out - per * (arr.length - 1), 4)
-        : fmtNum(per, 4)
-    })));
+  // Total / Allocated / Remaining
+  const total = numberOrZero(amountOut);
+  const allocated = legsSum;
+  const remaining = total - allocated;
+  const overflow = remaining < -0.00000001;
+  const ok = Math.abs(remaining) < 0.00000001 && allocated > 0;
+
+  // Новый leg → default amount = remaining (положительный остаток),
+  // outKind по умолчанию = top-level outKind (или последний leg.outKind).
+  const addLeg = () => {
+    const lastKind = legs.length > 0 ? legs[legs.length - 1].outKind : outKind;
+    const defaultAmount = remaining > 0 ? fmtNum(remaining, 4) : "";
+    setLegs((arr) => [...arr, {
+      ...emptyLeg(currencyOut, defaultAmount),
+      outKind: lastKind,
+    }]);
   };
 
   return (
     <div className="space-y-4">
-      <SectionTitle icon={Calculator} text="Реализация" hint="Откуда берём деньги для IN и как распределяем OUT по счетам." />
+      <SectionTitle icon={Calculator} text="Реализация" hint="Откуда берём деньги для IN и как распределяем OUT." />
 
       {/* IN execution */}
       {(inKind === "ours_now" || inKind === "partner_now") && (
-        <div className="rounded-[12px] border border-rose-200 bg-rose-50/30 p-3.5 space-y-2">
-          <div className="text-[11px] font-bold text-rose-700 uppercase tracking-wider">
+        <div className="rounded-[12px] border border-slate-200 bg-slate-50/50 p-3.5 space-y-2">
+          <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
             IN — куда поступает {fmt(numberOrZero(amountIn), currencyIn)} {currencyIn}
           </div>
           {inKind === "ours_now" ? (
@@ -905,99 +955,10 @@ function StepExecution({
         </div>
       )}
 
-      {/* Coverage check — раздельно: наши счета и партнёрские */}
-      <div className={`rounded-[12px] border-2 p-3 ${
-        !coverage.hasAnyRequirement
-          ? "border-slate-200 bg-slate-50"
-          : coverage.okOurs
-            ? "border-emerald-200 bg-emerald-50"
-            : "border-rose-200 bg-rose-50"
-      }`}>
-        <div className="flex items-center gap-2 mb-2">
-          {!coverage.hasAnyRequirement ? (
-            <AlertCircle className="w-4 h-4 text-slate-400" />
-          ) : coverage.okOurs ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          ) : (
-            <AlertTriangle className="w-4 h-4 text-rose-600" />
-          )}
-          <span className="text-[12px] font-bold">
-            {!coverage.hasAnyRequirement
-              ? "Нет немедленных выдач (всё отложено)"
-              : coverage.okOurs
-                ? "Ликвидность OK"
-                : "Не хватает на наших счетах"}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Наши счета */}
-          <div className="rounded-[8px] border border-slate-200 bg-white p-2.5">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              С наших счетов
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div>
-                <div className="text-[9px] text-slate-500 mb-0.5">Требуется</div>
-                <div className="text-[13px] font-bold text-slate-900 tabular-nums">
-                  {curSymbol(currencyOut)}{fmt(coverage.requiredOurs, currencyOut)}
-                </div>
-              </div>
-              <div>
-                <div className="text-[9px] text-slate-500 mb-0.5">Доступно</div>
-                <div className={`text-[13px] font-bold tabular-nums ${coverage.okOurs ? "text-emerald-700" : "text-rose-700"}`}>
-                  {curSymbol(currencyOut)}{fmt(coverage.availableOurs, currencyOut)}
-                </div>
-              </div>
-            </div>
-            {coverage.requiredOurs > 0 && (
-              <div className={`mt-1.5 text-[10px] font-bold tabular-nums text-center ${coverage.okOurs ? "text-emerald-700" : "text-rose-700"}`}>
-                {coverage.okOurs
-                  ? `Запас +${fmt(coverage.surplusOurs, currencyOut)}`
-                  : `Не хватает −${fmt(coverage.shortfallOurs, currencyOut)}`}
-              </div>
-            )}
-          </div>
-          {/* Партнёр */}
-          <div className="rounded-[8px] border border-slate-200 bg-white p-2.5">
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-              С партнёрских счетов
-            </div>
-            <div className="text-center">
-              <div className="text-[9px] text-slate-500 mb-0.5">Требуется</div>
-              <div className="text-[13px] font-bold text-slate-900 tabular-nums">
-                {curSymbol(currencyOut)}{fmt(coverage.requiredPartner, currencyOut)}
-              </div>
-              <div className="text-[9.5px] text-slate-400 mt-1">
-                {coverage.requiredPartner > 0
-                  ? "Баланс конкретного счёта виден в leg-карточке ниже"
-                  : "Партнёрские leg'и не требуются"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {!coverage.okOurs && coverage.requiredOurs > 0 && (
-          <div className="mt-2 text-[10.5px] text-rose-700">
-            💡 Раздели leg на части: что-то с нашего счёта, остальное через партнёра или отложенно.
-          </div>
-        )}
-      </div>
-
-      {/* OUT legs */}
-      <div className="rounded-[12px] border border-emerald-200 bg-emerald-50/20 p-3.5 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">
-            OUT — распределение {fmt(numberOrZero(amountOut), currencyOut)} {currencyOut}
-          </div>
-          <button
-            type="button"
-            onClick={autoDistribute}
-            className="text-[10.5px] font-semibold text-slate-500 hover:text-slate-900 underline-offset-2 hover:underline"
-            title="Поделить amountOut поровну между legs"
-          >
-            Распределить поровну
-          </button>
+      {/* OUT legs — manual allocation */}
+      <div className="rounded-[12px] border border-slate-200 bg-white p-3.5 space-y-2">
+        <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+          OUT — распределение исполнения
         </div>
 
         {legs.map((leg, idx) => (
@@ -1017,23 +978,60 @@ function StepExecution({
         <button
           type="button"
           onClick={addLeg}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-[10px] border-2 border-dashed border-emerald-300 text-emerald-700 text-[12px] font-semibold hover:border-emerald-400 hover:bg-emerald-50 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-[10px] border-2 border-dashed border-slate-300 text-slate-600 text-[12px] font-semibold hover:border-slate-400 hover:bg-slate-50 transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Добавить leg
         </button>
+      </div>
 
-        {/* Sum check */}
-        <div className={`rounded-[8px] border px-3 py-2 flex items-center justify-between ${
-          legsValid
-            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-            : "border-rose-200 bg-rose-50 text-rose-700"
-        }`}>
-          <span className="text-[11px] font-bold">Сумма legs</span>
-          <span className="text-[12px] font-bold tabular-nums">
-            {fmt(legsSum, currencyOut)} / {fmt(numberOrZero(amountOut), currencyOut)} {currencyOut}
-            {legsValid ? " ✔" : ` (${legsSum > numberOrZero(amountOut) ? "избыток" : "недостаёт"})`}
+      {/* Allocation tile — Total / Allocated / Remaining */}
+      <div className={`rounded-[12px] border-2 p-3 ${
+        overflow
+          ? "border-rose-300 bg-rose-50"
+          : ok
+            ? "border-emerald-300 bg-emerald-50"
+            : "border-amber-300 bg-amber-50"
+      }`}>
+        <div className="flex items-center gap-2 mb-2">
+          {overflow ? (
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+          ) : ok ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-amber-600" />
+          )}
+          <span className="text-[12px] font-bold">
+            {overflow
+              ? "Превышение — сумма legs больше total"
+              : ok
+                ? "Распределение завершено"
+                : "Нужно распределить остаток"}
           </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div className="text-[9.5px] font-bold text-slate-500 tracking-wider uppercase mb-0.5">Total required</div>
+            <div className="text-[14px] font-bold text-slate-900 tabular-nums">
+              {curSymbol(currencyOut)}{fmt(total, currencyOut)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[9.5px] font-bold text-slate-500 tracking-wider uppercase mb-0.5">Allocated</div>
+            <div className="text-[14px] font-bold text-slate-900 tabular-nums">
+              {curSymbol(currencyOut)}{fmt(allocated, currencyOut)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[9.5px] font-bold text-slate-500 tracking-wider uppercase mb-0.5">
+              {overflow ? "Overflow" : "Remaining"}
+            </div>
+            <div className={`text-[14px] font-bold tabular-nums ${
+              overflow ? "text-rose-700" : ok ? "text-emerald-700" : "text-amber-700"
+            }`}>
+              {overflow ? "+" : ""}{curSymbol(currencyOut)}{fmt(Math.abs(remaining), currencyOut)}
+            </div>
+          </div>
         </div>
       </div>
     </div>
