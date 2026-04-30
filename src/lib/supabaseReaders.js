@@ -683,6 +683,33 @@ export async function loadAccountingDealDetail(dealId) {
   };
 }
 
+// loadLatestCashClosure — самое свежее активное (не отменённое) закрытие
+// для офиса. Используется в CashClosureBadge для определения статуса.
+// Возвращает { id, closureDate, createdAt, managerId } или null.
+export async function loadLatestCashClosure(officeId) {
+  const sb = ensureSupabase();
+  if (!officeId) return null;
+  const { data, error } = await sb.from("cash_closures")
+    .select("id, office_id, manager_id, closure_date, created_at")
+    .eq("office_id", officeId)
+    .is("cancelled_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return null;
+    throw error;
+  }
+  if (!data) return null;
+  return {
+    id: data.id,
+    officeId: data.office_id,
+    managerId: data.manager_id,
+    closureDate: data.closure_date,
+    createdAt: data.created_at,
+  };
+}
+
 // loadCashClosures — список закрытий кассы (для AccountingTab + раскрытия)
 export async function loadCashClosures(filters = {}) {
   const sb = ensureSupabase();

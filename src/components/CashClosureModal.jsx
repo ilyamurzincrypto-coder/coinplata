@@ -29,6 +29,7 @@ import {
 import Modal from "./ui/Modal.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
+import { useAuth } from "../store/auth.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { officeName } from "../store/data.js";
@@ -57,6 +58,7 @@ const numberOrZero = (v) => {
 export default function CashClosureModal({ open, currentOffice, onClose, onCreated }) {
   const { accounts, balanceOf } = useAccounts();
   const { offices } = useOffices();
+  const { currentUser } = useAuth();
   const { codes: allCurrencyCodes } = useCurrencies();
   const officeId = typeof currentOffice === "string" ? currentOffice : currentOffice?.id;
   const office = offices.find((o) => o.id === officeId);
@@ -242,6 +244,8 @@ export default function CashClosureModal({ open, currentOffice, onClose, onCreat
     >
       {step === "input" && (
         <InputStep
+          office={office}
+          currentUser={currentUser}
           rows={rows}
           actualMap={actualMap} setActualMap={setActualMap}
           inputRefs={inputRefs}
@@ -264,6 +268,7 @@ export default function CashClosureModal({ open, currentOffice, onClose, onCreat
           comment={comment}
           closureDate={closureDate}
           office={office}
+          currentUser={currentUser}
           onBack={() => setStep("input")}
           onConfirm={handleSubmit}
           hasDeviationWithoutComment={hasDeviationWithoutComment}
@@ -297,9 +302,40 @@ export default function CashClosureModal({ open, currentOffice, onClose, onCreat
   );
 }
 
+// ─── Office banner ─────────────────────────────────────────────────────
+//
+// Жирный блок-плашка сверху модалки. Чтобы менеджер не закрыл не ту кассу.
+// Office не редактируется здесь — берётся из навбара (currentOffice prop).
+
+function OfficeBanner({ office, currentUser, closureDate, variant = "input" }) {
+  const officeNm = office?.name || "—";
+  const managerNm = currentUser?.full_name || currentUser?.email || "—";
+  return (
+    <div className="rounded-[12px] border-2 border-indigo-300 bg-indigo-50 px-4 py-3">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-0.5">
+        🔒 {variant === "summary" ? "Закрываем кассу" : "Закрытие кассы"}
+      </div>
+      <div className="text-[18px] font-extrabold text-indigo-900 tracking-tight leading-tight">
+        {officeNm}
+      </div>
+      <div className="mt-1.5 flex items-center gap-3 text-[10.5px] text-indigo-800/80">
+        <span>
+          <span className="opacity-60">Менеджер:</span>{" "}
+          <span className="font-bold">{managerNm}</span>
+        </span>
+        <span>
+          <span className="opacity-60">Дата:</span>{" "}
+          <span className="font-bold">{formatDateRu(closureDate)}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Step 1: Input ──────────────────────────────────────────────────────
 
 function InputStep({
+  office, currentUser,
   rows, actualMap, setActualMap, inputRefs, continueRef,
   popularCurrencies, onAddCurrency, onRemoveCurrency,
   comment, setComment, closureDate, setClosureDate,
@@ -322,6 +358,9 @@ function InputStep({
   return (
     <>
       <div className="p-5 space-y-3">
+        {/* Office banner — prominent, отделяет какую кассу закрываем */}
+        <OfficeBanner office={office} currentUser={currentUser} closureDate={closureDate} />
+
         {/* Date */}
         <div>
           <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
@@ -463,7 +502,7 @@ function CurrencyInputRow({ row, value, onChange, onCopySystem, onKeyDown, input
 // ─── Step 2: Summary ───────────────────────────────────────────────────
 
 function SummaryStep({
-  rows, noteMap, setNoteMap, comment, closureDate, office,
+  rows, noteMap, setNoteMap, comment, closureDate, office, currentUser,
   onBack, onConfirm, hasDeviationWithoutComment, busy,
 }) {
   const canConfirm = !hasDeviationWithoutComment && !busy;
@@ -471,23 +510,18 @@ function SummaryStep({
   return (
     <>
       <div className="p-5 space-y-3">
-        {/* Header info */}
-        <div className="rounded-[10px] bg-slate-50 border border-slate-200 px-3 py-2.5 text-[12px] text-slate-700 space-y-0.5">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">📍</span>
-            <span className="font-semibold">{office?.name || "—"}</span>
+        {/* Office banner — то же что в InputStep, но текст «Closing cash for ...» */}
+        <OfficeBanner
+          office={office}
+          currentUser={currentUser}
+          closureDate={closureDate}
+          variant="summary"
+        />
+        {comment && (
+          <div className="rounded-[10px] bg-slate-50 border border-slate-200 px-3 py-2 text-[12px] text-slate-600 italic">
+            «{comment}»
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">📅</span>
-            <span>{formatDateRu(closureDate)}</span>
-          </div>
-          {comment && (
-            <div className="flex items-start gap-1.5">
-              <span className="text-slate-400">💬</span>
-              <span className="italic text-slate-500">«{comment}»</span>
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Per-row breakdown */}
         <div className="space-y-2">

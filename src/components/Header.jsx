@@ -4,6 +4,7 @@ import { Globe, Building2 } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import Select from "./ui/Select.jsx";
 import OfficeSwitcher from "./OfficeSwitcher.jsx";
+import CashClosureBadge from "./CashClosureBadge.jsx";
 import ProfileMenu from "./ProfileMenu.jsx";
 import NotificationsBell from "./NotificationsBell.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -77,7 +78,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           {page === "cashier" && (
             <>
               <div className="hidden md:block h-5 w-px bg-slate-200" />
-              <div className="hidden md:block">
+              <div className="hidden md:flex items-center gap-2">
                 {isScopedManager ? (
                   <div className="inline-flex items-center gap-1.5 bg-slate-100 border border-slate-200 rounded-[8px] px-2.5 py-1 text-[12px] font-semibold text-slate-700">
                     <Building2 className="w-3 h-3 text-slate-500" />
@@ -92,6 +93,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
                     />
                   </div>
                 )}
+                <CashClosureBadge currentOffice={currentOffice} />
               </div>
             </>
           )}
@@ -133,10 +135,15 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
         ))}
       </div>
 
-      {/* Mobile office switcher */}
-      {page === "cashier" && !isScopedManager && (
-        <div className="md:hidden px-4 pb-3 pt-1">
-          <SegmentedControl options={scopedOffices} value={currentOffice} onChange={onOfficeChange} size="sm" />
+      {/* Mobile office switcher + badge */}
+      {page === "cashier" && (
+        <div className="md:hidden px-4 pb-3 pt-1 flex items-center gap-2">
+          {!isScopedManager && (
+            <div className="flex-1 min-w-0">
+              <SegmentedControl options={scopedOffices} value={currentOffice} onChange={onOfficeChange} size="sm" />
+            </div>
+          )}
+          <CashClosureBadge currentOffice={currentOffice} />
         </div>
       )}
     </header>

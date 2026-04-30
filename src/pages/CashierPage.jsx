@@ -489,15 +489,6 @@ export default function CashierPage({
                 <span className="text-[11px] font-bold tracking-tight">OTC</span>
                 <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">с партнёром</span>
               </button>
-              <button
-                onClick={() => setCashClosureOpen(true)}
-                title="Закрытие кассы — сверка системного и фактического остатка в конце дня"
-                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-amber-300 text-amber-700 hover:bg-amber-50 hover:border-amber-400 transition-colors shrink-0"
-              >
-                <Plus className="w-5 h-5 mb-1" strokeWidth={2.5} />
-                <span className="text-[11px] font-bold tracking-tight">Закрыть</span>
-                <span className="text-[9px] text-amber-600 font-semibold mt-0.5">кассу</span>
-              </button>
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
@@ -601,6 +592,8 @@ export default function CashierPage({
         }}
       />
 
+      {/* CashClosureModal вынесен в Header через CashClosureBadge — здесь
+          оставляем fallback-открытие из старого state для обратной совместимости. */}
       <CashClosureModal
         open={cashClosureOpen}
         currentOffice={currentOffice}
