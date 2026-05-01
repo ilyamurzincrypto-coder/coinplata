@@ -121,7 +121,10 @@ where not exists (
 
 -- ─── Step 3: расширение v_dual_balance_check на наши accounts ────────────
 -- Теперь view покрывает обе стороны: partner_accounts И accounts.
-create or replace view public.v_dual_balance_check as
+-- DROP+CREATE — структура колонок меняется (legacy_id вместо
+-- partner_account_id), CREATE OR REPLACE такое не позволяет.
+drop view if exists public.v_dual_balance_check;
+create view public.v_dual_balance_check as
 with old_partner as (
   select
     pa.id           as legacy_id,
