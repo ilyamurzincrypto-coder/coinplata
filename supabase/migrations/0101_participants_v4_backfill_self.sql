@@ -24,9 +24,10 @@ begin
     raise exception 'self-participant не найден. Запусти 0100 сначала.';
   end if;
 
+  -- accounts таблица не имеет note — notes в новой остаётся null
   insert into public.participant_accounts (
     participant_id, name, currency_code, channel, network_id,
-    address, office_id, notes, active, created_at, created_by,
+    address, office_id, active, created_at, created_by,
     legacy_account_id
   )
   select
@@ -37,7 +38,6 @@ begin
     a.network_id,
     a.address,
     a.office_id,
-    a.note,
     a.active,
     a.created_at,
     a.created_by,
