@@ -126,7 +126,8 @@ create table if not exists public.participant_movements (
     'manual','rpc','migration','trigger','seed','import'
   )),
   -- Связь со сделкой (если есть). Nullable — settlements / topups без deal.
-  deal_id                  uuid references public.deals(id) on delete set null,
+  -- public.deals.id типа bigint, не uuid.
+  deal_id                  bigint references public.deals(id) on delete set null,
   -- Универсальная ссылка для не-deal источников (settlement_group, etc.)
   source_ref_type          text,
   source_ref_id            text,
