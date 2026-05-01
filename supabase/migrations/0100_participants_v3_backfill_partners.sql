@@ -174,12 +174,8 @@ select
     else 'adjustment'
   end as movement_type,
   'migration' as source_kind,
-  case
-    when pm.source_kind in ('otc_in','otc_out')
-         and pm.source_ref_id ~ '^\d+$'
-      then pm.source_ref_id::bigint
-    else null
-  end as deal_id,
+  -- deal_id через LEFT JOIN: если deal удалён, d.id = null (orphan-safe).
+  d.id as deal_id,
   pm.movement_group_id,
   case
     when pm.source_kind in ('otc_in','otc_out') then 'deal'
@@ -195,6 +191,10 @@ select
 from public.partner_account_movements pm
 join public.participant_accounts ppa
   on ppa.legacy_partner_account_id = pm.partner_account_id
+left join public.deals d
+  on pm.source_kind in ('otc_in','otc_out')
+ and pm.source_ref_id ~ '^\d+$'
+ and d.id = pm.source_ref_id::bigint
 where not exists (
   select 1 from public.participant_movements pmm
    where pmm.legacy_partner_movement_id = pm.id
