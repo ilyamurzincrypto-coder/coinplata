@@ -193,8 +193,11 @@ join public.participant_accounts ppa
   on ppa.legacy_partner_account_id = pm.partner_account_id
 left join public.deals d
   on pm.source_kind in ('otc_in','otc_out')
- and pm.source_ref_id ~ '^\d+$'
- and d.id = pm.source_ref_id::bigint
+ and d.id = case
+              when pm.source_ref_id ~ '^\d+$'
+                then pm.source_ref_id::bigint
+              else null
+            end
 where not exists (
   select 1 from public.participant_movements pmm
    where pmm.legacy_partner_movement_id = pm.id
