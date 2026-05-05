@@ -435,6 +435,27 @@ export default function ExchangeForm({
     }
   }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
 
+  // Если введённый counterparty matches существующий client с
+  // непустым referrer_id — авто-предлагаем галочку «Referral client».
+  // Юзер может вручную снять. Срабатывает при изменении counterparty
+  // (новый ввод → новая re-evaluation).
+  const matchedClientReferrer = useMemo(() => {
+    const nick = (counterparty || "").trim().toLowerCase();
+    if (!nick || !counterparties || counterparties.length === 0) return null;
+    const cp = counterparties.find(
+      (c) => (c.nickname || "").toLowerCase() === nick
+    );
+    if (!cp?.referrerId) return null;
+    const referrer = counterparties.find((c) => c.id === cp.referrerId);
+    return referrer || null;
+  }, [counterparty, counterparties]);
+  useEffect(() => {
+    if (matchedClientReferrer && !referral) {
+      setReferral(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchedClientReferrer]);
+
   // Wallet-конфликт для incoming (curIn crypto + txHash задан).
   const inWalletCheck = useMemo(() => {
     if (!isCryptoCode(curIn) || !inTxHash.trim()) return null;
@@ -1838,7 +1859,11 @@ export default function ExchangeForm({
               onChange={setReferral}
               icon={<UserPlus className="w-3 h-3" />}
               label={t("referral_client")}
-              sub={`Deduct ${settings.referralPct}% from profit`}
+              sub={
+                matchedClientReferrer
+                  ? `Привёл: ${matchedClientReferrer.name || matchedClientReferrer.nickname} · −${settings.referralPct}% от прибыли`
+                  : `Deduct ${settings.referralPct}% from profit`
+              }
               tone="indigo"
               suffix={referral ? `-${settings.referralPct}%` : null}
             />
