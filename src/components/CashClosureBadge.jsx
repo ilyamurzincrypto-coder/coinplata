@@ -13,8 +13,9 @@
 // Subscribe на onDataBump — refresh после создания/отмены closure.
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, AlertTriangle, Lock } from "lucide-react";
+import { CheckCircle2, AlertTriangle, Lock, Clock } from "lucide-react";
 import CashClosureModal from "./CashClosureModal.jsx";
+import Modal from "./ui/Modal.jsx";
 import { loadLatestCashClosure } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -84,6 +85,9 @@ export default function CashClosureBadge({ currentOffice }) {
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  // confirmInfo: { minsLeft, closeTime } — open the styled confirm modal
+  // вместо системного window.confirm.
+  const [confirmInfo, setConfirmInfo] = useState(null);
 
   // Fetch + subscribe
   useEffect(() => {
@@ -155,18 +159,19 @@ export default function CashClosureBadge({ currentOffice }) {
   const { state, lastDate } = classifyStatus(latest);
 
   // Перед открытием модалки — если ещё рабочий день (>10 мин до
-  // закрытия) и касса ещё открыта (state !== closed), спрашиваем
-  // подтверждение через стандартный confirm().
+  // закрытия) и касса ещё открыта (state !== closed), показываем
+  // стилизованное подтверждение (вместо системного window.confirm).
   const handleOpen = () => {
     const close = parseHHMMtoToday(closeTimeStr);
     const mins = close ? minutesUntil(close) : null;
     if (state !== "closed" && mins != null && mins > WARN_THRESHOLD_MIN) {
-      const ok = window.confirm(
-        t("cc_confirm_during_workday") ||
-          "Рабочий день ещё идёт. Точно закрыть кассу?"
-      );
-      if (!ok) return;
+      setConfirmInfo({ minsLeft: Math.ceil(mins), closeTime: closeTimeStr });
+      return;
     }
+    setModalOpen(true);
+  };
+  const proceedFromConfirm = () => {
+    setConfirmInfo(null);
     setModalOpen(true);
   };
   // Apple-style: тот же визуальный язык что OfficeSwitcher рядом —
@@ -223,6 +228,50 @@ export default function CashClosureBadge({ currentOffice }) {
         currentOffice={officeId}
         onClose={() => setModalOpen(false)}
       />
+
+      {/* Apple-style confirm: workday still in progress */}
+      <Modal
+        open={!!confirmInfo}
+        onClose={() => setConfirmInfo(null)}
+        title={t("cc_confirm_title")}
+        width="sm"
+      >
+        <div className="p-5 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-[13.5px] text-slate-700 leading-snug">
+                {t("cc_confirm_during_workday")}
+              </p>
+              {confirmInfo && (
+                <div className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-slate-500 tabular-nums bg-slate-50 border border-slate-200 rounded-[8px] px-2.5 py-1">
+                  <span className="font-semibold text-slate-700">{confirmInfo.closeTime}</span>
+                  <span>·</span>
+                  <span>~{confirmInfo.minsLeft} {t("cc_confirm_min_left")}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirmInfo(null)}
+            className="px-4 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 text-[13px] font-semibold hover:border-slate-300 hover:bg-slate-50 transition-colors"
+          >
+            {t("cc_confirm_continue")}
+          </button>
+          <button
+            type="button"
+            onClick={proceedFromConfirm}
+            className="px-4 py-2 rounded-[10px] bg-rose-500 text-white text-[13px] font-semibold hover:bg-rose-600 transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
+          >
+            {t("cc_confirm_close_anyway")}
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }
