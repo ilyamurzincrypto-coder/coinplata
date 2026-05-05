@@ -545,19 +545,29 @@ export default function CashierPage({
           {/* RIGHT: header + ExchangeForm */}
           <section>
             <div className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
-              <header className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500 text-white shrink-0">
-                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-bold text-slate-900 tracking-tight">
-                      {t("cta_new_exchange_title")}
-                    </div>
-                    <div className="text-[11px] text-slate-500 truncate">
-                      {t("drawer_minimize_hint")}
-                    </div>
-                  </div>
+              <header className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                {/* Тип сделки — apple-style toggle (сразу видно с кем работаем) */}
+                <div className="inline-flex bg-slate-100 p-1 rounded-[12px] gap-1">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-[12.5px] font-semibold bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
+                    title="Текущий режим: сделка с клиентом"
+                  >
+                    <Plus className="w-3 h-3 text-emerald-500" />
+                    С клиентом
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      minimizeCreate();
+                      setOtcWizardOpen(true);
+                    }}
+                    title="Переключиться на сделку с партнёром (OTC wizard)"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-[12.5px] font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+                  >
+                    <ArrowLeftRight className="w-3 h-3" />
+                    С партнёром
+                  </button>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
