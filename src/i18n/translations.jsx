@@ -36,6 +36,7 @@ const DICT = {
     // Rates bar
     rates: "Rates",
     edit_rates: "Edit rates",
+    rates_change_short: "Edit",
     rate_updated: "updated",
 
     // Balances
@@ -1027,6 +1028,7 @@ const DICT = {
 
     rates: "Курсы",
     edit_rates: "Редактировать курсы",
+    rates_change_short: "Изменить",
     rate_updated: "обновлено",
 
     balances: "Балансы",
@@ -1991,6 +1993,7 @@ const DICT = {
 
     rates: "Kurlar",
     edit_rates: "Kurları düzenle",
+    rates_change_short: "Düzenle",
     rate_updated: "güncellendi",
 
     balances: "Bakiyeler",

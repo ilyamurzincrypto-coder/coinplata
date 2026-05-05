@@ -9,7 +9,7 @@
 // Бейдж OFC на паре = override активен (курс отличается от global).
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { TrendingUp, ArrowRight, Star, Settings2, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
@@ -256,10 +256,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             <button
               type="button"
               onClick={onOpenRates}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-[6px] bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 transition-colors shrink-0"
-              title="Полная страница курсов"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-white border border-slate-200 text-slate-900 text-[12.5px] font-semibold hover:border-slate-300 hover:shadow-sm transition-all duration-200 shrink-0"
+              title={t("edit_rates") || "Редактировать курсы"}
             >
-              <Settings2 className="w-3 h-3" />
+              <Pencil className="w-3.5 h-3.5 text-slate-400" />
+              <span>{t("rates_change_short") || "Изменить"}</span>
             </button>
           )}
         </div>
