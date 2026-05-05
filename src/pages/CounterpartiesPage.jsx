@@ -1,34 +1,64 @@
 // src/pages/CounterpartiesPage.jsx
 //
-// Top-level раздел «Контрагенты» — управление OTC-партнёрами.
-// Раньше был внутри Settings → Партнёры. Теперь — отдельный пункт навбара,
-// чтобы не путать с обычными клиентами и быть доступным для менеджеров
-// без захода в Settings.
+// Top-level раздел «Контрагенты» — единая точка для клиентов и партнёров.
+// Раньше:
+//   • Clients — отдельная страница (LTV, профили клиентов)
+//   • Counterparties — обёртка над PartnersTab (ровно тот же CRUD что в Settings)
+//   • Obligations — отдельная страница с 6-направленным flow-фильтром
+// Сейчас:
+//   • Список — слитые клиенты + партнёры с chip-фильтром по типу
+//   • Обязательства — таб с тем же flow-фильтром, контент 1:1 со старой
+//     ObligationsPage
 //
-// Контент: re-use PartnersTab (поиск, добавление, раскрытие, счета,
-// история движений). UI идентичен, контейнер обёрнут стандартным
-// max-w-страничным layout'ом.
+// CRUD счетов партнёров остаётся в Settings → Партнёры (на 2.1 это ок;
+// унифицированный профиль партнёра — в шаге 2.2).
 
-import React from "react";
-import { Handshake } from "lucide-react";
-import PartnersTab from "./settings/PartnersTab.jsx";
+import React, { useState } from "react";
+import { Users2, Scale } from "lucide-react";
+import ListTab from "./counterparties/ListTab.jsx";
+import ObligationsTab from "./counterparties/ObligationsTab.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
+
+const TABS = [
+  { id: "list", key: "cp_tab_list", icon: Users2, component: ListTab },
+  { id: "obligations", key: "cp_tab_obligations", icon: Scale, component: ObligationsTab },
+];
 
 export default function CounterpartiesPage() {
+  const { t } = useTranslation();
+  const [active, setActive] = useState("list");
+  const ActiveComponent = TABS.find((x) => x.id === active)?.component || ListTab;
+
   return (
     <main className="max-w-[1300px] mx-auto px-6 py-6 space-y-5">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-[10px] bg-indigo-50 border border-indigo-200 flex items-center justify-center">
-          <Handshake className="w-4 h-4 text-indigo-600" />
-        </div>
-        <div>
-          <h1 className="text-[22px] font-bold tracking-tight text-slate-900">Контрагенты</h1>
-          <p className="text-[12.5px] text-slate-500 mt-0.5">
-            OTC партнёры — для сделок с участием контрагента
-          </p>
-        </div>
+      <div>
+        <h1 className="text-[24px] font-bold tracking-tight">{t("cp_title")}</h1>
+        <p className="text-[13px] text-slate-500 mt-1">{t("cp_subtitle")}</p>
       </div>
 
-      <PartnersTab />
+      {/* Tab strip — паттерн идентичен CapitalPage */}
+      <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+        {TABS.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = active === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActive(tab.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+                isActive
+                  ? "bg-slate-900 text-white"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              }`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : "text-slate-400"}`} />
+              {t(tab.key)}
+            </button>
+          );
+        })}
+      </div>
+
+      <ActiveComponent />
     </main>
   );
 }
