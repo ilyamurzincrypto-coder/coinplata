@@ -1,0 +1,335 @@
+// src/components/clients/PartnerProfileModal.jsx
+//
+// Профиль партнёра — открывается из ListTab по клику на partner row.
+// Показывает: основная инфа, балансы по счетам, обязательства партнёра,
+// settlement-actions (Внёс / Забрал) и история движений по каждому счёту.
+//
+// CRUD счетов остаётся в Settings → Партнёры (там добавление/редактирование/
+// удаление). Здесь — только обзор + операции.
+
+import React, { useMemo, useState } from "react";
+import {
+  Banknote,
+  Building2,
+  Coins,
+  Wallet,
+  History as HistoryIcon,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Send,
+  Phone,
+  Scale,
+} from "lucide-react";
+import Modal from "../ui/Modal.jsx";
+import { fmt, curSymbol } from "../../utils/money.js";
+import { usePartners } from "../../store/partners.jsx";
+import { usePartnerAccounts } from "../../store/partnerAccounts.jsx";
+import { useObligations } from "../../store/obligations.jsx";
+import PartnerSettlementModal from "../settings/PartnerSettlementModal.jsx";
+import PartnerAccountHistoryModal from "../settings/PartnerAccountHistoryModal.jsx";
+import { useTranslation } from "../../i18n/translations.jsx";
+
+const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
+
+export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
+  const { t } = useTranslation();
+  const { partners } = usePartners();
+  const { accountsByPartner, balanceOf } = usePartnerAccounts();
+  const { obligations } = useObligations();
+
+  const partner = partnerId ? partners.find((p) => p.id === partnerId) : null;
+
+  // Все счета партнёра (включая неактивные — показываем off-бейджем).
+  const allAccounts = useMemo(
+    () => (partnerId ? accountsByPartner(partnerId) : []),
+    [partnerId, accountsByPartner]
+  );
+  const activeAccountsCount = useMemo(
+    () => allAccounts.filter((a) => a.active).length,
+    [allAccounts]
+  );
+
+  // Obligations отфильтрованные по partner_id (см. supabaseReaders 0079:
+  // obligations.partnerId).
+  const partnerObligations = useMemo(() => {
+    if (!partner || !Array.isArray(obligations)) return [];
+    return obligations.filter(
+      (o) => o.partnerId === partner.id && o.status === "open"
+    );
+  }, [partner, obligations]);
+
+  const obligationTotals = useMemo(() => {
+    let weOwe = 0;
+    let theyOwe = 0;
+    partnerObligations.forEach((o) => {
+      const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
+      const inBase = toBase(remaining, o.currency);
+      if (o.direction === "we_owe") weOwe += inBase;
+      else if (o.direction === "they_owe") theyOwe += inBase;
+    });
+    return { weOwe, theyOwe, net: theyOwe - weOwe };
+  }, [partnerObligations, toBase]);
+
+  // Суммарный баланс по всем активным счетам — конвертируем каждый в base.
+  // Семантика partner_account balance: + → они нам должны, − → мы им должны.
+  const totalBalanceBase = useMemo(
+    () =>
+      allAccounts
+        .filter((a) => a.active)
+        .reduce((sum, a) => sum + toBase(balanceOf(a.id), a.currency), 0),
+    [allAccounts, balanceOf, toBase]
+  );
+
+  const [settlementState, setSettlementState] = useState(null); // { account, partnerName, mode }
+  const [historyAccount, setHistoryAccount] = useState(null);
+
+  if (!partner) return null;
+
+  const subtitle = [partner.telegram, partner.phone].filter(Boolean).join(" · ") || "—";
+
+  return (
+    <Modal
+      open={!!partner}
+      onClose={onClose}
+      title={partner.name}
+      subtitle={subtitle}
+      width="2xl"
+    >
+      <div className="p-5 space-y-4 max-h-[70vh] overflow-auto">
+        {/* Stats row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <StatCard label={t("pp_accounts_short")} value={activeAccountsCount} />
+          <StatCard
+            label={t("pp_total_balance")}
+            value={`${totalBalanceBase >= 0 ? "+" : ""}${sym}${fmt(totalBalanceBase, base)}`}
+            tone={totalBalanceBase >= 0 ? "emerald" : "rose"}
+          />
+          <StatCard
+            label={t("pp_we_owe_short")}
+            value={`${sym}${fmt(obligationTotals.weOwe, base)}`}
+            tone={obligationTotals.weOwe > 0 ? "rose" : null}
+          />
+          <StatCard
+            label={t("pp_they_owe_short")}
+            value={`${sym}${fmt(obligationTotals.theyOwe, base)}`}
+            tone={obligationTotals.theyOwe > 0 ? "emerald" : null}
+          />
+        </div>
+
+        {!partner.active && (
+          <div className="text-[11px] font-bold text-slate-500 bg-slate-200 inline-flex items-center px-2 py-0.5 rounded uppercase tracking-wider">
+            {t("pp_deactivated")}
+          </div>
+        )}
+
+        {partner.note && (
+          <div className="text-[12px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+            <span className="font-semibold text-slate-500 uppercase text-[10px] tracking-wider mr-1.5">
+              {t("pp_note")}:
+            </span>
+            {partner.note}
+          </div>
+        )}
+
+        {/* Obligations card — рендерим только если есть открытые */}
+        {partnerObligations.length > 0 && (
+          <div className="border border-amber-200 bg-amber-50/50 rounded-[10px] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Scale className="w-3 h-3" />
+                {t("pp_open_obligations")} · {partnerObligations.length}
+              </h3>
+              <div className="flex items-center gap-3 text-[11px] tabular-nums">
+                {obligationTotals.theyOwe > 0 && (
+                  <span className="font-semibold text-emerald-700">
+                    {t("pp_they_owe_label")}: {sym}{fmt(obligationTotals.theyOwe, base)}
+                  </span>
+                )}
+                {obligationTotals.weOwe > 0 && (
+                  <span className="font-semibold text-rose-700">
+                    {t("pp_we_owe_label")}: {sym}{fmt(obligationTotals.weOwe, base)}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              {partnerObligations.map((o) => {
+                const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
+                const cur = o.currency;
+                const isWeOwe = o.direction === "we_owe";
+                return (
+                  <div
+                    key={o.id}
+                    className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-md text-[11px]"
+                  >
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                        isWeOwe
+                          ? "bg-rose-100 text-rose-700"
+                          : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {isWeOwe ? "we owe" : "they owe"}
+                    </span>
+                    <span className="font-semibold tabular-nums text-slate-900">
+                      {fmt(remaining, cur)} {cur}
+                    </span>
+                    {(o.paidAmount || 0) > 0 && (
+                      <span className="text-[10px] text-slate-500">
+                        paid {fmt(o.paidAmount, cur)} / {fmt(o.amount, cur)}
+                      </span>
+                    )}
+                    <span className="text-slate-400 text-[10px] flex-1 min-w-0 truncate">
+                      {o.note || ""}
+                    </span>
+                    {o.dealId && (
+                      <span className="text-slate-400 text-[10px] tabular-nums">
+                        #{o.dealId}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Accounts */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5">
+              <Wallet className="w-3.5 h-3.5 text-slate-500" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+                {t("pp_accounts_title")} · {allAccounts.length}
+              </h3>
+            </div>
+            <span className="text-[11px] text-slate-400">
+              {t("pp_crud_hint_inline")}
+            </span>
+          </div>
+          {allAccounts.length === 0 ? (
+            <div className="text-[12px] text-slate-400 italic py-3 text-center bg-slate-50 border border-slate-200 rounded-[10px]">
+              {t("pp_no_accounts")}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+              {allAccounts.map((acc) => (
+                <PartnerAccountRow
+                  key={acc.id}
+                  account={acc}
+                  balance={balanceOf(acc.id)}
+                  onSettlement={(mode) =>
+                    setSettlementState({ account: acc, partnerName: partner.name, mode })
+                  }
+                  onHistory={() => setHistoryAccount(acc)}
+                  t={t}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+        >
+          {t("close")}
+        </button>
+      </div>
+
+      {/* Nested modals */}
+      <PartnerSettlementModal
+        open={!!settlementState}
+        mode={settlementState?.mode}
+        partnerAccount={settlementState?.account}
+        partnerName={settlementState?.partnerName}
+        onClose={() => setSettlementState(null)}
+      />
+      <PartnerAccountHistoryModal
+        open={!!historyAccount}
+        account={historyAccount}
+        onClose={() => setHistoryAccount(null)}
+      />
+    </Modal>
+  );
+}
+
+function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
+  const Icon = TYPE_ICONS[account.type] || Wallet;
+  return (
+    <div
+      className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-[10px] border ${
+        account.active
+          ? "bg-slate-50/60 border-slate-200"
+          : "bg-slate-100/60 border-slate-200 opacity-60"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+          <Icon className="w-3.5 h-3.5" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold text-slate-900 truncate">
+            {account.name}
+            {!account.active && (
+              <span className="ml-1.5 text-[8.5px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+                off
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] text-slate-500 tabular-nums">
+            {curSymbol(account.currency)}
+            {fmt(balance, account.currency)}{" "}
+            <span className="opacity-60">{account.currency}</span>
+            {account.networkId && (
+              <span className="ml-1 text-slate-400">· {account.networkId}</span>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onHistory}
+          className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70"
+          title={t("pp_history_tip")}
+        >
+          <HistoryIcon className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {account.active && (
+        <div className="flex items-center gap-1 flex-wrap">
+          <button
+            onClick={() => onSettlement("inflow")}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
+            title={t("pp_inflow_tip")}
+          >
+            <ArrowDownLeft className="w-3 h-3" />
+            {t("pp_inflow")}
+          </button>
+          <button
+            onClick={() => onSettlement("outflow")}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
+            title={t("pp_outflow_tip")}
+          >
+            <ArrowUpRight className="w-3 h-3" />
+            {t("pp_outflow")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, tone, small }) {
+  const toneCls =
+    tone === "emerald" ? "text-emerald-700 bg-emerald-50 border-emerald-100"
+    : tone === "rose" ? "text-rose-700 bg-rose-50 border-rose-100"
+    : "text-slate-900 bg-slate-50/60 border-slate-200";
+  return (
+    <div className={`rounded-[8px] border p-2 ${toneCls}`}>
+      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{label}</div>
+      <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
+        {value}
+      </div>
+    </div>
+  );
+}

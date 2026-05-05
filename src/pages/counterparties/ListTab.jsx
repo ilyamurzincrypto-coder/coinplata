@@ -9,7 +9,7 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import {
-  Search, Send, Phone, Users, Handshake, Archive, Trash2, ArchiveRestore, UserPlus, ExternalLink,
+  Search, Send, Phone, Users, Handshake, Archive, Trash2, ArchiveRestore, UserPlus,
 } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { usePartners } from "../../store/partners.jsx";
@@ -21,6 +21,7 @@ import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
 import { ClientTag } from "../../components/CounterpartySelect.jsx";
 import { ClientProfileModal } from "../../components/clients/ClientProfileModal.jsx";
+import { PartnerProfileModal } from "../../components/clients/PartnerProfileModal.jsx";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import {
   rpcArchiveClient, rpcDeleteClient, updateClientRow, withToast, isUuid,
@@ -42,6 +43,7 @@ export default function ListTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // all | client | partner
   const [archiveFilter, setArchiveFilter] = useState("active"); // active | archived | all
+  // profileFor: { kind: 'client'|'partner', id } — раздельный модал на тип
   const [profileFor, setProfileFor] = useState(null);
   const [busyId, setBusyId] = useState(null);
 
@@ -329,8 +331,8 @@ export default function ListTab() {
                   base={base}
                   sym={sym}
                   onClick={() => {
-                    if (r.kind === "client" && r.id) setProfileFor(r.id);
-                    // partner click: 2.2 откроет унифицированный профиль
+                    if (!r.id) return;
+                    setProfileFor({ kind: r.kind, id: r.id });
                   }}
                   onArchive={(archive) => handleArchive(r, archive)}
                   onDelete={() => handleDelete(r)}
@@ -354,23 +356,22 @@ export default function ListTab() {
         </div>
       </section>
 
-      {/* Hint about partner CRUD location */}
-      {(typeFilter === "all" || typeFilter === "partner") && (
-        <div className="text-[11.5px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 flex items-center gap-2">
-          <ExternalLink className="w-3 h-3 flex-shrink-0" />
-          <span>{t("cp_partners_crud_hint")}</span>
-        </div>
-      )}
-
-      {/* Client profile modal */}
+      {/* Profile modals — раздельные на client / partner. Клик по строке выбирает */}
       <ClientProfileModal
-        clientId={profileFor}
+        clientId={profileFor?.kind === "client" ? profileFor.id : null}
         onClose={() => setProfileFor(null)}
         counterparties={counterparties}
         transactions={transactions}
         walletsByClient={walletsByClient}
         updateCounterparty={updateCounterparty}
         obligations={obligations}
+        base={base}
+        sym={sym}
+        toBase={toBase}
+      />
+      <PartnerProfileModal
+        partnerId={profileFor?.kind === "partner" ? profileFor.id : null}
+        onClose={() => setProfileFor(null)}
         base={base}
         sym={sym}
         toBase={toBase}
