@@ -266,11 +266,16 @@ export default function ExchangeForm({
   const [counterparty, setCounterparty] = useState(
     starter?.counterparty || draft?.counterparty || ""
   );
-  // Партнёр — отдельное поле рядом с клиентом. Free-text + datalist
-  // автокомплит из existing partners. Auto-create на submit если не нашли.
-  const [partnerName, setPartnerName] = useState(
-    starter?.partnerName || draft?.partnerName || ""
+  // Тип контрагента: 'client' | 'partner'. Переключается toggle'ом над
+  // полем Counterparty. ОДНО поле, не два — имя контрагента живёт в
+  // counterparty state, тип — в cpType.
+  const [cpType, setCpType] = useState(
+    starter?.cpType || draft?.cpType || "client"
   );
+  // Partner-имя совпадает с counterparty когда cpType==='partner';
+  // храним отдельно только для совместимости с существующим draft (если
+  // юзер переключил тип, мы не теряем то что было).
+  const partnerName = cpType === "partner" ? counterparty : "";
   // Manager selector — только для owner/admin. По умолчанию текущий
   // пользователь, но он может выбрать менеджера от имени которого
   // создаётся сделка. На submit → tx.managerId.
@@ -1048,9 +1053,8 @@ export default function ExchangeForm({
         : null,
       counterparty,
       counterpartyId: clientId || null,
-      partnerName: partnerName?.trim() || null,
-      // partnerId резолвится в handleSubmit ДО buildTx — прокинут через
-      // closure через extra arg (см. handleSubmit ниже)
+      // partnerName и partnerId выставляются в handleSubmit поверх tx
+      // (зависят от cpType-toggle).
       referral,
       comment,
       // Если IN через партнёра — наш accountId = null, в БД пишется
@@ -1105,25 +1109,24 @@ export default function ExchangeForm({
   const handleSubmit = async () => {
     if (!canSubmit) return;
 
-    // СНАЧАЛА resolve/create counterparty — нужен clientId для tx (monitoring будет
-    // использовать tx.counterpartyId при auto-confirm для привязки wallet).
-    const cp = addCounterparty(counterparty);
-    const clientId = cp?.id || null;
-
-    // Аналогично — Partner: если заполнено поле, ищем в activePartners
-    // case-insensitive по name; если не нашли — создаём через addPartner.
-    // Auto-create без отдельной модалки — кассир просто пишет имя в поле.
+    // Резолв контрагента в зависимости от типа toggle.
+    //   client  → addCounterparty (existing flow + ensureClient в CashierPage)
+    //   partner → ищем в activePartners ci by name; если нет — addPartner.
+    let clientId = null;
     let partnerId = null;
-    const pNick = (partnerName || "").trim();
-    if (pNick) {
+    const cpNick = (counterparty || "").trim();
+    if (cpType === "client") {
+      const cp = addCounterparty(counterparty);
+      clientId = cp?.id || null;
+    } else if (cpType === "partner" && cpNick) {
       const existing = activePartners.find(
-        (p) => (p.name || "").toLowerCase() === pNick.toLowerCase()
+        (p) => (p.name || "").toLowerCase() === cpNick.toLowerCase()
       );
       if (existing) {
         partnerId = existing.id;
       } else {
         try {
-          const created = await addPartner({ name: pNick });
+          const created = await addPartner({ name: cpNick });
           partnerId = created?.id || null;
         } catch (err) {
           // eslint-disable-next-line no-console
@@ -1134,6 +1137,7 @@ export default function ExchangeForm({
 
     const tx = buildTx(clientId);
     if (partnerId) tx.partnerId = partnerId;
+    tx.cpType = cpType;
 
     // Auto-detect wallets. upsertWallet сам справляется с дублями и конфликтами —
     // в случае conflict (другой клиент) ничего не пишется, UI уже показал warning.
@@ -1180,7 +1184,6 @@ export default function ExchangeForm({
       setAmtIn("");
       setOutputs([emptyOutput("TRY")]);
       setCounterparty("");
-      setPartnerName("");
       setReferral(false);
       setComment("");
       setInTxHash("");
@@ -1386,22 +1389,44 @@ export default function ExchangeForm({
         </div>
       )}
 
-      {/* CLIENT + PARTNER — рядом, в grid 1:1 на ≥md, друг под другом на mobile.
-          Партнёр — free-text с datalist автокомплитом + auto-create на submit. */}
-      <div className="px-5 pt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Client */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded-full bg-indigo-100 ring-1 ring-indigo-200/60 flex items-center justify-center">
-              <UserPlus className="w-3 h-3 text-indigo-700" />
-            </div>
-            <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-700 uppercase">
+      {/* COUNTERPARTY — единственное поле с toggle [Клиент] [Партнёр]
+          сверху. Меняет: лейбл + что показывает dropdown (clients vs
+          partners). Остальные поля формы (IN/OUT/rate) не трогаются. */}
+      <div className="px-5 pt-5">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          {/* Toggle */}
+          <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] gap-0.5">
+            <button
+              type="button"
+              onClick={() => setCpType("client")}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11.5px] font-bold tracking-[0.08em] uppercase transition-all ${
+                cpType === "client"
+                  ? "bg-white text-indigo-700 ring-2 ring-indigo-400 shadow-[0_2px_8px_-2px_rgba(99,102,241,0.35)]"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <UserPlus className="w-3 h-3" />
               Клиент
-            </span>
-            <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
-              required
-            </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setCpType("partner")}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11.5px] font-bold tracking-[0.08em] uppercase transition-all ${
+                cpType === "partner"
+                  ? "bg-white text-violet-700 ring-2 ring-violet-400 shadow-[0_2px_8px_-2px_rgba(139,92,246,0.35)]"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <UserPlus className="w-3 h-3" />
+              Партнёр
+            </button>
           </div>
+          <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
+            required
+          </span>
+        </div>
+
+        {cpType === "client" ? (
           <div
             className={`rounded-[14px] border transition-colors p-2 ${
               counterparty.trim()
@@ -1432,36 +1457,23 @@ export default function ExchangeForm({
               );
             })()}
           </div>
-        </div>
-
-        {/* Partner — free-text + datalist + auto-create */}
-        <div>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-6 h-6 rounded-full bg-violet-100 ring-1 ring-violet-200/60 flex items-center justify-center">
-              <UserPlus className="w-3 h-3 text-violet-700" />
-            </div>
-            <span className="text-[10.5px] font-bold tracking-[0.12em] text-violet-700 uppercase">
-              Партнёр
-            </span>
-            <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-slate-100">
-              опционально
-            </span>
-          </div>
+        ) : (
           <div
             className={`rounded-[14px] border p-2 transition-colors ${
-              partnerName.trim()
+              counterparty.trim()
                 ? "border-violet-200/80 bg-gradient-to-br from-violet-50/40 to-white"
-                : "border-slate-200 bg-white"
+                : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
             }`}
           >
             <input
               type="text"
               list="exchange-form-partner-list"
-              value={partnerName}
-              onChange={(e) => setPartnerName(e.target.value)}
+              value={counterparty}
+              onChange={(e) => setCounterparty(e.target.value)}
               placeholder="Sheriff, OTC-партнёр…"
               className="w-full bg-transparent border-0 outline-none text-[14px] text-slate-900 placeholder:text-slate-400 px-2 py-2"
               autoComplete="off"
+              autoFocus={!counterparty}
             />
             <datalist id="exchange-form-partner-list">
               {activePartners.map((p) => (
@@ -1470,18 +1482,18 @@ export default function ExchangeForm({
                 </option>
               ))}
             </datalist>
-            {partnerName.trim() &&
+            {counterparty.trim() &&
               !activePartners.some(
                 (p) =>
                   (p.name || "").toLowerCase() ===
-                  partnerName.trim().toLowerCase()
+                  counterparty.trim().toLowerCase()
               ) && (
                 <div className="mt-1 px-2 text-[10.5px] text-violet-600 font-semibold">
                   ↳ новый партнёр будет создан при сохранении
                 </div>
               )}
           </div>
-        </div>
+        )}
       </div>
 
       {/* Quick templates — показываем только в create-режиме */}
