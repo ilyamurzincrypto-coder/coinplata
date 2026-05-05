@@ -410,7 +410,7 @@ export default function CashierPage({
               transactions. Внутри sidebar динамически считается сколько
               пар поместится через ResizeObserver — пустоты нет. */}
           <div
-            className={`grid grid-cols-1 gap-6 lg:grid-cols-[minmax(300px,340px)_1fr] ${
+            className={`grid grid-cols-1 gap-6 lg:grid-cols-[minmax(320px,380px)_1fr] ${
               sidebarExpanded
                 ? "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'sidebar_tx']"
                 : "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'tx_tx']"

@@ -243,8 +243,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const hasHidden = !expanded && !query && totalCount > showingCount;
 
   return (
-    <aside className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] h-full flex flex-col">
-      <header className="px-3 py-2.5 border-b border-slate-100 shrink-0">
+    <aside className="bg-white rounded-[18px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_24px_-8px_rgba(15,23,42,0.08)] h-full flex flex-col overflow-hidden">
+      <header className="px-3 py-2.5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/40 to-transparent">
         <div className="flex items-center justify-between gap-1">
           <div className="flex items-center gap-1.5 min-w-0">
             <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
