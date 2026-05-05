@@ -10,10 +10,11 @@
 // value/onChange — partner_account_id (UUID).
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { ChevronDown, Handshake, Wallet, Banknote, Building2, Coins, Search, X } from "lucide-react";
+import { ChevronDown, Handshake, Wallet, Banknote, Building2, Coins, Search, X, Plus } from "lucide-react";
 import { usePartners } from "../store/partners.jsx";
 import { usePartnerAccounts } from "../store/partnerAccounts.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
+import PartnerAccountFormModal from "./settings/PartnerAccountFormModal.jsx";
 
 const TYPE_ICONS = { cash: Banknote, bank: Building2, crypto: Coins };
 
@@ -21,19 +22,41 @@ export default function PartnerAccountSelect({
   value,                  // partner_account_id (uuid) | ""
   onChange,               // (partnerAccountId) => void
   currency,               // обязательный фильтр по валюте счёта
+  partnerId = null,       // если задан — ограничиваем выбор счетами этого партнёра
   placeholder = "Счёт партнёра",
 }) {
   const { activePartners } = usePartners();
-  const { activeByCurrency, balanceOf, accounts } = usePartnerAccounts();
+  const { activeByCurrency, balanceOf, accounts, addPartnerAccount } = usePartnerAccounts();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [addAccOpen, setAddAccOpen] = useState(false);
   const rootRef = useRef(null);
 
-  // Доступные счета по валюте
+  // Доступные счета по валюте; если partnerId задан — ещё и по партнёру.
   const availableAccs = useMemo(() => {
     if (!currency) return [];
-    return activeByCurrency(currency);
-  }, [activeByCurrency, currency]);
+    let list = activeByCurrency(currency);
+    if (partnerId) list = list.filter((a) => a.partnerId === partnerId);
+    return list;
+  }, [activeByCurrency, currency, partnerId]);
+
+  const partnerHint = useMemo(
+    () => (partnerId ? activePartners.find((p) => p.id === partnerId) || null : null),
+    [partnerId, activePartners]
+  );
+
+  const handleQuickAddSubmit = async (data) => {
+    if (!partnerId) return;
+    try {
+      const created = await addPartnerAccount({ partnerId, ...data });
+      setAddAccOpen(false);
+      if (created?.id) onChange?.(created.id);
+      setOpen(false);
+    } catch (err) {
+      // eslint-disable-next-line no-alert, no-console
+      alert("Не удалось создать счёт: " + (err?.message || err));
+    }
+  };
 
   // Группируем по партнёру
   const grouped = useMemo(() => {
@@ -167,12 +190,25 @@ export default function PartnerAccountSelect({
               <Wallet className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
               <div className="text-[12px] text-slate-500 font-medium">
                 {availableAccs.length === 0
-                  ? `Нет счетов партнёров в ${currency || "этой валюте"}`
+                  ? partnerHint
+                    ? `У ${partnerHint.name} нет счёта в ${currency || ""}`
+                    : `Нет счетов партнёров в ${currency || "этой валюте"}`
                   : "Ничего не найдено"}
               </div>
-              <div className="text-[10.5px] text-slate-400 mt-1">
-                Создайте счёт в Settings → Партнёры → раскрой партнёра → +Счёт
-              </div>
+              {partnerHint ? (
+                <button
+                  type="button"
+                  onClick={() => setAddAccOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-violet-600 text-white text-[12px] font-semibold hover:bg-violet-700 transition-colors shadow-[0_4px_14px_-4px_rgba(139,92,246,0.5)]"
+                >
+                  <Plus className="w-3 h-3" />
+                  Создать счёт {currency ? `· ${currency}` : ""}
+                </button>
+              ) : (
+                <div className="text-[10.5px] text-slate-400 mt-1">
+                  Создайте счёт в Settings → Партнёры → раскрой партнёра → +Счёт
+                </div>
+              )}
             </div>
           ) : (
             <div className="py-1">
@@ -216,8 +252,30 @@ export default function PartnerAccountSelect({
               ))}
             </div>
           )}
+          {/* Quick-add button в шапке списка (если partnerId задан и
+              счета уже есть — кассир может всё равно добавить ещё один) */}
+          {partnerHint && grouped.length > 0 && (
+            <div className="px-2 py-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setAddAccOpen(true)}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-violet-50 text-violet-700 text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
+              >
+                <Plus className="w-3 h-3" />
+                Добавить ещё счёт {currency ? `· ${currency}` : ""}
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      <PartnerAccountFormModal
+        open={addAccOpen}
+        onClose={() => setAddAccOpen(false)}
+        onSubmit={handleQuickAddSubmit}
+        partnerName={partnerHint?.name || ""}
+        initial={currency ? { currency } : undefined}
+      />
     </div>
   );
 }

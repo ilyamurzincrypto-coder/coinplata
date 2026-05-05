@@ -39,6 +39,7 @@ import CounterpartySelect from "./CounterpartySelect.jsx";
 import AccountSelect from "./AccountSelect.jsx";
 import DealTemplatesBar from "./DealTemplatesBar.jsx";
 import PartnerAccountSelect from "./PartnerAccountSelect.jsx";
+import AddPartnerModal from "./clients/AddPartnerModal.jsx";
 import { recordDealUsage } from "../utils/dealTemplates.js";
 import { officeName } from "../store/data.js";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -272,6 +273,7 @@ export default function ExchangeForm({
   const [cpType, setCpType] = useState(
     starter?.cpType || draft?.cpType || "client"
   );
+  const [addPartnerOpen, setAddPartnerOpen] = useState(false);
   // Partner-имя совпадает с counterparty когда cpType==='partner';
   // храним отдельно только для совместимости с существующим draft (если
   // юзер переключил тип, мы не теряем то что было).
@@ -446,6 +448,19 @@ export default function ExchangeForm({
       // quota exceeded / disabled — silent fail
     }
   }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
+
+  // partnerHint — id партнёра когда cpType==='partner' и имя совпадает
+  // с существующим. Передаём в PartnerAccountSelect для filter +
+  // inline quick-add счёта. На client-mode = null (не фильтруем).
+  const partnerHintId = useMemo(() => {
+    if (cpType !== "partner") return null;
+    const nick = (counterparty || "").trim().toLowerCase();
+    if (!nick) return null;
+    const match = activePartners.find(
+      (p) => (p.name || "").toLowerCase() === nick
+    );
+    return match?.id || null;
+  }, [cpType, counterparty, activePartners]);
 
   // Если введённый counterparty matches существующий client с
   // непустым referrer_id — авто-предлагаем галочку «Referral client».
@@ -1465,16 +1480,27 @@ export default function ExchangeForm({
                 : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
             }`}
           >
-            <input
-              type="text"
-              list="exchange-form-partner-list"
-              value={counterparty}
-              onChange={(e) => setCounterparty(e.target.value)}
-              placeholder="Sheriff, OTC-партнёр…"
-              className="w-full bg-transparent border-0 outline-none text-[14px] text-slate-900 placeholder:text-slate-400 px-2 py-2"
-              autoComplete="off"
-              autoFocus={!counterparty}
-            />
+            <div className="flex items-stretch gap-1.5">
+              <input
+                type="text"
+                list="exchange-form-partner-list"
+                value={counterparty}
+                onChange={(e) => setCounterparty(e.target.value)}
+                placeholder="Sheriff, OTC-партнёр…"
+                className="flex-1 bg-transparent border-0 outline-none text-[14px] text-slate-900 placeholder:text-slate-400 px-2 py-2"
+                autoComplete="off"
+                autoFocus={!counterparty}
+              />
+              <button
+                type="button"
+                onClick={() => setAddPartnerOpen(true)}
+                className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-violet-600 text-white text-[11px] font-semibold hover:bg-violet-700 transition-colors shrink-0"
+                title="Добавить нового партнёра"
+              >
+                <UserPlus className="w-3 h-3" />
+                Add
+              </button>
+            </div>
             <datalist id="exchange-form-partner-list">
               {activePartners.map((p) => (
                 <option key={p.id} value={p.name}>
@@ -1489,12 +1515,21 @@ export default function ExchangeForm({
                   counterparty.trim().toLowerCase()
               ) && (
                 <div className="mt-1 px-2 text-[10.5px] text-violet-600 font-semibold">
-                  ↳ новый партнёр будет создан при сохранении
+                  ↳ новый партнёр будет создан при сохранении (или жми Add для модалки с полями)
                 </div>
               )}
           </div>
         )}
       </div>
+
+      <AddPartnerModal
+        open={addPartnerOpen}
+        onClose={() => setAddPartnerOpen(false)}
+        onSuccess={(created) => {
+          setAddPartnerOpen(false);
+          if (created?.name) setCounterparty(created.name);
+        }}
+      />
 
       {/* Quick templates — показываем только в create-режиме */}
       {!isEdit && (
@@ -1609,6 +1644,7 @@ export default function ExchangeForm({
                   value={inPartnerAccountId}
                   onChange={setInPartnerAccountId}
                   currency={curIn}
+                  partnerId={partnerHintId}
                   placeholder="Счёт партнёра — куда поступили деньги"
                 />
                 <p className="mt-1.5 text-[10.5px] text-indigo-700/80">
@@ -1721,6 +1757,7 @@ export default function ExchangeForm({
                   availableInCurrency={resolveLegBalance(o)}
                   currentOffice={currentOffice}
                   counterpartyId={resolveClientId(counterparty)}
+                  partnerHintId={partnerHintId}
                   officeBalancesByCurrency={officeBalancesByCurrency}
                   offices={activeOffices}
                   applyMinFee={applyMinFee}
@@ -2486,6 +2523,7 @@ function OutputRow({
   availableInCurrency,
   currentOffice,
   counterpartyId,
+  partnerHintId,
   officeBalancesByCurrency,
   offices,
   applyMinFee,
@@ -3027,6 +3065,7 @@ function OutputRow({
               value={o.partnerAccountId || ""}
               onChange={(id) => onUpdate({ partnerAccountId: id })}
               currency={o.currency}
+              partnerId={partnerHintId}
               placeholder="Со счёта партнёра"
             />
             <p className="mt-1 text-[10px] text-indigo-700/80">
