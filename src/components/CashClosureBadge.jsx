@@ -18,6 +18,30 @@ import CashClosureModal from "./CashClosureModal.jsx";
 import { loadLatestCashClosure } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
+import { useOffices } from "../store/offices.jsx";
+import { useToast } from "../lib/toast.jsx";
+
+// Парсит "HH:MM" → Date на сегодня в локалтайме браузера. Если строка
+// невалидна — возвращает null. Офисы хранят workingHours.{start,end}
+// в локальном времени офиса; для предупреждения «осталось 10 мин»
+// сейчас используем локалтайм браузера — этого достаточно когда
+// браузер и офис в одной зоне (что верно для кассира на месте).
+function parseHHMMtoToday(hhmm) {
+  if (!hhmm || typeof hhmm !== "string") return null;
+  const [hh, mm] = hhmm.split(":").map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return null;
+  const d = new Date();
+  d.setHours(hh, mm, 0, 0);
+  return d;
+}
+
+// Минут до момента target. Отрицательно если target уже прошёл.
+function minutesUntil(target) {
+  if (!target) return Infinity;
+  return (target.getTime() - Date.now()) / 60000;
+}
+
+const WARN_THRESHOLD_MIN = 10;
 
 function classifyStatus(latest) {
   if (!latest) return { state: "open", lastDate: null };
@@ -52,7 +76,11 @@ function relativeDay(iso) {
 
 export default function CashClosureBadge({ currentOffice }) {
   const { t } = useTranslation();
+  const { findOffice } = useOffices();
+  const toast = useToast();
   const officeId = typeof currentOffice === "string" ? currentOffice : currentOffice?.id;
+  const office = officeId ? findOffice(officeId) : null;
+  const closeTimeStr = office?.workingHours?.end || null;
   const [latest, setLatest] = useState(null);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -80,9 +108,67 @@ export default function CashClosureBadge({ currentOffice }) {
     return () => { cancelled = true; unsub?.(); };
   }, [officeId]);
 
+  // Уведомление «через 10 мин закрытие, посчитайте кассу» — раз в день
+  // на офис, через useToast().info(). Тикер раз в минуту, гард в
+  // localStorage чтобы тост не повторялся.
+  useEffect(() => {
+    if (!officeId || !closeTimeStr) return;
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const stamp = `cc_warn:${officeId}:${todayKey}`;
+    let cancelled = false;
+
+    const tick = () => {
+      if (cancelled) return;
+      try {
+        if (localStorage.getItem(stamp)) return;
+      } catch {}
+      const close = parseHHMMtoToday(closeTimeStr);
+      if (!close) return;
+      const mins = minutesUntil(close);
+      // Окно [0; WARN_THRESHOLD_MIN]. Если уже прошло (mins<0) — поздно,
+      // не показываем.
+      if (mins > 0 && mins <= WARN_THRESHOLD_MIN) {
+        const officeName = office?.name || "";
+        const msg = t("cc_warn_close_soon")
+          ? t("cc_warn_close_soon")
+              .replace("{office}", officeName)
+              .replace("{min}", String(Math.max(1, Math.ceil(mins))))
+              .replace("{time}", closeTimeStr)
+          : `${officeName} закрывается через ${Math.max(1, Math.ceil(mins))} мин — посчитайте кассу`;
+        toast.info(msg);
+        try {
+          localStorage.setItem(stamp, "1");
+        } catch {}
+      }
+    };
+
+    tick(); // immediate проверка при монтировании
+    const id = setInterval(tick, 60000); // далее каждую минуту
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [officeId, closeTimeStr, office?.name, t, toast]);
+
   if (!officeId) return null;
 
   const { state, lastDate } = classifyStatus(latest);
+
+  // Перед открытием модалки — если ещё рабочий день (>10 мин до
+  // закрытия) и касса ещё открыта (state !== closed), спрашиваем
+  // подтверждение через стандартный confirm().
+  const handleOpen = () => {
+    const close = parseHHMMtoToday(closeTimeStr);
+    const mins = close ? minutesUntil(close) : null;
+    if (state !== "closed" && mins != null && mins > WARN_THRESHOLD_MIN) {
+      const ok = window.confirm(
+        t("cc_confirm_during_workday") ||
+          "Рабочий день ещё идёт. Точно закрыть кассу?"
+      );
+      if (!ok) return;
+    }
+    setModalOpen(true);
+  };
   // Apple-style: тот же визуальный язык что OfficeSwitcher рядом —
   // bg-white, border-slate-200, rounded-[10px], px-3 py-1.5, text-[13px].
   // Состояние выражается ТОЛЬКО через цветную точку слева. Без цветных фонов.
@@ -116,7 +202,7 @@ export default function CashClosureBadge({ currentOffice }) {
     <>
       <button
         type="button"
-        onClick={() => setModalOpen(true)}
+        onClick={handleOpen}
         title={`${config.label} · ${config.sub}`}
         className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-[10px] border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
       >
