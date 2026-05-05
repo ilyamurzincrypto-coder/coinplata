@@ -1,16 +1,19 @@
-// src/pages/ReferralsPage.jsx
-// Все суммы в base currency.
-// Bonus считаем от volume в базовой валюте через percentOf.
+// src/pages/capital/ReferralsTab.jsx
+// Referrals переехали из отдельного top-level раздела сюда — это финансовая
+// метрика менеджеров, по смыслу принадлежит Капиталу.
+//
+// Логика 1:1 с прежней ReferralsPage; убрана только внешняя <main> обёртка
+// и h1 — CapitalPage уже отвечает за page chrome.
 
 import React, { useMemo } from "react";
 import { Users, TrendingUp } from "lucide-react";
-import { useTransactions } from "../store/transactions.jsx";
-import { useAuth } from "../store/auth.jsx";
-import { useBaseCurrency } from "../store/baseCurrency.js";
-import { useTranslation } from "../i18n/translations.jsx";
-import { fmt, percentOf, curSymbol } from "../utils/money.js";
+import { useTransactions } from "../../store/transactions.jsx";
+import { useAuth } from "../../store/auth.jsx";
+import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useTranslation } from "../../i18n/translations.jsx";
+import { fmt, percentOf, curSymbol } from "../../utils/money.js";
 
-export default function ReferralsPage() {
+export default function ReferralsTab() {
   const { t } = useTranslation();
   const { transactions } = useTransactions();
   const { users, settings } = useAuth();
@@ -25,9 +28,7 @@ export default function ReferralsPage() {
         const referralTx = myTx.filter((x) => x.referral);
 
         const volume = myTx.reduce((sum, x) => sum + toBase(x.amtIn, x.curIn), 0);
-        // tx.profit хранится в USD — нормализуем в base
         const income = myTx.reduce((sum, x) => sum + toBase(x.profit || 0, "USD"), 0);
-        // Bonus: settings.referralPct от volume (volume уже в base)
         const bonus = referralTx.reduce(
           (sum, x) => sum + percentOf(toBase(x.amtIn, x.curIn), settings.referralPct, 2),
           0
@@ -48,15 +49,12 @@ export default function ReferralsPage() {
   const totalReferralDeals = stats.reduce((s, x) => s + x.referralDeals, 0);
 
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-6">
+    <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-[24px] font-bold tracking-tight">{t("referrals_title")}</h1>
-          <p className="text-[13px] text-slate-500 mt-1">
-            Referral bonus:{" "}
-            <span className="font-semibold text-slate-900">{settings.referralPct}%</span> of volume
-          </p>
-        </div>
+        <p className="text-[13px] text-slate-500">
+          Referral bonus:{" "}
+          <span className="font-semibold text-slate-900">{settings.referralPct}%</span> of volume
+        </p>
         <div className="inline-flex items-center gap-2 text-[12px] bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-[10px] px-3 py-1.5 font-semibold">
           <TrendingUp className="w-3.5 h-3.5" />
           {totalReferralDeals} referral deals
@@ -122,6 +120,6 @@ export default function ReferralsPage() {
           </table>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

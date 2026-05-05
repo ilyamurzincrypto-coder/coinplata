@@ -38,7 +38,6 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
       { id: "nav:accounts", kind: "page", label: t("nav_accounts"), page: "accounts" },
       { id: "nav:clients", kind: "page", label: t("nav_clients"), page: "clients" },
       { id: "nav:obligations", kind: "page", label: t("nav_obligations"), page: "obligations" },
-      { id: "nav:referrals", kind: "page", label: t("nav_referrals"), page: "referrals" },
       { id: "nav:settings", kind: "page", label: t("nav_settings"), page: "settings" },
     ],
     [t]

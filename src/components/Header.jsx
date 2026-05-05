@@ -19,7 +19,6 @@ const NAV_PAGES = [
   { id: "clients", key: "nav_clients", section: "clients" },
   { id: "counterparties", key: "nav_counterparties", section: "counterparties" },
   { id: "obligations", key: "nav_obligations", section: "obligations" },
-  { id: "referrals", key: "nav_referrals", section: "referrals" },
   { id: "settings", key: "nav_settings", section: "settings" },
 ];
 

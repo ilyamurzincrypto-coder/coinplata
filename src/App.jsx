@@ -5,7 +5,6 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header.jsx";
 import CashierPage from "./pages/CashierPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
-import ReferralsPage from "./pages/ReferralsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import ClientsPage from "./pages/ClientsPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
@@ -52,7 +51,6 @@ const PAGE_SECTION = {
   clients: "clients",
   counterparties: "counterparties",
   obligations: "obligations",
-  referrals: "referrals",
   settings: "settings",
 };
 
@@ -143,7 +141,6 @@ function Root() {
     "g a": () => handlePageChange("accounts"),
     "g l": () => handlePageChange("clients"),
     "g o": () => handlePageChange("obligations"),
-    "g r": () => handlePageChange("referrals"),
     "g s": () => handlePageChange("settings"),
   });
 
@@ -197,7 +194,6 @@ function Root() {
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
       {page === "obligations" && canShow("obligations") && <ObligationsPage />}
       <CommandPalette onNavigate={handlePageChange} />
-      {page === "referrals" && canShow("referrals") && <ReferralsPage />}
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
   );
