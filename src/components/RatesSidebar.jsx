@@ -244,11 +244,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
   return (
     <aside className="bg-white rounded-[18px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_24px_-8px_rgba(15,23,42,0.08)] h-full flex flex-col overflow-hidden">
-      <header className="px-3 py-2.5 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/40 to-transparent">
-        <div className="flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <TrendingUp className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <h2 className="text-[12.5px] font-bold text-slate-900 tracking-tight uppercase truncate">
+      <header className="px-3 py-3 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/40 to-transparent">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />
+            <h2 className="text-[15px] font-bold text-slate-900 tracking-tight uppercase truncate">
               {t("rates") || "Rates"}
             </h2>
           </div>
@@ -270,16 +270,17 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </span>
       </header>
 
-      {/* Office tabs: Global + каждый активный офис. Выбор влияет на курсы
-          ниже. По дефолту подсвечен текущий офис (из header).
-          flex-wrap — чтобы длинные имена / много офисов не ломали layout. */}
+      {/* Office tabs: Global + каждый активный офис. Стиль матчит
+          SegmentedControl — белая «карточка» с эмеральдовым ring для
+          активного, чтобы визуально парный с CTA «Новая сделка»
+          и Balances scope. */}
       <div className="px-2 pt-2 flex flex-wrap gap-1 border-b border-slate-100 pb-2 shrink-0">
         <button
           type="button"
           onClick={() => setSelectedTab(GLOBAL_TAB)}
-          className={`px-2.5 py-1 text-[11px] font-bold rounded-[6px] tracking-wider uppercase transition-colors ${
+          className={`px-3 py-1.5 text-[12px] font-bold rounded-[10px] tracking-wider uppercase transition-all duration-200 ${
             selectedTab === GLOBAL_TAB
-              ? "bg-slate-900 text-white"
+              ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
               : "bg-slate-100 text-slate-600 hover:bg-slate-200"
           }`}
           title="Global rates — без учёта per-office override"
@@ -293,9 +294,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               key={off.id}
               type="button"
               onClick={() => setSelectedTab(off.id)}
-              className={`px-2.5 py-1 text-[11px] font-bold rounded-[6px] tracking-wider transition-colors ${
+              className={`px-3 py-1.5 text-[12px] font-bold rounded-[10px] tracking-wider transition-all duration-200 ${
                 isSel
-                  ? "bg-indigo-600 text-white"
+                  ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
                   : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
               title={off.name || "Office"}

@@ -198,26 +198,12 @@ export default function AccountsPage() {
     });
   };
 
-  // По умолчанию все валюты-блоки РАСКРЫТЫ (юзер хочет сразу видеть счета).
-  // Хранение наоборот — set явно свёрнутых ключей. Пустой set = всё открыто.
-  const [collapsedKeys, setCollapsedKeys] = useState(() => new Set());
+  // По умолчанию валюты-блоки СВЁРНУТЫ — юзер раскрывает сам клик-ом по
+  // строке. (Раньше пробовал default-open, юзер откатил: оставлять
+  // закрытыми, но сами строки/счета внутри сделать крупнее.)
+  const [openMap, setOpenMap] = useState({});
   const toggleOpen = (key) =>
-    setCollapsedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  const collapseAll = () => {
-    const all = new Set();
-    activeOffices.forEach((office) => {
-      const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
-      const codes = [...new Set(officeAccs.map((a) => a.currency))];
-      codes.forEach((code) => all.add(`${office.id}|${code}`));
-    });
-    setCollapsedKeys(all);
-  };
-  const expandAll = () => setCollapsedKeys(new Set());
+    setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Группировка: office → currencies. Показываем только currencies, для которых
   // есть хотя бы один active account в этом офисе. Office-блоки без аккаунтов:
@@ -502,7 +488,7 @@ export default function AccountsPage() {
               <div className="divide-y divide-slate-100">
                 {currencyBlocks.map((cb) => {
                   const key = `${office.id}|${cb.currency.code}`;
-                  const isOpen = !collapsedKeys.has(key);
+                  const isOpen = !!openMap[key];
                   return (
                     <CurrencyRow
                       key={key}
@@ -650,27 +636,27 @@ function CurrencyRow({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-4 py-2.5 grid items-center gap-x-3 hover:bg-slate-50 transition-colors text-left"
+        className="w-full px-4 py-3 grid items-center gap-x-3 hover:bg-slate-50 transition-colors text-left"
         style={{ gridTemplateColumns: ACCT_GRID_COLS }}
       >
         {/* Col 1: имя валюты */}
         <div className="flex items-center gap-2 min-w-0">
           <ChevronRight
-            className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
               isOpen ? "rotate-90" : ""
             }`}
           />
           <div
-            className={`w-7 h-7 rounded-md flex items-center justify-center text-[12px] font-bold shrink-0 ${
+            className={`w-9 h-9 rounded-[8px] flex items-center justify-center text-[14px] font-bold shrink-0 ${
               isCrypto ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"
             }`}
           >
             {currency.symbol || currency.code[0]}
           </div>
-          <span className="text-[13px] font-bold tracking-wider text-slate-900">
+          <span className="text-[15px] font-bold tracking-wider text-slate-900">
             {currency.code}
           </span>
-          <span className="text-[10px] text-slate-400 shrink-0">
+          <span className="text-[11.5px] text-slate-500 shrink-0">
             {accountsCount > 0 ? `${accountsCount} acc` : "—"}
           </span>
         </div>
@@ -685,22 +671,22 @@ function CurrencyRow({
         {/* Col 4: reserved */}
         <div className="text-right">
           {hasReserved ? (
-            <span className="tabular-nums text-[11px] font-semibold text-amber-700">
+            <span className="tabular-nums text-[12.5px] font-semibold text-amber-700">
               {symCcy}{fmt(totals.reserved, currency.code)}
             </span>
           ) : (
-            <span className="text-slate-300 text-[11px]">—</span>
+            <span className="text-slate-300 text-[12.5px]">—</span>
           )}
         </div>
         {/* Col 5: total */}
         <div className="text-right">
-          <span className="tabular-nums text-[12px] font-bold text-slate-900">
+          <span className="tabular-nums text-[14px] font-bold text-slate-900">
             {symCcy}{fmt(totals.total, currency.code)}
           </span>
         </div>
         {/* Col 6: available */}
         <div className="text-right">
-          <span className="tabular-nums text-[12px] font-semibold text-emerald-700">
+          <span className="tabular-nums text-[14px] font-semibold text-emerald-700">
             {symCcy}{fmt(totals.available, currency.code)}
           </span>
         </div>
@@ -712,21 +698,21 @@ function CurrencyRow({
       {isOpen && (
         <div className="px-4 pb-3 pt-1 bg-slate-50/40">
           {/* Currency-level actions */}
-          <div className="flex items-center gap-1 mb-2">
+          <div className="flex items-center gap-1.5 mb-3">
             <button
               onClick={() => onAddAccount({ currency: currency.code })}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
             >
-              <Plus className="w-2.5 h-2.5" />
+              <Plus className="w-3.5 h-3.5" />
               Add account
             </button>
             {channelBlocks.length > 0 && channelBlocks[0].accounts[0] && (
               <button
                 onClick={() => onTransfer(channelBlocks[0].accounts[0])}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
                 title={`Transfer from a ${currency.code} account`}
               >
-                <ArrowLeftRight className="w-2.5 h-2.5" />
+                <ArrowLeftRight className="w-3.5 h-3.5" />
                 Transfer
               </button>
             )}
@@ -783,39 +769,39 @@ function ChannelBlock({
   const label = channelShortLabel(channel);
   const isNetwork = channel.kind === "network";
   return (
-    <div className="bg-white border border-slate-200 rounded-[8px] p-2">
-      <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1.5">
-        <div className="flex items-center gap-1.5">
+    <div className="bg-white border border-slate-200 rounded-[10px] p-3">
+      <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           {isNetwork ? (
-            <NetworkIcon className="w-3 h-3 text-indigo-500" />
+            <NetworkIcon className="w-4 h-4 text-indigo-500" />
           ) : (
-            <span className="text-[11px]">{channel.kind === "cash" ? "💵" : "🏦"}</span>
+            <span className="text-[14px]">{channel.kind === "cash" ? "💵" : "🏦"}</span>
           )}
-          <span className="text-[10px] font-bold text-slate-700 tracking-wider uppercase">
+          <span className="text-[12px] font-bold text-slate-700 tracking-wider uppercase">
             {label}
           </span>
           {channel.gasFee != null && (
-            <span className="text-[10px] text-slate-500 tabular-nums">gas ${channel.gasFee}</span>
+            <span className="text-[11px] text-slate-500 tabular-nums">gas ${channel.gasFee}</span>
           )}
           {channel.isDefaultForCurrency && (
-            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.5 rounded">
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
               default
             </span>
           )}
-          <span className="text-[10px] text-slate-400">· {accs.length}</span>
+          <span className="text-[11px] text-slate-400">· {accs.length}</span>
         </div>
         <button
           onClick={() =>
             onAddAccount({ currency: currency.code, channelId: channel.id })
           }
-          className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-[6px] px-1.5 py-0.5 transition-colors"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-[8px] px-2 py-1 transition-colors"
         >
-          <Plus className="w-2.5 h-2.5" />
+          <Plus className="w-3 h-3" />
           Add
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
         {accs.map((a) => (
           <AccountCard
             key={a.id}
@@ -836,101 +822,103 @@ function ChannelBlock({
   );
 }
 
-// -------- AccountCard (compact) --------
+// -------- AccountCard --------
+// Раньше карточки были text-[9..13]px и иконки w-2.5 — кликнуть в них было
+// «надо постараться». Подняли до читаемых размеров.
 function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onAdjust, onTransfer, onOtc, onHistory, onDelete }) {
   const total = balanceOf(a.id);
   const reserved = reservedOf(a.id);
   const available = availableOf(a.id);
   const hasReserved = reserved > 0.0001;
   return (
-    <div className="bg-slate-50/70 border border-slate-200 rounded-[8px] px-2 py-1.5 hover:border-slate-300 transition-colors">
-      <div className="flex items-start justify-between gap-1 mb-1">
-        <div className="min-w-0">
-          <div className="text-[12px] font-semibold text-slate-900 leading-tight truncate">
+    <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2.5 hover:border-slate-300 hover:shadow-sm transition-all">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-semibold text-slate-900 leading-tight truncate">
             {a.name}
           </div>
           {a.address && (
-            <div className="text-[9px] font-mono text-slate-500 truncate">
-              {a.address.length > 16 ? `${a.address.slice(0, 8)}…${a.address.slice(-6)}` : a.address}
+            <div className="text-[11px] font-mono text-slate-500 truncate mt-0.5">
+              {a.address.length > 22 ? `${a.address.slice(0, 12)}…${a.address.slice(-8)}` : a.address}
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex items-baseline justify-between gap-1 tabular-nums">
-        <span className="text-[13px] font-bold text-slate-900">
+      <div className="flex items-baseline justify-between gap-2 tabular-nums mb-2">
+        <span className="text-[17px] font-bold text-slate-900">
           {curSymbol(a.currency)}
           {fmt(total, a.currency)}
         </span>
         <span
-          className={`text-[10px] font-semibold inline-flex items-center gap-0.5 ${
+          className={`text-[12px] font-semibold inline-flex items-center gap-1 ${
             hasReserved ? "text-amber-700" : "text-emerald-700"
           }`}
         >
           {hasReserved ? (
             <>
-              <Clock className="w-2.5 h-2.5" />
+              <Clock className="w-3 h-3" />
               {fmt(reserved, a.currency)}
             </>
           ) : (
             <>
-              <CheckCircle2 className="w-2.5 h-2.5" />
+              <CheckCircle2 className="w-3 h-3" />
               {fmt(available, a.currency)}
             </>
           )}
         </span>
       </div>
 
-      <div className="flex items-center gap-0.5 mt-1 pt-1 border-t border-slate-100">
+      <div className="flex items-center gap-1 pt-2 border-t border-slate-100">
         <button
           onClick={() => onTopUp(a)}
-          className="flex-1 text-[9px] font-semibold text-emerald-700 hover:bg-emerald-50 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+          className="flex-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
           title="Top up"
         >
-          <Plus className="w-2.5 h-2.5" />
+          <Plus className="w-3 h-3" />
           Top up
         </button>
         <button
           onClick={() => onTransfer(a)}
-          className="flex-1 text-[9px] font-semibold text-slate-700 hover:bg-slate-100 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+          className="flex-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
           title="Transfer"
         >
-          <ArrowLeftRight className="w-2.5 h-2.5" />
+          <ArrowLeftRight className="w-3 h-3" />
           Transfer
         </button>
         {onOtc && (
           <button
             onClick={() => onOtc(a)}
-            className="flex-1 text-[9px] font-semibold text-indigo-700 hover:bg-indigo-50 rounded-[4px] px-1 py-0.5 transition-colors inline-flex items-center justify-center gap-0.5"
+            className="flex-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
             title="OTC сделка с контрагентом — обмен валюты с партнёра, можно задним числом"
           >
-            <ArrowLeftRight className="w-2.5 h-2.5" />
+            <ArrowLeftRight className="w-3 h-3" />
             OTC
           </button>
         )}
         {onAdjust && (
           <button
             onClick={() => onAdjust(a)}
-            className="text-[9px] font-semibold text-amber-700 hover:bg-amber-50 rounded-[4px] px-1 py-0.5 transition-colors"
+            className="text-[11px] font-semibold text-amber-700 hover:bg-amber-50 rounded-[6px] px-2 py-1.5 transition-colors"
             title="Скорректировать баланс — поправить остаток без изменения P&L"
           >
-            <Scale className="w-2.5 h-2.5" />
+            <Scale className="w-3 h-3" />
           </button>
         )}
         <button
           onClick={() => onHistory(a)}
-          className="text-[9px] font-semibold text-slate-500 hover:bg-slate-100 rounded-[4px] px-1 py-0.5 transition-colors"
+          className="text-[11px] font-semibold text-slate-500 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors"
           title="History"
         >
-          <HistoryIcon className="w-2.5 h-2.5" />
+          <HistoryIcon className="w-3 h-3" />
         </button>
         {onDelete && (
           <button
             onClick={() => onDelete(a)}
-            className="text-[9px] font-semibold text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[4px] px-1 py-0.5 transition-colors"
+            className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] px-2 py-1.5 transition-colors"
             title="Deactivate account"
           >
-            <Trash2 className="w-2.5 h-2.5" />
+            <Trash2 className="w-3 h-3" />
           </button>
         )}
       </div>
