@@ -431,16 +431,15 @@ export default function CashierPage({
               />
             </aside>
 
-            {/* CTA — две кнопки рядом, чтобы кассир сразу видел кому
-                адресована сделка: «С КЛИЕНТОМ» (emerald) или
-                «С ПАРТНЁРОМ» (indigo, OTC). Сетка 2:1 — клиентских
-                сделок больше, поэтому левая шире. */}
-            <section className="min-w-0 lg:[grid-area:cta] grid grid-cols-1 sm:grid-cols-[2fr_1fr] items-stretch gap-2">
-              <div className="min-w-0">
+            {/* CTA "+ New exchange" / "Resume" — большая основная кнопка
+                с подзаголовком «С КЛИЕНТОМ». Справа — компактная OTC
+                иконка-кнопка для сделки с партнёром. */}
+            <section className="min-w-0 lg:[grid-area:cta] flex items-stretch gap-2">
+              <div className="flex-1 min-w-0">
             {formMounted ? (
               <button
                 onClick={openCreate}
-                className="group w-full h-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-slate-900 shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-slate-900 shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
                   <div className="relative w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
@@ -464,7 +463,7 @@ export default function CashierPage({
             ) : (
               <button
                 onClick={openCreate}
-                className="group w-full h-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
@@ -497,23 +496,11 @@ export default function CashierPage({
               <button
                 onClick={() => setOtcWizardOpen(true)}
                 title="Открыть OTC wizard — сделка с партнёром, multi-payment, все 16 IN/OUT сценариев"
-                className="group w-full h-full flex items-center justify-between gap-3 px-5 py-5 rounded-[16px] bg-white border-2 border-indigo-300 text-slate-900 shadow-[0_10px_32px_-12px_rgba(99,102,241,0.25)] hover:shadow-[0_16px_40px_-12px_rgba(99,102,241,0.35)] hover:border-indigo-400 active:scale-[0.995] transition-all duration-200"
+                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 transition-colors shrink-0"
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-full bg-indigo-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(99,102,241,0.5)] shrink-0">
-                    <ArrowLeftRight className="w-5 h-5 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left min-w-0">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-indigo-600 mb-0.5">
-                      С партнёром
-                    </div>
-                    <div className="text-[16px] font-bold tracking-tight">OTC сделка</div>
-                    <div className="text-[12px] text-slate-500 truncate">
-                      multi-payment wizard
-                    </div>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-indigo-600 shrink-0 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <ArrowLeftRight className="w-5 h-5 mb-1" strokeWidth={2.5} />
+                <span className="text-[11px] font-bold tracking-tight">OTC</span>
+                <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">с партнёром</span>
               </button>
             </section>
 
