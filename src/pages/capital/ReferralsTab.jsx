@@ -40,6 +40,10 @@ export default function ReferralsTab() {
     const m = new Map();
     transactions.forEach((tx) => {
       if (tx.status === "deleted") return;
+      // Бонус начисляется ТОЛЬКО за сделки, где кассир явно отметил
+      // toggle «Referral client» в форме создания сделки. Имеет
+      // referrer_id у клиента, но без галочки на сделке — мимо.
+      if (!tx.referral) return;
       const nick = (tx.counterparty || "").trim().toLowerCase();
       if (!nick) return;
       const cp = cpByNick.get(nick);

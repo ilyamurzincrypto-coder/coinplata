@@ -61,6 +61,9 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
     return { volume, profit, deals, avgDeal, last, first, ltv };
   }, [clientTxs, toBase]);
 
+  // Monthly activity — последние 6 месяцев (включая пустые), чтобы
+  // показывать ровный ряд столбиков, а не «зазубренный» график со
+  // случайными gap'ами. Раньше Map собирал только месяцы с deals.
   const monthly = useMemo(() => {
     const map = new Map();
     clientTxs.forEach((tx) => {
@@ -70,7 +73,15 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
       b.count += 1;
       b.volume += toBase(tx.amtIn, tx.curIn);
     });
-    return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+    const result = [];
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const k = d.toISOString().slice(0, 7);
+      const b = map.get(k) || { key: k, count: 0, volume: 0 };
+      result.push({ key: k, count: b.count, volume: b.volume });
+    }
+    return result;
   }, [clientTxs, toBase]);
   const maxMonthlyVol = Math.max(1, ...monthly.map((m) => m.volume));
 
@@ -277,34 +288,37 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
           </div>
         )}
 
-        {/* Monthly activity — sparklines */}
-        {monthly.length > 0 && (
-          <div>
-            <div className="flex items-center gap-1.5 mb-2">
-              <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
-                Monthly activity
-              </h3>
-            </div>
-            <div className="flex items-end gap-1 h-16 bg-slate-50 border border-slate-200 rounded-[10px] px-2 py-2">
-              {monthly.map((m) => {
-                const h = Math.max(4, (m.volume / maxMonthlyVol) * 52);
-                return (
-                  <div key={m.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
-                    <div
-                      className="w-full bg-indigo-400 rounded-sm hover:bg-indigo-500 transition-colors cursor-default"
-                      style={{ height: `${h}px` }}
-                      title={`${monthLabel(m.key)}: ${m.count} deals · ${sym}${fmt(m.volume, base)}`}
-                    />
-                    <span className="text-[9px] text-slate-500 font-medium truncate">
-                      {monthLabel(m.key).slice(0, 3)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+        {/* Monthly activity — sparkline за последние 6 мес */}
+        <div>
+          <div className="flex items-center gap-1.5 mb-2">
+            <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
+            <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+              Monthly activity
+            </h3>
           </div>
-        )}
+          <div className="flex items-end gap-1 h-16 bg-slate-50 border border-slate-200 rounded-[10px] px-2 py-2">
+            {monthly.map((m) => {
+              const empty = m.volume === 0;
+              const h = empty ? 2 : Math.max(4, (m.volume / maxMonthlyVol) * 52);
+              return (
+                <div key={m.key} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                  <div
+                    className={`w-full rounded-sm transition-colors cursor-default ${
+                      empty
+                        ? "bg-slate-200"
+                        : "bg-indigo-400 hover:bg-indigo-500"
+                    }`}
+                    style={{ height: `${h}px` }}
+                    title={`${monthLabel(m.key)}: ${m.count} deals · ${sym}${fmt(m.volume, base)}`}
+                  />
+                  <span className="text-[9px] text-slate-500 font-medium truncate">
+                    {monthLabel(m.key).slice(0, 3)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
         {walletGroups.length > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall risk:</span>
