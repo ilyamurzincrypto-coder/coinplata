@@ -198,10 +198,26 @@ export default function AccountsPage() {
     });
   };
 
-  // open[officeId|currencyCode] = true означает раскрытый блок.
-  const [openMap, setOpenMap] = useState({});
+  // По умолчанию все валюты-блоки РАСКРЫТЫ (юзер хочет сразу видеть счета).
+  // Хранение наоборот — set явно свёрнутых ключей. Пустой set = всё открыто.
+  const [collapsedKeys, setCollapsedKeys] = useState(() => new Set());
   const toggleOpen = (key) =>
-    setOpenMap((prev) => ({ ...prev, [key]: !prev[key] }));
+    setCollapsedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  const collapseAll = () => {
+    const all = new Set();
+    activeOffices.forEach((office) => {
+      const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
+      const codes = [...new Set(officeAccs.map((a) => a.currency))];
+      codes.forEach((code) => all.add(`${office.id}|${code}`));
+    });
+    setCollapsedKeys(all);
+  };
+  const expandAll = () => setCollapsedKeys(new Set());
 
   // Группировка: office → currencies. Показываем только currencies, для которых
   // есть хотя бы один active account в этом офисе. Office-блоки без аккаунтов:
@@ -486,7 +502,7 @@ export default function AccountsPage() {
               <div className="divide-y divide-slate-100">
                 {currencyBlocks.map((cb) => {
                   const key = `${office.id}|${cb.currency.code}`;
-                  const isOpen = !!openMap[key];
+                  const isOpen = !collapsedKeys.has(key);
                   return (
                     <CurrencyRow
                       key={key}
