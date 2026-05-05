@@ -236,6 +236,8 @@ export async function loadClients() {
     archivedAt: r.archived_at || null,
     // 0091: OTC partner-флаг для разделения от обычных клиентов
     isOtcPartner: r.is_otc_partner === true,
+    // 0103: реферер (клиент, который привёл данного)
+    referrerId: r.referrer_id || null,
   }));
 }
 

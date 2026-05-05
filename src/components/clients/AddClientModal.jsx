@@ -5,12 +5,15 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../ui/Modal.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
+import { useTransactions } from "../../store/transactions.jsx";
 
 export default function AddClientModal({ open, onClose, onSubmit }) {
+  const { counterparties } = useTransactions();
   const [name, setName] = useState("");
   const [telegram, setTelegram] = useState("");
   const [tag, setTag] = useState("");
   const [note, setNote] = useState("");
+  const [referrerId, setReferrerId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -18,6 +21,7 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
       setTelegram("");
       setTag("");
       setNote("");
+      setReferrerId("");
     }
   }, [open]);
 
@@ -30,8 +34,17 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
       telegram: tg && !tg.startsWith("@") ? `@${tg}` : tg,
       tag,
       note: note.trim(),
+      referrerId: referrerId || null,
     });
   };
+
+  // Реферер = существующий не-archivedAt клиент, отсортированный по nickname.
+  // Self-referral в этом окне исключить нечем (новый клиент ещё не создан),
+  // но это и не нужно — у только что создаваемого клиента нет id чтобы
+  // ссылаться на себя.
+  const referrerOptions = counterparties
+    .filter((c) => !c.archivedAt && c.id)
+    .sort((a, b) => (a.nickname || "").localeCompare(b.nickname || ""));
 
   return (
     <Modal open={open} onClose={onClose} title="Add client" width="md">
@@ -70,6 +83,21 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
             onChange={(e) => setNote(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
+        </FormField>
+        <FormField label="Кого привёл (реферер)">
+          <select
+            value={referrerId}
+            onChange={(e) => setReferrerId(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+          >
+            <option value="">— нет —</option>
+            {referrerOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nickname}
+                {c.telegram ? ` · ${c.telegram}` : ""}
+              </option>
+            ))}
+          </select>
         </FormField>
       </div>
       <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">

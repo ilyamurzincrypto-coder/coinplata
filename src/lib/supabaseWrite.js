@@ -1466,6 +1466,7 @@ export async function updateClientRow(id, patch) {
   if (patch.telegram !== undefined) row.telegram = patch.telegram ? String(patch.telegram).trim() : null;
   if (patch.tag !== undefined) row.tag = patch.tag || null;
   if (patch.note !== undefined) row.note = patch.note || null;
+  if (patch.referrerId !== undefined) row.referrer_id = patch.referrerId || null;
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase
     .from("clients")
@@ -1567,7 +1568,7 @@ export async function ensureClient({ nickname, telegram, counterpartyId }, loade
   }
 }
 
-export async function insertClient({ nickname, fullName, telegram, tag, note }) {
+export async function insertClient({ nickname, fullName, telegram, tag, note, referrerId }) {
   assertConfigured();
   if (typeof nickname !== "string" || nickname.trim().length === 0) {
     throw new Error("nickname: required");
@@ -1582,6 +1583,7 @@ export async function insertClient({ nickname, fullName, telegram, tag, note }) 
       // строка вызвала бы violation. note тоже nullable, пустая строка ОК.
       tag: tag || null,
       note: note || "",
+      referrer_id: referrerId || null,
     })
     .select()
     .maybeSingle();

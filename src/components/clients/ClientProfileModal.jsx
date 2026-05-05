@@ -4,7 +4,7 @@
 // CounterpartiesPage / ListTab) передают одни и те же значения.
 
 import React, { useMemo, useState } from "react";
-import { BarChart3, Wallet, Network as NetworkIcon } from "lucide-react";
+import { BarChart3, Wallet, Network as NetworkIcon, UserPlus, Users } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
 import { fmt } from "../../utils/money.js";
@@ -120,6 +120,28 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
     return Array.from(s);
   }, [clientTxs]);
 
+  // Реферер этого клиента (кто его привёл).
+  const referrer = useMemo(() => {
+    if (!client?.referrerId) return null;
+    return counterparties.find((c) => c.id === client.referrerId) || null;
+  }, [client, counterparties]);
+
+  // Кого привёл этот клиент (referrals — те, у кого referrerId = client.id).
+  const referredBy = useMemo(() => {
+    if (!client?.id) return [];
+    return counterparties
+      .filter((c) => c.referrerId === client.id)
+      .sort((a, b) => (a.nickname || "").localeCompare(b.nickname || ""));
+  }, [client, counterparties]);
+
+  // Кандидаты для select (исключаем самого клиента — нельзя реферить себя).
+  const referrerOptions = useMemo(() => {
+    if (!client) return [];
+    return counterparties
+      .filter((c) => !c.archivedAt && c.id && c.id !== client.id)
+      .sort((a, b) => (a.nickname || "").localeCompare(b.nickname || ""));
+  }, [counterparties, client]);
+
   if (!client) return null;
 
   return (
@@ -133,6 +155,55 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
             <TagBtn key={tg} active={client.tag === tg} onClick={() => updateCounterparty(client.id, { tag: tg })}>{tg}</TagBtn>
           ))}
         </div>
+
+        {/* Referrer selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            <UserPlus className="w-3 h-3" />
+            Привёл
+          </span>
+          <select
+            value={client.referrerId || ""}
+            onChange={(e) => updateCounterparty(client.id, { referrerId: e.target.value || null })}
+            className="bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none focus:bg-white focus:border-slate-400 max-w-[260px]"
+          >
+            <option value="">— нет —</option>
+            {referrerOptions.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nickname}
+                {c.telegram ? ` · ${c.telegram}` : ""}
+              </option>
+            ))}
+          </select>
+          {referrer && (
+            <span className="text-[11px] text-slate-500">
+              реферер: <span className="font-semibold text-slate-700">{referrer.name || referrer.nickname}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Привёл клиентов (если этот — реферер) */}
+        {referredBy.length > 0 && (
+          <div className="border border-indigo-100 bg-indigo-50/40 rounded-[10px] p-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Users className="w-3 h-3 text-indigo-600" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">
+                Привёл клиентов · {referredBy.length}
+              </h3>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {referredBy.map((c) => (
+                <span
+                  key={c.id}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-white border border-indigo-200 text-slate-700"
+                  title={c.telegram || ""}
+                >
+                  {c.nickname}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats grid + risk — 6 карточек: Deals / Volume / LTV / Avg / First / Last */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
