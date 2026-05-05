@@ -36,8 +36,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
       { id: "nav:cashier", kind: "page", label: t("nav_cashier"), page: "cashier" },
       { id: "nav:capital", kind: "page", label: t("nav_capital"), page: "capital" },
       { id: "nav:accounts", kind: "page", label: t("nav_accounts"), page: "accounts" },
-      { id: "nav:clients", kind: "page", label: t("nav_clients"), page: "clients" },
-      { id: "nav:obligations", kind: "page", label: t("nav_obligations"), page: "obligations" },
+      { id: "nav:counterparties", kind: "page", label: t("nav_counterparties"), page: "counterparties" },
       { id: "nav:settings", kind: "page", label: t("nav_settings"), page: "settings" },
     ],
     [t]

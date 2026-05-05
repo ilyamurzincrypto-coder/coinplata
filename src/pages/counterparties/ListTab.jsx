@@ -22,9 +22,10 @@ import { toISODate } from "../../utils/date.js";
 import { ClientTag } from "../../components/CounterpartySelect.jsx";
 import { ClientProfileModal } from "../../components/clients/ClientProfileModal.jsx";
 import { PartnerProfileModal } from "../../components/clients/PartnerProfileModal.jsx";
+import AddClientModal from "../../components/clients/AddClientModal.jsx";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import {
-  rpcArchiveClient, rpcDeleteClient, updateClientRow, withToast, isUuid,
+  rpcArchiveClient, rpcDeleteClient, updateClientRow, withToast, isUuid, insertClient,
 } from "../../lib/supabaseWrite.js";
 
 export default function ListTab() {
@@ -32,6 +33,7 @@ export default function ListTab() {
   const {
     transactions,
     counterparties,
+    addCounterparty,
     updateCounterparty: updateCounterpartyLocal,
   } = useTransactions();
   const { partners } = usePartners();
@@ -45,6 +47,7 @@ export default function ListTab() {
   const [archiveFilter, setArchiveFilter] = useState("active"); // active | archived | all
   // profileFor: { kind: 'client'|'partner', id } — раздельный модал на тип
   const [profileFor, setProfileFor] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
   const updateCounterparty = useCallback((id, patch) => {
@@ -307,6 +310,13 @@ export default function ListTab() {
                 </button>
               ))}
             </div>
+            <button
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
+            >
+              <UserPlus className="w-3 h-3" />
+              {t("client_add_btn")}
+            </button>
           </div>
         </div>
 
@@ -355,6 +365,32 @@ export default function ListTab() {
           </table>
         </div>
       </section>
+
+      <AddClientModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onSubmit={async (data) => {
+          if (isSupabaseConfigured) {
+            const res = await withToast(
+              () =>
+                insertClient({
+                  nickname: data.nickname,
+                  fullName: data.name,
+                  telegram: data.telegram,
+                  tag: data.tag,
+                  note: data.note,
+                }),
+              { success: "Client added", errorPrefix: "Failed to add client" }
+            );
+            setAddOpen(false);
+            if (res.ok && res.result?.id) setProfileFor({ kind: "client", id: res.result.id });
+            return;
+          }
+          const created = addCounterparty(data);
+          setAddOpen(false);
+          if (created?.id) setProfileFor({ kind: "client", id: created.id });
+        }}
+      />
 
       {/* Profile modals — раздельные на client / partner. Клик по строке выбирает */}
       <ClientProfileModal

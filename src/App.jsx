@@ -6,10 +6,8 @@ import Header from "./components/Header.jsx";
 import CashierPage from "./pages/CashierPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
-import ClientsPage from "./pages/ClientsPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
-import ObligationsPage from "./pages/ObligationsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -48,9 +46,7 @@ const PAGE_SECTION = {
   cashier: "transactions",
   capital: "capital",
   accounts: "accounts",
-  clients: "clients",
   counterparties: "counterparties",
-  obligations: "obligations",
   settings: "settings",
 };
 
@@ -139,8 +135,7 @@ function Root() {
     "g c": () => handlePageChange("cashier"),
     "g k": () => handlePageChange("capital"),
     "g a": () => handlePageChange("accounts"),
-    "g l": () => handlePageChange("clients"),
-    "g o": () => handlePageChange("obligations"),
+    "g p": () => handlePageChange("counterparties"),
     "g s": () => handlePageChange("settings"),
   });
 
@@ -190,9 +185,7 @@ function Root() {
       )}
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
-      {page === "clients" && canShow("clients") && <ClientsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
-      {page === "obligations" && canShow("obligations") && <ObligationsPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
