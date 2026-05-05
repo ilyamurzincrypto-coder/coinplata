@@ -483,6 +483,22 @@ function OfficeBlock({
         return (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <GroupCard
+              title="Crypto"
+              icon={Coins}
+              rows={cryptoRows}
+              total={cryptoTotalUsdt}
+              totalDelta={cryptoDeltaUsdt}
+              totalDeltaYesterday={cryptoDeltaYUsdt}
+              currency="USDT"
+              emptyText="No crypto accounts"
+              split
+              globalTotal={globalCryptoTotal}
+              globalDelta={globalCryptoDelta}
+              globalDeltaYesterday={globalCryptoDeltaYesterday}
+              splitLocalTotal={cryptoTotalBase}
+              splitLocalCurrency={base}
+            />
+            <GroupCard
               title="Cash"
               icon={Banknote}
               rows={grouped.cash}
@@ -501,22 +517,6 @@ function OfficeBlock({
               totalDeltaYesterday={bankDeltaYBase}
               currency={base}
               emptyText="No bank accounts"
-            />
-            <GroupCard
-              title="Crypto"
-              icon={Coins}
-              rows={cryptoRows}
-              total={cryptoTotalUsdt}
-              totalDelta={cryptoDeltaUsdt}
-              totalDeltaYesterday={cryptoDeltaYUsdt}
-              currency="USDT"
-              emptyText="No crypto accounts"
-              split
-              globalTotal={globalCryptoTotal}
-              globalDelta={globalCryptoDelta}
-              globalDeltaYesterday={globalCryptoDeltaYesterday}
-              splitLocalTotal={cryptoTotalBase}
-              splitLocalCurrency={base}
             />
           </div>
         );
