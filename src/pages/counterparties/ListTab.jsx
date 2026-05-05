@@ -23,6 +23,7 @@ import { ClientTag } from "../../components/CounterpartySelect.jsx";
 import { ClientProfileModal } from "../../components/clients/ClientProfileModal.jsx";
 import { PartnerProfileModal } from "../../components/clients/PartnerProfileModal.jsx";
 import AddClientModal from "../../components/clients/AddClientModal.jsx";
+import AddPartnerModal from "../../components/clients/AddPartnerModal.jsx";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import {
   rpcArchiveClient, rpcDeleteClient, updateClientRow, withToast, isUuid, insertClient,
@@ -48,6 +49,7 @@ export default function ListTab() {
   // profileFor: { kind: 'client'|'partner', id } — раздельный модал на тип
   const [profileFor, setProfileFor] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [addPartnerOpen, setAddPartnerOpen] = useState(false);
   const [busyId, setBusyId] = useState(null);
 
   const updateCounterparty = useCallback((id, patch) => {
@@ -312,10 +314,19 @@ export default function ListTab() {
             </div>
             <button
               onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
+              title="Добавить нового клиента"
             >
-              <UserPlus className="w-3 h-3" />
-              {t("client_add_btn")}
+              <Users className="w-3 h-3" />
+              + Клиента
+            </button>
+            <button
+              onClick={() => setAddPartnerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
+              title="Добавить нового партнёра (контрагента для OTC сделок)"
+            >
+              <Handshake className="w-3 h-3" />
+              + Партнёра
             </button>
           </div>
         </div>
@@ -365,6 +376,15 @@ export default function ListTab() {
           </table>
         </div>
       </section>
+
+      <AddPartnerModal
+        open={addPartnerOpen}
+        onClose={() => setAddPartnerOpen(false)}
+        onSuccess={(created) => {
+          setAddPartnerOpen(false);
+          if (created?.id) setProfileFor({ kind: "partner", id: created.id });
+        }}
+      />
 
       <AddClientModal
         open={addOpen}

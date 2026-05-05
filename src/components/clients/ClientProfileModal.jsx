@@ -20,7 +20,9 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
   const clientTxs = useMemo(() => {
     if (!client) return [];
     return transactions.filter(
-      (tx) => (tx.counterparty || "").toLowerCase() === client.nickname.toLowerCase()
+      (tx) =>
+        tx.status !== "deleted" &&
+        (tx.counterparty || "").toLowerCase() === client.nickname.toLowerCase()
     );
   }, [client, transactions]);
 
