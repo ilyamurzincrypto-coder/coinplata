@@ -46,12 +46,14 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   return (
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-slate-200/70">
       <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-4">
-        {/* Logo */}
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-7 h-7 rounded-[8px] bg-slate-900 flex items-center justify-center">
-            <div className="w-3 h-3 rounded-[3px] bg-gradient-to-br from-emerald-300 to-emerald-500" />
-          </div>
-          <span className="text-[15px] font-semibold tracking-tight hidden sm:inline">CoinPlata</span>
+        {/* Logo — coinpoint mark, без текстовой подписи */}
+        <div className="flex items-center shrink-0">
+          <img
+            src="/logo.png"
+            alt="coinpoint"
+            className="h-9 w-9 select-none"
+            draggable={false}
+          />
         </div>
 
         {/* Nav */}

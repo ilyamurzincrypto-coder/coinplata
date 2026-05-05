@@ -274,7 +274,7 @@ export default function PnlTab({ range, onRangeChange }) {
       {/* By office + By currency — 2 колонки на lg, чтобы оба видны без скролла */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Breakdown by office */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <section className="bg-white rounded-[14px] border border-slate-200/70">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Building2 className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_office")}</h3>
@@ -316,7 +316,7 @@ export default function PnlTab({ range, onRangeChange }) {
       </section>
 
       {/* Breakdown by currency — поднят сюда (был внизу), теперь рядом с by office */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <section className="bg-white rounded-[14px] border border-slate-200/70">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Coins className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
@@ -350,7 +350,7 @@ export default function PnlTab({ range, onRangeChange }) {
       </div>
 
       {/* Breakdown by category — только income/expense записи, не exchange profit */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <section className="bg-white rounded-[14px] border border-slate-200/70">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <Tag className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold">{t("pnl_by_category")}</h3>

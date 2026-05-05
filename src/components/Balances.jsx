@@ -385,6 +385,7 @@ function OfficeBlock({
   globalCryptoTotal,
   globalCryptoDelta,
   globalCryptoDeltaYesterday,
+  hideTotals = false,
 }) {
   const grouped = useMemo(
     () =>
@@ -441,25 +442,27 @@ function OfficeBlock({
             title="Сегодня / вчера по этому офису"
           />
         </div>
-        <div className="flex items-center gap-2 text-[12px] tabular-nums">
-          <MiniStat label="Total" value={totals.total} sym={curSymbol(base)} tone="slate" />
-          {totals.hasReserved && (
+        {!hideTotals && (
+          <div className="flex items-center gap-2 text-[12px] tabular-nums">
+            <MiniStat label="Total" value={totals.total} sym={curSymbol(base)} tone="slate" />
+            {totals.hasReserved && (
+              <MiniStat
+                label="Pending"
+                value={totals.reserved}
+                sym={curSymbol(base)}
+                tone="amber"
+                icon={Clock}
+              />
+            )}
             <MiniStat
-              label="Pending"
-              value={totals.reserved}
+              label="Available"
+              value={totals.available}
               sym={curSymbol(base)}
-              tone="amber"
-              icon={Clock}
+              tone="emerald"
+              icon={CheckCircle2}
             />
-          )}
-          <MiniStat
-            label="Available"
-            value={totals.available}
-            sym={curSymbol(base)}
-            tone="emerald"
-            icon={CheckCircle2}
-          />
-        </div>
+          </div>
+        )}
       </div>
 
       {/* 3 равные колонки — Cash / Bank / Crypto. Стабильный layout
@@ -788,6 +791,7 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                   globalCryptoTotal={globalCrypto.total}
                   globalCryptoDelta={globalCrypto.delta}
                   globalCryptoDeltaYesterday={globalCrypto.deltaYesterday}
+                  hideTotals={officesToRender.length === 1}
                 />
               );
             })}

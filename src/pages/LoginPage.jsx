@@ -183,14 +183,13 @@ export default function LoginPage() {
       />
 
       <div className="relative w-full max-w-[420px] animate-[cardIn_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
-        {/* Logo above card */}
-        <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.55)]">
-            <ArrowLeftRight className="w-4 h-4 text-slate-950" strokeWidth={2.5} />
-          </div>
-          <span className="text-[18px] font-bold tracking-tight text-white">
-            CoinPlata
-          </span>
+        {/* Brand logo — full coinpoint mark above the card */}
+        <div className="flex items-center justify-center mb-6">
+          <img
+            src="/coinpoint-logo.png"
+            alt="coinpoint"
+            className="h-20 w-auto select-none drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
+          />
         </div>
 
         {/* Card */}
