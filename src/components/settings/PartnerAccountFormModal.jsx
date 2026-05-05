@@ -56,7 +56,10 @@ export default function PartnerAccountFormModal({
 
   const isCrypto = type === "crypto";
   const cleanName = name.trim();
-  const ob = parseFloat(String(openingBalance).replace(",", ".")) || 0;
+  // Парсим вручную чтобы парсер не съел знак минус (партнёрский счёт
+  // может быть отрицательным = «партнёр должен нам с прошлого периода»).
+  const obRaw = parseFloat(String(openingBalance).replace(",", "."));
+  const ob = Number.isFinite(obRaw) ? obRaw : 0;
 
   const canSubmit = cleanName.length > 0 && currency && (!isCrypto || networkId);
 
@@ -188,13 +191,18 @@ export default function PartnerAccountFormModal({
             inputMode="decimal"
             value={openingBalance}
             onChange={(e) =>
-              setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+              setOpeningBalance(
+                // Допускаем минус (партнёрский счёт может быть отрицательным).
+                e.target.value.replace(/[^\d.,-]/g, "").replace(",", ".")
+              )
             }
-            placeholder="0"
+            placeholder="0 (можно отрицательный)"
             className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
           />
           <p className="text-[10px] text-slate-500 mt-1">
-            Текущий остаток на этом счёте партнёра. Используется только для отчётности — не влияет на наш балас.
+            Текущий остаток на счёте партнёра. Может быть отрицательным —
+            знак минус означает «партнёр в долгу со старого периода». Не
+            влияет на наш баланс.
           </p>
         </div>
 

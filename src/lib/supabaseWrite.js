@@ -1688,7 +1688,10 @@ export async function rpcInsertPartnerAccount({
     throw new Error("type must be cash/bank/crypto");
   }
   const ob = openingBalance != null ? Number(openingBalance) : 0;
-  if (!Number.isFinite(ob) || ob < 0) throw new Error("opening_balance must be >= 0");
+  // Партнёрские счета могут быть в минусе — отрицательный остаток
+  // означает «партнёр уже должен нам со старого периода» (или мы ему,
+  // в зависимости от знака конвенции). НЕ блокируем negative.
+  if (!Number.isFinite(ob)) throw new Error("opening_balance must be a number");
 
   const { data, error } = await supabase
     .from("partner_accounts")
@@ -1728,7 +1731,8 @@ export async function rpcUpdatePartnerAccount(id, patch) {
   if (patch.active != null) dbPatch.active = !!patch.active;
   if (patch.openingBalance != null) {
     const ob = Number(patch.openingBalance);
-    if (!Number.isFinite(ob) || ob < 0) throw new Error("opening_balance must be >= 0");
+    // Партнёрский счёт может быть в минусе — см. rpcInsertPartnerAccount.
+    if (!Number.isFinite(ob)) throw new Error("opening_balance must be a number");
     dbPatch.opening_balance = ob;
   }
   dbPatch.updated_at = new Date().toISOString();
