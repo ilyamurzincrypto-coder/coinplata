@@ -64,7 +64,7 @@ function shortOfficeName(name) {
 // height без скролла.
 const COMPACT_MIN = 3;
 // Approx высота одной pair-карточки в px (header + 2 строки sell/buy).
-const PAIR_ROW_HEIGHT = 56;
+const PAIR_ROW_HEIGHT = 62;
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs, pairs, channels } = useRates();
@@ -336,7 +336,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
       <div
         ref={pairsRef}
-        className={`p-1.5 space-y-1 ${
+        className={`p-1 space-y-0.5 ${
           expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"
         }`}
       >
@@ -357,7 +357,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           return (
             <React.Fragment key={`${a}-${b}`}>
             <div
-              className={`px-2.5 py-1.5 rounded-[8px] transition-colors ${
+              className={`px-2 py-1 rounded-[8px] transition-colors ${
                 fav
                   ? "bg-amber-50/70 ring-1 ring-amber-200"
                   : pairHasOverride
@@ -366,7 +366,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               }`}
             >
               {/* Header: ⭐ + freshness dot + override-бейдж. */}
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center gap-1 mb-0.5">
                 <button
                   type="button"
                   onClick={(e) => toggleFavorite(a, b, e)}

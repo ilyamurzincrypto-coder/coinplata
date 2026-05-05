@@ -236,13 +236,15 @@ function GroupCard({
     <>
       {/* Header: title */}
       <div className="flex items-center gap-1.5">
-        <Icon className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-[11px] font-bold text-slate-600 tracking-[0.15em] uppercase">
+        <Icon className={`w-3.5 h-3.5 ${split ? "text-emerald-500" : "text-slate-400"}`} />
+        <span className={`text-[11px] font-bold tracking-[0.15em] uppercase ${
+          split ? "text-emerald-700" : "text-slate-600"
+        }`}>
           {title}
         </span>
         {split && (
           <span
-            className="text-[8px] font-bold text-slate-400 uppercase tracking-wider px-1 py-px rounded bg-slate-200/60"
+            className="text-[8px] font-bold text-emerald-700 uppercase tracking-wider px-1 py-px rounded bg-emerald-100 ring-1 ring-emerald-200"
             title="Общий остаток по всем офисам"
           >
             All offices
@@ -297,8 +299,8 @@ function GroupCard({
     //   низ (white)  = вклад этого офиса (total + assets list)
     // Тот же внешний bordered card → тот же визуальный footprint и высота.
     return (
-      <div className="bg-white border border-slate-200 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2">
-        <div className="bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2.5">
+      <div className="bg-white border border-emerald-200/60 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2 shadow-[0_0_0_1px_rgba(16,185,129,0.04),0_8px_24px_-12px_rgba(16,185,129,0.18)]">
+        <div className="bg-gradient-to-br from-emerald-50 via-indigo-50/40 to-slate-50 border border-emerald-200/60 rounded-[10px] px-3 py-2.5">
           {headerBlock}
         </div>
         <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2 flex flex-col flex-1 min-h-0">
