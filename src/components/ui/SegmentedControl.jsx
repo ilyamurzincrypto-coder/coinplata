@@ -1,9 +1,17 @@
 // src/components/ui/SegmentedControl.jsx
+//
+// Apple-style segmented control. Активный сегмент — белая «карточка» с
+// эмеральдовой рамкой и тенью (визуально парный с кнопкой «Новая сделка»
+// на дашборде). Неактивные — приглушённые slate без бордера.
+
 import React from "react";
 
 export default function SegmentedControl({ options, value, onChange, size = "md" }) {
+  const padding = size === "sm" ? "p-1" : "p-1.5";
+  const btnSize =
+    size === "sm" ? "px-3 py-1.5 text-[12.5px]" : "px-4 py-2 text-[13.5px]";
   return (
-    <div className={`inline-flex bg-slate-100 rounded-[11px] relative ${size === "sm" ? "p-0.5" : "p-1"}`}>
+    <div className={`inline-flex bg-slate-100 rounded-[12px] relative ${padding}`}>
       {options.map((opt) => {
         const id = opt.id ?? opt;
         const label = opt.name ?? opt;
@@ -13,11 +21,9 @@ export default function SegmentedControl({ options, value, onChange, size = "md"
             key={id}
             type="button"
             onClick={() => onChange(id)}
-            className={`relative z-10 ${
-              size === "sm" ? "px-3 py-1 text-[12px]" : "px-4 py-1.5 text-[13px]"
-            } font-semibold rounded-[9px] transition-all ${
+            className={`relative z-10 ${btnSize} font-semibold rounded-[10px] transition-all duration-200 ${
               isActive
-                ? "bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08),0_0_0_0.5px_rgba(0,0,0,0.05)]"
+                ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
                 : "text-slate-500 hover:text-slate-900"
             }`}
           >

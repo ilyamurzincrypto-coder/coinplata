@@ -751,10 +751,10 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   title={rowTooltip || undefined}
                   className={`border-b border-slate-100 hover:bg-slate-50 transition-colors group ${
                     tx.kind === "otc"
-                      ? "border-l-2 border-l-indigo-400"
+                      ? "border-l-4 border-l-indigo-500 bg-indigo-50/30"
                       : tx.kind === "broker"
-                      ? "border-l-2 border-l-violet-400"
-                      : "border-l-2 border-l-transparent"
+                      ? "border-l-4 border-l-violet-500 bg-violet-50/30"
+                      : "border-l-4 border-l-transparent"
                   } ${
                     isNew ? "bg-emerald-50/60" : ""
                   } ${isDeleted ? "opacity-50 grayscale line-through" : ""} ${

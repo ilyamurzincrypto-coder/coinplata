@@ -271,6 +271,8 @@ export default function PnlTab({ range, onRangeChange }) {
         />
       </div>
 
+      {/* By office + By currency — 2 колонки на lg, чтобы оба видны без скролла */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Breakdown by office */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
@@ -312,6 +314,40 @@ export default function PnlTab({ range, onRangeChange }) {
           </div>
         )}
       </section>
+
+      {/* Breakdown by currency — поднят сюда (был внизу), теперь рядом с by office */}
+      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+          <Coins className="w-4 h-4 text-slate-500" />
+          <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
+          <InfoHint label={t("pnl_by_currency")}>
+            {t("pnl_by_currency_tip") ||
+              "Разбивка по валюте IN. Volume = общий оборот в base; Count = количество сделок; Revenue = прибыль от сделок именно с этой валюты как входящей."}
+          </InfoHint>
+        </div>
+        {byCurrency.length === 0 ? (
+          <div className="px-5 py-8 text-center text-[13px] text-slate-400">No deals in this period</div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {byCurrency.map((b) => (
+              <div key={b.currency} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold tracking-wider">
+                    {b.currency}
+                  </span>
+                  <span className="text-[11px] text-slate-500 tabular-nums">
+                    {b.count} deals · vol {sym}{fmt(b.volume, base)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4 text-[12px] tabular-nums">
+                  <Stat label="Rev" value={b.revenue} sym={sym} tone={b.revenue >= 0 ? "emerald" : "rose"} bold />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      </div>
 
       {/* Breakdown by category — только income/expense записи, не exchange profit */}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
@@ -359,39 +395,6 @@ export default function PnlTab({ range, onRangeChange }) {
         sym={sym}
         officeNameOf={officeNameOf}
       />
-
-      {/* Breakdown by currency */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-        <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
-          <Coins className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold">{t("pnl_by_currency")}</h3>
-          <InfoHint label={t("pnl_by_currency")}>
-            {t("pnl_by_currency_tip") ||
-              "Разбивка по валюте IN (с которой клиент ПРИШЁЛ к нам). Volume = общий оборот в base; Count = количество сделок; Revenue = прибыль от сделок именно с этой валюты как входящей."}
-          </InfoHint>
-        </div>
-        {byCurrency.length === 0 ? (
-          <div className="px-5 py-8 text-center text-[13px] text-slate-400">No deals in this period</div>
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {byCurrency.map((b) => (
-              <div key={b.currency} className="px-5 py-3 flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-bold tracking-wider">
-                    {b.currency}
-                  </span>
-                  <span className="text-[11px] text-slate-500 tabular-nums">
-                    {b.count} deals · vol {sym}{fmt(b.volume, base)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-4 text-[12px] tabular-nums">
-                  <Stat label="Rev" value={b.revenue} sym={sym} tone={b.revenue >= 0 ? "emerald" : "rose"} bold />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
