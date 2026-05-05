@@ -46,6 +46,7 @@ import { useRates } from "../store/rates.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAccounts } from "../store/accounts.jsx";
+import { usePartners } from "../store/partners.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import {
   multiplyAmount,
@@ -185,6 +186,7 @@ export default function ExchangeForm({
     [getRateRaw, currentOffice]
   );
   const { currentUser, settings, users, isOwner, isAdmin } = useAuth();
+  const { activePartners, addPartner } = usePartners();
   const canPickManager = isOwner || isAdmin;
   // Список доступных "от имени" — все active manager-роли + сам
   // owner/admin (он по умолчанию). Иначе только сам пользователь.
@@ -263,6 +265,11 @@ export default function ExchangeForm({
   );
   const [counterparty, setCounterparty] = useState(
     starter?.counterparty || draft?.counterparty || ""
+  );
+  // Партнёр — отдельное поле рядом с клиентом. Free-text + datalist
+  // автокомплит из existing partners. Auto-create на submit если не нашли.
+  const [partnerName, setPartnerName] = useState(
+    starter?.partnerName || draft?.partnerName || ""
   );
   // Manager selector — только для owner/admin. По умолчанию текущий
   // пользователь, но он может выбрать менеджера от имени которого
@@ -1041,6 +1048,9 @@ export default function ExchangeForm({
         : null,
       counterparty,
       counterpartyId: clientId || null,
+      partnerName: partnerName?.trim() || null,
+      // partnerId резолвится в handleSubmit ДО buildTx — прокинут через
+      // closure через extra arg (см. handleSubmit ниже)
       referral,
       comment,
       // Если IN через партнёра — наш accountId = null, в БД пишется
@@ -1092,7 +1102,7 @@ export default function ExchangeForm({
     return { ...base, id: Date.now() };
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit) return;
 
     // СНАЧАЛА resolve/create counterparty — нужен clientId для tx (monitoring будет
@@ -1100,7 +1110,30 @@ export default function ExchangeForm({
     const cp = addCounterparty(counterparty);
     const clientId = cp?.id || null;
 
+    // Аналогично — Partner: если заполнено поле, ищем в activePartners
+    // case-insensitive по name; если не нашли — создаём через addPartner.
+    // Auto-create без отдельной модалки — кассир просто пишет имя в поле.
+    let partnerId = null;
+    const pNick = (partnerName || "").trim();
+    if (pNick) {
+      const existing = activePartners.find(
+        (p) => (p.name || "").toLowerCase() === pNick.toLowerCase()
+      );
+      if (existing) {
+        partnerId = existing.id;
+      } else {
+        try {
+          const created = await addPartner({ name: pNick });
+          partnerId = created?.id || null;
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.warn("[ExchangeForm] auto-create partner failed", err);
+        }
+      }
+    }
+
     const tx = buildTx(clientId);
+    if (partnerId) tx.partnerId = partnerId;
 
     // Auto-detect wallets. upsertWallet сам справляется с дублями и конфликтами —
     // в случае conflict (другой клиент) ничего не пишется, UI уже показал warning.
@@ -1147,6 +1180,7 @@ export default function ExchangeForm({
       setAmtIn("");
       setOutputs([emptyOutput("TRY")]);
       setCounterparty("");
+      setPartnerName("");
       setReferral(false);
       setComment("");
       setInTxHash("");
@@ -1352,51 +1386,101 @@ export default function ExchangeForm({
         </div>
       )}
 
-      {/* CLIENT — обязательное поле, всегда первое */}
-      <div className="px-5 pt-5">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-full bg-indigo-100 ring-1 ring-indigo-200/60 flex items-center justify-center">
-            <UserPlus className="w-3 h-3 text-indigo-700" />
+      {/* CLIENT + PARTNER — рядом, в grid 1:1 на ≥md, друг под другом на mobile.
+          Партнёр — free-text с datalist автокомплитом + auto-create на submit. */}
+      <div className="px-5 pt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+        {/* Client */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 rounded-full bg-indigo-100 ring-1 ring-indigo-200/60 flex items-center justify-center">
+              <UserPlus className="w-3 h-3 text-indigo-700" />
+            </div>
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-700 uppercase">
+              Клиент
+            </span>
+            <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
+              required
+            </span>
           </div>
-          <span className="text-[10.5px] font-bold tracking-[0.12em] text-indigo-700 uppercase">
-            Клиент
-          </span>
-          <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
-            required
-          </span>
+          <div
+            className={`rounded-[14px] border transition-colors p-2 ${
+              counterparty.trim()
+                ? "border-indigo-200/80 bg-gradient-to-br from-indigo-50/40 to-white"
+                : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
+            }`}
+          >
+            {(() => {
+              const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
+              const officeCash = `${officeShort} Cash`;
+              const cashPick = {
+                label: officeCash,
+                value: officeCash,
+                icon: "💵",
+                kind: "cash",
+              };
+              const recentPicks = recentCounterparties
+                .filter((rc) => rc && rc !== officeCash)
+                .slice(0, 6)
+                .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
+              const quickPicks = [cashPick, ...recentPicks];
+              return (
+                <CounterpartySelect
+                  value={counterparty}
+                  onChange={setCounterparty}
+                  quickPicks={quickPicks}
+                />
+              );
+            })()}
+          </div>
         </div>
-        <div
-          className={`rounded-[14px] border transition-colors p-2 ${
-            counterparty.trim()
-              ? "border-indigo-200/80 bg-gradient-to-br from-indigo-50/40 to-white"
-              : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
-          }`}
-        >
-          {/* Quick picks — per-office Cash + recent (max 6) — выводятся
-              ВНУТРИ dropdown'а CounterpartySelect наверху, до search results.
-              Не отдельным чипсетом снаружи. */}
-          {(() => {
-            const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
-            const officeCash = `${officeShort} Cash`;
-            const cashPick = {
-              label: officeCash,
-              value: officeCash,
-              icon: "💵",
-              kind: "cash",
-            };
-            const recentPicks = recentCounterparties
-              .filter((rc) => rc && rc !== officeCash)
-              .slice(0, 6)
-              .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
-            const quickPicks = [cashPick, ...recentPicks];
-            return (
-              <CounterpartySelect
-                value={counterparty}
-                onChange={setCounterparty}
-                quickPicks={quickPicks}
-              />
-            );
-          })()}
+
+        {/* Partner — free-text + datalist + auto-create */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-6 h-6 rounded-full bg-violet-100 ring-1 ring-violet-200/60 flex items-center justify-center">
+              <UserPlus className="w-3 h-3 text-violet-700" />
+            </div>
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-violet-700 uppercase">
+              Партнёр
+            </span>
+            <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-slate-100">
+              опционально
+            </span>
+          </div>
+          <div
+            className={`rounded-[14px] border p-2 transition-colors ${
+              partnerName.trim()
+                ? "border-violet-200/80 bg-gradient-to-br from-violet-50/40 to-white"
+                : "border-slate-200 bg-white"
+            }`}
+          >
+            <input
+              type="text"
+              list="exchange-form-partner-list"
+              value={partnerName}
+              onChange={(e) => setPartnerName(e.target.value)}
+              placeholder="Sheriff, OTC-партнёр…"
+              className="w-full bg-transparent border-0 outline-none text-[14px] text-slate-900 placeholder:text-slate-400 px-2 py-2"
+              autoComplete="off"
+            />
+            <datalist id="exchange-form-partner-list">
+              {activePartners.map((p) => (
+                <option key={p.id} value={p.name}>
+                  {p.telegram || p.phone || ""}
+                </option>
+              ))}
+            </datalist>
+            {partnerName.trim() &&
+              !activePartners.some(
+                (p) =>
+                  (p.name || "").toLowerCase() ===
+                  partnerName.trim().toLowerCase()
+              ) && (
+                <div className="mt-1 px-2 text-[10.5px] text-violet-600 font-semibold">
+                  ↳ новый партнёр будет создан при сохранении
+                </div>
+              )}
+          </div>
         </div>
       </div>
 

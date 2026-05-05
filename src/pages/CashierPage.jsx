@@ -3,7 +3,6 @@ import React, { useState } from "react";
 import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
-import PartnerSettlementForm from "../components/PartnerSettlementForm.jsx";
 import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
@@ -40,11 +39,6 @@ export default function CashierPage({
   const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [otcWizardOpen, setOtcWizardOpen] = useState(false);
-  // dealType — режим внутри карточки «Создать сделку».
-  //   'client'  — обычная ExchangeForm (обмен с клиентом)
-  //   'partner' — встроенная PartnerSettlementForm (внести/забрать с
-  //               счёта партнёра, без сложного OTC wizard'а)
-  const [dealType, setDealType] = useState("client");
   const [cashClosureOpen, setCashClosureOpen] = useState(false);
   // RatesSidebar expanded state — поднимаем сюда чтобы grid columns
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
@@ -552,33 +546,18 @@ export default function CashierPage({
           <section>
             <div className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
               <header className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
-                {/* Тип сделки — apple-style toggle. Переключает контент
-                    карточки: client→ExchangeForm, partner→Settlement. */}
-                <div className="inline-flex bg-slate-100 p-1 rounded-[12px] gap-1">
-                  <button
-                    type="button"
-                    onClick={() => setDealType("client")}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-[12.5px] font-semibold transition-all ${
-                      dealType === "client"
-                        ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
-                        : "text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    <Plus className={`w-3 h-3 ${dealType === "client" ? "text-emerald-500" : ""}`} />
-                    С клиентом
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDealType("partner")}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] text-[12.5px] font-semibold transition-all ${
-                      dealType === "partner"
-                        ? "bg-white text-slate-900 ring-2 ring-indigo-400 shadow-[0_4px_14px_-4px_rgba(99,102,241,0.35)]"
-                        : "text-slate-500 hover:text-slate-900"
-                    }`}
-                  >
-                    <ArrowLeftRight className={`w-3 h-3 ${dealType === "partner" ? "text-indigo-500" : ""}`} />
-                    С партнёром
-                  </button>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500 text-white shrink-0">
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-slate-900 tracking-tight">
+                      {t("cta_new_exchange_title")}
+                    </div>
+                    <div className="text-[11px] text-slate-500 truncate">
+                      {t("drawer_minimize_hint")}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
@@ -601,16 +580,13 @@ export default function CashierPage({
               </header>
 
               <div className="p-5">
-                {formMounted && dealType === "client" && (
+                {formMounted && (
                   <ExchangeForm
                     mode="create"
                     currentOffice={currentOffice}
                     onSubmit={handleFormSubmit}
                     submitting={submitting}
                   />
-                )}
-                {dealType === "partner" && (
-                  <PartnerSettlementForm onDone={() => closeCreate()} />
                 )}
               </div>
             </div>
