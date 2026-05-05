@@ -189,7 +189,7 @@ export default function DealDetailPanel({
         <TimelineStep
           index={2}
           tone="indigo"
-          title="OTC conversion"
+          title={hint.kind === "otc" || hint.kind === "broker" ? "OTC conversion" : "Конверсия валюты"}
           icon={Repeat}
           last={false}
         >

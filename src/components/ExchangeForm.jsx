@@ -36,10 +36,10 @@ import {
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
 import CounterpartySelect from "./CounterpartySelect.jsx";
+import PartnerSelect from "./PartnerSelect.jsx";
 import AccountSelect from "./AccountSelect.jsx";
 import DealTemplatesBar from "./DealTemplatesBar.jsx";
 import PartnerAccountSelect from "./PartnerAccountSelect.jsx";
-import AddPartnerModal from "./clients/AddPartnerModal.jsx";
 import { recordDealUsage } from "../utils/dealTemplates.js";
 import { officeName } from "../store/data.js";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -273,7 +273,6 @@ export default function ExchangeForm({
   const [cpType, setCpType] = useState(
     starter?.cpType || draft?.cpType || "client"
   );
-  const [addPartnerOpen, setAddPartnerOpen] = useState(false);
   // Partner-имя совпадает с counterparty когда cpType==='partner';
   // храним отдельно только для совместимости с существующим draft (если
   // юзер переключил тип, мы не теряем то что было).
@@ -1488,64 +1487,9 @@ export default function ExchangeForm({
             })()}
           </div>
         ) : (
-          <div className="flex items-stretch gap-1.5">
-            <div
-              className={`flex-1 flex items-center bg-slate-50 border rounded-[10px] transition-colors ${
-                counterparty.trim()
-                  ? "border-violet-300 ring-2 ring-violet-500/10 bg-white"
-                  : "border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <Search className="w-3.5 h-3.5 text-slate-400 ml-3" />
-              <input
-                type="text"
-                list="exchange-form-partner-list"
-                value={counterparty}
-                onChange={(e) => setCounterparty(e.target.value)}
-                placeholder="Имя партнёра — Sheriff, OTC-каналы…"
-                className="flex-1 bg-transparent outline-none text-[13px] px-2 py-2 placeholder:text-slate-400 text-slate-900"
-                autoComplete="off"
-                autoFocus={!counterparty}
-              />
-              {counterparty.trim() &&
-                !activePartners.some(
-                  (p) =>
-                    (p.name || "").toLowerCase() ===
-                    counterparty.trim().toLowerCase()
-                ) && (
-                  <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mr-2 shrink-0">
-                    new
-                  </span>
-                )}
-            </div>
-            <button
-              type="button"
-              onClick={() => setAddPartnerOpen(true)}
-              className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-violet-600 text-white text-[11px] font-semibold hover:bg-violet-700 transition-colors shrink-0"
-              title="Добавить нового партнёра с полями (telegram, phone, note)"
-            >
-              <UserPlus className="w-3 h-3" />
-              Add
-            </button>
-            <datalist id="exchange-form-partner-list">
-              {activePartners.map((p) => (
-                <option key={p.id} value={p.name}>
-                  {p.telegram || p.phone || ""}
-                </option>
-              ))}
-            </datalist>
-          </div>
+          <PartnerSelect value={counterparty} onChange={setCounterparty} />
         )}
       </div>
-
-      <AddPartnerModal
-        open={addPartnerOpen}
-        onClose={() => setAddPartnerOpen(false)}
-        onSuccess={(created) => {
-          setAddPartnerOpen(false);
-          if (created?.name) setCounterparty(created.name);
-        }}
-      />
 
       {/* Quick templates — показываем только в create-режиме */}
       {!isEdit && (

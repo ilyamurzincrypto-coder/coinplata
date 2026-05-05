@@ -1118,6 +1118,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                           feeUsd: tx.fee,
                           commissionUsd: tx.commissionUsd,
                           profit: tx.profit,
+                          kind: tx.kind,
                         }}
                         accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))}
                       />
