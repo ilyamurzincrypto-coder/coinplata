@@ -900,9 +900,24 @@ export default function ExchangeForm({
   const EPS = 0.01;
 
   // --- validation ---
-  const hasAllRates = outputs.every((o) => o.rate && parseFloat(o.rate) > 0);
-  const hasAllAmounts = outputs.every((o) => o.amount && parseFloat(o.amount) > 0);
-  const noSameCurrency = outputs.every((o) => o.currency !== curIn);
+  // Сделка может быть односторонней (только IN или только OUT) — для
+  // settlement'а с партнёром или для clients-долгов. Минимум: чтобы
+  // хоть одна сторона была заполнена.
+  const inFilled = amtIn && parseFloat(amtIn) > 0;
+  const filledOutputs = outputs.filter(
+    (o) => o.amount && parseFloat(o.amount) > 0
+  );
+  const outFilled = filledOutputs.length > 0;
+  // Курсы и совпадение валют валидируем только если есть и IN и OUT —
+  // в одностороннем deal'е нет смысла в "конвертации".
+  const hasAllRates = !inFilled || !outFilled
+    ? true
+    : filledOutputs.every((o) => o.rate && parseFloat(o.rate) > 0);
+  const hasAllAmounts = inFilled || outFilled;
+  const noSameCurrency =
+    !inFilled || !outFilled
+      ? true
+      : filledOutputs.every((o) => o.currency !== curIn);
   const hasClient = counterparty.trim().length > 0;
 
   // Interoffice OUT: хоть один OUT-leg использует account из чужого офиса.
@@ -949,7 +964,7 @@ export default function ExchangeForm({
   );
 
   const canSubmit =
-    amtIn && hasAllRates && hasAllAmounts && noSameCurrency && !exceedsInput && hasClient &&
+    hasAllAmounts && hasAllRates && noSameCurrency && !exceedsInput && hasClient &&
     inSideValid && outSidesValid &&
     (!needsPayee || !!payeeUserId);
 
@@ -2278,9 +2293,9 @@ export default function ExchangeForm({
             <AlertCircle className="w-3 h-3 text-slate-400" />
             <span>
               {!hasClient
-                ? "Выберите клиента, чтобы продолжить"
-                : !amtIn
-                ? t("enter_amount_received")
+                ? "Выберите клиента / партнёра, чтобы продолжить"
+                : !hasAllAmounts
+                ? "Заполните хотя бы одну сторону — IN или OUT"
                 : !hasAllRates
                 ? t("enter_exchange_rate")
                 : !noSameCurrency
