@@ -183,13 +183,36 @@ export default function LoginPage() {
       />
 
       <div className="relative w-full max-w-[420px] animate-[cardIn_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
-        {/* Brand logo — full coinpoint mark above the card */}
-        <div className="flex items-center justify-center mb-6">
-          <img
-            src="/coinpoint-logo.png"
-            alt="coinpoint"
-            className="h-20 w-auto select-none drop-shadow-[0_8px_24px_rgba(16,185,129,0.35)]"
-          />
+        {/* Brand mark — выезжает из темноты: круглый кроп прячет белый
+            фон исходника, multi-layer glow halos (emerald + amber)
+            пульсируют как «дыхание», ring + drop-shadow подсвечивают
+            периметр. Без текста — лого само за себя говорит. */}
+        <div className="flex items-center justify-center mb-8 relative h-40">
+          {/* Глубинный slow-pulse эмеральдовый halo */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-72 h-72 rounded-full bg-emerald-500/25 blur-[90px] animate-[logoGlow_4s_ease-in-out_infinite]" />
+          </div>
+          {/* Тёплый amber-halo — теплит низ свирла */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-52 h-52 rounded-full bg-amber-400/20 blur-[55px]" />
+          </div>
+          {/* Близкий ярко-эмеральдовый rim */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-36 h-36 rounded-full bg-emerald-300/25 blur-[28px]" />
+          </div>
+
+          {/* Сам лого — круглый, ring-2 эмеральдовый, мягкая 60px тень */}
+          <div
+            className="relative z-10 w-36 h-36 rounded-full overflow-hidden ring-2 ring-emerald-400/40 shadow-[0_0_80px_-10px_rgba(16,185,129,0.55)] animate-[logoEmerge_900ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+            style={{ background: "radial-gradient(circle at 50% 45%, #fafafa 0%, #ffffff 60%)" }}
+          >
+            <img
+              src="/logo.png"
+              alt="coinpoint"
+              className="w-full h-full object-contain p-2 select-none"
+              draggable={false}
+            />
+          </div>
         </div>
 
         {/* Card */}
@@ -380,6 +403,14 @@ export default function LoginPage() {
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(-2px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes logoEmerge {
+          from { opacity: 0; transform: scale(0.6); filter: blur(8px); }
+          to   { opacity: 1; transform: scale(1);   filter: blur(0); }
+        }
+        @keyframes logoGlow {
+          0%, 100% { opacity: 0.65; transform: scale(1); }
+          50%      { opacity: 1;    transform: scale(1.08); }
         }
       `}</style>
     </div>
