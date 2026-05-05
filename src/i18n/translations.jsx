@@ -433,6 +433,7 @@ const DICT = {
     tab_by_manager: "By manager",
     tab_rate_history: "Rate history",
     tab_referrals: "Referrals",
+    overview_sub_summary: "Summary",
 
     // Table columns / shared labels
     col_office: "Office",
@@ -1401,6 +1402,7 @@ const DICT = {
     tab_by_manager: "По менеджерам",
     tab_rate_history: "История курсов",
     tab_referrals: "Рефералы",
+    overview_sub_summary: "Сводка",
 
     // Колонки таблиц
     col_office: "Офис",
@@ -2365,6 +2367,7 @@ const DICT = {
     tab_by_manager: "Yönetici",
     tab_rate_history: "Kur geçmişi",
     tab_referrals: "Referanslar",
+    overview_sub_summary: "Özet",
 
     // Tablo sütunları
     col_office: "Ofis",

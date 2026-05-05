@@ -3,12 +3,10 @@
 // Дата-range общий на всю страницу, хранится в state здесь.
 
 import React, { useState } from "react";
-import { Briefcase, Receipt, Building2, Users, Wallet, History, FileText, Award } from "lucide-react";
+import { Briefcase, Receipt, Wallet, History, FileText, Award } from "lucide-react";
 import DateRangePicker, { rangeForPreset } from "../components/ui/DateRangePicker.jsx";
 import OverviewTab from "./capital/OverviewTab.jsx";
 import IncomeExpenseTab from "./capital/IncomeExpenseTab.jsx";
-import ByOfficeTab from "./capital/ByOfficeTab.jsx";
-import ByManagerTab from "./capital/ByManagerTab.jsx";
 import PnlTab from "./capital/PnlTab.jsx";
 import RateHistoryTab from "./capital/RateHistoryTab.jsx";
 import AccountingTab from "./capital/AccountingTab.jsx";
@@ -17,15 +15,12 @@ import { useCan } from "../store/permissions.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 
 // Удалён Cashflow tab — дублировал P&L (те же цифры в другом формате).
-// Денежные потоки теперь видны в P&L и Income/Expense.
-// Referrals переехали сюда как таб (раньше был отдельный top-level раздел) —
-// это финансовая метрика менеджеров, ей место в Капитале.
+// ByOffice / ByManager — теперь суб-табы внутри Overview (см. OverviewTab.jsx).
+// Referrals переехали сюда как таб (раньше был отдельный top-level раздел).
 const ALL_TABS = [
   { id: "overview", key: "tab_overview", icon: Briefcase, component: OverviewTab },
   { id: "pnl", key: "tab_pnl", icon: Wallet, component: PnlTab },
   { id: "ie", key: "tab_income_expense", icon: Receipt, component: IncomeExpenseTab },
-  { id: "office", key: "tab_by_office", icon: Building2, component: ByOfficeTab },
-  { id: "manager", key: "tab_by_manager", icon: Users, component: ByManagerTab },
   { id: "referrals", key: "tab_referrals", icon: Award, component: ReferralsTab, requiresReferrals: true },
   { id: "rate_history", key: "tab_rate_history", icon: History, component: RateHistoryTab },
   // accounting — гард в runtime, видна только при can('accounting','view')+
