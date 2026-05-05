@@ -299,7 +299,7 @@ function GroupCard({
     //   низ (white)  = вклад этого офиса (total + assets list)
     // Тот же внешний bordered card → тот же визуальный footprint и высота.
     return (
-      <div className="bg-white border border-emerald-200/60 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2 shadow-[0_0_0_1px_rgba(16,185,129,0.04),0_8px_24px_-12px_rgba(16,185,129,0.18)]">
+      <div className="bg-white border border-slate-200 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2">
         <div className="bg-gradient-to-br from-emerald-50 via-indigo-50/40 to-slate-50 border border-emerald-200/60 rounded-[10px] px-3 py-2.5">
           {headerBlock}
         </div>
