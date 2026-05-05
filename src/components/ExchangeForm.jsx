@@ -1456,36 +1456,28 @@ export default function ExchangeForm({
         </div>
 
         {cpType === "client" ? (
-          <div
-            className={`rounded-[14px] border transition-colors p-2 ${
-              counterparty.trim()
-                ? "border-indigo-200/80 bg-gradient-to-br from-indigo-50/40 to-white"
-                : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
-            }`}
-          >
-            {(() => {
-              const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
-              const officeCash = `${officeShort} Cash`;
-              const cashPick = {
-                label: officeCash,
-                value: officeCash,
-                icon: "💵",
-                kind: "cash",
-              };
-              const recentPicks = recentCounterparties
-                .filter((rc) => rc && rc !== officeCash)
-                .slice(0, 6)
-                .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
-              const quickPicks = [cashPick, ...recentPicks];
-              return (
-                <CounterpartySelect
-                  value={counterparty}
-                  onChange={setCounterparty}
-                  quickPicks={quickPicks}
-                />
-              );
-            })()}
-          </div>
+          (() => {
+            const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
+            const officeCash = `${officeShort} Cash`;
+            const cashPick = {
+              label: officeCash,
+              value: officeCash,
+              icon: "💵",
+              kind: "cash",
+            };
+            const recentPicks = recentCounterparties
+              .filter((rc) => rc && rc !== officeCash)
+              .slice(0, 6)
+              .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
+            const quickPicks = [cashPick, ...recentPicks];
+            return (
+              <CounterpartySelect
+                value={counterparty}
+                onChange={setCounterparty}
+                quickPicks={quickPicks}
+              />
+            );
+          })()
         ) : (
           <PartnerSelect value={counterparty} onChange={setCounterparty} />
         )}
