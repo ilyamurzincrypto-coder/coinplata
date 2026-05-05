@@ -1473,34 +1473,45 @@ export default function ExchangeForm({
             })()}
           </div>
         ) : (
-          <div
-            className={`rounded-[14px] border p-2 transition-colors ${
-              counterparty.trim()
-                ? "border-violet-200/80 bg-gradient-to-br from-violet-50/40 to-white"
-                : "border-amber-300/80 bg-gradient-to-br from-amber-50/60 to-white"
-            }`}
-          >
-            <div className="flex items-stretch gap-1.5">
+          <div className="flex items-stretch gap-1.5">
+            <div
+              className={`flex-1 flex items-center bg-slate-50 border rounded-[10px] transition-colors ${
+                counterparty.trim()
+                  ? "border-violet-300 ring-2 ring-violet-500/10 bg-white"
+                  : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <Search className="w-3.5 h-3.5 text-slate-400 ml-3" />
               <input
                 type="text"
                 list="exchange-form-partner-list"
                 value={counterparty}
                 onChange={(e) => setCounterparty(e.target.value)}
-                placeholder="Sheriff, OTC-партнёр…"
-                className="flex-1 bg-transparent border-0 outline-none text-[14px] text-slate-900 placeholder:text-slate-400 px-2 py-2"
+                placeholder="Имя партнёра — Sheriff, OTC-каналы…"
+                className="flex-1 bg-transparent outline-none text-[13px] px-2 py-2 placeholder:text-slate-400 text-slate-900"
                 autoComplete="off"
                 autoFocus={!counterparty}
               />
-              <button
-                type="button"
-                onClick={() => setAddPartnerOpen(true)}
-                className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-violet-600 text-white text-[11px] font-semibold hover:bg-violet-700 transition-colors shrink-0"
-                title="Добавить нового партнёра"
-              >
-                <UserPlus className="w-3 h-3" />
-                Add
-              </button>
+              {counterparty.trim() &&
+                !activePartners.some(
+                  (p) =>
+                    (p.name || "").toLowerCase() ===
+                    counterparty.trim().toLowerCase()
+                ) && (
+                  <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider mr-2 shrink-0">
+                    new
+                  </span>
+                )}
             </div>
+            <button
+              type="button"
+              onClick={() => setAddPartnerOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-violet-600 text-white text-[11px] font-semibold hover:bg-violet-700 transition-colors shrink-0"
+              title="Добавить нового партнёра с полями (telegram, phone, note)"
+            >
+              <UserPlus className="w-3 h-3" />
+              Add
+            </button>
             <datalist id="exchange-form-partner-list">
               {activePartners.map((p) => (
                 <option key={p.id} value={p.name}>
@@ -1508,16 +1519,6 @@ export default function ExchangeForm({
                 </option>
               ))}
             </datalist>
-            {counterparty.trim() &&
-              !activePartners.some(
-                (p) =>
-                  (p.name || "").toLowerCase() ===
-                  counterparty.trim().toLowerCase()
-              ) && (
-                <div className="mt-1 px-2 text-[10.5px] text-violet-600 font-semibold">
-                  ↳ новый партнёр будет создан при сохранении (или жми Add для модалки с полями)
-                </div>
-              )}
           </div>
         )}
       </div>
