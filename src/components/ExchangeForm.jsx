@@ -32,6 +32,7 @@ import {
   Clock,
   ChevronUp,
   SlidersHorizontal,
+  X,
 } from "lucide-react";
 import CurrencyTabs from "./ui/CurrencyTabs.jsx";
 import Select from "./ui/Select.jsx";
@@ -850,6 +851,13 @@ export default function ExchangeForm({
     setOutputs((prev) => (prev.length > 1 ? prev.filter((o) => o.id !== id) : prev));
   };
 
+  // Полностью убрать секцию OUT — для случаев, когда контрагент только
+  // вносит на свой счёт (одностороннее IN, без выдачи). Валидаторы уже
+  // разрешают такие сделки (см. inFilled || outFilled).
+  const removeAllOutputs = () => {
+    setOutputs([]);
+  };
+
   const toggleManualRate = (id) => {
     setOutputs((prev) =>
       prev.map((o) => {
@@ -1653,13 +1661,25 @@ export default function ExchangeForm({
               </span>
             )}
           </div>
-          <button
-            onClick={addOutput}
-            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-2.5 py-1 transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            {t("add_output")}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={addOutput}
+              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 rounded-full px-2.5 py-1 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              {t("add_output")}
+            </button>
+            {outputs.length > 0 && (
+              <button
+                onClick={removeAllOutputs}
+                title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN (контрагент только вносит)"}
+                className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-full px-2.5 py-1 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                {t("remove_output") || "Удалить выдачу"}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Remaining indicator — показываем только когда есть amtIn и outputs с суммами */}
