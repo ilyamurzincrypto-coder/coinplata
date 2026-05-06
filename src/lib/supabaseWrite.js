@@ -133,9 +133,11 @@ function paymentsToJsonb(payments, ctxLabel) {
 }
 
 export function legsToJsonb(outputs) {
-  if (!Array.isArray(outputs) || outputs.length === 0) {
-    throw new Error("Deal must have at least one output");
-  }
+  // Пустой массив легов разрешён — это односторонний IN (контрагент только
+  // вносит, без выдачи). SQL create_deal обрабатывает legs=[]: пропускает
+  // OUT-loop, статус определяется по IN-side.
+  if (!Array.isArray(outputs)) return [];
+  if (outputs.length === 0) return [];
   return outputs.map((o, idx) => {
     const amount = Number(o.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
