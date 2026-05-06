@@ -1,48 +1,22 @@
 // src/components/OfficeSwitcher.jsx
-// Hover-open office switcher в apple-style. Dark theme (slate-900),
+// Click-open office switcher в apple-style. Dark theme (slate-900),
 // плавная анимация (cubic-bezier), scroll при большом числе офисов.
 //
 // UX:
-//   - Наведение на trigger → dropdown раскрывается через 80ms delay (чтобы
-//     не срабатывал на случайном прохождении мыши)
-//   - Уход с trigger+menu → закрывается через 200ms (даёт время добежать
-//     мышью до меню не закрыв его)
+//   - Клик по trigger → dropdown открывается/закрывается (toggle)
 //   - Клик по опции → apply + instant close
 //   - ESC / клик вне → close
 //   - Выбранный офис подсвечен белым на чёрном фоне
+//
+// Раньше открывался на hover с задержками (80ms open / 200ms close) — юзеры
+// случайно раскрывали при пробеге мыши; теперь только явный клик.
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Building2, ChevronDown, Check } from "lucide-react";
 
 export default function OfficeSwitcher({ value, onChange, offices }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
-  const openTimerRef = useRef(null);
-  const closeTimerRef = useRef(null);
-
-  const scheduleOpen = useCallback(() => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    if (open) return;
-    openTimerRef.current = setTimeout(() => {
-      setOpen(true);
-      openTimerRef.current = null;
-    }, 80);
-  }, [open]);
-
-  const scheduleClose = useCallback(() => {
-    if (openTimerRef.current) {
-      clearTimeout(openTimerRef.current);
-      openTimerRef.current = null;
-    }
-    if (!open) return;
-    closeTimerRef.current = setTimeout(() => {
-      setOpen(false);
-      closeTimerRef.current = null;
-    }, 200);
-  }, [open]);
 
   // Закрытие по клику вне + Esc
   useEffect(() => {
@@ -62,32 +36,16 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
     };
   }, [open]);
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (openTimerRef.current) clearTimeout(openTimerRef.current);
-      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
-    };
-  }, []);
-
   const current = (offices || []).find((o) => o.id === value);
   const currentLabel = current?.name || "Select office";
 
   const handlePick = (id) => {
     if (onChange) onChange(id);
-    // Close instantly after pick — no delay
-    if (openTimerRef.current) clearTimeout(openTimerRef.current);
-    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
     setOpen(false);
   };
 
   return (
-    <div
-      ref={rootRef}
-      className="relative"
-      onMouseEnter={scheduleOpen}
-      onMouseLeave={scheduleClose}
-    >
+    <div ref={rootRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
