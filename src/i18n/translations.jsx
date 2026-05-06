@@ -470,6 +470,12 @@ const DICT = {
     nav_clients: "Clients",
     nav_counterparties: "Counterparties",
     nav_obligations: "Obligations",
+    nav_treasury: "Treasury",
+    tr_title: "Treasury",
+    tr_subtitle: "Nostro / Loro / Capital — bank reconciliation view",
+    tr_tab_nostro: "Nostro",
+    tr_tab_loro: "Loro",
+    tr_tab_capital: "Capital",
 
     // Counterparties unified page (clients + partners + obligations tab)
     cp_title: "Counterparties",
@@ -1464,6 +1470,12 @@ const DICT = {
     nav_clients: "Клиенты",
     nav_counterparties: "Контрагенты",
     nav_obligations: "Долги",
+    nav_treasury: "Казначейство",
+    tr_title: "Казначейство",
+    tr_subtitle: "Ностро / Лоро / Капитал — банковский разрез",
+    tr_tab_nostro: "Ностро",
+    tr_tab_loro: "Лоро",
+    tr_tab_capital: "Капитал",
 
     // Контрагенты — единая страница (клиенты + партнёры + обязательства)
     cp_title: "Контрагенты",
@@ -2456,6 +2468,12 @@ const DICT = {
     nav_clients: "Müşteriler",
     nav_counterparties: "Karşı taraflar",
     nav_obligations: "Borçlar",
+    nav_treasury: "Hazine",
+    tr_title: "Hazine",
+    tr_subtitle: "Nostro / Loro / Sermaye — banka mutabakatı",
+    tr_tab_nostro: "Nostro",
+    tr_tab_loro: "Loro",
+    tr_tab_capital: "Sermaye",
 
     // Karşı taraflar — birleşik sayfa (müşteriler + ortaklar + borçlar)
     cp_title: "Karşı taraflar",

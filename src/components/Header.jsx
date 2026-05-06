@@ -17,6 +17,7 @@ const NAV_PAGES = [
   { id: "capital", key: "nav_capital", section: "capital" },
   { id: "accounts", key: "nav_accounts", section: "accounts" },
   { id: "counterparties", key: "nav_counterparties", section: "counterparties" },
+  { id: "treasury", key: "nav_treasury", section: "capital" },
   { id: "settings", key: "nav_settings", section: "settings" },
 ];
 

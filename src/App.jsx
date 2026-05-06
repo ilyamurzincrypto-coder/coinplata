@@ -7,6 +7,7 @@ import CashierPage from "./pages/CashierPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
 import CapitalPage from "./pages/CapitalPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
+import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
@@ -47,6 +48,9 @@ const PAGE_SECTION = {
   capital: "capital",
   accounts: "accounts",
   counterparties: "counterparties",
+  // Казначейство переиспользует permission «capital» — финансовый раздел,
+  // доступен тем же ролям что и Капитал.
+  treasury: "capital",
   settings: "settings",
 };
 
@@ -136,6 +140,7 @@ function Root() {
     "g k": () => handlePageChange("capital"),
     "g a": () => handlePageChange("accounts"),
     "g p": () => handlePageChange("counterparties"),
+    "g t": () => handlePageChange("treasury"),
     "g s": () => handlePageChange("settings"),
   });
 
@@ -186,6 +191,7 @@ function Root() {
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
+      {page === "treasury" && canShow("capital") && <TreasuryPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
