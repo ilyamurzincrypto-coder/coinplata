@@ -63,6 +63,7 @@ export default function RatesPage({ onBack }) {
     channels,
     pairs: allPairs,
     getOfficeOverride,
+    applyOfficeOverrideLocal,
   } = useRates();
   const { currencies } = useCurrencies();
   const { activeOffices } = useOffices();
@@ -195,6 +196,14 @@ export default function RatesPage({ onBack }) {
         { success: null, errorPrefix: "Office rate update failed" }
       );
       if (res.ok) {
+        // Мгновенный апдейт Map — UI сразу видит новый base/spread/OFC chip,
+        // не ждёт reload через bumpDataVersion.
+        applyOfficeOverrideLocal?.(activeOffice, from, to, {
+          baseRate: nextBase,
+          spreadPercent: nextSpread,
+          rate: nextBase * (1 + nextSpread / 100),
+          updatedAt: new Date().toISOString(),
+        });
         const officeLabel = activeOffices.find((o) => o.id === activeOffice)?.name || activeOffice;
         logAudit({
           action: "update",
@@ -258,6 +267,11 @@ export default function RatesPage({ onBack }) {
       { success: "Reverted to global", errorPrefix: "Reset failed" }
     );
     if (res.ok) {
+      // Сразу чистим override локально — не ждём reload через bumpDataVersion.
+      // Раньше UI продолжал показывать старые base/spread/OFC chip, пока async
+      // loadOfficeRateOverrides не завершится; на flaky сети выглядело как
+      // "reset не сработал".
+      applyOfficeOverrideLocal?.(activeOffice, from, to, null);
       const officeLabel = activeOffices.find((o) => o.id === activeOffice)?.name || activeOffice;
       logAudit({
         action: "delete",

@@ -282,6 +282,27 @@ export function RatesProvider({ children }) {
     [officeOverrides]
   );
 
+  // Локальная мутация Map — для немедленного отражения reset/upsert override
+  // в UI без ожидания reload через bumpDataVersion (на flaky сети между RPC
+  // и reload было видно stale значение, и юзер думал что reset не сработал).
+  // value=null → удалить пару из Map; иначе записать.
+  const applyOfficeOverrideLocal = useCallback((officeId, from, to, value) => {
+    if (!officeId || !from || !to) return;
+    const k = rateKey(from, to);
+    setOfficeOverrides((prev) => {
+      const next = new Map(prev);
+      const officeMap = next.has(officeId) ? new Map(next.get(officeId)) : new Map();
+      if (value == null) {
+        officeMap.delete(k);
+      } else {
+        officeMap.set(k, value);
+      }
+      if (officeMap.size === 0) next.delete(officeId);
+      else next.set(officeId, officeMap);
+      return next;
+    });
+  }, []);
+
   // setRate — меняет rate у default pair (from → to).
   // Если default pair нет — возвращает {ok: false, warning}.
   // Пары автоматически НЕ создаём.
@@ -590,6 +611,7 @@ export function RatesProvider({ children }) {
       // per-office overrides
       officeOverrides,
       getOfficeOverride,
+      applyOfficeOverrideLocal,
       // pair/channel API
       pairs,
       channels,
@@ -621,6 +643,7 @@ export function RatesProvider({ children }) {
       lastUpdated,
       officeOverrides,
       getOfficeOverride,
+      applyOfficeOverrideLocal,
       pairs,
       channels,
       getChannel,
