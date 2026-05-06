@@ -731,6 +731,18 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 ? tx.outputs
                 : (tx.curOut ? [{ currency: tx.curOut, amount: tx.amtOut, rate: tx.rate }] : []);
               const firstOut = outputs[0] || {};
+              // Display type — для односторонних сделок отображаем "IN"/"OUT"
+              // вместо хранимого в БД "EXCHANGE". База остаётся неизменной;
+              // переименование чисто визуальное чтобы кассиру было понятно
+              // что это не обмен.
+              const inAmt = Number(tx.amtIn) || 0;
+              const hasOut = outputs.some((o) => Number(o?.amount) > 0);
+              const displayType =
+                tx.type === "EXCHANGE"
+                  ? (inAmt > 0 && !hasOut ? "IN"
+                    : inAmt === 0 && hasOut ? "OUT"
+                    : "EXCHANGE")
+                  : tx.type;
               const isDeleted = tx.status === "deleted";
               const isExpanded = expandedDealId === tx.id;
               const rowTooltip = [
@@ -802,15 +814,16 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     <div className="flex items-center gap-1 flex-wrap">
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
-                          tx.type === "EXCHANGE"
+                          displayType === "EXCHANGE"
                             ? "bg-slate-100 text-slate-700"
-                            : tx.type === "IN"
+                            : displayType === "IN"
                             ? "bg-emerald-50 text-emerald-700"
                             : "bg-rose-50 text-rose-700"
                         }`}
+                        title={displayType !== tx.type ? "Односторонняя сделка" : undefined}
                       >
-                        {tx.type === "EXCHANGE" && <ArrowLeftRight className="w-2.5 h-2.5" />}
-                        {tx.type}
+                        {displayType === "EXCHANGE" && <ArrowLeftRight className="w-2.5 h-2.5" />}
+                        {displayType}
                       </span>
                       <KindPill type="deal" kind={tx.kind} />
                       {tx.status === "pending" && (
@@ -896,6 +909,16 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         </span>
                       )}
                     </div>
+                    {/* Контрагент — подпись под типом, чтобы кассир видел
+                        с кем сделка не открывая детали. */}
+                    {tx.counterparty && (
+                      <div
+                        className="text-[11px] text-slate-600 font-medium mt-1 truncate max-w-[180px]"
+                        title={tx.counterparty}
+                      >
+                        {tx.counterparty}
+                      </div>
+                    )}
                   </td>
                   {/* IN: сумма + валюта в одну строку. */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
