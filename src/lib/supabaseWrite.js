@@ -1226,6 +1226,25 @@ export async function closeOfficeRow(id) {
   return updateOfficeRow(id, { status: "closed", active: false });
 }
 
+// Меняет местами sort_order двух офисов. Два UPDATE подряд (без транзакции —
+// у sort_order нет unique-constraint, поэтому промежуточное состояние безопасно).
+export async function swapOfficesSortOrder(idA, orderA, idB, orderB) {
+  assertConfigured();
+  const validA = requireUuid(idA, "idA");
+  const validB = requireUuid(idB, "idB");
+  const a = Number(orderA);
+  const b = Number(orderB);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) {
+    throw new Error("swapOfficesSortOrder: orders must be numbers");
+  }
+  // A получает order B, B получает order A.
+  const r1 = await supabase.from("offices").update({ sort_order: b }).eq("id", validA);
+  if (r1.error) throw new Error(formatSupabaseError(r1.error, "swap office order A"));
+  const r2 = await supabase.from("offices").update({ sort_order: a }).eq("id", validB);
+  if (r2.error) throw new Error(formatSupabaseError(r2.error, "swap office order B"));
+  bumpDataVersion();
+}
+
 export async function reopenOfficeRow(id) {
   return updateOfficeRow(id, { status: "active", active: true });
 }

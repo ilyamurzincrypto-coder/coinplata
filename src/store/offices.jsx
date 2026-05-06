@@ -16,6 +16,7 @@ import {
 import { OFFICES as SEED_OFFICES, DEFAULT_OFFICE_OPS } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { loadOffices } from "../lib/supabaseReaders.js";
+import { swapOfficesSortOrder, withToast } from "../lib/supabaseWrite.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
 const OfficesContext = createContext(null);
@@ -100,6 +101,46 @@ export function OfficesProvider({ children }) {
     [offices]
   );
 
+  // Перемещение в списке: меняем местами sort_order с соседом.
+  // dir: -1 = вверх, +1 = вниз. Соседа ищем по уже отсортированному массиву offices.
+  const moveOffice = useCallback(
+    async (id, dir) => {
+      const idx = offices.findIndex((o) => o.id === id);
+      if (idx === -1) return;
+      const neighborIdx = idx + (dir < 0 ? -1 : 1);
+      if (neighborIdx < 0 || neighborIdx >= offices.length) return;
+      const cur = offices[idx];
+      const neighbor = offices[neighborIdx];
+      const curOrder = Number.isFinite(cur.sortOrder) ? cur.sortOrder : idx * 10;
+      const neighborOrder = Number.isFinite(neighbor.sortOrder)
+        ? neighbor.sortOrder
+        : neighborIdx * 10;
+      if (isSupabaseConfigured) {
+        // Оптимистичный swap — поправит reload через bumpDataVersion.
+        setOffices((prev) => {
+          const arr = prev.slice();
+          arr[idx] = { ...cur, sortOrder: neighborOrder };
+          arr[neighborIdx] = { ...neighbor, sortOrder: curOrder };
+          arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+          return arr;
+        });
+        await withToast(
+          () => swapOfficesSortOrder(cur.id, curOrder, neighbor.id, neighborOrder),
+          { errorPrefix: "Reorder failed" }
+        );
+      } else {
+        setOffices((prev) => {
+          const arr = prev.slice();
+          arr[idx] = { ...cur, sortOrder: neighborOrder };
+          arr[neighborIdx] = { ...neighbor, sortOrder: curOrder };
+          arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+          return arr;
+        });
+      }
+    },
+    [offices]
+  );
+
   const value = useMemo(
     () => ({
       offices,
@@ -109,8 +150,9 @@ export function OfficesProvider({ children }) {
       closeOffice,
       reopenOffice,
       findOffice,
+      moveOffice,
     }),
-    [offices, activeOffices, addOffice, updateOffice, closeOffice, reopenOffice, findOffice]
+    [offices, activeOffices, addOffice, updateOffice, closeOffice, reopenOffice, findOffice, moveOffice]
   );
 
   return <OfficesContext.Provider value={value}>{children}</OfficesContext.Provider>;

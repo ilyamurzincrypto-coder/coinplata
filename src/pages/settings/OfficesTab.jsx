@@ -3,7 +3,7 @@
 // Подсчёт accounts per office — через useAccounts (read-only).
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Building2, Plus, Pencil, Power, RotateCcw, Clock } from "lucide-react";
+import { Building2, Plus, Pencil, Power, RotateCcw, Clock, ChevronUp, ChevronDown } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
@@ -601,7 +601,7 @@ function LiveClock({ office }) {
 // --- Main ---
 export default function OfficesTab() {
   const { t } = useTranslation();
-  const { offices, closeOffice, reopenOffice } = useOffices();
+  const { offices, closeOffice, reopenOffice, moveOffice } = useOffices();
   const { accounts } = useAccounts();
   const { addEntry: logAudit } = useAudit();
   const { isAdmin } = useAuth();
@@ -687,6 +687,7 @@ export default function OfficesTab() {
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100 bg-slate-50/40">
+              {isAdmin && <th className="px-2 py-2.5 font-bold w-10"></th>}
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_local_time") || "Local time"}</th>
@@ -698,9 +699,11 @@ export default function OfficesTab() {
             </tr>
           </thead>
           <tbody>
-            {offices.map((o) => {
+            {offices.map((o, idx) => {
               const count = accountsPerOffice.get(o.id) || 0;
               const isClosed = o.status === "closed" || o.active === false;
+              const isFirst = idx === 0;
+              const isLast = idx === offices.length - 1;
               return (
                 <tr
                   key={o.id}
@@ -708,6 +711,28 @@ export default function OfficesTab() {
                     isClosed ? "opacity-60" : ""
                   }`}
                 >
+                  {isAdmin && (
+                    <td className="px-2 py-3">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <button
+                          onClick={() => moveOffice(o.id, -1)}
+                          disabled={isFirst}
+                          className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                          title="Переместить вверх"
+                        >
+                          <ChevronUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => moveOffice(o.id, +1)}
+                          disabled={isLast}
+                          className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                          title="Переместить вниз"
+                        >
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2">
                       <Building2 className="w-3.5 h-3.5 text-slate-400" />
@@ -796,7 +821,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={isAdmin ? 9 : 8} className="px-5 py-12 text-center text-[13px] text-slate-400">
                   No offices
                 </td>
               </tr>

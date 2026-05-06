@@ -34,7 +34,13 @@ export async function loadCurrencies() {
 
 export async function loadOffices() {
   const sb = ensureSupabase();
-  const { data, error } = await sb.from("offices").select("*");
+  // Сортируем по sort_order — admin может менять порядок через UI.
+  // created_at — tie-breaker для офисов с одинаковым sort_order (например, свежесозданных с дефолтом 0).
+  const { data, error } = await sb
+    .from("offices")
+    .select("*")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
   if (error) throw error;
   return (data || []).map((r) => ({
     id: r.id,
@@ -42,6 +48,7 @@ export async function loadOffices() {
     city: r.city || "",
     status: r.status,
     active: r.active,
+    sortOrder: typeof r.sort_order === "number" ? r.sort_order : 0,
     timezone: r.timezone,
     workingDays: r.working_days || [1, 2, 3, 4, 5, 6],
     workingHours: r.working_hours || { start: "09:00", end: "21:00" },
