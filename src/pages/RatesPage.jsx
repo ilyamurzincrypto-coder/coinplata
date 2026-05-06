@@ -61,6 +61,37 @@ import {
 import { rateKey } from "../store/rates.jsx";
 import { fmt } from "../utils/money.js";
 import { exportCSV } from "../utils/csv.js";
+import { useNow } from "../hooks/useNow.js";
+
+// "обновлён 5 мин назад" — относительная метка через Intl.RelativeTimeFormat
+// для авто-i18n (ru/en/tr подхватываются по navigator.language). Старше
+// недели — показываем абсолютную дату DD MMM.
+function formatRelativeTime(dt, nowMs = Date.now(), locale) {
+  if (!dt) return null;
+  const ms = typeof dt === "string" || typeof dt === "number" ? new Date(dt).getTime() : dt?.getTime?.();
+  if (!Number.isFinite(ms)) return null;
+  const diffSec = Math.floor((nowMs - ms) / 1000);
+  const lc = locale || (typeof navigator !== "undefined" ? navigator.language : "en");
+  let rtf;
+  try {
+    rtf = new Intl.RelativeTimeFormat(lc, { numeric: "auto" });
+  } catch {
+    rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  }
+  if (diffSec < 5) return rtf.format(0, "second");
+  if (diffSec < 60) return rtf.format(-diffSec, "second");
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return rtf.format(-diffMin, "minute");
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return rtf.format(-diffHour, "hour");
+  const diffDay = Math.floor(diffHour / 24);
+  if (diffDay < 7) return rtf.format(-diffDay, "day");
+  try {
+    return new Date(ms).toLocaleDateString(lc, { day: "2-digit", month: "short" });
+  } catch {
+    return new Date(ms).toLocaleDateString("en", { day: "2-digit", month: "short" });
+  }
+}
 
 export default function RatesPage({ onBack }) {
   const { t } = useTranslation();
@@ -705,7 +736,7 @@ function PairRow({
   to,
   globalValue,        // текущий global rate
   globalPair,         // pair object (для base/spread global)
-  officeOverride,     // {baseRate, spreadPercent, rate} | null
+  officeOverride,     // {baseRate, spreadPercent, rate, updatedAt} | null
   isOfficeTab,        // true если active tab ≠ "all"
   canReset,
   onUpdate,           // ({baseRate?, spreadPercent?}) => void
@@ -717,6 +748,8 @@ function PairRow({
   onToggleFavorite,
 }) {
   const { t } = useTranslation();
+  // Тикер на 30s — пересчитывает "5 мин назад" без полного reload страницы.
+  const nowMs = useNow(30_000);
 
   // В office-режиме источник значений = override > global fallback
   // В global-режиме — из globalPair (base/spread/rate)
@@ -908,6 +941,31 @@ function PairRow({
             {effectiveRate != null ? Number(effectiveRate).toFixed(4) : "—"}
           </span>
         </div>
+
+        {/* Updated at — когда курс был последний раз изменён.
+            В office-tab с override берём officeOverride.updatedAt;
+            иначе — globalPair.updatedAt. Hover показывает точную дату. */}
+        {(() => {
+          const updatedAt = isOfficeTab && officeOverride?.updatedAt
+            ? officeOverride.updatedAt
+            : globalPair?.updatedAt;
+          if (!updatedAt) return null;
+          const rel = formatRelativeTime(updatedAt, nowMs);
+          let abs = "";
+          try {
+            abs = new Date(updatedAt).toLocaleString();
+          } catch {}
+          return (
+            <div className="flex flex-col items-start" title={abs}>
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                {t("rates_updated") || "Обновлён"}
+              </span>
+              <span className="text-[11.5px] text-slate-500 tabular-nums whitespace-nowrap">
+                {rel || "—"}
+              </span>
+            </div>
+          );
+        })()}
 
         <div className="ml-auto flex items-center gap-1">
           {canDelete && (
