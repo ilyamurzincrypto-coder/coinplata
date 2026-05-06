@@ -724,8 +724,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               const isNew = tx.id === justCreatedId;
               const profitUp = tx.profit >= 0;
               const canEdit = canEditTransaction(tx);
-              const outputs = tx.outputs || [{ currency: tx.curOut, amount: tx.amtOut, rate: tx.rate }];
-              const firstOut = outputs[0];
+              // tx.outputs может быть [] для односторонних IN-сделок (без выдачи).
+              // Раньше fallback `tx.outputs || [...]` не срабатывал на пустой массив
+              // (он truthy), и firstOut становился undefined → крэш в render.
+              const outputs = Array.isArray(tx.outputs) && tx.outputs.length > 0
+                ? tx.outputs
+                : (tx.curOut ? [{ currency: tx.curOut, amount: tx.amtOut, rate: tx.rate }] : []);
+              const firstOut = outputs[0] || {};
               const isDeleted = tx.status === "deleted";
               const isExpanded = expandedDealId === tx.id;
               const rowTooltip = [
