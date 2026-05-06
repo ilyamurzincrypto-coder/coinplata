@@ -98,7 +98,26 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const { currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
   const nowMs = useNow(30_000);
-  const [expanded, setExpanded] = useState(false);
+  // Persistent expanded — RatesSidebar re-mount-ится при переключении
+  // dashboard ↔ create mode (родитель {isDashboard && ...}), и без
+  // sessionStorage юзер терял "развёрнутое" состояние и не видел кнопку
+  // "Свернуть" после возвращения. Ключ session-scoped — на новой сессии
+  // браузера начинаем со compact.
+  const [expanded, setExpanded] = useState(() => {
+    try {
+      return sessionStorage.getItem("coinplata.ratesSidebarExpanded") === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        "coinplata.ratesSidebarExpanded",
+        expanded ? "1" : "0"
+      );
+    } catch {}
+  }, [expanded]);
   const [query, setQuery] = useState("");
 
   // --- Dashboard favorites (per-user, server-persisted) ---
