@@ -115,6 +115,11 @@ function paymentsToJsonb(payments, ctxLabel) {
       throw new Error(`${ctxLabel} payment ${i + 1}: kind должен быть ours_now или partner_now`);
     }
     const out = { amount, kind };
+    // Multi-currency: SQL create_deal читает payment.currency и пишет
+    // account_movements в этой валюте; fallback на p_currency_in.
+    if (p.currency) {
+      out.currency = String(p.currency).toUpperCase();
+    }
     if (kind === "ours_now") {
       if (!p.accountId) {
         throw new Error(`${ctxLabel} payment ${i + 1}: account_id required for ours_now`);

@@ -164,11 +164,13 @@ export default function CashierPage({
               applyMinFee: tx.applyMinFee !== false,
               // OTC брокеридж — наш заработок за сведение клиента и партнёра.
               commissionUsd: tx.commissionUsd != null ? Number(tx.commissionUsd) : 0,
-              // Multi-IN: массив [{amount, kind, accountId}] — будет передан
-              // в SQL как p_in_payments. Если 1 запись — поведение прежнее.
+              // Multi-IN: массив [{amount, currency, kind, accountId}] —
+              // SQL create_deal пишет account_movements в payment.currency
+              // (миграция multi_currency_in_payments).
               inPayments: Array.isArray(tx.inPayments) && tx.inPayments.length > 0
                 ? tx.inPayments.map((p) => ({
                     amount: Number(p.amount) || 0,
+                    currency: p.currency || tx.curIn,
                     kind: p.kind || "ours_now",
                     accountId: uuidOrNull(p.accountId),
                     partnerAccountId: uuidOrNull(p.partnerAccountId),

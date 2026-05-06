@@ -363,9 +363,9 @@ export default function ExchangeForm({
   const [accountId, setAccountId] = useState(
     initialData?.accountId || draft?.accountId || ""
   );
-  // extraInputs — дополнительные IN-payments (multi-IN, шаг 1: одна валюта).
-  // Каждый: {id, amount, accountId}. Первичный IN — обычный amtIn/accountId.
-  // Все сливаются в p_in_payments на submit. Будущая итерация — multi-currency.
+  // extraInputs — дополнительные IN-payments (multi-IN, multi-currency).
+  // {id, amount, currency, accountId}. SQL create_deal (миграция
+  // 2026-multi-currency) пишет account_movements в валюте payment.
   const [extraInputs, setExtraInputs] = useState(() => {
     const seed = draft?.extraInputs;
     if (!Array.isArray(seed)) return [];
@@ -374,13 +374,16 @@ export default function ExchangeForm({
       .map((x, i) => ({
         id: x.id || `xin_${Date.now()}_${i}`,
         amount: String(x.amount || ""),
+        currency: x.currency || "",
         accountId: x.accountId || "",
       }));
   });
   const addExtraInput = () => {
     setExtraInputs((prev) => [
       ...prev,
-      { id: `xin_${Date.now()}_${prev.length}`, amount: "", accountId: "" },
+      // Дефолтная валюта новой ноги — та же что у primary IN, юзер
+      // может изменить через dropdown справа от amount.
+      { id: `xin_${Date.now()}_${prev.length}`, amount: "", currency: curIn, accountId: "" },
     ]);
   };
   const updateExtraInput = (id, patch) => {
@@ -1109,12 +1112,14 @@ export default function ExchangeForm({
     // Бэк принимает amtIn=0 / curOut=null — это валидная односторонняя сделка.
     const firstOutClean = outputsClean[0] || null;
     const primaryAmtIn = inEnabled ? (Number.isFinite(parseFloat(amtIn)) ? parseFloat(amtIn) : 0) : 0;
-    // Multi-IN payments (шаг 1 — все в одной валюте curIn).
-    // Первая запись = primary IN; далее — extraInputs с заполненной суммой.
+    // Multi-IN payments — каждый со своей валютой. Primary IN всегда в curIn.
+    // Extra inputs могут быть в любой валюте; SQL пишет account_movements в
+    // payment.currency (миграция multi_currency_in_payments).
     const inPaymentsArr = [];
     if (inEnabled && primaryAmtIn > 0) {
       inPaymentsArr.push({
         amount: primaryAmtIn,
+        currency: curIn,
         kind: "ours_now",
         accountId: accountId || null,
       });
@@ -1125,13 +1130,19 @@ export default function ExchangeForm({
         if (Number.isFinite(a) && a > 0) {
           inPaymentsArr.push({
             amount: a,
+            currency: xi.currency || curIn,
             kind: "ours_now",
             accountId: xi.accountId || null,
           });
         }
       });
     }
-    const amtInNum = inPaymentsArr.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    // amtIn для deal — суммируем ТОЛЬКО payments в primary-валюте curIn.
+    // В разных валютах суммировать бессмысленно; они учитываются как
+    // отдельные deal_in_payments записи.
+    const amtInNum = inPaymentsArr
+      .filter((p) => p.currency === curIn)
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const base = {
       time: `${hh}:${mm}`,
       date: "Apr 20",
@@ -1637,58 +1648,72 @@ export default function ExchangeForm({
           </div>
         )}
 
-        {/* Дополнительные IN-payments — multi-IN в одной валюте (шаг 1).
-            Каждая запись: своя сумма + свой счёт. Все в curIn. На submit
-            отправляются как jsonb p_in_payments в одной валюте. */}
+        {/* Дополнительные IN-приёмы — multi-currency (миграция SQL).
+            Каждая запись: amount + dropdown currency + accountSelect.
+            Один компактный блок с тонкими границами, без gradient'ов —
+            визуально не перетягивает внимание с основной формы. */}
         {!deferredIn && extraInputs.length > 0 && (
           <div className="mt-3 space-y-2">
-            {extraInputs.map((xi, idx) => (
-              <div
-                key={xi.id}
-                className="p-3 rounded-[14px] border border-emerald-200/80 bg-emerald-50/30"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-[10px] font-bold text-slate-600 tracking-[0.12em] uppercase">
-                    Приём #{idx + 2}
+            {extraInputs.map((xi) => {
+              const xiCur = xi.currency || curIn;
+              const xiAccounts = (accounts || []).filter(
+                (a) => a.active && a.currency === xiCur
+              );
+              return (
+                <div
+                  key={xi.id}
+                  className="rounded-[12px] border border-slate-200 bg-white p-2.5"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-slate-400 text-[16px] font-semibold leading-none">
+                      {curSymbol(xiCur)}
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={xi.amount}
+                      onChange={(e) =>
+                        updateExtraInput(xi.id, {
+                          amount: e.target.value.replace(/[^\d.,]/g, "").replace(",", "."),
+                        })
+                      }
+                      placeholder="0"
+                      className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[18px] font-bold tracking-tight min-w-0 leading-none"
+                    />
+                    <select
+                      value={xiCur}
+                      onChange={(e) => {
+                        const c = e.target.value;
+                        // При смене валюты — сбрасываем accountId, т.к. счёт
+                        // привязан к валюте.
+                        updateExtraInput(xi.id, { currency: c, accountId: "" });
+                      }}
+                      className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-[8px] px-2 py-1 text-[12.5px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                      aria-label="Currency"
+                    >
+                      {CURRENCIES.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeExtraInput(xi.id)}
+                      className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded p-1 transition-colors"
+                      title="Удалить этот приём"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => removeExtraInput(xi.id)}
-                    className="text-slate-400 hover:text-rose-700 hover:bg-rose-50 rounded-full p-1 transition-colors"
-                    title="Удалить этот приём"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3 py-2.5 mb-2">
-                  <span className="text-slate-400 text-[18px] font-semibold leading-none">
-                    {curSymbol(curIn)}
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={xi.amount}
-                    onChange={(e) =>
-                      updateExtraInput(xi.id, {
-                        amount: e.target.value.replace(/[^\d.,]/g, "").replace(",", "."),
-                      })
-                    }
-                    placeholder="0"
-                    className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[20px] font-bold tracking-tight min-w-0 leading-none"
+                  <AccountSelect
+                    accounts={xiAccounts}
+                    value={xi.accountId}
+                    onChange={(v) => updateExtraInput(xi.id, { accountId: v })}
+                    placeholder={t("select_account")}
+                    currentOfficeId={currentOffice}
                   />
-                  <span className="shrink-0 text-[12px] font-bold text-slate-400 tracking-wider">
-                    {curIn}
-                  </span>
                 </div>
-                <AccountSelect
-                  accounts={availableAccounts}
-                  value={xi.accountId}
-                  onChange={(v) => updateExtraInput(xi.id, { accountId: v })}
-                  placeholder={t("select_account")}
-                  currentOfficeId={currentOffice}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -1696,11 +1721,11 @@ export default function ExchangeForm({
           <button
             type="button"
             onClick={addExtraInput}
-            className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
-            title="Добавить ещё один приём в этой же валюте"
+            className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full px-2.5 py-1 transition-colors"
+            title="Добавить ещё один приём — можно в другой валюте"
           >
             <Plus className="w-3 h-3" />
-            Ещё приём ({curIn})
+            Ещё приём
           </button>
         )}
 
