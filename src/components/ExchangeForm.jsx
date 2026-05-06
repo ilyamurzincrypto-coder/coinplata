@@ -363,6 +363,32 @@ export default function ExchangeForm({
   const [accountId, setAccountId] = useState(
     initialData?.accountId || draft?.accountId || ""
   );
+  // extraInputs — дополнительные IN-payments (multi-IN, шаг 1: одна валюта).
+  // Каждый: {id, amount, accountId}. Первичный IN — обычный amtIn/accountId.
+  // Все сливаются в p_in_payments на submit. Будущая итерация — multi-currency.
+  const [extraInputs, setExtraInputs] = useState(() => {
+    const seed = draft?.extraInputs;
+    if (!Array.isArray(seed)) return [];
+    return seed
+      .filter((x) => x && typeof x === "object")
+      .map((x, i) => ({
+        id: x.id || `xin_${Date.now()}_${i}`,
+        amount: String(x.amount || ""),
+        accountId: x.accountId || "",
+      }));
+  });
+  const addExtraInput = () => {
+    setExtraInputs((prev) => [
+      ...prev,
+      { id: `xin_${Date.now()}_${prev.length}`, amount: "", accountId: "" },
+    ]);
+  };
+  const updateExtraInput = (id, patch) => {
+    setExtraInputs((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  };
+  const removeExtraInput = (id) => {
+    setExtraInputs((prev) => prev.filter((x) => x.id !== id));
+  };
   const [isPending, setIsPending] = useState(
     initialData?.status === "pending" || draft?.isPending || false
   );
@@ -432,6 +458,7 @@ export default function ExchangeForm({
         amtIn,
         outputs,
         inEnabled,
+        extraInputs,
         counterparty,
         referral,
         comment,
@@ -456,7 +483,7 @@ export default function ExchangeForm({
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, inEnabled, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
+  }, [mode, curIn, amtIn, outputs, inEnabled, extraInputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
 
   // partnerHint — id партнёра когда cpType==='partner' и имя совпадает
   // с существующим. Передаём в PartnerAccountSelect для filter +
@@ -1081,7 +1108,30 @@ export default function ExchangeForm({
     // Защита от пустого OUT (removeAllOutputs) и пустого IN (removeIn).
     // Бэк принимает amtIn=0 / curOut=null — это валидная односторонняя сделка.
     const firstOutClean = outputsClean[0] || null;
-    const amtInNum = inEnabled ? (Number.isFinite(parseFloat(amtIn)) ? parseFloat(amtIn) : 0) : 0;
+    const primaryAmtIn = inEnabled ? (Number.isFinite(parseFloat(amtIn)) ? parseFloat(amtIn) : 0) : 0;
+    // Multi-IN payments (шаг 1 — все в одной валюте curIn).
+    // Первая запись = primary IN; далее — extraInputs с заполненной суммой.
+    const inPaymentsArr = [];
+    if (inEnabled && primaryAmtIn > 0) {
+      inPaymentsArr.push({
+        amount: primaryAmtIn,
+        kind: "ours_now",
+        accountId: accountId || null,
+      });
+    }
+    if (inEnabled) {
+      extraInputs.forEach((xi) => {
+        const a = parseFloat(xi.amount);
+        if (Number.isFinite(a) && a > 0) {
+          inPaymentsArr.push({
+            amount: a,
+            kind: "ours_now",
+            accountId: xi.accountId || null,
+          });
+        }
+      });
+    }
+    const amtInNum = inPaymentsArr.reduce((s, p) => s + (Number(p.amount) || 0), 0);
     const base = {
       time: `${hh}:${mm}`,
       date: "Apr 20",
@@ -1123,6 +1173,9 @@ export default function ExchangeForm({
       // независимы; передаём оба для CashierPage.
       accountId: inEnabled && inKind !== "partner" ? accountId : null,
       inPartnerAccountId: inEnabled && inKind === "partner" ? inPartnerAccountId : null,
+      // Multi-IN payments — массив всех IN-приёмов (primary + extras).
+      // Если только один payment — бэк всё равно обработает корректно.
+      inPayments: inPaymentsArr,
       // Брокеридж — добавляется к profit_usd. 0 если не задан.
       commissionUsd: parseFloat(String(commissionUsdInput).replace(",", ".")) || 0,
       status,
@@ -1245,6 +1298,7 @@ export default function ExchangeForm({
       setAmtIn("");
       setOutputs([emptyOutput("TRY")]);
       setInEnabled(true);
+      setExtraInputs([]);
       setCounterparty("");
       setReferral(false);
       setComment("");
@@ -1581,6 +1635,73 @@ export default function ExchangeForm({
               </div>
             )}
           </div>
+        )}
+
+        {/* Дополнительные IN-payments — multi-IN в одной валюте (шаг 1).
+            Каждая запись: своя сумма + свой счёт. Все в curIn. На submit
+            отправляются как jsonb p_in_payments в одной валюте. */}
+        {!deferredIn && extraInputs.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {extraInputs.map((xi, idx) => (
+              <div
+                key={xi.id}
+                className="p-3 rounded-[14px] border border-emerald-200/80 bg-emerald-50/30"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-[10px] font-bold text-slate-600 tracking-[0.12em] uppercase">
+                    Приём #{idx + 2}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExtraInput(xi.id)}
+                    className="text-slate-400 hover:text-rose-700 hover:bg-rose-50 rounded-full p-1 transition-colors"
+                    title="Удалить этот приём"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 rounded-[12px] border border-slate-200 bg-white px-3 py-2.5 mb-2">
+                  <span className="text-slate-400 text-[18px] font-semibold leading-none">
+                    {curSymbol(curIn)}
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={xi.amount}
+                    onChange={(e) =>
+                      updateExtraInput(xi.id, {
+                        amount: e.target.value.replace(/[^\d.,]/g, "").replace(",", "."),
+                      })
+                    }
+                    placeholder="0"
+                    className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[20px] font-bold tracking-tight min-w-0 leading-none"
+                  />
+                  <span className="shrink-0 text-[12px] font-bold text-slate-400 tracking-wider">
+                    {curIn}
+                  </span>
+                </div>
+                <AccountSelect
+                  accounts={availableAccounts}
+                  value={xi.accountId}
+                  onChange={(v) => updateExtraInput(xi.id, { accountId: v })}
+                  placeholder={t("select_account")}
+                  currentOfficeId={currentOffice}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {!deferredIn && (
+          <button
+            type="button"
+            onClick={addExtraInput}
+            className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
+            title="Добавить ещё один приём в этой же валюте"
+          >
+            <Plus className="w-3 h-3" />
+            Ещё приём ({curIn})
+          </button>
         )}
 
       </div>
