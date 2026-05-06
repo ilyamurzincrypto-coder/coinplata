@@ -318,8 +318,12 @@ export default function AccountingTab({ range }) {
                     <React.Fragment key={key}>
                       <tr
                         className={`border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer ${
-                          isExpanded ? "bg-slate-50" : ""
-                        }`}
+                          r.accountingStatus === "approved"
+                            ? "bg-emerald-50/40 border-l-4 border-l-emerald-400"
+                            : r.accountingStatus === "rejected"
+                            ? "bg-rose-50/40 border-l-4 border-l-rose-400"
+                            : "border-l-4 border-l-transparent"
+                        } ${isExpanded ? "!bg-slate-100/70" : ""}`}
                         onClick={() => setExpanded(isExpanded ? null : key)}
                       >
                         {statusTab === "pending_review" && (

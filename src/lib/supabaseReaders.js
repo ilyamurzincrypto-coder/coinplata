@@ -314,16 +314,27 @@ export async function loadDealsWithLegs(usersById = {}) {
   const sb = ensureSupabase();
   // 0080: deal_in_payments / deal_leg_payments. На старых базах этих таблиц
   // ещё нет — gracefully fallback на пустой результат вместо throw.
-  const [dealsRes, legsRes, inPaysRes, legPaysRes] = await Promise.all([
+  // 0086: accounting_audits — статус проверки бухгалтером (pending/approved/rejected).
+  const [dealsRes, legsRes, inPaysRes, legPaysRes, auditsRes] = await Promise.all([
     sb.from("deals").select("*").order("created_at", { ascending: false }).limit(2000),
     sb.from("deal_legs").select("*"),
     sb.from("deal_in_payments").select("*").order("paid_at", { ascending: true })
       .then((r) => r, () => ({ data: [], error: null })),
     sb.from("deal_leg_payments").select("*").order("paid_at", { ascending: true })
       .then((r) => r, () => ({ data: [], error: null })),
+    sb.from("accounting_audits").select("entity_id,status,approved_by,approved_at").eq("entity_type", "deal")
+      .then((r) => r, () => ({ data: [], error: null })),
   ]);
   if (dealsRes.error) throw dealsRes.error;
   if (legsRes.error) throw legsRes.error;
+  const auditByDeal = new Map();
+  (auditsRes.data || []).forEach((a) => {
+    auditByDeal.set(String(a.entity_id), {
+      status: a.status,
+      approvedBy: a.approved_by,
+      approvedAt: a.approved_at,
+    });
+  });
 
   const legsByDeal = new Map();
   (legsRes.data || []).forEach((l) => {
@@ -435,6 +446,10 @@ export async function loadDealsWithLegs(usersById = {}) {
       checkingStartedAt: d.checking_started_at,
       checkingBy: d.checking_by,
       createdAtMs: created.getTime(),
+      // Бухгалтерский статус (0086). null если запись ещё не проверялась.
+      accountingStatus: auditByDeal.get(String(d.id))?.status || null,
+      accountingApprovedBy: auditByDeal.get(String(d.id))?.approvedBy || null,
+      accountingApprovedAt: auditByDeal.get(String(d.id))?.approvedAt || null,
     };
   });
 }

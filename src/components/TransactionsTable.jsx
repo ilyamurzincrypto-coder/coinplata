@@ -771,7 +771,11 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       ? "border-l-4 border-l-indigo-500 bg-indigo-50/30"
                       : tx.kind === "broker"
                       ? "border-l-4 border-l-violet-500 bg-violet-50/30"
+                      : tx.accountingStatus === "approved"
+                      ? "border-l-4 border-l-emerald-500"
                       : "border-l-4 border-l-transparent"
+                  } ${
+                    tx.accountingStatus === "approved" ? "bg-emerald-50/40" : ""
                   } ${
                     isNew ? "bg-emerald-50/60" : ""
                   } ${isDeleted ? "opacity-50 grayscale line-through" : ""} ${
