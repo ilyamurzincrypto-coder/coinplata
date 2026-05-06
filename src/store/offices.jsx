@@ -101,41 +101,32 @@ export function OfficesProvider({ children }) {
     [offices]
   );
 
-  // Перемещение в списке: меняем местами sort_order с соседом.
-  // dir: -1 = вверх, +1 = вниз. Соседа ищем по уже отсортированному массиву offices.
-  const moveOffice = useCallback(
-    async (id, dir) => {
-      const idx = offices.findIndex((o) => o.id === id);
-      if (idx === -1) return;
-      const neighborIdx = idx + (dir < 0 ? -1 : 1);
-      if (neighborIdx < 0 || neighborIdx >= offices.length) return;
-      const cur = offices[idx];
-      const neighbor = offices[neighborIdx];
-      const curOrder = Number.isFinite(cur.sortOrder) ? cur.sortOrder : idx * 10;
-      const neighborOrder = Number.isFinite(neighbor.sortOrder)
-        ? neighbor.sortOrder
-        : neighborIdx * 10;
-      if (isSupabaseConfigured) {
-        // Оптимистичный swap — поправит reload через bumpDataVersion.
-        setOffices((prev) => {
-          const arr = prev.slice();
-          arr[idx] = { ...cur, sortOrder: neighborOrder };
-          arr[neighborIdx] = { ...neighbor, sortOrder: curOrder };
-          arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-          return arr;
+  // Меняет местами sort_order двух офисов. UI определяет соседа сам — это
+  // позволяет менять порядок и среди всех офисов (Settings), и среди active
+  // (страница Счетов), пропуская закрытые.
+  const swapOfficesOrder = useCallback(
+    async (idA, idB) => {
+      if (!idA || !idB || idA === idB) return;
+      const a = offices.find((o) => o.id === idA);
+      const b = offices.find((o) => o.id === idB);
+      if (!a || !b) return;
+      const aOrder = Number.isFinite(a.sortOrder) ? a.sortOrder : 0;
+      const bOrder = Number.isFinite(b.sortOrder) ? b.sortOrder : 0;
+      // Оптимистичный swap — поправит reload через bumpDataVersion.
+      setOffices((prev) => {
+        const arr = prev.map((o) => {
+          if (o.id === idA) return { ...o, sortOrder: bOrder };
+          if (o.id === idB) return { ...o, sortOrder: aOrder };
+          return o;
         });
+        arr.sort((x, y) => (x.sortOrder ?? 0) - (y.sortOrder ?? 0));
+        return arr;
+      });
+      if (isSupabaseConfigured) {
         await withToast(
-          () => swapOfficesSortOrder(cur.id, curOrder, neighbor.id, neighborOrder),
+          () => swapOfficesSortOrder(a.id, aOrder, b.id, bOrder),
           { errorPrefix: "Reorder failed" }
         );
-      } else {
-        setOffices((prev) => {
-          const arr = prev.slice();
-          arr[idx] = { ...cur, sortOrder: neighborOrder };
-          arr[neighborIdx] = { ...neighbor, sortOrder: curOrder };
-          arr.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
-          return arr;
-        });
       }
     },
     [offices]
@@ -150,9 +141,9 @@ export function OfficesProvider({ children }) {
       closeOffice,
       reopenOffice,
       findOffice,
-      moveOffice,
+      swapOfficesOrder,
     }),
-    [offices, activeOffices, addOffice, updateOffice, closeOffice, reopenOffice, findOffice, moveOffice]
+    [offices, activeOffices, addOffice, updateOffice, closeOffice, reopenOffice, findOffice, swapOfficesOrder]
   );
 
   return <OfficesContext.Provider value={value}>{children}</OfficesContext.Provider>;

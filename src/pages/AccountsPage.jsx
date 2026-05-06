@@ -19,6 +19,8 @@ import {
   Upload,
   ArrowLeftRight as ArrowLeftRightIcon,
   Wallet as WalletIcon,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -119,7 +121,7 @@ export default function AccountsPage() {
   const { addEntry: logAudit } = useAudit();
   const { currentUser } = useAuth();
   const canManageOffices = currentUser?.role === "admin" || currentUser?.role === "owner";
-  const { activeOffices } = useOffices();
+  const { activeOffices, swapOfficesOrder } = useOffices();
   const { dict: curDict } = useCurrencies();
   const { channels } = useRates();
   const { base, toBase } = useBaseCurrency();
@@ -401,8 +403,10 @@ export default function AccountsPage() {
       </div>
 
       {/* TAB: Операции (default) — current grid по офисам/валютам/каналам */}
-      {activeTab === "operations" && officeBlocks.map((block) => {
+      {activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;
+        const isFirstBlock = blockIdx === 0;
+        const isLastBlock = blockIdx === officeBlocks.length - 1;
         return (
           <section
             key={office.id}
@@ -413,8 +417,34 @@ export default function AccountsPage() {
               className="px-4 py-2 border-b border-slate-100 grid items-center gap-x-3 bg-slate-50/40"
               style={{ gridTemplateColumns: ACCT_GRID_COLS }}
             >
-              {/* Col 1: имя */}
+              {/* Col 1: имя + стрелки порядка (admin/owner) */}
               <div className="flex items-center gap-2 min-w-0">
+                {canManageOffices && (
+                  <div className="flex flex-col items-center gap-0 shrink-0 -my-1">
+                    <button
+                      onClick={() => {
+                        const prev = officeBlocks[blockIdx - 1];
+                        if (prev) swapOfficesOrder(office.id, prev.office.id);
+                      }}
+                      disabled={isFirstBlock}
+                      className="p-0 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                      title="Переместить выше"
+                    >
+                      <ChevronUp className="w-3 h-3" strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const next = officeBlocks[blockIdx + 1];
+                        if (next) swapOfficesOrder(office.id, next.office.id);
+                      }}
+                      disabled={isLastBlock}
+                      className="p-0 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                      title="Переместить ниже"
+                    >
+                      <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                )}
                 <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                 <h2 className="text-[13px] font-semibold tracking-tight truncate">{office.name}</h2>
                 <span className="text-[10px] text-slate-400 shrink-0">· {accsCount}</span>

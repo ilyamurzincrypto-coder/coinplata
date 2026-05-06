@@ -601,7 +601,7 @@ function LiveClock({ office }) {
 // --- Main ---
 export default function OfficesTab() {
   const { t } = useTranslation();
-  const { offices, closeOffice, reopenOffice, moveOffice } = useOffices();
+  const { offices, closeOffice, reopenOffice, swapOfficesOrder } = useOffices();
   const { accounts } = useAccounts();
   const { addEntry: logAudit } = useAudit();
   const { isAdmin } = useAuth();
@@ -715,7 +715,10 @@ export default function OfficesTab() {
                     <td className="px-2 py-3">
                       <div className="flex flex-col items-center gap-0.5">
                         <button
-                          onClick={() => moveOffice(o.id, -1)}
+                          onClick={() => {
+                            const prev = offices[idx - 1];
+                            if (prev) swapOfficesOrder(o.id, prev.id);
+                          }}
                           disabled={isFirst}
                           className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
                           title="Переместить вверх"
@@ -723,7 +726,10 @@ export default function OfficesTab() {
                           <ChevronUp className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => moveOffice(o.id, +1)}
+                          onClick={() => {
+                            const next = offices[idx + 1];
+                            if (next) swapOfficesOrder(o.id, next.id);
+                          }}
                           disabled={isLast}
                           className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
                           title="Переместить вниз"
