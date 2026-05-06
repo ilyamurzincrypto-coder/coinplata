@@ -21,6 +21,8 @@ import {
   Building2,
   Download,
   Star,
+  Pencil,
+  RotateCcw,
 } from "lucide-react";
 
 // Per-user favorites для editor курсов — отдельный ключ от dashboardFavorites.
@@ -751,12 +753,23 @@ function PairRow({
           <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
           <span className="text-slate-400">→</span>
           <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>
-          {hasOverride && isOfficeTab && (
+          {/* Status pill: показываем для офис-таба, чтобы было ясно — это
+              офисный или общий курс. Без pill юзер раньше путался какая из
+              двух соседних кнопок что-то с офисом, а какая — с глобал. */}
+          {isOfficeTab && hasOverride && (
             <span
               className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-indigo-700 bg-indigo-100 uppercase tracking-wider"
-              title={t("rates_override_tip") || "У офиса свой курс поверх global"}
+              title={t("rates_override_tip") || "У этого офиса свой курс поверх глобального"}
             >
               OFC
+            </span>
+          )}
+          {isOfficeTab && !hasOverride && (
+            <span
+              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-slate-500 bg-slate-100 uppercase tracking-wider"
+              title={t("rates_status_global_tip") || "Этот офис использует общий глобальный курс"}
+            >
+              {t("rates_status_global") || "ГЛОБАЛ"}
             </span>
           )}
         </div>
@@ -776,20 +789,22 @@ function PairRow({
           </div>
         )}
 
-        {/* Одна кнопка в зависимости от состояния:
-            • Нет override → "← Apply global" (копирует global в office базу,
-              spread=0, создаёт override)
-            • Есть override → "↺ Use global" (удаляет override — office
-              возвращается на чистый global без своего spread)
-            Раньше было 2 кнопки с разной семантикой → путаница. */}
+        {/* Одна кнопка в зависимости от состояния. Текст описывает РЕЗУЛЬТАТ:
+            • Без override → "✏️ Свой курс офиса" — создаёт office override,
+              стартует от global; юзер потом может править base/spread.
+            • С override → "↺ Использовать глобал" — удаляет office override;
+              офис снова работает на общем глобальном курсе.
+            Раньше было "Apply global" / "Use global" — две почти одинаковых
+            фразы про global, делающие противоположное → путаница. */}
         {isOfficeTab && !hasOverride && (
           <button
             type="button"
             onClick={onApplyGlobal}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
-            title={t("rates_apply_global_tip") || "Скопировать global курс в office base. Потом можно накрутить spread — он создаст override."}
+            title={t("rates_customize_for_office_tip") || "Создать собственный курс офиса. Стартовое значение — глобальный курс, потом можно изменить базу и спред."}
           >
-            ← {t("rates_apply_global") || "Apply global"}
+            <Pencil className="w-3 h-3" strokeWidth={2.5} />
+            {t("rates_customize_for_office") || "Свой курс офиса"}
           </button>
         )}
         {isOfficeTab && hasOverride && (
@@ -797,9 +812,10 @@ function PairRow({
             type="button"
             onClick={onResetOverride}
             className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200"
-            title={t("rates_reset_override") || "Вернуть на global — удаляет office override"}
+            title={t("rates_remove_override_tip") || "Убрать офисный курс. Этот офис снова будет использовать общий глобальный курс."}
           >
-            ↺ {t("rates_use_global") || "Use global"}
+            <RotateCcw className="w-3 h-3" strokeWidth={2.5} />
+            {t("rates_remove_override") || "Использовать глобал"}
           </button>
         )}
 
