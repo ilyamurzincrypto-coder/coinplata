@@ -130,6 +130,13 @@ export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate 
     return sum + amt / r;
   }, 0);
 
+  // Одностороннее OUT (нет IN) — нечего «превышать», remaining не имеет
+  // смысла. Без этого short-circuit canSubmit блокировал submit:
+  // remaining=-consumed<0 → exceedsInput=true → кнопка disabled.
+  if (inNum <= 0) {
+    return { remaining: 0, feeInCurIn: 0, consumed, exceedsInput: false };
+  }
+
   let feeInCurIn = 0;
   const feeNum = parseFloat(fee) || 0;
   if (feeType === "USD" && feeNum > 0) {
