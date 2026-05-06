@@ -924,25 +924,48 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       </div>
                     )}
                   </td>
-                  {/* IN: сумма + валюта в одну строку. Для OUT-only (inAmt=0)
-                      показываем «—» и не рисуем kind/status подписи. */}
+                  {/* IN: основная сумма + multi-IN payments в разных валютах.
+                      Если есть extra-payments не в primary curIn — рисуем
+                      их отдельной строкой. Для OUT-only (inAmt=0) — «—». */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
-                    {inAmt > 0 ? (
-                      <>
-                        <div className="font-semibold text-slate-900">
-                          {fmt(tx.amtIn, tx.curIn)}{" "}
-                          <span className="text-slate-400 font-medium text-[11px]">{tx.curIn}</span>
+                    {(() => {
+                      const payments = Array.isArray(tx.inPayments) ? tx.inPayments : [];
+                      // Multi-IN: суммируем payments по валюте, primary
+                      // (curIn) выводим первой строкой.
+                      const byCur = new Map();
+                      payments.forEach((p) => {
+                        const c = p.currency || tx.curIn;
+                        byCur.set(c, (byCur.get(c) || 0) + (Number(p.amount) || 0));
+                      });
+                      // Если payments пустой (legacy сделки) — fallback на amtIn.
+                      if (byCur.size === 0 && inAmt > 0) {
+                        byCur.set(tx.curIn, inAmt);
+                      }
+                      if (byCur.size === 0) {
+                        return <span className="text-slate-300">—</span>;
+                      }
+                      const ordered = [];
+                      if (byCur.has(tx.curIn)) ordered.push([tx.curIn, byCur.get(tx.curIn)]);
+                      [...byCur.entries()]
+                        .filter(([c]) => c !== tx.curIn)
+                        .forEach((e) => ordered.push(e));
+                      return (
+                        <div className="space-y-0.5">
+                          {ordered.map(([cur, sum]) => (
+                            <div key={cur} className="font-semibold text-slate-900">
+                              {fmt(sum, cur)}{" "}
+                              <span className="text-slate-400 font-medium text-[11px]">{cur}</span>
+                            </div>
+                          ))}
+                          {tx.inKind && tx.inKind !== "ours_now" && (
+                            <div className="mt-0.5">
+                              <KindPill type="in" kind={tx.inKind} compact />
+                            </div>
+                          )}
+                          <InStatusLine tx={tx} />
                         </div>
-                        {tx.inKind && tx.inKind !== "ours_now" && (
-                          <div className="mt-0.5">
-                            <KindPill type="in" kind={tx.inKind} compact />
-                          </div>
-                        )}
-                        <InStatusLine tx={tx} />
-                      </>
-                    ) : (
-                      <span className="text-slate-300">—</span>
-                    )}
+                      );
+                    })()}
                   </td>
                   {/* RATE посередине — между IN и OUT. Скрываем для односторонних. */}
                   <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">
