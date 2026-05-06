@@ -173,6 +173,7 @@ export async function loadAccounts() {
     isWithdrawal: r.is_withdrawal || false,
     lastCheckedBlock: num(r.last_checked_block),
     lastCheckedAt: r.last_checked_at,
+    accountingCode: r.accounting_code || null,
   }));
 }
 
@@ -245,6 +246,7 @@ export async function loadClients() {
     isOtcPartner: r.is_otc_partner === true,
     // 0103: реферер (клиент, который привёл данного)
     referrerId: r.referrer_id || null,
+    accountingCode: r.accounting_code || null,
   }));
 }
 
@@ -477,6 +479,7 @@ export async function loadPartnerAccounts() {
     createdAt: r.created_at,
     createdBy: r.created_by,
     updatedAt: r.updated_at,
+    accountingCode: r.accounting_code || null,
   }));
 }
 

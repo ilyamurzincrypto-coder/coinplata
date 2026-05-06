@@ -97,13 +97,16 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
 
   return (
     <div ref={rootRef} className="relative">
+      {/* Размер выровнен с IN/OUT amount-полями: rounded-[14px], py-3,
+          text-[14px]. Раньше был text-[13px] py-2 rounded-[10px] — поле
+          клиента визуально «худее» соседних полей сделки. */}
       <div className="flex items-stretch gap-1.5">
         <div
-          className={`flex-1 flex items-center bg-slate-50 border rounded-[10px] transition-colors ${
+          className={`flex-1 flex items-center bg-slate-50 border rounded-[14px] transition-colors ${
             open ? "border-slate-400 ring-2 ring-slate-900/10 bg-white" : "border-slate-200 hover:border-slate-300"
           }`}
         >
-          <Search className="w-3.5 h-3.5 text-slate-400 ml-3" />
+          <Search className="w-4 h-4 text-slate-400 ml-3.5" />
           <input
             type="text"
             value={query}
@@ -114,20 +117,20 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               onChange(e.target.value);
             }}
             placeholder={t("search_counterparty") || "Search client by name or @telegram"}
-            className="flex-1 bg-transparent outline-none text-[13px] px-2 py-2 placeholder:text-slate-400"
+            className="flex-1 bg-transparent outline-none text-[14px] px-2.5 py-3 placeholder:text-slate-400 leading-none"
           />
           {selected?.tag && !open && <div className="mr-2"><ClientTag tag={selected.tag} size="xs" /></div>}
           {selected?.telegram && !open && (
-            <span className="text-[11px] text-slate-500 mr-2 truncate max-w-[80px]">{selected.telegram}</span>
+            <span className="text-[11.5px] text-slate-500 mr-2 truncate max-w-[80px]">{selected.telegram}</span>
           )}
         </div>
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1 px-2.5 rounded-[10px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-1 px-3 rounded-[14px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
           title={t("add_new") || "Add client"}
         >
-          <UserPlus className="w-3 h-3" />
+          <UserPlus className="w-3.5 h-3.5" />
           Add
         </button>
       </div>

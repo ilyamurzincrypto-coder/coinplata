@@ -104,10 +104,21 @@ export default function DealDetailPanel({
     return <div className="text-[12px] text-slate-400 p-3">Не удалось загрузить детали.</div>;
   }
 
-  const accLabel = (id) => accountsById[id]?.name || (id ? `#${String(id).slice(0, 8)}` : "—");
+  // План счетов: если у entity задан accounting_code — префиксим именем
+  // (например «2008 Касса Mark Antalya»). Юзер заводит коды в Settings →
+  // План счетов; пока кода нет — показывается просто имя.
+  const withCode = (code, name) => (code ? `${code} ${name}` : name);
+  const accLabel = (id) => {
+    const a = accountsById[id];
+    if (!a) return id ? `#${String(id).slice(0, 8)}` : "—";
+    return withCode(a.accountingCode, a.name);
+  };
   const partnerLabel = (id) => {
     const acc = partnerAccountsById[id];
-    if (acc) return `${acc.partnerName || "Партнёр"} · ${acc.name}`;
+    if (acc) {
+      const name = `${acc.partnerName || "Партнёр"} · ${acc.name}`;
+      return withCode(acc.accountingCode, name);
+    }
     return id ? `Партнёр #${String(id).slice(0, 8)}` : "—";
   };
 
@@ -155,7 +166,10 @@ export default function DealDetailPanel({
   //   • OUT leg ours_now       → Дт «клиент», Кт «наш счёт»
   //   • OUT leg partner_now    → Дт «клиент», Кт «партнёр-счёт»
   // _later (deferred) — без движения, только obligation. В проводки не попадают.
-  const clientLabel = hint.clientLabel || hint.counterpartyLabel || "Клиент";
+  // hint.clientCode опц. передаётся из AccountingTab — клиент получает
+  // префикс «386 Mehmet Obmenka» в проводках.
+  const clientName = hint.clientLabel || hint.counterpartyLabel || "Клиент";
+  const clientLabel = hint.clientCode ? `${hint.clientCode} ${clientName}` : clientName;
   const entries = (() => {
     const out = [];
     (detail.inPayments || []).forEach((p) => {

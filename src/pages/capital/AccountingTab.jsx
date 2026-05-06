@@ -23,6 +23,8 @@ import Select from "../../components/ui/Select.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
+import { useTransactions } from "../../store/transactions.jsx";
+import { usePartnerAccounts } from "../../store/partnerAccounts.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import {
@@ -62,8 +64,18 @@ export default function AccountingTab({ range }) {
   const { offices } = useOffices();
   const { users } = useAuth();
   const { accounts } = useAccounts();
+  const { counterparties } = useTransactions();
+  const { partnerAccounts } = usePartnerAccounts();
   const usersById = useMemo(() => Object.fromEntries(users.map((u) => [u.id, u])), [users]);
   const accountsById = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a])), [accounts]);
+  const clientsById = useMemo(
+    () => Object.fromEntries((counterparties || []).map((c) => [c.id, c])),
+    [counterparties]
+  );
+  const partnerAccountsById = useMemo(
+    () => Object.fromEntries((partnerAccounts || []).map((p) => [p.id, p])),
+    [partnerAccounts]
+  );
   const officeNameOf = useMemo(() => {
     const map = Object.fromEntries((offices || []).map((o) => [o.id, o.name]));
     return (id) => map[id] || id || "—";
@@ -440,6 +452,8 @@ export default function AccountingTab({ range }) {
                               row={r}
                               accountsById={accountsById}
                               usersById={usersById}
+                              clientsById={clientsById}
+                              partnerAccountsById={partnerAccountsById}
                             />
                           </td>
                         </tr>
@@ -535,8 +549,9 @@ function EntityBadge({ type, dealKind }) {
 
 // ─── Expanded detail ───────────────────────────────────────────────────
 
-function ExpandedDetail({ row, accountsById, usersById }) {
+function ExpandedDetail({ row, accountsById, usersById, clientsById, partnerAccountsById }) {
   if (row.entityType === "deal") {
+    const clientCode = row.clientId ? (clientsById?.[row.clientId]?.accountingCode || null) : null;
     return (
       <DealDetailPanel
         dealId={row.entityId}
@@ -548,8 +563,10 @@ function ExpandedDetail({ row, accountsById, usersById }) {
           commissionUsd: row.commissionUsd,
           profit: row.profitUsd,
           clientLabel: row.counterpartyLabel || "Клиент",
+          clientCode,
         }}
         accountsById={accountsById}
+        partnerAccountsById={partnerAccountsById}
       />
     );
   }

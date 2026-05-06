@@ -3,7 +3,7 @@
 // Active tab хранится локально в state; URL не трогаем (нет роутера).
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Users, Shield, ScrollText, Building2, Book, Handshake } from "lucide-react";
+import { Settings as SettingsIcon, Users, Shield, ScrollText, Building2, Book, Handshake, Hash } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import GeneralTab from "./GeneralTab.jsx";
@@ -13,12 +13,14 @@ import PermissionsTab from "./PermissionsTab.jsx";
 import AuditLogTab from "./AuditLogTab.jsx";
 import MasterDataTab from "./MasterDataTab.jsx";
 import PartnersTab from "./PartnersTab.jsx";
+import AccountingCodesTab from "./AccountingCodesTab.jsx";
 
 const TABS = [
   { id: "general", labelKey: "settings_general", icon: SettingsIcon, component: GeneralTab },
   { id: "offices", labelKey: "settings_offices", icon: Building2, component: OfficesTab, adminOnly: true },
   { id: "users", labelKey: "settings_users", icon: Users, component: UsersTab, adminOnly: true },
   { id: "partners", label: "Партнёры", icon: Handshake, component: PartnersTab },
+  { id: "accounting_codes", label: "План счетов", icon: Hash, component: AccountingCodesTab, adminOnly: true },
   { id: "permissions", labelKey: "settings_permissions", icon: Shield, component: PermissionsTab, adminOnly: true },
   { id: "master_data", labelKey: "settings_master_data", icon: Book, component: MasterDataTab, adminOnly: true },
   { id: "audit", labelKey: "settings_audit", icon: ScrollText, component: AuditLogTab, adminOnly: true },

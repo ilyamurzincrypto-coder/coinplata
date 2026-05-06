@@ -1482,9 +1482,29 @@ export async function updateAccountRow(id, patch) {
   if (patch.active !== undefined) row.active = !!patch.active;
   if (patch.address !== undefined) row.address = patch.address || null;
   if (patch.bankRef !== undefined) row.bank_ref = patch.bankRef || null;
+  if (patch.accountingCode !== undefined) {
+    row.accounting_code = patch.accountingCode ? String(patch.accountingCode).trim() : null;
+  }
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase.from("accounts").update(row).eq("id", id);
   if (error) throw new Error(formatSupabaseError(error, "update account"));
+  bumpDataVersion();
+}
+
+// План счетов — обновить только accounting_code на любой entity.
+export async function updateAccountingCode(entityType, id, code) {
+  assertConfigured();
+  const validId = requireUuid(id, "id");
+  const value = code ? String(code).trim() : null;
+  const tableMap = {
+    account: "accounts",
+    client: "clients",
+    partner_account: "partner_accounts",
+  };
+  const table = tableMap[entityType];
+  if (!table) throw new Error(`Unknown entity_type: ${entityType}`);
+  const { error } = await supabase.from(table).update({ accounting_code: value }).eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, `update accounting_code on ${table}`));
   bumpDataVersion();
 }
 
