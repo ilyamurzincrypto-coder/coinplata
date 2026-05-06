@@ -148,6 +148,61 @@ export default function DealDetailPanel({
   // Open obligations only — closed скрываем по дефолту
   const openObligations = detail.obligations.filter((o) => o.status !== "cancelled");
 
+  // Бухгалтерские проводки Дт / Кт / Сумма — выводим из IN-payments и legs.
+  // Правила:
+  //   • IN payment ours_now    → Дт «наш счёт», Кт «клиент»
+  //   • IN payment partner_now → Дт «партнёр-счёт», Кт «клиент»
+  //   • OUT leg ours_now       → Дт «клиент», Кт «наш счёт»
+  //   • OUT leg partner_now    → Дт «клиент», Кт «партнёр-счёт»
+  // _later (deferred) — без движения, только obligation. В проводки не попадают.
+  const clientLabel = hint.clientLabel || hint.counterpartyLabel || "Клиент";
+  const entries = (() => {
+    const out = [];
+    (detail.inPayments || []).forEach((p) => {
+      const amt = Number(p.amount) || 0;
+      if (amt <= 0) return;
+      if (p.kind === "ours_now" && p.accountId) {
+        out.push({
+          dr: accLabel(p.accountId),
+          cr: clientLabel,
+          amount: amt,
+          currency: p.currency,
+          side: "in",
+        });
+      } else if (p.kind === "partner_now" && p.partnerAccountId) {
+        out.push({
+          dr: partnerLabel(p.partnerAccountId),
+          cr: clientLabel,
+          amount: amt,
+          currency: p.currency,
+          side: "in",
+        });
+      }
+    });
+    (detail.legs || []).forEach((l) => {
+      const amt = Number(l.actualAmount) || Number(l.amount) || 0;
+      if (amt <= 0) return;
+      if (l.outKind === "ours_now" && l.accountId) {
+        out.push({
+          dr: clientLabel,
+          cr: accLabel(l.accountId),
+          amount: amt,
+          currency: l.currency,
+          side: "out",
+        });
+      } else if (l.outKind === "partner_now" && l.partnerAccountId) {
+        out.push({
+          dr: clientLabel,
+          cr: partnerLabel(l.partnerAccountId),
+          amount: amt,
+          currency: l.currency,
+          side: "out",
+        });
+      }
+    });
+    return out;
+  })();
+
   return (
     <div className="space-y-0">
       {/* ─── STEP 1: CLIENT GIVES ─────────────────────────────────── */}
@@ -341,6 +396,57 @@ export default function DealDetailPanel({
             })}
           </div>
         </TimelineStep>
+      )}
+
+      {/* ─── Бухгалтерские проводки (Дт / Кт / Сумма) ─────────────────── */}
+      {entries.length > 0 && (
+        <div className="mt-2 rounded-[10px] border border-slate-200 bg-white overflow-hidden">
+          <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/40 flex items-center justify-between">
+            <div className="text-[10.5px] font-bold text-slate-500 uppercase tracking-wider">
+              Проводка
+            </div>
+            <span className="text-[10px] text-slate-400">
+              {entries.length} {entries.length === 1 ? "операция" : "операций"}
+            </span>
+          </div>
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="text-[9.5px] font-bold text-slate-400 tracking-wider uppercase border-b border-slate-100">
+                <th className="px-3 py-1.5 text-left">Тип</th>
+                <th className="px-3 py-1.5 text-left">Дебет</th>
+                <th className="px-3 py-1.5 text-left">Кредит</th>
+                <th className="px-3 py-1.5 text-right">Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e, i) => (
+                <tr key={i} className="border-b border-slate-50 last:border-0">
+                  <td className="px-3 py-1.5">
+                    <span
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        e.side === "in"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-rose-50 text-rose-700"
+                      }`}
+                    >
+                      {e.side === "in" ? "IN" : "OUT"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-1.5 text-slate-700">
+                    <span className="font-semibold">Дт</span> {e.dr}
+                  </td>
+                  <td className="px-3 py-1.5 text-slate-700">
+                    <span className="font-semibold">Кт</span> {e.cr}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
+                    <span className="font-bold text-slate-900">{fmt(e.amount, e.currency)}</span>
+                    <span className="text-[10px] text-slate-400 ml-1">{e.currency}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

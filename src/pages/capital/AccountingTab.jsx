@@ -543,6 +543,7 @@ function ExpandedDetail({ row, accountsById, usersById }) {
           feeUsd: row.feeUsd,
           commissionUsd: row.commissionUsd,
           profit: row.profitUsd,
+          clientLabel: row.counterpartyLabel || "Клиент",
         }}
         accountsById={accountsById}
       />
