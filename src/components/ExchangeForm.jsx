@@ -378,16 +378,38 @@ export default function ExchangeForm({
         accountId: x.accountId || "",
       }));
   });
+  // Найти первый доступный active-счёт текущего офиса в нужной валюте.
+  // Используется как auto-pick при добавлении extra-IN — чтобы юзер не
+  // забыл выбрать счёт (без него submit упадёт).
+  const pickDefaultAccountForCurrency = (cur) => {
+    const found = (accounts || []).find(
+      (a) => a.active && a.currency === cur && a.officeId === currentOffice
+    );
+    return found?.id || "";
+  };
   const addExtraInput = () => {
     setExtraInputs((prev) => [
       ...prev,
-      // Дефолтная валюта новой ноги — та же что у primary IN, юзер
-      // может изменить через dropdown справа от amount.
-      { id: `xin_${Date.now()}_${prev.length}`, amount: "", currency: curIn, accountId: "" },
+      {
+        id: `xin_${Date.now()}_${prev.length}`,
+        amount: "",
+        currency: curIn,
+        accountId: pickDefaultAccountForCurrency(curIn),
+      },
     ]);
   };
   const updateExtraInput = (id, patch) => {
-    setExtraInputs((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    setExtraInputs((prev) =>
+      prev.map((x) => {
+        if (x.id !== id) return x;
+        const next = { ...x, ...patch };
+        // При смене валюты автоматически подбираем счёт в новой валюте.
+        if (patch.currency && patch.currency !== x.currency) {
+          next.accountId = pickDefaultAccountForCurrency(patch.currency);
+        }
+        return next;
+      })
+    );
   };
   const removeExtraInput = (id) => {
     setExtraInputs((prev) => prev.filter((x) => x.id !== id));
@@ -1019,10 +1041,17 @@ export default function ExchangeForm({
   const outSidesValid = outputs.every((o) =>
     o.outKind === "partner" ? !!o.partnerAccountId : true
   );
+  // Каждый extra-IN с заполненной суммой обязан иметь свой accountId —
+  // иначе paymentsToJsonb бросит «account_id required» ещё до RPC.
+  const extraInputsValid = extraInputs.every((xi) => {
+    const a = parseFloat(xi.amount);
+    if (!Number.isFinite(a) || a <= 0) return true;
+    return !!xi.accountId;
+  });
 
   const canSubmit =
     hasAllAmounts && hasAllRates && noSameCurrency && !exceedsInput && hasClient &&
-    inSideValid && outSidesValid &&
+    inSideValid && outSidesValid && extraInputsValid &&
     (!needsPayee || !!payeeUserId);
 
   // --- account warnings (non-blocking) ---
