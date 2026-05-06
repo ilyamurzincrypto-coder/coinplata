@@ -139,21 +139,18 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
     } catch {}
   }, [showAll]);
 
-  // Пары для отображения в свёрнутом состоянии:
-  //   • favorites ≥ MIN_COLLAPSED → показываем все favorites
-  //   • favorites < MIN_COLLAPSED → favorites + популярные (FALLBACK_PAIRS)
-  //     + остальные tradePairs, обрезаем до MIN_COLLAPSED
-  //   • нет favorites → MIN_COLLAPSED самых популярных
-  // Все кандидаты фильтруем через actual tradePairs, чтобы не показать
-  // пару которой реально нет в БД (например её удалили).
+  // Стабильный порядок пар: сначала избранные пользователя (как pinned слева),
+  // потом популярные FALLBACK_PAIRS, потом остальные tradePairs.
+  //   • Свёрнутый режим — обрезаем до MIN_COLLAPSED (минимум 5 видимых).
+  //   • showAll — отдаём весь упорядоченный список; favorites всё равно слева.
+  // Раньше при showAll возвращали tradePairs as-is (в порядке БД), и избранные
+  // могли оказаться в любом месте — pinned-слева перестал работать.
+  // Все кандидаты фильтруем через available, чтобы не показать пару которой
+  // реально нет в БД (была удалена).
   const MIN_COLLAPSED = 5;
   const displayPairs = useMemo(() => {
-    if (showAll) return tradePairs;
     const available = new Set(tradePairs.map(([a, b]) => `${a}_${b}`));
     const userFavs = (favoritePairs || []).filter(([a, b]) => available.has(`${a}_${b}`));
-    if (userFavs.length >= MIN_COLLAPSED) return userFavs;
-
-    // Заполняем до минимума: сначала популярные, потом остальные
     const shownKeys = new Set(userFavs.map(([a, b]) => `${a}_${b}`));
     const fillers = [];
     const pushIfNew = ([a, b]) => {
@@ -164,7 +161,9 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
     };
     FALLBACK_PAIRS.forEach(pushIfNew);
     tradePairs.forEach(pushIfNew);
-    return [...userFavs, ...fillers].slice(0, MIN_COLLAPSED);
+    const ordered = [...userFavs, ...fillers];
+    if (showAll) return ordered;
+    return ordered.slice(0, MIN_COLLAPSED);
   }, [showAll, favoritePairs, tradePairs]);
 
   const hiddenCount = tradePairs.length - displayPairs.length;
