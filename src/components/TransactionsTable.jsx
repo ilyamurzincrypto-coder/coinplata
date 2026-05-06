@@ -920,22 +920,31 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       </div>
                     )}
                   </td>
-                  {/* IN: сумма + валюта в одну строку. */}
+                  {/* IN: сумма + валюта в одну строку. Для OUT-only (inAmt=0)
+                      показываем «—» и не рисуем kind/status подписи. */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
-                    <div className="font-semibold text-slate-900">
-                      {fmt(tx.amtIn, tx.curIn)}{" "}
-                      <span className="text-slate-400 font-medium text-[11px]">{tx.curIn}</span>
-                    </div>
-                    {tx.inKind && tx.inKind !== "ours_now" && (
-                      <div className="mt-0.5">
-                        <KindPill type="in" kind={tx.inKind} compact />
-                      </div>
+                    {inAmt > 0 ? (
+                      <>
+                        <div className="font-semibold text-slate-900">
+                          {fmt(tx.amtIn, tx.curIn)}{" "}
+                          <span className="text-slate-400 font-medium text-[11px]">{tx.curIn}</span>
+                        </div>
+                        {tx.inKind && tx.inKind !== "ours_now" && (
+                          <div className="mt-0.5">
+                            <KindPill type="in" kind={tx.inKind} compact />
+                          </div>
+                        )}
+                        <InStatusLine tx={tx} />
+                      </>
+                    ) : (
+                      <span className="text-slate-300">—</span>
                     )}
-                    <InStatusLine tx={tx} />
                   </td>
-                  {/* RATE посередине — между IN и OUT, как просил кассир. */}
+                  {/* RATE посередине — между IN и OUT. Скрываем для односторонних. */}
                   <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">
-                    {firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })}
+                    {inAmt > 0 && hasOut
+                      ? firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })
+                      : <span className="text-slate-300">—</span>}
                   </td>
                   {/* OUT: такая же структура как IN (amount + currency label). */}
                   <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">

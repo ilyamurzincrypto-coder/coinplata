@@ -203,9 +203,15 @@ export default function DealDetailPanel({
     return out;
   })();
 
+  // Одностороннее OUT — нет IN-секции, всё начинается с шага «Client receives».
+  // Skip-флаги нужны для последовательной нумерации шагов и last-флага линии.
+  const hasIn = inPlanned > 0;
+  const hasConversion = hasIn && firstLeg && hint.currencyIn && firstLeg.currency !== hint.currencyIn;
+
   return (
     <div className="space-y-0">
       {/* ─── STEP 1: CLIENT GIVES ─────────────────────────────────── */}
+      {hasIn && (
       <TimelineStep
         index={1}
         tone="rose"
@@ -238,9 +244,10 @@ export default function DealDetailPanel({
           </div>
         )}
       </TimelineStep>
+      )}
 
       {/* ─── STEP 2: CONVERSION ───────────────────────────────────── */}
-      {firstLeg && hint.currencyIn && firstLeg.currency !== hint.currencyIn && (
+      {hasConversion && (
         <TimelineStep
           index={2}
           tone="indigo"
@@ -291,7 +298,7 @@ export default function DealDetailPanel({
 
       {/* ─── STEP 3: CLIENT RECEIVES ──────────────────────────────── */}
       <TimelineStep
-        index={firstLeg && hint.currencyIn !== firstLeg.currency ? 3 : 2}
+        index={(hasIn ? 1 : 0) + (hasConversion ? 1 : 0) + 1}
         tone="emerald"
         title="Client receives"
         icon={ArrowUpRight}
@@ -323,7 +330,7 @@ export default function DealDetailPanel({
       {/* ─── STEP 4: OBLIGATIONS ──────────────────────────────────── */}
       {openObligations.length > 0 && (
         <TimelineStep
-          index={(firstLeg && hint.currencyIn !== firstLeg.currency ? 4 : 3)}
+          index={(hasIn ? 1 : 0) + (hasConversion ? 1 : 0) + 2}
           tone="amber"
           title="Obligations"
           icon={Scale}
@@ -362,7 +369,7 @@ export default function DealDetailPanel({
       {/* ─── STEP 5: EXECUTION (legs) ──────────────────────────────── */}
       {detail.legs.length > 1 && (
         <TimelineStep
-          index={(firstLeg && hint.currencyIn !== firstLeg.currency ? 5 : 4) - (openObligations.length === 0 ? 1 : 0)}
+          index={(hasIn ? 1 : 0) + (hasConversion ? 1 : 0) + (openObligations.length > 0 ? 3 : 2)}
           tone="slate"
           title={`Execution · ${detail.legs.length} legs`}
           icon={Coins}
