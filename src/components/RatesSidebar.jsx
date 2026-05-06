@@ -58,11 +58,14 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-// Минимум показываемых пар в compact (на случай если высоту не успели
-// измерить). Реальное число вычисляется через ResizeObserver на
-// pairs-container — столько пар сколько помещается в available
-// height без скролла.
-const COMPACT_MIN = 3;
+// Минимум показываемых пар в compact mode. Реальное число вычисляется
+// через ResizeObserver на pairs-container — столько пар сколько помещается
+// в available height без скролла. Минимум 5 — раньше было 3 и при
+// переключении чипсетов офисов (когда они переносились в 2 строки и
+// съедали высоту) число пар проседало до 4. 5 — стабильный минимум:
+// если высоты совсем не хватает, появится небольшой скролл внутри,
+// но юзер всегда увидит 5 курсов сразу.
+const COMPACT_MIN = 5;
 // Approx высота одной pair-карточки в px (header + 2 строки sell/buy).
 const PAIR_ROW_HEIGHT = 62;
 
