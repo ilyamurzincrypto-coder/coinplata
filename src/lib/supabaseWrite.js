@@ -224,7 +224,14 @@ export async function rpcCreateDeal({
   const validOffice = requireUuid(officeId, "officeId");
   const validManager = requireUuid(managerId, "managerId");
   const validCur = requireCurrency(currencyIn, "currencyIn");
-  const validAmt = requirePositive(amountIn, "amountIn");
+  // amount_in >= 0 — 0 разрешён для односторонних OUT-сделок (мы только
+  // отдаём, без приёма от контрагента). SQL create_deal обрабатывает
+  // amount_in=0 как "skip IN side" (миграция allow_zero_amount_in).
+  const amountInNum = requireNumber(amountIn, "amountIn");
+  if (amountInNum < 0) {
+    throw new Error(`amountIn: must be >= 0 (got ${amountInNum})`);
+  }
+  const validAmt = amountInNum;
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
   if (inAccountId && inPartnerAccountId) {
     throw new Error("Either inAccountId or inPartnerAccountId, not both");
@@ -246,7 +253,9 @@ export async function rpcCreateDeal({
     p_client_nickname: clientNickname ? String(clientNickname).trim() : null,
     p_currency_in: validCur,
     p_amount_in: validAmt,
-    p_in_account_id: inAccountId || null,
+    // При amtIn=0 односторонняя OUT-сделка: in_account_id должен быть null,
+    // иначе CHECK in_kind_consistency упадёт (ours_later требует null).
+    p_in_account_id: validAmt > 0 ? (inAccountId || null) : null,
     p_in_tx_hash: inTxHash ? String(inTxHash).trim() : null,
     p_referral: !!referral,
     p_comment: comment || "",
@@ -256,7 +265,7 @@ export async function rpcCreateDeal({
     p_deferred_in: !!deferredIn,
     p_skip_min_fee: skipMinFee,
   };
-  if (inPartnerAccountId) {
+  if (inPartnerAccountId && validAmt > 0) {
     payload.p_in_partner_account_id = requireUuid(inPartnerAccountId, "inPartnerAccountId");
   }
   if (validCommission > 0) {
@@ -297,7 +306,12 @@ export async function rpcUpdateDeal({
   const validDealId = requirePositive(dealId, "dealId");
   const validOffice = requireUuid(officeId, "officeId");
   const validCur = requireCurrency(currencyIn, "currencyIn");
-  const validAmt = requirePositive(amountIn, "amountIn");
+  // amount_in >= 0 — см. комментарий в rpcCreateDeal.
+  const amountInNum = requireNumber(amountIn, "amountIn");
+  if (amountInNum < 0) {
+    throw new Error(`amountIn: must be >= 0 (got ${amountInNum})`);
+  }
+  const validAmt = amountInNum;
   const validStatus = DEAL_STATUSES.has(status) ? status : "completed";
   if (inAccountId && inPartnerAccountId) {
     throw new Error("Either inAccountId or inPartnerAccountId, not both");

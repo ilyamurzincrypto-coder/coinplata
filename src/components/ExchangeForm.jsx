@@ -265,6 +265,17 @@ export default function ExchangeForm({
   const [outputs, setOutputs] = useState(
     starter?.outputs || draft?.outputs || [emptyOutput("TRY")]
   );
+  // inEnabled — видимость секции IN. По аналогии с removeAllOutputs:
+  // юзер может убрать секцию приёма для односторонних сделок где мы
+  // ТОЛЬКО отдаём (например, выдача из обязательства партнёру). В edit
+  // режиме всегда true, кроме случая когда у tx amtIn=0.
+  const [inEnabled, setInEnabled] = useState(() => {
+    if (mode === "edit") {
+      return !!(starter?.amtIn && parseFloat(starter.amtIn) > 0);
+    }
+    if (typeof draft?.inEnabled === "boolean") return draft.inEnabled;
+    return true;
+  });
   const [counterparty, setCounterparty] = useState(
     starter?.counterparty || draft?.counterparty || ""
   );
@@ -414,7 +425,8 @@ export default function ExchangeForm({
       // mount'ах без ввода.
       const hasInput =
         amtIn || counterparty || comment || inTxHash ||
-        (outputs && outputs.some((o) => o.amount || o.rate || o.address));
+        (outputs && outputs.some((o) => o.amount || o.rate || o.address)) ||
+        !inEnabled || outputs.length === 0;
       if (!hasInput) {
         sessionStorage.removeItem(DRAFT_KEY);
         return;
@@ -423,6 +435,7 @@ export default function ExchangeForm({
         curIn,
         amtIn,
         outputs,
+        inEnabled,
         counterparty,
         referral,
         comment,
@@ -447,7 +460,7 @@ export default function ExchangeForm({
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
+  }, [mode, curIn, amtIn, outputs, inEnabled, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
 
   // partnerHint — id партнёра когда cpType==='partner' и имя совпадает
   // с существующим. Передаём в PartnerAccountSelect для filter +
@@ -858,6 +871,17 @@ export default function ExchangeForm({
     setOutputs([]);
   };
 
+  // Симметрично — убрать секцию IN. Используется для одностороннего
+  // OUT (мы только отдаём — например, погашение нашего долга партнёру).
+  // Сбрасываем amtIn чтобы inFilled стал false, и выключаем UI секции.
+  const removeIn = () => {
+    setInEnabled(false);
+    setAmtIn("");
+  };
+  const addIn = () => {
+    setInEnabled(true);
+  };
+
   const toggleManualRate = (id) => {
     setOutputs((prev) =>
       prev.map((o) => {
@@ -1058,17 +1082,21 @@ export default function ExchangeForm({
       ? "checking"
       : "completed";
 
+    // Защита от пустого OUT (removeAllOutputs) и пустого IN (removeIn).
+    // Бэк принимает amtIn=0 / curOut=null — это валидная односторонняя сделка.
+    const firstOutClean = outputsClean[0] || null;
+    const amtInNum = inEnabled ? (Number.isFinite(parseFloat(amtIn)) ? parseFloat(amtIn) : 0) : 0;
     const base = {
       time: `${hh}:${mm}`,
       date: "Apr 20",
       officeId: currentOffice,
       type: "EXCHANGE",
       curIn,
-      amtIn: parseFloat(amtIn),
+      amtIn: amtInNum,
       outputs: outputsClean,
-      curOut: outputsClean[0].currency,
-      amtOut: outputsClean[0].amount,
-      rate: outputsClean[0].rate,
+      curOut: firstOutClean?.currency || null,
+      amtOut: firstOutClean?.amount || 0,
+      rate: firstOutClean?.rate || 0,
       fee: Math.round(effectiveFee * 100) / 100,
       // Глобальный applyMinFee для бэкенда: true если хоть один output
       // имеет applyFee=true. Бэкенд RPC принимает один skipMinFee bool —
@@ -1097,14 +1125,14 @@ export default function ExchangeForm({
       // Если IN через партнёра — наш accountId = null, в БД пишется
       // in_partner_account_id (миграция 0078). На UI оба state'а
       // независимы; передаём оба для CashierPage.
-      accountId: inKind === "partner" ? null : accountId,
-      inPartnerAccountId: inKind === "partner" ? inPartnerAccountId : null,
+      accountId: inEnabled && inKind !== "partner" ? accountId : null,
+      inPartnerAccountId: inEnabled && inKind === "partner" ? inPartnerAccountId : null,
       // Брокеридж — добавляется к profit_usd. 0 если не задан.
       commissionUsd: parseFloat(String(commissionUsdInput).replace(",", ".")) || 0,
       status,
       createdAtMs: Date.now(),
       rateSnapshotId: rateSnapshots[0]?.id || null,
-      inPlannedAmount: parseFloat(amtIn) || 0,
+      inPlannedAmount: amtInNum,
       inActualAmount: 0,
       inPlannedAt: nowIso,
       inCompletedAt: null,
@@ -1220,6 +1248,7 @@ export default function ExchangeForm({
       // reset + clear draft
       setAmtIn("");
       setOutputs([emptyOutput("TRY")]);
+      setInEnabled(true);
       setCounterparty("");
       setReferral(false);
       setComment("");
@@ -1500,15 +1529,31 @@ export default function ExchangeForm({
         />
       )}
 
-      {/* RECEIVED — Apple-style "Принимаем" panel */}
+      {/* RECEIVED — Apple-style "Принимаем" panel.
+          Скрываем целиком при !inEnabled (одностороннее OUT — мы только
+          отдаём, без приёма). В шапке — кнопка «× Удалить приём». */}
+      {inEnabled && (
       <div className="px-5 pt-5">
-        <div className="flex items-center mb-3 gap-2">
-          <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
-            <ArrowDown className="w-3 h-3 text-emerald-700" strokeWidth={2.5} />
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
+              <ArrowDown className="w-3 h-3 text-emerald-700" strokeWidth={2.5} />
+            </div>
+            <span className="text-[10.5px] font-bold tracking-[0.12em] text-emerald-700 uppercase">
+              {t("you_received")}
+            </span>
           </div>
-          <span className="text-[10.5px] font-bold tracking-[0.12em] text-emerald-700 uppercase">
-            {t("you_received")}
-          </span>
+          {!isEdit && (
+            <button
+              onClick={removeIn}
+              type="button"
+              title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT (мы только отдаём)"}
+              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-full px-2.5 py-1 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              {t("remove_in") || "Удалить приём"}
+            </button>
+          )}
         </div>
         <CurrencyTabs value={curIn} onChange={setCurIn} accent="emerald" />
         <div
@@ -1617,6 +1662,27 @@ export default function ExchangeForm({
         )}
 
       </div>
+      )}
+
+      {/* IN-секция выключена — компактный ghost-стейт с кнопкой вернуть. */}
+      {!inEnabled && !isEdit && (
+        <div className="px-5 pt-5">
+          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-[14px] border border-dashed border-slate-300 bg-slate-50/40">
+            <div className="flex items-center gap-2 text-[11.5px] text-slate-500">
+              <ArrowDown className="w-3.5 h-3.5 opacity-50" />
+              <span className="font-semibold">{t("in_disabled_label") || "Секция приёма отключена — одностороннее OUT"}</span>
+            </div>
+            <button
+              type="button"
+              onClick={addIn}
+              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
+            >
+              <Plus className="w-3 h-3" />
+              {t("add_in") || "Добавить приём"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Reverse rates — Apple pill button */}
       <div className="flex justify-center my-3 relative z-10">
