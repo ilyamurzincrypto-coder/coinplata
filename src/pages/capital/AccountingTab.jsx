@@ -389,10 +389,24 @@ export default function AccountingTab({ range }) {
                               Проверить
                             </button>
                           )}
-                          {r.accountingStatus === "approved" && approver && (
-                            <div className="text-[10px] text-emerald-700">
-                              ✓ {approver.full_name?.split(" ")[0] || "—"}
-                              <div className="text-[9px] text-slate-400">{formatDate(r.approvedAt)}</div>
+                          {r.accountingStatus === "approved" && (
+                            <div className="flex items-center gap-1.5 justify-end">
+                              {approver && (
+                                <div className="text-[10px] text-emerald-700 text-right">
+                                  ✓ {approver.full_name?.split(" ")[0] || "—"}
+                                  <div className="text-[9px] text-slate-400">{formatDate(r.approvedAt)}</div>
+                                </div>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReviewTarget(r);
+                                }}
+                                className="px-2 py-1 rounded-[6px] bg-amber-50 text-amber-700 text-[11px] font-semibold hover:bg-amber-100 border border-amber-200"
+                                title="Отменить подтверждение — операция вернётся в «На проверке»"
+                              >
+                                Отменить
+                              </button>
                             </div>
                           )}
                           {r.accountingStatus === "rejected" && (
