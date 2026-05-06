@@ -452,10 +452,14 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         )}
       </div>
 
-      {/* Toggle "Show all / Compact" — внизу списка. В compact mode также
-          сообщает сколько ещё пар скрыто. Когда expanded — sidebar
-          расширяется (через onExpandedChange), главная колонка сужается. */}
-      {(hasHidden || expanded) && !query && (
+      {/* Toggle "Show all / Compact" — внизу списка.
+          • expanded=true → кнопка "Свернуть" видна ВСЕГДА (даже при
+            активном поиске — иначе юзер раскрыл, ввёл фильтр и не может
+            свернуть назад одной кнопкой).
+          • expanded=false → кнопка "Показать все" видна только если
+            есть скрытые пары и нет активного поиска (поиск показывает
+            всё что нашлось). */}
+      {(expanded || (hasHidden && !query)) && (
         <div className="border-t border-slate-100 px-2 py-2 shrink-0">
           <button
             type="button"
