@@ -26,8 +26,15 @@ import {
 } from "lucide-react";
 
 // Per-user favorites для editor курсов — отдельный ключ от dashboardFavorites.
-// Хранится в users.preferences.editorFavorites как [["from","to"], ...].
-const EDITOR_FAV_KEY = "editorFavorites";
+// Per-office: users.preferences.editorFavoritesByOffice = {
+//   "all": [["from","to"], ...],
+//   "<officeId>": [["from","to"], ...]
+// }
+// Legacy ключ editorFavorites (плоский [["from","to"]]) читается как fallback
+// только для вкладки "all" — пока юзер не перетоглит. Не мигрируется
+// автоматически, чтобы не затирать выбор тех, кто уже что-то выставил.
+const EDITOR_FAV_BY_OFFICE_KEY = "editorFavoritesByOffice";
+const LEGACY_EDITOR_FAV_KEY = "editorFavorites";
 import { useRates } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -72,14 +79,41 @@ export default function RatesPage({ onBack }) {
   const { isAdmin, isOwner, currentUser, updatePreferences } = useAuth();
   const { addEntry: logAudit } = useAudit();
 
-  // --- Editor favorites ---
-  const editorFavorites = useMemo(() => {
-    const raw = currentUser?.preferences?.[EDITOR_FAV_KEY];
-    if (!Array.isArray(raw)) return [];
-    return raw.filter(
-      (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === "string" && typeof p[1] === "string"
-    );
+  // Active office tab — визуальный scope (курсы пока общие в БД).
+  const [activeOffice, setActiveOffice] = useState("all");
+
+  // --- Editor favorites — per-office ---
+  // Полный объект {officeId|"all": [["from","to"]]}. Используется в
+  // toggleEditorFav для записи всех scope'ов разом.
+  const editorFavoritesByOffice = useMemo(() => {
+    const raw = currentUser?.preferences?.[EDITOR_FAV_BY_OFFICE_KEY];
+    const safe = (v) =>
+      Array.isArray(v)
+        ? v.filter(
+            (p) =>
+              Array.isArray(p) &&
+              p.length === 2 &&
+              typeof p[0] === "string" &&
+              typeof p[1] === "string"
+          )
+        : [];
+    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+      const out = {};
+      Object.keys(raw).forEach((k) => {
+        out[k] = safe(raw[k]);
+      });
+      return out;
+    }
+    // Legacy fallback: старый плоский editorFavorites → как избранные для "all".
+    const legacy = safe(currentUser?.preferences?.[LEGACY_EDITOR_FAV_KEY]);
+    return legacy.length > 0 ? { all: legacy } : {};
   }, [currentUser]);
+
+  // Избранные текущего scope (активный офис или "all").
+  const editorFavorites = useMemo(
+    () => editorFavoritesByOffice[activeOffice] || [],
+    [editorFavoritesByOffice, activeOffice]
+  );
   const editorFavKeys = useMemo(() => {
     const set = new Set();
     editorFavorites.forEach(([a, b]) => set.add(`${a}_${b}`));
@@ -94,16 +128,14 @@ export default function RatesPage({ onBack }) {
       if (!updatePreferences) return;
       const key = `${a}_${b}`;
       const exists = editorFavKeys.has(key);
-      const next = exists
+      const nextForScope = exists
         ? editorFavorites.filter((p) => !(p[0] === a && p[1] === b))
         : [...editorFavorites, [a, b]];
-      await updatePreferences({ [EDITOR_FAV_KEY]: next });
+      const nextMap = { ...editorFavoritesByOffice, [activeOffice]: nextForScope };
+      await updatePreferences({ [EDITOR_FAV_BY_OFFICE_KEY]: nextMap });
     },
-    [editorFavKeys, editorFavorites, updatePreferences]
+    [editorFavKeys, editorFavorites, editorFavoritesByOffice, activeOffice, updatePreferences]
   );
-
-  // Active office tab — визуальный scope (курсы пока общие в БД).
-  const [activeOffice, setActiveOffice] = useState("all");
   // Full-page views: "list" | "addPair" | "addCurrency" | "addChannel" | "coverage"
   const [view, setView] = useState("list");
   const [importOpen, setImportOpen] = useState(false);
