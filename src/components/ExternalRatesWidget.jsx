@@ -34,11 +34,13 @@ const SOURCES = {
     tone: "bg-emerald-50 text-emerald-700 ring-emerald-200",
     accent: "text-emerald-700",
     origin: "finans.truncgil.com · уличный курс TR",
+    note: "≈ 0.05% от Harem Döviz",
     description:
       "Уличный курс Турции — то что показывает Harem Döviz (Eminönü, Стамбул). " +
       "Берём из бесплатного агрегатора truncgil.com (haremaltin.com прямой " +
-      "fetch заблокирован Cloudflare). Расхождение с самим Harem ≈ 0.05%. " +
-      "Это «реальный» уличный курс, обычно на 0.5–1.5% выше TCMB official.",
+      "fetch заблокирован Cloudflare). Расхождение с самим Harem ≈ 0.05% — " +
+      "по факту это тот же уличный курс, обновляется чаще TCMB. Обычно на " +
+      "0.5–1.5% выше официального TCMB.",
   },
   tcmb: {
     label: "TCMB",
@@ -376,11 +378,22 @@ export default function ExternalRatesWidget({ compact = false }) {
                     <Calculator className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div
-                  className="text-[10.5px] text-slate-400 truncate"
-                  title={meta.origin}
-                >
-                  {meta.origin}
+                <div className="space-y-0.5">
+                  <div
+                    className="text-[10.5px] text-slate-400 truncate"
+                    title={meta.origin}
+                  >
+                    {meta.origin}
+                  </div>
+                  {meta.note && (
+                    <div
+                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${meta.tone}`}
+                      title={meta.description}
+                    >
+                      <Info className="w-2.5 h-2.5" />
+                      {meta.note}
+                    </div>
+                  )}
                 </div>
 
                 {/* Калькулятор спреда — раскрывается по иконке. Раздвигает
