@@ -12,7 +12,7 @@
 //     вокруг mid (наш курс продажи/покупки с маржей).
 
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp, Copy, Check, Pencil } from "lucide-react";
+import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp, Copy, Check, Pencil, Info } from "lucide-react";
 import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useNow } from "../hooks/useNow.js";
@@ -23,24 +23,45 @@ const SOURCES = {
     tone: "bg-amber-50 text-amber-700 ring-amber-200",
     accent: "text-amber-700",
     origin: "api.binance.com · Spot bookTicker",
+    description:
+      "Крупнейшая в мире криптобиржа по суточному обороту (~$25–50 млрд). " +
+      "Цены USDT/TRY, USDT/EUR — это реальные сделки на Spot-рынке P2P, " +
+      "обновляются в реальном времени. Используется как ориентир «настоящего» " +
+      "крипто-курса без посреднических наценок.",
   },
   tcmb: {
     label: "TCMB",
     tone: "bg-sky-50 text-sky-700 ring-sky-200",
     accent: "text-sky-700",
     origin: "tcmb.gov.tr · resmi kurlar XML",
+    description:
+      "Türkiye Cumhuriyet Merkez Bankası — Центральный банк Турции. " +
+      "Официальные курсы USD/TRY, EUR/TRY, GBP/TRY, обновляются раз в " +
+      "рабочий день в 15:30 по Стамбулу. Это «документальная» цена, по " +
+      "ней банки и налоговая считают официальные операции. Уличный курс " +
+      "обычно немного выше (особенно USD/TRY).",
   },
   cbr: {
     label: "ЦБ РФ",
     tone: "bg-rose-50 text-rose-700 ring-rose-200",
     accent: "text-rose-700",
     origin: "cbr-xml-daily.ru · daily JSON",
+    description:
+      "Центральный банк России — официальный курс на следующий банковский день. " +
+      "Объявляется ежедневно около 13:00 МСК по итогам торгов на Мосбирже. " +
+      "Используется для расчётов по контрактам, налогам, отчётности. Уличный " +
+      "(наличный) курс может отличаться на 1–3%.",
   },
   ecb: {
     label: "ЕЦБ",
     tone: "bg-violet-50 text-violet-700 ring-violet-200",
     accent: "text-violet-700",
     origin: "frankfurter.dev · ECB derived",
+    description:
+      "European Central Bank — Европейский центральный банк. Reference rates " +
+      "EUR к 30+ валютам, публикуются ежедневно в 16:00 CET. Это «золотой " +
+      "стандарт» курсов EUR/USD, EUR/GBP, EUR/CHF в банковском мире — все " +
+      "европейские банки считают по нему свои переоценки.",
   },
 };
 
@@ -56,6 +77,25 @@ function fmtRate(v) {
   if (v >= 100) return v.toFixed(2);
   if (v >= 1) return v.toFixed(4);
   return v.toFixed(6);
+}
+
+// Лёгкий tooltip — показывается по hover/focus родителя через group-hover.
+// Position: absolute сверху или снизу в зависимости от места. Без портала
+// (не нужен — родитель z-index достаточно высокий).
+function InfoTooltip({ children, side = "bottom", maxWidth = 280 }) {
+  const sideCls = side === "bottom"
+    ? "top-full mt-1.5 left-0"
+    : "bottom-full mb-1.5 left-0";
+  return (
+    <span
+      className={`pointer-events-none absolute ${sideCls} z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
+      style={{ maxWidth }}
+    >
+      <span className="block bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-2 shadow-xl whitespace-normal">
+        {children}
+      </span>
+    </span>
+  );
 }
 
 function timeAgo(iso, nowMs) {
@@ -298,10 +338,15 @@ export default function ExternalRatesWidget({ compact = false }) {
             return (
               <div key={source} className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* Source-pill — hover показывает описание через title=
+                      (native browser tooltip). Info-иконка как hint что
+                      есть подсказка. */}
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider ring-1 cursor-help ${meta.tone}`}
+                    title={meta.description || meta.origin}
                   >
                     {meta.label}
+                    <Info className="w-3 h-3 ml-1 opacity-60" />
                   </span>
                   <span className="text-[11px] text-slate-500 tabular-nums">
                     {timeAgo(fetchedAt, nowMs)} назад
@@ -363,10 +408,21 @@ export default function ExternalRatesWidget({ compact = false }) {
                     const displayValue = hasSpread ? adjusted : mid;
                     const copyKey = `${r.source}_${r.pair}`;
                     const copied = copiedKey === copyKey;
+                    // Native title= с переносами через \n — браузер
+                    // показывает tooltip без стилей, но работает в скролле.
+                    const rowTooltip = [
+                      `${meta.label} · ${formatPair(r.pair)}`,
+                      meta.origin,
+                      `Снимок: ${timeAgo(fetchedAt, nowMs)} назад`,
+                      hasSpread
+                        ? `Спред ${spreadNum > 0 ? "+" : ""}${spreadNum}% применён к midrate`
+                        : null,
+                    ].filter(Boolean).join("\n");
                     return (
                       <div
                         key={copyKey}
-                        className="flex items-center justify-between gap-2 px-1 py-1.5"
+                        title={rowTooltip}
+                        className="flex items-center justify-between gap-2 px-1 py-1.5 cursor-help"
                       >
                         <span className="text-[13.5px] font-bold text-slate-700 tracking-wide">
                           {formatPair(r.pair)}
