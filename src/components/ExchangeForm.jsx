@@ -1752,7 +1752,7 @@ export default function ExchangeForm({
           <colgroup>
             <col className="w-[110px]" />
             <col />
-            <col className="w-[90px]" />
+            <col className="w-[120px]" />
             <col className="w-[42px]" />
           </colgroup>
           <thead className="sticky top-[37px] z-10 bg-white border-b border-slate-200/70">
@@ -1915,7 +1915,7 @@ export default function ExchangeForm({
                         title="Добавить ещё один приём — можно в другой валюте"
                       >
                         <Plus className="w-3 h-3" />
-                        {t("add_in") || "Ещё приём"}
+                        {t("add_in") || "Добавить внесение"}
                       </button>
                     )}
                     {!isEdit && (
@@ -1926,7 +1926,7 @@ export default function ExchangeForm({
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
                       >
                         <X className="w-3 h-3" />
-                        {t("remove_in") || "Удалить приём"}
+                        {t("remove_in") || "Удалить внесение"}
                       </button>
                     )}
                   </div>
@@ -2685,11 +2685,12 @@ export default function ExchangeForm({
       {/* Sticky footer — actions + warnings as inline pills */}
       <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-20">
         <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-          {/* Left side — inline warnings + live amount preview.
-              flex-wrap внутри, но grid снаружи фиксирует кнопку справа —
-              раньше flex-wrap снаружи перебрасывал «Создать сделку»
-              на вторую строку при широких warnings. */}
-          <div className="flex items-center gap-1.5 flex-wrap text-[11px] min-w-0 overflow-hidden">
+          {/* Left side — warnings в одну строку без переноса. Если не
+              помещается, обрезается через overflow-hidden — кнопка
+              справа всегда на месте. Раньше flex-wrap раскидывал
+              warnings на 2-3 строки и footer вырастал по высоте,
+              зрительно «уезжая» от привычного места. */}
+          <div className="flex items-center gap-1.5 flex-nowrap text-[11px] min-w-0 overflow-hidden whitespace-nowrap">
             {amtIn && outputs[0]?.amount && (
               <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
                 <span>
