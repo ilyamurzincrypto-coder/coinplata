@@ -1941,6 +1941,7 @@ export default function ExchangeForm({
                   applyMinFee={applyMinFee}
                   setApplyMinFee={setApplyMinFee}
                   minFeeUsd={minFeeUsd}
+                  mode={mode}
                 />
                 {/* Payee селектор — рендерится ПОД конкретным OUT-leg где
                     впервые выбран account из чужого офиса. P2P logic:
@@ -2758,6 +2759,7 @@ function OutputRow({
   applyMinFee,
   setApplyMinFee,
   minFeeUsd,
+  mode,
 }) {
   const { t } = useTranslation();
   const { getRate: getRateRaw, getOfficeOverride } = useRates();
@@ -2914,6 +2916,12 @@ function OutputRow({
   // юзер выбирает партнёрский счёт вручную через PartnerAccountSelect.
   useEffect(() => {
     if (o.outKind === "partner") return; // skip auto-pick для partner
+    // В edit-mode НЕ трогаем accountId автоматически. Раньше эта
+    // логика сбрасывала исходный счёт когда офис в шапке отличался
+    // от офиса сделки → leg становился ours_later → completed
+    // сделка превращалась в pending при сохранении. Edit должен
+    // сохранять то что в БД, не «адаптировать» под текущий офис.
+    if (mode === "edit") return;
     if (o.accountId && !outAccounts.some((a) => a.id === o.accountId)) {
       onUpdate({ accountId: "" });
       return;
@@ -2939,7 +2947,7 @@ function OutputRow({
       if (pick) onUpdate({ accountId: pick.id });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [o.currency, outAccounts.length, currentOffice]);
+  }, [o.currency, outAccounts.length, currentOffice, mode]);
 
   // Available warning: если сумма вывода больше, чем суммарный баланс аккаунтов офиса в этой валюте
   const outAmount = parseFloat(o.amount) || 0;
