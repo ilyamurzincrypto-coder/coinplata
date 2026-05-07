@@ -866,7 +866,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               // Row classes: base + zebra + state overrides. Approved → emerald
               // override; pinned/otc/broker/deleted/new — каждый со своим тоном.
               const rowBase =
-                "group cursor-pointer border-b border-slate-200/70 hover:bg-slate-50/80 transition-colors border-l-2 border-l-transparent";
+                "group cursor-pointer h-[44px] border-b border-slate-200/70 hover:bg-slate-50/80 transition-colors border-l-2 border-l-transparent";
               const rowState =
                 tx.kind === "otc"
                   ? "bg-indigo-50/30 border-l-indigo-500"
@@ -1042,29 +1042,34 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       [...byCur.entries()]
                         .filter(([c]) => c !== tx.curIn)
                         .forEach((e) => ordered.push(e));
+                      // Одна строка фиксированной высоты: первая сумма +
+                      // компактный «+N» бейдж если их больше. Полный
+                      // список — в tooltip и DealDetail. Без этого
+                      // multi-IN ячейка распирала высоту строки и таблица
+                      // «прыгала» от строки к строке.
+                      const [mainCur, mainSum] = ordered[0];
+                      const extraCount = ordered.length - 1;
+                      const tipExtra = ordered
+                        .slice(1)
+                        .map(([c, s]) => `${fmt(s, c)} ${c}`)
+                        .join(" · ");
                       return (
-                        <div className="space-y-0.5">
-                          {ordered.map(([cur, sum], idx) => (
-                            <div
-                              key={cur}
-                              className={
-                                idx === 0
-                                  ? "text-[13px] font-medium text-slate-900"
-                                  : "text-[11px] text-slate-500"
-                              }
+                        <div className="inline-flex items-center gap-1 justify-end whitespace-nowrap">
+                          <span className="text-[13px] font-medium text-slate-900 tabular-nums">
+                            {fmt(mainSum, mainCur)}
+                          </span>
+                          <span className="text-slate-400 text-[11px]">{mainCur}</span>
+                          {extraCount > 0 && (
+                            <span
+                              className="text-[9px] font-bold text-slate-500 bg-slate-100 rounded px-1 py-0.5"
+                              title={tipExtra}
                             >
-                              {fmt(sum, cur)}{" "}
-                              <span className={idx === 0 ? "text-slate-400 font-medium text-[11px]" : "text-slate-400"}>
-                                {cur}
-                              </span>
-                            </div>
-                          ))}
-                          {tx.inKind && tx.inKind !== "ours_now" && (
-                            <div className="mt-0.5 flex justify-end">
-                              <KindPill type="in" kind={tx.inKind} compact />
-                            </div>
+                              +{extraCount}
+                            </span>
                           )}
-                          <InStatusLine tx={tx} />
+                          {tx.inKind && tx.inKind !== "ours_now" && (
+                            <KindPill type="in" kind={tx.inKind} compact />
+                          )}
                         </div>
                       );
                     })()}
@@ -1477,37 +1482,33 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
     })
     .join("\n");
 
-  // Single output без crypto flow — сумма + валюта в одну строку.
-  if (outputs.length === 1 && !outputs[0].sendStatus) {
-    const o = outputs[0];
-    return (
-      <div title={tooltip}>
-        <div className="font-semibold text-slate-900">
-          {fmt(o.amount, o.currency)}{" "}
-          <span className="text-slate-400 font-medium text-[11px]">{o.currency}</span>
-        </div>
-        {o.outKind && o.outKind !== "ours_now" && (
-          <div className="mt-0.5">
-            <KindPill type="out" kind={o.outKind} compact />
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Multi-output или crypto-output: каждая выдача отдельной строкой.
+  // Все режимы — одна строка фиксированной высоты: первая выдача +
+  // «+N» бейдж если есть multi/crypto. Полный список — tooltip и
+  // DealDetail. Раньше multi-OUT и crypto-send разворачивались
+  // вертикально и таблица скакала по высоте.
+  const main = outputs[0];
+  const extraCount = outputs.length - 1;
+  const tipExtra = outputs
+    .slice(1)
+    .map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`)
+    .join(" · ");
   return (
-    <div title={tooltip} className="space-y-1">
-      {outputs.map((o, i) => (
-        <OutputRowLine
-          key={i}
-          output={o}
-          index={i}
-          canEdit={canEdit}
-          onSend={() => onSend?.(i)}
-          onConfirm={() => onConfirm?.(i)}
-        />
-      ))}
+    <div title={tooltip} className="inline-flex items-center gap-1 justify-end whitespace-nowrap">
+      <span className="font-semibold text-slate-900 tabular-nums">
+        {fmt(main.amount, main.currency)}
+      </span>
+      <span className="text-slate-400 font-medium text-[11px]">{main.currency}</span>
+      {extraCount > 0 && (
+        <span
+          className="text-[9px] font-bold text-slate-500 bg-slate-100 rounded px-1 py-0.5"
+          title={tipExtra}
+        >
+          +{extraCount}
+        </span>
+      )}
+      {main.outKind && main.outKind !== "ours_now" && (
+        <KindPill type="out" kind={main.outKind} compact />
+      )}
     </div>
   );
 }
