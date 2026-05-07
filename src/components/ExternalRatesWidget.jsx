@@ -12,7 +12,7 @@
 //     вокруг mid (наш курс продажи/покупки с маржей).
 
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp } from "lucide-react";
+import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp, Copy, Check, Pencil } from "lucide-react";
 import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useNow } from "../hooks/useNow.js";
@@ -48,6 +48,8 @@ const SOURCE_ORDER = ["binance", "tcmb", "cbr", "ecb"];
 const REFRESH_INTERVAL = "каждые 5 мин";
 const SPREAD_KEY = "coinplata.externalSpread";
 const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
+// Скрытые пары — Set<"source:pair">. По умолчанию ничего не скрыто.
+const HIDDEN_KEY = "coinplata.externalRatesHidden";
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
@@ -121,6 +123,41 @@ export default function ExternalRatesWidget({ compact = false }) {
   const toggleCalc = (source) => {
     setShowCalc((prev) => ({ ...prev, [source]: !prev[source] }));
   };
+  // Hidden pairs Set — фильтр для отображения. Юзер выключает в settings.
+  const [hidden, setHidden] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HIDDEN_KEY);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const persistHidden = (next) => {
+    try {
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...next]));
+    } catch {}
+  };
+  const toggleHidden = (key) => {
+    setHidden((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      persistHidden(next);
+      return next;
+    });
+  };
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Copy-to-clipboard с feedback (галочка 1.2 сек).
+  const [copiedKey, setCopiedKey] = useState(null);
+  const copyValue = (key, value) => {
+    if (value == null || !Number.isFinite(value)) return;
+    const text = String(value).replace(/\.?0+$/, "");
+    try {
+      navigator.clipboard?.writeText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1200);
+    } catch {}
+  };
   const updateSpread = (source, value) => {
     setSpreadBySource((prev) => {
       const next = { ...prev, [source]: value };
@@ -173,13 +210,26 @@ export default function ExternalRatesWidget({ compact = false }) {
             Внешние котировки
           </h2>
           {!collapsed && (
-            <button
-              onClick={(e) => { e.stopPropagation(); reload(); }}
-              className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
-              title="Обновить вручную"
-            >
-              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-            </button>
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setSettingsOpen((v) => !v); }}
+                className={`p-1 rounded transition-colors shrink-0 ${
+                  settingsOpen
+                    ? "bg-slate-900 text-white"
+                    : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+                title="Настроить какие пары показывать"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); reload(); }}
+                className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+                title="Обновить вручную"
+              >
+                <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              </button>
+            </>
           )}
           {collapsed
             ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
@@ -191,15 +241,55 @@ export default function ExternalRatesWidget({ compact = false }) {
             : `Авто-обновление ${REFRESH_INTERVAL}`}
         </div>
       </header>
+      {/* Settings panel — список всех (source, pair) с галочками. */}
+      {!collapsed && settingsOpen && (
+        <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/40 max-h-[240px] overflow-y-auto">
+          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+            Какие курсы показывать
+          </div>
+          {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
+            const meta = SOURCES[source];
+            return (
+              <div key={`s_${source}`} className="mb-2 last:mb-0">
+                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${meta?.accent || "text-slate-700"}`}>
+                  {meta?.label || source}
+                </div>
+                {bySource.get(source).map((r) => {
+                  const key = `${r.source}:${r.pair}`;
+                  const visible = !hidden.has(key);
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-white cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={visible}
+                        onChange={() => toggleHidden(key)}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900/20 cursor-pointer"
+                      />
+                      <span className="text-[11.5px] text-slate-700 font-semibold tabular-nums">
+                        {formatPair(r.pair)}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
       {!collapsed && (rows.length === 0 ? (
         <div className="px-4 py-6 text-center text-[12px] text-slate-400">
           {loading ? "Загрузка…" : "Нет данных. Cron подтянет в течение 5 минут."}
         </div>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
           {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
             const meta = SOURCES[source] || { label: source, tone: "bg-slate-100 text-slate-700 ring-slate-200", origin: "" };
-            const sourceRows = bySource.get(source);
+            const allSourceRows = bySource.get(source);
+            const sourceRows = allSourceRows.filter((r) => !hidden.has(`${r.source}:${r.pair}`));
+            if (sourceRows.length === 0) return null;
             const fetchedAt = sourceRows[0]?.fetchedAt;
             const spread = spreadBySource[source] != null ? spreadBySource[source] : "";
             const spreadNum = Number(spread);
@@ -270,24 +360,43 @@ export default function ExternalRatesWidget({ compact = false }) {
                     const adjusted = hasSpread && mid != null
                       ? mid * (1 + spreadNum / 100)
                       : null;
+                    const displayValue = hasSpread ? adjusted : mid;
+                    const copyKey = `${r.source}_${r.pair}`;
+                    const copied = copiedKey === copyKey;
                     return (
                       <div
-                        key={`${r.source}_${r.pair}`}
-                        className="flex items-baseline justify-between gap-2 px-1 py-1.5"
+                        key={copyKey}
+                        className="flex items-center justify-between gap-2 px-1 py-1.5"
                       >
                         <span className="text-[13.5px] font-bold text-slate-700 tracking-wide">
                           {formatPair(r.pair)}
                         </span>
-                        <span className="text-right">
-                          <span className={`text-[15px] font-bold tabular-nums ${hasSpread ? meta.accent : "text-slate-900"}`}>
-                            {fmtRate(hasSpread ? adjusted : mid)}
-                          </span>
-                          {hasSpread && mid != null && (
-                            <span className="ml-1.5 text-[10.5px] text-slate-400 tabular-nums">
-                              (от {fmtRate(mid)})
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-right leading-tight">
+                            <span className={`text-[15px] font-bold tabular-nums ${hasSpread ? meta.accent : "text-slate-900"}`}>
+                              {fmtRate(displayValue)}
                             </span>
-                          )}
-                        </span>
+                            {hasSpread && mid != null && (
+                              <span className="block text-[10px] text-slate-400 tabular-nums">
+                                от {fmtRate(mid)}
+                              </span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => copyValue(copyKey, displayValue)}
+                            title={`Скопировать ${fmtRate(displayValue)}`}
+                            className={`p-1 rounded transition-colors ${
+                              copied
+                                ? "text-emerald-600 bg-emerald-50"
+                                : "text-slate-300 hover:text-slate-900 hover:bg-slate-100"
+                            }`}
+                          >
+                            {copied
+                              ? <Check className="w-3.5 h-3.5" />
+                              : <Copy className="w-3 h-3" />}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
