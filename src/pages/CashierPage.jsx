@@ -5,7 +5,6 @@ import Balances from "../components/Balances.jsx";
 import RatesBar from "../components/RatesBar.jsx";
 import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
-import ExternalRatesWidget from "../components/ExternalRatesWidget.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
@@ -433,7 +432,7 @@ export default function CashierPage({
                 (рядом с Balances), height stretch до Balances height.
                 Expanded: row 2+3 (sidebar занимает оба row слева). */}
             <aside
-              className={`lg:[grid-area:sidebar] space-y-4 ${
+              className={`lg:[grid-area:sidebar] ${
                 sidebarExpanded ? "lg:sticky lg:top-[88px] lg:self-start" : ""
               }`}
             >
@@ -442,7 +441,6 @@ export default function CashierPage({
                 onOpenRates={openRates}
                 onExpandedChange={setSidebarExpanded}
               />
-              <ExternalRatesWidget />
             </aside>
 
             {/* CTA "+ New exchange" / "Resume" — большая основная кнопка
