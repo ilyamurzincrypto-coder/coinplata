@@ -1074,6 +1074,21 @@ export default function ExchangeForm({
     return warnings;
   }, [accountId, outputs, t]);
 
+  // Сделка станет pending если хоть один OUT-leg без accountId — SQL
+  // create_deal помечает такой leg как ours_later (мы должны клиенту
+  // позже), а v_all_legs_complete=false → status=pending. Юзер часто
+  // не ожидает этого: думает что выдал сейчас, а в БД лежит pending
+  // со скрытой кнопкой «Завершить» в таблице.
+  const willBePending = useMemo(() => {
+    const outsWithoutAccount = outputs.filter((o) => {
+      const amt = parseFloat(o.amount);
+      if (!Number.isFinite(amt) || amt <= 0) return false;
+      if (o.outKind === "partner") return !o.partnerAccountId;
+      return !o.accountId;
+    });
+    return outsWithoutAccount.length > 0 ? outsWithoutAccount.length : 0;
+  }, [outputs]);
+
   // --- submit ---
   const buildTx = (clientId) => {
     const now = new Date();
@@ -2445,6 +2460,29 @@ export default function ExchangeForm({
             </ul>
             <div className="mt-1.5 text-[10px] text-amber-600/80 italic">
               Balances won't be updated for missing accounts.
+            </div>
+          </div>
+        )}
+
+        {/* Will-be-pending warning — заметная плашка ПЕРЕД сабмитом.
+            Юзер часто не понимал почему сделка появляется в списке как
+            «pending» с кнопкой «Завершить» — он думал что выдал, а на
+            самом деле OUT-leg без счёта стал ours_later (мы должны
+            клиенту). Теперь явное предупреждение. */}
+        {willBePending > 0 && (
+          <div className="mt-3 p-3 rounded-[14px] bg-amber-100 border-2 border-amber-300">
+            <div className="flex items-center gap-1.5 text-[12px] font-bold text-amber-900 mb-1">
+              <AlertCircle className="w-4 h-4" />
+              Сделка будет создана как PENDING
+            </div>
+            <div className="text-[11.5px] text-amber-800 leading-snug">
+              У {willBePending === 1 ? "одной OUT-ноги" : `${willBePending} OUT-ног`} нет счёта —
+              они станут <strong>«мы должны клиенту»</strong> (obligation).
+              Сделка получит статус <strong>pending</strong>; в таблице
+              транзакций будет кнопка «Завершить» когда фактически выдадите.
+            </div>
+            <div className="mt-1 text-[10.5px] text-amber-700/80">
+              Чтобы создать как <strong>completed</strong> — выберите счёт для каждой OUT-ноги.
             </div>
           </div>
         )}
