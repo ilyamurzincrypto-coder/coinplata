@@ -15,7 +15,7 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcUpdateDeal, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcUpdateDeal, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
@@ -70,11 +70,25 @@ export default function EditTransactionModal({ transaction, onClose }) {
           { success: "Deal updated", errorPrefix: "Update failed" }
         );
         if (res.ok) {
+          // Backdate (опц.) — юзер выставил «задним числом». В CashierPage
+          // для НОВОЙ сделки это уже работает; для edit — раньше не дёргали
+          // rpcSetDealCreatedAt, и backdate терялся.
+          if (updated.backdateAt) {
+            try {
+              await rpcSetDealCreatedAt({
+                dealId: transaction.id,
+                createdAt: updated.backdateAt,
+              });
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("[set_deal_created_at] edit failed", e);
+            }
+          }
           logAudit({
             action: "update",
             entity: "transaction",
             entityId: String(transaction.id),
-            summary: `Edited #${transaction.id} · status ${prevStatus} → ${nextStatus}`,
+            summary: `Edited #${transaction.id} · status ${prevStatus} → ${nextStatus}${updated.backdateAt ? " · backdated" : ""}`,
           });
           onClose?.();
         }
