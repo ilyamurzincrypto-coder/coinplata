@@ -1888,6 +1888,7 @@ export default function ExchangeForm({
                   onToggleManual={() => toggleManualRate(o.id)}
                   onAmountKeyDown={handleKbdOut}
                   curIn={curIn}
+                  amtIn={amtIn}
                   remainingIn={remainingIn}
                   availableInCurrency={resolveLegBalance(o)}
                   currentOffice={currentOffice}
@@ -2654,6 +2655,7 @@ function OutputRow({
   onToggleManual,
   onAmountKeyDown,
   curIn,
+  amtIn,
   remainingIn,
   availableInCurrency,
   currentOffice,
@@ -3157,15 +3159,25 @@ function OutputRow({
               type="button"
               onClick={() => {
                 const inv = 1 / actualRate;
-                if (Number.isFinite(inv) && inv > 0) {
-                  onUpdate({
-                    rate: String(inv),
-                    manualRate: true,
-                    rateSource: "manual",
-                    ratePinned: true,
-                    touched: false,
-                  });
+                if (!Number.isFinite(inv) || inv <= 0) return;
+                // useEffect пересчёта amount пропускает manualRate=true,
+                // поэтому считаем amount тут же из inv × amtIn.
+                const a = parseFloat(amtIn);
+                let newAmount;
+                if (Number.isFinite(a) && a > 0) {
+                  const computed = a * inv;
+                  newAmount = o.currency === "TRY"
+                    ? String(Math.round(computed))
+                    : String(Math.round(computed * 100) / 100);
                 }
+                onUpdate({
+                  rate: String(inv),
+                  ...(newAmount !== undefined ? { amount: newAmount } : {}),
+                  manualRate: true,
+                  rateSource: "manual",
+                  ratePinned: true,
+                  touched: false,
+                });
               }}
               className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
             >
