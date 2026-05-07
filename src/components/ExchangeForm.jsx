@@ -1909,6 +1909,42 @@ export default function ExchangeForm({
               );
             })}
 
+            {/* IN action row — «Ещё приём» / «Удалить приём» сразу под
+                всеми IN-rows. Раньше эти кнопки висели в общей action
+                strip ВНИЗУ под таблицей вместе с OUT-кнопками — юзер
+                просил перенести их к секции приёма. */}
+            {inEnabled && (
+              <tr className="border-b border-slate-200/70 bg-slate-50/30">
+                <td className="px-3 py-1.5"></td>
+                <td colSpan={3} className="px-3 py-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {!deferredIn && (
+                      <button
+                        type="button"
+                        onClick={addExtraInput}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-md px-2 py-1 transition-colors"
+                        title="Добавить ещё один приём — можно в другой валюте"
+                      >
+                        <Plus className="w-3 h-3" />
+                        {t("add_in") || "Ещё приём"}
+                      </button>
+                    )}
+                    {!isEdit && (
+                      <button
+                        type="button"
+                        onClick={removeIn}
+                        title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT"}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                        {t("remove_in") || "Удалить приём"}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+
             {/* IN disabled ghost row */}
             {!inEnabled && !isEdit && (
               <tr className="border-b border-slate-200/70">
@@ -2022,44 +2058,10 @@ export default function ExchangeForm({
                       </span>
                     </td>
                     <td className="px-3 py-1.5 align-top">
-                      {/* Partner / ours toggle — small inline pill row над
-                          amount. Сохраняет режим OTC (партнёр выдаёт сам). */}
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="inline-flex bg-slate-100 p-0.5 rounded-full">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateOutput(o.id, {
-                                outKind: "ours",
-                                partnerAccountId: null,
-                              })
-                            }
-                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
-                              (o.outKind || "ours") === "ours"
-                                ? "bg-white text-slate-900 shadow-sm"
-                                : "text-slate-500 hover:text-slate-900"
-                            }`}
-                          >
-                            Наш
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateOutput(o.id, {
-                                outKind: "partner",
-                                accountId: null,
-                              })
-                            }
-                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
-                              o.outKind === "partner"
-                                ? "bg-white text-indigo-700 shadow-sm"
-                                : "text-slate-500 hover:text-slate-900"
-                            }`}
-                          >
-                            Партнёр
-                          </button>
-                        </div>
-                        {/* Per-output applyFee toggle — мелкий pill справа */}
+                      {/* Per-output applyFee toggle — компактный pill справа.
+                          Партнёрский режим (OTC) убран по запросу юзера —
+                          выдача всегда с нашего счёта. */}
+                      <div className="flex items-center justify-end mb-1">
                         <label
                           className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.08em] transition-colors ${
                             o.applyFee !== false
@@ -2318,6 +2320,35 @@ export default function ExchangeForm({
               });
             })()}
 
+            {/* OUT action row — «Добавить выдачу» / «Удалить выдачу» сразу
+                под OUT-rows, в едином ритме с IN action row выше. */}
+            <tr className="border-b border-slate-200/70 bg-slate-50/30">
+              <td className="px-3 py-1.5"></td>
+              <td colSpan={3} className="px-3 py-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={addOutput}
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-md px-2 py-1 transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    {t("add_output")}
+                  </button>
+                  {outputs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={removeAllOutputs}
+                      title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN"}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                      {t("remove_output") || "Удалить выдачу"}
+                    </button>
+                  )}
+                </div>
+              </td>
+            </tr>
+
             {/* Summary row — курс / комиссия / итог. Однострочный между OUT
                 rows и actions footer. Скрыт пока нет введённых значений. */}
             {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
@@ -2387,35 +2418,10 @@ export default function ExchangeForm({
         </table>
 
         {/* Action strip под таблицей — добавление IN / OUT, reverse rates. */}
+        {/* Action strip снаружи таблицы — теперь только Reverse rates.
+            «Ещё приём / Удалить приём» переехали в IN action row внутри
+            таблицы; «Добавить выдачу / Удалить выдачу» — в OUT action row. */}
         <div className="px-4 py-2 border-t border-slate-200/70 flex items-center gap-2 flex-wrap bg-slate-50/30">
-          {inEnabled && !deferredIn && (
-            <button
-              type="button"
-              onClick={addExtraInput}
-              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-md px-2 py-1 transition-colors"
-              title="Добавить ещё один приём — можно в другой валюте"
-            >
-              <Plus className="w-3 h-3" />
-              {t("add_in") || "Ещё приём"}
-            </button>
-          )}
-          <button
-            onClick={addOutput}
-            className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-md px-2 py-1 transition-colors"
-          >
-            <Plus className="w-3 h-3" />
-            {t("add_output")}
-          </button>
-          {outputs.length > 0 && (
-            <button
-              onClick={removeAllOutputs}
-              title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN"}
-              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
-            >
-              <X className="w-3 h-3" />
-              {t("remove_output") || "Удалить выдачу"}
-            </button>
-          )}
           {(() => {
             const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
             const title =
