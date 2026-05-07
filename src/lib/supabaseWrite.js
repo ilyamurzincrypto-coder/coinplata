@@ -148,9 +148,13 @@ export function legsToJsonb(outputs) {
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error(`Output ${idx + 1}: invalid amount (${o.amount})`);
     }
-    const rate = Number(o.rate);
+    // Rate бессмысленен для односторонних OUT-сделок (нет конверсии,
+    // мы просто отдаём). Если юзер не ввёл — подставляем sentinel 1.
+    // SQL create_deal margin-loop посчитает margin=0 для такого leg
+    // что корректно: нет IN — нет profit от обмена.
+    let rate = Number(o.rate);
     if (!Number.isFinite(rate) || rate <= 0) {
-      throw new Error(`Output ${idx + 1}: invalid rate (${o.rate})`);
+      rate = 1;
     }
     if (typeof o.currency !== "string" || o.currency.length < 2) {
       throw new Error(`Output ${idx + 1}: missing currency`);
