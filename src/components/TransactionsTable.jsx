@@ -381,9 +381,29 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   }, [officeTxs, filterCurrency, filterManager, filterStatus, amountMin, amountMax, search]);
 
+  // Стабильная сортировка по createdAtMs DESC, id DESC. Без явного
+  // сорта порядок мог дёргаться после reload (bumpDataVersion после
+  // confirm / approve), и подтверждённая сделка визуально «поднималась
+  // наверх» хотя её created_at не менялся — это раздражало юзера.
+  const sortByCreatedDesc = (a, b) => {
+    const aT = Number(a.createdAtMs) || 0;
+    const bT = Number(b.createdAtMs) || 0;
+    if (bT !== aT) return bT - aT;
+    // tie-breaker по id (числовой) — стабильно
+    const aI = Number(a.id) || 0;
+    const bI = Number(b.id) || 0;
+    return bI - aI;
+  };
+
   // Pinned — наверху, не попадают в пагинацию. Regular — подлежат пагинации.
-  const pinnedTxs = useMemo(() => filtered.filter((tx) => tx.pinned), [filtered]);
-  const regularTxs = useMemo(() => filtered.filter((tx) => !tx.pinned), [filtered]);
+  const pinnedTxs = useMemo(
+    () => filtered.filter((tx) => tx.pinned).slice().sort(sortByCreatedDesc),
+    [filtered]
+  );
+  const regularTxs = useMemo(
+    () => filtered.filter((tx) => !tx.pinned).slice().sort(sortByCreatedDesc),
+    [filtered]
+  );
 
   // Все видимые на экране tx (pinned + regular page) — для select-all.
   const visibleIds = useMemo(
