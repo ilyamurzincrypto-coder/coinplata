@@ -74,15 +74,19 @@ export default function EditTransactionModal({ transaction, onClose }) {
           // для НОВОЙ сделки это уже работает; для edit — раньше не дёргали
           // rpcSetDealCreatedAt, и backdate терялся.
           if (updated.backdateAt) {
-            try {
-              await rpcSetDealCreatedAt({
-                dealId: transaction.id,
-                createdAt: updated.backdateAt,
-              });
-            } catch (e) {
-              // eslint-disable-next-line no-console
-              console.warn("[set_deal_created_at] edit failed", e);
-            }
+            // Backdate: показываем toast при ошибке (раньше было silent
+            // console.warn — юзер не понимал почему дата не меняется).
+            await withToast(
+              () =>
+                rpcSetDealCreatedAt({
+                  dealId: transaction.id,
+                  createdAt: updated.backdateAt,
+                }),
+              {
+                success: "Backdate applied",
+                errorPrefix: "Backdate failed",
+              }
+            );
           }
           logAudit({
             action: "update",

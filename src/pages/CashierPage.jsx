@@ -208,15 +208,19 @@ export default function CashierPage({
           // движений через RPC. Если migration 0070 не применена — silent fail,
           // не блокирует основное создание.
           if (tx.backdateAt) {
-            try {
-              await rpcSetDealCreatedAt({
-                dealId: res.result,
-                createdAt: tx.backdateAt,
-              });
-            } catch (e) {
-              // eslint-disable-next-line no-console
-              console.warn("[set_deal_created_at] failed", e);
-            }
+            // Backdate: видимый toast вместо silent fail. Без этого юзер
+            // не понимал почему сделка остаётся на сегодняшней дате.
+            await withToast(
+              () =>
+                rpcSetDealCreatedAt({
+                  dealId: res.result,
+                  createdAt: tx.backdateAt,
+                }),
+              {
+                success: "Backdate applied",
+                errorPrefix: "Backdate failed",
+              }
+            );
           }
           logAudit({
             action: "create",

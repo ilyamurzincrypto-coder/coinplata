@@ -412,6 +412,12 @@ export async function loadDealsWithLegs(usersById = {}) {
       fee: num(d.fee_usd),
       profit: num(d.profit_usd),
       commissionUsd: num(d.commission_usd),
+      // applyMinFee: при edit нужно подтянуть исходное состояние галочки.
+      // В БД нет явного поля; восстанавливаем эвристически:
+      //   fee_usd === 0  → applyMinFee был выключен (иначе SQL поднял бы до min_fee).
+      //   иначе          → считаем что был включён (default true).
+      // Без этого edit любой сделки автоматически добивал fee до min_fee офиса.
+      applyMinFee: !(num(d.fee_usd) === 0),
       manager: manager?.full_name || "—",
       managerId: d.manager_id,
       payeeUserId: d.payee_user_id || null,
