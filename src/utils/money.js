@@ -154,11 +154,13 @@ export function computeRemaining({ amtIn, curIn, outputs, fee, feeType, getRate 
   // Для feeType === "%" fee уже сидит в маржинальном курсе output'ов — не вычитаем
 
   const remaining = inNum - consumed - feeInCurIn;
-  // EPS относительный к inNum — защита от rounding-noise. При amtIn=45000
-  // TRY gross округляется до 2 decimals USD, обратное деление даёт
-  // remaining≈-0.45 TRY (шум), а с EPS=0.01 ложно фаерил exceedsInput.
-  // 1e-4 = 0.01% tolerance — для 45 000 это 4.5 единицы. Абсолютный минимум 0.01.
-  const EPS = Math.max(0.01, Math.abs(inNum) * 1e-4);
+  // EPS относительный к inNum — толерантность для exceedsInput. Раньше
+  // было 0.01% (для $234 ловило превышение в 0.03), и блокировало
+  // обычные обменные сделки где OUT округляется относительно курса.
+  // 1% — стандартная толерантность для обменника: курс гуляет в этом
+  // диапазоне, и сумма OUT может слегка перекрывать IN. Минимум $0.01
+  // чтобы для совсем мелких сумм всё равно ловилась явная ошибка.
+  const EPS = Math.max(0.01, Math.abs(inNum) * 0.01);
   const exceedsInput = remaining < -EPS;
 
   return { remaining, feeInCurIn, consumed, exceedsInput };
