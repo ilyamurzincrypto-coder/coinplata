@@ -33,6 +33,7 @@ import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useAudit } from "../store/audit.jsx";
+import { useOffices } from "../store/offices.jsx";
 import { useMonitoring } from "../store/monitoring.jsx";
 import { useObligations } from "../store/obligations.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -73,6 +74,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const { addEntry: logAudit } = useAudit();
   const { simulateIncoming } = useMonitoring();
   const { obligations, cancelObligation } = useObligations();
+  const { activeOffices } = useOffices();
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [sendTarget, setSendTarget] = useState(null); // { tx, outputIndex }
   const [detailTarget, setDetailTarget] = useState(null); // tx для detail modal
@@ -316,6 +318,10 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [filterManager, setFilterManager] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDate, setFilterDate] = useState(t("today"));
+  // Office-фильтр. "current" = только текущий офис из header'а (default,
+  // совпадает со старым поведением). "all" = все офисы. Любой иной
+  // string = конкретный officeId.
+  const [filterOffice, setFilterOffice] = useState("current");
   const [search, setSearch] = useState("");
   const [amountMin, setAmountMin] = useState("");
   const [amountMax, setAmountMax] = useState("");
@@ -343,16 +349,24 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     filterManager !== "All" ||
     filterStatus !== "All" ||
     filterDate !== DATE_OPTIONS[0] ||
+    filterOffice !== "current" ||
     search !== "" ||
     amountMin !== "" ||
     amountMax !== "";
 
+  // effectiveOfficeId — какой офис показывать. null = все офисы.
+  const effectiveOfficeId =
+    filterOffice === "current" ? currentOffice :
+    filterOffice === "all" ? null :
+    filterOffice;
   const officeTxs = useMemo(
     () =>
       transactions.filter(
-        (tx) => tx.officeId === currentOffice && tx.type === "EXCHANGE"
+        (tx) =>
+          tx.type === "EXCHANGE" &&
+          (effectiveOfficeId === null || tx.officeId === effectiveOfficeId)
       ),
-    [transactions, currentOffice]
+    [transactions, effectiveOfficeId]
   );
 
   const filtered = useMemo(() => {
@@ -537,13 +551,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   // Reset page when filters изменились.
   React.useEffect(() => {
     setPage(1);
-  }, [filterCurrency, filterManager, filterStatus, filterDate, search, amountMin, amountMax, pageSize]);
+  }, [filterCurrency, filterManager, filterStatus, filterDate, filterOffice, search, amountMin, amountMax, pageSize]);
 
   const clearFilters = () => {
     setFilterCurrency("All");
     setFilterManager("All");
     setFilterStatus("All");
     setFilterDate(DATE_OPTIONS[0]);
+    setFilterOffice("current");
     setSearch("");
     setAmountMin("");
     setAmountMax("");
@@ -581,7 +596,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">{t("transactions")}</h2>
           <p className="text-[12px] text-slate-500 mt-0.5">
-            {filtered.length} of {officeTxs.length} · {officeName(currentOffice)}
+            {filtered.length} of {officeTxs.length} · {effectiveOfficeId === null ? "All offices" : officeName(effectiveOfficeId)}
           </p>
         </div>
         <div className="relative">
@@ -601,6 +616,21 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         <div className="flex items-center gap-1 text-slate-500 mr-1">
           <Filter className="w-3.5 h-3.5" />
           <span className="text-[11px] font-semibold tracking-wide uppercase">{t("filters")}</span>
+        </div>
+        <div>
+          <Select
+            value={filterOffice}
+            onChange={setFilterOffice}
+            options={[
+              { value: "current", label: `Текущий · ${officeName(currentOffice)}` },
+              { value: "all", label: "Все офисы" },
+              ...activeOffices
+                .filter((o) => o.id !== currentOffice)
+                .map((o) => ({ value: o.id, label: o.name })),
+            ]}
+            compact
+            icon={<span className="text-[10px] font-bold text-slate-400 tracking-wider">OFFICE</span>}
+          />
         </div>
         <div>
           <Select
