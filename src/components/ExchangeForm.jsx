@@ -1544,7 +1544,7 @@ export default function ExchangeForm({
     >
       {/* Header — Apple-style: avatar circle + stack title/subtitle */}
       {!isEdit && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/60 bg-gradient-to-b from-slate-50/40 to-white">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200/60 bg-gradient-to-b from-slate-50/40 to-white">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.3)] ring-1 ring-slate-900/10">
               <ArrowLeftRight className="w-4 h-4 text-white" strokeWidth={2.5} />
@@ -1590,7 +1590,7 @@ export default function ExchangeForm({
       {/* COUNTERPARTY — все «клиенты», без toggle Партнёр. Если нужен
           отдельный обработка партнёров — теперь это просто client со
           своими obligations (we_owe / they_owe на счёт клиента). */}
-      <div className="px-5 pt-5">
+      <div className="px-4 pt-3">
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span className="text-[10.5px] font-bold tracking-[0.12em] text-slate-700 uppercase">
             Клиент
@@ -1628,8 +1628,8 @@ export default function ExchangeForm({
           Скрываем целиком при !inEnabled (одностороннее OUT — мы только
           отдаём, без приёма). В шапке — кнопка «× Удалить приём». */}
       {inEnabled && (
-      <div className="px-5 pt-5">
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
+      <div className="px-4 pt-3">
+        <div className="flex items-center justify-between mb-1.5 gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
               <ArrowDown className="w-3 h-3 text-emerald-700" strokeWidth={2.5} />
@@ -1653,7 +1653,7 @@ export default function ExchangeForm({
         {/* Поле суммы IN: input + dropdown валюты справа.
             Размер унифицирован с OUT (text-[24px], py-3) — раньше был text-[30px]. */}
         <div
-          className={`flex items-center gap-2 rounded-[14px] border transition-all px-3.5 py-3 ${
+          className={`flex items-center gap-2 rounded-[14px] border transition-all px-3 py-2 ${
             amtIn
               ? "bg-gradient-to-br from-emerald-50/60 to-white border-emerald-300 shadow-[0_0_0_4px_rgba(16,185,129,0.06)]"
               : "bg-white border-slate-200 hover:border-slate-300"
@@ -1805,7 +1805,7 @@ export default function ExchangeForm({
 
       {/* IN-секция выключена — компактный ghost-стейт с кнопкой вернуть. */}
       {!inEnabled && !isEdit && (
-        <div className="px-5 pt-5">
+        <div className="px-4 pt-3">
           <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-[14px] border border-dashed border-slate-300 bg-slate-50/40">
             <div className="flex items-center gap-2 text-[11.5px] text-slate-500">
               <ArrowDown className="w-3.5 h-3.5 opacity-50" />
@@ -1851,7 +1851,7 @@ export default function ExchangeForm({
           );
         })()}
       </div>
-      <div className="px-5 pb-5">
+      <div className="px-4 pb-3">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <div className="w-6 h-6 rounded-full bg-slate-900 flex items-center justify-center ring-1 ring-slate-900/10">
@@ -1996,7 +1996,7 @@ export default function ExchangeForm({
             Размещён ВЫШЕ Conditions — это центр принятия решения.
             Conditions ниже — свернутые "дополнительные условия". */}
         {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
-          <div className="mt-5 px-5 py-4 rounded-[14px] border border-slate-200 bg-slate-50/60 space-y-2">
+          <div className="mt-3 px-4 py-2.5 rounded-[14px] border border-slate-200 bg-slate-50/60 space-y-2">
             {/* Rate + Fee toggle + Fee value — single row */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               {outputs.length === 1 ? (
@@ -2422,7 +2422,7 @@ export default function ExchangeForm({
 
 
       {/* CTA */}
-      <div className="sticky bottom-0 bg-white border-t border-slate-100 px-5 py-4">
+      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-10">
         {amtIn && outputs[0]?.amount && (
           <div className="mb-3 flex items-center justify-between text-[12px] px-1 flex-wrap gap-2">
             <div className="flex items-center gap-1.5 tabular-nums font-semibold text-slate-700 flex-wrap">
@@ -3056,7 +3056,7 @@ function OutputRow({
       {/* Поле суммы OUT: input + dropdown валюты справа.
           Размер унифицирован с IN-полем (text-[24px], py-3). */}
       <div
-        className={`flex items-center gap-2 bg-white rounded-[14px] border transition-all px-3.5 py-3 ${
+        className={`flex items-center gap-2 bg-white rounded-[14px] border transition-all px-3 py-2 ${
           o.amount ? "border-slate-400" : "border-slate-200 hover:border-slate-300"
         }`}
       >
