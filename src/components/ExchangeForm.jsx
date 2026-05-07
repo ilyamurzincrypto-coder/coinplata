@@ -1748,6 +1748,14 @@ export default function ExchangeForm({
           с rounded card-wrapper — теперь весь OUT-блок встроен прямо
           в tbody, единый визуальный язык с IN-row (без card). */}
       <div className="border-b border-slate-200/70">
+        {/* Общий datalist для всех currency inputs — autocomplete
+            подсказывает доступные валюты, но input остаётся text-полем
+            (юзер может набрать руками или выбрать из списка). */}
+        <datalist id="ef-currencies-list">
+          {CURRENCIES.map((c) => (
+            <option key={c} value={c} />
+          ))}
+        </datalist>
         <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-slate-200/70 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
           <colgroup>
             <col className="w-[110px]" />
@@ -1814,16 +1822,19 @@ export default function ExchangeForm({
                   )}
                 </td>
                 <td className="px-3 py-1.5 align-top whitespace-nowrap">
-                  <select
+                  <input
+                    type="text"
+                    list="ef-currencies-list"
                     value={curIn}
-                    onChange={(e) => setCurIn(e.target.value)}
-                    className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
+                    onChange={(e) => {
+                      const v = e.target.value.toUpperCase();
+                      if (CURRENCIES.includes(v) || v === "") setCurIn(v || "USDT");
+                      else setCurIn(v);
+                    }}
+                    className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none uppercase"
+                    placeholder="Валюта"
                     aria-label="Currency"
-                  >
-                    {CURRENCIES.map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  />
                 </td>
                 <td className="px-2 py-1.5 align-top text-center" />
               </tr>
@@ -1870,19 +1881,18 @@ export default function ExchangeForm({
                     </div>
                   </td>
                   <td className="px-3 py-1.5 align-top whitespace-nowrap">
-                    <select
+                    <input
+                      type="text"
+                      list="ef-currencies-list"
                       value={xiCur}
                       onChange={(e) => {
-                        const c = e.target.value;
+                        const c = e.target.value.toUpperCase();
                         updateExtraInput(xi.id, { currency: c, accountId: "" });
                       }}
-                      className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
+                      className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none uppercase"
+                      placeholder="Валюта"
                       aria-label="Currency"
-                    >
-                      {CURRENCIES.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
+                    />
                   </td>
                   <td className="px-2 py-1.5 align-top text-center">
                     <button
@@ -2235,31 +2245,28 @@ export default function ExchangeForm({
                       )}
                     </td>
                     <td className="px-3 py-1.5 align-top whitespace-nowrap">
-                      <select
+                      <input
+                        type="text"
+                        list="ef-currencies-list"
                         value={o.currency}
                         onChange={(e) => {
-                          const c = e.target.value;
+                          const c = e.target.value.toUpperCase();
                           const patch = {
                             currency: c,
                             touched: false,
                             ratePinned: false,
                             rateSource: "auto",
                           };
-                          if (!o.manualRate) {
+                          if (!o.manualRate && CURRENCIES.includes(c)) {
                             const next = getRate(curIn, c);
                             if (next !== undefined) patch.rate = String(next);
                           }
                           updateOutput(o.id, patch);
                         }}
-                        className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
+                        className="w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none uppercase"
+                        placeholder="Валюта"
                         aria-label="Currency"
-                      >
-                        {CURRENCIES.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                      />
                     </td>
                     <td className="px-2 py-1.5 align-top text-center">
                       {canRemoveO && (
