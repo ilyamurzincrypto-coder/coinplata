@@ -25,7 +25,6 @@ import {
   UserPlus,
   RefreshCw,
   AlertCircle,
-  ChevronDown,
   Search,
   Wallet,
   Check,
@@ -33,7 +32,7 @@ import {
   ChevronUp,
   SlidersHorizontal,
   X,
-} from "lucide-react";
+} from "lucide-react"; // ChevronDown was used by old collapsable Conditions header — removed in compact-strip layout.
 // CurrencyTabs убран — теперь валюта выбирается dropdown'ом справа от input.
 import Select from "./ui/Select.jsx";
 import CounterpartySelect from "./CounterpartySelect.jsx";
@@ -2493,60 +2492,6 @@ function MenuItem({ icon, label, sub, onClick, disabled }) {
         <div className="text-[10px] text-slate-500">{sub}</div>
       </div>
     </button>
-  );
-}
-
-// ----------------------------------------
-// Toggle — iOS-style переключатель для Conditions блока
-// ----------------------------------------
-function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) {
-  const tones = {
-    sky: { on: "bg-sky-500", ring: "ring-sky-200", text: "text-sky-700", iconBg: "bg-sky-100 text-sky-700" },
-    amber: { on: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-700", iconBg: "bg-amber-100 text-amber-700" },
-    violet: { on: "bg-violet-500", ring: "ring-violet-200", text: "text-violet-700", iconBg: "bg-violet-100 text-violet-700" },
-    indigo: { on: "bg-indigo-500", ring: "ring-indigo-200", text: "text-indigo-700", iconBg: "bg-indigo-100 text-indigo-700" },
-    slate: { on: "bg-slate-700", ring: "ring-slate-200", text: "text-slate-700", iconBg: "bg-slate-100 text-slate-600" },
-  };
-  const c = tones[tone] || tones.slate;
-  return (
-    <label
-      className={`flex items-center gap-3 cursor-pointer select-none rounded-[10px] px-3 py-2 transition-all ${
-        active ? `bg-slate-50 ring-1 ${c.ring}` : "bg-slate-50/40 hover:bg-slate-50"
-      }`}
-    >
-      <div
-        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold shrink-0 ${c.iconBg}`}
-      >
-        {icon}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className={`text-[13px] font-semibold tracking-tight ${active ? c.text : "text-slate-700"}`}>
-          {label}
-        </div>
-        {sub && <div className="text-[10px] text-slate-400 truncate">{sub}</div>}
-      </div>
-      {suffix && (
-        <span className={`text-[10px] font-bold tabular-nums ${c.text}`}>{suffix}</span>
-      )}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={active}
-        onClick={(e) => {
-          e.preventDefault();
-          onChange(!active);
-        }}
-        className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${
-          active ? c.on : "bg-slate-300"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-            active ? "translate-x-4" : "translate-x-0"
-          }`}
-        />
-      </button>
-    </label>
   );
 }
 
