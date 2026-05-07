@@ -474,7 +474,7 @@ export default function RatesPage({ onBack }) {
 
         {/* Двухколоночный layout: слева внешние котировки (Binance/Harem/
             TCMB) — sticky-sidebar; справа основной контент. */}
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-5 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
           <aside className="lg:sticky lg:top-[76px] space-y-4">
             <ExternalRatesWidget />
           </aside>
