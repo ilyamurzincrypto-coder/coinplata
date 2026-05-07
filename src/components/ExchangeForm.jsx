@@ -15,6 +15,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   ArrowDown,
   ArrowRight,
+  ArrowUp,
   ArrowLeftRight,
   ArrowUpDown,
   Zap,
@@ -180,7 +181,7 @@ export default function ExchangeForm({
   submitting = false,
 }) {
   const { t } = useTranslation();
-  const { getRate: getRateRaw } = useRates();
+  const { getRate: getRateRaw, getOfficeOverride } = useRates();
   // Оборачиваем getRate так, чтобы использовался office override (0021).
   // Если есть override для (currentOffice, from, to) — берём его, иначе global.
   const getRate = React.useCallback(
@@ -617,6 +618,57 @@ export default function ExchangeForm({
       if (pick) setAccountId(pick.id);
     }
   }, [availableAccounts, accountId, currentOffice]);
+
+  // OUT auto-pick — лифтнуто из OutputRow. На каждое изменение
+  // outputs[i].currency или currentOffice пробегаем по всем outputs и
+  // подбираем accountId если он пуст / не подходит. В edit-mode и для
+  // partner-режима — пропускаем (как и раньше в OutputRow).
+  useEffect(() => {
+    if (mode === "edit") return;
+    setOutputs((prev) => {
+      let changed = false;
+      const next = prev.map((o) => {
+        if (o.outKind === "partner") return o;
+        const outAccs = (accounts || []).filter(
+          (a) => a.active && a.currency === o.currency
+        );
+        // Existing accountId — не входит в список (валюта/active поменялись).
+        if (o.accountId && !outAccs.some((a) => a.id === o.accountId)) {
+          changed = true;
+          return { ...o, accountId: "" };
+        }
+        // Existing accountId из чужого офиса (юзер сменил офис в шапке) —
+        // re-pick из current office если есть подходящий.
+        if (o.accountId) {
+          const cur = outAccs.find((a) => a.id === o.accountId);
+          if (cur && cur.officeId && cur.officeId !== currentOffice) {
+            const sameOffice = outAccs.find((a) => a.officeId === currentOffice);
+            if (sameOffice) {
+              changed = true;
+              return { ...o, accountId: sameOffice.id };
+            }
+          }
+        }
+        // accountId пустой — auto-pick первый из current office, иначе любой.
+        if (!o.accountId && outAccs.length > 0) {
+          const officeAcc = outAccs.find((a) => a.officeId === currentOffice);
+          const pick = officeAcc || outAccs[0];
+          if (pick) {
+            changed = true;
+            return { ...o, accountId: pick.id };
+          }
+        }
+        return o;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    accounts,
+    currentOffice,
+    mode,
+    outputs.map((o) => `${o.id}|${o.currency}|${o.outKind}|${o.accountId}`).join(","),
+  ]);
 
   // При смене IN currency — пара меняется, user-pick chip'а становится
   // неактуален. Сбрасываем ratePinned у всех outputs до того как main
@@ -1536,6 +1588,67 @@ export default function ExchangeForm({
     }
   };
 
+  // Rate-source helper — собирает список источников курса для конкретного
+  // output: Global, текущий офис, остальные офисы. Каждый источник = chip
+  // {key, label, rate, hasOverride, kind}. Используется в inline OUT row
+  // через <RateSourceDropdown />. Корректирует rate тем же fix-inverted
+  // что был в OutputRow — chips показывают «правильное» значение.
+  const buildRateSources = React.useCallback(
+    (outputCurrency) => {
+      const fix = (raw) => correctRate(raw, curIn, outputCurrency);
+      const globalRate = fix(getRateRaw(curIn, outputCurrency, null));
+      const officeRate = fix(getRateRaw(curIn, outputCurrency, currentOffice));
+      const currentOfficeObj = (activeOffices || []).find(
+        (off) => off.id === currentOffice
+      );
+      const hasOfficeOverride =
+        !!getOfficeOverride?.(currentOffice, curIn, outputCurrency) &&
+        Number.isFinite(globalRate) &&
+        Number.isFinite(officeRate) &&
+        Math.abs(globalRate - officeRate) > 1e-9;
+      const sources = [];
+      if (Number.isFinite(globalRate)) {
+        sources.push({
+          key: "global",
+          label: "Глобал",
+          rate: globalRate,
+          kind: "global",
+          hasOverride: false,
+        });
+      }
+      if (currentOfficeObj && Number.isFinite(officeRate)) {
+        sources.push({
+          key: "auto",
+          label: currentOfficeObj.name || "Office",
+          rate: officeRate,
+          kind: "current_office",
+          hasOverride: hasOfficeOverride,
+        });
+      }
+      (activeOffices || [])
+        .filter((off) => off.id !== currentOffice)
+        .forEach((off) => {
+          const rate = fix(getRateRaw(curIn, outputCurrency, off.id));
+          if (!Number.isFinite(rate)) return;
+          const ovr = getOfficeOverride?.(off.id, curIn, outputCurrency);
+          const hasOverride =
+            !!ovr &&
+            Number.isFinite(ovr.rate) &&
+            (!Number.isFinite(globalRate) ||
+              Math.abs(ovr.rate - globalRate) > 1e-9);
+          sources.push({
+            key: `office:${off.id}`,
+            label: off.name || "Office",
+            rate,
+            kind: "other_office",
+            hasOverride,
+          });
+        });
+      return sources;
+    },
+    [curIn, currentOffice, getRateRaw, getOfficeOverride, activeOffices, correctRate]
+  );
+
   return (
     <div
       className={`relative bg-white border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
@@ -1630,12 +1743,10 @@ export default function ExchangeForm({
 
       {/* ════════════════════════════════════════════════════════════════
           MAIN BODY — table-style. Колонки: СТОРОНА | СУММА | ВАЛЮТА |
-          СЧЁТ/АДРЕС | ДЕЙСТВИЯ. IN-leg, extra-IN-leg рендерятся как
-          inline rows. OUT-leg использует существующий <OutputRow/> внутри
-          full-width <td colSpan> — TODO: OutputRow пока сохраняет свой
-          rounded card-wrapper (мы не правим sub-component), визуально
-          OUT-row будет чуть «толще» чем IN-row. Заголовок СТОРОНА /
-          СУММА / ВАЛЮТА всё равно даёт ощущение единой таблицы. */}
+          ДЕЙСТВИЯ. IN-leg, extra-IN-leg И OUT-leg все рендерятся как
+          inline <tr>. OUT-leg ранее использовал sub-component OutputRow
+          с rounded card-wrapper — теперь весь OUT-блок встроен прямо
+          в tbody, единый визуальный язык с IN-row (без card). */}
       <div className="border-b border-slate-200/70">
         <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-slate-200/70 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
           <colgroup>
@@ -1848,49 +1959,328 @@ export default function ExchangeForm({
               </tr>
             )}
 
-            {/* OUT rows — используем существующий <OutputRow> внутри full-width
-                <td colSpan>. TODO: OutputRow рендерит свой rounded card-wrapper,
-                здесь мы его не убираем (sub-component не правим), визуально
-                OUT-row остаётся слегка card-style. */}
+            {/* OUT rows — inline 4-col layout, тот же визуальный язык что
+                IN row. Каждый output = один <tr>, в средней колонке стек:
+                amount → AccountSelect → rate + RateSourceDropdown →
+                (опц.) crypto address. RateSourceDropdown — компактный
+                popover вместо горизонтальной полосы chips, см. определение
+                ниже OutputRow.  */}
             {(() => {
               const firstInterOfficeIdx = outputs.findIndex((o) => {
                 if (!o.accountId) return false;
                 const acc = accounts.find((a) => a.id === o.accountId);
                 return acc && acc.officeId && acc.officeId !== currentOffice;
               });
-              return outputs.map((o, idx) => (
+              return outputs.map((o, idx) => {
+                const isLast = idx === outputs.length - 1;
+                const canRemoveO = outputs.length > 1;
+                const isCryptoOut = isCryptoCode(o.currency);
+                const outAccs = accounts.filter(
+                  (a) => a.active && a.currency === o.currency
+                );
+                const availBal = resolveLegBalance(o);
+                const outAmtNum = parseFloat(o.amount) || 0;
+                const insufficient =
+                  availBal !== undefined && outAmtNum > 0 && outAmtNum > availBal;
+                // "Use remaining" — подставить остаток через текущий курс
+                // или fallback на market rate.
+                const fallbackRate =
+                  parseFloat(o.rate) > 0
+                    ? parseFloat(o.rate)
+                    : (() => {
+                        const r = getRate(curIn, o.currency);
+                        return Number.isFinite(r) && r > 0 ? r : 0;
+                      })();
+                const canUseRemaining =
+                  idx > 0 && remainingIn > 0.01 && fallbackRate > 0;
+                const suggestedAmount = canUseRemaining
+                  ? remainingIn * fallbackRate
+                  : 0;
+                const handleUseRemaining = () => {
+                  if (!canUseRemaining) return;
+                  const precision = o.currency === "TRY" ? 0 : 2;
+                  const rounded =
+                    Math.floor(suggestedAmount * Math.pow(10, precision)) /
+                    Math.pow(10, precision);
+                  const patch = { amount: String(rounded), touched: true };
+                  if (!(parseFloat(o.rate) > 0) && fallbackRate > 0) {
+                    patch.rate = String(fallbackRate);
+                    patch.rateSource = "auto";
+                  }
+                  updateOutput(o.id, patch);
+                };
+                return (
                 <React.Fragment key={o.id}>
-                  <tr className="border-b border-slate-200/70 hover:bg-slate-50/40 transition-colors">
+                  <tr
+                    data-output-row
+                    className="border-b border-slate-200/70 hover:bg-slate-50/40 transition-colors"
+                  >
                     <td className="px-3 py-2 align-top whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
-                        <ArrowRight className="w-2.5 h-2.5" strokeWidth={3} />
+                        <ArrowUp className="w-2.5 h-2.5" strokeWidth={3} />
                         Выход {outputs.length > 1 ? `#${idx + 1}` : ""}
                       </span>
                     </td>
-                    <td colSpan={3} className="p-2 align-top">
-                      <OutputRow
-                        output={o}
-                        index={idx}
-                        canRemove={outputs.length > 1}
-                        isLast={idx === outputs.length - 1}
-                        onUpdate={(patch) => updateOutput(o.id, patch)}
-                        onRemove={() => removeOutput(o.id)}
-                        onToggleManual={() => toggleManualRate(o.id)}
-                        onAmountKeyDown={handleKbdOut}
-                        curIn={curIn}
-                        amtIn={amtIn}
-                        remainingIn={remainingIn}
-                        availableInCurrency={resolveLegBalance(o)}
-                        currentOffice={currentOffice}
-                        counterpartyId={resolveClientId(counterparty)}
-                        partnerHintId={partnerHintId}
-                        officeBalancesByCurrency={officeBalancesByCurrency}
-                        offices={activeOffices}
-                        applyMinFee={applyMinFee}
-                        setApplyMinFee={setApplyMinFee}
-                        minFeeUsd={minFeeUsd}
-                        mode={mode}
-                      />
+                    <td className="px-3 py-1.5 align-top">
+                      {/* Partner / ours toggle — small inline pill row над
+                          amount. Сохраняет режим OTC (партнёр выдаёт сам). */}
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="inline-flex bg-slate-100 p-0.5 rounded-full">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateOutput(o.id, {
+                                outKind: "ours",
+                                partnerAccountId: null,
+                              })
+                            }
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
+                              (o.outKind || "ours") === "ours"
+                                ? "bg-white text-slate-900 shadow-sm"
+                                : "text-slate-500 hover:text-slate-900"
+                            }`}
+                          >
+                            Наш
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateOutput(o.id, {
+                                outKind: "partner",
+                                accountId: null,
+                              })
+                            }
+                            className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
+                              o.outKind === "partner"
+                                ? "bg-white text-indigo-700 shadow-sm"
+                                : "text-slate-500 hover:text-slate-900"
+                            }`}
+                          >
+                            Партнёр
+                          </button>
+                        </div>
+                        {/* Per-output applyFee toggle — мелкий pill справа */}
+                        <label
+                          className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.08em] transition-colors ${
+                            o.applyFee !== false
+                              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
+                          }`}
+                          title="Применить минимальную комиссию офиса к этой выдаче"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={o.applyFee !== false}
+                            onChange={(e) =>
+                              updateOutput(o.id, { applyFee: e.target.checked })
+                            }
+                            className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
+                          />
+                          Комиссия
+                        </label>
+                      </div>
+                      {/* Amount row — same style as IN amount */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 text-[14px] font-semibold leading-none">
+                          {curSymbol(o.currency)}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          data-kbd="out-amount"
+                          value={o.amount}
+                          onChange={(e) =>
+                            updateOutput(o.id, {
+                              amount: e.target.value
+                                .replace(/[^\d.,]/g, "")
+                                .replace(",", "."),
+                              touched: true,
+                            })
+                          }
+                          onKeyDown={(e) => handleKbdOut(e, isLast)}
+                          placeholder="0"
+                          className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
+                        />
+                        <span
+                          className={`text-[10px] tabular-nums whitespace-nowrap ${
+                            insufficient ? "text-amber-700" : "text-slate-400"
+                          }`}
+                          title={t("available")}
+                        >
+                          {insufficient && (
+                            <AlertCircle className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                          )}
+                          bal {curSymbol(o.currency)}
+                          {fmt(availBal, o.currency)}
+                        </span>
+                      </div>
+                      {/* Account select */}
+                      <div className="mt-1.5">
+                        {o.outKind === "partner" ? (
+                          <PartnerAccountSelect
+                            value={o.partnerAccountId || ""}
+                            onChange={(id) =>
+                              updateOutput(o.id, { partnerAccountId: id })
+                            }
+                            currency={o.currency}
+                            partnerId={partnerHintId}
+                            placeholder="Со счёта партнёра"
+                          />
+                        ) : outAccs.length === 0 ? (
+                          <div className="text-[10.5px] text-amber-700">
+                            {t("no_accounts_currency")} {o.currency}
+                          </div>
+                        ) : (
+                          <AccountSelect
+                            accounts={outAccs}
+                            value={o.accountId || ""}
+                            onChange={(id) =>
+                              updateOutput(o.id, { accountId: id })
+                            }
+                            placeholder={t("select_account")}
+                            currentOfficeId={currentOffice}
+                          />
+                        )}
+                      </div>
+                      {/* Rate row — input + source popover */}
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                        <div
+                          className={`inline-flex items-center rounded-md border bg-white transition-colors px-2 py-0.5 ${
+                            o.manualRate ? "border-amber-300" : "border-slate-200"
+                          }`}
+                        >
+                          <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] mr-1.5">
+                            {t("rate")}
+                          </span>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={o.rate}
+                            onChange={(e) =>
+                              updateOutput(o.id, {
+                                rate: e.target.value
+                                  .replace(/[^\d.,]/g, "")
+                                  .replace(",", "."),
+                                manualRate: true,
+                                rateSource: "manual",
+                                ratePinned: false,
+                                touched: false,
+                              })
+                            }
+                            placeholder="0.00"
+                            className="w-[80px] bg-transparent outline-none text-[12px] font-bold text-slate-900 placeholder:text-slate-300 tabular-nums"
+                          />
+                          {o.manualRate && (
+                            <span className="ml-1 text-[8.5px] font-bold text-amber-700 tracking-wider uppercase">
+                              manual
+                            </span>
+                          )}
+                        </div>
+                        <RateSourceDropdown
+                          output={o}
+                          sources={buildRateSources(o.currency)}
+                          onPick={(src) => {
+                            if (src.kind === "global") {
+                              updateOutput(o.id, {
+                                rate: String(src.rate),
+                                manualRate: false,
+                                rateSource: "global",
+                                ratePinned: true,
+                                touched: false,
+                              });
+                            } else if (src.kind === "current_office") {
+                              updateOutput(o.id, {
+                                rate: String(src.rate),
+                                manualRate: false,
+                                rateSource: "auto",
+                                ratePinned: false,
+                                touched: false,
+                              });
+                            } else {
+                              updateOutput(o.id, {
+                                rate: String(src.rate),
+                                manualRate: false,
+                                rateSource: src.key,
+                                ratePinned: true,
+                                touched: false,
+                              });
+                            }
+                          }}
+                        />
+                        {canUseRemaining && (
+                          <button
+                            type="button"
+                            onClick={handleUseRemaining}
+                            className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
+                            title="Convert remaining amount here"
+                          >
+                            <Zap className="w-3 h-3" />
+                            {t("use_remaining")} · {curSymbol(o.currency)}
+                            {fmt(suggestedAmount, o.currency)}
+                          </button>
+                        )}
+                      </div>
+                      {/* Crypto address — only for crypto outputs */}
+                      {isCryptoOut && (
+                        <div className="mt-1.5">
+                          <input
+                            type="text"
+                            value={o.address || ""}
+                            onChange={(e) =>
+                              updateOutput(o.id, { address: e.target.value.trim() })
+                            }
+                            placeholder="0x… or TRON address"
+                            className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1 text-[11px] font-mono text-slate-700 outline-none transition-colors placeholder:text-slate-400"
+                          />
+                        </div>
+                      )}
+                      {/* Partner mode hint */}
+                      {o.outKind === "partner" && (
+                        <p className="mt-1 text-[10px] text-indigo-700/80">
+                          💸 Партнёр выдаёт сам — наш счёт не списывается. Создастся
+                          <strong> we_owe</strong> obligation на{" "}
+                          {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-3 py-1.5 align-top whitespace-nowrap">
+                      <select
+                        value={o.currency}
+                        onChange={(e) => {
+                          const c = e.target.value;
+                          const patch = {
+                            currency: c,
+                            touched: false,
+                            ratePinned: false,
+                            rateSource: "auto",
+                          };
+                          if (!o.manualRate) {
+                            const next = getRate(curIn, c);
+                            if (next !== undefined) patch.rate = String(next);
+                          }
+                          updateOutput(o.id, patch);
+                        }}
+                        className="w-full bg-transparent border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-1.5 py-1 text-[12px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                        aria-label="Currency"
+                      >
+                        {CURRENCIES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-2 py-1.5 align-top text-center">
+                      {canRemoveO && (
+                        <button
+                          type="button"
+                          onClick={() => removeOutput(o.id)}
+                          className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          aria-label={t("remove")}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                   {/* Payee row — под OUT-leg где впервые account чужого офиса. */}
@@ -1924,7 +2314,8 @@ export default function ExchangeForm({
                     </tr>
                   )}
                 </React.Fragment>
-              ));
+                );
+              });
             })()}
 
             {/* Summary row — курс / комиссия / итог. Однострочный между OUT
@@ -2612,7 +3003,92 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
 }
 
 // ----------------------------------------
+// RateSourceDropdown — компактный popover с источниками курса
+//   Заменяет горизонтальную полосу chips. Кнопка показывает текущий
+//   источник + rate, клик открывает меню с альтернативами. Pattern
+//   взят из Select.jsx (onBlur с 120ms timeout).
+// ----------------------------------------
+function RateSourceDropdown({ output, sources, onPick }) {
+  const [open, setOpen] = useState(false);
+  // Текущий активный source — определяем по output.rateSource. manualRate=true
+  // показывается отдельно в самом rate input ('manual' badge); тут показываем
+  // последний выбранный источник или 'auto' если ничего не выбрано.
+  const active = (() => {
+    if (output.manualRate) return null;
+    const src = output.rateSource;
+    if (!src || src === "auto") {
+      return sources.find((s) => s.kind === "current_office") || null;
+    }
+    if (src === "global") return sources.find((s) => s.kind === "global") || null;
+    if (typeof src === "string" && src.startsWith("office:")) {
+      return sources.find((s) => s.key === src) || null;
+    }
+    return null;
+  })();
+  const buttonLabel = active
+    ? `${active.label} · ${Number(active.rate).toFixed(4)}`
+    : output.manualRate
+    ? "Источник курса"
+    : "Источник курса";
+  if (!sources || sources.length === 0) return null;
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        onBlur={() => setTimeout(() => setOpen(false), 120)}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+        title="Источник курса"
+      >
+        <span className="tabular-nums whitespace-nowrap">{buttonLabel}</span>
+        <ChevronDown
+          className={`w-3 h-3 text-slate-400 transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+      {open && (
+        <div className="absolute z-30 mt-1 left-0 min-w-[180px] bg-white border border-slate-200 rounded-md shadow-lg shadow-slate-900/10 py-1 max-h-60 overflow-auto">
+          {sources.map((src) => {
+            const isActive = active && active.key === src.key;
+            const tone =
+              src.kind === "global"
+                ? "text-slate-600"
+                : src.kind === "current_office"
+                ? "text-indigo-700"
+                : src.hasOverride
+                ? "text-sky-700"
+                : "text-slate-500";
+            return (
+              <button
+                key={src.key}
+                type="button"
+                onMouseDown={() => {
+                  onPick(src);
+                  setOpen(false);
+                }}
+                className={`w-full text-left px-2.5 py-1 text-[11.5px] flex items-center justify-between gap-2 hover:bg-slate-50 ${
+                  isActive ? "bg-slate-50 font-bold" : ""
+                }`}
+              >
+                <span className={`font-semibold ${tone}`}>{src.label}</span>
+                <span className="tabular-nums text-slate-700 font-semibold">
+                  {Number(src.rate).toFixed(4)}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ----------------------------------------
 // OutputRow — одна строка "выдать в валюте"
+// NB: с ребрендинга OUT row в inline-table (см. ExchangeForm tbody)
+//     этот компонент больше не вызывается из таблицы. Оставлен в файле
+//     как backup / на случай если sub-фичи будут переиспользованы.
 // ----------------------------------------
 function OutputRow({
   output,
