@@ -2826,6 +2826,21 @@ function OutputRow({
       onUpdate({ accountId: "" });
       return;
     }
+    // Если выбранный OUT-account из ДРУГОГО офиса (юзер сменил офис в
+    // шапке после автопика / переоткрыл draft) — сбрасываем, чтобы
+    // re-pick'нуть в текущем офисе. Иначе interoffice-предупреждение
+    // вылазило хотя юзер ничего не выбирал — auto-pick с предыдущего
+    // офиса оставался.
+    if (o.accountId) {
+      const cur = outAccounts.find((a) => a.id === o.accountId);
+      if (cur && cur.officeId && cur.officeId !== currentOffice) {
+        const sameOffice = outAccounts.find((a) => a.officeId === currentOffice);
+        if (sameOffice) {
+          onUpdate({ accountId: sameOffice.id });
+          return;
+        }
+      }
+    }
     if (!o.accountId && outAccounts.length > 0) {
       const officeAcc = outAccounts.find((a) => a.officeId === currentOffice);
       const pick = officeAcc || outAccounts[0];
