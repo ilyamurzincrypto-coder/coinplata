@@ -3137,19 +3137,41 @@ function OutputRow({
 
       {/* Sanity warning — курс подозрительно отличается от triangulated
           через USD. Скорее всего в DailyRatesModal введено в обратную
-          сторону (например 1.185 как USDT→EUR вместо 0.85). */}
+          сторону (например 1.185 как USDT→EUR вместо 0.85).
+          Кнопка «Инвертировать» одним кликом ставит 1/actualRate —
+          обычно это и есть правильное значение. */}
       {rateLooksWrong && Number.isFinite(expectedRateViaUsd) && (
         <div className="mt-1.5 px-2.5 py-1.5 rounded-[8px] bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
           <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
-          <span>
-            Курс подозрительный. Ожидаемый по USD-триангуляции:{" "}
-            <span className="font-bold tabular-nums">
-              ≈{expectedRateViaUsd.toFixed(4)}
-            </span>{" "}
-            (1 {curIn} = {expectedRateViaUsd.toFixed(4)} {o.currency}).
-            Возможно в Quick-rates введено в обратную сторону. Текущий ввод:{" "}
-            <span className="font-bold tabular-nums">{actualRate}</span>.
-          </span>
+          <div className="flex-1 min-w-0">
+            <div>
+              Курс подозрительный. Ожидаемый по USD-триангуляции:{" "}
+              <span className="font-bold tabular-nums">
+                ≈{expectedRateViaUsd.toFixed(4)}
+              </span>{" "}
+              (1 {curIn} = {expectedRateViaUsd.toFixed(4)} {o.currency}).
+              Возможно введено в обратную сторону. Текущий ввод:{" "}
+              <span className="font-bold tabular-nums">{actualRate}</span>.
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const inv = 1 / actualRate;
+                if (Number.isFinite(inv) && inv > 0) {
+                  onUpdate({
+                    rate: String(inv),
+                    manualRate: true,
+                    rateSource: "manual",
+                    ratePinned: true,
+                    touched: false,
+                  });
+                }
+              }}
+              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
+            >
+              ↻ Инвертировать → {(1 / actualRate).toFixed(4)}
+            </button>
+          </div>
         </div>
       )}
 
