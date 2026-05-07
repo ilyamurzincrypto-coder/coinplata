@@ -800,8 +800,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             <col className="w-[70px]" />
             <col className="w-[90px]" />
             <col className="w-[100px]" />
-            <col className="w-[150px]" />
             <col className="w-[140px]" />
+            <col className="w-[170px]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-white border-b border-slate-200/70">
             <tr>
@@ -814,8 +814,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("fee")}</th>
               <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">{t("profit")}</th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">Risk</th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden xl:table-cell">{t("manager")}</th>
               <th className="px-3 py-2"></th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden xl:table-cell">{t("manager")}</th>
             </tr>
           </thead>
           <tbody>
@@ -1143,51 +1143,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  {/* MANAGER */}
-                  <td className={`${textCell} whitespace-nowrap hidden xl:table-cell`}>
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <div className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
-                          {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
-                        </div>
-                        <span
-                          className="text-slate-700 text-[13px] truncate"
-                          title={tx.manager}
-                        >
-                          {tx.manager}
-                        </span>
-                        {tx.payeeName && (
-                          <>
-                            <span className="text-[10px] text-slate-300 shrink-0">→</span>
-                            <span
-                              className="text-[12px] font-semibold text-indigo-700 truncate"
-                              title={`Payee: ${tx.payeeName}${tx.payeeOfficeId ? ` · ${officeName(tx.payeeOfficeId)}` : ""}`}
-                            >
-                              {tx.payeeName}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      {tx.payeeUserId && !tx.payedOutAt && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 uppercase tracking-wider w-fit"
-                          title="Ожидает выдачи назначенным менеджером"
-                        >
-                          <Clock className="w-2.5 h-2.5" />
-                          Невыданная
-                        </span>
-                      )}
-                      {tx.payedOutAt && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 uppercase tracking-wider w-fit"
-                          title={`Выдано ${new Date(tx.payedOutAt).toLocaleString()}`}
-                        >
-                          <CheckCircle2 className="w-2.5 h-2.5" />
-                          Выдано
-                        </span>
-                      )}
-                    </div>
-                  </td>
                   {/* ACTIONS — Pin / Flag / Edit / Delete только при hover; Complete/Simulate/Выдать всегда видимы. */}
                   <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-1">
@@ -1295,6 +1250,47 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         >
                           <Lock className="w-3.5 h-3.5" />
                         </div>
+                      )}
+                    </div>
+                  </td>
+                  {/* MANAGER — теперь самая правая колонка вместо пустой. */}
+                  <td className={`${textCell} whitespace-nowrap hidden xl:table-cell`}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                        {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
+                      </div>
+                      <span
+                        className="text-slate-700 text-[13px] truncate"
+                        title={tx.manager}
+                      >
+                        {tx.manager}
+                      </span>
+                      {tx.payeeName && (
+                        <>
+                          <span className="text-[10px] text-slate-300 shrink-0">→</span>
+                          <span
+                            className="text-[12px] font-semibold text-indigo-700 truncate"
+                            title={`Payee: ${tx.payeeName}${tx.payeeOfficeId ? ` · ${officeName(tx.payeeOfficeId)}` : ""}`}
+                          >
+                            {tx.payeeName}
+                          </span>
+                        </>
+                      )}
+                      {tx.payeeUserId && !tx.payedOutAt && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          title="Ожидает выдачи назначенным менеджером"
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                        </span>
+                      )}
+                      {tx.payedOutAt && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          title={`Выдано ${new Date(tx.payedOutAt).toLocaleString()}`}
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                        </span>
                       )}
                     </div>
                   </td>
