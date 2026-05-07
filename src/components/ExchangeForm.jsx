@@ -767,7 +767,10 @@ export default function ExchangeForm({
   React.useLayoutEffect(() => {
     setOutputs((prev) =>
       prev.map((o, idx) => {
-        if (o.manualRate) return o;
+        // touched=true → юзер сам ввёл amount. НЕ перезаписываем при
+        // клике галочки fee/applyMinFee — иначе слетают введённые
+        // вручную значения на double-OUT.
+        if (o.manualRate || o.touched) return o;
         const a = parseFloat(amtIn);
         if (!Number.isFinite(a) || a <= 0) return o;
         const freshRaw = getRate(curIn, o.currency);
@@ -789,11 +792,11 @@ export default function ExchangeForm({
         const computedStr = String(computed);
         const rateStr = String(freshCorrected);
         if (computedStr === o.amount && rateStr === o.rate) return o;
-        return { ...o, amount: computedStr, rate: rateStr, touched: false };
+        return { ...o, amount: computedStr, rate: rateStr };
       })
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyMinFee, amtIn, minFeeUsd, curIn, outputs.map(o => `${o.currency}|${o.applyFee !== false}`).join(",")]);
+  }, [applyMinFee, amtIn, minFeeUsd, curIn, outputs.map(o => `${o.currency}|${o.applyFee !== false}|${o.touched ? 1 : 0}`).join(",")]);
 
   // --- derived: авто-расчёт прибыли от разницы между rate менеджера и рыночным ---
   // profitFromRates — маржа которую офис "зарабатывает" за счёт того что rate
