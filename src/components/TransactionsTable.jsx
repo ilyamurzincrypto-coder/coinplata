@@ -422,34 +422,36 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   }, [officeTxs, dateRange, filterCurrency, filterManager, filterStatus, amountMin, amountMax, search]);
 
-  // Стабильная сортировка по createdAtMs DESC, id DESC. Без явного
-  // сорта порядок мог дёргаться после reload (bumpDataVersion после
-  // confirm / approve), и подтверждённая сделка визуально «поднималась
-  // наверх» хотя её created_at не менялся — это раздражало юзера.
-  const sortByCreatedDesc = (a, b) => {
+  // Сортировка: approved-сделки уходят в КОНЕЦ (юзер не хочет видеть
+  // подтверждённые наверху — они мешали порядку). В пределах группы —
+  // по createdAtMs DESC, id DESC (стабильно). Pinned больше не
+  // выделяется в отдельный блок наверху — все сделки идут общим
+  // списком и подлежат пагинации.
+  const sortByGroup = (a, b) => {
+    const aApproved = a.accountingStatus === "approved" ? 1 : 0;
+    const bApproved = b.accountingStatus === "approved" ? 1 : 0;
+    if (aApproved !== bApproved) return aApproved - bApproved; // approved → вниз
     const aT = Number(a.createdAtMs) || 0;
     const bT = Number(b.createdAtMs) || 0;
     if (bT !== aT) return bT - aT;
-    // tie-breaker по id (числовой) — стабильно
     const aI = Number(a.id) || 0;
     const bI = Number(b.id) || 0;
     return bI - aI;
   };
 
-  // Pinned — наверху, не попадают в пагинацию. Regular — подлежат пагинации.
-  const pinnedTxs = useMemo(
-    () => filtered.filter((tx) => tx.pinned).slice().sort(sortByCreatedDesc),
-    [filtered]
-  );
+  // Pinned-блок убран. Все сделки идут единым списком, отсортированным
+  // по sortByGroup. Pin/Unpin кнопка остаётся в UI — но больше не
+  // двигает сделку наверх (можно использовать как закладку).
+  const pinnedTxs = []; // пустой массив для совместимости с visibleIds/render
   const regularTxs = useMemo(
-    () => filtered.filter((tx) => !tx.pinned).slice().sort(sortByCreatedDesc),
+    () => filtered.slice().sort(sortByGroup),
     [filtered]
   );
 
-  // Все видимые на экране tx (pinned + regular page) — для select-all.
+  // Все видимые на экране tx — для select-all.
   const visibleIds = useMemo(
-    () => [...pinnedTxs, ...regularTxs].map((t) => String(t.id)),
-    [pinnedTxs, regularTxs]
+    () => regularTxs.map((t) => String(t.id)),
+    [regularTxs]
   );
   const allVisibleSelected =
     visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
