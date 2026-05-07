@@ -1825,18 +1825,7 @@ export default function ExchangeForm({
                     ))}
                   </select>
                 </td>
-                <td className="px-2 py-1.5 align-top text-center">
-                  {!isEdit && (
-                    <button
-                      onClick={removeIn}
-                      type="button"
-                      title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT"}
-                      className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </td>
+                <td className="px-2 py-1.5 align-top text-center" />
               </tr>
             )}
 
@@ -1927,6 +1916,17 @@ export default function ExchangeForm({
                       >
                         <Plus className="w-3 h-3" />
                         {t("add_in") || "Ещё приём"}
+                      </button>
+                    )}
+                    {!isEdit && (
+                      <button
+                        type="button"
+                        onClick={removeIn}
+                        title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT"}
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                        {t("remove_in") || "Удалить приём"}
                       </button>
                     )}
                   </div>
@@ -2323,6 +2323,17 @@ export default function ExchangeForm({
                     <Plus className="w-3 h-3" />
                     {t("add_output")}
                   </button>
+                  {outputs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={removeAllOutputs}
+                      title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN"}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                      {t("remove_output") || "Удалить выдачу"}
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
