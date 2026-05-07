@@ -771,39 +771,10 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         )}
       </div>
 
-      {/* Bulk action bar — показываем только когда что-то выбрано. */}
-      {someSelected && (
-        <div className="mx-5 mb-2 flex items-center gap-3 px-3 py-2 rounded-[10px] bg-slate-900 text-white text-[12px] shadow-sm">
-          <span className="font-semibold">
-            {selectedIds.size} {selectedIds.size === 1 ? "deal" : "deals"} selected
-          </span>
-          <span className="h-3 w-px bg-white/25" />
-          <button
-            onClick={handleBulkComplete}
-            disabled={bulkRunning}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-500 text-white font-semibold hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <CheckCircle2 className="w-3 h-3" />
-            {bulkRunning ? "Working…" : "Complete pending"}
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold hover:bg-white/20"
-          >
-            <Upload className="w-3 h-3" />
-            Export CSV
-          </button>
-          <button
-            onClick={clearSelection}
-            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-white/80 hover:text-white hover:bg-white/10"
-          >
-            <X className="w-3 h-3" /> Clear
-          </button>
-        </div>
-      )}
+      {/* Bulk-select убрали — колонка галочек и кнопка «Complete pending»
+          юзеру мешали. Export CSV всегда экспортирует filtered. */}
 
-      {/* Export-all button — виден всегда, экспортирует текущий filtered. */}
-      {!someSelected && filtered.length > 0 && (
+      {filtered.length > 0 && (
         <div className="mx-5 mb-2 flex justify-end">
           <button
             onClick={handleExportCSV}
@@ -820,7 +791,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       <div className="overflow-x-auto">
         <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-slate-200/70 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
           <colgroup>
-            <col className="w-8" />
             <col className="w-[72px]" />
             <col className="w-[160px]" />
             <col className="w-[180px]" />
@@ -835,15 +805,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
           </colgroup>
           <thead className="sticky top-0 z-10 bg-white border-b border-slate-200/70">
             <tr>
-              <th className="pl-5 pr-2 py-2 align-middle">
-                <input
-                  type="checkbox"
-                  aria-label="Select all visible"
-                  checked={allVisibleSelected}
-                  onChange={toggleSelectAll}
-                  className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
-                />
-              </th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("time")}</th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden sm:table-cell">{t("type")}</th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("counterparty") || "Контрагент"}</th>
@@ -928,19 +889,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   onClick={() => setDetailTarget(tx)}
                   className={`${rowBase} ${rowState} ${rowExtras}`}
                 >
-                  <td className="pl-5 pr-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      aria-label={`Select deal ${tx.id}`}
-                      checked={selectedIds.has(String(tx.id))}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleRowSelected(tx.id);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
-                    />
-                  </td>
                   {/* TIME · DATE — компактно: 15:25 над May 6 */}
                   <td className={`${textCell} whitespace-nowrap`}>
                     <div className="font-semibold text-slate-900 tabular-nums leading-tight">

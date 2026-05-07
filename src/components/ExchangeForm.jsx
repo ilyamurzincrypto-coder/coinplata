@@ -1536,105 +1536,137 @@ export default function ExchangeForm({
     }
   };
 
+  // Conditions count — used in compact strip header
+  const conditionsActiveCount =
+    (deferredIn ? 1 : 0) +
+    (deferredOut ? 1 : 0) +
+    (partialMode ? 1 : 0) +
+    (referral ? 1 : 0) +
+    (isPending ? 1 : 0) +
+    (plannedLocal ? 1 : 0) +
+    (comment.trim() ? 1 : 0) +
+    (inTxHash.trim() ? 1 : 0) +
+    (backdateAt ? 1 : 0) +
+    (commissionUsdInput.trim?.() ? 1 : 0) +
+    (customFeeUsdInput.trim?.() ? 1 : 0);
+
   return (
     <div
-      className={`relative bg-white rounded-[20px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
+      className={`relative bg-white rounded-[16px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
         flash ? "ring-4 ring-emerald-400/50" : ""
       }`}
     >
-      {/* Header — Apple-style: avatar circle + stack title/subtitle */}
-      {!isEdit && (
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200/60 bg-gradient-to-b from-slate-50/40 to-white">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center shadow-[0_2px_8px_-2px_rgba(15,23,42,0.3)] ring-1 ring-slate-900/10">
-              <ArrowLeftRight className="w-4 h-4 text-white" strokeWidth={2.5} />
-            </div>
-            <div>
-              <h2 className="text-[17px] font-bold tracking-tight text-slate-900 leading-none">
-                {t("new_exchange")}
-              </h2>
-              <div className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-500">
-                <span className="font-medium">{officeName(currentOffice)}</span>
-                <span className="text-slate-300">·</span>
-                {canPickManager && managerCandidates.length > 1 ? (
-                  <label className="inline-flex items-center gap-1.5">
-                    <span className="text-[9.5px] uppercase tracking-[0.1em] text-indigo-600 font-bold">
-                      Менеджер
-                    </span>
-                    <select
-                      value={selectedManagerId}
-                      onChange={(e) => setSelectedManagerId(e.target.value)}
-                      className="bg-indigo-50/70 border border-indigo-200/70 rounded-full px-2.5 py-0.5 text-[11px] font-semibold text-indigo-900 outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer hover:bg-indigo-100 transition-colors"
-                      title="Создать сделку от имени"
-                    >
-                      {managerCandidates.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                          {m.id === currentUser.id ? " (я)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
-                  <span className="font-medium">{currentUser.name}</span>
-                )}
+      {/* COMPACT HEADER — manager · office · counterparty · backdate. Single
+          horizontal flex; wraps on narrow screens. Replaces both the old
+          big header and the standalone counterparty block. */}
+      <div className="px-3 pt-3 pb-2 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-white">
+        <div className="flex items-end gap-2 flex-wrap">
+          {/* Title (only create) */}
+          {!isEdit && (
+            <div className="flex items-center gap-2 mr-1">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 flex items-center justify-center ring-1 ring-slate-900/10 shrink-0">
+                <ArrowLeftRight className="w-3.5 h-3.5 text-white" strokeWidth={2.5} />
+              </div>
+              <div className="leading-tight">
+                <h2 className="text-[13px] font-bold tracking-tight text-slate-900">
+                  {t("new_exchange")}
+                </h2>
+                <div className="text-[10px] text-slate-500 font-medium">
+                  {officeName(currentOffice)}
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Manager picker */}
+          {canPickManager && managerCandidates.length > 1 ? (
+            <label className="flex flex-col gap-0.5 min-w-[140px] flex-1">
+              <span className="text-[9px] font-bold tracking-[0.12em] text-slate-500 uppercase">
+                Менеджер
+              </span>
+              <select
+                value={selectedManagerId}
+                onChange={(e) => setSelectedManagerId(e.target.value)}
+                className="bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-2 py-1.5 text-[12px] font-semibold text-slate-900 outline-none cursor-pointer"
+                title="Создать сделку от имени"
+              >
+                {managerCandidates.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                    {m.id === currentUser.id ? " (я)" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="flex flex-col gap-0.5 min-w-[120px]">
+              <span className="text-[9px] font-bold tracking-[0.12em] text-slate-500 uppercase">
+                Менеджер
+              </span>
+              <span className="text-[12px] font-semibold text-slate-700 px-2 py-1.5 bg-slate-50 rounded-[8px] border border-slate-200">
+                {currentUser.name}
+              </span>
+            </div>
+          )}
+
+          {/* Counterparty (client) — required */}
+          <div className="flex flex-col gap-0.5 flex-1 min-w-[180px]">
+            <span className="text-[9px] font-bold tracking-[0.12em] text-slate-700 uppercase inline-flex items-center gap-1">
+              Клиент
+              <span className="text-[8.5px] font-bold text-rose-600 px-1 py-px rounded bg-rose-50">required</span>
+            </span>
+            {(() => {
+              const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
+              const officeCash = `${officeShort} Cash`;
+              const cashPick = {
+                label: officeCash,
+                value: officeCash,
+                icon: "💵",
+                kind: "cash",
+              };
+              const recentPicks = recentCounterparties
+                .filter((rc) => rc && rc !== officeCash)
+                .slice(0, 6)
+                .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
+              const quickPicks = [cashPick, ...recentPicks];
+              return (
+                <CounterpartySelect
+                  value={counterparty}
+                  onChange={setCounterparty}
+                  quickPicks={quickPicks}
+                />
+              );
+            })()}
           </div>
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200/80 rounded-lg px-2 py-1 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-            ⌘ K
-          </kbd>
-        </div>
-      )}
 
-      {/* COUNTERPARTY — все «клиенты», без toggle Партнёр. Если нужен
-          отдельный обработка партнёров — теперь это просто client со
-          своими obligations (we_owe / they_owe на счёт клиента). */}
-      <div className="px-5 pt-5">
-        <div className="flex items-center gap-2 mb-2 flex-wrap">
-          <span className="text-[10.5px] font-bold tracking-[0.12em] text-slate-700 uppercase">
-            Клиент
-          </span>
-          <span className="text-[9.5px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full bg-rose-50">
-            required
-          </span>
-        </div>
-
-        {(() => {
-          const officeShort = (office?.name || "").split(/\s+/)[0] || "Office";
-          const officeCash = `${officeShort} Cash`;
-          const cashPick = {
-            label: officeCash,
-            value: officeCash,
-            icon: "💵",
-            kind: "cash",
-          };
-          const recentPicks = recentCounterparties
-            .filter((rc) => rc && rc !== officeCash)
-            .slice(0, 6)
-            .map((rc) => ({ label: rc, value: rc, kind: "recent" }));
-          const quickPicks = [cashPick, ...recentPicks];
-          return (
-            <CounterpartySelect
-              value={counterparty}
-              onChange={setCounterparty}
-              quickPicks={quickPicks}
+          {/* Backdate — single datetime-local. Compact pill. */}
+          <label className="flex flex-col gap-0.5 min-w-[160px]">
+            <span className="text-[9px] font-bold tracking-[0.12em] text-slate-500 uppercase">
+              Задним числом
+            </span>
+            <input
+              type="datetime-local"
+              value={backdateAt}
+              onChange={(e) => setBackdateAt(e.target.value)}
+              className="bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-2 py-1.5 text-[12px] tabular-nums outline-none transition-colors"
             />
-          );
-        })()}
+          </label>
+        </div>
       </div>
 
+      {/* MAIN GRID — IN | OUT (two columns at lg). Each column is one card. */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 p-3">
       {/* RECEIVED — Apple-style "Принимаем" panel.
           Скрываем целиком при !inEnabled (одностороннее OUT — мы только
           отдаём, без приёма). В шапке — кнопка «× Удалить приём». */}
-      {inEnabled && (
-      <div className="px-5 pt-5">
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
-              <ArrowDown className="w-3 h-3 text-emerald-700" strokeWidth={2.5} />
+      {inEnabled ? (
+      <section className="rounded-[14px] border border-slate-200 bg-gradient-to-br from-slate-50/30 to-white p-3 space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-full bg-emerald-100 ring-1 ring-emerald-200/60 flex items-center justify-center">
+              <ArrowDown className="w-2.5 h-2.5 text-emerald-700" strokeWidth={2.5} />
             </div>
-            <span className="text-[10.5px] font-bold tracking-[0.12em] text-emerald-700 uppercase">
+            <span className="text-[10px] font-bold tracking-[0.12em] text-emerald-700 uppercase">
               {t("you_received")}
             </span>
           </div>
@@ -1643,23 +1675,22 @@ export default function ExchangeForm({
               onClick={removeIn}
               type="button"
               title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT (мы только отдаём)"}
-              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-full px-2.5 py-1 transition-colors"
+              className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-full px-2 py-0.5 transition-colors"
             >
               <X className="w-3 h-3" />
               {t("remove_in") || "Удалить приём"}
             </button>
           )}
         </div>
-        {/* Поле суммы IN: input + dropdown валюты справа.
-            Размер унифицирован с OUT (text-[24px], py-3) — раньше был text-[30px]. */}
+        {/* Поле суммы IN: input + dropdown валюты справа. Compact px/py. */}
         <div
-          className={`flex items-center gap-2 rounded-[14px] border transition-all px-3.5 py-3 ${
+          className={`flex items-center gap-2 rounded-[12px] border transition-all px-2.5 py-2 ${
             amtIn
-              ? "bg-gradient-to-br from-emerald-50/60 to-white border-emerald-300 shadow-[0_0_0_4px_rgba(16,185,129,0.06)]"
+              ? "bg-gradient-to-br from-emerald-50/60 to-white border-emerald-300"
               : "bg-white border-slate-200 hover:border-slate-300"
           }`}
         >
-          <span className="text-slate-400 text-[20px] font-semibold leading-none">{curSymbol(curIn)}</span>
+          <span className="text-slate-400 text-[16px] font-semibold leading-none">{curSymbol(curIn)}</span>
           <input
             ref={amtInRef}
             type="text"
@@ -1668,12 +1699,12 @@ export default function ExchangeForm({
             onChange={(e) => setAmtIn(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
             onKeyDown={handleKbdIn}
             placeholder="0"
-            className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[24px] font-bold tracking-tight min-w-0 leading-none"
+            className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[20px] font-bold tracking-tight min-w-0 leading-none"
           />
           <select
             value={curIn}
             onChange={(e) => setCurIn(e.target.value)}
-            className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-[8px] px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+            className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-[6px] px-1.5 py-1 text-[12px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
             aria-label="Currency"
           >
             {CURRENCIES.map((c) => (
@@ -1681,11 +1712,11 @@ export default function ExchangeForm({
             ))}
           </select>
         </div>
-        <div className="flex items-center justify-between mt-2 px-1.5">
-          <span className="text-[10.5px] text-slate-400 uppercase tracking-wider font-semibold">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-[9.5px] text-slate-400 uppercase tracking-wider font-semibold">
             {t("current_balance")}
           </span>
-          <span className="text-[11.5px] font-semibold text-slate-600 tabular-nums">
+          <span className="text-[11px] font-semibold text-slate-600 tabular-nums">
             {curSymbol(curIn)}
             {fmt(officeCurrencyBalance(curIn), curIn)}{" "}
             <span className="opacity-60">{curIn}</span>
@@ -1695,13 +1726,13 @@ export default function ExchangeForm({
         {/* Куда зачислить — только наш счёт (партнёрский режим убран). */}
         {!deferredIn && (
           <div
-            className={`mt-3 p-3 rounded-[14px] border transition-colors ${
+            className={`p-2 rounded-[12px] border transition-colors ${
               accountId
-                ? "bg-gradient-to-br from-emerald-50/40 to-white border-emerald-200/80"
-                : "bg-gradient-to-br from-amber-50/60 to-white border-amber-300/80"
+                ? "bg-emerald-50/30 border-emerald-200/70"
+                : "bg-amber-50/40 border-amber-300/70"
             }`}
           >
-            <div className="text-[10px] font-bold text-slate-600 tracking-[0.12em] uppercase mb-2">
+            <div className="text-[9px] font-bold text-slate-600 tracking-[0.12em] uppercase mb-1">
               Зачислить на
             </div>
             <AccountSelect
@@ -1712,19 +1743,16 @@ export default function ExchangeForm({
               currentOfficeId={currentOffice}
             />
             {availableAccounts.length === 0 && (
-              <div className="mt-1.5 text-[11px] text-amber-700">
+              <div className="mt-1 text-[10.5px] text-amber-700">
                 {t("no_account_for_currency").replace("{cur}", curIn)}
               </div>
             )}
           </div>
         )}
 
-        {/* Дополнительные IN-приёмы — multi-currency (миграция SQL).
-            Каждая запись: amount + dropdown currency + accountSelect.
-            Один компактный блок с тонкими границами, без gradient'ов —
-            визуально не перетягивает внимание с основной формы. */}
+        {/* Дополнительные IN-приёмы — multi-currency (миграция SQL). */}
         {!deferredIn && extraInputs.length > 0 && (
-          <div className="mt-3 space-y-2">
+          <div className="space-y-1.5">
             {extraInputs.map((xi) => {
               const xiCur = xi.currency || curIn;
               const xiAccounts = (accounts || []).filter(
@@ -1733,10 +1761,10 @@ export default function ExchangeForm({
               return (
                 <div
                   key={xi.id}
-                  className="rounded-[12px] border border-slate-200 bg-white p-2.5"
+                  className="rounded-[10px] border border-slate-200 bg-white p-2"
                 >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-slate-400 text-[16px] font-semibold leading-none">
+                  <div className="flex items-center gap-1.5 mb-1.5">
+                    <span className="text-slate-400 text-[14px] font-semibold leading-none">
                       {curSymbol(xiCur)}
                     </span>
                     <input
@@ -1749,7 +1777,7 @@ export default function ExchangeForm({
                         })
                       }
                       placeholder="0"
-                      className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[18px] font-bold tracking-tight min-w-0 leading-none"
+                      className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[15px] font-bold tracking-tight min-w-0 leading-none"
                     />
                     <select
                       value={xiCur}
@@ -1759,7 +1787,7 @@ export default function ExchangeForm({
                         // привязан к валюте.
                         updateExtraInput(xi.id, { currency: c, accountId: "" });
                       }}
-                      className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-[8px] px-2 py-1 text-[12.5px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                      className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 rounded-[6px] px-1.5 py-0.5 text-[11.5px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
                       aria-label="Currency"
                     >
                       {CURRENCIES.map((c) => (
@@ -1769,7 +1797,7 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={() => removeExtraInput(xi.id)}
-                      className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded p-1 transition-colors"
+                      className="text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded p-0.5 transition-colors"
                       title="Удалить этот приём"
                     >
                       <X className="w-3 h-3" />
@@ -1788,68 +1816,66 @@ export default function ExchangeForm({
           </div>
         )}
 
-        {!deferredIn && (
-          <button
-            type="button"
-            onClick={addExtraInput}
-            className="mt-2 inline-flex items-center gap-1 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full px-2.5 py-1 transition-colors"
-            title="Добавить ещё один приём — можно в другой валюте"
-          >
-            <Plus className="w-3 h-3" />
-            Ещё приём
-          </button>
-        )}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          {!deferredIn && (
+            <button
+              type="button"
+              onClick={addExtraInput}
+              className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full px-2 py-0.5 transition-colors"
+              title="Добавить ещё один приём — можно в другой валюте"
+            >
+              <Plus className="w-3 h-3" />
+              Ещё приём
+            </button>
+          )}
+          {/* Reverse rates — moved into IN footer (compact) */}
+          {(() => {
+            const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
+            const title =
+              outputs.length > 1
+                ? "Unavailable when there are multiple outputs"
+                : !amtIn || !outputs[0]?.amount
+                ? "Enter amounts first"
+                : "Swap received and issued";
+            return (
+              <button
+                type="button"
+                onClick={handleReverse}
+                disabled={disabled}
+                title={title}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-semibold border transition-all ${
+                  disabled
+                    ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
+                    : "bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:text-slate-900"
+                }`}
+              >
+                <ArrowUpDown className="w-3 h-3" />
+                Reverse rates
+              </button>
+            );
+          })()}
+        </div>
 
-      </div>
-      )}
-
-      {/* IN-секция выключена — компактный ghost-стейт с кнопкой вернуть. */}
-      {!inEnabled && !isEdit && (
-        <div className="px-5 pt-5">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-[14px] border border-dashed border-slate-300 bg-slate-50/40">
-            <div className="flex items-center gap-2 text-[11.5px] text-slate-500">
+      </section>
+      ) : (
+        /* IN-секция выключена — компактный ghost-стейт с кнопкой вернуть. */
+        !isEdit && (
+          <section className="rounded-[14px] border border-dashed border-slate-300 bg-slate-50/40 p-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-[11px] text-slate-500">
               <ArrowDown className="w-3.5 h-3.5 opacity-50" />
               <span className="font-semibold">{t("in_disabled_label") || "Секция приёма отключена — одностороннее OUT"}</span>
             </div>
             <button
               type="button"
               onClick={addIn}
-              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2 py-0.5 transition-colors"
             >
               <Plus className="w-3 h-3" />
               {t("add_in") || "Добавить приём"}
             </button>
-          </div>
-        </div>
+          </section>
+        )
       )}
-
-      {/* Reverse rates — Apple pill button */}
-      <div className="flex justify-center my-3 relative z-10">
-        {(() => {
-          const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
-          const title =
-            outputs.length > 1
-              ? "Unavailable when there are multiple outputs"
-              : !amtIn || !outputs[0]?.amount
-              ? "Enter amounts first"
-              : "Swap received and issued";
-          return (
-            <button
-              type="button"
-              onClick={handleReverse}
-              disabled={disabled}
-              title={title}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11.5px] font-semibold border transition-all ${
-                disabled
-                  ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-400 hover:text-slate-900 shadow-[0_1px_2px_rgba(15,23,42,0.04)] hover:shadow-[0_2px_8px_-2px_rgba(15,23,42,0.12)]"
-              }`}
-            >
-              <ArrowUpDown className="w-3 h-3" />
-              Reverse rates
-            </button>
-          );
-        })()}
       </div>
       <div className="px-5 pb-5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
