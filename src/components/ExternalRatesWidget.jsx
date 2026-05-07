@@ -1,34 +1,52 @@
 // src/components/ExternalRatesWidget.jsx
 //
-// Внешние котировки — Binance, Harem, TCMB, BestChange. Источник: view
-// v_external_rates_latest, заполняется Edge Function fetch-external-rates
-// по cron каждые 5 минут (миграция external_rates_cron).
+// Внешние котировки — Binance, Harem, TCMB. Источник: view
+// v_external_rates_latest, Edge Function fetch-external-rates пишет
+// каждые 5 минут (cron external-rates-fetch).
 //
-// Виджет — компактная карточка с группировкой по source. Показывает
-// bid/ask, время последнего обновления. Полезен кассиру чтобы быстро
-// сравнить наш курс с рыночным.
+// Виджет:
+//   • Группировка по source с цветной пиллой.
+//   • Подпись origin URL + частоты обновления — кассир видит откуда
+//     цифра и насколько свежая.
+//   • Калькулятор спреда per-source: «Спред %» — bid/ask раздвигаются
+//     вокруг mid (наш курс продажи/покупки с маржей).
 
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCcw } from "lucide-react";
+import { Globe, RefreshCcw, Calculator } from "lucide-react";
 import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useNow } from "../hooks/useNow.js";
 
-const SOURCE_LABEL = {
-  binance: "Binance",
-  harem: "Harem",
-  tcmb: "TCMB",
-  bestchange: "BestChange",
-};
-
-const SOURCE_TONE = {
-  binance: "bg-amber-50 text-amber-700 ring-amber-200",
-  harem: "bg-rose-50 text-rose-700 ring-rose-200",
-  tcmb: "bg-sky-50 text-sky-700 ring-sky-200",
-  bestchange: "bg-violet-50 text-violet-700 ring-violet-200",
+const SOURCES = {
+  binance: {
+    label: "Binance",
+    tone: "bg-amber-50 text-amber-700 ring-amber-200",
+    accent: "text-amber-700",
+    origin: "api.binance.com (Spot bookTicker)",
+  },
+  harem: {
+    label: "Harem",
+    tone: "bg-rose-50 text-rose-700 ring-rose-200",
+    accent: "text-rose-700",
+    origin: "haremaltin.com (canlı kur)",
+  },
+  tcmb: {
+    label: "TCMB",
+    tone: "bg-sky-50 text-sky-700 ring-sky-200",
+    accent: "text-sky-700",
+    origin: "tcmb.gov.tr (resmi kurlar)",
+  },
+  bestchange: {
+    label: "BestChange",
+    tone: "bg-violet-50 text-violet-700 ring-violet-200",
+    accent: "text-violet-700",
+    origin: "bestchange.com (P2P best rate)",
+  },
 };
 
 const SOURCE_ORDER = ["binance", "harem", "tcmb", "bestchange"];
+const REFRESH_INTERVAL = "каждые 5 мин";
+const SPREAD_KEY = "coinplata.externalSpread";
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
@@ -42,10 +60,10 @@ function timeAgo(iso, nowMs) {
   const t = new Date(iso).getTime();
   if (!Number.isFinite(t)) return "—";
   const diff = Math.floor((nowMs - t) / 1000);
-  if (diff < 60) return `${diff}s`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-  return `${Math.floor(diff / 86400)}d`;
+  if (diff < 60) return `${diff} сек`;
+  if (diff < 3600) return `${Math.floor(diff / 60)} мин`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} ч`;
+  return `${Math.floor(diff / 86400)} д`;
 }
 
 function formatPair(pair) {
@@ -54,10 +72,48 @@ function formatPair(pair) {
   return `${a}/${b}`;
 }
 
-export default function ExternalRatesWidget() {
+// Калькулятор спреда. Раздвигает bid/ask от середины на `pct` процентов.
+//   spread=0.5 → bid·=(1-0.005), ask·=(1+0.005). Это «наш» курс с маржей.
+function applySpread(bid, ask, pct) {
+  const s = Number(pct) / 100;
+  if (!Number.isFinite(s) || s === 0) return { bid, ask };
+  const mid = bid && ask ? (bid + ask) / 2 : bid || ask;
+  if (!mid) return { bid, ask };
+  return {
+    bid: bid ? bid - mid * s : null,
+    ask: ask ? ask + mid * s : null,
+  };
+}
+
+export default function ExternalRatesWidget({ compact = false }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const nowMs = useNow(60_000);
+  // Спред per-source persist в localStorage — опциональная настройка.
+  // По умолчанию калькулятор СВЁРНУТ (showCalc[source] = false). Юзер
+  // открывает иконкой калькулятора в шапке source — тогда появляется
+  // input. Раздвижение bid/ask применяется только если показан + введён.
+  const [spreadBySource, setSpreadBySource] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SPREAD_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [showCalc, setShowCalc] = useState({});
+  const toggleCalc = (source) => {
+    setShowCalc((prev) => ({ ...prev, [source]: !prev[source] }));
+  };
+  const updateSpread = (source, value) => {
+    setSpreadBySource((prev) => {
+      const next = { ...prev, [source]: value };
+      try {
+        localStorage.setItem(SPREAD_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
 
   const reload = React.useCallback(() => {
     setLoading(true);
@@ -74,8 +130,6 @@ export default function ExternalRatesWidget() {
   useEffect(() => {
     reload();
     const unsub = onDataBump(reload);
-    // Полу-минутный re-poll на случай если bumpDataVersion не сработал
-    // (внешний cron пишет независимо от наших мутаций).
     const id = setInterval(reload, 60_000);
     return () => {
       unsub?.();
@@ -83,7 +137,6 @@ export default function ExternalRatesWidget() {
     };
   }, [reload]);
 
-  // Группировка по source.
   const bySource = new Map();
   rows.forEach((r) => {
     if (!bySource.has(r.source)) bySource.set(r.source, []);
@@ -91,63 +144,136 @@ export default function ExternalRatesWidget() {
   });
 
   return (
-    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-        <Globe className="w-4 h-4 text-slate-500" />
-        <h2 className="text-[13px] font-bold text-slate-900 tracking-tight">
-          Внешние котировки
-        </h2>
-        <span className="text-[11px] text-slate-400">— Binance / Harem / TCMB</span>
-        <button
-          onClick={reload}
-          className="ml-auto p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-          title="Обновить"
-        >
-          <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-        </button>
-      </div>
+    <section className="bg-white rounded-[14px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+      <header className="px-3 py-2.5 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent">
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4 text-slate-500 shrink-0" />
+          <h2 className="text-[13px] font-bold text-slate-900 tracking-tight uppercase truncate flex-1">
+            Внешние котировки
+          </h2>
+          <button
+            onClick={reload}
+            className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+            title="Обновить вручную"
+          >
+            <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+        <div className="text-[10px] text-slate-400 mt-0.5">
+          Авто-обновление {REFRESH_INTERVAL} · 3 источника
+        </div>
+      </header>
       {rows.length === 0 ? (
-        <div className="px-5 py-8 text-center text-[12px] text-slate-400">
+        <div className="px-4 py-6 text-center text-[12px] text-slate-400">
           {loading ? "Загрузка…" : "Нет данных. Cron подтянет в течение 5 минут."}
         </div>
       ) : (
         <div className="divide-y divide-slate-100">
-          {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => (
-            <div key={source} className="px-4 py-2.5">
-              <div className="flex items-center gap-2 mb-1.5">
-                <span
-                  className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ring-1 ${SOURCE_TONE[source]}`}
+          {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
+            const meta = SOURCES[source] || { label: source, tone: "bg-slate-100 text-slate-700 ring-slate-200", origin: "" };
+            const sourceRows = bySource.get(source);
+            const fetchedAt = sourceRows[0]?.fetchedAt;
+            const spread = spreadBySource[source] != null ? spreadBySource[source] : "";
+            const spreadNum = Number(spread);
+            const calcOpen = !!showCalc[source];
+            const hasSpread = calcOpen && Number.isFinite(spreadNum) && spreadNum !== 0;
+            return (
+              <div key={source} className="px-3 py-2.5 space-y-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ring-1 ${meta.tone}`}
+                  >
+                    {meta.label}
+                  </span>
+                  <span className="text-[10px] text-slate-400 tabular-nums">
+                    {timeAgo(fetchedAt, nowMs)} назад
+                  </span>
+                  <button
+                    onClick={() => toggleCalc(source)}
+                    title="Калькулятор спреда — опционно показать «наш» курс с маржой"
+                    className={`ml-auto p-1 rounded transition-colors ${
+                      calcOpen
+                        ? "bg-slate-900 text-white"
+                        : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                    }`}
+                  >
+                    <Calculator className="w-3 h-3" />
+                  </button>
+                </div>
+                <div
+                  className="text-[9.5px] text-slate-400 truncate"
+                  title={meta.origin}
                 >
-                  {SOURCE_LABEL[source] || source}
-                </span>
-                <span className="text-[10px] text-slate-400 tabular-nums">
-                  {timeAgo(bySource.get(source)[0]?.fetchedAt, nowMs)} ago
-                </span>
-              </div>
-              <table className="w-full text-[12px]">
-                <thead>
-                  <tr className="text-[9.5px] font-bold text-slate-400 tracking-wider uppercase">
-                    <th className="text-left font-bold">Пара</th>
-                    <th className="text-right font-bold">Покупка</th>
-                    <th className="text-right font-bold">Продажа</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bySource.get(source).map((r) => (
-                    <tr key={`${r.source}_${r.pair}`} className="border-t border-slate-50">
-                      <td className="py-1 text-slate-700 font-semibold">{formatPair(r.pair)}</td>
-                      <td className="py-1 text-right tabular-nums text-slate-900 font-semibold">
-                        {fmtRate(r.bid)}
-                      </td>
-                      <td className="py-1 text-right tabular-nums text-slate-900 font-semibold">
-                        {fmtRate(r.ask)}
-                      </td>
+                  {meta.origin}
+                </div>
+
+                {/* Калькулятор спреда — раскрывается по иконке. Раздвигает
+                    bid/ask вокруг mid: bid−=mid·s, ask+=mid·s. */}
+                {calcOpen && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
+                    <Calculator className="w-3 h-3 text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      Спред
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={spread}
+                      onChange={(e) =>
+                        updateSpread(source, e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."))
+                      }
+                      placeholder="0"
+                      autoFocus
+                      className="flex-1 bg-transparent outline-none text-[12px] tabular-nums font-semibold text-slate-900 min-w-0 text-right"
+                    />
+                    <span className="text-[10px] text-slate-400 font-bold">%</span>
+                  </div>
+                )}
+
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="text-[9px] font-bold text-slate-400 tracking-wider uppercase">
+                      <th className="text-left font-bold pb-1">Пара</th>
+                      <th className="text-right font-bold pb-1">Покупка</th>
+                      <th className="text-right font-bold pb-1">Продажа</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
+                  </thead>
+                  <tbody>
+                    {sourceRows.map((r) => {
+                      const adj = hasSpread ? applySpread(r.bid, r.ask, spreadNum) : { bid: r.bid, ask: r.ask };
+                      return (
+                        <tr key={`${r.source}_${r.pair}`} className="border-t border-slate-50">
+                          <td className="py-0.5 text-slate-700 font-semibold">
+                            {formatPair(r.pair)}
+                          </td>
+                          <td className="py-0.5 text-right tabular-nums">
+                            <div className={`font-semibold ${hasSpread ? meta.accent : "text-slate-900"}`}>
+                              {fmtRate(adj.bid)}
+                            </div>
+                            {hasSpread && (
+                              <div className="text-[9px] text-slate-400 tabular-nums">
+                                ← {fmtRate(r.bid)}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-0.5 text-right tabular-nums">
+                            <div className={`font-semibold ${hasSpread ? meta.accent : "text-slate-900"}`}>
+                              {fmtRate(adj.ask)}
+                            </div>
+                            {hasSpread && (
+                              <div className="text-[9px] text-slate-400 tabular-nums">
+                                ← {fmtRate(r.ask)}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
