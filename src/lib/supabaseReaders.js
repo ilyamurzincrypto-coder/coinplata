@@ -1045,6 +1045,27 @@ export async function loadOfficeRateOverrides() {
   return m;
 }
 
+// ---------- external rates (binance / harem / tcmb / bestchange) ----------
+//
+// View v_external_rates_latest даёт последний снимок по каждому (source, pair).
+// Виджет на дашборде сравнивает с нашими default-rates.
+export async function loadExternalRatesLatest() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb.from("v_external_rates_latest").select("*");
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  return (data || []).map((r) => ({
+    source: r.source,
+    pair: r.pair,
+    bid: num(r.bid),
+    ask: num(r.ask),
+    mid: num(r.mid),
+    fetchedAt: r.fetched_at,
+  }));
+}
+
 // ---------- rate snapshots ----------
 
 export async function loadRateSnapshots() {
