@@ -2689,77 +2689,74 @@ export default function ExchangeForm({
         </div>
       )}
 
-      {/* Sticky footer — actions + warnings as inline pills */}
-      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-20">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-3">
-          {/* Left side — warnings в одну строку без переноса. Если не
-              помещается, обрезается через overflow-hidden — кнопка
-              справа всегда на месте. Раньше flex-wrap раскидывал
-              warnings на 2-3 строки и footer вырастал по высоте,
-              зрительно «уезжая» от привычного места. */}
-          <div className="flex items-center gap-1.5 flex-nowrap text-[11px] min-w-0 overflow-hidden whitespace-nowrap">
-            {amtIn && outputs[0]?.amount && (
-              <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
-                <span>
-                  {fmt(parseFloat(amtIn), curIn)} {curIn}
+      {/* Warnings полоса НАД footer — отдельная строка, чтобы footer
+          с кнопкой «Создать сделку» был фиксированной высоты и не
+          зависел от количества/длины предупреждений. */}
+      {(canSubmit ? (willBePending > 0 || accountWarnings.length > 0 || (amtIn && outputs[0]?.amount)) : true) && (
+        <div className="px-4 py-1.5 border-t border-slate-200/70 bg-slate-50/50 flex items-center gap-1.5 flex-wrap text-[11px]">
+          {amtIn && outputs[0]?.amount && (
+            <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
+              <span>{fmt(parseFloat(amtIn), curIn)} {curIn}</span>
+              <ArrowRight className="w-3 h-3 text-slate-400" />
+              <span>
+                {outputs
+                  .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
+                  .join(" + ")}
+              </span>
+              {liveProfit !== 0 && (
+                <span
+                  className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[11px] tabular-nums ${
+                    liveProfit >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                  }`}
+                >
+                  {liveProfit >= 0 ? "+" : ""}${fmt(liveProfit)}
                 </span>
-                <ArrowRight className="w-3 h-3 text-slate-400" />
-                <span>
-                  {outputs
-                    .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
-                    .join(" + ")}
-                </span>
-                {liveProfit !== 0 && (
-                  <span
-                    className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[11px] tabular-nums ${
-                      liveProfit >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
-                    }`}
-                  >
-                    {liveProfit >= 0 ? "+" : ""}${fmt(liveProfit)}
-                  </span>
-                )}
-              </span>
-            )}
-            {!canSubmit && (
-              <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-slate-50 border border-slate-200/70 rounded px-2 py-0.5">
-                <AlertCircle className="w-3 h-3 text-slate-400" />
-                {!hasClient
-                  ? "Выберите клиента / партнёра"
-                  : !hasAllAmounts
-                  ? "Заполните хотя бы одну сторону"
-                  : !hasAllRates
-                  ? t("enter_exchange_rate")
-                  : !noSameCurrency
-                  ? t("currencies_must_differ")
-                  : exceedsInput
-                  ? t("exceeds_remaining")
-                  : needsPayee && !payeeUserId
-                  ? "Выберите ответственного за выдачу"
-                  : t("complete_the_form")}
-              </span>
-            )}
-            {willBePending > 0 && (
-              <span
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded px-2 py-0.5"
-                title={`У ${willBePending === 1 ? "одной OUT-ноги" : `${willBePending} OUT-ног`} нет счёта — станут «мы должны клиенту» (obligation). Сделка получит статус pending.`}
-              >
-                <AlertCircle className="w-3 h-3" />
-                Будет PENDING ({willBePending})
-              </span>
-            )}
-            {accountWarnings.length > 0 && (
-              <span
-                className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5"
-                title={accountWarnings.map((w) => w.label).join("\n")}
-              >
-                <AlertCircle className="w-3 h-3" />
-                {t("account_warning_count").replace("{n}", String(accountWarnings.length))}
-              </span>
-            )}
-          </div>
+              )}
+            </span>
+          )}
+          {!canSubmit && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-white border border-slate-200/70 rounded px-2 py-0.5">
+              <AlertCircle className="w-3 h-3 text-slate-400" />
+              {!hasClient
+                ? "Выберите клиента / партнёра"
+                : !hasAllAmounts
+                ? "Заполните хотя бы одну сторону"
+                : !hasAllRates
+                ? t("enter_exchange_rate")
+                : !noSameCurrency
+                ? t("currencies_must_differ")
+                : exceedsInput
+                ? t("exceeds_remaining")
+                : needsPayee && !payeeUserId
+                ? "Выберите ответственного за выдачу"
+                : t("complete_the_form")}
+            </span>
+          )}
+          {willBePending > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded px-2 py-0.5"
+              title={`У ${willBePending === 1 ? "одной OUT-ноги" : `${willBePending} OUT-ног`} нет счёта — станут «мы должны клиенту» (obligation). Сделка получит статус pending.`}
+            >
+              <AlertCircle className="w-3 h-3" />
+              Будет PENDING ({willBePending})
+            </span>
+          )}
+          {accountWarnings.length > 0 && (
+            <span
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5"
+              title={accountWarnings.map((w) => w.label).join("\n")}
+            >
+              <AlertCircle className="w-3 h-3" />
+              {t("account_warning_count").replace("{n}", String(accountWarnings.length))}
+            </span>
+          )}
+        </div>
+      )}
 
-          {/* Right side — cancel + submit */}
-          <div className="flex items-center gap-2 shrink-0">
+      {/* Sticky footer — только Cancel + Submit. Фиксированная высота,
+          warnings выведены в отдельную полосу выше. */}
+      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-20">
+        <div className="flex items-center justify-end gap-2">
             {isEdit && (
               <button
                 onClick={onCancel}
@@ -2788,7 +2785,6 @@ export default function ExchangeForm({
               }}
               t={t}
             />
-          </div>
         </div>
       </div>
     </div>
