@@ -818,7 +818,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
 
       {/* Table — bank-style row layout: одна строка = одна сделка, колонки выровнены. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px] border-collapse">
+        <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-slate-200/70 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
           <colgroup>
             <col className="w-8" />
             <col className="w-[72px]" />
@@ -905,7 +905,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               // Row classes: base + zebra + state overrides. Approved → emerald
               // override; pinned/otc/broker/deleted/new — каждый со своим тоном.
               const rowBase =
-                "group cursor-pointer border-b border-slate-100 hover:bg-slate-50/60 transition-colors border-l-2 border-l-transparent";
+                "group cursor-pointer border-b border-slate-200/70 hover:bg-slate-50/80 transition-colors border-l-2 border-l-transparent";
               const rowState =
                 tx.kind === "otc"
                   ? "bg-indigo-50/30 border-l-indigo-500"
@@ -913,7 +913,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   ? "bg-violet-50/30 border-l-violet-500"
                   : tx.accountingStatus === "approved"
                   ? "bg-emerald-50/40 border-l-emerald-500"
-                  : "even:bg-slate-50/30";
+                  : "even:bg-slate-50/60";
               const rowExtras = [
                 isNew ? "bg-emerald-50/60" : "",
                 isDeleted ? "opacity-50 grayscale line-through" : "",
