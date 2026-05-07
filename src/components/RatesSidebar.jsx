@@ -459,7 +459,12 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           • expanded=false → кнопка "Показать все" видна только если
             есть скрытые пары и нет активного поиска (поиск показывает
             всё что нашлось). */}
-      {(expanded || (hasHidden && !query)) && (
+      {/* Toggle всегда виден если в списке больше пар чем compact-min.
+          Раньше при включении «все офисы» sidebar становился высоким,
+          fitCount подбирал showingCount === totalCount → hasHidden=false
+          → кнопка пропадала, юзер не мог свернуть. Теперь кнопка
+          рендерится по факту наличия пар. */}
+      {tradePairs.length > 0 && (
         <div className="border-t border-slate-100 px-2 py-2 shrink-0">
           <button
             type="button"
@@ -471,10 +476,15 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 <ChevronUp className="w-3 h-3" />
                 Свернуть
               </>
-            ) : (
+            ) : hasHidden ? (
               <>
                 <ChevronDown className="w-3 h-3" />
                 Показать все ({totalCount - showingCount})
+              </>
+            ) : (
+              <>
+                <ChevronDown className="w-3 h-3" />
+                Развернуть
               </>
             )}
           </button>

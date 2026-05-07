@@ -1893,6 +1893,19 @@ export async function rpcSetDealPayee({ dealId, payeeUserId, payeeOfficeId }) {
   bumpDataVersion();
 }
 
+// Pin/unpin сделку — пишет напрямую в deals.pinned. Раньше pin
+// обновлялся только в локальном state и слетал после reload.
+export async function setDealPinned({ dealId, pinned }) {
+  assertConfigured();
+  if (!dealId) throw new Error("dealId required");
+  const { error } = await supabase
+    .from("deals")
+    .update({ pinned: !!pinned })
+    .eq("id", typeof dealId === "string" ? Number(dealId) : dealId);
+  if (error) throw new Error(error.message || String(error));
+  bumpDataVersion();
+}
+
 // Backdate — оформить сделку задним числом. RPC обновляет deal.created_at,
 // movements.created_at и deal_legs.planned_at/completed_at. Manager может
 // только свои сделки.

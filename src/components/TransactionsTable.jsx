@@ -52,6 +52,7 @@ import {
   rpcMarkDealSent,
   rpcCancelObligation,
   rpcMarkDealPayedOut,
+  setDealPinned,
   withToast,
 } from "../lib/supabaseWrite.js";
 import { HandCoins } from "lucide-react";
@@ -672,9 +673,21 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   };
 
   // Pin / Flag actions.
-  const handleTogglePin = (tx) => {
+  const handleTogglePin = async (tx) => {
     const next = !tx.pinned;
+    // Локально мгновенно — UI откликается без ожидания сети.
     updateTransaction(tx.id, { pinned: next });
+    if (isSupabaseConfigured) {
+      try {
+        await setDealPinned({ dealId: tx.id, pinned: next });
+      } catch (e) {
+        // Откат локального state при ошибке.
+        updateTransaction(tx.id, { pinned: !next });
+        // eslint-disable-next-line no-console
+        console.warn("[setDealPinned] failed", e);
+        return;
+      }
+    }
     logAudit({
       action: "update",
       entity: "transaction",
@@ -861,8 +874,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             <col className="w-[140px]" />
             <col className="w-[90px]" />
             <col className="w-[160px]" />
-            <col className="w-[70px]" />
-            <col className="w-[90px]" />
+            <col className="w-[110px]" />
+            <col className="w-[120px]" />
             <col className="w-[100px]" />
             <col className="w-[140px]" />
             <col className="w-[170px]" />
