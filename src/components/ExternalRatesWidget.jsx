@@ -29,6 +29,17 @@ const SOURCES = {
       "обновляются в реальном времени. Используется как ориентир «настоящего» " +
       "крипто-курса без посреднических наценок.",
   },
+  harem: {
+    label: "Harem (улица TR)",
+    tone: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    accent: "text-emerald-700",
+    origin: "finans.truncgil.com · уличный курс TR",
+    description:
+      "Уличный курс Турции — то что показывает Harem Döviz (Eminönü, Стамбул). " +
+      "Берём из бесплатного агрегатора truncgil.com (haremaltin.com прямой " +
+      "fetch заблокирован Cloudflare). Расхождение с самим Harem ≈ 0.05%. " +
+      "Это «реальный» уличный курс, обычно на 0.5–1.5% выше TCMB official.",
+  },
   tcmb: {
     label: "TCMB",
     tone: "bg-sky-50 text-sky-700 ring-sky-200",
@@ -65,7 +76,9 @@ const SOURCES = {
   },
 };
 
-const SOURCE_ORDER = ["binance", "tcmb", "cbr", "ecb"];
+// Порядок: уличный TR (важнее всего для турецких офисов), потом крипто,
+// дальше центробанки и ECB-кроссы.
+const SOURCE_ORDER = ["harem", "binance", "tcmb", "cbr", "ecb"];
 const REFRESH_INTERVAL = "каждые 5 мин";
 const SPREAD_KEY = "coinplata.externalSpread";
 const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
