@@ -80,7 +80,7 @@ const emptyOutput = (currency = "TRY") => ({
   touched: false,
   accountId: "",
   address: "",
-  applyFee: true, // per-output toggle: вычитать ли мин fee из этого output
+  applyFee: false, // per-output toggle: вычитать ли мин fee из этого output
   // OTC Phase 5: либо наш счёт (outKind=ours, accountId), либо партнёрский
   // (outKind=partner, partnerAccountId). Mutually exclusive.
   outKind: "ours",
@@ -452,7 +452,7 @@ export default function ExchangeForm({
   // Это нужно для маленьких сделок где менеджер хочет уступить min fee
   // клиенту, например по договорённости.
   const [applyMinFee, setApplyMinFee] = useState(
-    starter?.applyMinFee ?? draft?.applyMinFee ?? true
+    starter?.applyMinFee ?? draft?.applyMinFee ?? false
   );
   // Conditions block — collapsable. По умолчанию свернут, при mount
   // раскрывается если в starter/draft уже есть активные условия (edit
@@ -1817,7 +1817,7 @@ export default function ExchangeForm({
                   <select
                     value={curIn}
                     onChange={(e) => setCurIn(e.target.value)}
-                    className="w-full bg-transparent border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-1.5 py-1 text-[12px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                    className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
                     aria-label="Currency"
                   >
                     {CURRENCIES.map((c) => (
@@ -1887,7 +1887,7 @@ export default function ExchangeForm({
                         const c = e.target.value;
                         updateExtraInput(xi.id, { currency: c, accountId: "" });
                       }}
-                      className="w-full bg-transparent border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-1.5 py-1 text-[12px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                      className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
                       aria-label="Currency"
                     >
                       {CURRENCIES.map((c) => (
@@ -1927,17 +1927,6 @@ export default function ExchangeForm({
                       >
                         <Plus className="w-3 h-3" />
                         {t("add_in") || "Ещё приём"}
-                      </button>
-                    )}
-                    {!isEdit && (
-                      <button
-                        type="button"
-                        onClick={removeIn}
-                        title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT"}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
-                      >
-                        <X className="w-3 h-3" />
-                        {t("remove_in") || "Удалить приём"}
                       </button>
                     )}
                   </div>
@@ -2262,7 +2251,7 @@ export default function ExchangeForm({
                           }
                           updateOutput(o.id, patch);
                         }}
-                        className="w-full bg-transparent border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-1.5 py-1 text-[12px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+                        className="appearance-none w-full bg-slate-50 border border-slate-300 hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-900/10 rounded-md pl-2 pr-6 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23475569%22 stroke-width=%223%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22/></svg>')] bg-no-repeat bg-[right_6px_center]"
                         aria-label="Currency"
                       >
                         {CURRENCIES.map((c) => (
@@ -2334,17 +2323,6 @@ export default function ExchangeForm({
                     <Plus className="w-3 h-3" />
                     {t("add_output")}
                   </button>
-                  {outputs.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={removeAllOutputs}
-                      title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN"}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                      {t("remove_output") || "Удалить выдачу"}
-                    </button>
-                  )}
                 </div>
               </td>
             </tr>
@@ -2695,9 +2673,12 @@ export default function ExchangeForm({
 
       {/* Sticky footer — actions + warnings as inline pills */}
       <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-20">
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Left side — inline warnings + live amount preview */}
-          <div className="flex items-center gap-1.5 flex-wrap text-[11px] flex-1 min-w-0">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+          {/* Left side — inline warnings + live amount preview.
+              flex-wrap внутри, но grid снаружи фиксирует кнопку справа —
+              раньше flex-wrap снаружи перебрасывал «Создать сделку»
+              на вторую строку при широких warnings. */}
+          <div className="flex items-center gap-1.5 flex-wrap text-[11px] min-w-0 overflow-hidden">
             {amtIn && outputs[0]?.amount && (
               <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
                 <span>
