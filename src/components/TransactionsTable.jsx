@@ -332,6 +332,26 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [amountMax, setAmountMax] = useState("");
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
+  // Сортировка по клику на заголовок столбца (как в 1С).
+  // sortKey === null → исходный порядок (sortByGroup: approved → вниз,
+  // остальные по created_at desc). При клике первый раз — desc, второй
+  // раз — asc, третий — сброс.
+  const [sortKey, setSortKey] = useState(null);
+  const [sortDir, setSortDir] = useState("desc");
+  const toggleSort = (key) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("desc");
+    } else if (sortDir === "desc") {
+      setSortDir("asc");
+    } else {
+      // третий клик — сброс к исходной сортировке
+      setSortKey(null);
+      setSortDir("desc");
+    }
+  };
+  const sortIndicator = (key) =>
+    sortKey === key ? (sortDir === "desc" ? " ↓" : " ↑") : "";
 
   const DATE_OPTIONS = [
     t("today"),
@@ -457,10 +477,52 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   // по sortByGroup. Pin/Unpin кнопка остаётся в UI — но больше не
   // двигает сделку наверх (можно использовать как закладку).
   const pinnedTxs = []; // пустой массив для совместимости с visibleIds/render
-  const regularTxs = useMemo(
-    () => filtered.slice().sort(sortByGroup),
-    [filtered]
-  );
+  // Helper'ы для извлечения сортировочного значения по колонке.
+  const getSortValue = (tx, key) => {
+    switch (key) {
+      case "time":
+        return Number(tx.createdAtMs) || 0;
+      case "type":
+        return tx.kind || (tx.outputs?.length === 0 ? "in" : tx.amtIn ? "exchange" : "out");
+      case "counterparty":
+        return (tx.counterparty || "").toLowerCase();
+      case "in":
+        return Number(tx.amtIn) || 0;
+      case "rate":
+        return Number(tx.outputs?.[0]?.rate) || 0;
+      case "out":
+        return Number(tx.outputs?.[0]?.amount) || 0;
+      case "fee":
+        return Number(tx.fee) || 0;
+      case "profit":
+        return Number(tx.profit) || 0;
+      case "risk":
+        return Number(tx.riskScore) || 0;
+      case "manager":
+        return (tx.manager || "").toLowerCase();
+      default:
+        return 0;
+    }
+  };
+  const regularTxs = useMemo(() => {
+    const arr = filtered.slice();
+    if (!sortKey) {
+      arr.sort(sortByGroup);
+      return arr;
+    }
+    const dir = sortDir === "asc" ? 1 : -1;
+    arr.sort((a, b) => {
+      const av = getSortValue(a, sortKey);
+      const bv = getSortValue(b, sortKey);
+      if (typeof av === "string" || typeof bv === "string") {
+        return String(av).localeCompare(String(bv)) * dir;
+      }
+      if (av === bv) return (Number(b.id) || 0) - (Number(a.id) || 0);
+      return (av - bv) * dir;
+    });
+    return arr;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, sortKey, sortDir]);
 
   // Все видимые на экране tx — для select-all.
   const visibleIds = useMemo(
@@ -807,17 +869,67 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
           </colgroup>
           <thead className="sticky top-0 z-10 bg-white border-b border-slate-200/70">
             <tr>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("time")}</th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden sm:table-cell">{t("type")}</th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("counterparty") || "Контрагент"}</th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("in")}</th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("rate")}</th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("out")}</th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("fee")}</th>
-              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">{t("profit")}</th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">Risk</th>
+              <th
+                onClick={() => toggleSort("time")}
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("time")}{sortIndicator("time")}
+              </th>
+              <th
+                onClick={() => toggleSort("type")}
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden sm:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("type")}{sortIndicator("type")}
+              </th>
+              <th
+                onClick={() => toggleSort("counterparty")}
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("counterparty") || "Контрагент"}{sortIndicator("counterparty")}
+              </th>
+              <th
+                onClick={() => toggleSort("in")}
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("in")}{sortIndicator("in")}
+              </th>
+              <th
+                onClick={() => toggleSort("rate")}
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("rate")}{sortIndicator("rate")}
+              </th>
+              <th
+                onClick={() => toggleSort("out")}
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("out")}{sortIndicator("out")}
+              </th>
+              <th
+                onClick={() => toggleSort("fee")}
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("fee")}{sortIndicator("fee")}
+              </th>
+              <th
+                onClick={() => toggleSort("profit")}
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("profit")}{sortIndicator("profit")}
+              </th>
+              <th
+                onClick={() => toggleSort("risk")}
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                Risk{sortIndicator("risk")}
+              </th>
               <th className="px-3 py-2"></th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden xl:table-cell">{t("manager")}</th>
+              <th
+                onClick={() => toggleSort("manager")}
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden xl:table-cell cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+              >
+                {t("manager")}{sortIndicator("manager")}
+              </th>
             </tr>
           </thead>
           <tbody>
