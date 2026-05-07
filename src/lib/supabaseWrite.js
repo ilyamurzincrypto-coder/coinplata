@@ -230,6 +230,7 @@ export async function rpcCreateDeal({
   inKind,           // 0081: ours_now/ours_later/partner_now/partner_later
   inPayments,       // 0081: [{amount, kind, accountId?, partnerAccountId?, paidAt?, note?}]
   kind,             // 0081: regular/otc/broker
+  customFeeUsd,     // null = авто (margin/min_fee), число = override
 }) {
   assertConfigured();
   const validOffice = requireUuid(officeId, "officeId");
@@ -285,6 +286,9 @@ export async function rpcCreateDeal({
   if (inKind) payload.p_in_kind = inKind;
   if (validInPayments.length > 0) payload.p_in_payments = validInPayments;
   if (kind) payload.p_kind = kind;
+  if (customFeeUsd != null && Number.isFinite(Number(customFeeUsd))) {
+    payload.p_custom_fee_usd = Number(customFeeUsd);
+  }
 
   const dealId = unwrap(await supabase.rpc("create_deal", payload), "create_deal");
   bumpDataVersion();

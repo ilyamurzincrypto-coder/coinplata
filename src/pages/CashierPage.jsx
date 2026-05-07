@@ -164,6 +164,10 @@ export default function CashierPage({
               applyMinFee: tx.applyMinFee !== false,
               // OTC брокеридж — наш заработок за сведение клиента и партнёра.
               commissionUsd: tx.commissionUsd != null ? Number(tx.commissionUsd) : 0,
+              // Кастомная комиссия — переопределяет fee_usd. null = авто.
+              customFeeUsd: tx.customFeeUsd != null && Number.isFinite(Number(tx.customFeeUsd))
+                ? Number(tx.customFeeUsd)
+                : null,
               // Multi-IN: массив [{amount, currency, kind, accountId}] —
               // SQL create_deal пишет account_movements в payment.currency
               // (миграция multi_currency_in_payments).

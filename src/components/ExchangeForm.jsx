@@ -326,6 +326,14 @@ export default function ExchangeForm({
       ? String(initialData.commissionUsd)
       : (draft?.commissionUsdInput || "")
   );
+  // Кастомная комиссия — переопределяет авто-расчёт fee_usd. Если поле
+  // пустое → старая логика (margin или min_fee). Если задано (включая 0) →
+  // SQL create_deal ставит fee_usd напрямую, p_skip_min_fee игнорится.
+  const [customFeeUsdInput, setCustomFeeUsdInput] = useState(
+    initialData?.fee != null && initialData?.feeIsCustom
+      ? String(initialData.fee)
+      : (draft?.customFeeUsdInput || "")
+  );
 
   // Sync inKind с in_partner_account_id (если выбрали ours, очищаем).
   useEffect(() => {
@@ -502,13 +510,14 @@ export default function ExchangeForm({
         inKind,
         inPartnerAccountId,
         commissionUsdInput,
+        customFeeUsdInput,
         savedAt: Date.now(),
       };
       sessionStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // quota exceeded / disabled — silent fail
     }
-  }, [mode, curIn, amtIn, outputs, inEnabled, extraInputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput]);
+  }, [mode, curIn, amtIn, outputs, inEnabled, extraInputs, counterparty, referral, comment, accountId, isPending, inTxHash, deferredIn, deferredOut, partialMode, partialPayNow, plannedLocal, applyMinFee, selectedManagerId, payeeUserId, backdateAt, inKind, inPartnerAccountId, commissionUsdInput, customFeeUsdInput]);
 
   // partnerHint — id партнёра когда cpType==='partner' и имя совпадает
   // с существующим. Передаём в PartnerAccountSelect для filter +
@@ -1233,6 +1242,14 @@ export default function ExchangeForm({
       inPayments: inPaymentsArr,
       // Брокеридж — добавляется к profit_usd. 0 если не задан.
       commissionUsd: parseFloat(String(commissionUsdInput).replace(",", ".")) || 0,
+      // Кастомная комиссия — переопределяет fee_usd. null если поле пустое
+      // (тогда SQL считает margin как обычно). 0 = «комиссии нет вообще».
+      customFeeUsd: (() => {
+        const s = String(customFeeUsdInput).trim();
+        if (s === "") return null;
+        const n = parseFloat(s.replace(",", "."));
+        return Number.isFinite(n) ? n : null;
+      })(),
       status,
       createdAtMs: Date.now(),
       rateSnapshotId: rateSnapshots[0]?.id || null,
@@ -1358,6 +1375,8 @@ export default function ExchangeForm({
       setReferral(false);
       setComment("");
       setInTxHash("");
+      setCommissionUsdInput("");
+      setCustomFeeUsdInput("");
       try {
         sessionStorage.removeItem("coinplata.exchangeDraft");
       } catch {}
@@ -2228,26 +2247,53 @@ export default function ExchangeForm({
           {/* OTC commission_usd — наш заработок брокериджем. Прибавляется к
               profit_usd. Особенно важно для D-сценария (IN+OUT партнёра)
               где иначе profit=0. */}
-          <div className="mt-3">
-            <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
-              Брокеридж (commission, USD) — опц.
-            </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={commissionUsdInput}
-              onChange={(e) =>
-                setCommissionUsdInput(
-                  e.target.value.replace(/[^\d.,]/g, "").replace(",", ".")
-                )
-              }
-              placeholder="0.00"
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/15 rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors"
-            />
-            <p className="text-[10px] text-slate-500 mt-1">
-              Наш заработок за сведение. Идёт в profit_usd. Особенно важно
-              когда обе стороны через партнёра — иначе margin = 0.
-            </p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
+                Брокеридж (USD) — опц.
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={commissionUsdInput}
+                onChange={(e) =>
+                  setCommissionUsdInput(
+                    e.target.value.replace(/[^\d.,]/g, "").replace(",", ".")
+                  )
+                }
+                placeholder="0.00"
+                className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/15 rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors"
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Наш заработок за сведение. Идёт в profit_usd.
+              </p>
+            </div>
+            {/* Кастомная комиссия — переопределяет fee_usd. Пусто = авто
+                (margin / min_fee офиса). Число = ставится явно. */}
+            <div>
+              <label className="block text-[10px] font-bold text-slate-500 mb-1.5 tracking-[0.12em] uppercase">
+                Своя комиссия (USD) — опц.
+              </label>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={customFeeUsdInput}
+                onChange={(e) =>
+                  setCustomFeeUsdInput(
+                    e.target.value.replace(/[^\d.,]/g, "").replace(",", ".")
+                  )
+                }
+                placeholder="авто"
+                className={`w-full border rounded-[10px] px-3 py-2 text-[13px] tabular-nums outline-none transition-colors ${
+                  customFeeUsdInput
+                    ? "bg-amber-50 border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    : "bg-slate-50 border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                }`}
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Заменяет авто-расчёт fee. Пусто — margin / минималка офиса.
+              </p>
+            </div>
           </div>
 
           {/* Backdate — оформить сделку задним числом. Опционально.
@@ -2892,14 +2938,23 @@ function OutputRow({
   const insufficient =
     availableInCurrency !== undefined && outAmount > 0 && outAmount > availableInCurrency;
 
-  // "Use remaining" — подставить остаток (remainingIn в curIn) через текущий курс output'а
+  // "Use remaining" — подставить остаток (remainingIn в curIn) через
+  // текущий курс output'а ИЛИ market rate если o.rate ещё не введён.
+  // Раньше требовалось o.rate > 0 — кнопка пропадала на свеже-добавленной
+  // ноге пока юзер не введёт курс. Теперь берём market в fallback.
+  const fallbackRate = parseFloat(o.rate) > 0
+    ? parseFloat(o.rate)
+    : (() => {
+        const r = getRate(curIn, o.currency);
+        return Number.isFinite(r) && r > 0 ? r : 0;
+      })();
   const canUseRemaining =
     index > 0 &&
     remainingIn > 0.01 &&
-    parseFloat(o.rate) > 0;
+    fallbackRate > 0;
 
   const suggestedAmount =
-    canUseRemaining ? remainingIn * parseFloat(o.rate) : 0;
+    canUseRemaining ? remainingIn * fallbackRate : 0;
 
   // Suggest офисы when insufficient — top-3 по балансу (могут покрыть сумму)
   const otherOfficesWithBalance = useMemo(() => {
@@ -2935,10 +2990,16 @@ function OutputRow({
 
   const handleUseRemaining = () => {
     if (!canUseRemaining) return;
-    // Округляем до точности валюты (TRY=0, всё остальное=2)
     const precision = o.currency === "TRY" ? 0 : 2;
     const rounded = Math.floor(suggestedAmount * Math.pow(10, precision)) / Math.pow(10, precision);
-    onUpdate({ amount: String(rounded), touched: true });
+    // Если ноге проставили fallback rate — пишем его в state тоже,
+    // чтобы юзер видел курс по которому посчитан amount.
+    const patch = { amount: String(rounded), touched: true };
+    if (!(parseFloat(o.rate) > 0) && fallbackRate > 0) {
+      patch.rate = String(fallbackRate);
+      patch.rateSource = "auto";
+    }
+    onUpdate(patch);
   };
 
   return (
