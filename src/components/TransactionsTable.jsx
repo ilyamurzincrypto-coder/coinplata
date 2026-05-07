@@ -22,7 +22,6 @@ import {
   Flag,
   ChevronLeft,
   ChevronRight,
-  Eye,
 } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import Select from "./ui/Select.jsx";
@@ -42,7 +41,6 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { riskLevelStyle, riskLevelLabel } from "../utils/aml.js";
 import { computeLegStatus, legStatusStyle, formatShortDate } from "../utils/legStatus.js";
 import { KindPill } from "../utils/dealKind.jsx";
-import DealDetailPanel from "./DealDetailPanel.jsx";
 import { Shield } from "lucide-react";
 import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -313,7 +311,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     });
   };
 
-  const [expandedDealId, setExpandedDealId] = useState(null);
   const [filterCurrency, setFilterCurrency] = useState("All");
   const [filterManager, setFilterManager] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -772,12 +769,26 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         </div>
       )}
 
-      {/* Table */}
+      {/* Table — bank-style row layout: одна строка = одна сделка, колонки выровнены. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
-              <th className="pl-5 pr-2 py-2.5 font-bold w-8">
+        <table className="w-full text-[13px] border-collapse">
+          <colgroup>
+            <col className="w-8" />
+            <col className="w-[72px]" />
+            <col className="w-[160px]" />
+            <col className="w-[180px]" />
+            <col className="w-[140px]" />
+            <col className="w-[90px]" />
+            <col className="w-[160px]" />
+            <col className="w-[70px]" />
+            <col className="w-[90px]" />
+            <col className="w-[100px]" />
+            <col className="w-[150px]" />
+            <col className="w-[140px]" />
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-white border-b border-slate-200/70">
+            <tr>
+              <th className="pl-5 pr-2 py-2 align-middle">
                 <input
                   type="checkbox"
                   aria-label="Select all visible"
@@ -786,16 +797,17 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
                 />
               </th>
-              <th className="px-3 py-2.5 font-bold">{t("time")}</th>
-              <th className="px-3 py-2.5 font-bold hidden sm:table-cell">{t("type")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("in")}</th>
-              <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("rate")}</th>
-              <th className="px-3 py-2.5 font-bold text-right">{t("out")}</th>
-              <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("fee")}</th>
-              <th className="px-3 py-2.5 font-bold text-right hidden lg:table-cell">{t("profit")}</th>
-              <th className="px-3 py-2.5 font-bold hidden lg:table-cell">Risk</th>
-              <th className="px-3 py-2.5 font-bold hidden xl:table-cell">{t("manager")}</th>
-              <th className="px-5 py-2.5 font-bold w-10"></th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("time")}</th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden sm:table-cell">{t("type")}</th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("counterparty") || "Контрагент"}</th>
+              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("in")}</th>
+              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("rate")}</th>
+              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">{t("out")}</th>
+              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden md:table-cell">{t("fee")}</th>
+              <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">{t("profit")}</th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden lg:table-cell">Risk</th>
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase hidden xl:table-cell">{t("manager")}</th>
+              <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
@@ -823,7 +835,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     : "EXCHANGE")
                   : tx.type;
               const isDeleted = tx.status === "deleted";
-              const isExpanded = expandedDealId === tx.id;
               const rowTooltip = [
                 tx.counterparty ? `Client: ${tx.counterparty}` : null,
                 tx.comment ? `Comment: ${tx.comment}` : null,
@@ -841,27 +852,36 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               ]
                 .filter(Boolean)
                 .join("\n");
+              // Унифицированные классы для money-cells (правое выравнивание + tabular).
+              const moneyCell = "px-3 py-2 text-right tabular-nums whitespace-nowrap text-[13px] align-middle";
+              const textCell = "px-3 py-2 text-[13px] align-middle";
+              // Row classes: base + zebra + state overrides. Approved → emerald
+              // override; pinned/otc/broker/deleted/new — каждый со своим тоном.
+              const rowBase =
+                "group cursor-pointer border-b border-slate-100 hover:bg-slate-50/60 transition-colors border-l-2 border-l-transparent";
+              const rowState =
+                tx.kind === "otc"
+                  ? "bg-indigo-50/30 border-l-indigo-500"
+                  : tx.kind === "broker"
+                  ? "bg-violet-50/30 border-l-violet-500"
+                  : tx.accountingStatus === "approved"
+                  ? "bg-emerald-50/40 border-l-emerald-500"
+                  : "even:bg-slate-50/30";
+              const rowExtras = [
+                isNew ? "bg-emerald-50/60" : "",
+                isDeleted ? "opacity-50 grayscale line-through" : "",
+                tx.pinned ? "bg-indigo-50/40" : "",
+              ]
+                .filter(Boolean)
+                .join(" ");
               return (
-                <React.Fragment key={tx.id}>
                 <tr
+                  key={tx.id}
                   title={rowTooltip || undefined}
-                  className={`border-b border-slate-100 hover:bg-slate-50 transition-colors group ${
-                    tx.kind === "otc"
-                      ? "border-l-4 border-l-indigo-500 bg-indigo-50/30"
-                      : tx.kind === "broker"
-                      ? "border-l-4 border-l-violet-500 bg-violet-50/30"
-                      : tx.accountingStatus === "approved"
-                      ? "border-l-4 border-l-emerald-500"
-                      : "border-l-4 border-l-transparent"
-                  } ${
-                    tx.accountingStatus === "approved" ? "bg-emerald-50/40" : ""
-                  } ${
-                    isNew ? "bg-emerald-50/60" : ""
-                  } ${isDeleted ? "opacity-50 grayscale line-through" : ""} ${
-                    tx.pinned ? "bg-indigo-50/40" : ""
-                  } ${isExpanded ? "bg-slate-50" : ""}`}
+                  onClick={() => setDetailTarget(tx)}
+                  className={`${rowBase} ${rowState} ${rowExtras}`}
                 >
-                  <td className="pl-5 pr-2 py-3 align-top">
+                  <td className="pl-5 pr-2 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       aria-label={`Select deal ${tx.id}`}
@@ -874,26 +894,17 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       className="h-3.5 w-3.5 rounded border-slate-300 text-slate-900 focus:ring-slate-400 cursor-pointer"
                     />
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedDealId(isExpanded ? null : tx.id);
-                      }}
-                      className="text-left hover:bg-slate-100 -m-1 p-1 rounded transition-colors group/expand"
-                      title={isExpanded ? "Свернуть детали" : "Развернуть детали (IN/OUT/legs/obligations)"}
-                    >
-                      <div className="font-semibold text-slate-900 tabular-nums flex items-center gap-1">
-                        <span className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""} text-slate-400 text-[10px]`}>
-                          ▶
-                        </span>
-                        {tx.time}
-                      </div>
-                      <div className="text-[11px] text-slate-400">{tx.date}</div>
-                    </button>
+                  {/* TIME · DATE — компактно: 15:25 над May 6 */}
+                  <td className={`${textCell} whitespace-nowrap`}>
+                    <div className="font-semibold text-slate-900 tabular-nums leading-tight">
+                      {tx.time}
+                    </div>
+                    <div className="text-[11px] text-slate-400 tabular-nums leading-tight">
+                      {tx.date}
+                    </div>
                   </td>
-                  <td className="px-3 py-3 hidden sm:table-cell">
+                  {/* TYPE — IN/OUT/EXCHANGE pill + KindPill (otc/broker) + статус-бейджи */}
+                  <td className={`${textCell} hidden sm:table-cell`}>
                     <div className="flex items-center gap-1 flex-wrap">
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
@@ -992,31 +1003,39 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         </span>
                       )}
                     </div>
-                    {/* Контрагент — подпись под типом, чтобы кассир видел
-                        с кем сделка не открывая детали. */}
-                    {tx.counterparty && (
-                      <div
-                        className="text-[11px] text-slate-600 font-medium mt-1 truncate max-w-[180px]"
-                        title={tx.counterparty}
-                      >
-                        {tx.counterparty}
+                  </td>
+                  {/* COUNTERPARTY — отдельной колонкой; subtitle с telegram если есть */}
+                  <td className={`${textCell} hidden md:table-cell`}>
+                    {tx.counterparty ? (
+                      <div className="min-w-0">
+                        <div
+                          className="text-slate-800 font-medium truncate"
+                          title={tx.counterparty}
+                        >
+                          {tx.counterparty}
+                        </div>
+                        {tx.counterpartyTelegram && (
+                          <div
+                            className="text-[11px] text-slate-500 truncate"
+                            title={tx.counterpartyTelegram}
+                          >
+                            {tx.counterpartyTelegram}
+                          </div>
+                        )}
                       </div>
+                    ) : (
+                      <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  {/* IN: основная сумма + multi-IN payments в разных валютах.
-                      Если есть extra-payments не в primary curIn — рисуем
-                      их отдельной строкой. Для OUT-only (inAmt=0) — «—». */}
-                  <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                  {/* IN: основная сумма + multi-IN payments в разных валютах. */}
+                  <td className={moneyCell}>
                     {(() => {
                       const payments = Array.isArray(tx.inPayments) ? tx.inPayments : [];
-                      // Multi-IN: суммируем payments по валюте, primary
-                      // (curIn) выводим первой строкой.
                       const byCur = new Map();
                       payments.forEach((p) => {
                         const c = p.currency || tx.curIn;
                         byCur.set(c, (byCur.get(c) || 0) + (Number(p.amount) || 0));
                       });
-                      // Если payments пустой (legacy сделки) — fallback на amtIn.
                       if (byCur.size === 0 && inAmt > 0) {
                         byCur.set(tx.curIn, inAmt);
                       }
@@ -1030,14 +1049,23 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         .forEach((e) => ordered.push(e));
                       return (
                         <div className="space-y-0.5">
-                          {ordered.map(([cur, sum]) => (
-                            <div key={cur} className="font-semibold text-slate-900">
+                          {ordered.map(([cur, sum], idx) => (
+                            <div
+                              key={cur}
+                              className={
+                                idx === 0
+                                  ? "text-[13px] font-medium text-slate-900"
+                                  : "text-[11px] text-slate-500"
+                              }
+                            >
                               {fmt(sum, cur)}{" "}
-                              <span className="text-slate-400 font-medium text-[11px]">{cur}</span>
+                              <span className={idx === 0 ? "text-slate-400 font-medium text-[11px]" : "text-slate-400"}>
+                                {cur}
+                              </span>
                             </div>
                           ))}
                           {tx.inKind && tx.inKind !== "ours_now" && (
-                            <div className="mt-0.5">
+                            <div className="mt-0.5 flex justify-end">
                               <KindPill type="in" kind={tx.inKind} compact />
                             </div>
                           )}
@@ -1046,14 +1074,36 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       );
                     })()}
                   </td>
-                  {/* RATE посередине — между IN и OUT. Скрываем для односторонних. */}
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">
-                    {inAmt > 0 && hasOut
-                      ? firstOut.rate?.toLocaleString("en-US", { maximumFractionDigits: 4 })
-                      : <span className="text-slate-300">—</span>}
+                  {/* RATE: первый rate, +N бейдж если разные курсы по legs. */}
+                  <td className={`${moneyCell} text-slate-600 hidden md:table-cell`}>
+                    {(() => {
+                      if (!(inAmt > 0 && hasOut)) {
+                        return <span className="text-slate-300">—</span>;
+                      }
+                      const rates = outputs
+                        .map((o) => o.rate)
+                        .filter((r) => r !== null && r !== undefined);
+                      const uniq = [...new Set(rates.map((r) => Number(r)))];
+                      const first = firstOut.rate?.toLocaleString("en-US", {
+                        maximumFractionDigits: 4,
+                      });
+                      return (
+                        <span className="inline-flex items-center gap-1 justify-end">
+                          <span>{first}</span>
+                          {uniq.length > 1 && (
+                            <span
+                              className="text-[9px] font-bold text-slate-500 bg-slate-100 rounded px-1 py-0.5"
+                              title={`Разные курсы: ${uniq.join(" / ")}`}
+                            >
+                              +{uniq.length - 1}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
                   </td>
-                  {/* OUT: такая же структура как IN (amount + currency label). */}
-                  <td className="px-3 py-3 text-right tabular-nums whitespace-nowrap">
+                  {/* OUT */}
+                  <td className={moneyCell}>
                     <OutputsCell
                       tx={tx}
                       outputs={outputs}
@@ -1063,21 +1113,24 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       onConfirm={(idx) => handleConfirmCryptoOut(tx, idx)}
                     />
                   </td>
-                  <td className="px-3 py-3 text-right tabular-nums text-slate-600 hidden md:table-cell">${fmt(tx.fee)}</td>
-                  <td className="px-3 py-3 text-right whitespace-nowrap hidden lg:table-cell">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-[13px] font-bold tabular-nums ${
-                        tx.profit === 0
-                          ? "bg-slate-50 text-slate-500"
-                          : profitUp
-                          ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
-                          : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
-                      }`}
-                    >
-                      {tx.profit === 0 ? "—" : (profitUp ? "+" : "") + "$" + fmt(tx.profit)}
-                    </span>
+                  {/* FEE */}
+                  <td className={`${moneyCell} hidden md:table-cell ${(tx.fee || 0) === 0 ? "text-slate-500" : "text-slate-700"}`}>
+                    ${fmt(tx.fee)}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap hidden lg:table-cell">
+                  {/* PROFIT */}
+                  <td className={`${moneyCell} hidden lg:table-cell`}>
+                    {tx.profit === 0 ? (
+                      <span className="text-slate-400">—</span>
+                    ) : (
+                      <span
+                        className={`font-bold ${profitUp ? "text-emerald-700" : "text-rose-700"}`}
+                      >
+                        {(profitUp ? "+" : "") + "$" + fmt(tx.profit)}
+                      </span>
+                    )}
+                  </td>
+                  {/* RISK */}
+                  <td className={`${textCell} whitespace-nowrap hidden lg:table-cell`}>
                     {tx.riskLevel ? (
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
@@ -1087,21 +1140,27 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         {riskLevelLabel(tx.riskLevel)} · {tx.riskScore}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-300">—</span>
+                      <span className="text-slate-300">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap hidden xl:table-cell">
+                  {/* MANAGER */}
+                  <td className={`${textCell} whitespace-nowrap hidden xl:table-cell`}>
                     <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[10px] font-bold text-slate-700">
                           {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
                         </div>
-                        <span className="text-slate-700 text-[13px]">{tx.manager}</span>
+                        <span
+                          className="text-slate-700 text-[13px] truncate"
+                          title={tx.manager}
+                        >
+                          {tx.manager}
+                        </span>
                         {tx.payeeName && (
                           <>
-                            <span className="text-[10px] text-slate-300">→</span>
+                            <span className="text-[10px] text-slate-300 shrink-0">→</span>
                             <span
-                              className="text-[12px] font-semibold text-indigo-700"
+                              className="text-[12px] font-semibold text-indigo-700 truncate"
                               title={`Payee: ${tx.payeeName}${tx.payeeOfficeId ? ` · ${officeName(tx.payeeOfficeId)}` : ""}`}
                             >
                               {tx.payeeName}
@@ -1129,17 +1188,16 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-1">
-                      {/* Payee mark-as-payed-out: показывается только назначенному
-                          payee (или admin/owner) пока сделка не выдана. */}
+                  {/* ACTIONS — Pin / Flag / Edit / Delete только при hover; Complete/Simulate/Выдать всегда видимы. */}
+                  <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
                       {tx.payeeUserId && !tx.payedOutAt &&
                         (tx.payeeUserId === currentUser.id || isAdmin) && (
                         <button
                           onClick={async () => {
                             if (!isSupabaseConfigured) return;
                             const note = prompt("Заметка к выдаче (опционально):");
-                            if (note === null) return; // cancel
+                            if (note === null) return;
                             await withToast(
                               () => rpcMarkDealPayedOut({ dealId: tx.id, note }),
                               { success: "Выдано", errorPrefix: "Ошибка" }
@@ -1202,13 +1260,6 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                             <Flag className="w-3.5 h-3.5" />
                           </button>
                           <button
-                            onClick={() => setDetailTarget(tx)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-sky-50 text-slate-500 hover:text-sky-700"
-                            title="View details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
                             onClick={() => onEdit?.(tx)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-900"
                             title={t("edit")}
@@ -1248,32 +1299,11 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     </div>
                   </td>
                 </tr>
-                {isExpanded && (
-                  <tr className="border-b border-slate-200 bg-slate-50/60">
-                    <td colSpan={11} className="px-5 py-4">
-                      <DealDetailPanel
-                        dealId={tx.id}
-                        hint={{
-                          amountIn: tx.amtIn,
-                          currencyIn: tx.curIn,
-                          inKind: tx.inKind,
-                          inAccountId: tx.accountId,
-                          feeUsd: tx.fee,
-                          commissionUsd: tx.commissionUsd,
-                          profit: tx.profit,
-                          kind: tx.kind,
-                        }}
-                        accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))}
-                      />
-                    </td>
-                  </tr>
-                )}
-                </React.Fragment>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-5 py-16 text-center">
+                <td colSpan={12} className="px-5 py-16 text-center">
                   <div className="text-slate-400 text-[13px]">{t("no_match")}</div>
                   <button
                     onClick={clearFilters}
