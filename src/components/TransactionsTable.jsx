@@ -871,7 +871,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             <tr>
               <th
                 onClick={() => toggleSort("time")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+                className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-slate-900 hover:bg-slate-50"
               >
                 {t("time")}{sortIndicator("time")}
               </th>
@@ -889,7 +889,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               </th>
               <th
                 onClick={() => toggleSort("in")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-slate-900 hover:bg-slate-50"
               >
                 {t("in")}{sortIndicator("in")}
               </th>
@@ -901,7 +901,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               </th>
               <th
                 onClick={() => toggleSort("out")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none hover:text-slate-900 hover:bg-slate-50"
+                className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-slate-900 hover:bg-slate-50"
               >
                 {t("out")}{sortIndicator("out")}
               </th>
