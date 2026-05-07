@@ -1655,9 +1655,7 @@ export default function ExchangeForm({
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
                 Валюта
               </th>
-              <th className="px-3 py-2 text-center text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
-                <X className="w-3 h-3 inline" />
-              </th>
+              <th className="px-3 py-2 text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap" aria-label="Действия" />
             </tr>
           </thead>
           <tbody>
