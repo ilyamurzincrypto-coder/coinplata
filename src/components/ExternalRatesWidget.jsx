@@ -22,29 +22,29 @@ const SOURCES = {
     label: "Binance",
     tone: "bg-amber-50 text-amber-700 ring-amber-200",
     accent: "text-amber-700",
-    origin: "api.binance.com (Spot bookTicker)",
-  },
-  harem: {
-    label: "Harem",
-    tone: "bg-rose-50 text-rose-700 ring-rose-200",
-    accent: "text-rose-700",
-    origin: "haremaltin.com (canlı kur)",
+    origin: "api.binance.com · Spot bookTicker",
   },
   tcmb: {
     label: "TCMB",
     tone: "bg-sky-50 text-sky-700 ring-sky-200",
     accent: "text-sky-700",
-    origin: "tcmb.gov.tr (resmi kurlar)",
+    origin: "tcmb.gov.tr · resmi kurlar XML",
   },
-  bestchange: {
-    label: "BestChange",
+  cbr: {
+    label: "ЦБ РФ",
+    tone: "bg-rose-50 text-rose-700 ring-rose-200",
+    accent: "text-rose-700",
+    origin: "cbr-xml-daily.ru · daily JSON",
+  },
+  ecb: {
+    label: "ЕЦБ",
     tone: "bg-violet-50 text-violet-700 ring-violet-200",
     accent: "text-violet-700",
-    origin: "bestchange.com (P2P best rate)",
+    origin: "frankfurter.dev · ECB derived",
   },
 };
 
-const SOURCE_ORDER = ["binance", "harem", "tcmb", "bestchange"];
+const SOURCE_ORDER = ["binance", "tcmb", "cbr", "ecb"];
 const REFRESH_INTERVAL = "каждые 5 мин";
 const SPREAD_KEY = "coinplata.externalSpread";
 const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
