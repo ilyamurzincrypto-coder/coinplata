@@ -315,6 +315,12 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [filterManager, setFilterManager] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [filterDate, setFilterDate] = useState(t("today"));
+  // Custom date range. Если хотя бы одно из полей заполнено — пресет
+  // filterDate игнорируется и работает по [customFrom, customTo).
+  // Формат — "YYYY-MM-DD" (date input). To exclusive end-of-day для
+  // удобства: "до 7 мая включительно" → реально [from, 8 мая 00:00).
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   // Office-фильтр. "current" = только текущий офис из header'а (default,
   // совпадает со старым поведением). "all" = все офисы. Любой иной
   // string = конкретный officeId.
@@ -347,6 +353,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     filterStatus !== "All" ||
     filterDate !== DATE_OPTIONS[0] ||
     filterOffice !== "current" ||
+    customFrom !== "" ||
+    customTo !== "" ||
     search !== "" ||
     amountMin !== "" ||
     amountMax !== "";
@@ -379,6 +387,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     };
     const todayStart = startOfDay(now);
     const oneDay = 24 * 60 * 60 * 1000;
+    // Custom range приоритетнее пресетов. Если задано хотя бы одно поле —
+    // используем его, недостающее не ограничиваем.
+    if (customFrom || customTo) {
+      const from = customFrom ? startOfDay(new Date(customFrom)) : -Infinity;
+      const to = customTo ? startOfDay(new Date(customTo)) + oneDay : Infinity;
+      return { from, to };
+    }
     if (filterDate === t("today")) return { from: todayStart, to: todayStart + oneDay };
     if (filterDate === t("yesterday")) return { from: todayStart - oneDay, to: todayStart };
     if (filterDate === t("last_7")) return { from: todayStart - 6 * oneDay, to: todayStart + oneDay };
@@ -387,7 +402,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       return { from: monthStart, to: todayStart + oneDay };
     }
     return null;
-  }, [filterDate, t]);
+  }, [filterDate, customFrom, customTo, t]);
 
   const filtered = useMemo(() => {
     const minN = parseFloat(amountMin);
@@ -577,7 +592,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   // Reset page when filters изменились.
   React.useEffect(() => {
     setPage(1);
-  }, [filterCurrency, filterManager, filterStatus, filterDate, filterOffice, search, amountMin, amountMax, pageSize]);
+  }, [filterCurrency, filterManager, filterStatus, filterDate, filterOffice, customFrom, customTo, search, amountMin, amountMax, pageSize]);
 
   const clearFilters = () => {
     setFilterCurrency("All");
@@ -585,6 +600,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     setFilterStatus("All");
     setFilterDate(DATE_OPTIONS[0]);
     setFilterOffice("current");
+    setCustomFrom("");
+    setCustomTo("");
     setSearch("");
     setAmountMin("");
     setAmountMax("");
@@ -713,6 +730,36 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             compact
             icon={<Calendar className="w-3 h-3 text-slate-400" />}
           />
+        </div>
+        {/* Custom date range — приоритетнее пресета. Если задано хотя
+            бы одно поле, пресет filterDate игнорируется. */}
+        <div className={`inline-flex items-center gap-1 bg-white border rounded-[8px] px-2 py-1 ${customFrom || customTo ? "border-slate-400" : "border-slate-200"}`}>
+          <Calendar className="w-3 h-3 text-slate-400" />
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="bg-transparent outline-none text-[11px] tabular-nums w-[110px]"
+            title="Период: от"
+          />
+          <span className="text-slate-300 text-[10px]">—</span>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="bg-transparent outline-none text-[11px] tabular-nums w-[110px]"
+            title="Период: до (включительно)"
+          />
+          {(customFrom || customTo) && (
+            <button
+              type="button"
+              onClick={() => { setCustomFrom(""); setCustomTo(""); }}
+              className="ml-1 text-slate-400 hover:text-slate-700"
+              title="Очистить период"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
         {hasActiveFilters && (
           <button
