@@ -12,7 +12,7 @@
 //     вокруг mid (наш курс продажи/покупки с маржей).
 
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCcw, Calculator } from "lucide-react";
+import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp } from "lucide-react";
 import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useNow } from "../hooks/useNow.js";
@@ -47,6 +47,7 @@ const SOURCES = {
 const SOURCE_ORDER = ["binance", "harem", "tcmb", "bestchange"];
 const REFRESH_INTERVAL = "каждые 5 мин";
 const SPREAD_KEY = "coinplata.externalSpread";
+const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
@@ -89,6 +90,21 @@ export default function ExternalRatesWidget({ compact = false }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const nowMs = useNow(60_000);
+  // Сворачиваемый блок — persist в localStorage чтобы юзер не открывал заново.
+  // По умолчанию свёрнут (compact=true) — занимает 1 строку.
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      const raw = localStorage.getItem(COLLAPSED_KEY);
+      return raw == null ? true : raw === "1";
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
+    } catch {}
+  }, [collapsed]);
   // Спред per-source persist в localStorage — опциональная настройка.
   // По умолчанию калькулятор СВЁРНУТ (showCalc[source] = false). Юзер
   // открывает иконкой калькулятора в шапке source — тогда появляется
@@ -145,25 +161,37 @@ export default function ExternalRatesWidget({ compact = false }) {
 
   return (
     <section className="bg-white rounded-[14px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
-      <header className="px-3 py-2.5 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent">
+      {/* Шапка кликабельная — сворачивает / разворачивает блок. Кнопки
+          обновления и chevron справа; клик в любую часть шапки toggle'ит. */}
+      <header
+        onClick={() => setCollapsed((v) => !v)}
+        className="px-3 py-2.5 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent cursor-pointer select-none hover:bg-slate-50/60 transition-colors"
+      >
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-slate-500 shrink-0" />
           <h2 className="text-[13px] font-bold text-slate-900 tracking-tight uppercase truncate flex-1">
             Внешние котировки
           </h2>
-          <button
-            onClick={reload}
-            className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
-            title="Обновить вручную"
-          >
-            <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          </button>
+          {!collapsed && (
+            <button
+              onClick={(e) => { e.stopPropagation(); reload(); }}
+              className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+              title="Обновить вручную"
+            >
+              <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+            </button>
+          )}
+          {collapsed
+            ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            : <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
         </div>
         <div className="text-[10px] text-slate-400 mt-0.5">
-          Авто-обновление {REFRESH_INTERVAL} · 3 источника
+          {collapsed
+            ? `${bySource.size || 0} источников · ${rows.length} пар · клик чтобы раскрыть`
+            : `Авто-обновление ${REFRESH_INTERVAL} · 3 источника`}
         </div>
       </header>
-      {rows.length === 0 ? (
+      {!collapsed && (rows.length === 0 ? (
         <div className="px-4 py-6 text-center text-[12px] text-slate-400">
           {loading ? "Загрузка…" : "Нет данных. Cron подтянет в течение 5 минут."}
         </div>
@@ -275,7 +303,7 @@ export default function ExternalRatesWidget({ compact = false }) {
             );
           })}
         </div>
-      )}
+      ))}
     </section>
   );
 }

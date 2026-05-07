@@ -50,7 +50,6 @@ import {
 } from "../lib/supabaseWrite.js";
 import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
-import ExternalRatesWidget from "../components/ExternalRatesWidget.jsx";
 import Modal from "../components/ui/Modal.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import {
@@ -517,10 +516,6 @@ export default function RatesPage({ onBack }) {
         {/* List view */}
         {view === "list" && (
           <>
-            {/* Внешние котировки — Binance / Harem / TCMB. Edge Function
-                fetch-external-rates пишет каждые 5 минут через cron. */}
-            <ExternalRatesWidget />
-
             {/* Scope notice — редактирование override для конкретного офиса */}
             {activeOffice !== "all" && (
               <div className="bg-indigo-50 border border-indigo-200 rounded-[10px] px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
