@@ -1058,8 +1058,13 @@ export default function ExchangeForm({
     return !!xi.accountId;
   });
 
+  // exceedsInput больше НЕ блокирует submit — юзер часто хочет создать
+  // сделку где OUT > IN (клиент доносит позже, остаток уходит в obligation
+  // we_owe). Раньше форма насмерть резала такие сделки. Теперь только
+  // визуальное предупреждение «превышает остаток» (см. UI ниже),
+  // но кнопка «Создать» активна.
   const canSubmit =
-    hasAllAmounts && hasAllRates && noSameCurrency && !exceedsInput && hasClient &&
+    hasAllAmounts && hasAllRates && noSameCurrency && hasClient &&
     inSideValid && outSidesValid && extraInputsValid &&
     (!needsPayee || !!payeeUserId);
 
