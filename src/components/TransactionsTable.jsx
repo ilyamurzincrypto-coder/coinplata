@@ -314,7 +314,9 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   const [filterCurrency, setFilterCurrency] = useState("All");
   const [filterManager, setFilterManager] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
-  const [filterDate, setFilterDate] = useState(t("today"));
+  // Default = последние 7 дней. «Сегодня» часто пусто (сделки backdated
+  // или ещё не было), и юзера это бесило.
+  const [filterDate, setFilterDate] = useState(t("last_7"));
   // Custom date range. Если хотя бы одно из полей заполнено — пресет
   // filterDate игнорируется и работает по [customFrom, customTo).
   // Формат — "YYYY-MM-DD" (date input). To exclusive end-of-day для
@@ -351,7 +353,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     filterCurrency !== "All" ||
     filterManager !== "All" ||
     filterStatus !== "All" ||
-    filterDate !== DATE_OPTIONS[0] ||
+    filterDate !== t("last_7") ||
     filterOffice !== "current" ||
     customFrom !== "" ||
     customTo !== "" ||
@@ -598,7 +600,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     setFilterCurrency("All");
     setFilterManager("All");
     setFilterStatus("All");
-    setFilterDate(DATE_OPTIONS[0]);
+    setFilterDate(t("last_7"));
     setFilterOffice("current");
     setCustomFrom("");
     setCustomTo("");

@@ -434,13 +434,6 @@ function OfficeBlock({
           <Building2 className="w-4 h-4 text-slate-500" />
           <h3 className="text-[14px] font-semibold text-slate-900">{office.name}</h3>
           <span className="text-[11px] text-slate-400">· {allAccs.length} accounts</span>
-          <DeltaPair
-            today={totals.delta}
-            yesterday={totals.deltaYesterday}
-            currency={base}
-            size="sm"
-            title="Сегодня / вчера по этому офису"
-          />
         </div>
         {!hideTotals && (
           <div className="flex items-center gap-2 text-[12px] tabular-nums">
@@ -690,17 +683,9 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                 {t("all_offices")} · {activeOffices.length}
               </>
             )}
-            <span
-              className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-50 ring-1 ring-slate-200"
-              title="Сегодня / вчера"
-            >
-              <DeltaPair
-                today={grand.delta}
-                yesterday={grand.deltaYesterday}
-                currency={base}
-                size="sm"
-              />
-            </span>
+            {/* Дельта дня показывается в SummaryBadge «Total» ниже,
+                здесь дубль убран — юзеру одних и тех же чисел в трёх
+                местах было слишком много. */}
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
