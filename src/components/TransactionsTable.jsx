@@ -369,10 +369,37 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
     [transactions, effectiveOfficeId]
   );
 
+  // Date range — локальный [from, to) в миллисекундах. null если "all time".
+  // Раньше filterDate висел в state но не применялся к filtered → юзер
+  // выбирал «Сегодня», но видел вчерашние сделки и думал что это
+  // сегодняшний приход.
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    const startOfDay = (d) => {
+      const x = new Date(d);
+      x.setHours(0, 0, 0, 0);
+      return x.getTime();
+    };
+    const todayStart = startOfDay(now);
+    const oneDay = 24 * 60 * 60 * 1000;
+    if (filterDate === t("today")) return { from: todayStart, to: todayStart + oneDay };
+    if (filterDate === t("yesterday")) return { from: todayStart - oneDay, to: todayStart };
+    if (filterDate === t("last_7")) return { from: todayStart - 6 * oneDay, to: todayStart + oneDay };
+    if (filterDate === t("this_month")) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      return { from: monthStart, to: todayStart + oneDay };
+    }
+    return null;
+  }, [filterDate, t]);
+
   const filtered = useMemo(() => {
     const minN = parseFloat(amountMin);
     const maxN = parseFloat(amountMax);
     return officeTxs.filter((tx) => {
+      if (dateRange) {
+        const txMs = Number(tx.createdAtMs) || 0;
+        if (txMs < dateRange.from || txMs >= dateRange.to) return false;
+      }
       if (filterCurrency !== "All") {
         const outCurrencies = (tx.outputs || []).map((o) => o.currency);
         if (tx.curIn !== filterCurrency && !outCurrencies.includes(filterCurrency)) return false;
@@ -393,7 +420,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       }
       return true;
     });
-  }, [officeTxs, filterCurrency, filterManager, filterStatus, amountMin, amountMax, search]);
+  }, [officeTxs, dateRange, filterCurrency, filterManager, filterStatus, amountMin, amountMax, search]);
 
   // Стабильная сортировка по createdAtMs DESC, id DESC. Без явного
   // сорта порядок мог дёргаться после reload (bumpDataVersion после
