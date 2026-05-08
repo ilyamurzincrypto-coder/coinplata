@@ -26,7 +26,7 @@ VITE_USE_NEW_DEAL_FORM=true
 - **Этап 2.5** ✓ rate↔amount sync + balance display + cross-leg validation
   + spread indicator + undo/redo + auto-save draft
 - **Этап 3** ✓ ConditionsBar (3 группы chips) + OnDemandPanel
-- Этап 4 — FooterBar + LivePreview + Submit CTA
+- **Этап 4** ✓ FooterBar + LivePreview + SubmitCTA + RatesPanel + handleSubmit
 - Этап 5 — cleanup старых компонентов
 - Этап 5+ — OpenObligationsWidget (после operations layer от ledger track)
 
@@ -248,3 +248,81 @@ en / ru / tr (см. PR этапа 1):
 - `cashier_close_confirm`
 - `cashier_stage1_placeholder`
 - `close`, `loading`
+
+## Этап 4 — Submit + Footer + Rates
+
+### Architecture
+
+```
+DealForm.jsx  (root, useReducer state + accountsMap + handleSubmit)
+├─ StickyTitle.jsx              — 56px sticky bar
+├─ CounterpartyBar.jsx          — client/partner picker
+├─ DealLegsTable.jsx            — таблица legs (с onFocusCapture
+│                                  → activeOutLegId tracker)
+│  └─ LegRow.jsx (data-leg-id, data-leg-side)
+├─ ConditionsBar.jsx            — 3 группы chips + OnDemandPanel
+├─ FooterBar.jsx                — sticky bottom 64px
+│  ├─ Undo/Redo buttons
+│  ├─ LivePreview.jsx           — direction summary + margin USD/%
+│  └─ SubmitCTA.jsx             — split-button: Create / Draft / Notify
+└─ RatesPanel.jsx               — right sidebar (hidden on <xl screens)
+   └─ click cell → onPickRate(from, to, rate) → fills active OUT leg
+```
+
+### Click-to-fill mechanism
+
+```
+LegRow renders data-leg-id={leg.id} data-leg-side={leg.side}
+  ↓
+DealForm wraps DealLegsTable в onFocusCapture handler:
+  e.target.closest("[data-leg-id]") → setActiveOutLegId(id)
+  ↓
+RatesPanel получает activeLegSummary + handlePickRate(from, to, rate)
+  ↓
+handlePickRate:
+  • if leg.currency==to AND inLegs[0].currency==from → fill rate as-is
+  • if inverse direction → fill 1/rate (auto-detect)
+  • else → fill raw rate + mark rateManual=true
+```
+
+### handleSubmit flow
+
+```
+runSubmitFlow({buildPayload, createDeal, t, onSuccess, onError}):
+  1. buildPayload() → throws на validation → mapErrorToToast(22000) → onError
+  2. createDeal(payload):
+     • USE_NEW_LEDGER=true → rpcCreateDealV2 (camelCase shape)
+     • USE_NEW_LEDGER=false → rpcCreateDeal (legacy shape)
+  3. throws → mapErrorToToast(error) → onError(toast):
+     • P0001 → error_insufficient_balance
+     • P0422 → error_idempotency_conflict + retry=true
+     • 22000 → error_validation + field={side, legId}
+     • P0002 / 23502 / 42501 / unknown → respective i18n keys
+  4. success → onSuccess(result) → toast + clearDraft + reset()
+```
+
+Pure function `runSubmitFlow` extracted в `src/lib/dealForm/submitFlow.js`
+для testability (без jsdom).
+
+### Feature-flag matrix (4 combinations)
+
+| `VITE_USE_NEW_DEAL_FORM` | `VITE_USE_NEW_LEDGER` | Behavior |
+|:---:|:---:|---|
+| `false` | `false` | **Production legacy** — ExchangeForm + rpcCreateDeal |
+| `true`  | `false` | New form ↔ legacy ledger (UI verify, payload в legacy shape) |
+| `false` | `true`  | Legacy form ↔ new ledger (integration test) |
+| `true`  | `true`  | **Production-ready** после cutover (full v2 path) |
+
+### Stub limitations
+
+`src/lib/dealOperations.js` — **TEMPORARY STUB** до merge Direction 2 backend
+(полный adapter живёт в `ledger/direction2-write-wrappers`).
+
+При `VITE_USE_NEW_LEDGER=true`:
+- ✅ `createDeal` / `createTopup` / `createTransfer` → V2 wrapper
+- ⚠️ `createWithdrawal` → V2 (legacy fallback semantics-mismatch)
+- ⚠️ `createReservation` / `releaseReservation` → V2 (throws на legacy)
+- ⚠️ `createAdjustment` → legacy only (`rpcCreateAdjustmentV2` в Direction 2 ветке)
+
+EDIT/DELETE — re-export legacy (Direction 3 mapping). Direction 2 merge
+заменит этот stub полностью.
