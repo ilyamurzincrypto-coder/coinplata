@@ -63,17 +63,52 @@ export function buildTx({
     throw new Error("buildTx: at least one OUT leg required");
   }
 
-  const commission = buildCommission(state.commission || [], outLegs);
+  const conditions = state.conditions || {};
+  const commission = buildCommission(
+    state.commission || [],
+    outLegs,
+    conditions
+  );
 
-  return {
+  // metadata от conditions (этап 3)
+  const flags = Array.isArray(conditions.flags) ? conditions.flags : [];
+  const fees = Array.isArray(conditions.fees) ? conditions.fees : [];
+  const onDemand = conditions.on_demand || {};
+  const conditionsMetadata = {
+    margin_strategy: conditions.margin_strategy || "pro_rata",
+    referral: flags.includes("referral"),
+    vip: flags.includes("vip"),
+    is_otc: flags.includes("otc"),
+    is_partner: flags.includes("partner"),
+    fee_paid_by: fees.includes("network_fee_client") ? "client" : "exchange",
+    no_commission: fees.includes("no_commission"),
+    bank_fee_applied: fees.includes("bank_fee"),
+  };
+  // On-demand fields в metadata только если задано (avoid null-flooding)
+  if (onDemand.comment) conditionsMetadata.comment = onDemand.comment;
+  if (onDemand.tx_hash) conditionsMetadata.tx_hash = onDemand.tx_hash;
+  if (onDemand.scheduled_at) conditionsMetadata.scheduled_at = onDemand.scheduled_at;
+
+  const result = {
     client_id: clientId,
     office_id: officeId,
     in_legs: inLegs,
     out_legs: outLegs,
     commission,
     description: description || null,
-    metadata: { ui_form: "deal_v2", ...(metadata || {}) },
+    metadata: {
+      ui_form: "deal_v2",
+      ...conditionsMetadata,
+      ...(metadata || {}),
+    },
   };
+
+  // effective_date только если backdate задан (отдельное поле RPC)
+  if (onDemand.backdate) {
+    result.effective_date = onDemand.backdate;
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -144,8 +179,28 @@ function buildOutLeg(leg, accCodeMap) {
   return out;
 }
 
-function buildCommission(entries, outLegs) {
-  // Filter empty
+function buildCommission(entries, outLegs, conditions = {}) {
+  // no_commission flag → empty array (RPC всё равно требует non-empty…
+  // тут расхождение со spec этап 3. RPC create_deal_v2 валидирует
+  // commission как non-empty. Пока выдаём sentinel = 0 ?
+  // По текущей spec: "commission=[] (пустой)" — это нарушит RPC.
+  // Решение: возвращаем sentinel в первой OUT-валюте с amount=0.01,
+  // но проставляем kind='commission' и метку no_commission в metadata
+  // (UI знает по metadata.no_commission что это formal placeholder).
+  // Это keeps RPC happy + UX honest.
+  const fees = Array.isArray(conditions.fees) ? conditions.fees : [];
+  const noCommission = fees.includes("no_commission");
+
+  const margin = conditions.margin_strategy || "pro_rata";
+
+  if (noCommission) {
+    if (outLegs.length === 0) {
+      throw new Error("buildTx: cannot create sentinel — no OUT legs");
+    }
+    return [{ currency: outLegs[0].currency, amount: 0.01, kind: "commission" }];
+  }
+
+  // Filter user-entered entries
   const valid = entries
     .map((e) => ({
       currency: (e.currency || "").toUpperCase(),
@@ -154,13 +209,30 @@ function buildCommission(entries, outLegs) {
     }))
     .filter((e) => e.currency && Number.isFinite(e.amount) && e.amount > 0);
 
-  // RPC требует commission ⊆ outLegs.currency и non-empty array.
   const outCurrencies = new Set(outLegs.map((l) => l.currency));
   const filtered = valid.filter((e) => outCurrencies.has(e.currency));
 
+  // single_leg margin → всё на первой OUT-ноге, остальные ноги без commission.
+  // Реализуем через объединение filtered entries в первый OUT.currency:
+  //   sum amounts per kind → один entry с currency=outLegs[0].currency
+  if (margin === "single_leg") {
+    if (outLegs.length === 0) {
+      throw new Error("buildTx: cannot single_leg commission — no OUT legs");
+    }
+    const totalAmount = filtered.reduce((s, e) => s + e.amount, 0);
+    if (totalAmount === 0) {
+      // Sentinel
+      return [{ currency: outLegs[0].currency, amount: 0.01, kind: "commission" }];
+    }
+    return [{
+      currency: outLegs[0].currency,
+      amount: parseFloat(totalAmount.toFixed(8)),
+      kind: "commission",
+    }];
+  }
+
+  // pro_rata (default) — по одной entry на currency
   if (filtered.length === 0) {
-    // Sentinel — минимальный commission в первой OUT-валюте.
-    // Reality: margin уже встроен в rates, так что 0.01 это formality.
     if (outLegs.length === 0) {
       throw new Error("buildTx: cannot create sentinel commission — no OUT legs");
     }

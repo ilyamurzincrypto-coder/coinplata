@@ -10,6 +10,7 @@ import { useClientBalances } from "../../store/clientBalances.js";
 import StickyTitle from "./StickyTitle.jsx";
 import CounterpartyBar from "./CounterpartyBar.jsx";
 import DealLegsTable from "./DealLegsTable.jsx";
+import ConditionsBar from "./ConditionsBar.jsx";
 import {
   useDealForm,
   tryLoadDraft,
@@ -67,6 +68,8 @@ export default function DealForm({
     updateLeg,
     totalIn,
     totalOut,
+    conditions,
+    setCondition,
     undo,
     redo,
     canUndo,
@@ -163,6 +166,12 @@ export default function DealForm({
         onToggleSide={onToggleSide}
         officeId={currentOffice}
         clientBalances={clientBalances}
+      />
+
+      <ConditionsBar
+        conditions={conditions}
+        setCondition={setCondition}
+        legs={legs}
       />
 
       {/* Footer summary + undo/redo */}
