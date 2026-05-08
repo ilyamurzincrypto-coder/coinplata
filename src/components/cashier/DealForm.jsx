@@ -5,6 +5,7 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Undo2, Redo2 } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
+import { useAccounts } from "../../store/accounts.jsx";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useClientBalances } from "../../store/clientBalances.js";
 import StickyTitle from "./StickyTitle.jsx";
@@ -16,6 +17,7 @@ import {
   tryLoadDraft,
   clearDraft,
 } from "../../store/dealForm.js";
+import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
 
 export default function DealForm({
   mode = "create",
@@ -29,6 +31,20 @@ export default function DealForm({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { counterparties } = useTransactions();
+  const { accounts } = useAccounts();
+
+  // accountCodeByLegacyId — карта public.accounts.id → ledger.accounts.code
+  // для buildTx resolve. Только под USE_NEW_LEDGER=true; иначе null →
+  // legacy passthrough (buildTx отдаёт accountId как-есть).
+  // Excludes legacy_only accounts (они не должны попасть в ledger v2 path).
+  const accountCodeByLegacyId = useMemo(() => {
+    if (!USE_NEW_LEDGER) return null;
+    return Object.fromEntries(
+      accounts
+        .filter((a) => a.ledgerAccountCode && !a.legacyOnly)
+        .map((a) => [a.id, a.ledgerAccountCode])
+    );
+  }, [accounts]);
 
   // Draft prompt — при mount проверяем localStorage
   const [draftPrompt, setDraftPrompt] = useState(() => {
