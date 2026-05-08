@@ -1,23 +1,27 @@
 // src/components/cashier/DealForm.jsx
-// Новая форма создания сделки. Этап 2 + 2.5.
+// Новая форма создания сделки. Этап 2 + 2.5 + 3 + 4 (Submit).
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Undo2, Redo2 } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useClientBalances } from "../../store/clientBalances.js";
+import { emitToast } from "../../lib/toast.jsx";
 import StickyTitle from "./StickyTitle.jsx";
 import CounterpartyBar from "./CounterpartyBar.jsx";
 import DealLegsTable from "./DealLegsTable.jsx";
 import ConditionsBar from "./ConditionsBar.jsx";
+import FooterBar from "./FooterBar.jsx";
 import {
   useDealForm,
   tryLoadDraft,
   clearDraft,
 } from "../../store/dealForm.js";
 import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
+import { createDeal } from "../../lib/dealOperations.js";
+import { buildTx } from "../../lib/dealForm/buildTx.js";
+import { mapErrorToToast } from "../../lib/dealForm/errorMapper.js";
 
 export default function DealForm({
   mode = "create",
@@ -31,12 +35,9 @@ export default function DealForm({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { counterparties } = useTransactions();
-  const { accounts } = useAccounts();
+  const { accounts, balanceOf } = useAccounts();
 
-  // accountCodeByLegacyId — карта public.accounts.id → ledger.accounts.code
-  // для buildTx resolve. Только под USE_NEW_LEDGER=true; иначе null →
-  // legacy passthrough (buildTx отдаёт accountId как-есть).
-  // Excludes legacy_only accounts (они не должны попасть в ledger v2 path).
+  // accountCodeByLegacyId — карта public.accounts.id → ledger.accounts.code.
   const accountCodeByLegacyId = useMemo(() => {
     if (!USE_NEW_LEDGER) return null;
     return Object.fromEntries(
@@ -46,9 +47,8 @@ export default function DealForm({
     );
   }, [accounts]);
 
-  // Draft prompt — при mount проверяем localStorage
   const [draftPrompt, setDraftPrompt] = useState(() => {
-    if (initialData) return null; // edit mode — не предлагаем draft
+    if (initialData) return null;
     return tryLoadDraft();
   });
 
@@ -62,8 +62,8 @@ export default function DealForm({
     initialData?.managerId || currentUser?.id || ""
   );
   const [showRequiredError, setShowRequiredError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Resolve counterparty UUID если выбрали из списка по nickname
   useEffect(() => {
     if (counterpartyId) return;
     const match = counterparties?.find?.(
@@ -74,7 +74,6 @@ export default function DealForm({
 
   const clientBalances = useClientBalances(counterpartyId);
 
-  // Legs state с history + auto-save
   const {
     legs,
     inLegs,
@@ -108,6 +107,36 @@ export default function DealForm({
     [legs, updateLeg]
   );
 
+  // ── Validation: hasOverdraft / hasShortage / submitDisabled ──
+  const hasOverdraft = useMemo(() => {
+    return inLegs.some((l) => {
+      if (l.source !== "from_balance") return false;
+      const amt = Number(l.amount);
+      const bal = clientBalances[l.currency];
+      return Number.isFinite(amt) && amt > 0 && Number.isFinite(bal) && amt > bal;
+    });
+  }, [inLegs, clientBalances]);
+
+  const hasShortage = useMemo(() => {
+    return outLegs.some((l) => {
+      if (l.destination !== "physical" || !l.accountId) return false;
+      const amt = Number(l.amount);
+      const bal = balanceOf(l.accountId);
+      return Number.isFinite(amt) && amt > 0 && Number.isFinite(bal) && amt > bal;
+    });
+  }, [outLegs, balanceOf]);
+
+  // submitDisabled — base validation (без backend errors)
+  const submitDisabled = useMemo(() => {
+    if (!counterparty.trim()) return true;
+    if (legs.length === 0) return true;
+    // Должен быть хотя бы один IN с amount>0 и currency
+    if (!inLegs.some((l) => Number(l.amount) > 0 && l.currency)) return true;
+    // Должен быть хотя бы один OUT с amount>0 и currency
+    if (!outLegs.some((l) => Number(l.amount) > 0 && l.currency)) return true;
+    return false;
+  }, [counterparty, legs, inLegs, outLegs]);
+
   const acceptDraft = () => {
     if (draftPrompt) hydrate(draftPrompt);
     setDraftPrompt(null);
@@ -127,6 +156,91 @@ export default function DealForm({
   const dealId = useMemo(
     () => initialData?.id || crypto.randomUUID?.() || "",
     [initialData?.id]
+  );
+
+  // ── Submit handlers ──
+  const buildPayload = useCallback(
+    (extraMeta = {}) => {
+      // Передаём legs/commission/conditions внутри state shape
+      return buildTx({
+        state: { legs, commission: [], conditions },
+        clientId: counterpartyId,
+        officeId: currentOffice,
+        accountCodeByLegacyId,
+        description: conditions?.on_demand?.comment || null,
+        metadata: extraMeta,
+      });
+    },
+    [legs, conditions, counterpartyId, currentOffice, accountCodeByLegacyId]
+  );
+
+  const doSubmit = useCallback(
+    async (extraMeta = {}) => {
+      if (submitDisabled || loading) return;
+      if (!counterpartyId) {
+        setShowRequiredError(true);
+        emitToast("error", t("error_required_field"));
+        return;
+      }
+
+      let payload;
+      try {
+        payload = buildPayload(extraMeta);
+      } catch (buildErr) {
+        const toast = mapErrorToToast(
+          { code: "22000", message: buildErr.message },
+          t
+        );
+        emitToast("error", toast.message + (toast.details ? ` · ${toast.details}` : ""));
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const result = await createDeal(payload);
+        const txId =
+          (result && (result.deal_tx_id || result)) || "";
+        emitToast(
+          "success",
+          t("deal_created_success") + (txId ? ` · ${String(txId).slice(0, 8)}…` : "")
+        );
+        clearDraft();
+        reset();
+        onSubmit?.(result);
+      } catch (error) {
+        const toast = mapErrorToToast(error, t);
+        emitToast(
+          "error",
+          toast.message + (toast.details ? ` · ${toast.details}` : "")
+        );
+        // eslint-disable-next-line no-console
+        console.warn("[DealForm] submit failed", error);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      submitDisabled,
+      loading,
+      counterpartyId,
+      buildPayload,
+      t,
+      reset,
+      onSubmit,
+    ]
+  );
+
+  const onSubmitPrimary = useCallback(
+    () => doSubmit({ submission_kind: "create" }),
+    [doSubmit]
+  );
+  const onSubmitDraft = useCallback(
+    () => doSubmit({ submission_kind: "draft", legacy_status: "draft" }),
+    [doSubmit]
+  );
+  const onSubmitAndNotify = useCallback(
+    () => doSubmit({ submission_kind: "create_and_notify" }),
+    [doSubmit]
   );
 
   return (
@@ -190,44 +304,23 @@ export default function DealForm({
         legs={legs}
       />
 
-      {/* Footer summary + undo/redo */}
-      <div className="px-4 py-3 text-hint border-t border-slate-200 bg-slate-50/40 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={undo}
-            disabled={!canUndo}
-            title="Отменить (Ctrl/Cmd+Z)"
-            className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            disabled={!canRedo}
-            title="Повторить (Ctrl/Cmd+Shift+Z)"
-            className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <span className="flex-1 text-center">
-          {Object.entries(totalIn).map(([cur, amt]) => `+${amt} ${cur}`).join(", ") || "—"}
-          {" → "}
-          {Object.entries(totalOut).map(([cur, amt]) => `−${amt} ${cur}`).join(", ") || "—"}
-        </span>
-
-        <button
-          type="button"
-          disabled
-          className="px-3 py-1.5 rounded-[var(--radius-section)] bg-slate-200 text-slate-500 text-[12px] font-semibold cursor-not-allowed"
-          title="Submit появится в этапе 4"
-        >
-          {t("cashier_stage1_placeholder")} → этап 4
-        </button>
-      </div>
+      <FooterBar
+        legs={legs}
+        totalIn={totalIn}
+        totalOut={totalOut}
+        conditions={conditions}
+        hasOverdraft={hasOverdraft}
+        hasShortage={hasShortage}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onSubmit={onSubmitPrimary}
+        onSubmitDraft={onSubmitDraft}
+        onSubmitAndNotify={onSubmitAndNotify}
+        submitDisabled={submitDisabled}
+        loading={loading || submitting}
+      />
     </div>
   );
 }

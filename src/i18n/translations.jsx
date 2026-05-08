@@ -91,6 +91,10 @@ const DICT = {
     deal_loading: "Creating...",
     confirm_overdraft_title: "Overdraft warning",
     confirm_overdraft_body: "Client balance will go negative. Continue?",
+    submit_create_deal: "Create deal",
+    submit_save_draft: "Save as draft",
+    submit_create_and_notify: "Create and notify",
+    submit_disabled_tooltip: "Fix errors in form",
     close: "Close",
     loading: "Loading...",
     // ───────────────────────────────────────────────────────────────
@@ -1162,6 +1166,10 @@ const DICT = {
     deal_loading: "Создаём…",
     confirm_overdraft_title: "Предупреждение об овердрафте",
     confirm_overdraft_body: "Баланс клиента уйдёт в минус. Продолжить?",
+    submit_create_deal: "Создать сделку",
+    submit_save_draft: "Создать как черновик",
+    submit_create_and_notify: "Создать и оповестить",
+    submit_disabled_tooltip: "Исправьте ошибки в форме",
     close: "Закрыть",
     loading: "Загрузка…",
     // ───────────────────────────────────────────────────────────────
@@ -2208,6 +2216,10 @@ const DICT = {
     deal_loading: "Oluşturuluyor…",
     confirm_overdraft_title: "Overdraft uyarısı",
     confirm_overdraft_body: "Müşteri bakiyesi eksiye düşecek. Devam edilsin mi?",
+    submit_create_deal: "İşlem oluştur",
+    submit_save_draft: "Taslak olarak kaydet",
+    submit_create_and_notify: "Oluştur ve bildir",
+    submit_disabled_tooltip: "Formdaki hataları düzeltin",
     close: "Kapat",
     loading: "Yükleniyor...",
     // ───────────────────────────────────────────────────────────────
