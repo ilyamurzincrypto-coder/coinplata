@@ -23,6 +23,7 @@ import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
 import { createDeal } from "../../lib/dealOperations.js";
 import { buildTx } from "../../lib/dealForm/buildTx.js";
 import { runSubmitFlow } from "../../lib/dealForm/submitFlow.js";
+import { computePickedRate } from "../../lib/dealForm/pickRate.js";
 
 export default function DealForm({
   mode = "create",
@@ -110,20 +111,12 @@ export default function DealForm({
   const handlePickRate = useCallback(
     (from, to, rate) => {
       if (!activeLeg) return;
-      // Определяем какой direction matches active leg
-      const inCurrency = inLegs[0]?.currency;
-      // Стандартный сценарий: leg.currency = OUT side, IN side = inLegs[0].currency
-      // Если leg.currency = to, fill rate (IN→OUT prices)
-      if (activeLeg.currency === to && inCurrency === from) {
-        updateLeg(activeLeg.id, { rate: String(rate), rateManual: false });
-      } else if (activeLeg.currency === from && inCurrency === to) {
-        // Inverse — rate в обратную сторону
-        const inv = 1 / rate;
-        updateLeg(activeLeg.id, { rate: String(inv), rateManual: false });
-      } else {
-        // Direction не совпадает — fill сырой rate как есть, мenager сам разберется
-        updateLeg(activeLeg.id, { rate: String(rate), rateManual: true });
-      }
+      const patch = computePickedRate({
+        from, to, rate,
+        inCurrency: inLegs[0]?.currency || null,
+        outCurrency: activeLeg.currency,
+      });
+      if (patch) updateLeg(activeLeg.id, patch);
     },
     [activeLeg, inLegs, updateLeg]
   );
