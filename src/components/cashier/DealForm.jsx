@@ -13,6 +13,7 @@ import CounterpartyBar from "./CounterpartyBar.jsx";
 import DealLegsTable from "./DealLegsTable.jsx";
 import ConditionsBar from "./ConditionsBar.jsx";
 import FooterBar from "./FooterBar.jsx";
+import RatesPanel from "./RatesPanel.jsx";
 import {
   useDealForm,
   tryLoadDraft,
@@ -63,6 +64,7 @@ export default function DealForm({
   );
   const [showRequiredError, setShowRequiredError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [activeOutLegId, setActiveOutLegId] = useState(null);
 
   useEffect(() => {
     if (counterpartyId) return;
@@ -92,6 +94,46 @@ export default function DealForm({
     hydrate,
     reset,
   } = useDealForm();
+
+  // ── 2.5.4 RatesPanel click-to-fill ──
+  // Активная OUT leg выбирается:
+  //   1. Last edited OUT leg (из reducer __lastUpdate)
+  //   2. Fallback: first OUT leg
+  const activeLeg = useMemo(() => {
+    if (activeOutLegId) {
+      const found = legs.find((l) => l.id === activeOutLegId);
+      if (found && found.side === "out") return found;
+    }
+    return outLegs[0] || null;
+  }, [activeOutLegId, legs, outLegs]);
+
+  const handlePickRate = useCallback(
+    (from, to, rate) => {
+      if (!activeLeg) return;
+      // Определяем какой direction matches active leg
+      const inCurrency = inLegs[0]?.currency;
+      // Стандартный сценарий: leg.currency = OUT side, IN side = inLegs[0].currency
+      // Если leg.currency = to, fill rate (IN→OUT prices)
+      if (activeLeg.currency === to && inCurrency === from) {
+        updateLeg(activeLeg.id, { rate: String(rate), rateManual: false });
+      } else if (activeLeg.currency === from && inCurrency === to) {
+        // Inverse — rate в обратную сторону
+        const inv = 1 / rate;
+        updateLeg(activeLeg.id, { rate: String(inv), rateManual: false });
+      } else {
+        // Direction не совпадает — fill сырой rate как есть, мenager сам разберется
+        updateLeg(activeLeg.id, { rate: String(rate), rateManual: true });
+      }
+    },
+    [activeLeg, inLegs, updateLeg]
+  );
+
+  const activeLegSummary = useMemo(() => {
+    if (!activeLeg) return null;
+    const inCur = inLegs[0]?.currency;
+    if (!inCur || !activeLeg.currency) return null;
+    return `${inCur} → ${activeLeg.currency}`;
+  }, [activeLeg, inLegs]);
 
   const onToggleSide = useCallback(
     (legId) => {
@@ -244,7 +286,8 @@ export default function DealForm({
   );
 
   return (
-    <div className="bg-white rounded-[var(--radius-section)] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+    <div className="flex gap-3 items-start">
+    <div className="bg-white rounded-[var(--radius-section)] border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-w-0">
       <StickyTitle
         mode={mode}
         dealId={dealId}
@@ -286,17 +329,28 @@ export default function DealForm({
         showRequiredError={showRequiredError}
       />
 
-      <DealLegsTable
-        legs={legs}
-        inLegs={inLegs}
-        outLegs={outLegs}
-        onUpdate={updateLeg}
-        onRemove={removeLeg}
-        onAddLeg={addLeg}
-        onToggleSide={onToggleSide}
-        officeId={currentOffice}
-        clientBalances={clientBalances}
-      />
+      <div
+        onFocusCapture={(e) => {
+          // Trace last focused OUT leg для RatesPanel click-to-fill
+          const row = e.target.closest("[data-leg-id]");
+          if (!row) return;
+          const id = row.getAttribute("data-leg-id");
+          const side = row.getAttribute("data-leg-side");
+          if (side === "out" && id) setActiveOutLegId(id);
+        }}
+      >
+        <DealLegsTable
+          legs={legs}
+          inLegs={inLegs}
+          outLegs={outLegs}
+          onUpdate={updateLeg}
+          onRemove={removeLeg}
+          onAddLeg={addLeg}
+          onToggleSide={onToggleSide}
+          officeId={currentOffice}
+          clientBalances={clientBalances}
+        />
+      </div>
 
       <ConditionsBar
         conditions={conditions}
@@ -321,6 +375,16 @@ export default function DealForm({
         submitDisabled={submitDisabled}
         loading={loading || submitting}
       />
+    </div>
+
+    {/* Right sidebar: RatesPanel (этап 4 — click-to-fill rate в active OUT) */}
+    <div className="hidden xl:block">
+      <RatesPanel
+        officeId={currentOffice}
+        onPickRate={handlePickRate}
+        activeLegSummary={activeLegSummary}
+      />
+    </div>
     </div>
   );
 }
