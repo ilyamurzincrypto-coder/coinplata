@@ -1,43 +1,49 @@
 // src/lib/dealForm/buildTx.js
-// UI этап 2 — pure mapping legs[] state → v2 RPC payload (rpcCreateDealV2 shape).
+// UI этап 2 — pure mapping legs[] state → rpcCreateDealV2 wrapper input.
 //
-// Совместим с adapter в newLedgerAdapter.js — но строит payload напрямую
-// (без legacy-form пути). UI этап 2 → DealForm v2 → buildTx → rpcCreateDealV2.
+// Wrapper в src/lib/newLedger.js принимает camelCase, потом делает
+// camelCase → snake_case translation для PostgREST (p_client_id, p_in_legs etc.).
+// Поэтому buildTx output использует camelCase top-level + leg-level
+// (consistent с adapter newLedgerAdapter.js).
 //
-// Контракт RPC create_deal_v2 (snake_case):
+// Метаданные внутри `metadata` jsonb — snake_case convention (читабельнее в
+// SQL queries, consistent с тем как ledger backend пишет).
+//
+// Финальный shape:
 //   {
-//     client_id, office_id,
-//     in_legs:  [{ currency, amount, source: 'fresh'|'from_balance',
-//                  account_code?, rate?, rate_source? }],
-//     out_legs: [{ currency, amount, destination: 'physical'|'to_balance',
-//                  account_code?, rate?, rate_source?, deferred? }],
+//     clientId, officeId, effectiveDate?,
+//     inLegs:  [{ currency, amount, source: 'fresh'|'from_balance',
+//                 accountCode?, rate?, rateSource? }],
+//     outLegs: [{ currency, amount, destination: 'physical'|'to_balance',
+//                 accountCode?, rate?, rateSource?, deferred? }],
 //     commission: [{ currency, amount, kind: 'commission'|'spread' }],
 //     description?, metadata?
 //   }
 //
 // Account-code resolution делается ВНУТРИ buildTx через accountCodeByLegacyId
-// map (передаётся вызывающим). Map собирается на UI-стороне один раз через
-// `useAccounts()` + lookup `account.ledger_account_code`.
+// map (передаётся вызывающим). Если map === null — режим legacy-passthrough
+// (UI legacy path), accountId передаётся как есть в leg.accountId.
 
 /**
- * Преобразует legs[] state в v2 RPC payload.
+ * Преобразует legs[] state в rpcCreateDealV2 wrapper input (camelCase).
  *
  * @param {Object} args
  * @param {import('../../store/dealForm.js').DealFormState} args.state
  * @param {string} args.clientId  — UUID существующего клиента
  * @param {string} args.officeId
- * @param {Object<string,string>} args.accountCodeByLegacyId
- *   — карта public.accounts.id → ledger.accounts.code. Без неё buildTx
- *     не может resolve account_code и бросит для legs где accountId задан.
+ * @param {Object<string,string>|null} [args.accountCodeByLegacyId]
+ *   — карта public.accounts.id → ledger.accounts.code.
+ *     null → legacy passthrough (UI legacy path, accountId как-есть).
+ *     Object → ledger v2 path, throws если account UUID не в map.
  * @param {string} [args.description]
  * @param {Object} [args.metadata]
- * @returns {Object} v2 payload
+ * @returns {Object} v2 wrapper payload
  */
 export function buildTx({
   state,
   clientId,
   officeId,
-  accountCodeByLegacyId = {},
+  accountCodeByLegacyId,
   description,
   metadata,
 }) {
@@ -90,10 +96,10 @@ export function buildTx({
   if (onDemand.scheduled_at) conditionsMetadata.scheduled_at = onDemand.scheduled_at;
 
   const result = {
-    client_id: clientId,
-    office_id: officeId,
-    in_legs: inLegs,
-    out_legs: outLegs,
+    clientId,
+    officeId,
+    inLegs,
+    outLegs,
     commission,
     description: description || null,
     metadata: {
@@ -103,9 +109,9 @@ export function buildTx({
     },
   };
 
-  // effective_date только если backdate задан (отдельное поле RPC)
+  // effectiveDate только если backdate задан (отдельный RPC-параметр)
   if (onDemand.backdate) {
-    result.effective_date = onDemand.backdate;
+    result.effectiveDate = onDemand.backdate;
   }
 
   return result;
@@ -133,7 +139,12 @@ function buildInLeg(leg, accCodeMap) {
     if (!leg.accountId) {
       throw new Error(`IN leg ${leg.id}: fresh source requires accountId`);
     }
-    out.account_code = resolveCode(leg.accountId, accCodeMap, "IN", leg.id);
+    if (accCodeMap === null || accCodeMap === undefined) {
+      // Legacy passthrough — accountId как-есть
+      out.accountId = leg.accountId;
+    } else {
+      out.accountCode = resolveCode(leg.accountId, accCodeMap, "IN", leg.id);
+    }
   }
   return out;
 }
@@ -162,10 +173,10 @@ function buildOutLeg(leg, accCodeMap) {
   const rate = Number(leg.rate);
   if (Number.isFinite(rate) && rate > 0) {
     out.rate = rate;
-    out.rate_source = leg.rateManual ? "manual" : "market";
+    out.rateSource = leg.rateManual ? "manual" : "market";
   }
 
-  // account_code обязателен для physical (включая deferred)
+  // accountCode обязателен для physical (включая deferred)
   if (destination === "physical") {
     if (!leg.accountId) {
       throw new Error(
@@ -173,7 +184,12 @@ function buildOutLeg(leg, accCodeMap) {
         `(deferred legs тоже — для будущего complete_deal_leg)`
       );
     }
-    out.account_code = resolveCode(leg.accountId, accCodeMap, "OUT", leg.id);
+    if (accCodeMap === null || accCodeMap === undefined) {
+      // Legacy passthrough
+      out.accountId = leg.accountId;
+    } else {
+      out.accountCode = resolveCode(leg.accountId, accCodeMap, "OUT", leg.id);
+    }
   }
 
   return out;
@@ -246,7 +262,7 @@ function buildCommission(entries, outLegs, conditions = {}) {
 }
 
 function resolveCode(legacyId, map, sideLabel, legId) {
-  const code = map[legacyId];
+  const code = map && map[legacyId];
   if (!code) {
     throw new Error(
       `${sideLabel} leg ${legId}: no ledger_account_code mapping for accountId=${legacyId}. ` +
