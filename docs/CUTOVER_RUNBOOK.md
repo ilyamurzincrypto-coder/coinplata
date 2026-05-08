@@ -6,7 +6,8 @@
 
 **Опция C — physical inventory cutover.** Текущие legacy данные обнуляются.
 Менеджеры на cutover-day делают физическую инвентаризацию по каждому
-офису/кошельку. Эти числа = единственный источник для opening transaction.
+офису/банку/кошельку. Эти числа = единственный источник для opening
+transaction.
 
 С момента cutover:
 - Все новые операции идут через `ledger.*` RPC (новый ledger)
@@ -20,6 +21,53 @@ in new ledger. No separate partner reconciliation needed.
 Partner Liab accounts (2210-2219) остаются в seed для будущего use,
 но balance=0 на opening — `create_opening_from_inventory` физически
 блокирует partner_dim_required entries (RAISE 22000).
+
+## Pre-cutover validations (T-24 hours)
+
+**Before initiating cutover, run these queries и verify ALL return 0.**
+Если ANY query > 0 → resolve в legacy ДО cutover. Cutover BLOCKED иначе.
+
+```sql
+-- C1. Pending deals — must be settled or cancelled
+SELECT count(*) AS pending_deals
+  FROM public.deals
+ WHERE status IN ('pending','checking');
+
+-- C2. Open obligations — must be settled or cancelled
+SELECT count(*) AS open_obligations
+  FROM public.obligations
+ WHERE settled_at IS NULL AND COALESCE(canceled_at, NULL) IS NULL;
+
+-- C3. Active reservations — must be released or completed
+SELECT count(*) AS reserved_movements
+  FROM public.account_movements
+ WHERE reserved = true;
+
+-- C4. Pending interoffice transfers — must be confirmed/rejected
+SELECT count(*) AS pending_transfers
+  FROM public.transfers
+ WHERE status = 'pending';
+
+-- C5. Unmatched accounts (no ledger mapping AND not legacy_only)
+SELECT count(*) AS unmapped_accounts
+  FROM public.accounts
+ WHERE active
+   AND ledger_account_code IS NULL
+   AND legacy_only = false;
+```
+
+Resolve options для каждого:
+- **C1** pending deals → `rpcCompleteDeal` или `rpcDeleteDeal('cutover-cancel')`
+- **C2** open obligations → `rpcSettleObligation` / `rpcCancelObligation`
+- **C3** active reservations — связаны с pending deals — после resolve C1
+  должны очиститься. Orphaned → `rpcDeleteDeal` parent.
+- **C4** pending transfers → `rpcConfirmTransfer` / `rpcRejectTransfer`
+- **C5** unmapped accounts — либо seed missing ledger account (миграция),
+  либо `legacy_only=true` если account реально не нужен в новом ledger.
+
+После прогона ВСЕХ queries → 0 → переходим к Шаг 0.
+
+---
 
 ## Шаг 0 — pre-flight (за неделю до)
 

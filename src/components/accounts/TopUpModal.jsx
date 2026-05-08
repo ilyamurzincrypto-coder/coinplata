@@ -9,7 +9,8 @@ import { useAudit } from "../../store/audit.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { rpcTopUp, withToast } from "../../lib/supabaseWrite.js";
+import { withToast } from "../../lib/supabaseWrite.js";
+import { createTopup } from "../../lib/dealOperations.js";
 
 export default function TopUpModal({ account, onClose }) {
   const { t } = useTranslation();
@@ -65,7 +66,7 @@ export default function TopUpModal({ account, onClose }) {
       setBusy(true);
       try {
         const res = await withToast(
-          () => rpcTopUp({ accountId: account.id, amount: amt, note: noteWithSource, sourceKind }),
+          () => createTopup({ accountId: account.id, amount: amt, note: noteWithSource, sourceKind }),
           { success: successMsg, errorPrefix: "Top up failed" }
         );
         if (res.ok) {

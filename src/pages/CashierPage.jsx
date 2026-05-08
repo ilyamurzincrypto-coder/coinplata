@@ -6,6 +6,13 @@ import RatesBar from "../components/RatesBar.jsx";
 import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
+import DealForm from "../components/cashier/DealForm.jsx";
+
+// Feature-flag для новой формы создания сделки.
+// На этапе 1 default = false → показываем legacy ExchangeForm.
+// Включается через .env.local: VITE_USE_NEW_DEAL_FORM=true
+const USE_NEW_DEAL_FORM =
+  import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
@@ -20,7 +27,8 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { createDeal } from "../lib/dealOperations.js";
 import { supabase } from "../lib/supabase.js";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -135,7 +143,7 @@ export default function CashierPage({
 
         const res = await withToast(
           () =>
-            rpcCreateDeal({
+            createDeal({
               officeId: uuidOrNull(tx.officeId),
               // tx.managerId выставляется в ExchangeForm: для owner/admin —
               // выбранный в dropdown менеджер, для остальных — currentUser.id.
@@ -601,12 +609,22 @@ export default function CashierPage({
 
               <div className="p-5">
                 {formMounted && (
-                  <ExchangeForm
-                    mode="create"
-                    currentOffice={currentOffice}
-                    onSubmit={handleFormSubmit}
-                    submitting={submitting}
-                  />
+                  USE_NEW_DEAL_FORM ? (
+                    <DealForm
+                      mode="create"
+                      currentOffice={currentOffice}
+                      onSubmit={handleFormSubmit}
+                      submitting={submitting}
+                      onCancel={() => setFormMounted(false)}
+                    />
+                  ) : (
+                    <ExchangeForm
+                      mode="create"
+                      currentOffice={currentOffice}
+                      onSubmit={handleFormSubmit}
+                      submitting={submitting}
+                    />
+                  )
                 )}
               </div>
             </div>

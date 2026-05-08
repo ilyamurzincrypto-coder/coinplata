@@ -174,6 +174,11 @@ export async function loadAccounts() {
     lastCheckedBlock: num(r.last_checked_block),
     lastCheckedAt: r.last_checked_at,
     accountingCode: r.accounting_code || null,
+    // Direction 2 fields — link to ledger.accounts.code (via JOIN-friendly map)
+    // и legacy_only marker для accounts которые не используются в new ledger
+    // (e.g. fiat banks, удалённые из ledger seed).
+    ledgerAccountCode: r.ledger_account_code || null,
+    legacyOnly: r.legacy_only === true,
   }));
 }
 
