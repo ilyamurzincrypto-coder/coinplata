@@ -25,7 +25,7 @@ VITE_USE_NEW_DEAL_FORM=true
 - **Этап 2** ✓ DealLegsTable + унифицированный `legs[]` state + buildTx
 - **Этап 2.5** ✓ rate↔amount sync + balance display + cross-leg validation
   + spread indicator + undo/redo + auto-save draft
-- Этап 3 — ConditionsBar (3 группы) + on-demand chips
+- **Этап 3** ✓ ConditionsBar (3 группы chips) + OnDemandPanel
 - Этап 4 — FooterBar + LivePreview + Submit CTA
 - Этап 5 — cleanup старых компонентов
 - Этап 5+ — OpenObligationsWidget (после operations layer от ledger track)
@@ -108,6 +108,59 @@ DealForm.jsx                    — root, useReducer state
 - UPDATE_LEG throttle: continuous edits в same leg+keys = single undo step
 - Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (или Ctrl+Y) = redo
 - Footer buttons + keyboard shortcuts глобально
+
+## Этап 3 фичи
+
+### ConditionsBar (3 группы chips)
+
+```
+┌─────────────────────────────────────────────────────┐
+│ Расчёт:   [Pro-rata ✓] [На одну ногу] [Вручную]    │ ← single-select
+│ Тип:      [Реферал] [VIP ✓] [Партнёр] [OTC]         │ ← multi-select
+│ Комиссии: [Network fee ✓] [Network fee клиент]      │ ← multi (mutex pair)
+│           [Bank fee] [Без комиссии]                  │
+│ + Backdate · + Запланир · + Коммент · + TX hash    │ ← OnDemand
+└─────────────────────────────────────────────────────┘
+```
+
+`state.conditions` shape:
+```js
+{
+  margin_strategy: 'pro_rata' | 'single_leg' | 'manual',
+  flags: ['referral','vip','partner','otc'],
+  fees:  ['network_fee_exchange','network_fee_client','bank_fee','no_commission'],
+  on_demand: { backdate, scheduled_at, comment, tx_hash }
+}
+```
+
+**Behaviour rules:**
+- `manual` margin disabled (Q3 2026 placeholder)
+- `bank_fee` disabled (Q3 placeholder)
+- `network_fee_exchange` ↔ `network_fee_client` — mutex pair
+- `no_commission` toggle → confirm modal "Сделка без маржи?"
+- TX hash auto-expand если IN-leg has currency ∈ {USDT, USDC, BTC, ETH} + source='fresh'
+- All chip clicks → `setCondition(field, value)` через reducer (UNDOABLE)
+
+### buildTx → metadata mapping (этап 3)
+
+| Conditions | → Payload |
+|---|---|
+| `margin_strategy='single_leg'` | commission объединена в `outLegs[0].currency` |
+| `flags.includes('referral')` | `metadata.referral=true` |
+| `flags.includes('vip')` | `metadata.vip=true` |
+| `flags.includes('otc')` | `metadata.is_otc=true` |
+| `flags.includes('partner')` | `metadata.is_partner=true` |
+| `fees.includes('network_fee_client')` | `metadata.fee_paid_by='client'` |
+| `fees.includes('no_commission')` | `metadata.no_commission=true` + sentinel commission |
+| `on_demand.backdate` | top-level `effective_date` (RPC parameter) |
+| `on_demand.scheduled_at` | `metadata.scheduled_at` |
+| `on_demand.comment` | `metadata.comment` |
+| `on_demand.tx_hash` | `metadata.tx_hash` |
+
+`commission[]` логика:
+- `pro_rata` (default) — массив entries по currency
+- `single_leg` — все суммы объединяются в одну entry в `outLegs[0].currency`
+- `no_commission` — sentinel `[{currency: outLegs[0].currency, amount: 0.01}]` + flag в metadata
 
 ### Auto-save draft
 - `useDealForm` пишет в `localStorage[dealForm.draft.v1]` на каждое изменение

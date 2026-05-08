@@ -39,9 +39,23 @@ const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
  */
 
 /**
+ * @typedef {Object} ConditionsState
+ * @property {'pro_rata'|'single_leg'|'manual'} margin_strategy
+ * @property {string[]} flags          — ['referral','vip','partner','otc']
+ * @property {string[]} fees           — ['network_fee_exchange','network_fee_client',
+ *                                        'bank_fee','no_commission']
+ * @property {Object}   on_demand
+ * @property {string|null} on_demand.backdate     — ISO timestamp
+ * @property {string|null} on_demand.scheduled_at — ISO timestamp
+ * @property {string|null} on_demand.comment
+ * @property {string|null} on_demand.tx_hash
+ */
+
+/**
  * @typedef {Object} DealFormState
  * @property {Leg[]} legs
  * @property {CommissionEntry[]} commission
+ * @property {ConditionsState} conditions
  */
 
 // ─────────────────────────────────────────────────────────────────────
@@ -54,11 +68,26 @@ export const ACTIONS = {
   UPDATE_LEG: "UPDATE_LEG",
   REORDER_LEGS: "REORDER_LEGS",
   SET_COMMISSION: "SET_COMMISSION",
+  SET_CONDITION: "SET_CONDITION",
   RESET: "RESET",
   HYDRATE: "HYDRATE",
   UNDO: "UNDO",
   REDO: "REDO",
 };
+
+export function defaultConditions() {
+  return {
+    margin_strategy: "pro_rata",
+    flags: [],
+    fees: ["network_fee_exchange"],
+    on_demand: {
+      backdate: null,
+      scheduled_at: null,
+      comment: null,
+      tx_hash: null,
+    },
+  };
+}
 
 // Действия которые попадают в undo-stack. UPDATE_LEG объединяется по
 // throttle — multiple keystrokes в один cell = один undo-step (см. ниже).
@@ -68,6 +97,7 @@ const UNDOABLE = new Set([
   ACTIONS.UPDATE_LEG,
   ACTIONS.REORDER_LEGS,
   ACTIONS.SET_COMMISSION,
+  ACTIONS.SET_CONDITION,
   ACTIONS.RESET,
 ]);
 
@@ -114,6 +144,7 @@ export function initialState() {
   return {
     legs: [makeEmptyLeg("in")],
     commission: [],
+    conditions: defaultConditions(),
   };
 }
 
@@ -168,6 +199,26 @@ export function dealFormReducer(state, action) {
     }
     case ACTIONS.SET_COMMISSION: {
       return { ...state, commission: action.entries || [] };
+    }
+    case ACTIONS.SET_CONDITION: {
+      const conditions = state.conditions || defaultConditions();
+      const f = action.field;
+      // Top-level fields: margin_strategy, flags, fees
+      if (f === "margin_strategy" || f === "flags" || f === "fees") {
+        return { ...state, conditions: { ...conditions, [f]: action.value } };
+      }
+      // Nested on_demand.*
+      if (typeof f === "string" && f.startsWith("on_demand.")) {
+        const key = f.slice("on_demand.".length);
+        return {
+          ...state,
+          conditions: {
+            ...conditions,
+            on_demand: { ...(conditions.on_demand || {}), [key]: action.value },
+          },
+        };
+      }
+      return state;
     }
     case ACTIONS.HYDRATE: {
       return action.state || state;
@@ -282,6 +333,9 @@ export function useDealForm(opts) {
   const setCommission = useCallback((entries) => {
     dispatch({ type: ACTIONS.SET_COMMISSION, entries });
   }, []);
+  const setCondition = useCallback((field, value) => {
+    dispatch({ type: ACTIONS.SET_CONDITION, field, value });
+  }, []);
   const reset = useCallback(() => {
     dispatch({ type: ACTIONS.RESET });
   }, []);
@@ -296,14 +350,18 @@ export function useDealForm(opts) {
     if (!persist) return;
     try {
       const payload = {
-        state: { legs: state.legs, commission: state.commission },
+        state: {
+          legs: state.legs,
+          commission: state.commission,
+          conditions: state.conditions,
+        },
         savedAt: Date.now(),
       };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
     } catch {
       // localStorage может быть недоступен (private mode, quota) — игнорируем
     }
-  }, [state.legs, state.commission, persist]);
+  }, [state.legs, state.commission, state.conditions, persist]);
 
   // ── Keyboard shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z ──
   useEffect(() => {
@@ -359,11 +417,13 @@ export function useDealForm(opts) {
     totalOut,
     commission: state.commission,
     commissionByCurrency,
+    conditions: state.conditions || defaultConditions(),
     addLeg,
     removeLeg,
     updateLeg,
     reorderLegs,
     setCommission,
+    setCondition,
     reset,
     hydrate,
     undo,
@@ -397,6 +457,7 @@ export function tryLoadDraft() {
     return {
       legs: parsed.state.legs,
       commission: parsed.state.commission || [],
+      conditions: parsed.state.conditions || defaultConditions(),
     };
   } catch {
     return null;
