@@ -4,7 +4,11 @@
 // useReducer-based state. Один shape для IN и OUT legs (side discriminator).
 // buildTx (src/lib/dealForm/buildTx.js) конвертирует это в v2 RPC payload.
 
-import { useReducer, useCallback, useMemo } from "react";
+import { useReducer, useCallback, useMemo, useEffect } from "react";
+
+const HISTORY_MAX = 20;
+const DRAFT_KEY = "dealForm.draft.v1";
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 // ─────────────────────────────────────────────────────────────────────
 // Types
@@ -52,7 +56,20 @@ export const ACTIONS = {
   SET_COMMISSION: "SET_COMMISSION",
   RESET: "RESET",
   HYDRATE: "HYDRATE",
+  UNDO: "UNDO",
+  REDO: "REDO",
 };
+
+// Действия которые попадают в undo-stack. UPDATE_LEG объединяется по
+// throttle — multiple keystrokes в один cell = один undo-step (см. ниже).
+const UNDOABLE = new Set([
+  ACTIONS.ADD_LEG,
+  ACTIONS.REMOVE_LEG,
+  ACTIONS.UPDATE_LEG,
+  ACTIONS.REORDER_LEGS,
+  ACTIONS.SET_COMMISSION,
+  ACTIONS.RESET,
+]);
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -168,15 +185,87 @@ export function dealFormReducer(state, action) {
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * useDealForm — combo hook для DealForm.
- * Возвращает state, селекторы и action creators.
+ * historyReducer — wrapper над dealFormReducer для undo/redo.
+ * State shape: { past: State[], present: State, future: State[] }.
+ * Только UNDOABLE actions попадают в past stack. Stack ограничен HISTORY_MAX.
  */
-export function useDealForm(initial) {
-  const [state, dispatch] = useReducer(
-    dealFormReducer,
-    initial,
-    initial ? () => initial : initialState
-  );
+export function historyReducer(state, action) {
+  if (action.type === ACTIONS.UNDO) {
+    if (state.past.length === 0) return state;
+    const previous = state.past[state.past.length - 1];
+    return {
+      past: state.past.slice(0, -1),
+      present: previous,
+      future: [state.present, ...state.future].slice(0, HISTORY_MAX),
+    };
+  }
+  if (action.type === ACTIONS.REDO) {
+    if (state.future.length === 0) return state;
+    const [next, ...rest] = state.future;
+    return {
+      past: [...state.past, state.present].slice(-HISTORY_MAX),
+      present: next,
+      future: rest,
+    };
+  }
+
+  const newPresent = dealFormReducer(state.present, action);
+  if (newPresent === state.present) return state;
+  if (!UNDOABLE.has(action.type)) {
+    return { ...state, present: newPresent };
+  }
+
+  // Throttle UPDATE_LEG: если последняя undo-entry для того же leg+key —
+  // не плодим новые stack frames на каждое нажатие клавиши.
+  const last = state.past[state.past.length - 1];
+  const isUpdateContinuation =
+    action.type === ACTIONS.UPDATE_LEG &&
+    last && last.__lastUpdate &&
+    last.__lastUpdate.id === action.id &&
+    last.__lastUpdate.keys === Object.keys(action.patch || {}).join(",");
+
+  if (isUpdateContinuation) {
+    return { ...state, present: newPresent, future: [] };
+  }
+
+  // Mark present с metadata для throttle detection
+  const presentMarked =
+    action.type === ACTIONS.UPDATE_LEG
+      ? {
+          ...state.present,
+          __lastUpdate: {
+            id: action.id,
+            keys: Object.keys(action.patch || {}).join(","),
+          },
+        }
+      : state.present;
+  return {
+    past: [...state.past, presentMarked].slice(-HISTORY_MAX),
+    present: newPresent,
+    future: [],
+  };
+}
+
+/**
+ * useDealForm — combo hook для DealForm.
+ * Возвращает state, селекторы и action creators (включая undo/redo).
+ *
+ * @param {Object} [opts]
+ * @param {Object} [opts.initial]   — initial state override (skip default)
+ * @param {boolean} [opts.persist]  — auto-save в localStorage (default true)
+ */
+export function useDealForm(opts) {
+  const initial = opts && opts.initial;
+  const persist = !opts || opts.persist !== false;
+
+  const init = () => {
+    const presentState = initial || tryLoadDraft() || initialState();
+    return { past: [], present: presentState, future: [] };
+  };
+
+  const [hist, dispatchInner] = useReducer(historyReducer, undefined, init);
+  const state = hist.present;
+  const dispatch = dispatchInner;
 
   const addLeg = useCallback((side, leg) => {
     dispatch({ type: ACTIONS.ADD_LEG, side, leg });
@@ -199,6 +288,40 @@ export function useDealForm(initial) {
   const hydrate = useCallback((s) => {
     dispatch({ type: ACTIONS.HYDRATE, state: s });
   }, []);
+  const undo = useCallback(() => dispatch({ type: ACTIONS.UNDO }), []);
+  const redo = useCallback(() => dispatch({ type: ACTIONS.REDO }), []);
+
+  // ── Auto-save draft в localStorage ──
+  useEffect(() => {
+    if (!persist) return;
+    try {
+      const payload = {
+        state: { legs: state.legs, commission: state.commission },
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+    } catch {
+      // localStorage может быть недоступен (private mode, quota) — игнорируем
+    }
+  }, [state.legs, state.commission, persist]);
+
+  // ── Keyboard shortcuts: Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z ──
+  useEffect(() => {
+    const handler = (e) => {
+      const meta = e.metaKey || e.ctrlKey;
+      if (!meta) return;
+      const key = (e.key || "").toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
 
   // ── Selectors ──
   const inLegs = useMemo(
@@ -243,8 +366,50 @@ export function useDealForm(initial) {
     setCommission,
     reset,
     hydrate,
+    undo,
+    redo,
+    canUndo: hist.past.length > 0,
+    canRedo: hist.future.length > 0,
     dispatch,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Draft persistence (localStorage)
+// ─────────────────────────────────────────────────────────────────────
+
+export function tryLoadDraft() {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.state || !Array.isArray(parsed.state.legs)) return null;
+    if (parsed.savedAt && Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    // Skip empty drafts (только дефолтная пустая IN row)
+    const meaningful = parsed.state.legs.some(
+      (l) => l.amount || l.currency || l.accountId || l.rate
+    );
+    if (!meaningful) return null;
+    return {
+      legs: parsed.state.legs,
+      commission: parsed.state.commission || [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearDraft() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* noop */
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────

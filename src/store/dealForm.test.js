@@ -159,3 +159,76 @@ describe("REMOVE_LEG invariant", () => {
     expect(next.legs[0].side).toBe("in");
   });
 });
+
+describe("history (undo/redo)", () => {
+  // Импорт здесь чтобы не циклить при error в historyReducer
+  const { historyReducer } = require("./dealForm.js");
+
+  function initHist() {
+    return { past: [], present: initialState(), future: [] };
+  }
+
+  it("UNDO restores previous state", () => {
+    const h0 = initHist();
+    const inId = h0.present.legs[0].id;
+    const h1 = historyReducer(h0, {
+      type: ACTIONS.UPDATE_LEG, id: inId, patch: { currency: "USDT" },
+    });
+    expect(h1.present.legs[0].currency).toBe("USDT");
+    expect(h1.past).toHaveLength(1);
+
+    const h2 = historyReducer(h1, { type: ACTIONS.UNDO });
+    expect(h2.present.legs[0].currency).toBe("");
+    expect(h2.past).toHaveLength(0);
+    expect(h2.future).toHaveLength(1);
+  });
+
+  it("REDO restores undone state", () => {
+    const h0 = initHist();
+    const inId = h0.present.legs[0].id;
+    const h1 = historyReducer(h0, {
+      type: ACTIONS.UPDATE_LEG, id: inId, patch: { currency: "USDT" },
+    });
+    const h2 = historyReducer(h1, { type: ACTIONS.UNDO });
+    const h3 = historyReducer(h2, { type: ACTIONS.REDO });
+    expect(h3.present.legs[0].currency).toBe("USDT");
+    expect(h3.past).toHaveLength(1);
+    expect(h3.future).toHaveLength(0);
+  });
+
+  it("UPDATE_LEG throttle: same id+keys = single undo step", () => {
+    const h0 = initHist();
+    const inId = h0.present.legs[0].id;
+    const h1 = historyReducer(h0, {
+      type: ACTIONS.UPDATE_LEG, id: inId, patch: { amount: "1" },
+    });
+    const h2 = historyReducer(h1, {
+      type: ACTIONS.UPDATE_LEG, id: inId, patch: { amount: "10" },
+    });
+    const h3 = historyReducer(h2, {
+      type: ACTIONS.UPDATE_LEG, id: inId, patch: { amount: "100" },
+    });
+    // Только 1 entry в past (throttle continuation)
+    expect(h3.past).toHaveLength(1);
+    expect(h3.present.legs[0].amount).toBe("100");
+
+    // Один UNDO откатывает на pre-amount state
+    const h4 = historyReducer(h3, { type: ACTIONS.UNDO });
+    expect(h4.present.legs[0].amount).toBe("");
+  });
+
+  it("UNDO/REDO no-op when stacks empty", () => {
+    const h0 = initHist();
+    expect(historyReducer(h0, { type: ACTIONS.UNDO })).toBe(h0);
+    expect(historyReducer(h0, { type: ACTIONS.REDO })).toBe(h0);
+  });
+
+  it("non-undoable action не пишет в past", () => {
+    const h0 = initHist();
+    const h1 = historyReducer(h0, {
+      type: ACTIONS.HYDRATE,
+      state: { legs: [], commission: [] },
+    });
+    expect(h1.past).toHaveLength(0);
+  });
+});
