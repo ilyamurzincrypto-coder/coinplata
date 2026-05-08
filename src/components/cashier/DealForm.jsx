@@ -22,7 +22,7 @@ import {
 import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
 import { createDeal } from "../../lib/dealOperations.js";
 import { buildTx } from "../../lib/dealForm/buildTx.js";
-import { mapErrorToToast } from "../../lib/dealForm/errorMapper.js";
+import { runSubmitFlow } from "../../lib/dealForm/submitFlow.js";
 
 export default function DealForm({
   mode = "create",
@@ -225,41 +225,32 @@ export default function DealForm({
         return;
       }
 
-      let payload;
-      try {
-        payload = buildPayload(extraMeta);
-      } catch (buildErr) {
-        const toast = mapErrorToToast(
-          { code: "22000", message: buildErr.message },
-          t
-        );
-        emitToast("error", toast.message + (toast.details ? ` · ${toast.details}` : ""));
-        return;
-      }
-
       setLoading(true);
-      try {
-        const result = await createDeal(payload);
-        const txId =
-          (result && (result.deal_tx_id || result)) || "";
-        emitToast(
-          "success",
-          t("deal_created_success") + (txId ? ` · ${String(txId).slice(0, 8)}…` : "")
-        );
-        clearDraft();
-        reset();
-        onSubmit?.(result);
-      } catch (error) {
-        const toast = mapErrorToToast(error, t);
-        emitToast(
-          "error",
-          toast.message + (toast.details ? ` · ${toast.details}` : "")
-        );
-        // eslint-disable-next-line no-console
-        console.warn("[DealForm] submit failed", error);
-      } finally {
-        setLoading(false);
-      }
+      const flow = await runSubmitFlow({
+        buildPayload: () => buildPayload(extraMeta),
+        createDeal,
+        t,
+        onSuccess: (result) => {
+          const txId = (result && (result.deal_tx_id || result)) || "";
+          emitToast(
+            "success",
+            t("deal_created_success") + (txId ? ` · ${String(txId).slice(0, 8)}…` : "")
+          );
+          clearDraft();
+          reset();
+          onSubmit?.(result);
+        },
+        onError: (toast) => {
+          emitToast(
+            "error",
+            toast.message + (toast.details ? ` · ${toast.details}` : "")
+          );
+          // eslint-disable-next-line no-console
+          console.warn("[DealForm] submit failed", toast);
+        },
+      });
+      setLoading(false);
+      return flow;
     },
     [
       submitDisabled,
