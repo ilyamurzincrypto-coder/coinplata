@@ -423,6 +423,71 @@ export async function rpcUpdateTxMetadataV2(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Operations Workflow Layer (operations.* RPCs)
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * operations.create_workflow — создать workflow для ledger transaction.
+ *
+ * @param {Object} payload
+ * @param {string} payload.ledgerTxId
+ * @param {'draft'|'awaiting_payment'|'awaiting_release'|'partial'|'done'|'cancelled'} [payload.initialStatus='awaiting_release']
+ * @param {Array<{leg_id, currency, amount, kind, account_code, due_at?}>} [payload.openLegs=[]]
+ * @param {string} [payload.notes]
+ * @param {string} [payload.assignedTo]
+ * @param {string} [payload.dueDate]
+ * @param {Object} [payload.metadata]
+ * @returns {Promise<string>} workflow_id
+ */
+export async function rpcCreateWorkflowV2(payload) {
+  const params = {
+    p_ledger_tx_id: payload.ledgerTxId,
+    p_initial_status: payload.initialStatus || "awaiting_release",
+    p_open_legs: payload.openLegs ?? [],
+    p_notes: payload.notes ?? null,
+    p_assigned_to: payload.assignedTo ?? null,
+    p_due_date: payload.dueDate ?? null,
+    p_metadata: payload.metadata ?? {},
+  };
+  return await invokeLedger("create_workflow", params);
+}
+
+/**
+ * operations.update_workflow_status — manual status transition.
+ *
+ * @param {Object} payload
+ * @param {string} payload.workflowId
+ * @param {string} payload.newStatus
+ * @param {string} [payload.note]
+ * @param {string} [payload.idempotencyKey]
+ */
+export async function rpcUpdateWorkflowStatusV2(payload) {
+  const key = payload.idempotencyKey || newIdempotencyKey();
+  const params = {
+    p_workflow_id: payload.workflowId,
+    p_new_status: payload.newStatus,
+    p_note: payload.note ?? null,
+    p_idempotency_key: key,
+  };
+  return await invokeLedger("update_workflow_status", params);
+}
+
+/**
+ * operations.cancel_workflow — cancel с обязательным reason.
+ *
+ * @param {Object} payload
+ * @param {string} payload.workflowId
+ * @param {string} payload.reason — required
+ */
+export async function rpcCancelWorkflowV2(payload) {
+  const params = {
+    p_workflow_id: payload.workflowId,
+    p_reason: payload.reason,
+  };
+  return await invokeLedger("cancel_workflow", params);
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Feature-flag helper — проверяет VITE_USE_NEW_LEDGER.
 // ─────────────────────────────────────────────────────────────────────
 export const USE_NEW_LEDGER =

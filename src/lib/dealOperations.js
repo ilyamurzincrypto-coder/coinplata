@@ -33,6 +33,7 @@ import {
   rpcCreateDealV2,
   rpcCreateTransferV2,
   rpcCreateAdjustmentV2,
+  rpcCreateWorkflowV2,
   USE_NEW_LEDGER,
 } from "./newLedger.js";
 import {
@@ -54,6 +55,36 @@ export async function createDeal(payload) {
   if (!USE_NEW_LEDGER) return await rpcCreateDeal(payload);
   const v2payload = await adaptLegacyDealPayload(payload);
   const result = await rpcCreateDealV2(v2payload);
+
+  // Auto-create operations workflow для deferred OUT legs.
+  // Если deal имеет deferred=true OUT — менеджеру нужен workflow widget,
+  // чтобы потом complete_deal_leg каждую ногу. Trigger в БД сам обновит
+  // status='partial'/'done' по мере closure.
+  const deferredLegs = (v2payload.outLegs || [])
+    .filter((l) => l.deferred)
+    .map((l, i) => ({
+      leg_id: `out_${i}`,
+      currency: l.currency,
+      amount: Number(l.amount),
+      kind: "out",
+      account_code: l.accountCode,
+    }));
+
+  if (deferredLegs.length > 0 && result.deal_tx_id) {
+    try {
+      await rpcCreateWorkflowV2({
+        ledgerTxId: result.deal_tx_id,
+        initialStatus: "awaiting_release",
+        openLegs: deferredLegs,
+        metadata: { source: "auto_from_deal_v2" },
+      });
+    } catch (err) {
+      // Не критично — workflow можно создать позже manually.
+      // eslint-disable-next-line no-console
+      console.warn("[dealOperations] workflow auto-create failed", err);
+    }
+  }
+
   return result.deal_tx_id;
 }
 
