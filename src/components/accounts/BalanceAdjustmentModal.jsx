@@ -22,7 +22,8 @@ import Modal from "../ui/Modal.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { rpcCreateBalanceAdjustment, withToast } from "../../lib/supabaseWrite.js";
+import { withToast } from "../../lib/supabaseWrite.js";
+import { createBalanceAdjustment } from "../../lib/dealOperations.js";
 import { loadBalanceAdjustments } from "../../lib/supabaseReaders.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 
@@ -66,7 +67,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
     setBusy(true);
     try {
       const res = await withToast(
-        () => rpcCreateBalanceAdjustment({
+        () => createBalanceAdjustment({
           accountId: account.id,
           newBalance: newBalanceNum,
           note: note.trim(),

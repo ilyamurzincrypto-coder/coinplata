@@ -14,11 +14,11 @@ import Modal from "../ui/Modal.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
+import { withToast } from "../../lib/supabaseWrite.js";
 import {
-  rpcRecordPartnerInflow,
-  rpcRecordPartnerOutflow,
-  withToast,
-} from "../../lib/supabaseWrite.js";
+  recordPartnerInflow as rpcRecordPartnerInflow,
+  recordPartnerOutflow as rpcRecordPartnerOutflow,
+} from "../../lib/dealOperations.js";
 
 export default function PartnerSettlementModal({
   open,

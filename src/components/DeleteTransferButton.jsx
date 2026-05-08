@@ -7,7 +7,8 @@
 import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useAuth } from "../store/auth.jsx";
-import { rpcDeleteTransfer, withToast } from "../lib/supabaseWrite.js";
+import { withToast } from "../lib/supabaseWrite.js";
+import { deleteTransfer } from "../lib/dealOperations.js";
 
 export default function DeleteTransferButton({ transferId, onDeleted }) {
   const { currentUser } = useAuth();
@@ -29,7 +30,7 @@ export default function DeleteTransferButton({ transferId, onDeleted }) {
     setBusy(true);
     try {
       const res = await withToast(
-        () => rpcDeleteTransfer(transferId),
+        () => deleteTransfer(transferId),
         { success: "Перемещение удалено · балансы откатаны", errorPrefix: "Delete failed" }
       );
       if (res.ok) {

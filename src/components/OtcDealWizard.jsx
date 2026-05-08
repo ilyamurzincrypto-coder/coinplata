@@ -36,7 +36,8 @@ import { useRates } from "../store/rates.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, withToast, ensureClient, uuidOrNull } from "../lib/supabaseWrite.js";
+import { withToast, ensureClient, uuidOrNull } from "../lib/supabaseWrite.js";
+import { createDeal } from "../lib/dealOperations.js";
 import { useTranslation } from "../i18n/translations.jsx";
 
 // ─── Constants ─────────────────────────────────────────────────────────
@@ -428,7 +429,7 @@ export default function OtcDealWizard({ open, currentOffice, onClose, onCreated 
       });
 
       const res = await withToast(
-        () => rpcCreateDeal({
+        () => createDeal({
           officeId: resolvedOfficeId,
           managerId: currentUser.id,
           clientId,

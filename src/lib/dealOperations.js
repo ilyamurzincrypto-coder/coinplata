@@ -1,27 +1,17 @@
 // src/lib/dealOperations.js
+// Direction 2 step 3 — feature-flag switcher layer.
 //
-// ⚠️ TEMPORARY STUB — DO NOT EDIT WITHOUT COORDINATION WITH LEDGER INSTANCE
+// Все consumers (CashierPage, ExchangeForm, OtcDealWizard, TransferModal etc.)
+// вызывают эти функции вместо `rpc*` из supabaseWrite.js. Switcher
+// решает по VITE_USE_NEW_LEDGER какой backend дёргать.
 //
-// Full dealOperations.js lives in `ledger/direction2-write-wrappers` branch.
-// When that branch merges to main, it MUST OVERWRITE this stub completely
-// (full adapter has account_code resolution, error mapping, partner support,
-// idempotency, legacy_only protection, cross-currency transfer routing).
+// USE_NEW_LEDGER=true → v2 RPC (через newLedger.js + adapter)
+// USE_NEW_LEDGER=false → legacy rpc* (passthrough к supabaseWrite.js)
 //
-// Verify after merge:
-//   • All 7+ export functions present
-//   • Each calls correct V2 wrapper from newLedger.js
-//   • USE_NEW_LEDGER switcher in each (with adapter for legacy → v2 shape)
-//   • Tests in tests/dealOperations.test.js pass (from ledger branch)
-//
-// Why a stub:
-//   • UI track (этап 4 Submit) needs `createDeal` to compile and run
-//   • Direction 2 backend (full version) is in separate branch
-//   • Both branches will converge при final merge
-//
-// Behavior:
-//   • USE_NEW_LEDGER=true  → calls rpcCreate*V2 directly
-//                            (UI buildTx output is already v2-shape camelCase)
-//   • USE_NEW_LEDGER=false → calls legacy rpc*  (для legacy ExchangeForm path)
+// Edit/delete operations (updateDeal/deleteDeal/completeDeal/etc) — ВСЕГДА
+// legacy passthrough пока Direction 3 (v2 readers) не сделает legacy_id →
+// ledger_tx_id mapping. Это accept'имо для integration test "legacy form
+// + новый ledger" — пишем в новый, читаем legacy.
 
 import {
   rpcCreateDeal,
@@ -41,76 +31,76 @@ import {
 } from "./supabaseWrite.js";
 import {
   rpcCreateDealV2,
-  rpcCreateTopupV2,
-  rpcCreateWithdrawalV2,
   rpcCreateTransferV2,
-  rpcCreateReservationV2,
-  rpcReleaseReservationV2,
+  rpcCreateAdjustmentV2,
   USE_NEW_LEDGER,
 } from "./newLedger.js";
+import {
+  adaptLegacyDealPayload,
+  adaptLegacyTopupPayload,
+  adaptLegacyTransferPayload,
+  adaptLegacyAdjustmentPayload,
+} from "./newLedgerAdapter.js";
 
-// rpcCreateAdjustmentV2, rpcUpdateDealV2, rpcUpdateTxMetadataV2 — добавлены
-// в ledger/direction2-write-wrappers ветке. На main пока их нет.
-// Stub fallback на legacy для createAdjustment до merge Direction 2.
+// ─────────────────────────────────────────────────────────────────────
+// CREATE operations — switched по VITE_USE_NEW_LEDGER
+// ─────────────────────────────────────────────────────────────────────
 
-// ─── CREATE operations (switched по USE_NEW_LEDGER) ───
-
+/**
+ * Create deal. Legacy payload shape (как rpcCreateDeal принимает).
+ * Возвращает legacy bigint deal_id ИЛИ v2 uuid deal_tx_id (зависит от flag).
+ *
+ * Operations workflow auto-create для deferred OUT legs — добавлено в
+ * operations/workflow-layer (PR #12) после merge этой ветки.
+ */
 export async function createDeal(payload) {
-  if (USE_NEW_LEDGER) return await rpcCreateDealV2(payload);
-  return await rpcCreateDeal(payload);
+  if (!USE_NEW_LEDGER) return await rpcCreateDeal(payload);
+  const v2payload = await adaptLegacyDealPayload(payload);
+  const result = await rpcCreateDealV2(v2payload);
+  return result.deal_tx_id;
 }
 
-export async function createTopup(payload) {
-  if (USE_NEW_LEDGER) return await rpcCreateTopupV2(payload);
-  return await rpcTopUp(payload);
-}
-
-export async function createWithdrawal(payload) {
-  if (USE_NEW_LEDGER) return await rpcCreateWithdrawalV2(payload);
-  // Legacy не имеет direct withdrawal RPC — fallback на partner outflow
-  // (semantics-mismatch, но stub-only). Полный switcher в Direction 2.
-  return await rpcRecordPartnerOutflow(payload);
-}
-
+/**
+ * Create transfer. Legacy payload shape.
+ * v2 поддерживает только same-currency. Cross-currency throws.
+ */
 export async function createTransfer(payload) {
-  if (USE_NEW_LEDGER) return await rpcCreateTransferV2(payload);
-  return await rpcCreateTransfer(payload);
+  if (!USE_NEW_LEDGER) return await rpcCreateTransfer(payload);
+  const v2payload = await adaptLegacyTransferPayload(payload);
+  return await rpcCreateTransferV2(v2payload);
 }
 
-export async function createReservation(payload) {
-  if (USE_NEW_LEDGER) return await rpcCreateReservationV2(payload);
-  // Legacy не имеет direct reservation RPC. Direction 2 adapter
-  // обработает через obligations. Stub: throw для явного сигнала.
-  throw new Error(
-    "createReservation: legacy path not supported in stub. " +
-    "Wait for Direction 2 merge or enable VITE_USE_NEW_LEDGER=true."
-  );
+/**
+ * Top-up наш asset-счёт (admin action). Legacy: { accountId, amount, note, sourceKind }.
+ * v2: маппится в create_adjustment(kind='opening'|'reconciliation').
+ */
+export async function createTopup(payload) {
+  if (!USE_NEW_LEDGER) return await rpcTopUp(payload);
+  const v2payload = await adaptLegacyTopupPayload(payload);
+  return await rpcCreateAdjustmentV2(v2payload);
 }
 
-export async function releaseReservation(payload) {
-  if (USE_NEW_LEDGER) return await rpcReleaseReservationV2(payload);
-  throw new Error(
-    "releaseReservation: legacy path not supported in stub. " +
-    "Wait for Direction 2 merge."
-  );
+/**
+ * Balance adjustment. Legacy: { accountId, newBalance, note } → set absolute balance.
+ * v2: переводится в delta-based create_adjustment(kind='reconciliation').
+ */
+export async function createBalanceAdjustment(payload) {
+  if (!USE_NEW_LEDGER) return await rpcCreateBalanceAdjustment(payload);
+  const v2payload = await adaptLegacyAdjustmentPayload(payload);
+  return await rpcCreateAdjustmentV2(v2payload);
 }
 
-export async function createAdjustment(payload) {
-  // rpcCreateAdjustmentV2 не доступен в main до Direction 2 merge.
-  // Под USE_NEW_LEDGER=true сейчас все равно legacy (полный switcher
-  // от ledger-инстанса заменит).
-  return await rpcCreateBalanceAdjustment(payload);
-}
+// ─────────────────────────────────────────────────────────────────────
+// EDIT/DELETE — legacy passthrough (Direction 3 добавит v2 mapping)
+// ─────────────────────────────────────────────────────────────────────
 
-// ─── EDIT/DELETE — legacy passthrough (Direction 3 mapping) ───
-
-export const updateDeal = rpcUpdateDeal;
-export const deleteDeal = rpcDeleteDeal;
-export const completeDeal = rpcCompleteDeal;
-export const deleteTransfer = rpcDeleteTransfer;
+export const updateDeal       = rpcUpdateDeal;
+export const deleteDeal       = rpcDeleteDeal;
+export const completeDeal     = rpcCompleteDeal;
+export const deleteTransfer   = rpcDeleteTransfer;
 export const settleObligation = rpcSettleObligation;
 export const settleObligationPartial = rpcSettleObligationPartial;
-export const receivePayment = rpcReceivePayment;
+export const receivePayment   = rpcReceivePayment;
 export const cancelObligation = rpcCancelObligation;
-export const recordPartnerInflow = rpcRecordPartnerInflow;
+export const recordPartnerInflow  = rpcRecordPartnerInflow;
 export const recordPartnerOutflow = rpcRecordPartnerOutflow;

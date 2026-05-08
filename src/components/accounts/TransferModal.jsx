@@ -13,7 +13,8 @@ import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol, multiplyAmount } from "../../utils/money.js";
 import { officeName } from "../../store/data.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
-import { rpcCreateTransfer, withToast } from "../../lib/supabaseWrite.js";
+import { withToast } from "../../lib/supabaseWrite.js";
+import { createTransfer } from "../../lib/dealOperations.js";
 
 export default function TransferModal({ open, fromAccount, onClose }) {
   const { t } = useTranslation();
@@ -115,7 +116,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       try {
         const res = await withToast(
           () =>
-            rpcCreateTransfer({
+            createTransfer({
               fromAccountId: from.id,
               toAccountId: to.id,
               fromAmount: fromAmt,

@@ -11,7 +11,8 @@
 import React, { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useAuth } from "../store/auth.jsx";
-import { rpcDeleteDeal, withToast } from "../lib/supabaseWrite.js";
+import { withToast } from "../lib/supabaseWrite.js";
+import { deleteDeal } from "../lib/dealOperations.js";
 
 export default function DeleteDealButton({ dealId, onDeleted, size = "sm" }) {
   const { currentUser } = useAuth();
@@ -35,7 +36,7 @@ export default function DeleteDealButton({ dealId, onDeleted, size = "sm" }) {
     setBusy(true);
     try {
       const res = await withToast(
-        () => rpcDeleteDeal(dealId, "manual"),
+        () => deleteDeal(dealId, "manual"),
         { success: `Сделка #${dealId} удалена`, errorPrefix: "Delete failed" }
       );
       if (res.ok) {

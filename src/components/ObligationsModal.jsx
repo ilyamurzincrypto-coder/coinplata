@@ -22,13 +22,13 @@ import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { fmt, curSymbol } from "../utils/money.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { withToast } from "../lib/supabaseWrite.js";
 import {
-  rpcSettleObligation,
-  rpcSettleObligationPartial,
-  rpcReceivePayment,
-  rpcCancelObligation,
-  withToast,
-} from "../lib/supabaseWrite.js";
+  settleObligation as rpcSettleObligation,
+  settleObligationPartial as rpcSettleObligationPartial,
+  receivePayment as rpcReceivePayment,
+  cancelObligation as rpcCancelObligation,
+} from "../lib/dealOperations.js";
 
 export default function ObligationsModal({ open, onClose }) {
   const { obligations, closeObligation, cancelObligation } = useObligations();

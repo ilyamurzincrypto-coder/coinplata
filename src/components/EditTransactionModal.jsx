@@ -15,7 +15,8 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcUpdateDeal, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { updateDeal } from "../lib/dealOperations.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
@@ -46,7 +47,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
 
         const res = await withToast(
           () =>
-            rpcUpdateDeal({
+            updateDeal({
               dealId: transaction.id,
               officeId: uuidOrNull(updated.officeId),
               clientId: resolvedClientId,
