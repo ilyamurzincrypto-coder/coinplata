@@ -127,8 +127,9 @@ export async function adaptLegacyDealPayload(legacy) {
 
   if (inLegs.length === 0) {
     throw new Error(
-      "adapter: legacy deal has no IN side (one-sided OUT not supported in new ledger v2 yet). " +
-      "Disable VITE_USE_NEW_LEDGER for one-sided OUT deals."
+      "One-sided OUT deal (no IN side) is not supported in new ledger as a deal. " +
+      "Use Withdrawal modal — semantically this is a withdrawal (asset out + Customer Liab Cr). " +
+      "Or disable VITE_USE_NEW_LEDGER for this operation."
     );
   }
 
@@ -169,7 +170,9 @@ export async function adaptLegacyDealPayload(legacy) {
 
   if (outLegs.length === 0) {
     throw new Error(
-      "adapter: legacy deal has no OUT side (IN-only not supported in new ledger v2 yet)."
+      "One-sided IN deal (no OUT side) is not supported in new ledger as a deal. " +
+      "Use TopUp modal — semantically this is a top-up (asset in + Customer Liab Cr). " +
+      "Or disable VITE_USE_NEW_LEDGER for this operation."
     );
   }
 
