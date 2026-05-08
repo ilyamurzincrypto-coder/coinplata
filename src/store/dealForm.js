@@ -123,12 +123,22 @@ export function dealFormReducer(state, action) {
       };
     }
     case ACTIONS.UPDATE_LEG: {
-      return {
-        ...state,
-        legs: state.legs.map((l) =>
-          l.id === action.id ? { ...l, ...action.patch } : l
-        ),
-      };
+      const target = state.legs.find((l) => l.id === action.id);
+      if (!target) return state;
+
+      // Apply user patch первым шагом
+      let nextLegs = state.legs.map((l) =>
+        l.id === action.id ? { ...l, ...action.patch } : l
+      );
+
+      // Auto-calc rules — bidirectional rate ↔ amount sync.
+      // Bypass через `_skipAutoCalc: true` в action (для programmatic updates,
+      // которые не должны триггерить sync — e.g. account select).
+      if (!action._skipAutoCalc) {
+        nextLegs = applyAutoCalc(nextLegs, target, action.patch);
+      }
+
+      return { ...state, legs: nextLegs };
     }
     case ACTIONS.REORDER_LEGS: {
       const idOrder = action.ids;
@@ -235,6 +245,73 @@ export function useDealForm(initial) {
     hydrate,
     dispatch,
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Auto-calc rate ↔ amount sync (BUG 1 fix)
+// ─────────────────────────────────────────────────────────────────────
+//
+// Правила:
+//   R1. OUT.rate edited      → OUT.amount = first_IN.amount × OUT.rate
+//   R2. OUT.amount edited    → OUT.rate   = OUT.amount / first_IN.amount
+//   R3. IN.amount edited     → for each OUT с rate>0: OUT.amount = IN × rate
+//
+// Multi-IN: используем первую IN-leg как reference (single-currency сделки).
+// Cross-currency (multi-IN с разными currencies) — оставляем без auto-calc,
+// менеджер вводит manually.
+
+const SAFE_DECIMALS = 8;
+
+function formatNumber(num) {
+  if (!Number.isFinite(num)) return "";
+  // Trim trailing zeros, max 8 decimals для intermediate
+  return parseFloat(num.toFixed(SAFE_DECIMALS)).toString();
+}
+
+export function applyAutoCalc(legs, target, patch) {
+  if (!patch) return legs;
+
+  const firstIn = legs.find((l) => l.side === "in");
+  if (!firstIn) return legs;
+  const inAmt = Number(firstIn.amount);
+  const inAmtValid = Number.isFinite(inAmt) && inAmt > 0;
+
+  // R1. OUT.rate edited → recalc OUT.amount
+  if (target.side === "out" && "rate" in patch) {
+    const rate = Number(patch.rate);
+    if (Number.isFinite(rate) && rate > 0 && inAmtValid) {
+      legs = legs.map((l) =>
+        l.id === target.id ? { ...l, amount: formatNumber(inAmt * rate) } : l
+      );
+    }
+  }
+
+  // R2. OUT.amount edited (но НЕ через rate-derived) → recalc OUT.rate
+  // Условие: amount изменилось user-driven, rate не менялся в этом patch.
+  if (target.side === "out" && "amount" in patch && !("rate" in patch)) {
+    const newAmount = Number(patch.amount);
+    if (Number.isFinite(newAmount) && newAmount > 0 && inAmtValid) {
+      const newRate = newAmount / inAmt;
+      legs = legs.map((l) =>
+        l.id === target.id ? { ...l, rate: formatNumber(newRate), rateManual: true } : l
+      );
+    }
+  }
+
+  // R3. IN.amount edited → for each OUT с rate>0: OUT.amount = IN × rate
+  if (target.side === "in" && "amount" in patch) {
+    const newInAmt = Number(patch.amount);
+    if (Number.isFinite(newInAmt) && newInAmt > 0) {
+      legs = legs.map((l) => {
+        if (l.side !== "out") return l;
+        const r = Number(l.rate);
+        if (!Number.isFinite(r) || r <= 0) return l;
+        return { ...l, amount: formatNumber(newInAmt * r) };
+      });
+    }
+  }
+
+  return legs;
 }
 
 // ─────────────────────────────────────────────────────────────────────
