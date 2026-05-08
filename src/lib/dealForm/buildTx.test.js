@@ -260,7 +260,7 @@ describe("buildTx — error cases", () => {
     expect(r.metadata.no_commission).toBe(true);
   });
 
-  it("conditions: backdate → effective_date в payload", () => {
+  it("conditions: backdate → effectiveDate в payload", () => {
     const state = {
       legs: [
         leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
@@ -280,7 +280,7 @@ describe("buildTx — error cases", () => {
       },
     };
     const r = buildTx({ ...COMMON, state });
-    expect(r.effective_date).toBe("2026-04-30T12:00:00Z");
+    expect(r.effectiveDate).toBe("2026-04-30T12:00:00Z");
     expect(r.metadata.scheduled_at).toBe("2026-05-15T10:00:00Z");
     expect(r.metadata.comment).toBe("test deal");
     expect(r.metadata.tx_hash).toBe("0xabc");
@@ -304,8 +304,57 @@ describe("buildTx — error cases", () => {
     expect(r.metadata.fee_paid_by).toBe("exchange");
     expect(r.metadata.no_commission).toBe(false);
     expect(r.metadata.margin_strategy).toBe("pro_rata");
-    expect(r.effective_date).toBeUndefined();
+    expect(r.effectiveDate).toBeUndefined();
     expect(r.metadata.scheduled_at).toBeUndefined();
+  });
+
+  // ── camelCase shape (compat с newLedger.js wrapper) ──
+  it("output is camelCase top-level + leg-level (wrapper compat)", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+    };
+    const r = buildTx({ ...COMMON, state });
+    // Top-level camelCase
+    expect(r).toHaveProperty("clientId");
+    expect(r).toHaveProperty("officeId");
+    expect(r).toHaveProperty("inLegs");
+    expect(r).toHaveProperty("outLegs");
+    expect(r).not.toHaveProperty("client_id");
+    expect(r).not.toHaveProperty("in_legs");
+    // Leg-level camelCase
+    expect(r.inLegs[0]).toHaveProperty("accountCode");
+    expect(r.inLegs[0]).not.toHaveProperty("account_code");
+    expect(r.outLegs[0]).toHaveProperty("accountCode");
+    expect(r.outLegs[0]).toHaveProperty("rateSource");
+    expect(r.outLegs[0]).not.toHaveProperty("account_code");
+    expect(r.outLegs[0]).not.toHaveProperty("rate_source");
+    // Metadata остаётся snake_case
+    expect(r.metadata).toHaveProperty("margin_strategy");
+    expect(r.metadata).toHaveProperty("fee_paid_by");
+  });
+
+  it("legacy passthrough: accountCodeByLegacyId=null → accountId как-есть", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-anything" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-also", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+    };
+    const r = buildTx({
+      state,
+      clientId: "client-1",
+      officeId: "office-1",
+      accountCodeByLegacyId: null,
+    });
+    expect(r.inLegs[0].accountId).toBe("acc-anything");
+    expect(r.inLegs[0].accountCode).toBeUndefined();
+    expect(r.outLegs[0].accountId).toBe("acc-also");
+    expect(r.outLegs[0].accountCode).toBeUndefined();
   });
 
   it("commission filtered when currency not in OUT legs", () => {

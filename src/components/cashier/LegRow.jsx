@@ -125,6 +125,8 @@ const LegRow = forwardRef(function LegRow(
 
   return (
     <div
+      data-leg-id={leg.id}
+      data-leg-side={leg.side}
       className="border-b border-slate-100 hover:bg-slate-50/40"
     >
       <div

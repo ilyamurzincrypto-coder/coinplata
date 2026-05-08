@@ -1,21 +1,28 @@
 // src/components/cashier/DealForm.jsx
-// Новая форма создания сделки. Этап 2 + 2.5.
+// Новая форма создания сделки. Этап 2 + 2.5 + 3 + 4 (Submit).
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Undo2, Redo2 } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
+import { useAccounts } from "../../store/accounts.jsx";
 import { useTransactions } from "../../store/transactions.jsx";
 import { useClientBalances } from "../../store/clientBalances.js";
+import { emitToast } from "../../lib/toast.jsx";
 import StickyTitle from "./StickyTitle.jsx";
 import CounterpartyBar from "./CounterpartyBar.jsx";
 import DealLegsTable from "./DealLegsTable.jsx";
 import ConditionsBar from "./ConditionsBar.jsx";
+import FooterBar from "./FooterBar.jsx";
+import RatesPanel from "./RatesPanel.jsx";
 import {
   useDealForm,
   tryLoadDraft,
   clearDraft,
 } from "../../store/dealForm.js";
+import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
+import { createDeal } from "../../lib/dealOperations.js";
+import { buildTx } from "../../lib/dealForm/buildTx.js";
+import { runSubmitFlow } from "../../lib/dealForm/submitFlow.js";
 
 export default function DealForm({
   mode = "create",
@@ -29,10 +36,20 @@ export default function DealForm({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
   const { counterparties } = useTransactions();
+  const { accounts, balanceOf } = useAccounts();
 
-  // Draft prompt — при mount проверяем localStorage
+  // accountCodeByLegacyId — карта public.accounts.id → ledger.accounts.code.
+  const accountCodeByLegacyId = useMemo(() => {
+    if (!USE_NEW_LEDGER) return null;
+    return Object.fromEntries(
+      accounts
+        .filter((a) => a.ledgerAccountCode && !a.legacyOnly)
+        .map((a) => [a.id, a.ledgerAccountCode])
+    );
+  }, [accounts]);
+
   const [draftPrompt, setDraftPrompt] = useState(() => {
-    if (initialData) return null; // edit mode — не предлагаем draft
+    if (initialData) return null;
     return tryLoadDraft();
   });
 
@@ -46,8 +63,9 @@ export default function DealForm({
     initialData?.managerId || currentUser?.id || ""
   );
   const [showRequiredError, setShowRequiredError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [activeOutLegId, setActiveOutLegId] = useState(null);
 
-  // Resolve counterparty UUID если выбрали из списка по nickname
   useEffect(() => {
     if (counterpartyId) return;
     const match = counterparties?.find?.(
@@ -58,7 +76,6 @@ export default function DealForm({
 
   const clientBalances = useClientBalances(counterpartyId);
 
-  // Legs state с history + auto-save
   const {
     legs,
     inLegs,
@@ -78,6 +95,46 @@ export default function DealForm({
     reset,
   } = useDealForm();
 
+  // ── 2.5.4 RatesPanel click-to-fill ──
+  // Активная OUT leg выбирается:
+  //   1. Last edited OUT leg (из reducer __lastUpdate)
+  //   2. Fallback: first OUT leg
+  const activeLeg = useMemo(() => {
+    if (activeOutLegId) {
+      const found = legs.find((l) => l.id === activeOutLegId);
+      if (found && found.side === "out") return found;
+    }
+    return outLegs[0] || null;
+  }, [activeOutLegId, legs, outLegs]);
+
+  const handlePickRate = useCallback(
+    (from, to, rate) => {
+      if (!activeLeg) return;
+      // Определяем какой direction matches active leg
+      const inCurrency = inLegs[0]?.currency;
+      // Стандартный сценарий: leg.currency = OUT side, IN side = inLegs[0].currency
+      // Если leg.currency = to, fill rate (IN→OUT prices)
+      if (activeLeg.currency === to && inCurrency === from) {
+        updateLeg(activeLeg.id, { rate: String(rate), rateManual: false });
+      } else if (activeLeg.currency === from && inCurrency === to) {
+        // Inverse — rate в обратную сторону
+        const inv = 1 / rate;
+        updateLeg(activeLeg.id, { rate: String(inv), rateManual: false });
+      } else {
+        // Direction не совпадает — fill сырой rate как есть, мenager сам разберется
+        updateLeg(activeLeg.id, { rate: String(rate), rateManual: true });
+      }
+    },
+    [activeLeg, inLegs, updateLeg]
+  );
+
+  const activeLegSummary = useMemo(() => {
+    if (!activeLeg) return null;
+    const inCur = inLegs[0]?.currency;
+    if (!inCur || !activeLeg.currency) return null;
+    return `${inCur} → ${activeLeg.currency}`;
+  }, [activeLeg, inLegs]);
+
   const onToggleSide = useCallback(
     (legId) => {
       const leg = legs.find((l) => l.id === legId);
@@ -91,6 +148,36 @@ export default function DealForm({
     },
     [legs, updateLeg]
   );
+
+  // ── Validation: hasOverdraft / hasShortage / submitDisabled ──
+  const hasOverdraft = useMemo(() => {
+    return inLegs.some((l) => {
+      if (l.source !== "from_balance") return false;
+      const amt = Number(l.amount);
+      const bal = clientBalances[l.currency];
+      return Number.isFinite(amt) && amt > 0 && Number.isFinite(bal) && amt > bal;
+    });
+  }, [inLegs, clientBalances]);
+
+  const hasShortage = useMemo(() => {
+    return outLegs.some((l) => {
+      if (l.destination !== "physical" || !l.accountId) return false;
+      const amt = Number(l.amount);
+      const bal = balanceOf(l.accountId);
+      return Number.isFinite(amt) && amt > 0 && Number.isFinite(bal) && amt > bal;
+    });
+  }, [outLegs, balanceOf]);
+
+  // submitDisabled — base validation (без backend errors)
+  const submitDisabled = useMemo(() => {
+    if (!counterparty.trim()) return true;
+    if (legs.length === 0) return true;
+    // Должен быть хотя бы один IN с amount>0 и currency
+    if (!inLegs.some((l) => Number(l.amount) > 0 && l.currency)) return true;
+    // Должен быть хотя бы один OUT с amount>0 и currency
+    if (!outLegs.some((l) => Number(l.amount) > 0 && l.currency)) return true;
+    return false;
+  }, [counterparty, legs, inLegs, outLegs]);
 
   const acceptDraft = () => {
     if (draftPrompt) hydrate(draftPrompt);
@@ -113,8 +200,85 @@ export default function DealForm({
     [initialData?.id]
   );
 
+  // ── Submit handlers ──
+  const buildPayload = useCallback(
+    (extraMeta = {}) => {
+      // Передаём legs/commission/conditions внутри state shape
+      return buildTx({
+        state: { legs, commission: [], conditions },
+        clientId: counterpartyId,
+        officeId: currentOffice,
+        accountCodeByLegacyId,
+        description: conditions?.on_demand?.comment || null,
+        metadata: extraMeta,
+      });
+    },
+    [legs, conditions, counterpartyId, currentOffice, accountCodeByLegacyId]
+  );
+
+  const doSubmit = useCallback(
+    async (extraMeta = {}) => {
+      if (submitDisabled || loading) return;
+      if (!counterpartyId) {
+        setShowRequiredError(true);
+        emitToast("error", t("error_required_field"));
+        return;
+      }
+
+      setLoading(true);
+      const flow = await runSubmitFlow({
+        buildPayload: () => buildPayload(extraMeta),
+        createDeal,
+        t,
+        onSuccess: (result) => {
+          const txId = (result && (result.deal_tx_id || result)) || "";
+          emitToast(
+            "success",
+            t("deal_created_success") + (txId ? ` · ${String(txId).slice(0, 8)}…` : "")
+          );
+          clearDraft();
+          reset();
+          onSubmit?.(result);
+        },
+        onError: (toast) => {
+          emitToast(
+            "error",
+            toast.message + (toast.details ? ` · ${toast.details}` : "")
+          );
+          // eslint-disable-next-line no-console
+          console.warn("[DealForm] submit failed", toast);
+        },
+      });
+      setLoading(false);
+      return flow;
+    },
+    [
+      submitDisabled,
+      loading,
+      counterpartyId,
+      buildPayload,
+      t,
+      reset,
+      onSubmit,
+    ]
+  );
+
+  const onSubmitPrimary = useCallback(
+    () => doSubmit({ submission_kind: "create" }),
+    [doSubmit]
+  );
+  const onSubmitDraft = useCallback(
+    () => doSubmit({ submission_kind: "draft", legacy_status: "draft" }),
+    [doSubmit]
+  );
+  const onSubmitAndNotify = useCallback(
+    () => doSubmit({ submission_kind: "create_and_notify" }),
+    [doSubmit]
+  );
+
   return (
-    <div className="bg-white rounded-[var(--radius-section)] border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+    <div className="flex gap-3 items-start">
+    <div className="bg-white rounded-[var(--radius-section)] border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-w-0">
       <StickyTitle
         mode={mode}
         dealId={dealId}
@@ -156,17 +320,28 @@ export default function DealForm({
         showRequiredError={showRequiredError}
       />
 
-      <DealLegsTable
-        legs={legs}
-        inLegs={inLegs}
-        outLegs={outLegs}
-        onUpdate={updateLeg}
-        onRemove={removeLeg}
-        onAddLeg={addLeg}
-        onToggleSide={onToggleSide}
-        officeId={currentOffice}
-        clientBalances={clientBalances}
-      />
+      <div
+        onFocusCapture={(e) => {
+          // Trace last focused OUT leg для RatesPanel click-to-fill
+          const row = e.target.closest("[data-leg-id]");
+          if (!row) return;
+          const id = row.getAttribute("data-leg-id");
+          const side = row.getAttribute("data-leg-side");
+          if (side === "out" && id) setActiveOutLegId(id);
+        }}
+      >
+        <DealLegsTable
+          legs={legs}
+          inLegs={inLegs}
+          outLegs={outLegs}
+          onUpdate={updateLeg}
+          onRemove={removeLeg}
+          onAddLeg={addLeg}
+          onToggleSide={onToggleSide}
+          officeId={currentOffice}
+          clientBalances={clientBalances}
+        />
+      </div>
 
       <ConditionsBar
         conditions={conditions}
@@ -174,44 +349,33 @@ export default function DealForm({
         legs={legs}
       />
 
-      {/* Footer summary + undo/redo */}
-      <div className="px-4 py-3 text-hint border-t border-slate-200 bg-slate-50/40 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={undo}
-            disabled={!canUndo}
-            title="Отменить (Ctrl/Cmd+Z)"
-            className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          >
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={redo}
-            disabled={!canRedo}
-            title="Повторить (Ctrl/Cmd+Shift+Z)"
-            className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-          >
-            <Redo2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+      <FooterBar
+        legs={legs}
+        totalIn={totalIn}
+        totalOut={totalOut}
+        conditions={conditions}
+        hasOverdraft={hasOverdraft}
+        hasShortage={hasShortage}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onSubmit={onSubmitPrimary}
+        onSubmitDraft={onSubmitDraft}
+        onSubmitAndNotify={onSubmitAndNotify}
+        submitDisabled={submitDisabled}
+        loading={loading || submitting}
+      />
+    </div>
 
-        <span className="flex-1 text-center">
-          {Object.entries(totalIn).map(([cur, amt]) => `+${amt} ${cur}`).join(", ") || "—"}
-          {" → "}
-          {Object.entries(totalOut).map(([cur, amt]) => `−${amt} ${cur}`).join(", ") || "—"}
-        </span>
-
-        <button
-          type="button"
-          disabled
-          className="px-3 py-1.5 rounded-[var(--radius-section)] bg-slate-200 text-slate-500 text-[12px] font-semibold cursor-not-allowed"
-          title="Submit появится в этапе 4"
-        >
-          {t("cashier_stage1_placeholder")} → этап 4
-        </button>
-      </div>
+    {/* Right sidebar: RatesPanel (этап 4 — click-to-fill rate в active OUT) */}
+    <div className="hidden xl:block">
+      <RatesPanel
+        officeId={currentOffice}
+        onPickRate={handlePickRate}
+        activeLegSummary={activeLegSummary}
+      />
+    </div>
     </div>
   );
 }
