@@ -1,0 +1,407 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildTx — 8 sceanrios > 5a single-leg fresh→physical 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 300,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "accountCode": "1316",
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "fresh",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "accountCode": "1112",
+      "amount": 30000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 30,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 5b multi-leg fresh→physical multi-currency commission 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+    {
+      "amount": 5,
+      "currency": "USD",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "accountCode": "1316",
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "fresh",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "accountCode": "1112",
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 30,
+      "rateSource": "market",
+    },
+    {
+      "accountCode": "1110",
+      "amount": 500,
+      "currency": "USD",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 1,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 6a single-leg from_balance→physical 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "amount": 500,
+      "currency": "USDT",
+      "source": "from_balance",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "accountCode": "1112",
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 30,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 6b multi-leg from_balance→physical 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+    {
+      "amount": 5,
+      "currency": "USD",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "from_balance",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "accountCode": "1112",
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 30,
+      "rateSource": "market",
+    },
+    {
+      "accountCode": "1110",
+      "amount": 500,
+      "currency": "USD",
+      "deferred": false,
+      "destination": "physical",
+      "rate": 1,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 7a single-leg fresh→to_balance 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 300,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "accountCode": "1316",
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "fresh",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "amount": 30000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 30,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 7b multi-leg fresh→to_balance 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+    {
+      "amount": 5,
+      "currency": "USD",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "accountCode": "1316",
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "fresh",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 30,
+      "rateSource": "market",
+    },
+    {
+      "amount": 500,
+      "currency": "USD",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 1,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 8a single-leg from_balance→to_balance 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "amount": 500,
+      "currency": "USDT",
+      "source": "from_balance",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 30,
+      "rateSource": "market",
+    },
+  ],
+}
+`;
+
+exports[`buildTx — 8 sceanrios > 8b multi-leg from_balance→to_balance 1`] = `
+{
+  "clientId": "client-uuid",
+  "commission": [
+    {
+      "amount": 150,
+      "currency": "TRY",
+      "kind": "commission",
+    },
+    {
+      "amount": 5,
+      "currency": "USD",
+      "kind": "commission",
+    },
+  ],
+  "description": null,
+  "inLegs": [
+    {
+      "amount": 1000,
+      "currency": "USDT",
+      "source": "from_balance",
+    },
+  ],
+  "metadata": {
+    "bank_fee_applied": false,
+    "fee_paid_by": "exchange",
+    "is_otc": false,
+    "is_partner": false,
+    "margin_strategy": "pro_rata",
+    "no_commission": false,
+    "referral": false,
+    "source_form": "deal_v2",
+    "vip": false,
+  },
+  "officeId": "office-mark",
+  "outLegs": [
+    {
+      "amount": 15000,
+      "currency": "TRY",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 30,
+      "rateSource": "market",
+    },
+    {
+      "amount": 500,
+      "currency": "USD",
+      "deferred": false,
+      "destination": "to_balance",
+      "rate": 1,
+      "rateSource": "market",
+    },
+  ],
+}
+`;

@@ -1,0 +1,110 @@
+/* src/styles/tokens.css
+ * Design tokens для CoinPlata cashier UI.
+ *
+ * ВАЖНО: этот файл импортируется ДО @tailwind-директив в src/index.css,
+ * чтобы Tailwind PostCSS обработал theme() резолвер на этих переменных.
+ * Если перенести импорт после @tailwind utilities — theme() значения
+ * вылетят в "пусто" и переменные будут с invalid value.
+ */
+
+:root {
+  /* ──────────────────────────────────────────────────────────────────
+   * Slot colors (8 ролей, без оттенков). Дополнительные оттенки
+   * берутся из Tailwind utility-классов (bg-*, border-*, text-*).
+   * ──────────────────────────────────────────────────────────────────*/
+  --color-bg:              #ffffff;
+  --color-text:            theme('colors.slate.900');
+  --color-text-secondary:  theme('colors.slate.700');
+  --color-text-muted:      theme('colors.slate.500');
+  --color-border:          theme('colors.slate.200');
+  --color-border-strong:   theme('colors.slate.300');
+  --color-accent:          theme('colors.indigo.600');
+  --color-success:         theme('colors.emerald.600');
+  --color-danger:          theme('colors.rose.600');
+  --color-warning:         theme('colors.amber.600');
+
+  /* Brand override hook — при появлении бренда поменяется только это */
+  --brand-primary:         var(--color-accent);
+  --brand-primary-hover:   theme('colors.indigo.700');
+
+  /* ──────────────────────────────────────────────────────────────────
+   * Typography — 4 уровня + label для метаданных.
+   * Промежуточные размеры (9.5/10.5/11.5/12.5) НЕ использовать.
+   * ──────────────────────────────────────────────────────────────────*/
+  --font-size-heading:     16px;
+  --font-size-value:       14px;
+  --font-size-number:      20px;
+  --font-size-label:       11px;
+  --font-size-hint:        12px;
+
+  --font-weight-heading:   700;
+  --font-weight-value:     500;
+  --font-weight-number:    600;
+  --font-weight-label:     600;
+
+  --tracking-label:        0.08em;
+  --tracking-tight:        -0.01em;
+
+  /* ──────────────────────────────────────────────────────────────────
+   * Radii — 2 уровня
+   * ──────────────────────────────────────────────────────────────────*/
+  --radius-cell:           6px;    /* ячейки таблицы, мелкие inputs, chips */
+  --radius-section:        10px;   /* секции, кнопки, поля верхнего уровня */
+
+  /* ──────────────────────────────────────────────────────────────────
+   * Spacing — 4 уровня (gap-1/2/4/6 эквивалент)
+   * ──────────────────────────────────────────────────────────────────*/
+  --space-1:               4px;
+  --space-2:               8px;
+  --space-4:               16px;
+  --space-6:               24px;
+
+  /* ──────────────────────────────────────────────────────────────────
+   * Form-specific layout tokens
+   * ──────────────────────────────────────────────────────────────────*/
+  --leg-row-height:        52px;
+  --footer-bar-height:     64px;
+  --title-bar-height:      56px;
+  --rates-panel-width:     240px;
+}
+
+/* ────────────────────────────────────────────────────────────────────
+ * Utility-классы для семантических ролей текста.
+ * Tailwind utility-классы продолжают работать параллельно — для
+ * вёрстки и фонов используется Tailwind, для семантических текстовых
+ * ролей (label/value/number/hint/heading) — эти классы.
+ * ──────────────────────────────────────────────────────────────────── */
+
+.text-heading {
+  font-size: var(--font-size-heading);
+  font-weight: var(--font-weight-heading);
+  letter-spacing: var(--tracking-tight);
+  color: var(--color-text);
+}
+
+.text-value {
+  font-size: var(--font-size-value);
+  font-weight: var(--font-weight-value);
+  color: var(--color-text);
+}
+
+.text-number {
+  font-size: var(--font-size-number);
+  font-weight: var(--font-weight-number);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.text-label {
+  font-size: var(--font-size-label);
+  font-weight: var(--font-weight-label);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--color-text-secondary);
+}
+
+.text-hint {
+  font-size: var(--font-size-hint);
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
