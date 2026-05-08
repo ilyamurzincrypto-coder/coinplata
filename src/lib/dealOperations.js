@@ -49,6 +49,9 @@ import {
 /**
  * Create deal. Legacy payload shape (как rpcCreateDeal принимает).
  * Возвращает legacy bigint deal_id ИЛИ v2 uuid deal_tx_id (зависит от flag).
+ *
+ * Operations workflow auto-create для deferred OUT legs — добавлено в
+ * operations/workflow-layer (PR #12) после merge этой ветки.
  */
 export async function createDeal(payload) {
   if (!USE_NEW_LEDGER) return await rpcCreateDeal(payload);
