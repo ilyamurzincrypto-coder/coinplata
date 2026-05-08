@@ -14,6 +14,14 @@ transaction.
 - Legacy таблицы `public.account_movements`, `public.deals` и др. становятся
   read-only архивом
 
+### Partners в новом ledger
+
+**Owner decision:** Partners (Шериф, Мехмет) treated as regular clients
+in new ledger. No separate partner reconciliation needed.
+Partner Liab accounts (2210-2219) остаются в seed для будущего use,
+но balance=0 на opening — `create_opening_from_inventory` физически
+блокирует partner_dim_required entries (RAISE 22000).
+
 ## Pre-cutover validations (T-24 hours)
 
 **Before initiating cutover, run these queries и verify ALL return 0.**
@@ -88,20 +96,21 @@ SELECT * FROM ledger.verify_opening('<returned-uuid>');
 
 Каждый офис заполняет CSV/таблицу:
 
-| account_code | amount | client_id (optional) | partner_id (optional) | comment |
-|---|---|---|---|---|
-| 1110 | 50000 |  |  | Cash · Mark Antalya · USD |
-| 1112 | 1500000 |  |  | Cash · Mark · TRY |
-| 1316 | 250000 |  |  | Hot · USDT TRC20 · Mark |
-| 1340 | 1500000 |  |  | Treasury · USDT TRC20 |
-| 1210 | 25000 |  |  | Bank · TBD · USD (по выписке) |
-| 2110 | 1500 | uuid-of-client-X |  | Customer Liab · USD client X |
-| 2112 | 30000 | uuid-of-client-Y |  | Customer Liab · TRY client Y |
+| account_code | amount | client_id (optional) | comment |
+|---|---|---|---|
+| 1110 | 50000 |  | Cash · Mark Antalya · USD |
+| 1112 | 1500000 |  | Cash · Mark · TRY |
+| 1316 | 250000 |  | Hot · USDT TRC20 · Mark |
+| 1340 | 1500000 |  | Treasury · USDT TRC20 |
+| 2110 | 1500 | uuid-of-client-X | Customer Liab · USD client X |
+| 2112 | 30000 | uuid-of-client-Y | Customer Liab · TRY client Y |
 
 Правила:
 - **assets** (1xxx): `amount > 0` = у нас на счёте лежит. `amount = 0` → **не включать строку**.
-- **liabilities** (2xxx): `amount > 0` = мы должны клиенту/партнёру. **client_id обязателен** для 21xx.
-- Валюты в которых ничего нет на cutover-day — пропускаем (не sеем zero entries).
+- **Customer Liab** (21xx): `amount > 0` = мы должны клиенту. **client_id обязателен**.
+- **Partner Liab** (22xx): **НЕ ВКЛЮЧАТЬ** — partners treated as regular
+  clients (см. overview). Функция RAISE 22000 если попадёт.
+- Валюты в которых ничего нет на cutover-day — пропускаем (не сеем zero).
 
 Финальный CSV в JSONB-array → передаём в `ledger.create_opening_from_inventory`.
 
