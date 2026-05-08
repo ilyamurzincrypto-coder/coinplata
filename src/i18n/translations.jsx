@@ -47,6 +47,15 @@ const DICT = {
 
     // Exchange form
     new_exchange: "New exchange",
+    // ── cashier (new DealForm v2, stage 1) ─────────────────────────
+    cashier_title_new: "New deal",
+    cashier_title_edit: "Edit deal",
+    cashier_counterparty_placeholder: "Client / partner... *",
+    cashier_close_confirm: "Unsaved changes. Close anyway?",
+    cashier_stage1_placeholder: "Form sections coming in next stages.",
+    close: "Close",
+    loading: "Loading...",
+    // ───────────────────────────────────────────────────────────────
     edit_exchange: "Edit exchange",
     you_received: "You received",
     you_gave: "You gave",
@@ -1071,6 +1080,15 @@ const DICT = {
     updated_ago: "обновлено 2 мин назад",
 
     new_exchange: "Новая сделка",
+    // ── cashier (новая DealForm v2, этап 1) ────────────────────────
+    cashier_title_new: "Новая сделка",
+    cashier_title_edit: "Редактировать сделку",
+    cashier_counterparty_placeholder: "Клиент / партнёр… *",
+    cashier_close_confirm: "Есть несохранённые изменения. Закрыть?",
+    cashier_stage1_placeholder: "Секции формы появятся на следующих этапах.",
+    close: "Закрыть",
+    loading: "Загрузка…",
+    // ───────────────────────────────────────────────────────────────
     edit_exchange: "Редактировать сделку",
     you_received: "Получили",
     you_gave: "Выдали",
@@ -2070,6 +2088,15 @@ const DICT = {
     updated_ago: "2 dk önce güncellendi",
 
     new_exchange: "Yeni işlem",
+    // ── cashier (yeni DealForm v2, aşama 1) ────────────────────────
+    cashier_title_new: "Yeni işlem",
+    cashier_title_edit: "İşlemi düzenle",
+    cashier_counterparty_placeholder: "Müşteri / partner... *",
+    cashier_close_confirm: "Kaydedilmemiş değişiklikler var. Yine de kapatılsın mı?",
+    cashier_stage1_placeholder: "Form bölümleri sonraki aşamalarda gelecek.",
+    close: "Kapat",
+    loading: "Yükleniyor...",
+    // ───────────────────────────────────────────────────────────────
     edit_exchange: "İşlemi düzenle",
     you_received: "Alındı",
     you_gave: "Verildi",
