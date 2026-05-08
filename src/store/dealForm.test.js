@@ -160,6 +160,57 @@ describe("REMOVE_LEG invariant", () => {
   });
 });
 
+describe("SET_CONDITION", () => {
+  it("sets margin_strategy", () => {
+    const state = initialState();
+    const next = dealFormReducer(state, {
+      type: ACTIONS.SET_CONDITION,
+      field: "margin_strategy",
+      value: "single_leg",
+    });
+    expect(next.conditions.margin_strategy).toBe("single_leg");
+  });
+
+  it("sets flags array (multi-select)", () => {
+    const state = initialState();
+    const next = dealFormReducer(state, {
+      type: ACTIONS.SET_CONDITION,
+      field: "flags",
+      value: ["referral", "vip"],
+    });
+    expect(next.conditions.flags).toEqual(["referral", "vip"]);
+  });
+
+  it("sets nested on_demand.backdate", () => {
+    const state = initialState();
+    const next = dealFormReducer(state, {
+      type: ACTIONS.SET_CONDITION,
+      field: "on_demand.backdate",
+      value: "2026-04-30T12:00:00Z",
+    });
+    expect(next.conditions.on_demand.backdate).toBe("2026-04-30T12:00:00Z");
+    // Other on_demand fields preserved
+    expect(next.conditions.on_demand.scheduled_at).toBe(null);
+  });
+
+  it("default conditions: pro_rata + network_fee_exchange", () => {
+    const state = initialState();
+    expect(state.conditions.margin_strategy).toBe("pro_rata");
+    expect(state.conditions.fees).toEqual(["network_fee_exchange"]);
+    expect(state.conditions.flags).toEqual([]);
+  });
+
+  it("unknown field is no-op", () => {
+    const state = initialState();
+    const next = dealFormReducer(state, {
+      type: ACTIONS.SET_CONDITION,
+      field: "unknown_field",
+      value: "x",
+    });
+    expect(next).toBe(state);
+  });
+});
+
 describe("history (undo/redo)", () => {
   // Импорт здесь чтобы не циклить при error в historyReducer
   const { historyReducer } = require("./dealForm.js");

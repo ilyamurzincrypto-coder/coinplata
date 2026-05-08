@@ -191,6 +191,123 @@ describe("buildTx — error cases", () => {
     expect(() => buildTx({ ...COMMON, state })).toThrow(/to_balance cannot be deferred/);
   });
 
+  // ── Stage 3 conditions metadata ──
+  it("conditions: flags + fees → metadata flags", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+      conditions: {
+        margin_strategy: "pro_rata",
+        flags: ["referral", "vip"],
+        fees: ["network_fee_client"],
+        on_demand: { backdate: null, scheduled_at: null, comment: null, tx_hash: null },
+      },
+    };
+    const r = buildTx({ ...COMMON, state });
+    expect(r.metadata.referral).toBe(true);
+    expect(r.metadata.vip).toBe(true);
+    expect(r.metadata.is_otc).toBe(false);
+    expect(r.metadata.fee_paid_by).toBe("client");
+    expect(r.metadata.no_commission).toBe(false);
+  });
+
+  it("conditions: single_leg → all margin на первой OUT", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "1000", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "15000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+        leg({ id: "o2", side: "out", currency: "USD", amount: "500", accountId: "acc-1110", destination: "physical", rate: "1" }),
+      ],
+      commission: [
+        { currency: "TRY", amount: "150", kind: "commission" },
+        { currency: "USD", amount: "5", kind: "commission" },
+      ],
+      conditions: {
+        margin_strategy: "single_leg",
+        flags: [],
+        fees: [],
+        on_demand: { backdate: null, scheduled_at: null, comment: null, tx_hash: null },
+      },
+    };
+    const r = buildTx({ ...COMMON, state });
+    expect(r.commission).toHaveLength(1);
+    expect(r.commission[0].currency).toBe("TRY"); // first OUT
+    expect(r.commission[0].amount).toBe(155);     // 150 + 5 объединены в первую валюту
+    expect(r.metadata.margin_strategy).toBe("single_leg");
+  });
+
+  it("conditions: no_commission → sentinel + flag в metadata", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+      conditions: {
+        margin_strategy: "pro_rata",
+        flags: [],
+        fees: ["no_commission"],
+        on_demand: { backdate: null, scheduled_at: null, comment: null, tx_hash: null },
+      },
+    };
+    const r = buildTx({ ...COMMON, state });
+    expect(r.commission).toEqual([
+      { currency: "TRY", amount: 0.01, kind: "commission" },
+    ]);
+    expect(r.metadata.no_commission).toBe(true);
+  });
+
+  it("conditions: backdate → effective_date в payload", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+      conditions: {
+        margin_strategy: "pro_rata",
+        flags: [],
+        fees: [],
+        on_demand: {
+          backdate: "2026-04-30T12:00:00Z",
+          scheduled_at: "2026-05-15T10:00:00Z",
+          comment: "test deal",
+          tx_hash: "0xabc",
+        },
+      },
+    };
+    const r = buildTx({ ...COMMON, state });
+    expect(r.effective_date).toBe("2026-04-30T12:00:00Z");
+    expect(r.metadata.scheduled_at).toBe("2026-05-15T10:00:00Z");
+    expect(r.metadata.comment).toBe("test deal");
+    expect(r.metadata.tx_hash).toBe("0xabc");
+  });
+
+  it("conditions: defaults — fee_paid_by='exchange', no_commission=false", () => {
+    const state = {
+      legs: [
+        leg({ id: "i1", side: "in", currency: "USDT", amount: "100", accountId: "acc-1316" }),
+        leg({ id: "o1", side: "out", currency: "TRY", amount: "3000", accountId: "acc-1112", destination: "physical", rate: "30" }),
+      ],
+      commission: [{ currency: "TRY", amount: "30", kind: "commission" }],
+      conditions: {
+        margin_strategy: "pro_rata",
+        flags: [],
+        fees: ["network_fee_exchange"],
+        on_demand: { backdate: null, scheduled_at: null, comment: null, tx_hash: null },
+      },
+    };
+    const r = buildTx({ ...COMMON, state });
+    expect(r.metadata.fee_paid_by).toBe("exchange");
+    expect(r.metadata.no_commission).toBe(false);
+    expect(r.metadata.margin_strategy).toBe("pro_rata");
+    expect(r.effective_date).toBeUndefined();
+    expect(r.metadata.scheduled_at).toBeUndefined();
+  });
+
   it("commission filtered when currency not in OUT legs", () => {
     const state = {
       legs: [
