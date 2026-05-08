@@ -52,7 +52,6 @@ const DICT = {
     cashier_title_edit: "Edit deal",
     cashier_counterparty_placeholder: "Client / partner... *",
     cashier_close_confirm: "Unsaved changes. Close anyway?",
-    cashier_stage1_placeholder: "Form sections coming in next stages.",
     // ── cashier conditions (stage 3) ──
     conditions_label_calculation: "Calculation",
     conditions_label_type: "Type",
@@ -443,7 +442,6 @@ const DICT = {
     copy_password: "Copy",
     password_copied: "Copied!",
     password_notice: "Save this password. It won't be shown again.",
-    close: "Close",
     // Permissions
     permission_section: "Section",
     level_disabled: "Disabled",
@@ -1135,7 +1133,6 @@ const DICT = {
     cashier_title_edit: "Редактировать сделку",
     cashier_counterparty_placeholder: "Клиент / партнёр… *",
     cashier_close_confirm: "Есть несохранённые изменения. Закрыть?",
-    cashier_stage1_placeholder: "Секции формы появятся на следующих этапах.",
     // ── cashier conditions (этап 3) ──
     conditions_label_calculation: "Расчёт",
     conditions_label_type: "Тип",
@@ -1509,7 +1506,6 @@ const DICT = {
     copy_password: "Копировать",
     password_copied: "Скопировано!",
     password_notice: "Сохраните пароль. Повторно он не будет показан.",
-    close: "Закрыть",
     permission_section: "Раздел",
     level_disabled: "Отключен",
     level_view: "Просмотр",
@@ -2193,7 +2189,6 @@ const DICT = {
     cashier_title_edit: "İşlemi düzenle",
     cashier_counterparty_placeholder: "Müşteri / partner... *",
     cashier_close_confirm: "Kaydedilmemiş değişiklikler var. Yine de kapatılsın mı?",
-    cashier_stage1_placeholder: "Form bölümleri sonraki aşamalarda gelecek.",
     // ── cashier conditions (aşama 3) ──
     conditions_label_calculation: "Hesaplama",
     conditions_label_type: "Tür",
@@ -2566,7 +2561,6 @@ const DICT = {
     copy_password: "Kopyala",
     password_copied: "Kopyalandı!",
     password_notice: "Bu şifreyi kaydedin. Tekrar gösterilmeyecek.",
-    close: "Kapat",
     permission_section: "Bölüm",
     level_disabled: "Kapalı",
     level_view: "Görüntüle",
