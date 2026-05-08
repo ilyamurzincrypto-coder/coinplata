@@ -20,7 +20,8 @@ import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
 import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
+import { createDeal } from "../lib/dealOperations.js";
 import { supabase } from "../lib/supabase.js";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -135,7 +136,7 @@ export default function CashierPage({
 
         const res = await withToast(
           () =>
-            rpcCreateDeal({
+            createDeal({
               officeId: uuidOrNull(tx.officeId),
               // tx.managerId выставляется в ExchangeForm: для owner/admin —
               // выбранный в dropdown менеджер, для остальных — currentUser.id.

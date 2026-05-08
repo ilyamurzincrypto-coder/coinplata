@@ -345,9 +345,85 @@ export async function rpcReverseTransactionV2(payload) {
   return await invokeLedger("reverse_transaction", params);
 }
 
+/**
+ * ledger.update_deal_v2 — atomic edit (reverse cascade + create new).
+ * Replay через own idempotency_key возвращает cached result.
+ *
+ * @param {Object} payload
+ * @param {string} payload.targetTxId  — tx_id оригинального deal
+ * @param {Object} payload.newPayload  — full create_deal_v2 shape:
+ *   { client_id, office_id, in_legs[], out_legs[], commission[],
+ *     description?, metadata? }
+ * @param {string} payload.reason       — обязательно (audit)
+ * @param {Object} [payload.metadata]
+ * @param {string} [payload.idempotencyKey]
+ * @returns {Promise<{reversed_tx_ids, new_deal_tx_id, new_settle_tx_ids, new_recognition_tx_id}>}
+ */
+export async function rpcUpdateDealV2(payload) {
+  const key = payload.idempotencyKey || newIdempotencyKey();
+  const params = {
+    p_idempotency_key: key,
+    p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
+    p_target_tx_id: payload.targetTxId,
+    p_new_payload: payload.newPayload,
+    p_reason: payload.reason,
+    p_metadata: payload.metadata ?? {},
+  };
+  const data = await invokeLedger("update_deal_v2", params);
+  return Array.isArray(data) ? data[0] : data;
+}
+
+/**
+ * ledger.create_adjustment — manual adjustment (admin-only).
+ *
+ * @param {Object} payload
+ * @param {string} payload.accountCode
+ * @param {number|string} payload.amount   — может быть negative
+ * @param {string} payload.currencyCode
+ * @param {string} payload.reason          — обязательно
+ * @param {'reconciliation'|'transfer'|'opening'} payload.adjustmentKind
+ * @param {string} [payload.balancingAccount]  — REQUIRED для transfer kind
+ * @param {Object} [payload.metadata]
+ * @param {string} [payload.idempotencyKey]
+ * @returns {Promise<string>} tx_id
+ */
+export async function rpcCreateAdjustmentV2(payload) {
+  const key = payload.idempotencyKey || newIdempotencyKey();
+  const params = {
+    p_idempotency_key: key,
+    p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
+    p_account_code: payload.accountCode,
+    p_amount: payload.amount,
+    p_currency_code: payload.currencyCode,
+    p_reason: payload.reason,
+    p_adjustment_kind: payload.adjustmentKind,
+    p_balancing_account: payload.balancingAccount ?? null,
+    p_metadata: payload.metadata ?? {},
+  };
+  return await invokeLedger("create_adjustment", params);
+}
+
+/**
+ * ledger.update_tx_metadata — whitelist patch для tx.metadata.
+ *
+ * @param {Object} payload
+ * @param {string} payload.txId
+ * @param {Object} payload.patch  — JSONB merge object
+ * @param {string} [payload.idempotencyKey]
+ */
+export async function rpcUpdateTxMetadataV2(payload) {
+  const key = payload.idempotencyKey || newIdempotencyKey();
+  const params = {
+    p_idempotency_key: key,
+    p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
+    p_tx_id: payload.txId,
+    p_patch: payload.patch,
+  };
+  return await invokeLedger("update_tx_metadata", params);
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Feature-flag helper — проверяет VITE_USE_NEW_LEDGER.
-// Используется в CashierPage для switch между legacy и new ledger.
 // ─────────────────────────────────────────────────────────────────────
 export const USE_NEW_LEDGER =
   typeof import.meta !== "undefined" &&

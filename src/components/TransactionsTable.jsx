@@ -45,16 +45,18 @@ import { Shield } from "lucide-react";
 import TransactionDetailModal from "./TransactionDetailModal.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import {
-  rpcDeleteDeal,
   rpcHardDeleteDeal,
-  rpcCompleteDeal,
   rpcConfirmDealLeg,
   rpcMarkDealSent,
-  rpcCancelObligation,
   rpcMarkDealPayedOut,
   setDealPinned,
   withToast,
 } from "../lib/supabaseWrite.js";
+import {
+  deleteDeal as rpcDeleteDeal,
+  completeDeal as rpcCompleteDeal,
+  cancelObligation as rpcCancelObligation,
+} from "../lib/dealOperations.js";
 import { HandCoins } from "lucide-react";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {

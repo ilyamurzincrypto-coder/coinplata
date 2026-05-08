@@ -19,7 +19,8 @@ import { useRates } from "../store/rates.jsx";
 import { fmt, curSymbol, multiplyAmount } from "../utils/money.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcCreateDeal, rpcSetDealCreatedAt, withToast } from "../lib/supabaseWrite.js";
+import { rpcSetDealCreatedAt, withToast } from "../lib/supabaseWrite.js";
+import { createDeal } from "../lib/dealOperations.js";
 
 export default function OtcDealModal({ open, currentOffice, onClose, onCreated, initialFromAccountId }) {
   const { accounts, balanceOf } = useAccounts();
@@ -100,7 +101,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
       const legRate = toAmt > 0 ? fromAmt / toAmt : 0;
       const res = await withToast(
         () =>
-          rpcCreateDeal({
+          createDeal({
             officeId: from.officeId,
             managerId: currentUser.id,
             clientId: null,

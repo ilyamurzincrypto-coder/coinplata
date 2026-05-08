@@ -25,12 +25,12 @@ import { useAudit } from "../../store/audit.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { officeName } from "../../store/data.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
+import { withToast } from "../../lib/supabaseWrite.js";
 import {
-  rpcSettleObligationPartial,
-  rpcReceivePayment,
-  rpcCancelObligation,
-  withToast,
-} from "../../lib/supabaseWrite.js";
+  settleObligationPartial as rpcSettleObligationPartial,
+  receivePayment as rpcReceivePayment,
+  cancelObligation as rpcCancelObligation,
+} from "../../lib/dealOperations.js";
 import Modal from "../../components/ui/Modal.jsx";
 import Select from "../../components/ui/Select.jsx";
 import { exportCSV } from "../../utils/csv.js";
