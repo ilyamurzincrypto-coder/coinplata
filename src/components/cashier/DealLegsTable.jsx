@@ -21,6 +21,7 @@ export default function DealLegsTable({
   inLegs,
   outLegs,
   officeId,
+  clientBalances = {},   // {currency: number} — баланс клиента per currency
 }) {
   const { getRate } = useRates();
   const refs = useRef({});
@@ -109,6 +110,7 @@ export default function DealLegsTable({
             leg.side === "out" && inCurrency && leg.currency
               ? getRate(inCurrency, leg.currency)
               : null;
+          const clientBal = leg.currency ? clientBalances[leg.currency] : null;
           return (
             <LegRow
               key={leg.id}
@@ -122,6 +124,9 @@ export default function DealLegsTable({
               officeId={officeId}
               marketRate={marketRate}
               canRemove={legs.length > 1}
+              clientBalanceInCurrency={
+                Number.isFinite(clientBal) ? clientBal : null
+              }
             />
           );
         })}

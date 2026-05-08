@@ -23,10 +23,12 @@ VITE_USE_NEW_DEAL_FORM=true
 
 - **Этап 1** ✓ tokens + StickyTitle + CounterpartyBar + feature-flag
 - **Этап 2** ✓ DealLegsTable + унифицированный `legs[]` state + buildTx
-- Этап 2.5 — Tab-flow refinement + cross-leg validation + RatesPanel sync
+- **Этап 2.5** ✓ rate↔amount sync + balance display + cross-leg validation
+  + spread indicator + undo/redo + auto-save draft
 - Этап 3 — ConditionsBar (3 группы) + on-demand chips
 - Этап 4 — FooterBar + LivePreview + Submit CTA
 - Этап 5 — cleanup старых компонентов
+- Этап 5+ — OpenObligationsWidget (после operations layer от ledger track)
 
 ## Архитектура (целевая, после этапа 5)
 
@@ -80,6 +82,38 @@ DealForm.jsx                    — root, useReducer state
 
 **Initial state:** один auto-IN row, пустой OUT collection.
 **Invariant:** `REMOVE_LEG` гарантирует ≥1 IN leg всегда.
+
+## Этап 2.5 фичи
+
+### Bidirectional rate↔amount sync (`applyAutoCalc` в reducer)
+- OUT.rate edited → OUT.amount = first_IN.amount × rate
+- OUT.amount edited (rate not in same patch) → OUT.rate = amount / IN
+- IN.amount edited → all OUT legs с rate>0: amount = IN × rate
+- Bypass: `dispatch({ ..., _skipAutoCalc: true })`
+
+### Balance display + cross-leg validation
+- `BalanceBadge` под Amount cell для IN.from_balance: client balance per cur
+- `BalanceBadge` под Account cell для OUT.physical: account balance
+- Red border + warning при overdraft (clientBalance < amount) или нехватке кассы (accountBalance < amount)
+- `useClientBalances(clientId)` — sum we_owe minus they_owe per currency
+
+### Spread indicator (`SpreadIndicator`)
+- Сравнивает `leg.rate` с market rate (`getRate`)
+- 🟢 above mid (profitable), 🟡 below mid, 🔴 |spread| > 5%
+- Tooltip: "current X, market Y, spread +Z%"
+
+### Undo/Redo
+- `historyReducer` wraps `dealFormReducer` с {past, present, future} stacks
+- HISTORY_MAX = 20 entries
+- UPDATE_LEG throttle: continuous edits в same leg+keys = single undo step
+- Cmd/Ctrl+Z = undo, Cmd/Ctrl+Shift+Z (или Ctrl+Y) = redo
+- Footer buttons + keyboard shortcuts глобально
+
+### Auto-save draft
+- `useDealForm` пишет в `localStorage[dealForm.draft.v1]` на каждое изменение
+- TTL 24h
+- При mount (create mode только) — prompt "Восстановить черновик?"
+- `clearDraft()` после Submit или dismiss
 
 ## Tab-flow (этап 2)
 
