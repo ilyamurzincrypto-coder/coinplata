@@ -7,6 +7,12 @@ import { render, screen, fireEvent } from "@testing-library/react";
 vi.mock("../../../i18n/translations.jsx", () => ({
   useTranslation: () => ({ t: (k, p) => k }),
 }));
+vi.mock("../../../store/auth.jsx", () => ({
+  useAuth: () => ({ currentUser: { id: "u1", role: "manager" } }),
+}));
+vi.mock("../../../store/offices.jsx", () => ({
+  useOffices: () => ({ activeOffices: [] }),
+}));
 vi.mock("../../../lib/supabase.js", () => ({
   supabase: { rpc: vi.fn(), channel: vi.fn(), removeChannel: vi.fn(), from: vi.fn() },
   isSupabaseConfigured: false,
