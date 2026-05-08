@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowLeftRight } from "lucide-react";
 import Balances from "../components/Balances.jsx";
+import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
 import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
@@ -534,12 +535,13 @@ export default function CashierPage({
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
                 него (col1) той же высоты. */}
-            <div className="min-w-0 lg:[grid-area:bal]">
+            <div className="min-w-0 lg:[grid-area:bal] space-y-4">
               <Balances
                 currentOffice={currentOffice}
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
+              <OpenObligationsWidget officeId={currentOffice} />
             </div>
 
             {/* Transactions — grid-area "tx". Compact: row 3 full-width.
