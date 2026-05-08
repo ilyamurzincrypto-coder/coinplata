@@ -1,16 +1,16 @@
 // src/components/cashier/DealForm.jsx
-// Новая форма создания сделки. На этапе 1 — только shell:
-// StickyTitle + CounterpartyBar. Остальные секции (DealLegsTable,
-// ConditionsBar, FooterBar) приходят в этапах 2-4.
+// Новая форма создания сделки. Этап 2: + DealLegsTable + legs[] state.
 //
-// Активируется через VITE_USE_NEW_DEAL_FORM=true. Пока default false,
-// CashierPage показывает старый ExchangeForm.
+// Активируется через VITE_USE_NEW_DEAL_FORM=true. Default false — CashierPage
+// показывает legacy ExchangeForm.
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import StickyTitle from "./StickyTitle.jsx";
 import CounterpartyBar from "./CounterpartyBar.jsx";
+import DealLegsTable from "./DealLegsTable.jsx";
+import { useDealForm } from "../../store/dealForm.js";
 
 export default function DealForm({
   mode = "create",
@@ -24,8 +24,7 @@ export default function DealForm({
   const { t } = useTranslation();
   const { currentUser } = useAuth();
 
-  // Минимальный state для этапа 1: counterparty + manager + office.
-  // Полный legs[] state приходит в этапе 2.
+  // Counterparty + manager state (этап 1)
   const [counterparty, setCounterparty] = useState(
     initialData?.counterparty || ""
   );
@@ -37,13 +36,42 @@ export default function DealForm({
   );
   const [showRequiredError, setShowRequiredError] = useState(false);
 
-  // hasUnsavedChanges — для close-confirm. На этапе 1 любое изменение
-  // counterparty считается unsaved.
-  const hasUnsavedChanges = useMemo(() => {
-    return counterparty.trim().length > 0;
-  }, [counterparty]);
+  // Legs state (этап 2)
+  const {
+    state: dealFormState,
+    legs,
+    inLegs,
+    outLegs,
+    addLeg,
+    removeLeg,
+    updateLeg,
+    totalIn,
+    totalOut,
+  } = useDealForm();
 
-  // dealId stable across re-renders (для StickyTitle title-attr UUID).
+  const onToggleSide = useCallback(
+    (legId) => {
+      const leg = legs.find((l) => l.id === legId);
+      if (!leg) return;
+      const next = leg.side === "in" ? "out" : "in";
+      const patch = {
+        side: next,
+        // Перенастраиваем source/destination в зависимости от side
+        source: next === "in" ? (leg.source || "fresh") : null,
+        destination: next === "out" ? (leg.destination || "physical") : null,
+      };
+      updateLeg(legId, patch);
+    },
+    [legs, updateLeg]
+  );
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (counterparty.trim().length > 0) return true;
+    return legs.some(
+      (l) => Number(l.amount) > 0 || l.currency || l.accountId
+    );
+  }, [counterparty, legs]);
+
   const dealId = useMemo(
     () => initialData?.id || crypto.randomUUID?.() || "",
     [initialData?.id]
@@ -68,15 +96,33 @@ export default function DealForm({
         showRequiredError={showRequiredError}
       />
 
-      {/* TODO этап 2: DealLegsTable */}
-      {/* TODO этап 3: ConditionsBar */}
-      {/* TODO этап 4: FooterBar */}
+      <DealLegsTable
+        legs={legs}
+        inLegs={inLegs}
+        outLegs={outLegs}
+        onUpdate={updateLeg}
+        onRemove={removeLeg}
+        onAddLeg={addLeg}
+        onToggleSide={onToggleSide}
+        officeId={currentOffice}
+      />
 
-      <div
-        className="px-4 py-8 text-center text-hint"
-        style={{ minHeight: 200 }}
-      >
-        {t("cashier_stage1_placeholder")}
+      {/* TODO этап 3: ConditionsBar */}
+      {/* TODO этап 4: FooterBar — здесь будет SubmitCTA */}
+      <div className="px-4 py-3 text-hint border-t border-slate-200 bg-slate-50/40 flex justify-between items-center">
+        <span>
+          {Object.entries(totalIn).map(([cur, amt]) => `+${amt} ${cur}`).join(", ") || "—"}
+          {" → "}
+          {Object.entries(totalOut).map(([cur, amt]) => `−${amt} ${cur}`).join(", ") || "—"}
+        </span>
+        <button
+          type="button"
+          disabled
+          className="px-3 py-1.5 rounded-[var(--radius-section)] bg-slate-200 text-slate-500 text-[12px] font-semibold cursor-not-allowed"
+          title="Submit появится в этапе 4"
+        >
+          {t("cashier_stage1_placeholder")} → этап 4
+        </button>
       </div>
     </div>
   );

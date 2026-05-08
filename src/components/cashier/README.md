@@ -22,10 +22,10 @@ VITE_USE_NEW_DEAL_FORM=true
 ## Этапы
 
 - **Этап 1** ✓ tokens + StickyTitle + CounterpartyBar + feature-flag
-- Этап 2 — DealLegsTable + унифицированный `legs[]` state
-- Этап 2.5 — Tab-flow + cross-leg validation + RatesPanel sync
+- **Этап 2** ✓ DealLegsTable + унифицированный `legs[]` state + buildTx
+- Этап 2.5 — Tab-flow refinement + cross-leg validation + RatesPanel sync
 - Этап 3 — ConditionsBar (3 группы) + on-demand chips
-- Этап 4 — FooterBar + LivePreview + RatesPanel переписан
+- Этап 4 — FooterBar + LivePreview + Submit CTA
 - Этап 5 — cleanup старых компонентов
 
 ## Архитектура (целевая, после этапа 5)
@@ -53,29 +53,91 @@ DealForm.jsx                    — root, useReducer state
    └─ OnDemandChip.jsx
 ```
 
-## State (этап 2+)
+## State (этап 2)
 
-`useReducer` с одним unified shape:
+`src/store/dealForm.js` — `useReducer` + `useDealForm()` hook.
 
-```ts
+```js
+// Unified leg shape (side discriminator)
 {
-  legs: [{ id, side, currency, amount, accountId, rate, ... }],
-  counterparty, counterpartyId, counterpartyTelegram,
-  conditions: { timing, isReferral, isPartial, partialPayNow,
-                applyMinFee, commissionUsd, customFeeUsd,
-                backdateAt, plannedAt, comment, txHash },
-  selectedManagerId, payeeUserId, payeeOfficeId,
-  // undo/redo (этап 2.5)
-  _undoStack, _redoStack,
+  id, side: 'in'|'out',
+  currency, amount,                       // string (raw input)
+  accountId,                              // public.accounts.id или null
+  rate, rateManual,                       // OUT only
+  deferred,                               // OUT: ours_later/partner_later
+  source: 'fresh'|'from_balance',         // IN
+  destination: 'physical'|'to_balance',   // OUT
+  address, network,                       // crypto OUT
+  note,
 }
 ```
 
+**Actions:** `ADD_LEG`, `REMOVE_LEG`, `UPDATE_LEG`, `REORDER_LEGS`,
+`SET_COMMISSION`, `RESET`, `HYDRATE`.
+
+**Selectors (через `useDealForm()`):** `inLegs`, `outLegs`, `totalIn` (per cur),
+`totalOut` (per cur), `commissionByCurrency`.
+
+**Initial state:** один auto-IN row, пустой OUT collection.
+**Invariant:** `REMOVE_LEG` гарантирует ≥1 IN leg всегда.
+
+## Tab-flow (этап 2)
+
+Cell-based refs[][] в `DealLegsTable.jsx`:
+
+```
+[Side]  [Currency]  [Amount]  [Rate]   [Source/Dest]  [Account]  [⌫]
+  0        1          2         3            4            5        —
+```
+
+- **Tab** → следующая колонка в той же строке. Если 5 — переходим на col 1
+  следующей строки.
+- **Shift+Tab** → предыдущая колонка / предыдущая строка с col 5.
+- **Enter** → next row col 1. Если строки нет — добавляется новая OUT row,
+  фокус через 50ms setTimeout (после mount).
+- Side cell (col 0) и Trash (col 6) пропускаются — toggle/delete по клику.
+
 ## buildTx mapping (этап 2)
 
-`src/lib/dealForm/buildTx.js` — чистая mapping-функция,
-конвертирует unified `legs[]` в формат который ожидает
-существующий `rpcCreateDeal/rpcUpdateDeal`. **Контракт RPC
-не меняется** до cutover.
+`src/lib/dealForm/buildTx.js` — pure-функция, конвертирует unified
+`legs[]` → v2 RPC payload (`rpcCreateDealV2` shape):
+
+```js
+buildTx({
+  state: dealFormState,
+  clientId, officeId,
+  accountCodeByLegacyId,  // { 'acc-uuid': '1110', ... }
+  description, metadata,
+})
+→ {
+  client_id, office_id,
+  in_legs:  [{currency, amount, source, account_code?, rate?, rate_source?}],
+  out_legs: [{currency, amount, destination, account_code?, rate?, rate_source?, deferred}],
+  commission: [{currency, amount, kind}],  // subset of OUT cur, dedup
+  description, metadata: { ui_form: 'deal_v2', ... },
+}
+```
+
+`accountCodeByLegacyId` map собирается на UI стороне через `useAccounts()`
++ `account.ledger_account_code` (резолвится в Direction 2 backend).
+
+**Snapshot tests:** `buildTx.test.js` — 8 fixtures (5a-5b, 6a-6b, 7a-7b, 8a-8b)
+покрывают все source/destination комбинации single/multi-leg + 5 edge cases.
+
+## Feature-flag combos
+
+| `VITE_USE_NEW_DEAL_FORM` | `VITE_USE_NEW_LEDGER` | Use case |
+|:---:|:---:|---|
+| `false` | `false` | **Production legacy** (default) |
+| `true`  | `false` | Test new form через legacy ledger (UI verify) |
+| `false` | `true`  | Legacy form через новый ledger (integration test) |
+| `true`  | `true`  | **Production-ready** после cutover |
+
+`.env.local`:
+```
+VITE_USE_NEW_DEAL_FORM=true
+VITE_USE_NEW_LEDGER=false
+```
 
 ## Дизайн-токены
 
