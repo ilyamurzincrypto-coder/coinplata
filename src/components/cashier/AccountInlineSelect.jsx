@@ -38,11 +38,13 @@ export default function AccountInlineSelect({
         const officeName =
           activeOffices.find((o) => o.id === a.officeId)?.name ||
           (a.officeId ? a.officeId : "—");
-        const blocked = USE_NEW_LEDGER && a.legacyOnly;
-        const noMapping = USE_NEW_LEDGER && !a.ledgerAccountCode && !a.legacyOnly;
-        const tag = blocked
+        // Под USE_NEW_LEDGER оба случая = "не работает с новым ledger" → disabled
+        const isLegacyOnly = USE_NEW_LEDGER && a.legacyOnly;
+        const isUnmapped = USE_NEW_LEDGER && !a.ledgerAccountCode && !a.legacyOnly;
+        const blocked = isLegacyOnly || isUnmapped;
+        const tag = isLegacyOnly
           ? " · ⚠ legacy-only"
-          : noMapping
+          : isUnmapped
             ? " · ⚠ no ledger map"
             : "";
         return {
