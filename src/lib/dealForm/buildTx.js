@@ -103,7 +103,7 @@ export function buildTx({
     commission,
     description: description || null,
     metadata: {
-      ui_form: "deal_v2",
+      source_form: "deal_v2",
       ...conditionsMetadata,
       ...(metadata || {}),
     },
