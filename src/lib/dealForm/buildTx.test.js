@@ -188,7 +188,7 @@ describe("buildTx — error cases", () => {
       ],
       commission: [{ currency: "TRY", amount: "300", kind: "commission" }],
     };
-    expect(() => buildTx({ ...COMMON, state })).toThrow(/to_balance cannot be deferred/);
+    expect(() => buildTx({ ...COMMON, state })).toThrow(/to_balance_cannot_be_deferred/);
   });
 
   // ── Stage 3 conditions metadata ──

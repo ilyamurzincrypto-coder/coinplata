@@ -34,6 +34,7 @@ export default function PartnerAccountFormModal({
   const [address, setAddress] = useState("");
   const [openingBalance, setOpeningBalance] = useState("");
   const [note, setNote] = useState("");
+  const [ledgerAccountCode, setLedgerAccountCode] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -44,6 +45,7 @@ export default function PartnerAccountFormModal({
       setAddress(initial?.address || "");
       setOpeningBalance(initial?.openingBalance != null ? String(initial.openingBalance) : "");
       setNote(initial?.note || "");
+      setLedgerAccountCode(initial?.ledgerAccountCode || "");
     }
   }, [open, initial]);
 
@@ -73,6 +75,7 @@ export default function PartnerAccountFormModal({
       address: isCrypto ? address.trim() : null,
       openingBalance: ob,
       note: note.trim() || null,
+      ledgerAccountCode: ledgerAccountCode.trim(),
     });
   };
 
@@ -217,6 +220,23 @@ export default function PartnerAccountFormModal({
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
             className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+          />
+        </div>
+
+        {/* Ledger account code */}
+        <div>
+          <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            Ledger account code{" "}
+            <span className="normal-case font-normal tracking-normal">
+              (чарт счетов: партнёрский Liab)
+            </span>
+          </label>
+          <input
+            type="text"
+            value={ledgerAccountCode}
+            onChange={(e) => setLedgerAccountCode(e.target.value)}
+            placeholder="2210"
+            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-mono outline-none"
           />
         </div>
       </div>

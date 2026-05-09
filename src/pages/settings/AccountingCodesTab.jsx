@@ -61,7 +61,7 @@ export default function AccountingCodesTab() {
         id: p.id,
         name: `${p.partnerName || "Партнёр"} · ${p.name}`,
         subtitle: `${p.currency}${p.type ? " · " + p.type : ""}`,
-        accountingCode: p.accountingCode || "",
+        accountingCode: p.ledgerAccountCode || "",
       }));
     }
     if (q) {

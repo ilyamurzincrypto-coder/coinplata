@@ -25,6 +25,7 @@ export default function FooterBar({
   submitDisabled,
   submitDisabledReason,
   loading,
+  validation,
 }) {
   const { t } = useTranslation();
   return (
@@ -74,6 +75,7 @@ export default function FooterBar({
         loading={loading}
         disabled={submitDisabled}
         disabledTitle={submitDisabledReason || t("submit_disabled_tooltip")}
+        validation={validation}
       />
     </div>
   );

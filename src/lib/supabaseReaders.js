@@ -490,7 +490,7 @@ export async function loadPartnerAccounts() {
     createdAt: r.created_at,
     createdBy: r.created_by,
     updatedAt: r.updated_at,
-    accountingCode: r.accounting_code || null,
+    ledgerAccountCode: r.ledger_account_code || null,
   }));
 }
 

@@ -186,12 +186,32 @@ describe("adaptLegacyDealPayload — structural", () => {
     expect(v2.metadata.adjustment_type).toBe("legacy_pending_payment");
   });
 
-  it("partner OUT throws explicit error", async () => {
-    setupAccountMock({
-      "acc-1316": { ledger_account_code: "1316", legacy_only: false, name: "Hot USDT" },
+  it("partner OUT resolves ledger_account_code via partner_accounts lookup", async () => {
+    // Partner OUT no longer throws — it resolves via resolvePartnerAccountCode.
+    // Extend the mock to handle partner_accounts table.
+    const partnerRows = {
+      "partner-acc-1": { ledger_account_code: "2210", currency_code: "TRY", name: "Sherif TRY" },
+    };
+    supabase.from.mockImplementation((tbl) => {
+      const byId =
+        tbl === "accounts"
+          ? { "acc-1316": { ledger_account_code: "1316", legacy_only: false, name: "Hot USDT" } }
+          : tbl === "partner_accounts"
+          ? partnerRows
+          : null;
+      if (!byId) throw new Error(`unexpected table: ${tbl}`);
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn(function (col, val) { this._currentId = val; return this; }),
+        single: vi.fn(function () {
+          const row = byId[this._currentId];
+          if (!row) return Promise.resolve({ data: null, error: { message: "not found" } });
+          return Promise.resolve({ data: row, error: null });
+        }),
+      };
     });
 
-    await expect(adaptLegacyDealPayload({
+    const result = await adaptLegacyDealPayload({
       officeId: "office-1",
       clientId: "client-1",
       currencyIn: "USDT",
@@ -204,7 +224,8 @@ describe("adaptLegacyDealPayload — structural", () => {
         partnerAccountId: "partner-acc-1",
         outKind: "partner_now",
       }],
-    })).rejects.toThrow(/Partner accounts in OUT side/);
+    });
+    expect(result.outLegs[0].account_code).toBe("2210");
   });
 
   it("deferred OUT (ours_later) requires accountId for future complete_deal_leg", async () => {

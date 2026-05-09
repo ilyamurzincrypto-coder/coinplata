@@ -22,6 +22,7 @@ export default function DealLegsTable({
   outLegs,
   officeId,
   clientBalances = {},   // {currency: number} — баланс клиента per currency
+  errorsByLeg,           // Map<legId, Error[]> — per-leg field errors from validateTx
 }) {
   const { getRate } = useRates();
   const refs = useRef({});
@@ -111,6 +112,7 @@ export default function DealLegsTable({
               ? getRate(inCurrency, leg.currency)
               : null;
           const clientBal = leg.currency ? clientBalances[leg.currency] : null;
+          const legErrors = errorsByLeg?.get(leg.id) || [];
           return (
             <LegRow
               key={leg.id}
@@ -127,6 +129,7 @@ export default function DealLegsTable({
               clientBalanceInCurrency={
                 Number.isFinite(clientBal) ? clientBal : null
               }
+              errors={legErrors}
             />
           );
         })}

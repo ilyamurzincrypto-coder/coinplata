@@ -24,6 +24,7 @@ import { createDeal } from "../../lib/dealOperations.js";
 import { buildTx } from "../../lib/dealForm/buildTx.js";
 import { runSubmitFlow } from "../../lib/dealForm/submitFlow.js";
 import { computePickedRate } from "../../lib/dealForm/pickRate.js";
+import { validateTx } from "../../lib/dealForm/validateTx.js";
 
 export default function DealForm({
   mode = "create",
@@ -160,6 +161,22 @@ export default function DealForm({
       return Number.isFinite(amt) && amt > 0 && Number.isFinite(bal) && amt > bal;
     });
   }, [outLegs, balanceOf]);
+
+  // ── validateTx: per-field errors for UI ──
+  const validation = useMemo(
+    () => validateTx({ officeId: currentOffice, legs }),
+    [currentOffice, legs]
+  );
+  const errorsByLeg = useMemo(() => {
+    const m = new Map();
+    for (const e of validation.errors) {
+      if (!e.legId) continue;
+      const arr = m.get(e.legId) || [];
+      arr.push(e);
+      m.set(e.legId, arr);
+    }
+    return m;
+  }, [validation]);
 
   // submitDisabled — base validation (без backend errors)
   const submitDisabled = useMemo(() => {
@@ -333,6 +350,7 @@ export default function DealForm({
           onToggleSide={onToggleSide}
           officeId={currentOffice}
           clientBalances={clientBalances}
+          errorsByLeg={errorsByLeg}
         />
       </div>
 
@@ -358,6 +376,7 @@ export default function DealForm({
         onSubmitAndNotify={onSubmitAndNotify}
         submitDisabled={submitDisabled}
         loading={loading || submitting}
+        validation={validation}
       />
     </div>
 

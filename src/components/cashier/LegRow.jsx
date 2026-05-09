@@ -45,6 +45,7 @@ const LegRow = forwardRef(function LegRow(
     marketRate,
     canRemove = true,
     clientBalanceInCurrency,  // number | null — баланс клиента в leg.currency (we_owe = positive)
+    errors = [],              // Error[] from validateTx for this leg
   },
   _ref
 ) {
@@ -83,6 +84,17 @@ const LegRow = forwardRef(function LegRow(
     ? amountNum - accountBalance
     : null;
 
+  // ── Per-field error helpers (from validateTx) ──
+  const fieldErr = (field) => errors.find((e) => e.field === field);
+  const fieldClass = (base, field) => {
+    const err = fieldErr(field);
+    return err ? `${base} ring-2 ring-rose-400 border-rose-400` : base;
+  };
+  const accountErr = fieldErr("accountId");
+  const amountErr = fieldErr("amount");
+  const currencyErr = fieldErr("currency");
+  const deferredErr = fieldErr("deferred");
+
   // ── Source/destination dropdown ──
   const sourceOrDest = isIn ? (
     <select
@@ -104,7 +116,11 @@ const LegRow = forwardRef(function LegRow(
       ref={setCellRef ? (el) => setCellRef(rowIndex, 4, el) : undefined}
       onKeyDown={(e) => onCellKeyDown?.(e, rowIndex, 4)}
       aria-label="Назначение"
-      className="bg-transparent border-0 outline-none text-[12px] text-slate-600 focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full"
+      title={deferredErr?.message}
+      className={
+        "bg-transparent border-0 outline-none text-[12px] text-slate-600 focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full" +
+        (deferredErr ? " ring-2 ring-rose-400" : "")
+      }
     >
       {DEST_OPTIONS_OUT.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -119,7 +135,9 @@ const LegRow = forwardRef(function LegRow(
     (isIn && leg.source === "fresh") ||
     (isOut && leg.destination === "physical");
 
-  const amountBorderClass = (inOverdraft || outShortage)
+  const amountBorderClass = amountErr
+    ? "ring-2 ring-rose-400 border-rose-400 rounded-[var(--radius-cell)]"
+    : (inOverdraft || outShortage)
     ? "ring-1 ring-rose-300 bg-rose-50/40 rounded-[var(--radius-cell)]"
     : "";
 
@@ -143,7 +161,11 @@ const LegRow = forwardRef(function LegRow(
         </div>
 
         {/* Currency */}
-        <div ref={setCellRef ? (el) => setCellRef(rowIndex, 1, el) : undefined}>
+        <div
+          ref={setCellRef ? (el) => setCellRef(rowIndex, 1, el) : undefined}
+          className={currencyErr ? "ring-2 ring-rose-400 rounded-[var(--radius-cell)]" : undefined}
+          title={currencyErr?.message}
+        >
           <CurrencyPicker
             value={leg.currency}
             onChange={(v) => onUpdate(leg.id, { currency: v })}
@@ -153,7 +175,7 @@ const LegRow = forwardRef(function LegRow(
         </div>
 
         {/* Amount */}
-        <div className={amountBorderClass}>
+        <div className={amountBorderClass} title={amountErr?.message}>
           <CurrencyTextInput
             value={leg.amount}
             onChange={(v) => onUpdate(leg.id, { amount: v })}
@@ -193,7 +215,10 @@ const LegRow = forwardRef(function LegRow(
         <div>{sourceOrDest}</div>
 
         {/* Account */}
-        <div>
+        <div
+          className={accountErr ? "ring-2 ring-rose-400 rounded-[var(--radius-cell)]" : undefined}
+          title={accountErr?.message}
+        >
           {showAccount ? (
             <AccountInlineSelect
               value={leg.accountId}

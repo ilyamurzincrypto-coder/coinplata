@@ -1,4 +1,5 @@
 // src/lib/dealForm/buildTx.js
+import { validateTx } from "./validateTx.js";
 // UI этап 2 — pure mapping legs[] state → rpcCreateDealV2 wrapper input.
 //
 // Wrapper в src/lib/newLedger.js принимает camelCase, потом делает
@@ -52,6 +53,13 @@ export function buildTx({
   }
   if (!clientId) throw new Error("buildTx: clientId required");
   if (!officeId) throw new Error("buildTx: officeId required");
+
+  const legs = state.legs;
+  const { ok, errors } = validateTx({ officeId, legs });
+  if (!ok) {
+    const first = errors[0];
+    throw new Error(`${first.side ? first.side.toUpperCase() + " leg " + (first.legId || "?") + ": " : ""}${first.message} (${first.code})`);
+  }
 
   const inLegs = [];
   const outLegs = [];

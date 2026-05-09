@@ -9,6 +9,32 @@ import { supabase } from "./supabase.js";
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 
 /**
+ * Resolve public.partner_accounts.id → ledger.account_code.
+ * Throws structured error when ledger_account_code is not set.
+ *
+ * @param {string} partnerAccountId — uuid из public.partner_accounts
+ * @returns {Promise<string>} ledger.accounts.code
+ */
+async function resolvePartnerAccountCode(partnerAccountId) {
+  if (!partnerAccountId) {
+    throw new Error("resolvePartnerAccountCode: partnerAccountId required");
+  }
+  const { data, error } = await supabase
+    .from("partner_accounts")
+    .select("ledger_account_code, name, currency_code")
+    .eq("id", partnerAccountId)
+    .single();
+  if (error) throw new Error(`resolvePartnerAccountCode lookup failed: ${error.message}`);
+  if (!data) throw new Error(`resolvePartnerAccountCode: partner account ${partnerAccountId} not found`);
+  if (!data.ledger_account_code) {
+    throw new Error(
+      `Счёт партнёра "${data.name}" не маппится на ledger — задай ledger_account_code в Settings → Партнёры → счета`
+    );
+  }
+  return data.ledger_account_code;
+}
+
+/**
  * Resolve legacy public.accounts.id → ledger.account_code.
  * Handles legacy_only marker → throws explicit error.
  *
@@ -92,10 +118,7 @@ export async function adaptLegacyDealPayload(legacy) {
       if (legacy.inAccountId) {
         inLeg.account_code = await resolveAccountCode(legacy.inAccountId);
       } else if (legacy.inPartnerAccountId) {
-        throw new Error(
-          "Partner accounts in IN side are not supported in new ledger yet. " +
-          "Disable VITE_USE_NEW_LEDGER for OTC deals."
-        );
+        inLeg.account_code = await resolvePartnerAccountCode(legacy.inPartnerAccountId);
       } else {
         throw new Error("adapter: fresh IN requires inAccountId");
       }
@@ -117,7 +140,7 @@ export async function adaptLegacyDealPayload(legacy) {
       if (p.accountId) {
         leg.account_code = await resolveAccountCode(p.accountId);
       } else if (p.partnerAccountId) {
-        throw new Error("Partner accounts in inPayments are not supported in new ledger yet.");
+        leg.account_code = await resolvePartnerAccountCode(p.partnerAccountId);
       } else {
         throw new Error("adapter: inPayments entry requires accountId");
       }
@@ -125,24 +148,22 @@ export async function adaptLegacyDealPayload(legacy) {
     }
   }
 
-  if (inLegs.length === 0) {
-    throw new Error(
-      "One-sided OUT deal (no IN side) is not supported in new ledger as a deal. " +
-      "Use Withdrawal modal — semantically this is a withdrawal (asset out + Customer Liab Cr). " +
-      "Or disable VITE_USE_NEW_LEDGER for this operation."
-    );
-  }
-
-  // ── OUT legs ──
+  // ── OUT legs — built before the one-sided guard so it's available in both paths ──
   const outLegs = [];
   for (const o of legacy.outputs || []) {
     const isLater = o.outKind === "ours_later" || o.outKind === "partner_later";
     const isPartner = o.outKind === "partner_now" || !!o.partnerAccountId;
     if (isPartner && !isLater) {
-      throw new Error(
-        "Partner accounts in OUT side are not supported in new ledger yet. " +
-        "Disable VITE_USE_NEW_LEDGER for OTC deals."
-      );
+      // Partner OUT — resolve via partner_accounts lookup instead of throwing.
+      const code = await resolvePartnerAccountCode(o.partnerAccountId);
+      outLegs.push({
+        currency: o.currency.toUpperCase(),
+        amount: Number(o.amount),
+        account_code: code,
+        rate: Number(o.rate),
+        deferred: false,
+      });
+      continue;
     }
     const outLeg = {
       currency: o.currency,
@@ -168,12 +189,29 @@ export async function adaptLegacyDealPayload(legacy) {
     outLegs.push(outLeg);
   }
 
+  // ── One-sided guards — route to dedicated RPCs instead of throwing ──
+  if (inLegs.length === 0) {
+    // One-sided OUT — route via withdrawal RPC. Caller checks `kind` and dispatches.
+    return {
+      kind: "withdrawal",
+      officeId: legacy.officeId,
+      clientId: legacy.clientId || null,
+      clientNickname: legacy.clientNickname || null,
+      outLegs,
+      note: legacy.comment || null,
+    };
+  }
+
   if (outLegs.length === 0) {
-    throw new Error(
-      "One-sided IN deal (no OUT side) is not supported in new ledger as a deal. " +
-      "Use TopUp modal — semantically this is a top-up (asset in + Customer Liab Cr). " +
-      "Or disable VITE_USE_NEW_LEDGER for this operation."
-    );
+    // One-sided IN — route via topup RPC.
+    return {
+      kind: "topup",
+      officeId: legacy.officeId,
+      clientId: legacy.clientId || null,
+      clientNickname: legacy.clientNickname || null,
+      inLegs,
+      note: legacy.comment || null,
+    };
   }
 
   // ── Commission ──
