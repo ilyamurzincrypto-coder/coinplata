@@ -22,6 +22,40 @@ Partner Liab accounts (2210-2219) остаются в seed для будущег
 но balance=0 на opening — `create_opening_from_inventory` физически
 блокирует partner_dim_required entries (RAISE 22000).
 
+### Inventory scope (cutover 2026-05-19)
+
+Opening содержит ТРИ источника данных:
+
+1. **Cash inventory** (per office × currency) — менеджеры пересчитывают
+   на местах. Через `office_cash` parameter.
+2. **Crypto wallets** — treasurer (Кирилл) присылает snapshot. Через
+   `crypto_wallets` parameter, lookup по `ledger.wallet_addresses.id`.
+3. **Inter-office balances** — owner сводит исторические долги между
+   офисами. Через `inter_office` parameter (bilateral accounts 14XX).
+
+**Out of scope (отложено на Q3):** банковские счета, биржевые балансы,
+retained earnings, формальный partner_liab учёт.
+
+### Pre-cutover data collection
+
+**T-2 (17 мая, суббота — после dry-run):**
+- Owner отправляет [inter-office balances form](CUTOVER_INTER_OFFICE_FORM.md) — предварительная версия
+- Owner отправляет [treasurer request](CUTOVER_TREASURER_REQUEST.md) Кириллу — preliminary crypto snapshot
+
+**T-0 (19 мая утром):**
+- Менеджеры присылают cash inventory (как раньше)
+- Treasurer финальный crypto snapshot (если изменился с T-2)
+- Owner финальный inter-office (если изменился)
+
+Все три набора собираются в **один RPC call**:
+```sql
+SELECT ledger.create_opening_from_inventory(
+  p_office_cash    => '<cash JSONB>',
+  p_crypto_wallets => '<wallets JSONB>',
+  p_inter_office   => '<inter-office JSONB>'
+);
+```
+
 ## Pre-cutover validations (T-24 hours)
 
 **Before initiating cutover, run these queries и verify ALL return 0.**
