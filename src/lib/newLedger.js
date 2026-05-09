@@ -490,14 +490,11 @@ export async function rpcCancelWorkflowV2(payload) {
 // ─────────────────────────────────────────────────────────────────────
 // Feature-flag helper — проверяет VITE_USE_NEW_LEDGER.
 //
-// EMERGENCY ROLLBACK (2026-05-10): production cutover вызвал белый экран
-// на coinplata.vercel.app. Возвращаем kill-switch до выяснения причины.
-// USE_NEW_LEDGER теперь требует ОБА VITE_USE_NEW_LEDGER=true И
-// VITE_FORCE_V2=true (последняя в Vercel отсутствует → kill-switch активен).
-// После диагностики — убрать опять и заново задеплоить.
+// CUTOVER RETRY (2026-05-10): первый cutover (PR #22) вызвал белый экран
+// на проде; rollback hotfix (PR #23) вернул kill-switch. Этот PR — повторная
+// попытка через preview deployment, чтобы проверить причину перед merge в main.
+// USE_NEW_LEDGER снова читается из VITE_USE_NEW_LEDGER (true в Vercel).
 // ─────────────────────────────────────────────────────────────────────
 const _ENV = typeof import.meta !== "undefined" ? import.meta.env : null;
-const _V2_FORCE_OPT_IN = _ENV?.VITE_FORCE_V2 === "true";
 
-export const USE_NEW_LEDGER =
-  _V2_FORCE_OPT_IN && _ENV?.VITE_USE_NEW_LEDGER === "true";
+export const USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER === "true";
