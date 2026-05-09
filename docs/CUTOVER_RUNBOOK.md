@@ -24,37 +24,72 @@ Partner Liab accounts (2210-2219) остаются в seed для будущег
 
 ### Inventory scope (cutover 2026-05-19)
 
-Opening содержит ТРИ источника данных:
+Opening содержит ЧЕТЫРЕ источника данных (PR #17 4-param signature):
 
-1. **Cash inventory** (per office × currency) — менеджеры пересчитывают
-   на местах. Через `office_cash` parameter.
-2. **Crypto wallets** — treasurer (Кирилл) присылает snapshot. Через
-   `crypto_wallets` parameter, lookup по `ledger.wallet_addresses.id`.
-3. **Inter-office balances** — owner сводит исторические долги между
-   офисами. Через `inter_office` parameter (bilateral accounts 14XX).
+1. **Cash inventory** (per office × currency) — менеджеры пересчитывают на
+   местах. Параметр `p_office_cash`.
+2. **Office crypto input** (per office × network) — менеджеры пересчитывают
+   USDT на СВОИХ TRC20+ERC20 hot wallet'ах. Параметр `p_office_crypto_input`.
+   Допускает `office_id IS NULL` для company-level large incoming wallets
+   (1340/1341 Treasury SafePal).
+3. **Company crypto output** (per network) — treasurer (Кирилл) присылает
+   баланс OUT-only wallet'ов (1350 GasFree). Параметр `p_company_crypto_output`.
+4. **Inter-office balances** — owner сводит исторические долги между офисами.
+   Параметр `p_inter_office`.
 
 **Out of scope (отложено на Q3):** банковские счета, биржевые балансы,
 retained earnings, формальный partner_liab учёт.
 
+### Crypto subtype mapping (PR #17)
+
+| Subtype          | Codes                                              | Purpose                       |
+|------------------|----------------------------------------------------|-------------------------------|
+| `crypto_input`   | 1316/1317/1318/1326/1327/1328 (office hot wallets) | Receive USDT, per office     |
+| `crypto_input`   | 1340/1341 (Treasury SafePal, office_id NULL)       | Large incoming, company-level |
+| `crypto_output`  | 1350 (GasFree, office_id NULL)                     | OUT-only client withdrawals   |
+
+Subtype = bookkeeping classification; не блокирует direction операций.
+Москва Вася офис **не имеет** crypto wallets (fiat-only).
+
+### Manager forms (per office)
+
+| Office       | Form                                                                       |
+|--------------|----------------------------------------------------------------------------|
+| Mark Antalya | [CUTOVER_MANAGER_FORM_CRYPTO.md](CUTOVER_MANAGER_FORM_CRYPTO.md)           |
+| Terra City   | [CUTOVER_MANAGER_FORM_CRYPTO.md](CUTOVER_MANAGER_FORM_CRYPTO.md)           |
+| Istanbul     | [CUTOVER_MANAGER_FORM_CRYPTO.md](CUTOVER_MANAGER_FORM_CRYPTO.md)           |
+| Москва Вася  | [CUTOVER_MANAGER_FORM_FIAT_ONLY.md](CUTOVER_MANAGER_FORM_FIAT_ONLY.md)     |
+
 ### Pre-cutover data collection
 
 **T-2 (17 мая, суббота — после dry-run):**
-- Owner отправляет [inter-office balances form](CUTOVER_INTER_OFFICE_FORM.md) — предварительная версия
-- Owner отправляет [treasurer request](CUTOVER_TREASURER_REQUEST.md) Кириллу — preliminary crypto snapshot
+- Owner отправляет [inter-office balances form](CUTOVER_INTER_OFFICE_FORM.md) — preliminary
+- Owner отправляет [treasurer request](CUTOVER_TREASURER_REQUEST.md) Кириллу — preliminary 1340/1341/1350 snapshot
 
-**T-0 (19 мая утром):**
-- Менеджеры присылают cash inventory (как раньше)
-- Treasurer финальный crypto snapshot (если изменился с T-2)
-- Owner финальный inter-office (если изменился)
+**T-0 (19 мая, 09:00–11:00 UTC):**
+- Менеджеры Mark/Terra/Istanbul присылают cash + own crypto (CRYPTO form)
+- Менеджер Москва Вася присылает только cash (FIAT_ONLY form)
+- Treasurer финализирует 1340/1341/1350
+- Owner финализирует inter-office (или оставляет `[]`)
 
-Все три набора собираются в **один RPC call**:
+**11:30 UTC** — все четыре источника сводятся в один RPC call:
+
 ```sql
 SELECT ledger.create_opening_from_inventory(
-  p_office_cash    => '<cash JSONB>',
-  p_crypto_wallets => '<wallets JSONB>',
-  p_inter_office   => '<inter-office JSONB>'
+  p_office_cash           => '<cash JSONB from all 4 managers>',
+  p_office_crypto_input   => '<crypto JSONB from 3 crypto-managers + 1340/1341 from treasurer>',
+  p_company_crypto_output => '<output JSONB from treasurer (1350)>',
+  p_inter_office          => '<inter-office JSONB from owner>'
 );
 ```
+
+Функция выполняет pre-write validation (валидные office_id, network ∈
+{TRC20,ERC20}, balance >= 0, **Москва Вася blacklist в crypto_input**), пишет
+journal_entries по каждому inventory entry, балансирует Dr=Cr per currency
+через Opening Equity (3100/3106/...), и финальный per-currency Dr=Cr guard.
+
+3-парам signature `(p_office_cash, p_crypto_wallets, p_inter_office)` остаётся
+в БД с DEPRECATED маркером — после 2026-05-19 будет удалена.
 
 ## Pre-cutover validations (T-24 hours)
 
