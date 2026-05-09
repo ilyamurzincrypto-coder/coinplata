@@ -1,6 +1,13 @@
 # Cutover runbook — переход на новый ledger
 
-**Дата cutover:** 2026-06-01 00:00 UTC (или сдвинутая по решению owner).
+**Cutover completed:** 2026-05-10 — v2 ledger активен в production. Legacy таблицы заморожены через `ledger.freeze_legacy_tables()`. Code-level kill-switch (`VITE_FORCE_V2`) удалён. Phase 1 (adapter coverage + validateTx + 10 wrappers) + Phase 2 (backfill 13 opening journal entries) сошлись в Phase 3 cutover.
+
+## Post-cutover monitoring (first 7 days)
+
+- Daily: `SELECT COUNT(*) FROM ledger.transactions WHERE created_at > now() - interval '24h';` — expect monotonically increasing once cashiers start working.
+- Daily: `SELECT COUNT(*) FROM ledger.audit_alerts WHERE created_at > now() - interval '24h' AND level IN ('error','critical');` — expect 0.
+- Weekly: `SELECT COUNT(*) FROM ledger.v_balance_check WHERE ABS(diff) > 0.00000001;` — expect 0.
+- After 7 quiet days → start Spec B (Treasury & P&L on Journal Entries).
 
 ## Стратегия
 
