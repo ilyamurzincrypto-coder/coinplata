@@ -1499,7 +1499,9 @@ export async function updateAccountRow(id, patch) {
   bumpDataVersion();
 }
 
-// План счетов — обновить только accounting_code на любой entity.
+// План счетов — обновить код счёта на любой entity.
+// partner_accounts используют ledger_account_code (переименовано в миграции);
+// accounts и clients по-прежнему используют accounting_code.
 export async function updateAccountingCode(entityType, id, code) {
   assertConfigured();
   const validId = requireUuid(id, "id");
@@ -1511,8 +1513,10 @@ export async function updateAccountingCode(entityType, id, code) {
   };
   const table = tableMap[entityType];
   if (!table) throw new Error(`Unknown entity_type: ${entityType}`);
-  const { error } = await supabase.from(table).update({ accounting_code: value }).eq("id", validId);
-  if (error) throw new Error(formatSupabaseError(error, `update accounting_code on ${table}`));
+  // partner_accounts.accounting_code was renamed to ledger_account_code in DB migration
+  const column = entityType === "partner_account" ? "ledger_account_code" : "accounting_code";
+  const { error } = await supabase.from(table).update({ [column]: value }).eq("id", validId);
+  if (error) throw new Error(formatSupabaseError(error, `update ${column} on ${table}`));
   bumpDataVersion();
 }
 

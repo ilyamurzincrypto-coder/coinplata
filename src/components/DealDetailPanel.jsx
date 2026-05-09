@@ -117,7 +117,7 @@ export default function DealDetailPanel({
     const acc = partnerAccountsById[id];
     if (acc) {
       const name = `${acc.partnerName || "Партнёр"} · ${acc.name}`;
-      return withCode(acc.accountingCode, name);
+      return withCode(acc.ledgerAccountCode, name);
     }
     return id ? `Партнёр #${String(id).slice(0, 8)}` : "—";
   };
