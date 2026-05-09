@@ -17,6 +17,7 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { updateDeal } from "../lib/dealOperations.js";
+import { USE_NEW_LEDGER } from "../lib/newLedger.js";
 
 export default function EditTransactionModal({ transaction, onClose }) {
   const { t } = useTranslation();
@@ -147,6 +148,14 @@ export default function EditTransactionModal({ transaction, onClose }) {
       subtitle={`${officeName(transaction.officeId)} · ${transaction.time}, ${transaction.date} · ${transaction.manager}`}
       width="xl"
     >
+      {USE_NEW_LEDGER && (
+        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-amber-50 border border-amber-200 text-[12.5px] text-amber-900">
+          <span className="font-semibold">Edit отключён в режиме v2 ledger.</span>{" "}
+          v2 updateDeal ещё не реализован. Чтобы отредактировать сделку, попроси
+          админа выключить <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>,
+          либо дождись v2-обёртки.
+        </div>
+      )}
       <ExchangeForm
         mode="edit"
         currentOffice={transaction.officeId}
