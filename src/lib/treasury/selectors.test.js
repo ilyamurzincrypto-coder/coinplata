@@ -1,6 +1,7 @@
 // src/lib/treasury/selectors.test.js
 import { describe, it, expect } from "vitest";
 import { groupByCurrency } from "./selectors.js";
+import { groupByAccountType } from "./selectors.js";
 
 // Fixture builder. One office "mark" with 3 accounts (cash USD, bank TRY,
 // crypto USDT). Mirrors store/data.js seed structure. Includes one
@@ -125,5 +126,55 @@ describe("groupByCurrency", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].currency).toBe("USD");
     expect(rows[0].total).toBe(200);
+  });
+});
+
+describe("groupByAccountType", () => {
+  it("groups office accounts by type with counts and base totals", () => {
+    const ctx = makeCtx();
+    const rows = groupByAccountType(ctx);
+    // 3 mark accounts: 1 cash (USD 1000), 1 bank (TRY 50000), 1 crypto (USDT 500).
+    // toBase: cash 1000, bank 1500, crypto 500. Sorted by totalInBase desc.
+    expect(rows).toHaveLength(3);
+    const types = rows.map((r) => r.type);
+    expect(types).toEqual(["bank", "cash", "crypto"]);
+    const cash = rows.find((r) => r.type === "cash");
+    expect(cash.count).toBe(1);
+    expect(cash.totalInBase).toBe(1000);
+    expect(cash.total).toBe(1000);
+    expect(cash.reserved).toBe(100);
+    expect(cash.available).toBe(900);
+  });
+
+  it("hides empty types (no accounts of that type)", () => {
+    const ctx = makeCtx({
+      accounts: [
+        { id: "a1", officeId: "mark", type: "cash", currency: "USD", balance: 100 },
+      ],
+      movements: [
+        { id: "m1", accountId: "a1", amount: 100, direction: "in", reserved: false, timestamp: new Date().toISOString() },
+      ],
+    });
+    ctx.balanceOf = (id) => ctx.movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    ctx.reservedOf = () => 0;
+    const rows = groupByAccountType(ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].type).toBe("cash");
+  });
+
+  it("buckets unknown type as 'other'", () => {
+    const ctx = makeCtx({
+      accounts: [
+        { id: "a1", officeId: "mark", type: "weird_type", currency: "USD", balance: 100 },
+      ],
+      movements: [
+        { id: "m1", accountId: "a1", amount: 100, direction: "in", reserved: false, timestamp: new Date().toISOString() },
+      ],
+    });
+    ctx.balanceOf = (id) => ctx.movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    ctx.reservedOf = () => 0;
+    const rows = groupByAccountType(ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].type).toBe("other");
   });
 });
