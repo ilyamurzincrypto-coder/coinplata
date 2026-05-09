@@ -31,3 +31,39 @@ Source file: `src/lib/newLedgerAdapter.js` (commit `dae97c6`).
 - All throws come from the `legacy → v2` payload converter functions.
 - Error texts that mention "Disable VITE_USE_NEW_LEDGER" indicate cases where v2 deliberately doesn't support a legacy shape; these are the most likely production failure points.
 - Line numbers are valid as of commit `dae97c6`. Re-grep before referencing in tests if the file has been edited since.
+
+## Production deal-shape distribution (sampled 2026-05-09)
+
+35 active deals (deleted_at IS NULL). The `public.deals` table has typed columns; OUT side is in `public.deal_legs`. Top shapes:
+
+| n | currency_in | in_kind | partner | n_legs | out_currencies |
+|---|---|---|---|---|---|
+| 7 | USDT | cash (in_account_id) | none | 1 | USD |
+| 6 | USD | cash | none | 1 | USDT |
+| 3 | USD | cash | none | 1 | TRY |
+| 3 | TRY | cash | none | 1 | USD |
+| 3 | USDT | cash | none | 1 | TRY |
+| 2 | USDT | NO in_account_id | none | 1 | EUR |
+| 2 | USDT | cash | none | 2 | TRY,USD |
+| 2 | USD | cash | none | 0 (one-sided IN) | — |
+| 2 | USDT | cash | none | 2 | EUR,TRY |
+
+**Zero deals** use `in_partner_account_id`. Sub-task 2.3b (partner adapter throw) is NOT the production blocker.
+
+**Two deals are one-sided IN** (n_legs=0) and **two deals lack in_account_id**. Both shapes hit explicit adapter throws.
+
+## Account `ledger_account_code` coverage gap (sampled 2026-05-09)
+
+Of 39 `public.accounts`, 8 have `ledger_account_code IS NULL AND legacy_only IS NOT TRUE`. Six are in the deactivated "International Office" (`active=false`) and unlikely to appear in real submissions. **Two are in Terra City (active)** — the live risk:
+
+| name | type | currency | office | risk |
+|---|---|---|---|---|
+| Cash · CHF / EUR / GBP / RUB / TRY / USD | cash | various | International Office (deactivated) | low |
+| W89 Lara | crypto | USDT | **Terra City (active)** | **high** |
+| W89 Lara | crypto | USDT | **Terra City (active)** | **high** |
+
+Submitting any deal that uses W89 Lara as IN or OUT account triggers `newLedgerAdapter.js` line 35-38 ("Account has no ledger mapping").
+
+## Chosen reproduction shape for Phase 2.2
+
+Most common dominant shape (n=7): **1 IN cash USDT (W88 Mark, code 1316) + 1 OUT USD (Cash · USD, code 1110), no partner, deferredIn=false**. This shape SHOULD pass through `adaptLegacyDealPayload` cleanly. If the failing test in Phase 2.2 still throws, the bug is downstream of the adapter (RPC, request_hash, or supabase auth).
