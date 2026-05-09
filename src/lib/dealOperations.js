@@ -27,6 +27,9 @@ import {
   rpcCreateWorkflowV2,
   rpcCreateWithdrawalV2,
   rpcCreateTopupV2,
+  rpcUpdateDealV2,
+  rpcReverseTransactionV2,
+  rpcCompleteDealLegV2,
   USE_NEW_LEDGER,
 } from "./newLedger.js";
 import {
@@ -95,33 +98,104 @@ export async function createBalanceAdjustment(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Phase 3.2 — guardLegacyOnly
+// Tasks 1.12–1.14 — v2 wrappers for follow-up cashier mutations.
 //
-// 10 операций ниже ещё не имеют v2-обёрток (Edit/Delete/Settle/Partner-IO).
-// Когда USE_NEW_LEDGER=true, новый createDeal пишет в ledger.transactions,
-// но эти follow-up действия молча шли бы в legacy public.deals → split-brain.
-// Здесь fail-fast: бросаем понятный Error, UI поймает через withToast.
+// До этого 10 операций ниже были guardLegacyOnly-stub'ами, бросавшими
+// fail-fast при USE_NEW_LEDGER=true (split-brain prevention). Теперь у
+// каждой есть real v2 implementation через RPC из newLedger.js. Legacy
+// fallback сохраняется: если USE_NEW_LEDGER=false → старый rpc.
 // ─────────────────────────────────────────────────────────────────────
-function guardLegacyOnly(name, fn) {
-  return async (...args) => {
-    if (USE_NEW_LEDGER) {
-      throw new Error(
-        `${name}: v2 routing not supported yet. ` +
-        `Disable VITE_USE_NEW_LEDGER (in Vercel env or .env.local) to perform this operation, ` +
-        `or wait for v2 ${name} support to land.`
-      );
-    }
-    return await fn(...args);
-  };
+
+export async function updateDeal(payload) {
+  if (!USE_NEW_LEDGER) return await rpcUpdateDeal(payload);
+  // v2: payload shape mirrors legacy enough that rpcUpdateDealV2 accepts it directly.
+  return await rpcUpdateDealV2(payload);
 }
 
-export const updateDeal               = guardLegacyOnly("updateDeal",               rpcUpdateDeal);
-export const deleteDeal               = guardLegacyOnly("deleteDeal",               rpcDeleteDeal);
-export const completeDeal             = guardLegacyOnly("completeDeal",             rpcCompleteDeal);
-export const deleteTransfer           = guardLegacyOnly("deleteTransfer",           rpcDeleteTransfer);
-export const settleObligation         = guardLegacyOnly("settleObligation",         rpcSettleObligation);
-export const settleObligationPartial  = guardLegacyOnly("settleObligationPartial",  rpcSettleObligationPartial);
-export const receivePayment           = guardLegacyOnly("receivePayment",           rpcReceivePayment);
-export const cancelObligation         = guardLegacyOnly("cancelObligation",         rpcCancelObligation);
-export const recordPartnerInflow      = guardLegacyOnly("recordPartnerInflow",      rpcRecordPartnerInflow);
-export const recordPartnerOutflow     = guardLegacyOnly("recordPartnerOutflow",     rpcRecordPartnerOutflow);
+export async function deleteDeal(dealId, reason = "manual") {
+  if (!USE_NEW_LEDGER) return await rpcDeleteDeal(dealId, reason);
+  // v2: don't delete posted transactions — reverse them with a compensating entry.
+  return await rpcReverseTransactionV2({
+    targetTxId: dealId,
+    reason: `deleteDeal: ${reason}`,
+    cascade: true,
+  });
+}
+
+export async function completeDeal(dealId) {
+  if (!USE_NEW_LEDGER) return await rpcCompleteDeal(dealId);
+  // v2: complete each deferred leg of this deal in turn.
+  // Caller-side leg list is fetched from public.deal_legs; for now we
+  // pass the dealId and rely on backend `complete_deal_leg` to iterate.
+  return await rpcCompleteDealLegV2({ dealTxId: dealId });
+}
+
+export async function deleteTransfer(transferId) {
+  if (!USE_NEW_LEDGER) return await rpcDeleteTransfer(transferId);
+  return await rpcReverseTransactionV2({
+    targetTxId: transferId,
+    reason: "deleteTransfer",
+    cascade: true,
+  });
+}
+
+export async function settleObligation(obligationId, accountId, amount) {
+  if (!USE_NEW_LEDGER) return await rpcSettleObligation(obligationId, accountId, amount);
+  // v2: settle = complete the deferred leg associated with the obligation.
+  return await rpcCompleteDealLegV2({
+    obligationId,
+    paymentAccountId: accountId,
+    amount,
+  });
+}
+
+export async function settleObligationPartial(obligationId, accountId, amount) {
+  if (!USE_NEW_LEDGER) return await rpcSettleObligationPartial(obligationId, accountId, amount);
+  return await rpcCompleteDealLegV2({
+    obligationId,
+    paymentAccountId: accountId,
+    amount,
+    partial: true,
+  });
+}
+
+export async function receivePayment(obligationId, accountId, amount) {
+  if (!USE_NEW_LEDGER) return await rpcReceivePayment(obligationId, accountId, amount);
+  return await rpcCreateAdjustmentV2({
+    kind: "receive_payment",
+    obligationId,
+    accountId,
+    amount,
+  });
+}
+
+export async function cancelObligation(obligationId) {
+  if (!USE_NEW_LEDGER) return await rpcCancelObligation(obligationId);
+  return await rpcReverseTransactionV2({
+    targetObligationId: obligationId,
+    reason: "cancelObligation",
+  });
+}
+
+export async function recordPartnerInflow(payload) {
+  if (!USE_NEW_LEDGER) return await rpcRecordPartnerInflow(payload);
+  return await rpcCreateAdjustmentV2({
+    kind: "partner_inflow",
+    partnerAccountId: payload.partnerAccountId,
+    amount: payload.amount,
+    currency: payload.currency,
+    note: payload.note || null,
+  });
+}
+
+export async function recordPartnerOutflow(payload) {
+  if (!USE_NEW_LEDGER) return await rpcRecordPartnerOutflow(payload);
+  return await rpcCreateAdjustmentV2({
+    kind: "partner_outflow",
+    partnerAccountId: payload.partnerAccountId,
+    amount: payload.amount,
+    currency: payload.currency,
+    fromAccountId: payload.fromAccountId,
+    note: payload.note || null,
+  });
+}
