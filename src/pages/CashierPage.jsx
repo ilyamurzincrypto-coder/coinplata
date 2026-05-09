@@ -11,11 +11,12 @@ import DealForm from "../components/cashier/DealForm.jsx";
 
 // Feature-flag для новой формы создания сделки.
 //
-// CUTOVER COMPLETE (2026-05-10): kill-switch снят, DealForm v2 активен в проде.
-// Phase 1 закрыл UX-gap (inline validation, disabled Submit), адаптер
-// покрывает все формы сделок, 10 v2 wrappers подключены. Откат на legacy
-// = VITE_USE_NEW_DEAL_FORM=false в Vercel + redeploy.
+// EMERGENCY ROLLBACK (2026-05-10): production cutover вызвал белый экран —
+// возвращаем kill-switch (требуем ДОПОЛНИТЕЛЬНО VITE_FORCE_V2=true). До
+// диагностики DealForm v2 в проде неактивен.
+const _V2_FORCE_OPT_IN = import.meta.env?.VITE_FORCE_V2 === "true";
 const USE_NEW_DEAL_FORM =
+  _V2_FORCE_OPT_IN &&
   import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
