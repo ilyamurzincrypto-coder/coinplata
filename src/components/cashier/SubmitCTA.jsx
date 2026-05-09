@@ -5,6 +5,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 
+const plural = (n) =>
+  n === 1 ? "ошибку" : n >= 2 && n <= 4 ? "ошибки" : "ошибок";
+
 export default function SubmitCTA({
   onSubmit,
   onSubmitDraft,
@@ -12,6 +15,7 @@ export default function SubmitCTA({
   loading = false,
   disabled = false,
   disabledTitle,
+  validation,
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -28,13 +32,19 @@ export default function SubmitCTA({
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const isDisabled = disabled || loading;
+  const errorCount = validation?.errors?.length || 0;
+  const isDisabled = disabled || loading || errorCount > 0;
+  const errorTooltip = errorCount > 0
+    ? `${errorCount} ${plural(errorCount)} в форме — исправь чтобы отправить`
+    : undefined;
+
+  const titleAttr = errorTooltip || (disabled && disabledTitle ? disabledTitle : undefined);
 
   return (
     <div
       ref={ref}
       className="relative inline-flex items-stretch shadow-sm"
-      title={disabled && disabledTitle ? disabledTitle : undefined}
+      title={titleAttr}
     >
       <button
         type="button"
@@ -49,7 +59,13 @@ export default function SubmitCTA({
         }
       >
         {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-        <span>{loading ? t("deal_loading") : t("submit_create_deal")}</span>
+        <span>
+          {loading
+            ? t("deal_loading")
+            : errorCount > 0
+            ? `Исправь ${errorCount} ${plural(errorCount)}`
+            : t("submit_create_deal")}
+        </span>
       </button>
       <button
         type="button"
