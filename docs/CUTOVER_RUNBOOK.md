@@ -271,29 +271,28 @@ Done.
 
 ---
 
-## ⚠️ Temporary alert pause (2026-05-09 → 2026-05-23)
+## ✅ Resolved — temporary alert pause (closed 2026-05-10)
 
-`ledger.cron_reconcile_balances` подавляется через `ledger.config.reconcile_paused_until`.
+`ledger.cron_reconcile_balances` was paused 2026-05-09 to silence the
+"Detected 13 balance mismatches" noise while the orphan opening balances
+were investigated. **Resolved as part of v2 Ledger Revival Phase 2.**
 
-**Причина.** На production обнаружено 13 mismatch-строк в `ledger.v_balance_check`
-(≈30k USD + 19k USDT) — opening-балансы засеяны в `ledger.balances`, но
-парных `journal_entries` нет. Каждый час на :05 ронялось `critical` alert
-"Detected 13 balance mismatches" → реальные сигналы тонули.
+**What was wrong.** 13 rows lived in `ledger.balances` (11 asset accounts +
+2 equity opening accounts, totalling 15 000 USD + 10 225 USDT) without paired
+`journal_entries` — `v_balance_check.diff` returned 13 mismatches every hour.
 
-**Применённая миграция:** `audit_alerts_temp_silence_until_2026_05_23` (через
-mcp__supabase__apply_migration). Делает две вещи:
+**Resolution (2026-05-10):**
+1. Migration `ledger_backfill_13_opening_je_2026_05_10_v2` deleted the 13
+   orphan rows in `ledger.balances` (a guard ensured **only** orphans were
+   wiped — non-orphan rows would have aborted the migration), then called
+   `ledger.create_opening_from_inventory(...)` with the 11 asset balances.
+   The function emitted Dr entries for each asset account and 2 auto-balanced
+   Cr entries on `Opening Balance Equity · USD/USDT`. Trigger
+   `update_balance_on_entry` repopulated `ledger.balances` from each JE so
+   `v_balance_check` now returns 0 mismatches.
+2. Migration `remove_reconcile_paused_until_2026_05_10` deleted
+   `ledger.config.reconcile_paused_until` and called
+   `ledger.cron_reconcile_balances()` once to verify silence.
 
-1. `INSERT … ON CONFLICT … UPDATE` строку `ledger.config` с
-   `key='reconcile_paused_until'`, `value='2026-05-23 00:00:00+00'`.
-2. `CREATE OR REPLACE FUNCTION ledger.cron_reconcile_balances()` — early-return,
-   если `now() < reconcile_paused_until`. Тело иначе идентичное.
-
-**Owner / investigation deadline:** до 2026-05-23 либо backfill `journal_entries`
-для opening-строк, либо обнулить orphan rows в `ledger.balances`. После — снять паузу:
-
-```sql
-DELETE FROM ledger.config WHERE key = 'reconcile_paused_until';
-```
-
-(Функция продолжит работать без изменения определения — она просто увидит
-`v_pause_until IS NULL` и упадёт в обычный insert-alert путь.)
+After the resolution: `transactions = 1`, `journal_entries = 13`,
+`balances = 13`, `mismatches = 0`. Cron is healthy again.
