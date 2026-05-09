@@ -77,3 +77,37 @@ Test file: `src/lib/__integration__/adapter-prod-shape.test.js`. Full suite coun
 ### Field-name discrepancies between plan and adapter source
 
 The plan referenced `legacy.outLegs[]` for OUT-side input. The actual adapter reads **`legacy.outputs[]`** (`newLedgerAdapter.js:138`). All other field names matched (`currencyIn`, `amountIn`, `inAccountId`, `deferredIn`, plus per-output `currency`, `amount`, `rate`, `accountId`, `outKind`). The OUTPUT shape from the adapter does use `outLegs` in the v2 payload (`newLedgerAdapter.js:202`) — so the legacy field is `outputs`, the v2 field is `outLegs`. Test was written against the actual adapter input contract (`outputs[]`).
+
+## Diagnosis (Task 2.3) — PostgREST schema not exposed
+
+After confirming the adapter is fine, probed the actual `supabase.rpc('create_deal_v2', …)` path against production via `curl`:
+
+**Before** (`POST /rest/v1/rpc/create_deal_v2`):
+```
+{"code":"PGRST202",
+ "details":"Searched for the function public.create_deal_v2 …, but no matches were found in the schema cache.",
+ "message":"Could not find the function public.create_deal_v2 …"}
+```
+
+Probing schema-routing options:
+- `Accept-Profile: ledger` header → still PGRST202 (Accept-Profile is for SELECT, not RPC).
+- `Content-Profile: ledger` header → `PGRST106 Invalid schema: ledger; Only the following schemas are exposed: public, graphql_public`.
+
+**Root cause**: PostgREST exposes only `public, graphql_public`. Every v2 function lives in `ledger.*` or `operations.*` and is invoked from the frontend by bare name (`supabase.rpc("create_deal_v2", …)`). PostgREST resolves to `public.create_deal_v2` → not found → frontend gets a generic error toast → form crashes silently → managers stop using it. Same path for `create_topup`, `create_withdrawal`, `create_transfer`, `create_adjustment`, `complete_deal_leg`, `create_reservation`, `release_reservation`, `reverse_transaction`, `update_deal_v2`, `update_tx_metadata`, `create_workflow`, `update_workflow_status`, `cancel_workflow` — 14 RPCs total, all unreachable.
+
+`anon` and `authenticated` already had `EXECUTE` privilege on `ledger.create_deal_v2` and friends, so the fix is purely a schema-routing problem, not a permissions problem.
+
+## Fix (Task 2.3) — public wrappers via `direction2_3_public_wrappers_for_v2_rpcs`
+
+Migration `direction2_3_public_wrappers_for_v2_rpcs.sql` creates 14 thin `SECURITY DEFINER` wrapper functions in `public` that forward straight to the real implementations in `ledger.*` / `operations.*`. No business logic in the wrappers — all permission/RLS/idempotency/audit checks remain in the wrapped functions. `public.create_transfer` overloads the existing legacy function by signature; PostgREST dispatches by named parameters so the two never collide on real calls.
+
+Verified via `curl` after migration:
+
+**After** (`POST /rest/v1/rpc/create_deal_v2` with valid required args):
+```
+{"code":"22000","message":"p_in_legs must be a non-empty array"}
+```
+
+That's a real error from inside `ledger.create_deal_v2` — meaning the wrapper resolved, dispatched, and the wrapped function executed business validation. Path proven.
+
+Frontend code unchanged (`newLedger.js` calls `supabase.rpc("create_deal_v2", …)` as before — now hits `public.create_deal_v2` → `ledger.create_deal_v2`). All 132 unit/integration tests still pass.
