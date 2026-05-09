@@ -3,17 +3,10 @@
 // ещё не отданы клиенту. Real-time через Supabase Realtime channel.
 //
 // Data source: operations.v_open_deals + subscribe на operations.deal_workflow
-// Actions:
-//   • Mark paid — для awaiting_payment status (RPC update_workflow_status)
-//   • Complete release — для awaiting_release/partial (НУЖЕН deal_id +
-//     account_code per leg → используем legacy ledger.complete_deal_leg
-//     через прямой supabase.rpc, потому что dealOperations.js не имеет
-//     completeDealLeg switcher)
-//   • Cancel — confirm modal с required reason
+// Actions: Mark paid / Complete release / Cancel (через CancelDealModal)
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
-  AlertCircle,
   CheckCircle2,
   Ban,
   ChevronDown,
@@ -21,14 +14,21 @@ import {
   Clock,
 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
+import { useAuth } from "../../../store/auth.jsx";
 import { useOpenObligations, formatAge } from "../../../store/openObligations.js";
 import {
   rpcUpdateWorkflowStatusV2,
   rpcCancelWorkflowV2,
 } from "../../../lib/newLedger.js";
-import { supabase, isSupabaseConfigured } from "../../../lib/supabase.js";
+import { supabase } from "../../../lib/supabase.js";
 import { emitToast } from "../../../lib/toast.jsx";
-import { fmt, curSymbol } from "../../../utils/money.js";
+import { fmt } from "../../../utils/money.js";
+import CancelDealModal from "./CancelDealModal.jsx";
+import ObligationsFilterPanel, {
+  defaultFilters,
+  loadFiltersFromStorage,
+  applyFilters,
+} from "./ObligationsFilterPanel.jsx";
 
 const STATUS_STYLES = {
   draft:             { bg: "bg-slate-100",   text: "text-slate-600",   border: "border-slate-200" },
@@ -39,42 +39,121 @@ const STATUS_STYLES = {
 
 export default function OpenObligationsWidget({ officeId }) {
   const { t } = useTranslation();
+  const { currentUser } = useAuth();
   const { items, loading, refetch } = useOpenObligations();
+  const [cancelTarget, setCancelTarget] = useState(null);
 
-  // Optional client-side office filter (если CashierPage передаёт текущий офис)
-  const filtered = useMemo(() => {
+  const [filters, setFilters] = useState(() =>
+    loadFiltersFromStorage(currentUser?.id) || defaultFilters()
+  );
+
+  // Hydrate filters при изменении user (login/switch)
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const stored = loadFiltersFromStorage(currentUser.id);
+    if (stored) setFilters(stored);
+  }, [currentUser?.id]);
+
+  // Apply officeId prop как pre-filter (legacy mode), потом user filters
+  const preFiltered = useMemo(() => {
     if (!officeId) return items;
     return items.filter((it) => !it.office_id || it.office_id === officeId);
   }, [items, officeId]);
 
-  return (
-    <section className="bg-white border border-slate-200 rounded-[var(--radius-section)] flex flex-col">
-      <header className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50/50">
-        <span className="text-label">{t("open_obligations_title")}</span>
-        <span className="text-[11px] text-slate-500 tabular-nums">
-          {t("open_obligations_count").replace("{{n}}", String(filtered.length))}
-        </span>
-      </header>
+  const filtered = useMemo(
+    () => applyFilters(preFiltered, filters, currentUser?.id),
+    [preFiltered, filters, currentUser]
+  );
 
-      {loading ? (
-        <div className="px-4 py-6 text-center text-hint">…</div>
-      ) : filtered.length === 0 ? (
-        <div className="px-4 py-8 text-center">
-          <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-          <span className="text-hint">{t("open_obligations_empty")}</span>
-        </div>
-      ) : (
-        <ul className="divide-y divide-slate-100 max-h-[480px] overflow-auto">
-          {filtered.map((row) => (
-            <ObligationRow key={row.id} row={row} t={t} onChanged={refetch} />
-          ))}
-        </ul>
-      )}
-    </section>
+  const staleCount = useMemo(
+    () => preFiltered.filter((it) => it.is_stale).length,
+    [preFiltered]
+  );
+
+  const handleConfirmCancel = async (reason) => {
+    if (!cancelTarget) return;
+    await rpcCancelWorkflowV2({
+      workflowId: cancelTarget.id,
+      reason,
+    });
+    emitToast("success", t("open_obligations_action_cancel"));
+    setCancelTarget(null);
+    refetch();
+  };
+
+  return (
+    <>
+      <section className="bg-white border border-slate-200 rounded-[var(--radius-section)] flex flex-col">
+        <header className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-slate-50/50">
+          <span className="text-label">{t("open_obligations_title")}</span>
+          <span className="text-[11px] text-slate-500 tabular-nums">
+            {t("open_obligations_count").replace("{{n}}", String(filtered.length))}
+          </span>
+        </header>
+
+        <ObligationsFilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          staleCount={staleCount}
+        />
+
+        {loading ? (
+          <div className="px-4 py-6 text-center text-hint">…</div>
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            t={t}
+            hasItems={preFiltered.length > 0}
+            onClearFilters={() => setFilters(defaultFilters())}
+          />
+        ) : (
+          <ul className="divide-y divide-slate-100 max-h-[480px] overflow-auto">
+            {filtered.map((row) => (
+              <ObligationRow
+                key={row.id}
+                row={row}
+                t={t}
+                onChanged={refetch}
+                onCancel={() => setCancelTarget(row)}
+              />
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <CancelDealModal
+        isOpen={!!cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onConfirm={handleConfirmCancel}
+        workflow={cancelTarget}
+      />
+    </>
   );
 }
 
-function ObligationRow({ row, t, onChanged }) {
+function EmptyState({ t, hasItems, onClearFilters }) {
+  if (hasItems) {
+    return (
+      <div className="px-4 py-6 text-center space-y-2">
+        <span className="text-hint">{t("open_obligations_filter_no_match")}</span>
+        <button
+          type="button"
+          onClick={onClearFilters}
+          className="block mx-auto text-[11px] text-indigo-600 hover:text-indigo-800 underline"
+        >
+          {t("open_obligations_filter_clear_all")}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="px-4 py-8 text-center">
+      <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
+      <span className="text-hint">{t("open_obligations_empty")}</span>
+    </div>
+  );
+}
+
+function ObligationRow({ row, t, onChanged, onCancel }) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -102,8 +181,6 @@ function ObligationRow({ row, t, onChanged }) {
 
   const handleComplete = async () => {
     if (busy) return;
-    // open_legs[0] — следующая нога к закрытию. complete_deal_leg
-    // обработает её, trigger обновит workflow.
     const leg = (row.open_legs || [])[0];
     if (!leg) return;
     setBusy(true);
@@ -129,28 +206,12 @@ function ObligationRow({ row, t, onChanged }) {
     }
   };
 
-  const handleCancel = async () => {
-    if (busy) return;
-    const reason = window.prompt(t("open_obligations_cancel_reason_prompt"));
-    if (!reason || !reason.trim()) return;
-    setBusy(true);
-    try {
-      await rpcCancelWorkflowV2({ workflowId: row.id, reason: reason.trim() });
-      emitToast("success", t("open_obligations_action_cancel"));
-      onChanged();
-    } catch (err) {
-      emitToast("error", err.message || "Failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const canMarkPaid = row.status === "awaiting_payment";
   const canComplete = ["awaiting_release", "partial"].includes(row.status)
     && (row.open_legs || []).length > 0;
 
   return (
-    <li className="px-3 py-2 hover:bg-slate-50/40">
+    <li className={`px-3 py-2 hover:bg-slate-50/40 ${row.is_stale ? "border-l-2 border-rose-300" : ""}`}>
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -194,7 +255,7 @@ function ObligationRow({ row, t, onChanged }) {
               {t("open_obligations_action_complete")}
             </ActionBtn>
           )}
-          <ActionBtn onClick={handleCancel} disabled={busy} icon={Ban} tone="rose">
+          <ActionBtn onClick={onCancel} disabled={busy} icon={Ban} tone="rose">
             {t("open_obligations_action_cancel")}
           </ActionBtn>
         </div>
