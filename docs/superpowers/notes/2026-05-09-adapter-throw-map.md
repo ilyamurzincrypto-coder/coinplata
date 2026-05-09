@@ -67,3 +67,13 @@ Submitting any deal that uses W89 Lara as IN or OUT account triggers `newLedgerA
 ## Chosen reproduction shape for Phase 2.2
 
 Most common dominant shape (n=7): **1 IN cash USDT (W88 Mark, code 1316) + 1 OUT USD (Cash · USD, code 1110), no partner, deferredIn=false**. This shape SHOULD pass through `adaptLegacyDealPayload` cleanly. If the failing test in Phase 2.2 still throws, the bug is downstream of the adapter (RPC, request_hash, or supabase auth).
+
+## Reproduction result (Task 2.2)
+
+Adapter PASSES the dominant production shape. Bug is downstream — proceed to sub-task 2.3d (RPC probe).
+
+Test file: `src/lib/__integration__/adapter-prod-shape.test.js`. Full suite count: 132 passing (was 131).
+
+### Field-name discrepancies between plan and adapter source
+
+The plan referenced `legacy.outLegs[]` for OUT-side input. The actual adapter reads **`legacy.outputs[]`** (`newLedgerAdapter.js:138`). All other field names matched (`currencyIn`, `amountIn`, `inAccountId`, `deferredIn`, plus per-output `currency`, `amount`, `rate`, `accountId`, `outKind`). The OUTPUT shape from the adapter does use `outLegs` in the v2 payload (`newLedgerAdapter.js:202`) — so the legacy field is `outputs`, the v2 field is `outLegs`. Test was written against the actual adapter input contract (`outputs[]`).
