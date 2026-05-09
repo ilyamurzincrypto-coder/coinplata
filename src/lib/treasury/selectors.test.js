@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { groupByCurrency } from "./selectors.js";
 import { groupByAccountType } from "./selectors.js";
 import { lastNMovements } from "./selectors.js";
+import { computeKPIs } from "./selectors.js";
 
 // Fixture builder. One office "mark" with 3 accounts (cash USD, bank TRY,
 // crypto USDT). Mirrors store/data.js seed structure. Includes one
@@ -211,5 +212,51 @@ describe("lastNMovements", () => {
     const rows = lastNMovements(ctx, 1);
     expect(rows[0].accountName).toBeDefined();
     expect(typeof rows[0].accountName).toBe("string");
+  });
+});
+
+describe("computeKPIs", () => {
+  it("totalBalance = Σ balanceOf in base over office accounts", () => {
+    const ctx = makeCtx();
+    const k = computeKPIs(ctx);
+    // toBase: USD 1000 + TRY 1500 + USDT 500 = 3000.
+    expect(k.totalBalance.valueInBase).toBe(3000);
+  });
+
+  it("liabilities = Σ open we_owe obligations in base", () => {
+    const ctx = makeCtx();
+    const k = computeKPIs(ctx);
+    // 200 USD we_owe → 200 in base.
+    expect(k.liabilities.valueInBase).toBe(200);
+  });
+
+  it("availableFunds = Σ availableOf in base", () => {
+    const ctx = makeCtx();
+    const k = computeKPIs(ctx);
+    // USD: 1000 - 100 reserved = 900. TRY 50000-0 = 50000 (1500 base). USDT 500-0 = 500.
+    // Total available in base: 900 + 1500 + 500 = 2900.
+    expect(k.availableFunds.valueInBase).toBe(2900);
+  });
+
+  it("activity24h counts office transactions in last 24h", () => {
+    const ctx = makeCtx();
+    const k = computeKPIs(ctx);
+    // tx1 created NOW → within 24h → count = 1.
+    expect(k.activity24h.count).toBe(1);
+  });
+
+  it("filters all by officeId", () => {
+    const ctx = makeCtx({ officeId: "terra" });
+    const k = computeKPIs(ctx);
+    // Only a_other_cash_usd exists for terra, but no movements for it in fixture.
+    expect(k.totalBalance.valueInBase).toBe(0);
+    expect(k.liabilities.valueInBase).toBe(0);
+    expect(k.availableFunds.valueInBase).toBe(0);
+    expect(k.activity24h.count).toBe(0);
+  });
+
+  it("baseCurrency is propagated", () => {
+    const ctx = makeCtx();
+    expect(computeKPIs(ctx).baseCurrency).toBe("USD");
   });
 });

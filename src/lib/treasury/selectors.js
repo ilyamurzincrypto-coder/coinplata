@@ -66,3 +66,78 @@ export function lastNMovements(ctx, n) {
     .slice(0, n)
     .map((m) => ({ ...m, accountName: accountById.get(m.accountId)?.name || "—" }));
 }
+
+function txTimestamp(tx) {
+  // Real supabase rows have ISO `createdAt`. Seed-mode rows have `time` + `date`
+  // strings. Fall back to "now" if absent (so the row isn't dropped from "today").
+  if (tx.createdAt) return new Date(tx.createdAt);
+  if (tx.timestamp) return new Date(tx.timestamp);
+  return new Date(); // fallback — caller treats as "now"
+}
+
+function sumBalancesInBase(ctx, accountFilter) {
+  const { accounts, balanceOf, toBase, officeId } = ctx;
+  let total = 0;
+  for (const a of accounts) {
+    if (a.officeId !== officeId) continue;
+    if (accountFilter && !accountFilter(a)) continue;
+    const ccy = String(a.currency || a.currency_code || "").toUpperCase();
+    if (!ccy) continue;
+    total += toBase(balanceOf(a.id) || 0, ccy) || 0;
+  }
+  return total;
+}
+
+function sumAvailableInBase(ctx) {
+  const { accounts, balanceOf, reservedOf, toBase, officeId } = ctx;
+  let total = 0;
+  for (const a of accounts) {
+    if (a.officeId !== officeId) continue;
+    const ccy = String(a.currency || a.currency_code || "").toUpperCase();
+    if (!ccy) continue;
+    const avail = (balanceOf(a.id) || 0) - (reservedOf(a.id) || 0);
+    total += toBase(avail, ccy) || 0;
+  }
+  return total;
+}
+
+function sumLiabilitiesInBase(ctx) {
+  const { obligations, officeId, toBase } = ctx;
+  let total = 0;
+  for (const o of obligations) {
+    if (o.officeId !== officeId) continue;
+    if (o.status !== "open") continue;
+    if (o.direction !== "we_owe") continue;
+    const ccy = String(o.currency || "").toUpperCase();
+    total += toBase(o.amount || 0, ccy) || 0;
+  }
+  return total;
+}
+
+function activityCount(ctx, sinceMs, untilMs) {
+  const { transactions, officeId } = ctx;
+  let count = 0;
+  for (const t of transactions) {
+    if (t.officeId !== officeId) continue;
+    const ts = txTimestamp(t).getTime();
+    if (ts >= sinceMs && ts < untilMs) count += 1;
+  }
+  return count;
+}
+
+export function computeKPIs(ctx) {
+  const nowDate = (ctx.now ? ctx.now() : new Date());
+  const nowMs = nowDate.getTime();
+  const since24hMs = nowMs - 24 * 3600 * 1000;
+  const totalBalance = sumBalancesInBase(ctx);
+  const liabilities = sumLiabilitiesInBase(ctx);
+  const availableFunds = sumAvailableInBase(ctx);
+  const activity = activityCount(ctx, since24hMs, nowMs + 1);
+  return {
+    totalBalance:   { valueInBase: totalBalance,   delta: null },
+    liabilities:    { valueInBase: liabilities,    delta: null },
+    availableFunds: { valueInBase: availableFunds, delta: null },
+    activity24h:    { count: activity,             delta: null },
+    baseCurrency: ctx.baseCurrency,
+  };
+}
