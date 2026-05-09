@@ -57,7 +57,6 @@ import {
   completeDeal as rpcCompleteDeal,
   cancelObligation as rpcCancelObligation,
 } from "../lib/dealOperations.js";
-import { USE_NEW_LEDGER } from "../lib/newLedger.js";
 import { HandCoins } from "lucide-react";
 
 export default function TransactionsTable({ currentOffice, justCreatedId, onEdit }) {
@@ -1298,13 +1297,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       {tx.status === "pending" && canEdit && (
                         <button
                           onClick={() => handleComplete(tx)}
-                          disabled={isBusy(tx.id) || USE_NEW_LEDGER}
+                          disabled={isBusy(tx.id)}
                           className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
-                            isBusy(tx.id) || USE_NEW_LEDGER
+                            isBusy(tx.id)
                               ? "bg-slate-300 text-slate-500 cursor-not-allowed"
                               : "bg-emerald-600 text-white hover:bg-emerald-700"
                           }`}
-                          title={USE_NEW_LEDGER ? "Complete отключён в режиме v2 ledger" : t("complete_tx")}
+                          title={t("complete_tx")}
                         >
                           <CheckCircle2 className="w-3 h-3" />
                           {isBusy(tx.id) ? "…" : t("complete_tx")}
@@ -1353,9 +1352,9 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                           </button>
                           <button
                             onClick={() => setDeleteTarget(tx)}
-                            disabled={isBusy(tx.id) || USE_NEW_LEDGER}
+                            disabled={isBusy(tx.id)}
                             className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-rose-50 text-slate-400 hover:text-rose-600 disabled:opacity-40 disabled:cursor-not-allowed"
-                            title={USE_NEW_LEDGER ? "Delete отключён в режиме v2 ledger" : "Delete transaction"}
+                            title="Delete transaction"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

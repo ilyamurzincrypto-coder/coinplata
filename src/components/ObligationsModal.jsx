@@ -29,7 +29,6 @@ import {
   receivePayment as rpcReceivePayment,
   cancelObligation as rpcCancelObligation,
 } from "../lib/dealOperations.js";
-import { USE_NEW_LEDGER } from "../lib/newLedger.js";
 
 export default function ObligationsModal({ open, onClose }) {
   const { obligations, closeObligation, cancelObligation } = useObligations();
@@ -236,13 +235,6 @@ export default function ObligationsModal({ open, onClose }) {
   return (
     <>
       <Modal open={open} onClose={onClose} title="Open obligations" subtitle={`${openObligations.length} open`} width="2xl">
-        {USE_NEW_LEDGER && (
-          <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-amber-50 border border-amber-200 text-[12.5px] text-amber-900">
-            <span className="font-semibold">Settle / Receive / Cancel отключены в режиме v2 ledger.</span>{" "}
-            Эти операции ещё не имеют v2-обёрток. Чтобы продолжить, попроси админа выключить{" "}
-            <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
-          </div>
-        )}
         <div className="p-5 max-h-[70vh] overflow-auto space-y-4">
           {openObligations.length === 0 ? (
             <div className="text-center py-10 text-[13px] text-slate-500">

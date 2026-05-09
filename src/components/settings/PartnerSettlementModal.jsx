@@ -19,7 +19,6 @@ import {
   recordPartnerInflow as rpcRecordPartnerInflow,
   recordPartnerOutflow as rpcRecordPartnerOutflow,
 } from "../../lib/dealOperations.js";
-import { USE_NEW_LEDGER } from "../../lib/newLedger.js";
 
 export default function PartnerSettlementModal({
   open,
@@ -122,13 +121,6 @@ export default function PartnerSettlementModal({
 
   return (
     <Modal open={!!open} onClose={handleClose} title={title} subtitle={subtitle} width="md">
-      {USE_NEW_LEDGER && (
-        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-amber-50 border border-amber-200 text-[12.5px] text-amber-900">
-          <span className="font-semibold">Partner-движения отключены в режиме v2 ledger.</span>{" "}
-          v2 recordPartnerInflow/Outflow ещё не реализованы. Попроси админа выключить{" "}
-          <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
-        </div>
-      )}
       <div className="p-5 space-y-3">
         <div className={`flex items-center gap-2 px-3 py-2 rounded-[10px] bg-${accent}-50 border border-${accent}-200`}>
           <Icon className={`w-4 h-4 text-${accent}-700`} />
@@ -207,8 +199,7 @@ export default function PartnerSettlementModal({
         </button>
         <button
           onClick={submit}
-          disabled={busy || USE_NEW_LEDGER || (!isInflow && eligibleAccounts.length === 0)}
-          title={USE_NEW_LEDGER ? "Отключено в режиме v2 ledger" : undefined}
+          disabled={busy || (!isInflow && eligibleAccounts.length === 0)}
           className={`px-4 py-2 rounded-[10px] text-white text-[12.5px] font-bold ${accentCls} disabled:opacity-60`}
         >
           {busy ? "Записываю…" : isInflow ? "Записать пополнение" : "Записать выдачу"}
