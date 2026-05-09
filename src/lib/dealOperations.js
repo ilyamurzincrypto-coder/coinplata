@@ -84,13 +84,34 @@ export async function createBalanceAdjustment(payload) {
   return await rpcCreateAdjustmentV2(v2payload);
 }
 
-export const updateDeal       = rpcUpdateDeal;
-export const deleteDeal       = rpcDeleteDeal;
-export const completeDeal     = rpcCompleteDeal;
-export const deleteTransfer   = rpcDeleteTransfer;
-export const settleObligation = rpcSettleObligation;
-export const settleObligationPartial = rpcSettleObligationPartial;
-export const receivePayment   = rpcReceivePayment;
-export const cancelObligation = rpcCancelObligation;
-export const recordPartnerInflow  = rpcRecordPartnerInflow;
-export const recordPartnerOutflow = rpcRecordPartnerOutflow;
+// ─────────────────────────────────────────────────────────────────────
+// Phase 3.2 — guardLegacyOnly
+//
+// 10 операций ниже ещё не имеют v2-обёрток (Edit/Delete/Settle/Partner-IO).
+// Когда USE_NEW_LEDGER=true, новый createDeal пишет в ledger.transactions,
+// но эти follow-up действия молча шли бы в legacy public.deals → split-brain.
+// Здесь fail-fast: бросаем понятный Error, UI поймает через withToast.
+// ─────────────────────────────────────────────────────────────────────
+function guardLegacyOnly(name, fn) {
+  return async (...args) => {
+    if (USE_NEW_LEDGER) {
+      throw new Error(
+        `${name}: v2 routing not supported yet. ` +
+        `Disable VITE_USE_NEW_LEDGER (in Vercel env or .env.local) to perform this operation, ` +
+        `or wait for v2 ${name} support to land.`
+      );
+    }
+    return await fn(...args);
+  };
+}
+
+export const updateDeal               = guardLegacyOnly("updateDeal",               rpcUpdateDeal);
+export const deleteDeal               = guardLegacyOnly("deleteDeal",               rpcDeleteDeal);
+export const completeDeal             = guardLegacyOnly("completeDeal",             rpcCompleteDeal);
+export const deleteTransfer           = guardLegacyOnly("deleteTransfer",           rpcDeleteTransfer);
+export const settleObligation         = guardLegacyOnly("settleObligation",         rpcSettleObligation);
+export const settleObligationPartial  = guardLegacyOnly("settleObligationPartial",  rpcSettleObligationPartial);
+export const receivePayment           = guardLegacyOnly("receivePayment",           rpcReceivePayment);
+export const cancelObligation         = guardLegacyOnly("cancelObligation",         rpcCancelObligation);
+export const recordPartnerInflow      = guardLegacyOnly("recordPartnerInflow",      rpcRecordPartnerInflow);
+export const recordPartnerOutflow     = guardLegacyOnly("recordPartnerOutflow",     rpcRecordPartnerOutflow);
