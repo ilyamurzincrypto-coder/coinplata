@@ -1,5 +1,6 @@
 // src/lib/treasury/selectors.test.js
 import { describe, it, expect } from "vitest";
+import { groupByCurrency } from "./selectors.js";
 
 // Fixture builder. One office "mark" with 3 accounts (cash USD, bank TRY,
 // crypto USDT). Mirrors store/data.js seed structure. Includes one
@@ -69,5 +70,60 @@ describe("makeCtx fixture sanity", () => {
     const ctx = makeCtx();
     expect(ctx.balanceOf("missing")).toBe(0);
     expect(ctx.reservedOf("missing")).toBe(0);
+  });
+});
+
+describe("groupByCurrency", () => {
+  it("groups office accounts, sorted by totalInBase desc", () => {
+    const ctx = makeCtx();
+    const rows = groupByCurrency(ctx);
+    // USD total = 1000 (balanceOf includes reserved-source amount but not reserved-marked).
+    // Wait: m1 in 1000 (reserved=false) → +1000. m4 out 100 (reserved=true) → excluded by balanceOf.
+    // So balanceOf(a_mark_cash_usd) = 1000.
+    // toBase: USD 1000→1000, TRY 50000→1500, USDT 500→500.
+    // Sorted: TRY (1500) > USD (1000) > USDT (500).
+    expect(rows).toHaveLength(3);
+    expect(rows[0].currency).toBe("TRY");
+    expect(rows[0].totalInBase).toBe(1500);
+    expect(rows[0].available).toBe(50000);
+    expect(rows[0].reserved).toBe(0);
+    expect(rows[0].total).toBe(50000);
+    expect(rows[1].currency).toBe("USD");
+    expect(rows[1].available).toBe(900);
+    expect(rows[1].reserved).toBe(100);
+    expect(rows[1].total).toBe(1000);
+    expect(rows[2].currency).toBe("USDT");
+  });
+
+  it("filters by officeId — does not leak terra account", () => {
+    const ctx = makeCtx();
+    const rows = groupByCurrency(ctx);
+    // If officeId filter were broken, USD total would be 1000 + 9999 = 10999.
+    expect(rows.find((r) => r.currency === "USD").total).toBe(1000);
+  });
+
+  it("returns empty array if office has no accounts", () => {
+    const ctx = makeCtx({ officeId: "nonexistent" });
+    expect(groupByCurrency(ctx)).toEqual([]);
+  });
+
+  it("normalizes currency case", () => {
+    const ctx = makeCtx({
+      accounts: [
+        { id: "a1", officeId: "mark", type: "cash", currency: "usd", balance: 100 },
+        { id: "a2", officeId: "mark", type: "cash", currency: "USD", balance: 100 },
+      ],
+      movements: [
+        { id: "m1", accountId: "a1", amount: 100, direction: "in", reserved: false, timestamp: new Date().toISOString() },
+        { id: "m2", accountId: "a2", amount: 100, direction: "in", reserved: false, timestamp: new Date().toISOString() },
+      ],
+    });
+    // Re-bind balanceOf to new movements
+    ctx.balanceOf = (id) => ctx.movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    ctx.reservedOf = () => 0;
+    const rows = groupByCurrency(ctx);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].currency).toBe("USD");
+    expect(rows[0].total).toBe(200);
   });
 });
