@@ -25,6 +25,8 @@ import {
   rpcCreateTransferV2,
   rpcCreateAdjustmentV2,
   rpcCreateWorkflowV2,
+  rpcCreateWithdrawalV2,
+  rpcCreateTopupV2,
   USE_NEW_LEDGER,
 } from "./newLedger.js";
 import {
@@ -37,6 +39,14 @@ import {
 export async function createDeal(payload) {
   if (!USE_NEW_LEDGER) return await rpcCreateDeal(payload);
   const v2payload = await adaptLegacyDealPayload(payload);
+
+  if (v2payload.kind === "withdrawal") {
+    return await rpcCreateWithdrawalV2(v2payload);
+  }
+  if (v2payload.kind === "topup") {
+    return await rpcCreateTopupV2(v2payload);
+  }
+
   const result = await rpcCreateDealV2(v2payload);
 
   const deferredLegs = (v2payload.outLegs || [])
