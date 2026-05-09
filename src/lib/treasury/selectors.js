@@ -214,3 +214,48 @@ export function computeKPIs(ctx) {
     baseCurrency: ctx.baseCurrency,
   };
 }
+
+export function computeAlerts(ctx) {
+  const nowDate = (ctx.now ? ctx.now() : new Date());
+  const nowMs = nowDate.getTime();
+  const ms24h = 24 * 3600 * 1000;
+  const ms7d = 7 * 24 * 3600 * 1000;
+  const alerts = [];
+
+  // 1. overdue_obligations: open we_owe obligations older than 7 days
+  const overdue = ctx.obligations.filter((o) =>
+    o.officeId === ctx.officeId &&
+    o.status === "open" &&
+    o.direction === "we_owe" &&
+    o.createdAt &&
+    (nowMs - new Date(o.createdAt).getTime()) > ms7d
+  );
+  if (overdue.length > 0) {
+    alerts.push({ id: "overdue_obligations", severity: "error", count: overdue.length });
+  }
+
+  // 2. negative_balance: office accounts with balanceOf < 0
+  const officeAccounts = ctx.accounts.filter((a) => a.officeId === ctx.officeId);
+  const negCount = officeAccounts.filter((a) => (ctx.balanceOf(a.id) || 0) < 0).length;
+  if (negCount > 0) {
+    alerts.push({ id: "negative_balance", severity: "error", count: negCount });
+  }
+
+  // 3. stuck_pending: pending tx older than 24h
+  const stuck = ctx.transactions.filter((t) =>
+    t.officeId === ctx.officeId &&
+    t.status === "pending" &&
+    (nowMs - txTimestamp(t).getTime()) > ms24h
+  );
+  if (stuck.length > 0) {
+    alerts.push({ id: "stuck_pending", severity: "warning", count: stuck.length });
+  }
+
+  // 4. stale_rates: lastConfirmedAt > 24h ago OR modifiedAfterConfirmation
+  const staleAge = ctx.lastConfirmedAt && (nowMs - new Date(ctx.lastConfirmedAt).getTime()) > ms24h;
+  if (staleAge || ctx.modifiedAfterConfirmation) {
+    alerts.push({ id: "stale_rates", severity: "info" });
+  }
+
+  return alerts;
+}

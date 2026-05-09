@@ -328,3 +328,100 @@ describe("computeKPIs deltas", () => {
     expect(k.activity24h.delta).toBe(1);
   });
 });
+
+describe("computeAlerts", () => {
+  it("returns empty when nothing is wrong", () => {
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const ctx = makeCtx({
+      obligations: [],
+      transactions: [],
+      lastConfirmedAt: NOW.toISOString(),
+      modifiedAfterConfirmation: false,
+      accounts: [{ id: "a1", officeId: "mark", type: "cash", currency: "USD", balance: 100 }],
+      movements: [{ id: "m1", accountId: "a1", amount: 100, direction: "in", currency: "USD", reserved: false, timestamp: NOW.toISOString() }],
+    });
+    ctx.balanceOf = (id) => ctx.movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    ctx.reservedOf = () => 0;
+    expect(computeAlerts(ctx)).toEqual([]);
+  });
+
+  it("emits overdue_obligations when open obligations are > 7 days old", () => {
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const oldDate = new Date(NOW.getTime() - 8 * 24 * 3600 * 1000).toISOString();
+    const ctx = makeCtx({
+      obligations: [
+        { id: "o1", officeId: "mark", currency: "USD", amount: 100, direction: "we_owe", status: "open", createdAt: oldDate },
+        { id: "o2", officeId: "mark", currency: "USD", amount: 50,  direction: "we_owe", status: "open", createdAt: oldDate },
+      ],
+      transactions: [],
+      modifiedAfterConfirmation: false,
+    });
+    const a = computeAlerts(ctx);
+    const overdue = a.find((x) => x.id === "overdue_obligations");
+    expect(overdue).toBeDefined();
+    expect(overdue.severity).toBe("error");
+    expect(overdue.count).toBe(2);
+  });
+
+  it("emits negative_balance for accounts with balanceOf < 0", () => {
+    const ctx = makeCtx({
+      accounts: [{ id: "a_neg", officeId: "mark", type: "cash", currency: "USD", balance: 0 }],
+      movements: [{ id: "m_out", accountId: "a_neg", amount: 50, direction: "out", currency: "USD", reserved: false, timestamp: new Date().toISOString() }],
+      obligations: [],
+      transactions: [],
+      modifiedAfterConfirmation: false,
+    });
+    ctx.balanceOf = (id) => ctx.movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    ctx.reservedOf = () => 0;
+    const a = computeAlerts(ctx);
+    expect(a.find((x) => x.id === "negative_balance")?.count).toBe(1);
+  });
+
+  it("emits stuck_pending for pending tx older than 24h", () => {
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const oldTs = new Date(NOW.getTime() - 26 * 3600 * 1000).toISOString();
+    const ctx = makeCtx({
+      transactions: [
+        { id: "t_stuck", officeId: "mark", status: "pending", createdAt: oldTs },
+        { id: "t_fresh", officeId: "mark", status: "pending", createdAt: NOW.toISOString() },
+      ],
+      obligations: [],
+      accounts: [],
+      movements: [],
+      balanceOf: () => 0,
+      reservedOf: () => 0,
+      modifiedAfterConfirmation: false,
+    });
+    const a = computeAlerts(ctx);
+    expect(a.find((x) => x.id === "stuck_pending")?.count).toBe(1);
+  });
+
+  it("emits stale_rates when modifiedAfterConfirmation=true", () => {
+    const ctx = makeCtx({
+      modifiedAfterConfirmation: true,
+      obligations: [],
+      transactions: [],
+      accounts: [],
+      movements: [],
+      balanceOf: () => 0,
+      reservedOf: () => 0,
+    });
+    const a = computeAlerts(ctx);
+    expect(a.find((x) => x.id === "stale_rates")).toBeDefined();
+  });
+
+  it("ignores other-office data", () => {
+    const ctx = makeCtx({
+      obligations: [
+        { id: "o1", officeId: "terra", currency: "USD", amount: 100, direction: "we_owe", status: "open", createdAt: "2020-01-01T00:00:00Z" },
+      ],
+      transactions: [],
+      modifiedAfterConfirmation: false,
+      accounts: [],
+      movements: [],
+      balanceOf: () => 0,
+      reservedOf: () => 0,
+    });
+    expect(computeAlerts(ctx).find((x) => x.id === "overdue_obligations")).toBeUndefined();
+  });
+});
