@@ -10,9 +10,14 @@ import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
 
 // Feature-flag для новой формы создания сделки.
-// На этапе 1 default = false → показываем legacy ExchangeForm.
-// Включается через .env.local: VITE_USE_NEW_DEAL_FORM=true
+//
+// PROD KILL-SWITCH (2026-05-09): требуем дополнительно VITE_FORCE_V2=true
+// в env. В Vercel её нет → насильно показываем legacy ExchangeForm
+// независимо от VITE_USE_NEW_DEAL_FORM. См. CLAUDE.md "Feature flags".
+// To re-enable: добавить VITE_FORCE_V2=true в Vercel и redeploy.
+const _V2_FORCE_OPT_IN = import.meta.env?.VITE_FORCE_V2 === "true";
 const USE_NEW_DEAL_FORM =
+  _V2_FORCE_OPT_IN &&
   import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
