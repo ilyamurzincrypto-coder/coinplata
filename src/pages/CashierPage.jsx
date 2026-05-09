@@ -11,12 +11,9 @@ import DealForm from "../components/cashier/DealForm.jsx";
 
 // Feature-flag для новой формы создания сделки.
 //
-// EMERGENCY ROLLBACK (2026-05-10): production cutover вызвал белый экран —
-// возвращаем kill-switch (требуем ДОПОЛНИТЕЛЬНО VITE_FORCE_V2=true). До
-// диагностики DealForm v2 в проде неактивен.
-const _V2_FORCE_OPT_IN = import.meta.env?.VITE_FORCE_V2 === "true";
+// CUTOVER RETRY (2026-05-10): kill-switch снят повторно — снова читаем
+// VITE_USE_NEW_DEAL_FORM напрямую. Проверка через Vercel preview deployment.
 const USE_NEW_DEAL_FORM =
-  _V2_FORCE_OPT_IN &&
   import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
