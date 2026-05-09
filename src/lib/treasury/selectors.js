@@ -53,3 +53,16 @@ export function groupByAccountType(ctx) {
   }
   return [...byType.values()].sort((x, y) => y.totalInBase - x.totalInBase);
 }
+
+export function lastNMovements(ctx, n) {
+  const { officeId, accounts, movements } = ctx;
+  const officeAccountIds = new Set(
+    accounts.filter((a) => a.officeId === officeId).map((a) => a.id)
+  );
+  const accountById = new Map(accounts.map((a) => [a.id, a]));
+  return movements
+    .filter((m) => officeAccountIds.has(m.accountId))
+    .sort((x, y) => new Date(y.timestamp) - new Date(x.timestamp))
+    .slice(0, n)
+    .map((m) => ({ ...m, accountName: accountById.get(m.accountId)?.name || "—" }));
+}

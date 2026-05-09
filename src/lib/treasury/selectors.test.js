@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { groupByCurrency } from "./selectors.js";
 import { groupByAccountType } from "./selectors.js";
+import { lastNMovements } from "./selectors.js";
 
 // Fixture builder. One office "mark" with 3 accounts (cash USD, bank TRY,
 // crypto USDT). Mirrors store/data.js seed structure. Includes one
@@ -176,5 +177,39 @@ describe("groupByAccountType", () => {
     const rows = groupByAccountType(ctx);
     expect(rows).toHaveLength(1);
     expect(rows[0].type).toBe("other");
+  });
+});
+
+describe("lastNMovements", () => {
+  it("returns office movements sorted desc, limited to N", () => {
+    const ctx = makeCtx();
+    // 4 movements total, all 3 'mark' accounts have movements.
+    // Expect 4 rows (m4 newest, m3/m2/m1 yesterday — sort by timestamp desc).
+    const rows = lastNMovements(ctx, 50);
+    expect(rows).toHaveLength(4);
+    expect(rows[0].id).toBe("m4");
+  });
+
+  it("filters out movements for other-office accounts", () => {
+    const ctx = makeCtx({
+      movements: [
+        ...makeCtx().movements,
+        { id: "m_other", accountId: "a_other_cash_usd", amount: 1, direction: "in", reserved: false, timestamp: "2027-01-01T00:00:00Z" },
+      ],
+    });
+    const rows = lastNMovements(ctx, 50);
+    expect(rows.find((m) => m.id === "m_other")).toBeUndefined();
+  });
+
+  it("limits to N", () => {
+    const ctx = makeCtx();
+    expect(lastNMovements(ctx, 2)).toHaveLength(2);
+  });
+
+  it("attaches account name for display", () => {
+    const ctx = makeCtx();
+    const rows = lastNMovements(ctx, 1);
+    expect(rows[0].accountName).toBeDefined();
+    expect(typeof rows[0].accountName).toBe("string");
   });
 });
