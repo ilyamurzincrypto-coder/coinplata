@@ -4,6 +4,7 @@ import { groupByCurrency } from "./selectors.js";
 import { groupByAccountType } from "./selectors.js";
 import { lastNMovements } from "./selectors.js";
 import { computeKPIs } from "./selectors.js";
+import { computeAlerts } from "./selectors.js";
 
 // Fixture builder. One office "mark" with 3 accounts (cash USD, bank TRY,
 // crypto USDT). Mirrors store/data.js seed structure. Includes one
@@ -258,5 +259,72 @@ describe("computeKPIs", () => {
   it("baseCurrency is propagated", () => {
     const ctx = makeCtx();
     expect(computeKPIs(ctx).baseCurrency).toBe("USD");
+  });
+});
+
+describe("computeKPIs deltas", () => {
+  it("delta is computed against yesterday's balances", () => {
+    // Custom fixture: yesterday total = 500 (1 movement for 500 yesterday),
+    // today add another 500 → today total = 1000.
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const yesterday = new Date(NOW.getTime() - 26 * 3600 * 1000);
+    const accounts = [
+      { id: "a1", officeId: "mark", type: "cash", currency: "USD", balance: 0 },
+    ];
+    const movements = [
+      { id: "m_old",  accountId: "a1", amount: 500, direction: "in", currency: "USD", reserved: false, timestamp: yesterday.toISOString() },
+      { id: "m_new",  accountId: "a1", amount: 500, direction: "in", currency: "USD", reserved: false, timestamp: NOW.toISOString() },
+    ];
+    const balanceOf = (id) => movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+    const ctx = makeCtx({
+      accounts,
+      movements,
+      balanceOf,
+      reservedOf: () => 0,
+      obligations: [],
+      transactions: [],
+    });
+    const k = computeKPIs(ctx);
+    expect(k.totalBalance.valueInBase).toBe(1000);
+    expect(k.totalBalance.delta).toBeCloseTo(1.0); // (1000-500)/500 = 1.0 (= +100%)
+  });
+
+  it("delta is null if yesterday baseline is 0", () => {
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const accounts = [{ id: "a1", officeId: "mark", type: "cash", currency: "USD", balance: 0 }];
+    const movements = [
+      { id: "m1", accountId: "a1", amount: 100, direction: "in", currency: "USD", reserved: false, timestamp: NOW.toISOString() },
+    ];
+    const ctx = makeCtx({
+      accounts,
+      movements,
+      balanceOf: (id) => movements.filter((m) => m.accountId === id && !m.reserved).reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0),
+      reservedOf: () => 0,
+      obligations: [],
+      transactions: [],
+    });
+    expect(computeKPIs(ctx).totalBalance.delta).toBeNull();
+  });
+
+  it("activity24h delta is absolute count delta vs prior 24-48h window", () => {
+    const NOW = new Date("2026-05-09T12:00:00Z");
+    const sixHrAgo = new Date(NOW.getTime() - 6 * 3600 * 1000).toISOString();
+    const thirtyHrAgo = new Date(NOW.getTime() - 30 * 3600 * 1000).toISOString();
+    const ctx = makeCtx({
+      transactions: [
+        { id: "t1", officeId: "mark", status: "completed", createdAt: sixHrAgo },
+        { id: "t2", officeId: "mark", status: "completed", createdAt: sixHrAgo },
+        { id: "t3", officeId: "mark", status: "completed", createdAt: thirtyHrAgo },
+      ],
+      obligations: [],
+      accounts: [],
+      movements: [],
+      balanceOf: () => 0,
+      reservedOf: () => 0,
+    });
+    // last 24h: t1, t2 → count=2. prior 24-48h: t3 → 1. delta = 2-1 = 1.
+    const k = computeKPIs(ctx);
+    expect(k.activity24h.count).toBe(2);
+    expect(k.activity24h.delta).toBe(1);
   });
 });

@@ -125,19 +125,92 @@ function activityCount(ctx, sinceMs, untilMs) {
   return count;
 }
 
+function balanceOfAtCutoff(ctx, accountId, cutoffMs) {
+  const { movements } = ctx;
+  return movements
+    .filter((m) => m.accountId === accountId && !m.reserved && new Date(m.timestamp).getTime() < cutoffMs)
+    .reduce((s, m) => s + (m.direction === "in" ? m.amount : -m.amount), 0);
+}
+
+function reservedOfAtCutoff(ctx, accountId, cutoffMs) {
+  const { movements } = ctx;
+  return movements
+    .filter((m) => m.accountId === accountId && m.reserved && m.direction === "out" && new Date(m.timestamp).getTime() < cutoffMs)
+    .reduce((s, m) => s + m.amount, 0);
+}
+
+function snapshotInBase(ctx, cutoffMs) {
+  const { accounts, toBase, officeId } = ctx;
+  let total = 0;
+  let avail = 0;
+  for (const a of accounts) {
+    if (a.officeId !== officeId) continue;
+    const ccy = String(a.currency || a.currency_code || "").toUpperCase();
+    if (!ccy) continue;
+    const bal = balanceOfAtCutoff(ctx, a.id, cutoffMs);
+    const res = reservedOfAtCutoff(ctx, a.id, cutoffMs);
+    total += toBase(bal, ccy) || 0;
+    avail += toBase(bal - res, ccy) || 0;
+  }
+  return { totalInBase: total, availableInBase: avail };
+}
+
+function liabilitiesInBaseAtCutoff(ctx, cutoffMs) {
+  const { obligations, officeId, toBase } = ctx;
+  let total = 0;
+  for (const o of obligations) {
+    if (o.officeId !== officeId) continue;
+    if (o.direction !== "we_owe") continue;
+    if (!o.createdAt) continue;
+    const created = new Date(o.createdAt).getTime();
+    if (created >= cutoffMs) continue;
+    if (o.status !== "open") {
+      // If closed, it counts only if closure happened after cutoff.
+      const closed = o.closedAt ? new Date(o.closedAt).getTime() : 0;
+      if (closed && closed < cutoffMs) continue;
+    }
+    const ccy = String(o.currency || "").toUpperCase();
+    total += toBase(o.amount || 0, ccy) || 0;
+  }
+  return total;
+}
+
+function pctDelta(today, yesterday) {
+  if (yesterday === 0 || yesterday === null || yesterday === undefined) return null;
+  return (today - yesterday) / yesterday;
+}
+
 export function computeKPIs(ctx) {
   const nowDate = (ctx.now ? ctx.now() : new Date());
   const nowMs = nowDate.getTime();
-  const since24hMs = nowMs - 24 * 3600 * 1000;
-  const totalBalance = sumBalancesInBase(ctx);
-  const liabilities = sumLiabilitiesInBase(ctx);
-  const availableFunds = sumAvailableInBase(ctx);
-  const activity = activityCount(ctx, since24hMs, nowMs + 1);
+  const ms24h = 24 * 3600 * 1000;
+  const since24hMs = nowMs - ms24h;
+  const since48hMs = nowMs - 2 * ms24h;
+
+  const today = snapshotInBase(ctx, nowMs + 1);
+  const yesterday = snapshotInBase(ctx, since24hMs);
+  const todayLiab = sumLiabilitiesInBase(ctx);
+  const yestLiab = liabilitiesInBaseAtCutoff(ctx, since24hMs);
+  const todayActivity = activityCount(ctx, since24hMs, nowMs + 1);
+  const priorActivity = activityCount(ctx, since48hMs, since24hMs);
+
   return {
-    totalBalance:   { valueInBase: totalBalance,   delta: null },
-    liabilities:    { valueInBase: liabilities,    delta: null },
-    availableFunds: { valueInBase: availableFunds, delta: null },
-    activity24h:    { count: activity,             delta: null },
+    totalBalance: {
+      valueInBase: today.totalInBase,
+      delta: pctDelta(today.totalInBase, yesterday.totalInBase),
+    },
+    liabilities: {
+      valueInBase: todayLiab,
+      delta: pctDelta(todayLiab, yestLiab),
+    },
+    availableFunds: {
+      valueInBase: today.availableInBase,
+      delta: pctDelta(today.availableInBase, yesterday.availableInBase),
+    },
+    activity24h: {
+      count: todayActivity,
+      delta: todayActivity - priorActivity, // absolute delta for activity
+    },
     baseCurrency: ctx.baseCurrency,
   };
 }
