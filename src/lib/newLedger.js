@@ -490,15 +490,13 @@ export async function rpcCancelWorkflowV2(payload) {
 // ─────────────────────────────────────────────────────────────────────
 // Feature-flag helper — проверяет VITE_USE_NEW_LEDGER.
 //
-// PROD KILL-SWITCH (2026-05-09): даже при VITE_USE_NEW_LEDGER=true в
-// Vercel требуем ДОПОЛНИТЕЛЬНО VITE_FORCE_V2=true. В Vercel второй
-// переменной нет → v2 не активируется. Это защита от существующего
-// VITE_USE_NEW_LEDGER=true, который один уже не достаточен. Чтобы
-// включить v2 в проде после готовности (см. CLAUDE.md "Feature flags"),
-// добавить VITE_FORCE_V2=true в Vercel и redeploy.
+// CUTOVER COMPLETE (2026-05-10): kill-switch снят, v2 активен в проде.
+// Phase 1 закрыл все coverage-gaps (адаптер, валидация, 10 wrappers),
+// Phase 2 backfill'нул 13 opening journal entries → диф 0. Теперь
+// USE_NEW_LEDGER читается напрямую из VITE_USE_NEW_LEDGER (true в Vercel).
+// Чтобы откатить в legacy на случай прод-инцидента — VITE_USE_NEW_LEDGER=false
+// в Vercel + redeploy за 2 минуты.
 // ─────────────────────────────────────────────────────────────────────
 const _ENV = typeof import.meta !== "undefined" ? import.meta.env : null;
-const _V2_FORCE_OPT_IN = _ENV?.VITE_FORCE_V2 === "true";
 
-export const USE_NEW_LEDGER =
-  _V2_FORCE_OPT_IN && _ENV?.VITE_USE_NEW_LEDGER === "true";
+export const USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER === "true";

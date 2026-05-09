@@ -11,13 +11,11 @@ import DealForm from "../components/cashier/DealForm.jsx";
 
 // Feature-flag для новой формы создания сделки.
 //
-// PROD KILL-SWITCH (2026-05-09): требуем дополнительно VITE_FORCE_V2=true
-// в env. В Vercel её нет → насильно показываем legacy ExchangeForm
-// независимо от VITE_USE_NEW_DEAL_FORM. См. CLAUDE.md "Feature flags".
-// To re-enable: добавить VITE_FORCE_V2=true в Vercel и redeploy.
-const _V2_FORCE_OPT_IN = import.meta.env?.VITE_FORCE_V2 === "true";
+// CUTOVER COMPLETE (2026-05-10): kill-switch снят, DealForm v2 активен в проде.
+// Phase 1 закрыл UX-gap (inline validation, disabled Submit), адаптер
+// покрывает все формы сделок, 10 v2 wrappers подключены. Откат на legacy
+// = VITE_USE_NEW_DEAL_FORM=false в Vercel + redeploy.
 const USE_NEW_DEAL_FORM =
-  _V2_FORCE_OPT_IN &&
   import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
