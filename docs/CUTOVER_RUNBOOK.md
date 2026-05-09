@@ -268,3 +268,32 @@ DELETE FROM ledger.transactions;
 ```
 
 Done.
+
+---
+
+## ⚠️ Temporary alert pause (2026-05-09 → 2026-05-23)
+
+`ledger.cron_reconcile_balances` подавляется через `ledger.config.reconcile_paused_until`.
+
+**Причина.** На production обнаружено 13 mismatch-строк в `ledger.v_balance_check`
+(≈30k USD + 19k USDT) — opening-балансы засеяны в `ledger.balances`, но
+парных `journal_entries` нет. Каждый час на :05 ронялось `critical` alert
+"Detected 13 balance mismatches" → реальные сигналы тонули.
+
+**Применённая миграция:** `audit_alerts_temp_silence_until_2026_05_23` (через
+mcp__supabase__apply_migration). Делает две вещи:
+
+1. `INSERT … ON CONFLICT … UPDATE` строку `ledger.config` с
+   `key='reconcile_paused_until'`, `value='2026-05-23 00:00:00+00'`.
+2. `CREATE OR REPLACE FUNCTION ledger.cron_reconcile_balances()` — early-return,
+   если `now() < reconcile_paused_until`. Тело иначе идентичное.
+
+**Owner / investigation deadline:** до 2026-05-23 либо backfill `journal_entries`
+для opening-строк, либо обнулить orphan rows в `ledger.balances`. После — снять паузу:
+
+```sql
+DELETE FROM ledger.config WHERE key = 'reconcile_paused_until';
+```
+
+(Функция продолжит работать без изменения определения — она просто увидит
+`v_pause_until IS NULL` и упадёт в обычный insert-alert путь.)

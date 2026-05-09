@@ -13,6 +13,7 @@ import { Trash2 } from "lucide-react";
 import { useAuth } from "../store/auth.jsx";
 import { withToast } from "../lib/supabaseWrite.js";
 import { deleteDeal } from "../lib/dealOperations.js";
+import { USE_NEW_LEDGER } from "../lib/newLedger.js";
 
 export default function DeleteDealButton({ dealId, onDeleted, size = "sm" }) {
   const { currentUser } = useAuth();
@@ -55,9 +56,15 @@ export default function DeleteDealButton({ dealId, onDeleted, size = "sm" }) {
     <button
       type="button"
       onClick={handleClick}
-      disabled={busy}
+      disabled={busy || USE_NEW_LEDGER}
       onBlur={() => setConfirm(false)}
-      title={confirm ? "Подтвердить удаление" : "Удалить сделку (откатит баланс)"}
+      title={
+        USE_NEW_LEDGER
+          ? "Удаление отключено в режиме v2 ledger — wait for v2 deleteDeal support"
+          : confirm
+          ? "Подтвердить удаление"
+          : "Удалить сделку (откатит баланс)"
+      }
       className={`${padCls} rounded transition-colors ${
         confirm
           ? "bg-rose-500 text-white hover:bg-rose-600"

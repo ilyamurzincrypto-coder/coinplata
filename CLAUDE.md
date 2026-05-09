@@ -16,6 +16,18 @@ No test runner, linter, or type-checker is configured. Verify changes by running
 
 `git push` to the main branch → Netlify builds automatically (config in `netlify.toml`, SPA rewrite to `/index.html`). A `vercel.json` is kept for parity but Netlify is the live target.
 
+## Feature flags (Vercel env)
+
+The deal-creation flow is gated by three env vars. As of **2026-05-09 a code-level kill-switch (`VITE_FORCE_V2`) forces legacy unless explicitly opted in**, even if the legacy `VITE_USE_NEW_*` flags are still `true` in Vercel.
+
+| Flag | Read at | What it does | Status |
+|---|---|---|---|
+| `VITE_FORCE_V2` | `src/lib/newLedger.js`, `src/pages/CashierPage.jsx` | **kill-switch.** v2 paths require this to be `true` *in addition to* the per-feature flags below. Absent / `false` → legacy regardless of other vars. | introduced 2026-05-09; absent in Vercel by default — keep it that way until v2 ready |
+| `VITE_USE_NEW_DEAL_FORM` | `src/pages/CashierPage.jsx` | renders new `DealForm` (legs table + RatesPanel sidebar) instead of legacy `ExchangeForm` | UX rough — validation throws on submit instead of disabled-Submit pre-checks |
+| `VITE_USE_NEW_LEDGER` | `src/lib/newLedger.js` | routes `createDeal/createTransfer/createTopup/createBalanceAdjustment` through `newLedgerAdapter` → `ledger.create_deal_v2` etc. | adapter rejects real prod shapes (one-sided OUT, partner accounts); 10 follow-up ops (Edit/Delete/Settle/Partner-IO) have no v2 wrappers — fail-fast guarded in `dealOperations.js` |
+
+To re-enable safely: extend adapter for all deal shapes, prokachat DealForm inline-validation, write v2 wrappers for the 10 follow-up RPC. Plan: `docs/superpowers/plans/2026-05-09-dealform-v2-prod-fix.md`. Only after that is done — set all three env vars to `true` in Vercel and redeploy.
+
 ## Architecture
 
 ### Stack and shape
