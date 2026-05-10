@@ -86,3 +86,40 @@ export function accountEntries(ctx, accountId, limit = 50) {
       };
     });
 }
+
+export function transactionTree(ctx, opts = {}) {
+  const { transactions, entries, accounts } = ctx;
+  const { type = "all", officeFilter = "all", period } = opts;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const entriesByTx = new Map();
+  for (const e of entries) {
+    const arr = entriesByTx.get(e.transactionId) || [];
+    arr.push(e);
+    entriesByTx.set(e.transactionId, arr);
+  }
+  const fromMs = period ? new Date(period.from).getTime() : -Infinity;
+  const toMs = period ? new Date(period.to).getTime() : Infinity;
+
+  return transactions
+    .filter((t) => {
+      if (type !== "all" && t.kind !== type) return false;
+      const ts = new Date(t.effectiveDate).getTime();
+      if (ts < fromMs || ts > toMs) return false;
+      if (officeFilter !== "all" && officeFilter) {
+        // keep if any entry touches an account with this officeId
+        const txEntries = entriesByTx.get(t.id) || [];
+        const touches = txEntries.some((e) => accById.get(e.accountId)?.officeId === officeFilter);
+        if (!touches) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate))
+    .map((t) => ({
+      tx: t,
+      entries: (entriesByTx.get(t.id) || []).map((e) => ({
+        ...e,
+        accountCode: accById.get(e.accountId)?.code || "?",
+        accountName: accById.get(e.accountId)?.name || "?",
+      })),
+    }));
+}

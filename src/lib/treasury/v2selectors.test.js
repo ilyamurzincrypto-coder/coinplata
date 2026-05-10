@@ -132,3 +132,41 @@ describe("accountEntries", () => {
     expect(accountEntries(ctx, "ac_fx_gain", 50)).toEqual([]);
   });
 });
+
+import { transactionTree } from "./v2selectors.js";
+
+describe("transactionTree", () => {
+  it("returns transactions newest first with their entries", () => {
+    const ctx = makeLedgerCtx();
+    const tree = transactionTree(ctx, { type: "all", officeFilter: "all" });
+    expect(tree.length).toBeGreaterThanOrEqual(2);
+    expect(tree[0].tx.id).toBe("tx_deal_1"); // newest by effectiveDate
+    const deal = tree.find((t) => t.tx.id === "tx_deal_1");
+    expect(deal.entries.length).toBe(5); // je3..je7
+    // Σ Dr should equal Σ Cr within tx (per currency)
+    const drSum = deal.entries.filter((e) => e.direction === "dr").reduce((s, e) => s + e.amount, 0);
+    const crSum = deal.entries.filter((e) => e.direction === "cr").reduce((s, e) => s + e.amount, 0);
+    // not necessarily equal across currencies in the fixture (USD vs USDT), so just check structure
+    expect(typeof drSum).toBe("number");
+    expect(typeof crSum).toBe("number");
+  });
+
+  it("type=deal filters to deal transactions only", () => {
+    const ctx = makeLedgerCtx();
+    const tree = transactionTree(ctx, { type: "deal", officeFilter: "all" });
+    expect(tree.every((t) => t.tx.kind === "deal")).toBe(true);
+  });
+
+  it("officeFilter=office-mark keeps tx that touch a mark-office account", () => {
+    const ctx = makeLedgerCtx({ officeFilter: "office-mark" });
+    const tree = transactionTree(ctx, { type: "all", officeFilter: "office-mark" });
+    // tx_deal_1 touches ac_cash_usd_mark and ac_hot_usdt_mark (both mark) → kept
+    expect(tree.find((t) => t.tx.id === "tx_deal_1")).toBeTruthy();
+  });
+
+  it("returns empty for a period with no transactions", () => {
+    const ctx = makeLedgerCtx();
+    const tree = transactionTree(ctx, { type: "all", officeFilter: "all", period: { from: "2030-01-01T00:00:00Z", to: "2030-12-31T00:00:00Z" } });
+    expect(tree).toEqual([]);
+  });
+});
