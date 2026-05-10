@@ -24,6 +24,14 @@ export function presetWindow(preset, now = new Date()) {
   }
 }
 
+// The window immediately preceding `win`, same length: prev.to == win.from.
+export function previousWindow(win) {
+  const fromMs = new Date(win.from).getTime();
+  const toMs = new Date(win.to).getTime();
+  const len = toMs - fromMs;
+  return { from: new Date(fromMs - len).toISOString(), to: new Date(fromMs).toISOString() };
+}
+
 const PRESETS = ["today", "week", "month", "quarter", "year", "30d"];
 
 export default function PeriodPicker({ value, onChange }) {
