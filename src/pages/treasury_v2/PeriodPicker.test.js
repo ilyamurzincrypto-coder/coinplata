@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { presetWindow } from "./PeriodPicker.jsx";
+import { presetWindow, previousWindow } from "./PeriodPicker.jsx";
 
 describe("presetWindow", () => {
   const NOW = new Date("2026-05-10T14:00:00Z"); // a Sunday
@@ -27,5 +27,20 @@ describe("presetWindow", () => {
   it("30d → 30 days ago", () => {
     const w = presetWindow("30d", NOW);
     expect(w.from).toBe("2026-04-10T14:00:00.000Z");
+  });
+});
+
+describe("previousWindow", () => {
+  it("returns the immediately-preceding window of the same length (prev.to === win.from)", () => {
+    const win = { from: "2026-05-01T00:00:00.000Z", to: "2026-06-01T00:00:00.000Z" }; // 31 days
+    const prev = previousWindow(win);
+    expect(prev.to).toBe("2026-05-01T00:00:00.000Z");
+    expect(prev.from).toBe("2026-03-31T00:00:00.000Z"); // 2026-05-01 minus 31 days
+  });
+  it("works for a sub-day-aligned 5-day window", () => {
+    const win = { from: "2026-05-10T14:00:00.000Z", to: "2026-05-15T14:00:00.000Z" };
+    const prev = previousWindow(win);
+    expect(prev.to).toBe("2026-05-10T14:00:00.000Z");
+    expect(prev.from).toBe("2026-05-05T14:00:00.000Z");
   });
 });
