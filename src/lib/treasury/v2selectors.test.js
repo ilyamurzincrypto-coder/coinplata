@@ -372,6 +372,39 @@ describe("trialBalance", () => {
   });
 });
 
+describe("trialBalance — subconto dims", () => {
+  it("a dimensioned account carries a dims array; account metrics = Σ dims; a plain account has dims: null", () => {
+    const ctx = makeLedgerCtx();
+    const tb = trialBalance(ctx, { from: "2026-01-01T00:00:00Z", to: "2026-12-31T00:00:00Z" }, "all");
+    const all = tb.classes.flatMap((c) => c.accounts);
+    const cl = all.find((a) => a.accountId === "ac_cust_liab_usd");
+    expect(Array.isArray(cl.dims)).toBe(true);
+    expect(cl.dims.length).toBe(1);
+    const d = cl.dims[0];
+    expect(d.clientId).toBe("client-1");
+    // fixture: balance −500; client-1 entries je4 (cr 100, eff 2026-05-10) + je5 (dr 95, eff 2026-05-10).
+    // normalSign for a Cr-normal liability: cr → +amount, dr → −amount. sinceFrom = +100 − 95 = +5.
+    // opening = −500 − (+5) = −505; afterTo = 0 → closing = −500. Dr turnover = 95 (je5); Cr turnover = 100 (je4).
+    expect(d).toMatchObject({ opening: -505, debitTurnover: 95, creditTurnover: 100, closing: -500 });
+    expect(cl).toMatchObject({ opening: -505, debitTurnover: 95, creditTurnover: 100, closing: -500 });
+    const cash = all.find((a) => a.accountId === "ac_cash_usd_mark");
+    expect(cash.dims).toBe(null);
+  });
+  it("multiple subconto: dims sorted by |closingInBase| desc; account metrics sum them", () => {
+    const ctx = makeLedgerCtx({
+      balances: [
+        { accountId: "ac_cust_liab_usd", currency: "USD", clientId: "client-1", partnerId: null, balance: -300 },
+        { accountId: "ac_cust_liab_usd", currency: "USD", clientId: "client-2", partnerId: null, balance: -1200 },
+      ],
+    });
+    const cl = trialBalance(ctx, { from: "2026-01-01T00:00:00Z", to: "2026-12-31T00:00:00Z" }, "all")
+      .classes.flatMap((c) => c.accounts).find((a) => a.accountId === "ac_cust_liab_usd");
+    expect(cl.dims.map((x) => x.clientId)).toEqual(["client-2", "client-1"]); // |−1200| > |−300|
+    expect(cl.closing).toBeCloseTo(cl.dims.reduce((s, x) => s + x.closing, 0), 6);
+    expect(cl.closing).toBe(-1500);
+  });
+});
+
 import { chessTurnover } from "./v2selectors.js";
 
 function makeChessCtx() {
