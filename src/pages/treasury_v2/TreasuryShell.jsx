@@ -12,6 +12,7 @@ import AssetsTab from "./tabs/AssetsTab.jsx";
 import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
 import PnLTab from "./tabs/PnLTab.jsx";
+import TurnoverTab from "./tabs/TurnoverTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
 import PostingTab from "./tabs/PostingTab.jsx";
 
@@ -20,6 +21,7 @@ const BASE_TABS = [
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
   { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab },
+  { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
   { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab },
 ];
 

@@ -62,11 +62,19 @@ export function groupByClass(ctx, accountType) {
   return [...bySubtype.values()].sort((a, b) => b.totalInBase - a.totalInBase);
 }
 
-export function accountEntries(ctx, accountId, limit = 50) {
+export function accountEntries(ctx, accountId, limit = 50, period = null) {
   const { entries, transactions } = ctx;
   const txById = new Map(transactions.map((t) => [t.id, t]));
+  const fromMs = period ? new Date(period.from).getTime() : -Infinity;
+  const toMs = period ? new Date(period.to).getTime() : Infinity;
   return entries
     .filter((e) => e.accountId === accountId)
+    .filter((e) => {
+      if (!period) return true;
+      const tx = txById.get(e.transactionId);
+      const ts = tx ? new Date(tx.effectiveDate).getTime() : new Date(e.createdAt).getTime();
+      return ts >= fromMs && ts <= toMs;
+    })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit)
     .map((e) => {
@@ -191,6 +199,160 @@ export function pnlForPeriod(ctx, period, officeFilter) {
     fxAccounts: [...fxAccounts.values()].sort((a, b) => Math.abs(b.amountInBase) - Math.abs(a.amountInBase)),
     netProfit,
   };
+}
+
+const DR_NORMAL_TYPES = new Set(["asset", "expense"]);
+function normalSign(account, entry) {
+  const onNormalSide = DR_NORMAL_TYPES.has(account.type) ? entry.direction === "dr" : entry.direction === "cr";
+  return (onNormalSide ? 1 : -1) * Number(entry.amount);
+}
+
+const TB_CLASS_ORDER = ["asset", "liability", "equity", "revenue", "expense"];
+const TB_CLASS_LABEL_KEYS = {
+  asset: "trv2_tab_assets", liability: "trv2_tab_liabilities", equity: "trv2_tab_equity",
+  revenue: "trv2_to_class_revenue", expense: "trv2_to_class_expense",
+};
+
+// Оборотно-сальдовая ведомость over [period.from, period.to], attributing entries by
+// their transaction's effectiveDate. opening/closing = current balance (magnitude on the
+// account's normal side) minus the rollback of normalSign over entries since `from` (resp. after `to`).
+export function trialBalance(ctx, period, officeFilter) {
+  const { accounts, balances, entries, transactions, toBase } = ctx;
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const txEffMs = new Map(transactions.map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
+
+  const curBal = new Map();
+  for (const b of balances) curBal.set(b.accountId, (curBal.get(b.accountId) || 0) + Number(b.balance));
+
+  const agg = new Map(); // accId -> { sinceFrom, afterTo, drTurn, crTurn }
+  for (const e of entries) {
+    const acc = accById.get(e.accountId);
+    if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
+    const ts = txEffMs.get(e.transactionId);
+    if (ts == null) continue;
+    const rec = agg.get(e.accountId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const s = normalSign(acc, e);
+    if (ts >= fromMs) rec.sinceFrom += s;
+    if (ts > toMs) rec.afterTo += s;
+    if (ts >= fromMs && ts <= toMs) {
+      if (e.direction === "dr") rec.drTurn += Number(e.amount); else rec.crTurn += Number(e.amount);
+    }
+    agg.set(e.accountId, rec);
+  }
+
+  const byClass = new Map();
+  const candidates = new Set([...curBal.keys(), ...agg.keys()]);
+  for (const accId of candidates) {
+    const acc = accById.get(accId);
+    if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
+    const cur = curBal.get(accId) || 0;
+    const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const opening = cur - rec.sinceFrom;
+    const closing = cur - rec.afterTo;
+    const debitTurnover = rec.drTurn, creditTurnover = rec.crTurn;
+    if (Math.abs(opening) < 1e-9 && Math.abs(closing) < 1e-9 && debitTurnover === 0 && creditTurnover === 0) continue;
+    const ccy = acc.currency;
+    const row = {
+      accountId: accId, code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || null, currency: ccy,
+      opening, debitTurnover, creditTurnover, closing,
+      openingInBase: toBase(opening, ccy) || 0,
+      debitTurnoverInBase: toBase(debitTurnover, ccy) || 0,
+      creditTurnoverInBase: toBase(creditTurnover, ccy) || 0,
+      closingInBase: toBase(closing, ccy) || 0,
+    };
+    const cls = byClass.get(acc.type) || {
+      type: acc.type, labelKey: TB_CLASS_LABEL_KEYS[acc.type] || "trv2_to_class_other", accounts: [],
+      subtotalInBase: { opening: 0, debitTurnover: 0, creditTurnover: 0, closing: 0 },
+    };
+    cls.accounts.push(row);
+    cls.subtotalInBase.opening += row.openingInBase;
+    cls.subtotalInBase.debitTurnover += row.debitTurnoverInBase;
+    cls.subtotalInBase.creditTurnover += row.creditTurnoverInBase;
+    cls.subtotalInBase.closing += row.closingInBase;
+    byClass.set(acc.type, cls);
+  }
+  for (const cls of byClass.values()) cls.accounts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  const classes = TB_CLASS_ORDER.filter((t) => byClass.has(t)).map((t) => byClass.get(t));
+
+  let openingDr = 0, openingCr = 0, debitTurnover = 0, creditTurnover = 0, closingDr = 0, closingCr = 0;
+  for (const cls of classes) {
+    const drSide = DR_NORMAL_TYPES.has(cls.type);
+    if (drSide) { openingDr += cls.subtotalInBase.opening; closingDr += cls.subtotalInBase.closing; }
+    else { openingCr += cls.subtotalInBase.opening; closingCr += cls.subtotalInBase.closing; }
+    debitTurnover += cls.subtotalInBase.debitTurnover;
+    creditTurnover += cls.subtotalInBase.creditTurnover;
+  }
+  return {
+    classes,
+    totalInBase: { openingDr, openingCr, debitTurnover, creditTurnover, closingDr, closingCr },
+    check: {
+      openingOk: Math.abs(openingDr - openingCr) < 0.01, openingDelta: openingDr - openingCr,
+      turnoverOk: Math.abs(debitTurnover - creditTurnover) < 0.01, turnoverDelta: debitTurnover - creditTurnover,
+      closingOk: Math.abs(closingDr - closingCr) < 0.01, closingDelta: closingDr - closingCr,
+    },
+  };
+}
+
+// Шахматка: account×account base-currency turnover matrix for [from,to] (transactions
+// attributed by effectiveDate). For each tx, each Dr leg's base amount is allocated across
+// the Cr legs in proportion to their base amounts. Row sums == Σ Dr turnover per account,
+// column sums == Σ Cr turnover per account.
+export function chessTurnover(ctx, period, officeFilter) {
+  const { transactions, entries, accounts, toBase } = ctx;
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const entriesByTx = new Map();
+  for (const e of entries) {
+    const arr = entriesByTx.get(e.transactionId) || [];
+    arr.push(e);
+    entriesByTx.set(e.transactionId, arr);
+  }
+  const rows = new Map();
+  const add = (drId, crId, v) => {
+    let m = rows.get(drId);
+    if (!m) { m = new Map(); rows.set(drId, m); }
+    m.set(crId, (m.get(crId) || 0) + v);
+  };
+  for (const t of transactions) {
+    const ts = new Date(t.effectiveDate).getTime();
+    if (ts < fromMs || ts > toMs) continue;
+    const txEntries = entriesByTx.get(t.id) || [];
+    if (officeFilter !== "all" && officeFilter) {
+      const touches = txEntries.some((e) => accById.get(e.accountId)?.officeId === officeFilter);
+      if (!touches) continue;
+    }
+    const drLegs = [], crLegs = [];
+    for (const e of txEntries) {
+      const base = toBase(Number(e.amount), e.currency) || 0;
+      if (e.direction === "dr") drLegs.push({ accId: e.accountId, base });
+      else crLegs.push({ accId: e.accountId, base });
+    }
+    const totalCr = crLegs.reduce((s, c) => s + c.base, 0);
+    if (totalCr === 0) continue;
+    for (const d of drLegs) for (const c of crLegs) add(d.accId, c.accId, (d.base * c.base) / totalCr);
+  }
+  const rowTotals = new Map(), colTotals = new Map();
+  const appearing = new Set();
+  for (const [drId, m] of rows) {
+    let rt = 0;
+    for (const [crId, v] of m) {
+      if (Math.abs(v) < 1e-9) continue;
+      rt += v;
+      appearing.add(crId);
+      colTotals.set(crId, (colTotals.get(crId) || 0) + v);
+    }
+    if (Math.abs(rt) > 1e-9) { appearing.add(drId); rowTotals.set(drId, rt); }
+  }
+  let grandTotal = 0;
+  for (const v of rowTotals.values()) grandTotal += v;
+  const accList = [...appearing].map((id) => {
+    const a = accById.get(id) || {};
+    return { accountId: id, code: a.code || "?", name: a.name || "?", type: a.type, subtype: a.subtype || null };
+  }).sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  return { accounts: accList, rows, rowTotals, colTotals, grandTotal };
 }
 
 export function balanceCheckTotals(ctx, officeFilter) {
