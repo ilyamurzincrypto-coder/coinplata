@@ -186,3 +186,21 @@ export function pnlForPeriod(ctx, period, officeFilter) {
     netProfit,
   };
 }
+
+export function balanceCheckTotals(ctx, officeFilter) {
+  const { accounts, balances, toBase } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  let assets = 0, liabilities = 0, equity = 0;
+  for (const b of balances) {
+    const acc = accById.get(b.accountId);
+    if (!acc) continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const inBase = toBase(b.balance, b.currency) || 0;
+    if (acc.type === "asset") assets += inBase;
+    else if (acc.type === "liability") liabilities += inBase;
+    else if (acc.type === "equity") equity += inBase;
+    // revenue/expense don't carry a balance-sheet balance (they roll into retained earnings) — ignore here
+  }
+  const delta = assets - (liabilities + equity);
+  return { assets, liabilities, equity, identityCheck: { ok: Math.abs(delta) < 0.01, delta } };
+}

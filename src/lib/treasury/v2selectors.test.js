@@ -214,3 +214,44 @@ describe("pnlForPeriod", () => {
     expect(pnl.expense.total).toBe(0);
   });
 });
+
+import { balanceCheckTotals } from "./v2selectors.js";
+
+describe("balanceCheckTotals", () => {
+  it("computes assets, liabilities, equity and identity check (all offices)", () => {
+    const ctx = makeLedgerCtx();
+    const r = balanceCheckTotals(ctx, "all");
+    // assets: cash 11000 + hot 150 + treasury 1000 = 12150 (USDT@1)
+    expect(r.assets).toBe(12150);
+    // liabilities: cust_liab -500 (USD)
+    expect(r.liabilities).toBe(-500);
+    // equity: opening 11000
+    expect(r.equity).toBe(11000);
+    // identity: assets - (liabilities + equity) = 12150 - (10500) = 1650 → out of balance in fixture
+    expect(r.identityCheck.delta).toBe(1650);
+    expect(r.identityCheck.ok).toBe(false);
+  });
+
+  it("flags ok when assets == liabilities + equity within epsilon", () => {
+    const ctx = makeLedgerCtx({
+      balances: [
+        { accountId: "ac_cash_usd_mark", currency: "USD", clientId: null, partnerId: null, balance: 1000 },
+        { accountId: "ac_cust_liab_usd", currency: "USD", clientId: "client-1", partnerId: null, balance: 300 },
+        { accountId: "ac_opening_usd", currency: "USD", clientId: null, partnerId: null, balance: 700 },
+      ],
+    });
+    const r = balanceCheckTotals(ctx, "all");
+    // assets 1000 = liabilities 300 + equity 700 → ok
+    expect(r.identityCheck.ok).toBe(true);
+    expect(Math.abs(r.identityCheck.delta)).toBeLessThan(0.01);
+  });
+
+  it("officeFilter restricts to that office's accounts", () => {
+    const ctx = makeLedgerCtx({ officeFilter: "office-mark" });
+    const r = balanceCheckTotals(ctx, "office-mark");
+    // only mark accounts: cash 11000 + hot 150 = 11150 assets; no mark liab/equity
+    expect(r.assets).toBe(11150);
+    expect(r.liabilities).toBe(0);
+    expect(r.equity).toBe(0);
+  });
+});
