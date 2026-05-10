@@ -17,7 +17,7 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
         sections.map((s) => (
           <ClassSection key={s.subtype} labelKey={s.labelKey} totalInBase={s.totalInBase} formatBase={formatBase} baseCurrency={baseCurrency}>
             {s.accounts.map((a) => (
-              <AccountRow key={`${a.accountId}-${a.currency}-${a.clientId || ""}-${a.partnerId || ""}`} account={a} ctx={ctx} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={onOpenTx} />
+              <AccountRow key={`${a.accountId}-${a.currency}`} account={a} ctx={ctx} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={onOpenTx} />
             ))}
           </ClassSection>
         ))

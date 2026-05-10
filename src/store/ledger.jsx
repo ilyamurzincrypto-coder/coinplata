@@ -10,6 +10,7 @@ import {
   loadLedgerBalances,
   loadLedgerTransactions,
   loadJournalEntries,
+  loadCounterpartyNames,
 } from "../lib/ledgerReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 
@@ -20,6 +21,7 @@ export function LedgerProvider({ children }) {
   const [balances, setBalances] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [entries, setEntries] = useState([]);
+  const [cpNames, setCpNames] = useState(() => new Map());
   const [loading, setLoading] = useState(true);
   // window start for transactions/entries — default 90 days ago
   const [sinceIso, setSinceIso] = useState(
@@ -32,16 +34,18 @@ export function LedgerProvider({ children }) {
       return;
     }
     try {
-      const [accs, bals, txs, jes] = await Promise.all([
+      const [accs, bals, txs, jes, names] = await Promise.all([
         loadLedgerAccounts().catch(() => []),
         loadLedgerBalances().catch(() => []),
         loadLedgerTransactions({ sinceIso }).catch(() => []),
         loadJournalEntries({ sinceIso }).catch(() => []),
+        loadCounterpartyNames().catch(() => new Map()),
       ]);
       setAccounts(accs);
       setBalances(bals);
       setTransactions(txs);
       setEntries(jes);
+      setCpNames(names);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[LedgerProvider] reload failed", err);
@@ -63,9 +67,14 @@ export function LedgerProvider({ children }) {
     setSinceIso(newSinceIso); // triggers reload via the effect dep
   }, [sinceIso]);
 
+  const counterpartyName = useCallback(
+    (id) => cpNames.get(id) || (id ? String(id).slice(0, 8) : "—"),
+    [cpNames]
+  );
+
   const value = useMemo(
-    () => ({ accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso }),
-    [accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso]
+    () => ({ accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName }),
+    [accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName]
   );
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;

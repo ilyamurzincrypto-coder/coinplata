@@ -3,9 +3,9 @@ import React from "react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { accountEntries } from "../../../lib/treasury/v2selectors.js";
 
-export default function AccountInlineEntries({ ctx, accountId, period, onOpenTx }) {
+export default function AccountInlineEntries({ ctx, accountId, period, dim, onOpenTx }) {
   const { t } = useTranslation();
-  const rows = accountEntries(ctx, accountId, 50, period);
+  const rows = accountEntries(ctx, accountId, 50, period, dim);
   if (rows.length === 0) {
     return <div className="px-6 py-3 text-[12px] text-slate-400">{t("trv2_no_entries")}</div>;
   }
