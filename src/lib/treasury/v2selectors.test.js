@@ -56,3 +56,52 @@ describe("makeLedgerCtx fixture sanity", () => {
     expect(types).toEqual(new Set(["asset", "liability", "equity", "revenue", "expense"]));
   });
 });
+
+import { groupByClass } from "./v2selectors.js";
+
+describe("groupByClass", () => {
+  it("groups asset accounts by subtype with base totals (officeFilter=all)", () => {
+    const ctx = makeLedgerCtx();
+    const sections = groupByClass(ctx, "asset");
+    // assets: cash USD 11000 (mark), crypto_input USDT 150 (mark) + USDT 1000 (treasury, office NULL)
+    const cash = sections.find((s) => s.subtype === "cash");
+    const crypto = sections.find((s) => s.subtype === "crypto_input");
+    expect(cash.accounts).toHaveLength(1);
+    expect(cash.totalInBase).toBe(11000);
+    expect(crypto.accounts).toHaveLength(2);
+    expect(crypto.totalInBase).toBe(1150); // 150 + 1000, USDT@1
+  });
+
+  it("officeFilter=office-mark excludes office_id NULL accounts", () => {
+    const ctx = makeLedgerCtx({ officeFilter: "office-mark" });
+    const sections = groupByClass(ctx, "asset");
+    const crypto = sections.find((s) => s.subtype === "crypto_input");
+    expect(crypto.accounts).toHaveLength(1); // only the mark hot wallet, treasury (NULL office) excluded
+    expect(crypto.totalInBase).toBe(150);
+  });
+
+  it("liability section returns customer_liab with negative balance", () => {
+    const ctx = makeLedgerCtx();
+    const sections = groupByClass(ctx, "liability");
+    const cl = sections.find((s) => s.subtype === "customer_liab");
+    expect(cl.accounts[0].balance).toBe(-500);
+    expect(cl.accounts[0].clientId).toBe("client-1"); // dimension preserved
+  });
+
+  it("equity section returns opening + fx accounts", () => {
+    const ctx = makeLedgerCtx();
+    const sections = groupByClass(ctx, "equity");
+    const subtypes = sections.map((s) => s.subtype).sort();
+    expect(subtypes).toContain("opening_balance");
+    expect(subtypes).toContain("fx_gain");
+    expect(subtypes).toContain("fx_loss");
+  });
+
+  it("sorts sections by totalInBase desc", () => {
+    const ctx = makeLedgerCtx();
+    const sections = groupByClass(ctx, "asset");
+    for (let i = 1; i < sections.length; i++) {
+      expect(sections[i - 1].totalInBase).toBeGreaterThanOrEqual(sections[i].totalInBase);
+    }
+  });
+});
