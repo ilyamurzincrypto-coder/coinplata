@@ -4,9 +4,12 @@ import { useTranslation } from "../../../i18n/translations.jsx";
 
 export default function TransactionEntries({ entries }) {
   const { t } = useTranslation();
+  // The Dr=Cr informational check only makes sense within a single currency — an FX
+  // deal crosses currencies and balances in base terms, not in either native amount.
+  const singleCcy = new Set(entries.map((e) => e.currency)).size === 1;
   const drSum = entries.filter((e) => e.direction === "dr").reduce((s, e) => s + e.amount, 0);
   const crSum = entries.filter((e) => e.direction === "cr").reduce((s, e) => s + e.amount, 0);
-  const balanced = Math.abs(drSum - crSum) < 0.01; // same-currency txs only; mixed-currency just informational
+  const balanced = singleCcy && Math.abs(drSum - crSum) < 0.01;
   return (
     <div className="px-6 py-2">
       <table className="w-full text-[12px]">
@@ -29,8 +32,8 @@ export default function TransactionEntries({ entries }) {
           ))}
         </tbody>
       </table>
-      <div className={`text-[11px] mt-1 ${balanced ? "text-emerald-600" : "text-amber-600"}`}>
-        Σ Dr = Σ Cr {balanced ? "✓" : "(mixed currency)"}
+      <div className={`text-[11px] mt-1 ${balanced ? "text-emerald-600" : "text-slate-400"}`}>
+        {singleCcy ? `Σ Dr ${balanced ? "=" : "≠"} Σ Cr ${balanced ? "✓" : ""}` : "multi-currency"}
       </div>
     </div>
   );

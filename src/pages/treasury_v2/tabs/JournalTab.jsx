@@ -1,5 +1,5 @@
 // src/pages/treasury_v2/tabs/JournalTab.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { transactionTree } from "../../../lib/treasury/v2selectors.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
@@ -15,7 +15,16 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
   const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.treasury_journal_period", v); } catch {} };
   const [typeFilter, setTypeFilter] = useState("all");
 
-  const win = presetWindow(period);
+  const win = useMemo(() => presetWindow(period), [period]);
+  // If the chosen window reaches further back than what LedgerProvider has loaded,
+  // ask it to extend the rolling window so the report isn't silently truncated.
+  useEffect(() => {
+    if (ctx.extendWindow && ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso)) {
+      ctx.extendWindow(win.from);
+    }
+  }, [win.from, ctx.sinceIso, ctx.extendWindow]);
+  const truncated = ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso);
+
   const tree = useMemo(
     () => transactionTree(ctx, { type: typeFilter, officeFilter, period: { from: win.from, to: win.to } }),
     [ctx, typeFilter, officeFilter, win.from, win.to]
@@ -37,6 +46,9 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
           ))}
         </div>
       </div>
+      {truncated && (
+        <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
+      )}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         {tree.length === 0 ? (
           <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_journal_no_tx")}</div>

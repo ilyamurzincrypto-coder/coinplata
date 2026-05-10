@@ -584,6 +584,7 @@ const DICT = {
     trv2_col_amount: "Amount",
     trv2_col_source: "Source",
     trv2_show_all_entries: "Show all entries",
+    trv2_entries_truncated: "Showing the first 50 entries",
     trv2_no_entries: "No entries",
     trv2_balance_check: "Balance check",
     trv2_balance_ok: "Assets = Liabilities + Equity ✓",
@@ -636,6 +637,8 @@ const DICT = {
     trv2_period_days: "{n} days",
     trv2_rate_unknown: "rate not set",
     trv2_loading: "Loading ledger…",
+    trv2_no_accounts: "No accounts in this class.",
+    trv2_window_partial: "Showing the most recent data only — loading the rest of the selected period…",
 
     // Counterparties unified page (clients + partners + obligations tab)
     cp_title: "Counterparties",
@@ -1743,6 +1746,7 @@ const DICT = {
     trv2_col_amount: "Сумма",
     trv2_col_source: "Документ",
     trv2_show_all_entries: "Показать все проводки",
+    trv2_entries_truncated: "Показаны первые 50 проводок",
     trv2_no_entries: "Проводок нет",
     trv2_balance_check: "Балансовое тождество",
     trv2_balance_ok: "Активы = Пассивы + Капитал ✓",
@@ -1795,6 +1799,8 @@ const DICT = {
     trv2_period_days: "{n} дн.",
     trv2_rate_unknown: "курс не задан",
     trv2_loading: "Загрузка леджера…",
+    trv2_no_accounts: "Нет счетов в этом классе.",
+    trv2_window_partial: "Показаны только свежие данные — загружаем остаток выбранного периода…",
 
     // Контрагенты — единая страница (клиенты + партнёры + обязательства)
     cp_title: "Контрагенты",
@@ -2900,6 +2906,7 @@ const DICT = {
     trv2_col_amount: "Tutar",
     trv2_col_source: "Belge",
     trv2_show_all_entries: "Tüm kayıtları göster",
+    trv2_entries_truncated: "İlk 50 kayıt gösteriliyor",
     trv2_no_entries: "Kayıt yok",
     trv2_balance_check: "Bilanço denkliği",
     trv2_balance_ok: "Varlıklar = Yükümlülükler + Özkaynak ✓",
@@ -2952,6 +2959,8 @@ const DICT = {
     trv2_period_days: "{n} gün",
     trv2_rate_unknown: "kur tanımlı değil",
     trv2_loading: "Defter yükleniyor…",
+    trv2_no_accounts: "Bu sınıfta hesap yok.",
+    trv2_window_partial: "Yalnızca en güncel veriler gösteriliyor — seçili dönemin kalanı yükleniyor…",
 
     // Karşı taraflar — birleşik sayfa (müşteriler + ortaklar + borçlar)
     cp_title: "Karşı taraflar",

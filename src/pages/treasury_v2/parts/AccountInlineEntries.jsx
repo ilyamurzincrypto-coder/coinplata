@@ -28,7 +28,7 @@ export default function AccountInlineEntries({ ctx, accountId, onOpenTx }) {
           </tr>
         ))}
         {rows.length === 50 && (
-          <tr><td colSpan={5} className="px-6 py-2 text-[11px] text-slate-400">{t("trv2_show_all_entries")} (TODO drawer)</td></tr>
+          <tr><td colSpan={5} className="px-6 py-2 text-[11px] text-slate-400">{t("trv2_entries_truncated")}</td></tr>
         )}
       </tbody>
     </table>

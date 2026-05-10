@@ -23,7 +23,7 @@ const TABS = [
 
 export default function TreasuryShell() {
   const { t } = useTranslation();
-  const { accounts, balances, transactions, entries, loading } = useLedger();
+  const { accounts, balances, transactions, entries, loading, sinceIso, extendWindow } = useLedger();
   // useBaseCurrency() exposes the base code as `base`; alias it to baseCurrency
   // so the rest of Treasury (selectors + tabs) can use a consistent name.
   const { toBase, formatBase, base: baseCurrency } = useBaseCurrency();
@@ -40,8 +40,8 @@ export default function TreasuryShell() {
   const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || AssetsTab;
 
   const ctx = useMemo(
-    () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter }),
-    [accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter]
+    () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow }),
+    [accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow]
   );
 
   const totals = useMemo(() => balanceCheckTotals(ctx, officeFilter), [ctx, officeFilter]);
@@ -50,9 +50,9 @@ export default function TreasuryShell() {
   // txId → { tx, entries } node, used to resolve drill-down clicks into the detail modal.
   const txNodeById = useMemo(() => {
     const m = new Map();
-    for (const node of transactionTree(ctx, { type: "all", officeFilter: "all" })) m.set(node.tx.id, node);
+    for (const node of transactionTree({ transactions, entries, accounts }, { type: "all", officeFilter: "all" })) m.set(node.tx.id, node);
     return m;
-  }, [ctx]);
+  }, [transactions, entries, accounts]);
   const [selectedTx, setSelectedTx] = useState(null);
   const openTx = (txId) => setSelectedTx(txNodeById.get(txId) || null);
   const openSource = (tx) => setSelectedTx(txNodeById.get(tx?.id) || null);

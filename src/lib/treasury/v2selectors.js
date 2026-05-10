@@ -102,7 +102,13 @@ export function transactionTree(ctx, opts = {}) {
 
   return transactions
     .filter((t) => {
-      if (type !== "all" && t.kind !== type) return false;
+      // "reversal" isn't a source_kind — a reversing tx carries the original kind +
+      // a non-null reversesTransactionId. All other types match on kind directly.
+      if (type === "reversal") {
+        if (!t.reversesTransactionId) return false;
+      } else if (type !== "all" && t.kind !== type) {
+        return false;
+      }
       const ts = new Date(t.effectiveDate).getTime();
       if (ts < fromMs || ts > toMs) return false;
       if (officeFilter !== "all" && officeFilter) {

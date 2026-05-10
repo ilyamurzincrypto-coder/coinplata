@@ -1,5 +1,5 @@
 // src/pages/treasury_v2/tabs/PnLTab.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { pnlForPeriod } from "../../../lib/treasury/v2selectors.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
@@ -38,7 +38,14 @@ export default function PnLTab({ ctx, officeFilter, formatBase, baseCurrency }) 
     try { return localStorage.getItem("coinplata.treasury_pnl_period") || "month"; } catch { return "month"; }
   });
   const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.treasury_pnl_period", v); } catch {} };
-  const win = presetWindow(period);
+  const win = useMemo(() => presetWindow(period), [period]);
+  useEffect(() => {
+    if (ctx.extendWindow && ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso)) {
+      ctx.extendWindow(win.from);
+    }
+  }, [win.from, ctx.sinceIso, ctx.extendWindow]);
+  const truncated = ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso);
+
   const pnl = useMemo(() => pnlForPeriod(ctx, { from: win.from, to: win.to }, officeFilter), [ctx, win.from, win.to, officeFilter]);
 
   const hasAnything = pnl.revenue.accounts.length || pnl.expense.accounts.length || pnl.fxAccounts.length;
@@ -48,6 +55,9 @@ export default function PnLTab({ ctx, officeFilter, formatBase, baseCurrency }) 
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3">
         <PeriodPicker value={period} onChange={setP} />
       </div>
+      {truncated && (
+        <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
+      )}
       {!hasAnything ? (
         <div className="bg-white rounded-[14px] border border-slate-200/70 px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_pnl_no_data")}</div>
       ) : (
