@@ -170,3 +170,47 @@ describe("transactionTree", () => {
     expect(tree).toEqual([]);
   });
 });
+
+import { pnlForPeriod } from "./v2selectors.js";
+
+describe("pnlForPeriod", () => {
+  it("computes revenue, expense, fx, net profit in base currency", () => {
+    const ctx = makeLedgerCtx();
+    const period = { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" };
+    const pnl = pnlForPeriod(ctx, period, "all");
+    // revenue: spread Cr 5 (je7) → +5
+    expect(pnl.revenue.total).toBe(5);
+    // expense: rent Dr 1800 (je8, dated 2026-05-05) → +1800
+    expect(pnl.expense.total).toBe(1800);
+    // fx: none in window → 0
+    expect(pnl.fxNet).toBe(0);
+    // net = 5 - 1800 + 0 = -1795
+    expect(pnl.netProfit).toBe(-1795);
+  });
+
+  it("excludes entries outside the period", () => {
+    const ctx = makeLedgerCtx();
+    const period = { from: "2026-05-09T00:00:00Z", to: "2026-05-09T23:59:59Z" };
+    const pnl = pnlForPeriod(ctx, period, "all");
+    expect(pnl.revenue.total).toBe(0); // je7 is 2026-05-10, outside
+    expect(pnl.expense.total).toBe(0); // je8 is 2026-05-05, outside
+  });
+
+  it("returns subtype-grouped account rows", () => {
+    const ctx = makeLedgerCtx();
+    const period = { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" };
+    const pnl = pnlForPeriod(ctx, period, "all");
+    const spreadRow = pnl.revenue.accounts.find((a) => a.code === "4010");
+    expect(spreadRow.amountInBase).toBe(5);
+    expect(spreadRow.entryCount).toBe(1);
+  });
+
+  it("officeFilter=office-mark excludes office_id NULL revenue/expense accounts", () => {
+    const ctx = makeLedgerCtx({ officeFilter: "office-mark" });
+    const period = { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" };
+    const pnl = pnlForPeriod(ctx, period, "office-mark");
+    // spread (4010) and rent (5010) have officeId NULL → excluded
+    expect(pnl.revenue.total).toBe(0);
+    expect(pnl.expense.total).toBe(0);
+  });
+});

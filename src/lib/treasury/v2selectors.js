@@ -123,3 +123,66 @@ export function transactionTree(ctx, opts = {}) {
       })),
     }));
 }
+
+function entryInPeriod(e, fromMs, toMs) {
+  const ts = new Date(e.createdAt).getTime();
+  return ts >= fromMs && ts <= toMs;
+}
+
+function aggregateClass(ctx, accountType, fromMs, toMs, officeFilter, signFn) {
+  const { accounts, entries, toBase } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const byAccount = new Map();
+  let total = 0;
+  for (const e of entries) {
+    if (!entryInPeriod(e, fromMs, toMs)) continue;
+    const acc = accById.get(e.accountId);
+    if (!acc || acc.type !== accountType) continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const signed = signFn(e); // signed amount in native currency
+    const inBase = toBase(signed, e.currency) || 0;
+    const row = byAccount.get(acc.id) || { code: acc.code, name: acc.name, currency: acc.currency, amountInBase: 0, entryCount: 0 };
+    row.amountInBase += inBase;
+    row.entryCount += 1;
+    byAccount.set(acc.id, row);
+    total += inBase;
+  }
+  return { total, accounts: [...byAccount.values()].sort((a, b) => Math.abs(b.amountInBase) - Math.abs(a.amountInBase)) };
+}
+
+export function pnlForPeriod(ctx, period, officeFilter) {
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  // revenue: normally credited → +Cr −Dr
+  const revenue = aggregateClass(ctx, "revenue", fromMs, toMs, officeFilter, (e) => (e.direction === "cr" ? e.amount : -e.amount));
+  // expense: normally debited → +Dr −Cr
+  const expense = aggregateClass(ctx, "expense", fromMs, toMs, officeFilter, (e) => (e.direction === "dr" ? e.amount : -e.amount));
+  // fx: equity-class accounts with subtype fx_gain / fx_loss. gain: +Cr−Dr; loss: −(Dr−Cr) ⇒ +Cr−Dr too, but we present net = Σfx_gain − Σfx_loss.
+  // Simpler: aggregate both as (+Cr−Dr) which makes gain positive and loss negative naturally.
+  const { accounts, entries, toBase } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const fxAccounts = new Map();
+  let fxNet = 0;
+  for (const e of entries) {
+    if (!entryInPeriod(e, fromMs, toMs)) continue;
+    const acc = accById.get(e.accountId);
+    if (!acc || acc.type !== "equity") continue;
+    if (acc.subtype !== "fx_gain" && acc.subtype !== "fx_loss") continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const signed = e.direction === "cr" ? e.amount : -e.amount; // gain↑ when credited
+    const inBase = toBase(signed, e.currency) || 0;
+    const row = fxAccounts.get(acc.id) || { code: acc.code, name: acc.name, currency: acc.currency, amountInBase: 0, entryCount: 0 };
+    row.amountInBase += inBase;
+    row.entryCount += 1;
+    fxAccounts.set(acc.id, row);
+    fxNet += inBase;
+  }
+  const netProfit = revenue.total - expense.total + fxNet;
+  return {
+    revenue,
+    expense,
+    fxNet,
+    fxAccounts: [...fxAccounts.values()].sort((a, b) => Math.abs(b.amountInBase) - Math.abs(a.amountInBase)),
+    netProfit,
+  };
+}
