@@ -27,7 +27,7 @@ const BASE_TABS = [
 
 export default function TreasuryShell() {
   const { t } = useTranslation();
-  const { accounts, balances, transactions, entries, loading, sinceIso, extendWindow, counterpartyName } = useLedger();
+  const { accounts, balances, transactions, entries, loading, sinceIso, extendWindow, counterpartyName, counterpartyOptions } = useLedger();
   // useBaseCurrency() exposes the base code as `base`; alias it to baseCurrency
   // so the rest of Treasury (selectors + tabs) can use a consistent name.
   const { toBase, formatBase, base: baseCurrency } = useBaseCurrency();
@@ -57,8 +57,8 @@ export default function TreasuryShell() {
   const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || AssetsTab;
 
   const ctx = useMemo(
-    () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName }),
-    [accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName]
+    () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName, counterpartyOptions }),
+    [accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName, counterpartyOptions]
   );
 
   const totals = useMemo(() => balanceCheckTotals(ctx, officeFilter), [ctx, officeFilter]);

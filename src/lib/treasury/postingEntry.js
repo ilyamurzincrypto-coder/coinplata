@@ -4,9 +4,9 @@
 // to the rpcCreateManualEntryV2 payload. No React, no Supabase.
 
 // Account subtypes that are normally driven by automated flows (cashier deals,
-// transfers, settlements). Posting to them by hand is allowed (informational
-// warning chip), EXCEPT customer_liab / partner_liab which require a subconto
-// dimension and are excluded from the v1 picker entirely.
+// transfers, settlements). Posting to them by hand is allowed (the picker shows an
+// informational chip); customer_liab / partner_liab additionally require a counterparty
+// (subconto) to be chosen on the line.
 export const SYSTEM_DRIVEN_SUBTYPES = new Set([
   "customer_liab", "partner_liab", "clearing", "fx_clearing", "crypto_input", "crypto_output",
 ]);
@@ -22,12 +22,11 @@ export function deriveCurrencies(accounts) {
   return [...set].sort();
 }
 
-// Accounts offered in the picker for a given entry currency: active, matching
-// currency, and without a required client/partner dimension (v1 limitation).
+// Accounts offered in the picker for a given entry currency: active and matching currency.
+// Dimensioned accounts (customer_liab / partner_liab) are included — the line then requires
+// a counterparty to be chosen (see validatePostingDraft).
 export function accountsForCurrency(accounts, currency) {
-  return (accounts || []).filter(
-    (a) => a.active && a.currency === currency && !a.clientDimRequired && !a.partnerDimRequired
-  );
+  return (accounts || []).filter((a) => a.active && a.currency === currency);
 }
 
 export function postingBalance(lines) {
@@ -69,8 +68,10 @@ export function validatePostingDraft(draft, resolveAccount) {
         errors.push({ code: "account_unknown", lineId: l.id, field: "account", message: "Unknown or inactive account" });
       } else if (acc.currency !== d.currency) {
         errors.push({ code: "currency_mismatch", lineId: l.id, field: "account", message: "Account currency does not match the entry currency" });
-      } else if (acc.clientDimRequired || acc.partnerDimRequired) {
-        errors.push({ code: "dim_not_supported", lineId: l.id, field: "account", message: "Accounts with a required subconto dimension can't be posted from here yet" });
+      } else if (acc.clientDimRequired && !l.clientId) {
+        errors.push({ code: "client_required", lineId: l.id, field: "counterparty", message: "Pick a client" });
+      } else if (acc.partnerDimRequired && !l.partnerId) {
+        errors.push({ code: "partner_required", lineId: l.id, field: "counterparty", message: "Pick a partner" });
       }
     }
   }

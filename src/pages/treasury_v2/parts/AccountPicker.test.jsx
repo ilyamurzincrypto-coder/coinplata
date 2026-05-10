@@ -14,12 +14,12 @@ const ACCOUNTS = [
 ];
 
 describe("AccountPicker", () => {
-  it("lists only active, currency-matching, dimension-free accounts", () => {
+  it("lists active, currency-matching accounts (including dimensioned ones); excludes wrong-currency", () => {
     render(<AccountPicker accounts={ACCOUNTS} currency="USD" value="" onChange={() => {}} />);
     expect(screen.getByRole("option", { name: /1110/ })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /4010/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /2110/ })).toBeInTheDocument(); // dimensioned account is now offered
     expect(screen.queryByRole("option", { name: /1340/ })).toBeNull(); // wrong currency
-    expect(screen.queryByRole("option", { name: /2110/ })).toBeNull(); // requires a client dim
   });
 
   it("fires onChange with the picked account code", () => {

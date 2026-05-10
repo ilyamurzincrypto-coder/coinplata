@@ -14,7 +14,7 @@ import AccountPicker from "../parts/AccountPicker.jsx";
 import TransactionEntries from "../parts/TransactionEntries.jsx";
 
 let _lineSeq = 0;
-const newLine = () => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "" });
+const newLine = () => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "", clientId: null, partnerId: null });
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 // DB tx_backdate_sanity allows effective_date >= created_at - 90d.
 const minDateInputValue = () => new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -64,7 +64,7 @@ export default function PostingTab({ ctx }) {
     setCurrency(c);
     setLines((ls) => ls.map((l) => {
       const a = accByCode(l.accountCode);
-      return a && a.currency === c ? l : { ...l, accountCode: "" };
+      return a && a.currency === c ? l : { ...l, accountCode: "", clientId: null, partnerId: null };
     }));
   }
 
@@ -126,18 +126,40 @@ export default function PostingTab({ ctx }) {
           <thead>
             <tr className="text-slate-400 text-[10px] uppercase tracking-wider">
               <th className="text-left px-2 py-1">{t("trv2_pm_col_account")}</th>
+              <th className="text-left px-2 py-1">{t("trv2_pm_col_counterparty")}</th>
               <th className="text-right px-2 py-1 w-32">{t("trv2_pm_col_dr")}</th>
               <th className="text-right px-2 py-1 w-32">{t("trv2_pm_col_cr")}</th>
               <th className="w-8" />
             </tr>
           </thead>
           <tbody>
-            {lines.map((l) => (
+            {lines.map((l) => {
+              const acc = accByCode(l.accountCode);
+              const needsClient = !!acc?.clientDimRequired;
+              const needsPartner = !!acc?.partnerDimRequired;
+              const cpKind = needsPartner ? "partner" : "client";
+              const cpOpts = (needsClient || needsPartner) && ctx?.counterpartyOptions ? ctx.counterpartyOptions(cpKind) : [];
+              const cpVal = needsPartner ? (l.partnerId || "") : needsClient ? (l.clientId || "") : "";
+              const cpErr = lineErr(l.id, "counterparty");
+              return (
               <tr key={l.id} className="border-t border-slate-100 align-top">
                 <td className="px-2 py-1.5">
                   <AccountPicker accounts={accounts} currency={currency} value={l.accountCode}
-                    onChange={(code) => patchLine(l.id, { accountCode: code })} />
+                    onChange={(code) => patchLine(l.id, { accountCode: code, clientId: null, partnerId: null })} />
                   {(lineErr(l.id, "account")) && <div className="text-[10px] text-rose-600 mt-0.5">{lineErr(l.id, "account").message}</div>}
+                </td>
+                <td className="px-2 py-1.5">
+                  {(needsClient || needsPartner) && (
+                    <>
+                      <select value={cpVal}
+                        onChange={(e) => patchLine(l.id, needsPartner ? { partnerId: e.target.value || null } : { clientId: e.target.value || null })}
+                        className={`min-w-0 w-full bg-slate-50 border rounded-[8px] px-2 py-1 text-[12px] outline-none ${cpErr ? "border-rose-300" : "border-slate-200"}`}>
+                        <option value="">{t("trv2_pm_pick_counterparty")}</option>
+                        {cpOpts.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                      </select>
+                      {cpErr && <div className="text-[10px] text-rose-600 mt-0.5">{t("trv2_pm_err_counterparty")}</div>}
+                    </>
+                  )}
                 </td>
                 <td className="px-2 py-1.5 text-right">
                   <input inputMode="decimal" value={l.side === "dr" ? l.amount : ""}
@@ -157,7 +179,8 @@ export default function PostingTab({ ctx }) {
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         <button type="button" onClick={addLine} className="text-[12px] text-indigo-600 hover:underline">{t("trv2_pm_add_line")}</button>
