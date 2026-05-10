@@ -37,9 +37,11 @@ describe("deriveCurrencies", () => {
 });
 
 describe("accountsForCurrency", () => {
-  it("returns active accounts for the currency, excluding ones with a required dimension", () => {
+  it("returns active accounts for the currency, including dimensioned ones; excludes wrong-currency and inactive", () => {
     const r = accountsForCurrency(ACCOUNTS, "USD").map((a) => a.code);
-    expect(r).toEqual(["1110", "4010", "5010"]); // 2110 excluded (clientDimRequired), 1199 excluded (inactive)
+    expect(r).toEqual(expect.arrayContaining(["1110", "2110", "4010", "5010"])); // 2110 now included
+    expect(r).not.toContain("1340"); // wrong currency (USDT)
+    expect(r).not.toContain("1199"); // inactive
   });
   it("flags system-driven subtypes via SYSTEM_DRIVEN_SUBTYPES", () => {
     expect(SYSTEM_DRIVEN_SUBTYPES.has("crypto_input")).toBe(true);
@@ -99,12 +101,17 @@ describe("validatePostingDraft", () => {
     ] }), byCode);
     expect(r.errors.some((e) => e.code === "currency_mismatch" && e.lineId === "l2")).toBe(true);
   });
-  it("rejects an account that requires a subconto dimension (not postable in v1)", () => {
-    const r = validatePostingDraft(draft({ lines: [
+  it("requires a counterparty on a line whose account has a required dimension", () => {
+    const without = validatePostingDraft(draft({ lines: [
       { id: "l1", accountCode: "1110", side: "dr", amount: "100" },
       { id: "l2", accountCode: "2110", side: "cr", amount: "100" },
     ] }), byCode);
-    expect(r.errors.some((e) => e.code === "dim_not_supported" && e.lineId === "l2")).toBe(true);
+    expect(without.errors.some((e) => e.code === "client_required" && e.lineId === "l2")).toBe(true);
+    const withClient = validatePostingDraft(draft({ lines: [
+      { id: "l1", accountCode: "1110", side: "dr", amount: "100" },
+      { id: "l2", accountCode: "2110", side: "cr", amount: "100", clientId: "client-1" },
+    ] }), byCode);
+    expect(withClient.errors.some((e) => e.code === "client_required")).toBe(false);
   });
   it("requires at least one Dr and one Cr line", () => {
     const r = validatePostingDraft(draft({ lines: [
