@@ -5,7 +5,7 @@ import { transactionTree } from "../../../lib/treasury/v2selectors.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
 
-const TYPES = ["all", "deal", "transfer", "topup", "adjustment", "reversal"];
+const TYPES = ["all", "deal", "transfer", "topup", "adjustment", "manual", "reversal"];
 
 export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
   const { t } = useTranslation();

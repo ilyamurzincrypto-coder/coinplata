@@ -41,6 +41,13 @@ vi.mock("../../store/ledger.jsx", () => ({
   }),
 }));
 
+let canAccountingEdit = false;
+vi.mock("../../store/permissions.jsx", () => ({
+  useCan: () => (section, level = "view") => (section === "accounting" && level === "edit" ? canAccountingEdit : true),
+}));
+vi.mock("../../lib/toast.jsx", () => ({ emitToast: () => {} }));
+vi.mock("../../lib/newLedger.js", () => ({ rpcCreateManualEntryV2: () => Promise.resolve("tx-x"), rpcReverseTransactionV2: () => Promise.resolve(["rev-x"]) }));
+
 import TreasuryShell from "./TreasuryShell.jsx";
 
 describe("TreasuryShell integration smoke", () => {
@@ -66,5 +73,21 @@ describe("TreasuryShell integration smoke", () => {
     fireEvent.click(screen.getByText("deal #D-7")); // expand the tx row
     fireEvent.click(screen.getByRole("button", { name: "trv2_journal_open_source" }));
     expect(container.textContent).toContain("smoke-tx"); // tx metadata rendered in the modal
+  });
+});
+
+describe("TreasuryShell — Posting Master tab gating", () => {
+  it("hides the Manual-entry tab without accounting:edit", () => {
+    canAccountingEdit = false;
+    render(<TreasuryShell />);
+    expect(screen.queryByRole("button", { name: "trv2_pm_tab" })).toBeNull();
+  });
+  it("shows the Manual-entry tab with accounting:edit and can open it", () => {
+    canAccountingEdit = true;
+    render(<TreasuryShell />);
+    const tab = screen.getByRole("button", { name: "trv2_pm_tab" });
+    expect(tab).toBeInTheDocument();
+    fireEvent.click(tab);
+    expect(screen.getByText("trv2_pm_title")).toBeInTheDocument();
   });
 });

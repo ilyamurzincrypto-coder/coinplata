@@ -56,7 +56,7 @@ export async function loadLedgerTransactions(opts = {}) {
   const since = opts.sinceIso || new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
   const { data, error } = await ledger()
     .from("transactions")
-    .select("id, effective_date, created_at, description, source_kind, source_ref_id, reverses_transaction_id, metadata")
+    .select("id, effective_date, created_at, description, source_kind, source_ref_id, reverses_transaction_id, status, metadata")
     .gte("effective_date", since)
     .order("effective_date", { ascending: false });
   if (error) throw new Error(`loadLedgerTransactions: ${error.message}`);
@@ -68,6 +68,7 @@ export async function loadLedgerTransactions(opts = {}) {
     kind: r.source_kind || "unknown",
     sourceRefId: r.source_ref_id || null,
     reversesTransactionId: r.reverses_transaction_id || null,
+    status: r.status || "posted",
     metadata: r.metadata || {},
   }));
 }

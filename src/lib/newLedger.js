@@ -404,6 +404,40 @@ export async function rpcCreateAdjustmentV2(payload) {
 }
 
 /**
+ * ledger.create_manual_entry (via public.create_manual_entry) — N-leg manual journal
+ * entry (Posting Master). Owner/accountant-only (enforced server-side by _require_role).
+ *
+ * @param {Object} payload
+ * @param {Array<{accountCode:string, direction:'dr'|'cr', amount:number|string, clientId?:string, partnerId?:string}>} payload.lines
+ * @param {string} payload.currencyCode
+ * @param {string} payload.reason            — required (audit trail)
+ * @param {string} [payload.effectiveDate]   — ISO string; defaults to now()
+ * @param {string} [payload.description]
+ * @param {Object} [payload.metadata]
+ * @param {string} [payload.idempotencyKey]
+ * @returns {Promise<string>} tx_id
+ */
+export async function rpcCreateManualEntryV2(payload) {
+  const key = payload.idempotencyKey || newIdempotencyKey();
+  const params = {
+    p_idempotency_key: key,
+    p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
+    p_lines: (payload.lines || []).map((l) => {
+      const out = { account_code: l.accountCode, direction: l.direction, amount: l.amount };
+      if (l.clientId) out.client_id = l.clientId;
+      if (l.partnerId) out.partner_id = l.partnerId;
+      return out;
+    }),
+    p_currency_code: payload.currencyCode,
+    p_reason: payload.reason,
+    p_effective_date: payload.effectiveDate || new Date().toISOString(),
+    p_description: payload.description ?? null,
+    p_metadata: payload.metadata ?? {},
+  };
+  return await invokeLedger("create_manual_entry", params);
+}
+
+/**
  * ledger.update_tx_metadata — whitelist patch для tx.metadata.
  *
  * @param {Object} payload

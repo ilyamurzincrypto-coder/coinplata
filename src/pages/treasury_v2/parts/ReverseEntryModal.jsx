@@ -1,0 +1,56 @@
+// src/pages/treasury_v2/parts/ReverseEntryModal.jsx
+// Confirm-with-reason modal for reversing a manual journal entry. Calls
+// rpcReverseTransactionV2 (cascade:false) which already triggers bumpDataVersion()
+// via invokeLedger, so the Журнал refreshes on its own.
+import React, { useState } from "react";
+import { X } from "lucide-react";
+import { useTranslation } from "../../../i18n/translations.jsx";
+import { emitToast } from "../../../lib/toast.jsx";
+import { rpcReverseTransactionV2 } from "../../../lib/newLedger.js";
+
+export default function ReverseEntryModal({ tx, onClose }) {
+  const { t } = useTranslation();
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ok = reason.trim().length > 0;
+
+  async function confirm() {
+    if (!ok || busy) return;
+    setBusy(true);
+    try {
+      await rpcReverseTransactionV2({ targetTxId: tx.id, reason: reason.trim(), cascade: false });
+      emitToast("success", t("trv2_pm_reverse_done"));
+      onClose();
+    } catch (e) {
+      const msg = String(e?.message || "");
+      if (/42501|permission|authenticated|role/i.test(msg)) emitToast("error", t("trv2_pm_err_forbidden"));
+      else emitToast("error", `${t("trv2_pm_err_generic")}: ${msg}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <div className="bg-white rounded-[14px] max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <header className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-[14px] font-bold">{t("trv2_pm_reverse_title")}</h3>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><X className="w-4 h-4" /></button>
+        </header>
+        <div className="p-5 space-y-3">
+          <p className="text-[12px] text-slate-500">{tx.description || tx.id}</p>
+          <textarea autoFocus value={reason} onChange={(e) => setReason(e.target.value)} rows={3}
+            placeholder={t("trv2_pm_reverse_reason_ph")}
+            className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-2.5 py-2 text-[12.5px] outline-none" />
+          <div className="flex items-center justify-end gap-2">
+            <button onClick={onClose} className="px-3 py-1.5 rounded-[8px] text-[12.5px] text-slate-600 hover:bg-slate-100">{t("trv2_pm_reverse_cancel")}</button>
+            <button onClick={confirm} disabled={!ok || busy}
+              className="px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold bg-rose-600 text-white disabled:opacity-40">
+              {t("trv2_pm_reverse_confirm")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
