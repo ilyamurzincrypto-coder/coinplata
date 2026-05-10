@@ -91,3 +91,13 @@ describe("TreasuryShell — Posting Master tab gating", () => {
     expect(screen.getByText("trv2_pm_title")).toBeInTheDocument();
   });
 });
+
+describe("TreasuryShell — Обороты tab", () => {
+  it("renders the Обороты tab and opening it shows the ОСВ view", () => {
+    render(<TreasuryShell />);
+    const tab = screen.getByRole("button", { name: "trv2_tab_turnover" });
+    expect(tab).toBeInTheDocument();
+    fireEvent.click(tab);
+    expect(screen.getByRole("button", { name: "trv2_to_view_osv" })).toBeInTheDocument();
+  });
+});
