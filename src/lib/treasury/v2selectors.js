@@ -223,20 +223,35 @@ export function trialBalance(ctx, period, officeFilter) {
   const curBal = new Map();
   for (const b of balances) curBal.set(b.accountId, (curBal.get(b.accountId) || 0) + Number(b.balance));
 
-  const agg = new Map(); // accId -> { sinceFrom, afterTo, drTurn, crTurn }
+  const agg = new Map();        // accId -> { sinceFrom, afterTo, drTurn, crTurn }
+  const aggDim = new Map();     // `${accId}|${dimKey}` -> { sinceFrom, afterTo, drTurn, crTurn }
+  const dimMeta = new Map();    // `${accId}|${dimKey}` -> { clientId, partnerId }
   for (const e of entries) {
     const acc = accById.get(e.accountId);
     if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
     const ts = txEffMs.get(e.transactionId);
     if (ts == null) continue;
-    const rec = agg.get(e.accountId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
     const s = normalSign(acc, e);
-    if (ts >= fromMs) rec.sinceFrom += s;
-    if (ts > toMs) rec.afterTo += s;
+    const rec = agg.get(e.accountId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const dimKey = e.clientId || e.partnerId || "";
+    const dk = `${e.accountId}|${dimKey}`;
+    const drec = aggDim.get(dk) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    if (!dimMeta.has(dk)) dimMeta.set(dk, { clientId: e.clientId || null, partnerId: e.partnerId || null });
+    if (ts >= fromMs) { rec.sinceFrom += s; drec.sinceFrom += s; }
+    if (ts > toMs) { rec.afterTo += s; drec.afterTo += s; }
     if (ts >= fromMs && ts <= toMs) {
-      if (e.direction === "dr") rec.drTurn += Number(e.amount); else rec.crTurn += Number(e.amount);
+      if (e.direction === "dr") { rec.drTurn += Number(e.amount); drec.drTurn += Number(e.amount); }
+      else { rec.crTurn += Number(e.amount); drec.crTurn += Number(e.amount); }
     }
     agg.set(e.accountId, rec);
+    aggDim.set(dk, drec);
+  }
+  const curBalDim = new Map(); // `${accId}|${dimKey}` -> balance
+  for (const b of balances) {
+    const dimKey = b.clientId || b.partnerId || "";
+    const dk = `${b.accountId}|${dimKey}`;
+    curBalDim.set(dk, (curBalDim.get(dk) || 0) + Number(b.balance));
+    if (!dimMeta.has(dk)) dimMeta.set(dk, { clientId: b.clientId || null, partnerId: b.partnerId || null });
   }
 
   const byClass = new Map();
@@ -244,20 +259,51 @@ export function trialBalance(ctx, period, officeFilter) {
   for (const accId of candidates) {
     const acc = accById.get(accId);
     if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
-    const cur = curBal.get(accId) || 0;
-    const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
-    const opening = cur - rec.sinceFrom;
-    const closing = cur - rec.afterTo;
-    const debitTurnover = rec.drTurn, creditTurnover = rec.crTurn;
-    if (Math.abs(opening) < 1e-9 && Math.abs(closing) < 1e-9 && debitTurnover === 0 && creditTurnover === 0) continue;
     const ccy = acc.currency;
+    const dimKeysForAcc = new Set();
+    for (const k of curBalDim.keys()) if (k.startsWith(`${accId}|`)) dimKeysForAcc.add(k.slice(accId.length + 1));
+    for (const k of aggDim.keys()) if (k.startsWith(`${accId}|`)) dimKeysForAcc.add(k.slice(accId.length + 1));
+    dimKeysForAcc.delete(""); // the "no-dim" bucket isn't a subconto row
+    const isDimensioned = acc.clientDimRequired || acc.partnerDimRequired || dimKeysForAcc.size > 0;
+    let dims = null;
+    if (isDimensioned) {
+      dims = [...dimKeysForAcc].map((dimKey) => {
+        const dk = `${accId}|${dimKey}`;
+        const cb = curBalDim.get(dk) || 0;
+        const dr = aggDim.get(dk) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+        const opening = cb - dr.sinceFrom, closing = cb - dr.afterTo;
+        const meta = dimMeta.get(dk) || { clientId: null, partnerId: null };
+        return {
+          clientId: meta.clientId, partnerId: meta.partnerId,
+          opening, debitTurnover: dr.drTurn, creditTurnover: dr.crTurn, closing,
+          openingInBase: toBase(opening, ccy) || 0,
+          debitTurnoverInBase: toBase(dr.drTurn, ccy) || 0,
+          creditTurnoverInBase: toBase(dr.crTurn, ccy) || 0,
+          closingInBase: toBase(closing, ccy) || 0,
+        };
+      }).sort((a, b) => Math.abs(b.closingInBase) - Math.abs(a.closingInBase));
+    }
+    let acctOpening, acctClosing, acctDr, acctCr;
+    if (dims) {
+      acctOpening = dims.reduce((s, d) => s + d.opening, 0);
+      acctClosing = dims.reduce((s, d) => s + d.closing, 0);
+      acctDr = dims.reduce((s, d) => s + d.debitTurnover, 0);
+      acctCr = dims.reduce((s, d) => s + d.creditTurnover, 0);
+    } else {
+      const cur = curBal.get(accId) || 0;
+      const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+      acctOpening = cur - rec.sinceFrom; acctClosing = cur - rec.afterTo;
+      acctDr = rec.drTurn; acctCr = rec.crTurn;
+    }
+    if (Math.abs(acctOpening) < 1e-9 && Math.abs(acctClosing) < 1e-9 && acctDr === 0 && acctCr === 0 && (!dims || dims.length === 0)) continue;
     const row = {
       accountId: accId, code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || null, currency: ccy,
-      opening, debitTurnover, creditTurnover, closing,
-      openingInBase: toBase(opening, ccy) || 0,
-      debitTurnoverInBase: toBase(debitTurnover, ccy) || 0,
-      creditTurnoverInBase: toBase(creditTurnover, ccy) || 0,
-      closingInBase: toBase(closing, ccy) || 0,
+      opening: acctOpening, debitTurnover: acctDr, creditTurnover: acctCr, closing: acctClosing,
+      openingInBase: toBase(acctOpening, ccy) || 0,
+      debitTurnoverInBase: toBase(acctDr, ccy) || 0,
+      creditTurnoverInBase: toBase(acctCr, ccy) || 0,
+      closingInBase: toBase(acctClosing, ccy) || 0,
+      dims,
     };
     const cls = byClass.get(acc.type) || {
       type: acc.type, labelKey: TB_CLASS_LABEL_KEYS[acc.type] || "trv2_to_class_other", accounts: [],
