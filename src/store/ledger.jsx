@@ -21,7 +21,7 @@ export function LedgerProvider({ children }) {
   const [balances, setBalances] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [entries, setEntries] = useState([]);
-  const [cpNames, setCpNames] = useState(() => new Map());
+  const [cpData, setCpData] = useState(() => ({ map: new Map(), clients: [], partners: [] }));
   const [loading, setLoading] = useState(true);
   // window start for transactions/entries — default 90 days ago
   const [sinceIso, setSinceIso] = useState(
@@ -39,13 +39,13 @@ export function LedgerProvider({ children }) {
         loadLedgerBalances().catch(() => []),
         loadLedgerTransactions({ sinceIso }).catch(() => []),
         loadJournalEntries({ sinceIso }).catch(() => []),
-        loadCounterpartyNames().catch(() => new Map()),
+        loadCounterpartyNames().catch(() => ({ map: new Map(), clients: [], partners: [] })),
       ]);
       setAccounts(accs);
       setBalances(bals);
       setTransactions(txs);
       setEntries(jes);
-      setCpNames(names);
+      setCpData(names);
     } catch (err) {
       // eslint-disable-next-line no-console
       console.warn("[LedgerProvider] reload failed", err);
@@ -68,13 +68,17 @@ export function LedgerProvider({ children }) {
   }, [sinceIso]);
 
   const counterpartyName = useCallback(
-    (id) => cpNames.get(id) || (id ? String(id).slice(0, 8) : "—"),
-    [cpNames]
+    (id) => cpData.map.get(id) || (id ? String(id).slice(0, 8) : "—"),
+    [cpData]
+  );
+  const counterpartyOptions = useCallback(
+    (kind) => (kind === "partner" ? cpData.partners : cpData.clients),
+    [cpData]
   );
 
   const value = useMemo(
-    () => ({ accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName }),
-    [accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName]
+    () => ({ accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName, counterpartyOptions }),
+    [accounts, balances, transactions, entries, loading, reload, extendWindow, sinceIso, counterpartyName, counterpartyOptions]
   );
 
   return <LedgerContext.Provider value={value}>{children}</LedgerContext.Provider>;
