@@ -7,6 +7,7 @@ import { useTranslation } from "../../../i18n/translations.jsx";
 import { trialBalance } from "../../../lib/treasury/v2selectors.js";
 import { exportCSV } from "../../../utils/csv.js";
 import AccountInlineEntries from "./AccountInlineEntries.jsx";
+import TrialBalanceSubcontoRow from "./TrialBalanceSubcontoRow.jsx";
 
 const num = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
@@ -24,9 +25,13 @@ function AccountRow({ ctx, window: win, row, onOpenTx }) {
         <td className="px-2 py-1.5 text-right tabular-nums w-28 text-rose-700">{num(row.creditTurnover)}</td>
         <td className="px-2 py-1.5 text-right tabular-nums w-28 font-medium">{num(row.closing)}</td>
       </tr>
-      {open && (
-        <tr><td colSpan={8} className="p-0"><AccountInlineEntries ctx={ctx} accountId={row.accountId} period={win} onOpenTx={onOpenTx} /></td></tr>
-      )}
+      {open && (row.dims
+        ? (row.dims.length === 0
+            ? <tr><td colSpan={8} className="px-6 py-2 text-[11px] text-slate-400">—</td></tr>
+            : row.dims.map((d, i) => (
+                <TrialBalanceSubcontoRow key={`${d.clientId || ""}-${d.partnerId || ""}-${i}`} ctx={ctx} accountId={row.accountId} dim={d} window={win} onOpenTx={onOpenTx} />
+              )))
+        : <tr><td colSpan={8} className="p-0"><AccountInlineEntries ctx={ctx} accountId={row.accountId} period={win} onOpenTx={onOpenTx} /></td></tr>)}
     </>
   );
 }

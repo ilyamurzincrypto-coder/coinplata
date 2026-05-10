@@ -12,6 +12,7 @@ const accounts = [
   { id: "cash", code: "1110", name: "Cash USD", type: "asset", subtype: "cash", currency: "USD", officeId: null },
   { id: "eq",   code: "3100", name: "Opening Equity USD", type: "equity", subtype: "opening_balance", currency: "USD", officeId: null },
   { id: "rev",  code: "4010", name: "Spread USD", type: "revenue", subtype: "spread", currency: "USD", officeId: null },
+  { id: "cl",   code: "2110", name: "Customer Liab USD", type: "liability", subtype: "customer_liab", currency: "USD", officeId: null, clientDimRequired: true, partnerDimRequired: false },
 ];
 const transactions = [
   { id: "T1", effectiveDate: "2026-05-10T00:00:00Z", createdAt: "2026-05-10T00:00:00Z", kind: "deal", sourceRefId: "D1" },
@@ -19,13 +20,18 @@ const transactions = [
 const entries = [
   { id: "e1", transactionId: "T1", accountId: "cash", direction: "dr", amount: 200, currency: "USD", createdAt: "2026-05-10T00:00:00Z" },
   { id: "e2", transactionId: "T1", accountId: "rev",  direction: "cr", amount: 200, currency: "USD", createdAt: "2026-05-10T00:00:00Z" },
+  { id: "e3", transactionId: "T1", accountId: "cl",   direction: "cr", amount: 150, currency: "USD", clientId: "client-1", partnerId: null, createdAt: "2026-05-10T00:00:00Z" },
 ];
 const balances = [
   { accountId: "cash", currency: "USD", clientId: null, partnerId: null, balance: 200 },
   { accountId: "rev",  currency: "USD", clientId: null, partnerId: null, balance: 200 },
   { accountId: "eq",   currency: "USD", clientId: null, partnerId: null, balance: 0 },
+  { accountId: "cl",   currency: "USD", clientId: "client-1", partnerId: null, balance: -150 },
 ];
-const ctx = { accounts, transactions, entries, balances, toBase: (a) => Number(a), baseCurrency: "USD", officeFilter: "all" };
+const ctx = {
+  accounts, transactions, entries, balances, toBase: (a) => Number(a), baseCurrency: "USD", officeFilter: "all",
+  counterpartyName: (id) => ({ "client-1": "Иван Петров" }[id] || String(id).slice(0, 8)),
+};
 const win = { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" };
 
 describe("TrialBalanceTable", () => {
@@ -58,5 +64,12 @@ describe("TrialBalanceTable", () => {
     const emptyCtx = { ...ctx, entries: [], balances: [] };
     render(<TrialBalanceTable ctx={emptyCtx} window={win} officeFilter="all" formatBase={(n) => `$${n}`} baseCurrency="USD" onOpenTx={() => {}} />);
     expect(screen.getByText("trv2_to_empty_osv")).toBeInTheDocument();
+  });
+
+  it("a dimensioned account expands to subconto sub-rows (resolved names), not the entry table", () => {
+    render(<TrialBalanceTable ctx={ctx} window={win} officeFilter="all" formatBase={(n) => `$${n}`} baseCurrency="USD" onOpenTx={() => {}} />);
+    expect(screen.getByText("2110")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("2110"));
+    expect(screen.getByText("Иван Петров")).toBeInTheDocument();
   });
 });
