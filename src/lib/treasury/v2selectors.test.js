@@ -80,12 +80,12 @@ describe("groupByClass", () => {
     expect(crypto.totalInBase).toBe(150);
   });
 
-  it("liability section returns customer_liab with negative balance", () => {
+  it("liability section returns customer_liab with negative balance and nested dims", () => {
     const ctx = makeLedgerCtx();
     const sections = groupByClass(ctx, "liability");
     const cl = sections.find((s) => s.subtype === "customer_liab");
     expect(cl.accounts[0].balance).toBe(-500);
-    expect(cl.accounts[0].clientId).toBe("client-1"); // dimension preserved
+    expect(cl.accounts[0].dims).toEqual([{ clientId: "client-1", partnerId: null, balance: -500, balanceInBase: -500 }]);
   });
 
   it("equity section returns opening + fx accounts", () => {
@@ -103,6 +103,24 @@ describe("groupByClass", () => {
     for (let i = 1; i < sections.length; i++) {
       expect(sections[i - 1].totalInBase).toBeGreaterThanOrEqual(sections[i].totalInBase);
     }
+  });
+
+  it("a plain account emits one row with dims: null", () => {
+    const ctx = makeLedgerCtx();
+    const cash = groupByClass(ctx, "asset").flatMap((s) => s.accounts).find((a) => a.accountId === "ac_cash_usd_mark");
+    expect(cash).toMatchObject({ code: "1110", balance: 11000, dims: null });
+  });
+
+  it("a dimensioned account sums its dim rows and sorts dims by |balanceInBase| desc", () => {
+    const ctx = makeLedgerCtx({
+      balances: [
+        { accountId: "ac_cust_liab_usd", currency: "USD", clientId: "client-1", partnerId: null, balance: -500 },
+        { accountId: "ac_cust_liab_usd", currency: "USD", clientId: "client-2", partnerId: null, balance: -1200 },
+      ],
+    });
+    const cl = groupByClass(ctx, "liability").flatMap((s) => s.accounts).find((a) => a.accountId === "ac_cust_liab_usd");
+    expect(cl.balance).toBe(-1700);
+    expect(cl.dims.map((d) => d.clientId)).toEqual(["client-2", "client-1"]); // |−1200| > |−500|
   });
 });
 
@@ -130,6 +148,14 @@ describe("accountEntries", () => {
   it("returns empty for account with no entries", () => {
     const ctx = makeLedgerCtx();
     expect(accountEntries(ctx, "ac_fx_gain", 50)).toEqual([]);
+  });
+
+  it("filters entries by clientId/partnerId when a dim is given", () => {
+    const ctx = makeLedgerCtx();
+    // ac_cust_liab_usd: je4 (cr 100, client-1) + je5 (dr 95, client-1)
+    expect(accountEntries(ctx, "ac_cust_liab_usd", 50)).toHaveLength(2);
+    expect(accountEntries(ctx, "ac_cust_liab_usd", 50, null, { clientId: "client-1" })).toHaveLength(2);
+    expect(accountEntries(ctx, "ac_cust_liab_usd", 50, null, { clientId: "client-2" })).toHaveLength(0);
   });
 });
 

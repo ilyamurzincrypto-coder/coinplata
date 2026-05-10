@@ -34,41 +34,38 @@ const SUBTYPE_LABEL_KEYS = {
 
 export function groupByClass(ctx, accountType) {
   const { accounts, balances, toBase, officeFilter } = ctx;
-  // balance lookup: (accountId, currency, clientId, partnerId) → balance
-  const balByKey = new Map();
-  for (const b of balances) {
-    balByKey.set(`${b.accountId}|${b.currency}|${b.clientId || ""}|${b.partnerId || ""}`, b);
-  }
   const bySubtype = new Map();
   for (const acc of accounts) {
     if (acc.type !== accountType) continue;
     if (!passesOfficeFilter(acc, officeFilter)) continue;
-    // an account may have multiple balance rows (per dimension) — emit one row per
     const rowsForAccount = balances.filter((b) => b.accountId === acc.id);
-    const dimRows = rowsForAccount.length > 0 ? rowsForAccount : [{ accountId: acc.id, currency: acc.currency, clientId: null, partnerId: null, balance: 0 }];
+    const isDimensioned = acc.clientDimRequired || acc.partnerDimRequired || rowsForAccount.some((b) => b.clientId || b.partnerId);
+    let balance = 0, balanceInBase = 0;
+    const dimList = [];
+    for (const b of rowsForAccount) {
+      const inBase = toBase(b.balance, b.currency) || 0;
+      balance += Number(b.balance) || 0;
+      balanceInBase += inBase;
+      dimList.push({ clientId: b.clientId || null, partnerId: b.partnerId || null, balance: Number(b.balance) || 0, balanceInBase: inBase });
+    }
+    const dims = isDimensioned ? dimList.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) : null;
     const subtype = acc.subtype || "other";
     const sect = bySubtype.get(subtype) || { subtype, labelKey: SUBTYPE_LABEL_KEYS[subtype] || "trv2_subtype_other", accounts: [], totalInBase: 0 };
-    for (const dr of dimRows) {
-      const inBase = toBase(dr.balance, dr.currency) || 0;
-      sect.accounts.push({
-        accountId: acc.id, code: acc.code, name: acc.name, currency: dr.currency,
-        clientId: dr.clientId || null, partnerId: dr.partnerId || null,
-        balance: dr.balance, balanceInBase: inBase,
-      });
-      sect.totalInBase += inBase;
-    }
+    sect.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase, dims });
+    sect.totalInBase += balanceInBase;
     bySubtype.set(subtype, sect);
   }
   return [...bySubtype.values()].sort((a, b) => b.totalInBase - a.totalInBase);
 }
 
-export function accountEntries(ctx, accountId, limit = 50, period = null) {
+export function accountEntries(ctx, accountId, limit = 50, period = null, dim = null) {
   const { entries, transactions } = ctx;
   const txById = new Map(transactions.map((t) => [t.id, t]));
   const fromMs = period ? new Date(period.from).getTime() : -Infinity;
   const toMs = period ? new Date(period.to).getTime() : Infinity;
   return entries
     .filter((e) => e.accountId === accountId)
+    .filter((e) => !dim || ((dim.clientId == null || e.clientId === dim.clientId) && (dim.partnerId == null || e.partnerId === dim.partnerId)))
     .filter((e) => {
       if (!period) return true;
       const tx = txById.get(e.transactionId);
