@@ -522,16 +522,14 @@ export async function rpcCancelWorkflowV2(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Feature-flag helper — проверяет VITE_USE_NEW_LEDGER.
+// Feature-flag helper — v2 ledger active iff VITE_USE_NEW_LEDGER === "true".
 //
-// EMERGENCY ROLLBACK (2026-05-10): production cutover вызвал белый экран
-// на coinplata.vercel.app. Возвращаем kill-switch до выяснения причины.
-// USE_NEW_LEDGER теперь требует ОБА VITE_USE_NEW_LEDGER=true И
-// VITE_FORCE_V2=true (последняя в Vercel отсутствует → kill-switch активен).
-// После диагностики — убрать опять и заново задеплоить.
+// Phase 3 cutover (redone): the emergency-rollback kill-switch (extra
+// VITE_FORCE_V2 gate, 2026-05-10) is removed — v2 is gated solely by
+// VITE_USE_NEW_LEDGER. Rollback: set VITE_USE_NEW_LEDGER=false in Vercel +
+// redeploy (legacy createDeal returns; note legacy ledger tables are frozen,
+// so a full rollback also needs the runbook's un-freeze/grants step).
 // ─────────────────────────────────────────────────────────────────────
 const _ENV = typeof import.meta !== "undefined" ? import.meta.env : null;
-const _V2_FORCE_OPT_IN = _ENV?.VITE_FORCE_V2 === "true";
 
-export const USE_NEW_LEDGER =
-  _V2_FORCE_OPT_IN && _ENV?.VITE_USE_NEW_LEDGER === "true";
+export const USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER === "true";
