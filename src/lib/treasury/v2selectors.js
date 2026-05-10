@@ -201,6 +201,100 @@ export function pnlForPeriod(ctx, period, officeFilter) {
   };
 }
 
+const DR_NORMAL_TYPES = new Set(["asset", "expense"]);
+function normalSign(account, entry) {
+  const onNormalSide = DR_NORMAL_TYPES.has(account.type) ? entry.direction === "dr" : entry.direction === "cr";
+  return (onNormalSide ? 1 : -1) * Number(entry.amount);
+}
+
+const TB_CLASS_ORDER = ["asset", "liability", "equity", "revenue", "expense"];
+const TB_CLASS_LABEL_KEYS = {
+  asset: "trv2_tab_assets", liability: "trv2_tab_liabilities", equity: "trv2_tab_equity",
+  revenue: "trv2_to_class_revenue", expense: "trv2_to_class_expense",
+};
+
+// Оборотно-сальдовая ведомость over [period.from, period.to], attributing entries by
+// their transaction's effectiveDate. opening/closing = current balance (magnitude on the
+// account's normal side) minus the rollback of normalSign over entries since `from` (resp. after `to`).
+export function trialBalance(ctx, period, officeFilter) {
+  const { accounts, balances, entries, transactions, toBase } = ctx;
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const txEffMs = new Map(transactions.map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
+
+  const curBal = new Map();
+  for (const b of balances) curBal.set(b.accountId, (curBal.get(b.accountId) || 0) + Number(b.balance));
+
+  const agg = new Map(); // accId -> { sinceFrom, afterTo, drTurn, crTurn }
+  for (const e of entries) {
+    const acc = accById.get(e.accountId);
+    if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
+    const ts = txEffMs.get(e.transactionId);
+    if (ts == null) continue;
+    const rec = agg.get(e.accountId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const s = normalSign(acc, e);
+    if (ts >= fromMs) rec.sinceFrom += s;
+    if (ts > toMs) rec.afterTo += s;
+    if (ts >= fromMs && ts <= toMs) {
+      if (e.direction === "dr") rec.drTurn += Number(e.amount); else rec.crTurn += Number(e.amount);
+    }
+    agg.set(e.accountId, rec);
+  }
+
+  const byClass = new Map();
+  const candidates = new Set([...curBal.keys(), ...agg.keys()]);
+  for (const accId of candidates) {
+    const acc = accById.get(accId);
+    if (!acc || !passesOfficeFilter(acc, officeFilter)) continue;
+    const cur = curBal.get(accId) || 0;
+    const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const opening = cur - rec.sinceFrom;
+    const closing = cur - rec.afterTo;
+    const debitTurnover = rec.drTurn, creditTurnover = rec.crTurn;
+    if (Math.abs(opening) < 1e-9 && Math.abs(closing) < 1e-9 && debitTurnover === 0 && creditTurnover === 0) continue;
+    const ccy = acc.currency;
+    const row = {
+      accountId: accId, code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || null, currency: ccy,
+      opening, debitTurnover, creditTurnover, closing,
+      openingInBase: toBase(opening, ccy) || 0,
+      debitTurnoverInBase: toBase(debitTurnover, ccy) || 0,
+      creditTurnoverInBase: toBase(creditTurnover, ccy) || 0,
+      closingInBase: toBase(closing, ccy) || 0,
+    };
+    const cls = byClass.get(acc.type) || {
+      type: acc.type, labelKey: TB_CLASS_LABEL_KEYS[acc.type] || "trv2_to_class_other", accounts: [],
+      subtotalInBase: { opening: 0, debitTurnover: 0, creditTurnover: 0, closing: 0 },
+    };
+    cls.accounts.push(row);
+    cls.subtotalInBase.opening += row.openingInBase;
+    cls.subtotalInBase.debitTurnover += row.debitTurnoverInBase;
+    cls.subtotalInBase.creditTurnover += row.creditTurnoverInBase;
+    cls.subtotalInBase.closing += row.closingInBase;
+    byClass.set(acc.type, cls);
+  }
+  for (const cls of byClass.values()) cls.accounts.sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  const classes = TB_CLASS_ORDER.filter((t) => byClass.has(t)).map((t) => byClass.get(t));
+
+  let openingDr = 0, openingCr = 0, debitTurnover = 0, creditTurnover = 0, closingDr = 0, closingCr = 0;
+  for (const cls of classes) {
+    const drSide = DR_NORMAL_TYPES.has(cls.type);
+    if (drSide) { openingDr += cls.subtotalInBase.opening; closingDr += cls.subtotalInBase.closing; }
+    else { openingCr += cls.subtotalInBase.opening; closingCr += cls.subtotalInBase.closing; }
+    debitTurnover += cls.subtotalInBase.debitTurnover;
+    creditTurnover += cls.subtotalInBase.creditTurnover;
+  }
+  return {
+    classes,
+    totalInBase: { openingDr, openingCr, debitTurnover, creditTurnover, closingDr, closingCr },
+    check: {
+      openingOk: Math.abs(openingDr - openingCr) < 0.01, openingDelta: openingDr - openingCr,
+      turnoverOk: Math.abs(debitTurnover - creditTurnover) < 0.01, turnoverDelta: debitTurnover - creditTurnover,
+      closingOk: Math.abs(closingDr - closingCr) < 0.01, closingDelta: closingDr - closingCr,
+    },
+  };
+}
+
 export function balanceCheckTotals(ctx, officeFilter) {
   const { accounts, balances, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));

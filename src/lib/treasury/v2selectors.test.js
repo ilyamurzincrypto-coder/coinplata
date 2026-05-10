@@ -272,3 +272,76 @@ describe("balanceCheckTotals", () => {
     expect(r.equity).toBe(0);
   });
 });
+
+import { trialBalance } from "./v2selectors.js";
+
+function makeTbCtx(overrides = {}) {
+  const accounts = [
+    { id: "cash", code: "1110", name: "Cash USD", type: "asset", subtype: "cash", currency: "USD", officeId: "ofA" },
+    { id: "bank", code: "1120", name: "Bank EUR", type: "asset", subtype: "bank", currency: "EUR", officeId: "ofB" },
+    { id: "eq",   code: "3100", name: "Opening Equity USD", type: "equity", subtype: "opening_balance", currency: "USD", officeId: null },
+    { id: "rev",  code: "4010", name: "Spread USD", type: "revenue", subtype: "spread", currency: "USD", officeId: null },
+    { id: "idle", code: "1199", name: "Idle account", type: "asset", subtype: "cash", currency: "USD", officeId: null },
+  ];
+  const transactions = [
+    { id: "T1", effectiveDate: "2026-03-10T00:00:00Z", createdAt: "2026-03-10T00:00:00Z", kind: "opening", sourceRefId: null },
+    { id: "T2", effectiveDate: "2026-05-15T00:00:00Z", createdAt: "2026-05-15T00:00:00Z", kind: "deal", sourceRefId: "D1" },
+  ];
+  const entries = [
+    { id: "e1", transactionId: "T1", accountId: "cash", direction: "dr", amount: 1000, currency: "USD", createdAt: "2026-03-10T00:00:00Z" },
+    { id: "e2", transactionId: "T1", accountId: "eq",   direction: "cr", amount: 1000, currency: "USD", createdAt: "2026-03-10T00:00:00Z" },
+    { id: "e3", transactionId: "T2", accountId: "cash", direction: "dr", amount: 200,  currency: "USD", createdAt: "2026-05-15T00:00:00Z" },
+    { id: "e4", transactionId: "T2", accountId: "rev",  direction: "cr", amount: 200,  currency: "USD", createdAt: "2026-05-15T00:00:00Z" },
+  ];
+  const balances = [
+    { accountId: "cash", currency: "USD", clientId: null, partnerId: null, balance: 1200 },
+    { accountId: "eq",   currency: "USD", clientId: null, partnerId: null, balance: 1000 },
+    { accountId: "rev",  currency: "USD", clientId: null, partnerId: null, balance: 200 },
+    { accountId: "idle", currency: "USD", clientId: null, partnerId: null, balance: 50 },
+  ];
+  const rate = (c) => ({ USD: 1, EUR: 1.1 }[String(c).toUpperCase()] ?? 0);
+  return { accounts, transactions, entries, balances, toBase: (a, c) => Number(a) * rate(c), baseCurrency: "USD", officeFilter: "all", ...overrides };
+}
+
+describe("trialBalance", () => {
+  it("computes opening / Dr turnover / Cr turnover / closing per account for a period (May)", () => {
+    const ctx = makeTbCtx();
+    const tb = trialBalance(ctx, { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" }, "all");
+    const findAcc = (id) => tb.classes.flatMap((c) => c.accounts).find((a) => a.accountId === id);
+    expect(findAcc("cash")).toMatchObject({ opening: 1000, closing: 1200, debitTurnover: 200, creditTurnover: 0 });
+    expect(findAcc("rev")).toMatchObject({ opening: 0, closing: 200, debitTurnover: 0, creditTurnover: 200 });
+    expect(findAcc("eq")).toMatchObject({ opening: 1000, closing: 1000, debitTurnover: 0, creditTurnover: 0 });
+    expect(findAcc("idle")).toMatchObject({ opening: 50, closing: 50, debitTurnover: 0, creditTurnover: 0 });
+    expect(findAcc("bank")).toBeUndefined();
+  });
+  it("the period covering only T1 (March) shows cash opening 0 and Dr turnover 1000", () => {
+    const ctx = makeTbCtx();
+    const tb = trialBalance(ctx, { from: "2026-03-01T00:00:00Z", to: "2026-03-31T00:00:00Z" }, "all");
+    const cash = tb.classes.flatMap((c) => c.accounts).find((a) => a.accountId === "cash");
+    expect(cash).toMatchObject({ opening: 0, closing: 1000, debitTurnover: 1000, creditTurnover: 0 });
+  });
+  it("classes are ordered asset, liability, equity, revenue, expense and carry labelKeys", () => {
+    const ctx = makeTbCtx();
+    const tb = trialBalance(ctx, { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" }, "all");
+    expect(tb.classes.map((c) => c.type)).toEqual(["asset", "equity", "revenue"]);
+    const asset = tb.classes.find((c) => c.type === "asset");
+    expect(asset.labelKey).toBe("trv2_tab_assets");
+    expect(tb.classes.find((c) => c.type === "revenue").labelKey).toBe("trv2_to_class_revenue");
+    expect(asset.accounts.map((a) => a.code)).toEqual(["1110", "1199"]);
+  });
+  it("balance-identity checks", () => {
+    const ctx = makeTbCtx();
+    const tb = trialBalance(ctx, { from: "2026-01-01T00:00:00Z", to: "2026-12-31T00:00:00Z" }, "all");
+    expect(tb.totalInBase.debitTurnover).toBeCloseTo(1200, 6);
+    expect(tb.totalInBase.creditTurnover).toBeCloseTo(1200, 6);
+    expect(tb.check.turnoverOk).toBe(true);
+    expect(tb.totalInBase.openingDr).toBeCloseTo(50, 6);
+    expect(tb.check.openingOk).toBe(false);
+  });
+  it("office filter narrows the rows", () => {
+    const ctx = makeTbCtx();
+    const tb = trialBalance(ctx, { from: "2026-01-01T00:00:00Z", to: "2026-12-31T00:00:00Z" }, "ofA");
+    const codes = tb.classes.flatMap((c) => c.accounts).map((a) => a.code);
+    expect(codes).toEqual(["1110"]);
+  });
+});
