@@ -21,11 +21,13 @@ Classic 1С «Шахматка» is exact because each posting (проводка
 
 `ledger.balances.balance` stores the **magnitude on the account's normal side** (always non-negative for a healthy account): asset/expense accounts are Dr-normal (`balance = ΣDr − ΣCr`), liability/equity/revenue accounts are Cr-normal (`balance = ΣCr − ΣDr`). E.g. equity account `3100` (opening_balance) has `balance = +15000` in prod. `groupByClass` / `balanceCheckTotals` already rely on this.
 
+Period attribution uses the **transaction's `effectiveDate`** (the accounting date), not the entry's `createdAt` — so a backdated manual entry lands in its effective period in both the ОСВ and the Шахматка. (Note: `pnlForPeriod` in Spec B uses entry `createdAt`; not changed here — a known quirk, out of scope.) So "an entry `e` is in period `[from, to]`" means `from ≤ effectiveDate(tx of e) ≤ to`, and "after `to`" means `effectiveDate(tx of e) > to`, etc.
+
 Derived quantities the ОСВ needs:
 - `normalSign(account, entry)` = `entry.amount × (drNormal(account) ? (entry.direction === 'dr' ? +1 : -1) : (entry.direction === 'cr' ? +1 : -1))` where `drNormal` is true for `asset`/`expense`, false for `liability`/`equity`/`revenue`.
-- `closing@to(account) = current_balance(account) − Σ normalSign(account, e)` over entries `e` of that account with `e.createdAt > period.to`.
-- `opening@from(account) = current_balance(account) − Σ normalSign(account, e)` over entries `e` with `e.createdAt ≥ period.from`.
-- `debitTurnover(account) = Σ e.amount` over Dr entries of the account in `[from, to]`; `creditTurnover` the symmetric Cr sum. (Always the raw absolute amounts, regardless of normal side — that's what an ОСВ shows.)
+- `closing@to(account) = current_balance(account) − Σ normalSign(account, e)` over entries `e` of that account whose transaction's `effectiveDate > period.to`.
+- `opening@from(account) = current_balance(account) − Σ normalSign(account, e)` over entries `e` whose transaction's `effectiveDate ≥ period.from`.
+- `debitTurnover(account) = Σ e.amount` over Dr entries of the account whose tx `effectiveDate ∈ [from, to]`; `creditTurnover` the symmetric Cr sum. (Always the raw absolute amounts, regardless of normal side — that's what an ОСВ shows.)
 
 This needs all of the account's entries from `period.from` up to now to be loaded; the tab calls `ctx.extendWindow(period.from)` (same pattern as `JournalTab`/`PnLTab`) and shows the existing "showing the most recent data only" notice while a wider window loads.
 
