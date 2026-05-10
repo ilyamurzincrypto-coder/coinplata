@@ -30,6 +30,7 @@ import { ObligationsProvider } from "./store/obligations.jsx";
 import { NotificationsProvider } from "./store/notifications.jsx";
 import { PartnersProvider } from "./store/partners.jsx";
 import { PartnerAccountsProvider } from "./store/partnerAccounts.jsx";
+import { LedgerProvider } from "./store/ledger.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SetPasswordPage from "./pages/SetPasswordPage.jsx";
 import { RecoveryContext, useRecovery } from "./lib/recovery.jsx";
@@ -191,7 +192,7 @@ function Root() {
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
-      {page === "treasury" && canShow("capital") && <TreasuryPage currentOffice={currentOffice} />}
+      {page === "treasury" && canShow("capital") && <TreasuryPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
@@ -433,6 +434,7 @@ export default function App() {
                           <CategoriesProvider>
                           <IncomeExpenseProvider>
                             <TransactionsProvider>
+                              <LedgerProvider>
                               <ObligationsProvider>
                               <NotificationsProvider>
                               <PartnersProvider>
@@ -446,6 +448,7 @@ export default function App() {
                               </PartnersProvider>
                               </NotificationsProvider>
                               </ObligationsProvider>
+                              </LedgerProvider>
                             </TransactionsProvider>
                           </IncomeExpenseProvider>
                           </CategoriesProvider>
