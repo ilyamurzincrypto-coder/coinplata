@@ -3,9 +3,10 @@ import React, { useState, useMemo } from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useLedger } from "../../store/ledger.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
-import { balanceCheckTotals } from "../../lib/treasury/v2selectors.js";
+import { balanceCheckTotals, transactionTree } from "../../lib/treasury/v2selectors.js";
 import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
+import TransactionDetail from "./parts/TransactionDetail.jsx";
 import AssetsTab from "./tabs/AssetsTab.jsx";
 import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
@@ -46,6 +47,16 @@ export default function TreasuryShell() {
   const totals = useMemo(() => balanceCheckTotals(ctx, officeFilter), [ctx, officeFilter]);
   const freshTime = new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 
+  // txId → { tx, entries } node, used to resolve drill-down clicks into the detail modal.
+  const txNodeById = useMemo(() => {
+    const m = new Map();
+    for (const node of transactionTree(ctx, { type: "all", officeFilter: "all" })) m.set(node.tx.id, node);
+    return m;
+  }, [ctx]);
+  const [selectedTx, setSelectedTx] = useState(null);
+  const openTx = (txId) => setSelectedTx(txNodeById.get(txId) || null);
+  const openSource = (tx) => setSelectedTx(txNodeById.get(tx?.id) || null);
+
   if (loading) {
     return <main className="max-w-[1300px] mx-auto px-6 py-10 text-center text-slate-400">{t("trv2_loading")}</main>;
   }
@@ -78,9 +89,10 @@ export default function TreasuryShell() {
           })}
         </div>
 
-        <ActiveComp ctx={ctx} officeFilter={officeFilter} formatBase={formatBase} baseCurrency={baseCurrency} />
+        <ActiveComp ctx={ctx} officeFilter={officeFilter} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={openTx} onOpenSource={openSource} />
       </main>
       <BalanceCheckBar totals={totals} formatBase={formatBase} baseCurrency={baseCurrency} />
+      <TransactionDetail node={selectedTx} onClose={() => setSelectedTx(null)} />
     </div>
   );
 }
