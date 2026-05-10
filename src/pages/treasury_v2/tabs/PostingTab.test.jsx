@@ -13,8 +13,12 @@ import PostingTab from "./PostingTab.jsx";
 const ACCOUNTS = [
   { id: "a1", code: "1110", name: "Cash USD", subtype: "cash", currency: "USD", clientDimRequired: false, partnerDimRequired: false, active: true },
   { id: "a2", code: "4010", name: "Spread USD", subtype: "spread", currency: "USD", clientDimRequired: false, partnerDimRequired: false, active: true },
+  { id: "a3", code: "2110", name: "Customer Liab USD", subtype: "customer_liab", currency: "USD", clientDimRequired: true, partnerDimRequired: false, active: true },
 ];
-const ctx = { accounts: ACCOUNTS };
+const ctx = {
+  accounts: ACCOUNTS,
+  counterpartyOptions: (k) => (k === "partner" ? [{ id: "p1", name: "OTC Acme" }] : [{ id: "client-1", name: "Иван Петров" }]),
+};
 
 describe("PostingTab", () => {
   beforeEach(() => { rpcMock.mockReset(); emitToastMock.mockReset(); });
@@ -51,6 +55,28 @@ describe("PostingTab", () => {
     ]);
     expect(emitToastMock).toHaveBeenCalledWith("success", "trv2_pm_posted");
     await waitFor(() => expect(screen.getByPlaceholderText("trv2_pm_reason_ph").value).toBe(""));
+  });
+
+  it("picking a dimensioned account shows a counterparty select; the chosen client goes into the payload", async () => {
+    rpcMock.mockResolvedValue("tx-1");
+    render(<PostingTab ctx={ctx} />);
+    const accountSelects = screen.getAllByRole("combobox").filter((el) => [...el.options].some((o) => /2110|4010/.test(o.value)));
+    fireEvent.change(accountSelects[0], { target: { value: "2110" } }); // line 1 → customer_liab
+    fireEvent.change(accountSelects[1], { target: { value: "4010" } }); // line 2 → spread
+    const numericInputs = screen.getAllByRole("textbox").filter((el) => el.getAttribute("inputmode") === "decimal");
+    fireEvent.change(numericInputs[0], { target: { value: "100" } }); // line 1 Dr
+    fireEvent.change(numericInputs[3], { target: { value: "100" } }); // line 2 Cr
+    fireEvent.change(screen.getByPlaceholderText("trv2_pm_reason_ph"), { target: { value: "reclass" } });
+    const post = screen.getByRole("button", { name: "trv2_pm_post" });
+    expect(post).toBeDisabled(); // line 1 needs a client
+    expect(screen.getByRole("option", { name: "Иван Петров" })).toBeInTheDocument();
+    const cpSelect = screen.getAllByRole("combobox").find((el) => [...el.options].some((o) => o.value === "client-1"));
+    fireEvent.change(cpSelect, { target: { value: "client-1" } });
+    await waitFor(() => expect(post).not.toBeDisabled());
+    fireEvent.click(post);
+    await waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(1));
+    const payload = rpcMock.mock.calls[0][0];
+    expect(payload.lines.find((l) => l.accountCode === "2110")).toMatchObject({ direction: "dr", amount: 100, clientId: "client-1" });
   });
 
   it("maps a 42501 RPC error to the forbidden toast", async () => {
