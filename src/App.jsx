@@ -192,7 +192,7 @@ function Root() {
       {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
-      {page === "treasury" && canShow("capital") && <TreasuryPage currentOffice={currentOffice} />}
+      {page === "treasury" && canShow("capital") && <TreasuryPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
     </div>
