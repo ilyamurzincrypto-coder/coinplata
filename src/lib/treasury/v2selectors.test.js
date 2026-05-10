@@ -105,3 +105,30 @@ describe("groupByClass", () => {
     }
   });
 });
+
+import { accountEntries } from "./v2selectors.js";
+
+describe("accountEntries", () => {
+  it("returns entries for an account, newest first, with source label", () => {
+    const ctx = makeLedgerCtx();
+    const rows = accountEntries(ctx, "ac_cash_usd_mark", 50);
+    // ac_cash_usd_mark has je1 (opening Dr 11000) + je3 (deal Dr 100)
+    expect(rows).toHaveLength(2);
+    expect(new Date(rows[0].createdAt) >= new Date(rows[1].createdAt)).toBe(true);
+    const dealRow = rows.find((r) => r.txId === "tx_deal_1");
+    expect(dealRow.direction).toBe("dr");
+    expect(dealRow.amount).toBe(100);
+    expect(dealRow.txKind).toBe("deal");
+    expect(dealRow.sourceRefId).toBe("deal-42");
+  });
+
+  it("respects limit", () => {
+    const ctx = makeLedgerCtx();
+    expect(accountEntries(ctx, "ac_cash_usd_mark", 1)).toHaveLength(1);
+  });
+
+  it("returns empty for account with no entries", () => {
+    const ctx = makeLedgerCtx();
+    expect(accountEntries(ctx, "ac_fx_gain", 50)).toEqual([]);
+  });
+});

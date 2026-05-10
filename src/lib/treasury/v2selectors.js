@@ -61,3 +61,28 @@ export function groupByClass(ctx, accountType) {
   }
   return [...bySubtype.values()].sort((a, b) => b.totalInBase - a.totalInBase);
 }
+
+export function accountEntries(ctx, accountId, limit = 50) {
+  const { entries, transactions } = ctx;
+  const txById = new Map(transactions.map((t) => [t.id, t]));
+  return entries
+    .filter((e) => e.accountId === accountId)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, limit)
+    .map((e) => {
+      const tx = txById.get(e.transactionId);
+      return {
+        id: e.id,
+        createdAt: e.createdAt,
+        direction: e.direction,
+        amount: e.amount,
+        currency: e.currency,
+        clientId: e.clientId || null,
+        partnerId: e.partnerId || null,
+        note: e.note || "",
+        txId: e.transactionId,
+        txKind: tx ? tx.kind : "unknown",
+        sourceRefId: tx ? tx.sourceRefId : null,
+      };
+    });
+}
