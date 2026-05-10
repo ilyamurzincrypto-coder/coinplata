@@ -1,8 +1,9 @@
 // src/pages/treasury_v2/TreasuryShell.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useLedger } from "../../store/ledger.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useCan } from "../../store/permissions.jsx";
 import { balanceCheckTotals, transactionTree } from "../../lib/treasury/v2selectors.js";
 import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
@@ -12,8 +13,9 @@ import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
 import PnLTab from "./tabs/PnLTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
+import PostingTab from "./tabs/PostingTab.jsx";
 
-const TABS = [
+const BASE_TABS = [
   { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
@@ -28,6 +30,13 @@ export default function TreasuryShell() {
   // so the rest of Treasury (selectors + tabs) can use a consistent name.
   const { toBase, formatBase, base: baseCurrency } = useBaseCurrency();
 
+  const can = useCan();
+  const canPost = can("accounting", "edit");
+  const TABS = useMemo(
+    () => (canPost ? [...BASE_TABS, { id: "posting", labelKey: "trv2_pm_tab", component: PostingTab }] : BASE_TABS),
+    [canPost]
+  );
+
   const [officeFilter, setOfficeFilter] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_office") || "all"; } catch { return "all"; }
   });
@@ -37,6 +46,12 @@ export default function TreasuryShell() {
   };
 
   const [activeTab, setActiveTab] = useState("assets");
+
+  // if the active tab disappeared (e.g. lost accounting:edit), fall back to assets
+  useEffect(() => {
+    if (!TABS.some((x) => x.id === activeTab)) setActiveTab("assets");
+  }, [TABS, activeTab]);
+
   const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || AssetsTab;
 
   const ctx = useMemo(
