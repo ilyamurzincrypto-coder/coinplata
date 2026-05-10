@@ -62,11 +62,19 @@ export function groupByClass(ctx, accountType) {
   return [...bySubtype.values()].sort((a, b) => b.totalInBase - a.totalInBase);
 }
 
-export function accountEntries(ctx, accountId, limit = 50) {
+export function accountEntries(ctx, accountId, limit = 50, period = null) {
   const { entries, transactions } = ctx;
   const txById = new Map(transactions.map((t) => [t.id, t]));
+  const fromMs = period ? new Date(period.from).getTime() : -Infinity;
+  const toMs = period ? new Date(period.to).getTime() : Infinity;
   return entries
     .filter((e) => e.accountId === accountId)
+    .filter((e) => {
+      if (!period) return true;
+      const tx = txById.get(e.transactionId);
+      const ts = tx ? new Date(tx.effectiveDate).getTime() : new Date(e.createdAt).getTime();
+      return ts >= fromMs && ts <= toMs;
+    })
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, limit)
     .map((e) => {

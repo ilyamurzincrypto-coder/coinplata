@@ -215,6 +215,23 @@ describe("pnlForPeriod", () => {
   });
 });
 
+describe("accountEntries — optional period filter", () => {
+  it("without period, returns all entries for the account (unchanged behaviour)", () => {
+    const ctx = makeLedgerCtx();
+    const all = accountEntries(ctx, "ac_cash_usd_mark");
+    // fixture: je1 (tx_open) + je3 (tx_deal_1) touch ac_cash_usd_mark
+    expect(all.map((e) => e.id).sort()).toEqual(["je1", "je3"]);
+  });
+  it("with a period, keeps only entries whose tx effectiveDate is in [from,to]", () => {
+    const ctx = makeLedgerCtx();
+    // tx_open.effectiveDate = 2026-04-01, tx_deal_1.effectiveDate = 2026-05-10
+    const r = accountEntries(ctx, "ac_cash_usd_mark", 50, { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" });
+    expect(r.map((e) => e.id)).toEqual(["je3"]);
+    const r2 = accountEntries(ctx, "ac_cash_usd_mark", 50, { from: "2026-03-01T00:00:00Z", to: "2026-04-30T00:00:00Z" });
+    expect(r2.map((e) => e.id)).toEqual(["je1"]);
+  });
+});
+
 import { balanceCheckTotals } from "./v2selectors.js";
 
 describe("balanceCheckTotals", () => {
