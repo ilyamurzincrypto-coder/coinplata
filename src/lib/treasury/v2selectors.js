@@ -295,6 +295,66 @@ export function trialBalance(ctx, period, officeFilter) {
   };
 }
 
+// Шахматка: account×account base-currency turnover matrix for [from,to] (transactions
+// attributed by effectiveDate). For each tx, each Dr leg's base amount is allocated across
+// the Cr legs in proportion to their base amounts. Row sums == Σ Dr turnover per account,
+// column sums == Σ Cr turnover per account.
+export function chessTurnover(ctx, period, officeFilter) {
+  const { transactions, entries, accounts, toBase } = ctx;
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const entriesByTx = new Map();
+  for (const e of entries) {
+    const arr = entriesByTx.get(e.transactionId) || [];
+    arr.push(e);
+    entriesByTx.set(e.transactionId, arr);
+  }
+  const rows = new Map();
+  const add = (drId, crId, v) => {
+    let m = rows.get(drId);
+    if (!m) { m = new Map(); rows.set(drId, m); }
+    m.set(crId, (m.get(crId) || 0) + v);
+  };
+  for (const t of transactions) {
+    const ts = new Date(t.effectiveDate).getTime();
+    if (ts < fromMs || ts > toMs) continue;
+    const txEntries = entriesByTx.get(t.id) || [];
+    if (officeFilter !== "all" && officeFilter) {
+      const touches = txEntries.some((e) => accById.get(e.accountId)?.officeId === officeFilter);
+      if (!touches) continue;
+    }
+    const drLegs = [], crLegs = [];
+    for (const e of txEntries) {
+      const base = toBase(Number(e.amount), e.currency) || 0;
+      if (e.direction === "dr") drLegs.push({ accId: e.accountId, base });
+      else crLegs.push({ accId: e.accountId, base });
+    }
+    const totalCr = crLegs.reduce((s, c) => s + c.base, 0);
+    if (totalCr === 0) continue;
+    for (const d of drLegs) for (const c of crLegs) add(d.accId, c.accId, (d.base * c.base) / totalCr);
+  }
+  const rowTotals = new Map(), colTotals = new Map();
+  const appearing = new Set();
+  for (const [drId, m] of rows) {
+    let rt = 0;
+    for (const [crId, v] of m) {
+      if (Math.abs(v) < 1e-9) continue;
+      rt += v;
+      appearing.add(crId);
+      colTotals.set(crId, (colTotals.get(crId) || 0) + v);
+    }
+    if (Math.abs(rt) > 1e-9) { appearing.add(drId); rowTotals.set(drId, rt); }
+  }
+  let grandTotal = 0;
+  for (const v of rowTotals.values()) grandTotal += v;
+  const accList = [...appearing].map((id) => {
+    const a = accById.get(id) || {};
+    return { accountId: id, code: a.code || "?", name: a.name || "?", type: a.type, subtype: a.subtype || null };
+  }).sort((a, b) => String(a.code).localeCompare(String(b.code)));
+  return { accounts: accList, rows, rowTotals, colTotals, grandTotal };
+}
+
 export function balanceCheckTotals(ctx, officeFilter) {
   const { accounts, balances, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));

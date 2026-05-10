@@ -345,3 +345,57 @@ describe("trialBalance", () => {
     expect(codes).toEqual(["1110"]);
   });
 });
+
+import { chessTurnover } from "./v2selectors.js";
+
+function makeChessCtx() {
+  const accounts = [
+    { id: "cash", code: "1110", name: "Cash USD", type: "asset", subtype: "cash", currency: "USD", officeId: "ofA" },
+    { id: "rev",  code: "4010", name: "Spread USD", type: "revenue", subtype: "spread", currency: "USD", officeId: null },
+    { id: "eq",   code: "3100", name: "Opening Equity USD", type: "equity", subtype: "opening_balance", currency: "USD", officeId: null },
+    { id: "exp",  code: "5010", name: "Rent USD", type: "expense", subtype: "rent", currency: "USD", officeId: "ofB" },
+  ];
+  const transactions = [
+    { id: "T1", effectiveDate: "2026-04-05T00:00:00Z", createdAt: "2026-04-05T00:00:00Z", kind: "opening", sourceRefId: null },
+    { id: "T2", effectiveDate: "2026-04-20T00:00:00Z", createdAt: "2026-04-20T00:00:00Z", kind: "manual", sourceRefId: null },
+    { id: "T3", effectiveDate: "2026-08-01T00:00:00Z", createdAt: "2026-08-01T00:00:00Z", kind: "deal", sourceRefId: "X" },
+  ];
+  const entries = [
+    { id: "c1", transactionId: "T1", accountId: "cash", direction: "dr", amount: 1000, currency: "USD", createdAt: "2026-04-05T00:00:00Z" },
+    { id: "c2", transactionId: "T1", accountId: "eq",   direction: "cr", amount: 1000, currency: "USD", createdAt: "2026-04-05T00:00:00Z" },
+    { id: "c3", transactionId: "T2", accountId: "cash", direction: "dr", amount: 100,  currency: "USD", createdAt: "2026-04-20T00:00:00Z" },
+    { id: "c4", transactionId: "T2", accountId: "rev",  direction: "cr", amount: 30,   currency: "USD", createdAt: "2026-04-20T00:00:00Z" },
+    { id: "c5", transactionId: "T2", accountId: "eq",   direction: "cr", amount: 70,   currency: "USD", createdAt: "2026-04-20T00:00:00Z" },
+    { id: "c6", transactionId: "T3", accountId: "exp",  direction: "dr", amount: 999,  currency: "USD", createdAt: "2026-08-01T00:00:00Z" },
+    { id: "c7", transactionId: "T3", accountId: "eq",   direction: "cr", amount: 999,  currency: "USD", createdAt: "2026-08-01T00:00:00Z" },
+  ];
+  return { accounts, transactions, entries, balances: [], toBase: (a) => Number(a), baseCurrency: "USD", officeFilter: "all" };
+}
+
+describe("chessTurnover", () => {
+  const P = { from: "2026-04-01T00:00:00Z", to: "2026-04-30T00:00:00Z" };
+
+  it("a 2-leg transaction maps to one exact cell", () => {
+    const ch = chessTurnover(makeChessCtx(), P, "all");
+    expect(ch.rows.get("cash").get("eq")).toBeCloseTo(1070, 6);
+  });
+  it("a 3-leg transaction allocates the Dr leg across the Cr legs proportionally", () => {
+    const ch = chessTurnover(makeChessCtx(), { from: "2026-04-15T00:00:00Z", to: "2026-04-30T00:00:00Z" }, "all");
+    expect(ch.rows.get("cash").get("rev")).toBeCloseTo(30, 6);
+    expect(ch.rows.get("cash").get("eq")).toBeCloseTo(70, 6);
+    expect(ch.rowTotals.get("cash")).toBeCloseTo(100, 6);
+    expect(ch.colTotals.get("rev")).toBeCloseTo(30, 6);
+    expect(ch.colTotals.get("eq")).toBeCloseTo(70, 6);
+    expect(ch.grandTotal).toBeCloseTo(100, 6);
+  });
+  it("only accounts with non-zero turnover appear, sorted by code; T3 outside the period is ignored", () => {
+    const ch = chessTurnover(makeChessCtx(), P, "all");
+    expect(ch.accounts.map((a) => a.code)).toEqual(["1110", "3100", "4010"]);
+    expect(ch.accounts.find((a) => a.code === "1110")).toMatchObject({ accountId: "cash", name: "Cash USD" });
+  });
+  it("office filter keeps a tx only if a leg touches an account in the office", () => {
+    const ch = chessTurnover(makeChessCtx(), { from: "2026-01-01T00:00:00Z", to: "2026-12-31T00:00:00Z" }, "ofB");
+    expect(ch.rows.get("exp")?.get("eq")).toBeCloseTo(999, 6);
+    expect(ch.rows.has("cash")).toBe(false);
+  });
+});
