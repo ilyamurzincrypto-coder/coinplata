@@ -14,7 +14,9 @@ export default function TransactionRow({ node, onOpenSource }) {
   const [reverseOpen, setReverseOpen] = useState(false);
   const isReversal = !!tx.reversesTransactionId;
   const isReversed = tx.status === "reversed";
-  const canReverseManual = tx.kind === "manual" && !isReversed && can("accounting", "edit");
+  // offer "Reverse" only on an original manual entry — not on a reversal-of-a-manual-entry,
+  // and not on one that's already been reversed.
+  const canReverseManual = tx.kind === "manual" && !isReversal && !isReversed && can("accounting", "edit");
   const dt = new Date(tx.effectiveDate);
   const sourceLabel = tx.sourceRefId ? `${tx.kind} #${tx.sourceRefId}` : tx.kind;
   return (

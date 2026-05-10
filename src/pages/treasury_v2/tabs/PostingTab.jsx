@@ -40,7 +40,10 @@ export default function PostingTab({ ctx }) {
     return (code) => m.get(code) || null;
   }, [accounts]);
 
-  const draft = { currency, effectiveDate: new Date(`${dateStr}T00:00:00.000Z`).toISOString(), reason, description, lines };
+  // dateStr can be "" if the user clears the native date input — fall back to now()
+  // so this never throws RangeError during render.
+  const effectiveDateIso = (dateStr ? new Date(`${dateStr}T00:00:00.000Z`) : new Date()).toISOString();
+  const draft = { currency, effectiveDate: effectiveDateIso, reason, description, lines };
   const { dr, cr, delta } = postingBalance(lines);
   const validation = validatePostingDraft(draft, accByCode);
   const lineErr = (id, field) => validation.errors.find((e) => e.lineId === id && e.field === field);
