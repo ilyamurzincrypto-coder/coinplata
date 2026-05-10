@@ -27,6 +27,7 @@ const DICT = {
     nav_capital: "Capital",
     nav_referrals: "Referrals",
     nav_settings: "Settings",
+    nav_info: "Info",
 
     // Header
     language: "Language",
@@ -1276,6 +1277,7 @@ const DICT = {
     nav_capital: "Капитал",
     nav_referrals: "Рефералы",
     nav_settings: "Настройки",
+    nav_info: "Справка",
 
     language: "Язык",
     manager: "Менеджер",
@@ -2495,6 +2497,7 @@ const DICT = {
     nav_capital: "Sermaye",
     nav_referrals: "Referanslar",
     nav_settings: "Ayarlar",
+    nav_info: "Bilgi",
 
     language: "Dil",
     manager: "Yönetici",

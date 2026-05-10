@@ -9,6 +9,7 @@ import CapitalPage from "./pages/CapitalPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
+import InfoPage from "./pages/InfoPage.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -195,6 +196,7 @@ function Root() {
       {page === "treasury" && canShow("capital") && <TreasuryPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
+      {page === "info" && canShow("info") && <InfoPage />}
     </div>
   );
 }
