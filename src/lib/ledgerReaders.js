@@ -96,3 +96,17 @@ export async function loadJournalEntries(opts = {}) {
     createdAt: r.created_at,
   }));
 }
+
+// Resolve client/partner ids → display names. Reads public.clients / public.partners
+// (different uuid spaces, so a single combined Map keyed by id is unambiguous).
+export async function loadCounterpartyNames() {
+  if (!isSupabaseConfigured) return new Map();
+  const m = new Map();
+  const cRes = await supabase.from("clients").select("id, nickname, full_name");
+  if (cRes.error) throw new Error(`loadCounterpartyNames clients: ${cRes.error.message}`);
+  for (const c of cRes.data || []) m.set(c.id, c.nickname || c.full_name || String(c.id).slice(0, 8));
+  const pRes = await supabase.from("partners").select("id, name");
+  if (pRes.error) throw new Error(`loadCounterpartyNames partners: ${pRes.error.message}`);
+  for (const p of pRes.data || []) m.set(p.id, p.name || String(p.id).slice(0, 8));
+  return m;
+}
