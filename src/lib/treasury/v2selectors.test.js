@@ -23,6 +23,7 @@ export function makeLedgerCtx(overrides = {}) {
   ];
   const transactions = [
     { id: "tx_open", effectiveDate: "2026-04-01T00:00:00Z", createdAt: "2026-04-01T00:00:00Z", kind: "opening", sourceRefId: null, reversesTransactionId: null, metadata: {} },
+    { id: "tx_rent", effectiveDate: "2026-05-05T00:00:00Z", createdAt: "2026-05-05T00:00:00Z", kind: "manual", sourceRefId: null, reversesTransactionId: null, metadata: {} },
     { id: "tx_deal_1", effectiveDate: "2026-05-10T10:00:00Z", createdAt: "2026-05-10T10:00:00Z", kind: "deal", sourceRefId: "deal-42", reversesTransactionId: null, metadata: { client_nickname: "Иван Петров" } },
   ];
   const entries = [
@@ -35,8 +36,8 @@ export function makeLedgerCtx(overrides = {}) {
     { id: "je5", transactionId: "tx_deal_1", accountId: "ac_cust_liab_usd", direction: "dr", amount: 95, currency: "USD", clientId: "client-1", partnerId: null, note: "USDT eq", createdAt: "2026-05-10T10:00:00Z" },
     { id: "je6", transactionId: "tx_deal_1", accountId: "ac_hot_usdt_mark", direction: "cr", amount: 95, currency: "USDT", clientId: null, partnerId: null, note: "", createdAt: "2026-05-10T10:00:00Z" },
     { id: "je7", transactionId: "tx_deal_1", accountId: "ac_spread_usd", direction: "cr", amount: 5, currency: "USD", clientId: null, partnerId: null, note: "margin", createdAt: "2026-05-10T10:00:00Z" },
-    // an expense entry last month
-    { id: "je8", transactionId: "tx_open", accountId: "ac_rent_usd", direction: "dr", amount: 1800, currency: "USD", clientId: null, partnerId: null, note: "rent", createdAt: "2026-05-05T00:00:00Z" },
+    // an expense entry, on its own tx dated 2026-05-05 (effective_date is what period reports use)
+    { id: "je8", transactionId: "tx_rent", accountId: "ac_rent_usd", direction: "dr", amount: 1800, currency: "USD", clientId: null, partnerId: null, note: "rent", createdAt: "2026-05-05T00:00:00Z" },
   ];
   const rate = (cur) => ({ USD: 1, USDT: 1, TRY: 0.03 }[String(cur).toUpperCase()] ?? 0);
   const toBase = (amount, cur) => Number(amount) * rate(cur);

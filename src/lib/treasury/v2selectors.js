@@ -142,18 +142,23 @@ export function transactionTree(ctx, opts = {}) {
     }));
 }
 
-function entryInPeriod(e, fromMs, toMs) {
-  const ts = new Date(e.createdAt).getTime();
-  return ts >= fromMs && ts <= toMs;
+// An entry's "when" for period reports is its transaction's effective_date — the
+// accounting date the user chose — NOT createdAt (insertion time). Back-dated manual
+// entries must land in the period they're dated, consistent with trialBalance /
+// chessTurnover / transactionTree. Fall back to createdAt only if the tx is unknown.
+function entryEffMs(e, txEffMs) {
+  const t = txEffMs.get(e.transactionId);
+  return t != null ? t : new Date(e.createdAt).getTime();
 }
 
-function aggregateClass(ctx, accountType, fromMs, toMs, officeFilter, signFn) {
+function aggregateClass(ctx, accountType, fromMs, toMs, officeFilter, signFn, txEffMs) {
   const { accounts, entries, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));
   const byAccount = new Map();
   let total = 0;
   for (const e of entries) {
-    if (!entryInPeriod(e, fromMs, toMs)) continue;
+    const ts = entryEffMs(e, txEffMs);
+    if (ts < fromMs || ts > toMs) continue;
     const acc = accById.get(e.accountId);
     if (!acc || acc.type !== accountType) continue;
     if (!passesOfficeFilter(acc, officeFilter)) continue;
@@ -171,10 +176,11 @@ function aggregateClass(ctx, accountType, fromMs, toMs, officeFilter, signFn) {
 export function pnlForPeriod(ctx, period, officeFilter) {
   const fromMs = new Date(period.from).getTime();
   const toMs = new Date(period.to).getTime();
+  const txEffMs = new Map((ctx.transactions || []).map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
   // revenue: normally credited → +Cr −Dr
-  const revenue = aggregateClass(ctx, "revenue", fromMs, toMs, officeFilter, (e) => (e.direction === "cr" ? e.amount : -e.amount));
+  const revenue = aggregateClass(ctx, "revenue", fromMs, toMs, officeFilter, (e) => (e.direction === "cr" ? e.amount : -e.amount), txEffMs);
   // expense: normally debited → +Dr −Cr
-  const expense = aggregateClass(ctx, "expense", fromMs, toMs, officeFilter, (e) => (e.direction === "dr" ? e.amount : -e.amount));
+  const expense = aggregateClass(ctx, "expense", fromMs, toMs, officeFilter, (e) => (e.direction === "dr" ? e.amount : -e.amount), txEffMs);
   // fx: equity-class accounts with subtype fx_gain / fx_loss. gain: +Cr−Dr; loss: −(Dr−Cr) ⇒ +Cr−Dr too, but we present net = Σfx_gain − Σfx_loss.
   // Simpler: aggregate both as (+Cr−Dr) which makes gain positive and loss negative naturally.
   const { accounts, entries, toBase } = ctx;
@@ -182,7 +188,8 @@ export function pnlForPeriod(ctx, period, officeFilter) {
   const fxAccounts = new Map();
   let fxNet = 0;
   for (const e of entries) {
-    if (!entryInPeriod(e, fromMs, toMs)) continue;
+    const ts = entryEffMs(e, txEffMs);
+    if (ts < fromMs || ts > toMs) continue;
     const acc = accById.get(e.accountId);
     if (!acc || acc.type !== "equity") continue;
     if (acc.subtype !== "fx_gain" && acc.subtype !== "fx_loss") continue;
@@ -290,18 +297,18 @@ export function trialBalance(ctx, period, officeFilter) {
         };
       }).sort((a, b) => Math.abs(b.closingInBase) - Math.abs(a.closingInBase));
     }
-    let acctOpening, acctClosing, acctDr, acctCr;
-    if (dims) {
-      acctOpening = dims.reduce((s, d) => s + d.opening, 0);
-      acctClosing = dims.reduce((s, d) => s + d.closing, 0);
-      acctDr = dims.reduce((s, d) => s + d.debitTurnover, 0);
-      acctCr = dims.reduce((s, d) => s + d.creditTurnover, 0);
-    } else {
-      const cur = curBal.get(accId) || 0;
-      const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
-      acctOpening = cur - rec.sinceFrom; acctClosing = cur - rec.afterTo;
-      acctDr = rec.drTurn; acctCr = rec.crTurn;
-    }
+    // Account-level metrics always come from the whole-account aggregate so they're
+    // complete regardless of which entries carry a subconto. For a strictly-dimensioned
+    // account every entry carries one, so Σ dims == this; for an account that's only
+    // partially dimensioned the `dims` rows are a partial breakdown (the difference is
+    // the un-subconto'd remainder) — which is honest, and far better than the previous
+    // Σ-dims-only total that silently dropped that remainder.
+    const cur = curBal.get(accId) || 0;
+    const rec = agg.get(accId) || { sinceFrom: 0, afterTo: 0, drTurn: 0, crTurn: 0 };
+    const acctOpening = cur - rec.sinceFrom;
+    const acctClosing = cur - rec.afterTo;
+    const acctDr = rec.drTurn;
+    const acctCr = rec.crTurn;
     if (Math.abs(acctOpening) < 1e-9 && Math.abs(acctClosing) < 1e-9 && acctDr === 0 && acctCr === 0 && (!dims || dims.length === 0)) continue;
     const row = {
       accountId: accId, code: acc.code, name: acc.name, type: acc.type, subtype: acc.subtype || null, currency: ccy,
