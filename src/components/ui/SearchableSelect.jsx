@@ -9,13 +9,15 @@
 // API
 //   value        — selected id (string) or null/""
 //   onChange     — (id|null) => void
-//   options      — Array<{ id: string, name: string }>
+//   options      — Array<{ id: string, name: string, searchText?: string }>
+//                  `searchText` (when present) is matched in addition to `name`,
+//                  e.g. so an account row can be found by code or subtype.
 //   placeholder  — text shown when nothing selected
 //   error        — boolean: red border when true
 //   disabled     — boolean
 //   emptyText    — shown inside the dropdown when filter has no matches
 //
-// Out of scope (v1): keyboard arrows, multi-select, "create new" entry.
+// Out of scope (v1): keyboard arrows, multi-select, "create new" entry, grouped sections.
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Search } from "lucide-react";
@@ -46,7 +48,7 @@ export default function SearchableSelect({
   const filtered = useMemo(() => {
     const nq = normalize(q);
     if (!nq) return options || [];
-    return (options || []).filter((o) => normalize(o.name).includes(nq));
+    return (options || []).filter((o) => normalize(o.name).includes(nq) || (o.searchText && normalize(o.searchText).includes(nq)));
   }, [q, options]);
 
   // Outside click + Escape close.

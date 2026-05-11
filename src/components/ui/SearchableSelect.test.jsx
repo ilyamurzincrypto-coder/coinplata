@@ -52,6 +52,22 @@ describe("SearchableSelect", () => {
     expect(screen.getByText("Пусто")).toBeInTheDocument();
   });
 
+  it("filters by `searchText` in addition to `name`", () => {
+    const onChange = vi.fn();
+    const opts = [
+      { id: "1110", name: "Cash USD", searchText: "1110 cash USD" },
+      { id: "5210", name: "Office rent", searchText: "5210 rent expense" },
+    ];
+    render(<SearchableSelect value={null} onChange={onChange} options={opts} />);
+    fireEvent.click(screen.getByRole("button"));
+    // Search by code (which lives in `searchText`, not in display `name`).
+    fireEvent.change(screen.getByPlaceholderText("Поиск…"), { target: { value: "5210" } });
+    expect(screen.queryByText("Cash USD")).toBeNull();
+    expect(screen.getByText("Office rent")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Office rent"));
+    expect(onChange).toHaveBeenCalledWith("5210");
+  });
+
   it("does not open when disabled", () => {
     render(<SearchableSelect value={null} onChange={() => {}} options={OPTS} disabled />);
     fireEvent.click(screen.getByRole("button"));

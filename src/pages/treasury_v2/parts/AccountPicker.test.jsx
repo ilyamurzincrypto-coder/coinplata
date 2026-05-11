@@ -13,20 +13,35 @@ const ACCOUNTS = [
   { id: "a5", code: "2110", name: "Customer Liab USD", subtype: "customer_liab", currency: "USD", clientDimRequired: true, partnerDimRequired: false, active: true },
 ];
 
+function openPicker() {
+  // The picker shows a button with the placeholder text when nothing is selected.
+  fireEvent.click(screen.getByRole("button", { name: /trv2_pm_col_account/ }));
+}
+
 describe("AccountPicker", () => {
-  it("lists active, currency-matching accounts (including dimensioned ones); excludes wrong-currency", () => {
+  it("after opening, lists active currency-matching accounts (including dimensioned); excludes wrong-currency", () => {
     render(<AccountPicker accounts={ACCOUNTS} currency="USD" value="" onChange={() => {}} />);
-    expect(screen.getByRole("option", { name: /1110/ })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /4010/ })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /2110/ })).toBeInTheDocument(); // dimensioned account is now offered
-    expect(screen.queryByRole("option", { name: /1340/ })).toBeNull(); // wrong currency
+    openPicker();
+    expect(screen.getByText(/1110 · Cash USD/)).toBeInTheDocument();
+    expect(screen.getByText(/4010 · Spread USD/)).toBeInTheDocument();
+    expect(screen.getByText(/2110 · Customer Liab USD/)).toBeInTheDocument(); // dimensioned account is now offered
+    expect(screen.queryByText(/1340/)).toBeNull(); // wrong currency
   });
 
   it("fires onChange with the picked account code", () => {
     const onChange = vi.fn();
     render(<AccountPicker accounts={ACCOUNTS} currency="USD" value="" onChange={onChange} />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "4010" } });
+    openPicker();
+    fireEvent.click(screen.getByText(/4010 · Spread USD/));
     expect(onChange).toHaveBeenCalledWith("4010");
+  });
+
+  it("filters by account code typed into the search", () => {
+    render(<AccountPicker accounts={ACCOUNTS} currency="USD" value="" onChange={() => {}} />);
+    openPicker();
+    fireEvent.change(screen.getByPlaceholderText("Поиск…"), { target: { value: "2110" } });
+    expect(screen.getByText(/2110 · Customer Liab USD/)).toBeInTheDocument();
+    expect(screen.queryByText(/1110 · Cash USD/)).toBeNull();
   });
 
   it("shows the system-driven hint chip when a crypto/clearing-type account is selected", () => {
