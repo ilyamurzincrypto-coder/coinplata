@@ -5,6 +5,7 @@ import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import TransactionEntries from "./TransactionEntries.jsx";
 import ReverseEntryModal from "./ReverseEntryModal.jsx";
+import EditTxNoteModal from "./EditTxNoteModal.jsx";
 
 // `summaryLine` (optional string) — a one-line human summary shown under the title
 // while the row is collapsed (e.g. the Cashier passes a deal's «пришло → ушло · спред»).
@@ -16,6 +17,8 @@ export default function TransactionRow({ node, onOpenSource, summaryLine }) {
   const { tx, entries } = node;
   const can = useCan();
   const [reverseOpen, setReverseOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const canEditNote = can("transactions", "edit") || can("accounting", "edit");
   const isReversal = !!tx.reversesTransactionId;
   const isReversed = tx.status === "reversed";
   const isDeal = tx.kind === "deal";
@@ -53,16 +56,25 @@ export default function TransactionRow({ node, onOpenSource, summaryLine }) {
               </button>
             </div>
           )}
-          {canReverse && (
-            <div className="px-6 pb-2">
+          <div className="px-6 pb-2 flex items-center gap-4">
+            {canEditNote && (
+              <button onClick={() => setNoteOpen(true)} className="text-[12px] text-indigo-600 hover:underline">
+                {t("trv2_tx_edit_note")}
+              </button>
+            )}
+            {canReverse && (
               <button onClick={() => setReverseOpen(true)} className="text-[12px] text-rose-600 hover:underline">
                 {isDeal ? t("trv2_journal_undo_deal") : t("trv2_pm_reverse")}
               </button>
-            </div>
+            )}
+          </div>
+          {tx.metadata?.comment && (
+            <div className="px-6 pb-2 text-[11.5px] text-slate-500 italic">«{tx.metadata.comment}»</div>
           )}
         </div>
       )}
       {reverseOpen && <ReverseEntryModal tx={tx} cascade={isDeal} onClose={() => setReverseOpen(false)} />}
+      {noteOpen && <EditTxNoteModal tx={tx} onClose={() => setNoteOpen(false)} />}
     </div>
   );
 }

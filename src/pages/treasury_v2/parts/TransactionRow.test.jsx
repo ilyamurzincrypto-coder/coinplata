@@ -5,11 +5,15 @@ import { render, screen, fireEvent } from "@testing-library/react";
 vi.mock("../../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 let canFn = () => false;
 vi.mock("../../../store/permissions.jsx", () => ({ useCan: () => canFn }));
-// ReverseEntryModal pulls in newLedger/toast — stub it to a thin marker so we can
-// assert it opens without exercising the RPC path.
+// ReverseEntryModal / EditTxNoteModal pull in newLedger/toast — stub them to thin
+// markers so we can assert they open without exercising the RPC path.
 vi.mock("./ReverseEntryModal.jsx", () => ({
   __esModule: true,
   default: ({ tx, cascade }) => <div data-testid="reverse-modal" data-tx={tx.id} data-cascade={String(!!cascade)} />,
+}));
+vi.mock("./EditTxNoteModal.jsx", () => ({
+  __esModule: true,
+  default: ({ tx }) => <div data-testid="note-modal" data-tx={tx.id} />,
 }));
 
 import TransactionRow from "./TransactionRow.jsx";
@@ -77,14 +81,30 @@ describe("TransactionRow", () => {
     expect(screen.getByTestId("reverse-modal").getAttribute("data-cascade")).toBe("false");
   });
 
-  it("no action on a reversal tx or an already-reversed tx", () => {
+  it("no reverse action on a reversal tx or an already-reversed tx (but note editing stays available)", () => {
     canFn = () => true;
     const { container, unmount } = render(<TransactionRow node={mkNode("deal", { reversesTransactionId: "tx-other" })} />);
     expand(container);
     expect(screen.queryByText("trv2_journal_undo_deal")).toBeNull();
+    expect(screen.queryByText("trv2_tx_edit_note")).not.toBeNull(); // can still edit the note
     unmount();
     const { container: c2 } = render(<TransactionRow node={mkNode("deal", { status: "reversed" })} />);
     expand(c2);
     expect(screen.queryByText("trv2_journal_undo_deal")).toBeNull();
+  });
+
+  it("'edit note' shows when can(transactions|accounting,'edit') and opens EditTxNoteModal; renders the comment when present", () => {
+    canFn = (section) => section === "transactions";
+    const { container, unmount } = render(<TransactionRow node={mkNode("deal", { metadata: { comment: "hello note" } })} />);
+    expand(container);
+    expect(screen.getByText("«hello note»")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("trv2_tx_edit_note"));
+    expect(screen.getByTestId("note-modal")).toBeInTheDocument();
+    unmount();
+    // no perms → no edit-note button
+    canFn = () => false;
+    const { container: c2 } = render(<TransactionRow node={mkNode("deal")} />);
+    expand(c2);
+    expect(screen.queryByText("trv2_tx_edit_note")).toBeNull();
   });
 });
