@@ -94,7 +94,7 @@ export function accountEntries(ctx, accountId, limit = 50, period = null, dim = 
 
 export function transactionTree(ctx, opts = {}) {
   const { transactions, entries, accounts } = ctx;
-  const { type = "all", officeFilter = "all", period } = opts;
+  const { type = "all", officeFilter = "all", period, counterpartyId = null } = opts;
   const accById = new Map(accounts.map((a) => [a.id, a]));
   const entriesByTx = new Map();
   for (const e of entries) {
@@ -120,6 +120,13 @@ export function transactionTree(ctx, opts = {}) {
         // keep if any entry touches an account with this officeId
         const txEntries = entriesByTx.get(t.id) || [];
         const touches = txEntries.some((e) => accById.get(e.accountId)?.officeId === officeFilter);
+        if (!touches) return false;
+      }
+      if (counterpartyId) {
+        // keep if any entry carries this client_id OR partner_id (the same id space
+        // is shared — picker resolves a counterparty to one of the two subconto dims).
+        const txEntries = entriesByTx.get(t.id) || [];
+        const touches = txEntries.some((e) => e.clientId === counterpartyId || e.partnerId === counterpartyId);
         if (!touches) return false;
       }
       return true;
