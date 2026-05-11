@@ -1622,7 +1622,7 @@ export default function ExchangeForm({
       if (Number.isFinite(globalRate)) {
         sources.push({
           key: "global",
-          label: "Глобал",
+          label: t("xf_global_rate"),
           rate: globalRate,
           kind: "global",
           hasOverride: false,
@@ -1658,7 +1658,7 @@ export default function ExchangeForm({
         });
       return sources;
     },
-    [curIn, currentOffice, getRateRaw, getOfficeOverride, activeOffices, correctRate]
+    [curIn, currentOffice, getRateRaw, getOfficeOverride, activeOffices, correctRate, t]
   );
 
   return (
@@ -1671,7 +1671,7 @@ export default function ExchangeForm({
       <div className="sticky top-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-[14px] font-bold tracking-tight text-slate-900 whitespace-nowrap">
-            {isEdit ? (t("edit_transaction") || "Редактировать сделку") : (t("new_exchange") || "Новая сделка")}
+            {isEdit ? t("edit_transaction") : t("new_exchange")}
           </h2>
           <span className="text-slate-300 text-[10px]">·</span>
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
@@ -1684,12 +1684,12 @@ export default function ExchangeForm({
                     value={selectedManagerId}
                     onChange={(e) => setSelectedManagerId(e.target.value)}
                     className="bg-white border border-slate-200 hover:border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
-                    title="Создать сделку от имени"
+                    title={t("xf_create_deal_as")}
                   >
                     {managerCandidates.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
-                        {m.id === currentUser.id ? " (я)" : ""}
+                        {m.id === currentUser.id ? t("xf_you_suffix") : ""}
                       </option>
                     ))}
                   </select>
@@ -1709,7 +1709,7 @@ export default function ExchangeForm({
               type="button"
               onClick={onCancel}
               className="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              aria-label={t("cancel") || "Закрыть"}
+              aria-label={t("cancel")}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -1722,10 +1722,10 @@ export default function ExchangeForm({
           they_owe obligations). */}
       <div className="px-4 py-2 border-b border-slate-200/70 flex items-center gap-2 flex-wrap">
         <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase whitespace-nowrap">
-          Клиент
+          {t("xf_client")}
         </span>
         <span className="text-[9px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-rose-50 whitespace-nowrap">
-          required
+          {t("xf_required")}
         </span>
         <div className="flex-1 min-w-[200px]">
           {(() => {
@@ -1773,15 +1773,15 @@ export default function ExchangeForm({
           <thead className="sticky top-[37px] z-10 bg-white border-b border-slate-200/70">
             <tr>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
-                Сторона
+                {t("xf_col_side")}
               </th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
-                Сумма / счёт / курс
+                {t("xf_col_amount")}
               </th>
               <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
-                Валюта
+                {t("xf_currency")}
               </th>
-              <th className="px-3 py-2 text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap" aria-label="Действия" />
+              <th className="px-3 py-2 text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap" aria-label={t("xf_col_actions")} />
             </tr>
           </thead>
           <tbody>
@@ -1791,7 +1791,7 @@ export default function ExchangeForm({
                 <td className="px-3 py-2 align-top whitespace-nowrap">
                   <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                     <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
-                    Вход
+                    {t("xf_in")}
                   </span>
                 </td>
                 <td className="px-3 py-1.5 align-top">
@@ -1834,7 +1834,7 @@ export default function ExchangeForm({
                     value={curIn}
                     onChange={(v) => setCurIn(String(v || "USDT").toUpperCase())}
                     options={CURRENCIES}
-                    placeholder="Валюта"
+                    placeholder={t("xf_currency")}
                   />
                 </td>
                 <td className="px-2 py-1.5 align-top text-center" />
@@ -1852,7 +1852,7 @@ export default function ExchangeForm({
                   <td className="px-3 py-2 align-top whitespace-nowrap">
                     <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                       <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
-                      Вход +
+                      {t("xf_in_extra")}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 align-top">
@@ -1887,7 +1887,7 @@ export default function ExchangeForm({
                       value={xiCur}
                       onChange={(v) => updateExtraInput(xi.id, { currency: String(v).toUpperCase(), accountId: "" })}
                       options={CURRENCIES}
-                      placeholder="Валюта"
+                      placeholder={t("xf_currency")}
                     />
                   </td>
                   <td className="px-2 py-1.5 align-top text-center">
@@ -1895,7 +1895,7 @@ export default function ExchangeForm({
                       type="button"
                       onClick={() => removeExtraInput(xi.id)}
                       className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Удалить этот приём"
+                      title={t("xf_remove_this_in")}
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1918,21 +1918,21 @@ export default function ExchangeForm({
                         type="button"
                         onClick={addExtraInput}
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-md px-2 py-1 transition-colors"
-                        title="Добавить ещё один приём — можно в другой валюте"
+                        title={t("xf_add_in_tip")}
                       >
                         <Plus className="w-3 h-3" />
-                        {t("add_in") || "Добавить внесение"}
+                        {t("add_in")}
                       </button>
                     )}
                     {!isEdit && (
                       <button
                         type="button"
                         onClick={removeIn}
-                        title={t("remove_in_tip") || "Убрать секцию IN — для одностороннего OUT"}
+                        title={t("remove_in_tip")}
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
                       >
                         <X className="w-3 h-3" />
-                        {t("remove_in") || "Удалить внесение"}
+                        {t("remove_in")}
                       </button>
                     )}
                   </div>
@@ -1948,7 +1948,7 @@ export default function ExchangeForm({
                     <div className="flex items-center gap-2 text-[11.5px] text-slate-500">
                       <ArrowDown className="w-3.5 h-3.5 opacity-50" />
                       <span className="font-semibold">
-                        {t("in_disabled_label") || "Секция приёма отключена — одностороннее OUT"}
+                        {t("in_disabled_label")}
                       </span>
                     </div>
                     <button
@@ -1957,7 +1957,7 @@ export default function ExchangeForm({
                       className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
-                      {t("add_in") || "Добавить приём"}
+                      {t("add_in")}
                     </button>
                   </div>
                 </td>
@@ -1983,7 +1983,7 @@ export default function ExchangeForm({
                     <span className="font-bold">
                       {curSymbol(curIn)}
                       {fmt(Math.abs(remainingIn), curIn)} {curIn}
-                      {exceedsInput && " over"}
+                      {exceedsInput && ` ${t("xf_over")}`}
                     </span>
                   </div>
                 </td>
@@ -2049,7 +2049,7 @@ export default function ExchangeForm({
                     <td className="px-3 py-2 align-top whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                         <ArrowUp className="w-2.5 h-2.5" strokeWidth={3} />
-                        Выход {outputs.length > 1 ? `#${idx + 1}` : ""}
+                        {t("xf_out")} {outputs.length > 1 ? `#${idx + 1}` : ""}
                       </span>
                     </td>
                     <td className="px-3 py-1.5 align-top">
@@ -2063,7 +2063,7 @@ export default function ExchangeForm({
                               ? "border-emerald-300 bg-emerald-50 text-emerald-800"
                               : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
                           }`}
-                          title="Применить минимальную комиссию офиса к этой выдаче"
+                          title={t("xf_apply_office_fee_tip")}
                         >
                           <input
                             type="checkbox"
@@ -2073,7 +2073,7 @@ export default function ExchangeForm({
                             }
                             className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
                           />
-                          Комиссия
+                          {t("xf_fee")}
                         </label>
                       </div>
                       {/* Amount row — same style as IN amount */}
@@ -2121,7 +2121,7 @@ export default function ExchangeForm({
                             }
                             currency={o.currency}
                             partnerId={partnerHintId}
-                            placeholder="Со счёта партнёра"
+                            placeholder={t("xf_from_partner_account")}
                           />
                         ) : outAccs.length === 0 ? (
                           <div className="text-[10.5px] text-amber-700">
@@ -2169,7 +2169,7 @@ export default function ExchangeForm({
                           />
                           {o.manualRate && (
                             <span className="ml-1 text-[8.5px] font-bold text-amber-700 tracking-wider uppercase">
-                              manual
+                              {t("xf_manual_badge")}
                             </span>
                           )}
                         </div>
@@ -2209,7 +2209,7 @@ export default function ExchangeForm({
                             type="button"
                             onClick={handleUseRemaining}
                             className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
-                            title="Convert remaining amount here"
+                            title={t("xf_convert_remaining_tip")}
                           >
                             <Zap className="w-3 h-3" />
                             {t("use_remaining")} · {curSymbol(o.currency)}
@@ -2226,7 +2226,7 @@ export default function ExchangeForm({
                             onChange={(e) =>
                               updateOutput(o.id, { address: e.target.value.trim() })
                             }
-                            placeholder="0x… or TRON address"
+                            placeholder={t("xf_crypto_address_placeholder")}
                             className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1 text-[11px] font-mono text-slate-700 outline-none transition-colors placeholder:text-slate-400"
                           />
                         </div>
@@ -2234,8 +2234,8 @@ export default function ExchangeForm({
                       {/* Partner mode hint */}
                       {o.outKind === "partner" && (
                         <p className="mt-1 text-[10px] text-indigo-700/80">
-                          💸 Партнёр выдаёт сам — наш счёт не списывается. Создастся
-                          <strong> we_owe</strong> obligation на{" "}
+                          💸 {t("xf_partner_pays_self_pre")}
+                          <strong> we_owe</strong> {t("xf_partner_pays_self_mid")}{" "}
                           {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
                         </p>
                       )}
@@ -2254,7 +2254,7 @@ export default function ExchangeForm({
                           updateOutput(o.id, patch);
                         }}
                         options={CURRENCIES}
-                        placeholder="Валюта"
+                        placeholder={t("xf_currency")}
                       />
                     </td>
                     <td className="px-2 py-1.5 align-top text-center">
@@ -2276,12 +2276,12 @@ export default function ExchangeForm({
                       <td colSpan={4} className="px-3 py-2">
                         <label className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 mb-1 tracking-[0.12em] uppercase">
                           <UserPlus className="w-3 h-3" />
-                          Ответственный за выдачу · {findOffice(payeeOfficeId)?.name || "другой офис"}
+                          {t("xf_payee_label").replace("{office}", findOffice(payeeOfficeId)?.name || t("xf_other_office"))}
                         </label>
                         {payeeCandidates.length === 0 ? (
                           <div className="text-[11.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
-                            Нет менеджеров в принимающем офисе. Назначьте в настройках.
+                            {t("xf_no_managers_in_office")}
                           </div>
                         ) : (
                           <select
@@ -2292,7 +2292,7 @@ export default function ExchangeForm({
                             {payeeCandidates.map((c) => (
                               <option key={c.id} value={c.id}>
                                 {c.name}
-                                {c.id === currentUser.id ? " (я)" : ""}
+                                {c.id === currentUser.id ? t("xf_you_suffix") : ""}
                               </option>
                             ))}
                           </select>
@@ -2323,11 +2323,11 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={removeAllOutputs}
-                      title={t("remove_output_tip") || "Убрать секцию OUT — для одностороннего IN"}
+                      title={t("remove_output_tip")}
                       className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
                     >
                       <X className="w-3 h-3" />
-                      {t("remove_output") || "Удалить выдачу"}
+                      {t("remove_output")}
                     </button>
                   )}
                 </div>
@@ -2352,12 +2352,12 @@ export default function ExchangeForm({
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
-                          Спред-маржа
+                          {t("xf_spread_margin")}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1.5">
                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em]">
-                          Комиссия
+                          {t("xf_fee")}
                         </span>
                         <span className="inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums text-amber-700">
                           ${fmt(effectiveFee)}
@@ -2368,7 +2368,7 @@ export default function ExchangeForm({
                           )}
                           {!applyMinFee && (
                             <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1 py-0.5 rounded">
-                              без мин
+                              {t("xf_no_min")}
                             </span>
                           )}
                         </span>
@@ -2411,10 +2411,10 @@ export default function ExchangeForm({
             const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
             const title =
               outputs.length > 1
-                ? "Unavailable when there are multiple outputs"
+                ? t("xf_reverse_multi_out_tip")
                 : !amtIn || !outputs[0]?.amount
-                ? "Enter amounts first"
-                : "Swap received and issued";
+                ? t("xf_reverse_enter_amounts_tip")
+                : t("xf_reverse_swap_tip");
             return (
               <button
                 type="button"
@@ -2428,7 +2428,7 @@ export default function ExchangeForm({
                 }`}
               >
                 <ArrowUpDown className="w-3 h-3" />
-                Reverse rates
+                {t("xf_reverse_rates")}
               </button>
             );
           })()}
@@ -2451,8 +2451,8 @@ export default function ExchangeForm({
           active={deferredIn}
           onChange={setDeferredIn}
           tone="sky"
-          title={t("xf_client_pays_later_sub") || "Клиент платит позже"}
-          label={`↓ ${t("xf_client_pays_later") || "Клиент платит позже"}`}
+          title={t("xf_client_pays_later_sub")}
+          label={`↓ ${t("xf_client_pays_later")}`}
         />
         <PillToggle
           active={deferredOut}
@@ -2461,8 +2461,8 @@ export default function ExchangeForm({
             if (v) setPartialMode(false);
           }}
           tone="amber"
-          title={t("xf_we_pay_later_sub") || "Мы платим позже"}
-          label={`↑ ${t("xf_we_pay_later") || "Мы платим позже"}`}
+          title={t("xf_we_pay_later_sub")}
+          label={`↑ ${t("xf_we_pay_later")}`}
         />
         <PillToggle
           active={partialMode}
@@ -2471,8 +2471,8 @@ export default function ExchangeForm({
             if (v) setDeferredOut(false);
           }}
           tone="violet"
-          title={t("xf_partial_payout_sub") || "Частичная выдача"}
-          label={`½ ${t("xf_partial_payout") || "Частичная выдача"}`}
+          title={t("xf_partial_payout_sub")}
+          label={`½ ${t("xf_partial_payout")}`}
         />
         <PillToggle
           active={referral}
@@ -2480,30 +2480,32 @@ export default function ExchangeForm({
           tone="indigo"
           title={
             matchedClientReferrer
-              ? `Привёл: ${matchedClientReferrer.name || matchedClientReferrer.nickname} · −${settings.referralPct}% от прибыли`
-              : `Deduct ${settings.referralPct}% from profit`
+              ? t("xf_referrer_tip")
+                  .replace("{name}", matchedClientReferrer.name || matchedClientReferrer.nickname)
+                  .replace("{pct}", String(settings.referralPct))
+              : t("xf_referral_deduct_tip").replace("{pct}", String(settings.referralPct))
           }
-          label={`${t("referral_client") || "Реферал"}${referral ? ` · -${settings.referralPct}%` : ""}`}
+          label={`${t("referral_client")}${referral ? ` · -${settings.referralPct}%` : ""}`}
         />
         <PillToggle
           active={isPending}
           onChange={setIsPending}
           tone="slate"
-          title={t("pending_hint") || "Создать как pending"}
-          label={t("create_as_pending") || "Pending"}
+          title={t("pending_hint")}
+          label={t("create_as_pending")}
         />
         {/* Min-fee toggle — раньше чекбокс был внутри OutputRow, теперь общий */}
         <PillToggle
           active={applyMinFee}
           onChange={setApplyMinFee}
           tone="slate"
-          title={`Применить min fee офиса ($${minFeeUsd})`}
-          label={applyMinFee ? `Мин $${minFeeUsd}` : "Без мин"}
+          title={t("xf_apply_min_fee_tip").replace("${n}", String(minFeeUsd))}
+          label={applyMinFee ? t("xf_min_fee_chip").replace("${n}", String(minFeeUsd)) : t("xf_no_min")}
         />
 
         {/* Compact inline inputs */}
         <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Брокеридж $</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_brokerage")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2515,11 +2517,11 @@ export default function ExchangeForm({
             }
             placeholder="0"
             className="w-[64px] bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
-            title="Наш заработок за сведение. Идёт в profit_usd."
+            title={t("xf_brokerage_tip")}
           />
         </label>
         <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Своя $</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_own_fee")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2529,75 +2531,75 @@ export default function ExchangeForm({
                 e.target.value.replace(/[^\d.,]/g, "").replace(",", ".")
               )
             }
-            placeholder="авто"
+            placeholder={t("xf_auto")}
             className={`w-[72px] border rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none ${
               customFeeUsdInput
                 ? "bg-amber-50 border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
                 : "bg-white border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10"
             }`}
-            title="Кастомная комиссия — переопределяет fee_usd"
+            title={t("xf_custom_fee_tip")}
           />
         </label>
         <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Backdate</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_backdate")}</span>
           <input
             type="datetime-local"
             value={backdateAt}
             onChange={(e) => setBackdateAt(e.target.value)}
             className="bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
-            title="Оформить задним числом"
+            title={t("xf_backdate_tip")}
           />
           {backdateAt && (
             <button
               type="button"
               onClick={() => setBackdateAt("")}
               className="text-slate-400 hover:text-slate-700"
-              title="Очистить"
+              title={t("ef_clear")}
             >
               <X className="w-3 h-3" />
             </button>
           )}
         </label>
         <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">Planned</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_planned")}</span>
           <input
             type="datetime-local"
             value={plannedLocal}
             onChange={(e) => setPlannedLocal(e.target.value)}
             className="bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
-            title={t("ef_expected_completion") || "Ожидаемое завершение"}
+            title={t("ef_expected_completion")}
           />
           {plannedLocal && (
             <button
               type="button"
               onClick={() => setPlannedLocal("")}
               className="text-slate-400 hover:text-slate-700"
-              title={t("ef_clear_planned_date") || "Очистить"}
+              title={t("ef_clear_planned_date")}
             >
               <X className="w-3 h-3" />
             </button>
           )}
         </label>
         <label className="inline-flex items-center gap-1 text-[11px] text-slate-600 flex-1 min-w-[160px]">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("comment") || "Comment"}</span>
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("comment")}</span>
           <input
             type="text"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder={t("comment_placeholder") || ""}
+            placeholder={t("comment_placeholder")}
             className="flex-1 min-w-0 bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[12px] outline-none placeholder:text-slate-300"
           />
         </label>
         {isCryptoCode(curIn) && (
           <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">TX hash</span>
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_tx_hash")}</span>
             <input
               type="text"
               value={inTxHash}
               onChange={(e) => setInTxHash(e.target.value.trim())}
-              placeholder={t("ef_tx_hash_placeholder") || "0x…"}
+              placeholder={t("ef_tx_hash_placeholder")}
               className="w-[160px] bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[11px] font-mono outline-none placeholder:text-slate-300"
-              title={t("ef_tx_hash_hint") || ""}
+              title={t("ef_tx_hash_hint")}
             />
           </label>
         )}
@@ -2645,9 +2647,9 @@ export default function ExchangeForm({
                         }))
                       }
                       className="px-1.5 py-0.5 rounded text-[10px] font-bold text-violet-700 bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
-                      title={`Вставить весь остаток: ${fmt(remaining, o.currency)} ${o.currency}`}
+                      title={t("xf_insert_remainder_tip").replace("{amount}", `${fmt(remaining, o.currency)} ${o.currency}`)}
                     >
-                      {t("xf_pay_all") || "Весь"}
+                      {t("xf_pay_all")}
                     </button>
                   )}
                   <span className="text-[10px] text-slate-400 whitespace-nowrap tabular-nums">
@@ -2707,19 +2709,19 @@ export default function ExchangeForm({
             <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-white border border-slate-200/70 rounded px-2 py-0.5">
               <AlertCircle className="w-3 h-3 text-slate-400" />
               {!hasClient
-                ? "Выберите клиента / партнёра"
+                ? t("xf_select_client")
                 : !hasAllAmounts
-                ? "Заполните хотя бы одну сторону"
+                ? t("xf_fill_one_side")
                 : !hasAllRates
                 ? t("enter_exchange_rate")
                 : !noSameCurrency
                 ? t("currencies_must_differ")
                 : (!inAccountValid || !outAccountsValid)
-                ? "Выберите счёт на каждой ноге сделки"
+                ? t("xf_select_account_each_leg")
                 : exceedsInput
                 ? t("exceeds_remaining")
                 : needsPayee && !payeeUserId
-                ? "Выберите ответственного за выдачу"
+                ? t("xf_select_payee")
                 : t("complete_the_form")}
             </span>
           )}
@@ -2840,8 +2842,8 @@ function SubmitCTA({
         <span>
           {submitting
             ? isEdit
-              ? "Saving…"
-              : "Creating…"
+              ? t("xf_saving")
+              : t("xf_creating")
             : isEdit
             ? t("save_changes")
             : t("create_transaction")}
@@ -2853,7 +2855,7 @@ function SubmitCTA({
         <button
           onClick={() => setOpen((v) => !v)}
           disabled={disabled}
-          aria-label="More options"
+          aria-label={t("xf_more_options")}
           className={`px-3 py-3.5 rounded-r-[12px] border-l border-black/10 transition-all ${
             !disabled
               ? "bg-slate-900 text-white hover:bg-slate-800"
@@ -2871,8 +2873,8 @@ function SubmitCTA({
         <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-slate-200 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
           <MenuItem
             icon={<Zap className="w-3.5 h-3.5 text-emerald-500" />}
-            label="Create deal"
-            sub="Complete now with current balance"
+            label={t("xf_create_deal")}
+            sub={t("xf_create_deal_sub")}
             onClick={() => {
               setOpen(false);
               onSubmit();
@@ -2882,8 +2884,8 @@ function SubmitCTA({
           <div className="h-px bg-slate-100" />
           <MenuItem
             icon={<Clock className="w-3.5 h-3.5 text-amber-500" />}
-            label="Create pending"
-            sub="We pay later (we-owe for all outs)"
+            label={t("xf_create_pending")}
+            sub={t("xf_create_pending_sub")}
             onClick={() => {
               setOpen(false);
               onSubmitDeferredOut();
@@ -2892,8 +2894,8 @@ function SubmitCTA({
           />
           <MenuItem
             icon={<span className="inline-block text-[12px] font-bold text-violet-600">½</span>}
-            label="Create partial"
-            sub="Pay part now, remainder as we-owe"
+            label={t("xf_create_partial")}
+            sub={t("xf_create_partial_sub")}
             onClick={() => {
               setOpen(false);
               onEnablePartial();
@@ -2993,6 +2995,7 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
 //   взят из Select.jsx (onBlur с 120ms timeout).
 // ----------------------------------------
 function RateSourceDropdown({ output, sources, onPick }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   // Текущий активный source — определяем по output.rateSource. manualRate=true
   // показывается отдельно в самом rate input ('manual' badge); тут показываем
@@ -3011,9 +3014,7 @@ function RateSourceDropdown({ output, sources, onPick }) {
   })();
   const buttonLabel = active
     ? `${active.label} · ${Number(active.rate).toFixed(4)}`
-    : output.manualRate
-    ? "Источник курса"
-    : "Источник курса";
+    : t("xf_rate_source");
   if (!sources || sources.length === 0) return null;
   return (
     <div className="relative">
@@ -3022,7 +3023,7 @@ function RateSourceDropdown({ output, sources, onPick }) {
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
-        title="Источник курса"
+        title={t("xf_rate_source")}
       >
         <span className="tabular-nums whitespace-nowrap">{buttonLabel}</span>
         <ChevronDown
@@ -3371,7 +3372,7 @@ function OutputRow({
           {o.otcDealId && (
             <span
               className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
-              title={`Получено из OTC сделки #${o.otcDealId}. Сумма и курс взяты автоматически.`}
+              title={t("xf_otc_from_deal_tip").replace("{n}", String(o.otcDealId))}
             >
               <ArrowLeftRight className="w-2.5 h-2.5" />
               OTC #{o.otcDealId}
@@ -3403,7 +3404,7 @@ function OutputRow({
               ? "border-emerald-400 bg-emerald-50 text-emerald-800"
               : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
           }`}
-          title="Применить минимальную комиссию офиса к этой выдаче"
+          title={t("xf_apply_office_fee_tip")}
         >
           <input
             type="checkbox"
@@ -3412,7 +3413,7 @@ function OutputRow({
             className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
           />
           <span className="text-[10px] font-bold uppercase tracking-[0.08em] leading-none">
-            Комиссия
+            {t("xf_fee")}
           </span>
         </label>
         <span className="text-slate-400 text-[20px] font-semibold leading-none">{curSymbol(o.currency)}</span>
@@ -3448,7 +3449,7 @@ function OutputRow({
             onUpdate(patch);
           }}
           className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
-          aria-label="Currency"
+          aria-label={t("xf_currency")}
         >
           {CURRENCIES.map((c) => (
             <option key={c} value={c}>{c}</option>
@@ -3469,7 +3470,7 @@ function OutputRow({
       {(Number.isFinite(officeRate) || Number.isFinite(globalRate)) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
           <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
-            {t("xf_rate_source") || "Rate source"}
+            {t("xf_rate_source")}
           </span>
 
           {/* GLOBAL — всегда */}
@@ -3490,9 +3491,9 @@ function OutputRow({
                   ? "bg-slate-700 text-white border-slate-700"
                   : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
-              title={t("xf_use_global_rate") || "Общий курс (без учёта override офиса)"}
+              title={t("xf_use_global_rate")}
             >
-              {t("xf_global_rate") || "Global"} · {Number(globalRate).toFixed(4)}
+              {t("xf_global_rate")} · {Number(globalRate).toFixed(4)}
             </button>
           )}
 
@@ -3518,8 +3519,8 @@ function OutputRow({
               }`}
               title={
                 currentOfficeChip.hasOverride
-                  ? `${currentOfficeChip.name} · per-office override`
-                  : `${currentOfficeChip.name} · = Global (без override)`
+                  ? t("xf_office_override_tip").replace("{name}", currentOfficeChip.name)
+                  : t("xf_office_eq_global_tip").replace("{name}", currentOfficeChip.name)
               }
             >
               {currentOfficeChip.name} · {Number(currentOfficeChip.rate).toFixed(4)}
@@ -3553,8 +3554,8 @@ function OutputRow({
                 className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${baseCls}`}
                 title={
                   row.hasOverride
-                    ? `${row.name} · per-office override`
-                    : `${row.name} · курс = Global (нет override)`
+                    ? t("xf_office_override_tip").replace("{name}", row.name)
+                    : t("xf_office_eq_global_tip").replace("{name}", row.name)
                 }
               >
                 {row.name} · {Number(row.rate).toFixed(4)}
@@ -3595,9 +3596,9 @@ function OutputRow({
           {o.manualRate && (
             <span
               className="ml-1.5 text-[9px] font-bold text-amber-700 tracking-wider uppercase"
-              title="Курс введён вручную"
+              title={t("xf_manual_rate_tip")}
             >
-              manual
+              {t("xf_manual_badge")}
             </span>
           )}
         </div>
@@ -3613,12 +3614,15 @@ function OutputRow({
           <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
           <div className="flex-1 min-w-0">
             <div>
-              Курс подозрительный. Ожидаемый по USD-триангуляции:{" "}
+              {t("xf_rate_suspicious_pre")}{" "}
               <span className="font-bold tabular-nums">
                 ≈{expectedRateViaUsd.toFixed(4)}
               </span>{" "}
-              (1 {curIn} = {expectedRateViaUsd.toFixed(4)} {o.currency}).
-              Возможно введено в обратную сторону. Текущий ввод:{" "}
+              {t("xf_rate_suspicious_eq")
+                .replace("{from}", curIn)
+                .replace("{rate}", expectedRateViaUsd.toFixed(4))
+                .replace("{to}", o.currency)}{" "}
+              {t("xf_rate_suspicious_post")}{" "}
               <span className="font-bold tabular-nums">{actualRate}</span>.
             </div>
             <button
@@ -3647,7 +3651,7 @@ function OutputRow({
               }}
               className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
             >
-              ↻ Инвертировать → {(1 / actualRate).toFixed(4)}
+              {t("xf_invert_rate").replace("{n}", (1 / actualRate).toFixed(4))}
             </button>
           </div>
         </div>
@@ -3670,7 +3674,7 @@ function OutputRow({
                   : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              Наш
+              {t("xf_ours")}
             </button>
             <button
               type="button"
@@ -3681,7 +3685,7 @@ function OutputRow({
                   : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              Партнёр
+              {t("xf_partner_label")}
             </button>
           </div>
         </div>
@@ -3692,11 +3696,11 @@ function OutputRow({
               onChange={(id) => onUpdate({ partnerAccountId: id })}
               currency={o.currency}
               partnerId={partnerHintId}
-              placeholder="Со счёта партнёра"
+              placeholder={t("xf_from_partner_account")}
             />
             <p className="mt-1 text-[10px] text-indigo-700/80">
-              💸 Партнёр выдаёт сам — наш счёт не списывается. Создастся
-              <strong> we_owe</strong> obligation на {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
+              💸 {t("xf_partner_pays_self_pre")}
+              <strong> we_owe</strong> {t("xf_partner_pays_self_mid")} {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
             </p>
           </>
         ) : outAccounts.length === 0 ? (
@@ -3719,13 +3723,13 @@ function OutputRow({
       {isCrypto && (
         <div className="mt-2">
           <div className="text-[9px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1">
-            Recipient address
+            {t("xf_recipient_address")}
           </div>
           <input
             type="text"
             value={o.address || ""}
             onChange={(e) => onUpdate({ address: e.target.value.trim() })}
-            placeholder="0x… or TRON address"
+            placeholder={t("xf_crypto_address_placeholder")}
             className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
           />
           {walletCheck && (
@@ -3766,7 +3770,7 @@ function OutputRow({
                     <span
                       key={off.id}
                       className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"
-                      title={`${off.name} — available for this currency`}
+                      title={`${off.name} — ${t("available")}`}
                     >
                       <span className="font-semibold">{off.name}</span>:{" "}
                       <span className="tabular-nums">
@@ -3788,7 +3792,7 @@ function OutputRow({
             type="button"
             onClick={handleUseRemaining}
             className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-[8px] px-2 py-1 transition-colors"
-            title="Convert remaining amount here"
+            title={t("xf_convert_remaining_tip")}
           >
             <Zap className="w-3 h-3" />
             {t("use_remaining")} · {curSymbol(o.currency)}
@@ -3830,18 +3834,19 @@ function OutputRow({
 //   unknown_network — не смогли определить network (не запишем)
 //   invalid_hash    — txHash не распознан
 function WalletHint({ status, address, network, conflict, counterparties }) {
+  const { t } = useTranslation();
   if (status === "invalid_hash") {
     return (
       <div className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
-        Could not parse tx hash
+        {t("xf_wallet_invalid_hash")}
       </div>
     );
   }
   if (status === "unknown_network") {
     return (
       <div className="mt-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-        Network not detected — wallet won't be saved
+        {t("xf_wallet_unknown_network")}
       </div>
     );
   }
@@ -3851,7 +3856,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
       <div className="mt-1.5 text-[11px] text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         <span>
-          Wallet used by another client
+          {t("xf_wallet_conflict")}
           {other ? <> · <span className="font-semibold">{other.nickname}</span></> : null}
         </span>
       </div>
@@ -3861,14 +3866,14 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
     return (
       <div className="mt-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <Check className="w-3 h-3" />
-        Known wallet · {network}
+        {t("xf_wallet_known")} · {network}
       </div>
     );
   }
   // new
   return (
     <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-      New wallet · {network} — will be linked on submit
+      {t("xf_wallet_new")} · {network} — {t("xf_wallet_new_suffix")}
     </div>
   );
 }
