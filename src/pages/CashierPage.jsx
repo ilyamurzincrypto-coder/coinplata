@@ -19,8 +19,10 @@ const USE_NEW_DEAL_FORM = false;
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
-import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
-import EditTransactionModal from "../components/EditTransactionModal.jsx";
+// PendingTransfersBar (legacy public.transfers, frozen) and EditTransactionModal
+// (legacy edit, disabled under v2) are no longer mounted in the Cashier — v2
+// transfers are immediate and have no "pending" state, and deal edit/undo is
+// handled from the v2 transactions list (TransactionRow → reverse).
 import { useTransactions } from "../store/transactions.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -47,7 +49,6 @@ export default function CashierPage({
   const { t } = useTranslation();
   const [balanceScope, setBalanceScope] = useState("selected");
   const [justCreatedId, setJustCreatedId] = useState(null);
-  const [editingTx, setEditingTx] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [otcWizardOpen, setOtcWizardOpen] = useState(false);
   const [cashClosureOpen, setCashClosureOpen] = useState(false);
@@ -426,11 +427,9 @@ export default function CashierPage({
         >
           {/* Layout через CSS Grid named areas. Sidebar ВСЕГДА узкий
               (~220px). При expand → раскрывается ВНИЗ (больше пар, scroll
-              внутри), а Transactions переезжают в правую колонку рядом
-              со sidebar и сужаются (как Balances). При compact —
-              Transactions внизу на ВСЮ ширину.
-              Один mount TransactionsTable — фильтры/scroll сохраняются
-              при переключении expand. */}
+              внутри), а список сделок (CashierLedgerDeals) переезжает в
+              правую колонку рядом со sidebar и сужается (как Balances).
+              При compact — список внизу на ВСЮ ширину. */}
           {/* 3-row grid layout:
                 Row 1 — CTA (full-width)
                 Row 2 — sidebar | Balances (parallel, equal height)
@@ -552,7 +551,6 @@ export default function CashierPage({
                 чтобы оператор видел только что созданные сделки. Старый
                 TransactionsTable (поверх замороженной public.deals) отключён. */}
             <div className="min-w-0 lg:[grid-area:tx]">
-              <PendingTransfersBar />
               <CashierLedgerDeals officeFilter={currentOffice} />
             </div>
           </div>
@@ -639,8 +637,6 @@ export default function CashierPage({
           </section>
         </div>
       </div>
-
-      <EditTransactionModal transaction={editingTx} onClose={() => setEditingTx(null)} />
 
       <OtcDealWizard
         open={otcWizardOpen}
