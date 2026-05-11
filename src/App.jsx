@@ -89,6 +89,10 @@ function Root() {
   }, [currentOffice]);
   const [exchangeMode, setExchangeMode] = useState("dashboard");
   const [formMounted, setFormMounted] = useState(false);
+  // Demo seed from the Справка «Попробовать» button — when set, the Кассa deal
+  // form opens pre-filled with these example values. Cleared once the form is
+  // closed / a fresh «Новый обмен» is started (see CashierPage.onDemoConsumed).
+  const [demoDealSeed, setDemoDealSeed] = useState(null);
   const can = useCan();
 
   // AUTO-MINIMIZE: любой клик в Header (включая повторный "Касса" будучи
@@ -104,6 +108,16 @@ function Root() {
       setExchangeMode("dashboard");
     }
     setPage(nextPage);
+  };
+
+  // «Попробовать в форме» из Справки: переходим в Кассу и открываем форму
+  // создания сделки, пред-заполненную значениями примера (initialData).
+  const handleTryDeal = (seed) => {
+    if (!canShow("cashier")) return;
+    setDemoDealSeed(seed || null);
+    setFormMounted(true);
+    setExchangeMode("create");
+    setPage("cashier");
   };
 
   // Если на текущую страницу нет прав — отправляем на cashier
@@ -188,6 +202,8 @@ function Root() {
           formMounted={formMounted}
           setFormMounted={setFormMounted}
           onNavigate={handlePageChange}
+          demoDealSeed={demoDealSeed}
+          onDemoConsumed={() => setDemoDealSeed(null)}
         />
       )}
       {page === "capital" && canShow("capital") && <CapitalPage />}
@@ -196,7 +212,7 @@ function Root() {
       {page === "treasury" && canShow("capital") && <TreasuryPage />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
-      {page === "info" && canShow("info") && <InfoPage />}
+      {page === "info" && canShow("info") && <InfoPage onNavigate={handlePageChange} onTryDeal={handleTryDeal} />}
     </div>
   );
 }

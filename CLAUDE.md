@@ -16,16 +16,16 @@ No test runner, linter, or type-checker is configured. Verify changes by running
 
 `git push` to the main branch → Netlify builds automatically (config in `netlify.toml`, SPA rewrite to `/index.html`). A `vercel.json` is kept for parity but Netlify is the live target.
 
-## Feature flags (Vercel env)
+## Feature flags
 
-**Cutover complete 2026-05-10.** The deal-creation flow is now gated by two env vars (the temporary `VITE_FORCE_V2` kill-switch was removed — it served its purpose during the gap between PR #18 and Phase 1 of v2 revival).
+**Cutover complete 2026-05-10.** Both flags are now resolved in code with hard-coded defaults — they no longer *need* to be set in Vercel env. (The temporary `VITE_FORCE_V2` kill-switch was removed — it served its purpose during the gap between PR #18 and Phase 1 of v2 revival.)
 
-| Flag | Read at | What it does | Status |
+| Flag | Resolved at | Default | What it does |
 |---|---|---|---|
-| `VITE_USE_NEW_DEAL_FORM` | `src/pages/CashierPage.jsx` | renders new `DealForm` (legs table + RatesPanel sidebar) instead of legacy `ExchangeForm` | **production-active**: inline validation, all real deal shapes covered |
-| `VITE_USE_NEW_LEDGER` | `src/lib/newLedger.js` | routes `createDeal/createTransfer/createTopup/createBalanceAdjustment` through `newLedgerAdapter` → `ledger.create_deal_v2` etc. | **production-active**: emits Dr/Cr `journal_entries` pairs; legacy tables frozen via `ledger.freeze_legacy_tables()` |
+| `VITE_USE_NEW_DEAL_FORM` | `src/pages/CashierPage.jsx` — `const USE_NEW_DEAL_FORM = false;` (env ignored) | **false** | when true would render new `DealForm` (legs table + RatesPanel sidebar). Hard-coded `false` by user request — legacy `ExchangeForm` is the deal form. To re-enable v2 form, change to `import.meta.env.VITE_USE_NEW_DEAL_FORM === "true"`. |
+| `VITE_USE_NEW_LEDGER` | `src/lib/newLedger.js` — `USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER !== "false"` | **true** | routes `createDeal/createTransfer/createTopup/createBalanceAdjustment` through `newLedgerAdapter` → `ledger.create_deal_v2 / create_transfer / create_adjustment` (Dr/Cr `journal_entries` pairs). On by default; the **only** way to disable is an explicit `VITE_USE_NEW_LEDGER=false` in env. |
 
-**Rollback path** if a production incident appears: set either flag to `false` in Vercel + redeploy (legacy ExchangeForm + legacy `rpcCreateDeal` come back online in ~2 min). The legacy tables remain frozen — to fully un-freeze them you'd also need to restore grants per the rollback section of `docs/CUTOVER_RUNBOOK.md`.
+**Rollback path** if a production incident appears: set `VITE_USE_NEW_LEDGER=false` in Vercel + redeploy (legacy `rpcCreateDeal` etc. come back online) — but the legacy tables remain frozen, so a real rollback also needs the un-freeze/grants step from `docs/CUTOVER_RUNBOOK.md`. (Note: Vite inlines `import.meta.env.VITE_*` at build time — changing it in Vercel only takes effect after a redeploy.)
 
 History: `docs/superpowers/specs/2026-05-10-v2-ledger-revival-design.md` + `docs/superpowers/plans/2026-05-10-v2-ledger-revival.md`. Phase 1 added adapter coverage, validateTx, and 10 v2 wrappers. Phase 2 backfilled 13 opening journal entries. Phase 3 (this) flipped the kill-switch and froze legacy.
 
