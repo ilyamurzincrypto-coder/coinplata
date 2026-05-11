@@ -20,6 +20,13 @@ const ctx = {
   counterpartyOptions: (k) => (k === "partner" ? [{ id: "p1", name: "OTC Acme" }] : [{ id: "client-1", name: "Иван Петров" }]),
 };
 
+function pickAccount(lineIdx, codeText) {
+  // Open the (lineIdx-th) account picker and click the option matching `codeText`.
+  const accBtns = screen.getAllByRole("button").filter((b) => /trv2_pm_col_account|^\d{4}\s·\s/.test(b.textContent));
+  fireEvent.click(accBtns[lineIdx]);
+  fireEvent.click(screen.getByText(new RegExp(`^${codeText}\\s·\\s`)));
+}
+
 describe("PostingTab", () => {
   beforeEach(() => { rpcMock.mockReset(); emitToastMock.mockReset(); });
 
@@ -28,16 +35,16 @@ describe("PostingTab", () => {
     expect(screen.getByText("trv2_pm_title")).toBeInTheDocument();
     const post = screen.getByRole("button", { name: "trv2_pm_post" });
     expect(post).toBeDisabled();
-    // two account selects (one per starter line) + currency select
-    expect(screen.getAllByRole("combobox").length).toBeGreaterThanOrEqual(3);
+    // currency <select> (combobox) + two AccountPicker buttons (placeholder text "— trv2_pm_col_account —")
+    expect(screen.getAllByRole("combobox").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("button").filter((b) => /trv2_pm_col_account/.test(b.textContent)).length).toBe(2);
   });
 
   it("posts a balanced entry, toasts success, resets the form", async () => {
     rpcMock.mockResolvedValue("tx-1");
     render(<PostingTab ctx={ctx} />);
-    const accountSelects = screen.getAllByRole("combobox").filter((el) => [...el.options].some((o) => /1110|4010/.test(o.value)));
-    fireEvent.change(accountSelects[0], { target: { value: "1110" } });
-    fireEvent.change(accountSelects[1], { target: { value: "4010" } });
+    pickAccount(0, "1110");
+    pickAccount(1, "4010");
     const numericInputs = screen.getAllByRole("textbox").filter((el) => el.getAttribute("inputmode") === "decimal");
     fireEvent.change(numericInputs[0], { target: { value: "100" } }); // line 1 Dr
     fireEvent.change(numericInputs[3], { target: { value: "100" } }); // line 2 Cr ([l1Dr, l1Cr, l2Dr, l2Cr])
@@ -60,9 +67,8 @@ describe("PostingTab", () => {
   it("picking a dimensioned account shows a counterparty select; the chosen client goes into the payload", async () => {
     rpcMock.mockResolvedValue("tx-1");
     render(<PostingTab ctx={ctx} />);
-    const accountSelects = screen.getAllByRole("combobox").filter((el) => [...el.options].some((o) => /2110|4010/.test(o.value)));
-    fireEvent.change(accountSelects[0], { target: { value: "2110" } }); // line 1 → customer_liab
-    fireEvent.change(accountSelects[1], { target: { value: "4010" } }); // line 2 → spread
+    pickAccount(0, "2110"); // line 1 → customer_liab
+    pickAccount(1, "4010"); // line 2 → spread
     const numericInputs = screen.getAllByRole("textbox").filter((el) => el.getAttribute("inputmode") === "decimal");
     fireEvent.change(numericInputs[0], { target: { value: "100" } }); // line 1 Dr
     fireEvent.change(numericInputs[3], { target: { value: "100" } }); // line 2 Cr
@@ -83,9 +89,8 @@ describe("PostingTab", () => {
   it("maps a 42501 RPC error to the forbidden toast", async () => {
     rpcMock.mockRejectedValue(new Error("Not authenticated"));
     render(<PostingTab ctx={ctx} />);
-    const accountSelects = screen.getAllByRole("combobox").filter((el) => [...el.options].some((o) => /1110|4010/.test(o.value)));
-    fireEvent.change(accountSelects[0], { target: { value: "1110" } });
-    fireEvent.change(accountSelects[1], { target: { value: "4010" } });
+    pickAccount(0, "1110");
+    pickAccount(1, "4010");
     const numericInputs = screen.getAllByRole("textbox").filter((el) => el.getAttribute("inputmode") === "decimal");
     fireEvent.change(numericInputs[0], { target: { value: "50" } });
     fireEvent.change(numericInputs[3], { target: { value: "50" } });
