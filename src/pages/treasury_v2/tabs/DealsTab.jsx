@@ -1,19 +1,17 @@
-// src/components/cashier/CashierLedgerDeals.jsx
-// The Cashier's deal list — a manager-friendly deal-detail board, NOT an accounting
-// journal. Reads straight from the v2 ledger (ledger.transactions / journal_entries
-// via LedgerProvider) so an operator sees the deals they just created, scoped to the
-// current office. Each row collapses to a «пришло → ушло · маржа» one-liner; expanded
-// it shows <DealDetail> (counterparty / status / amounts in manager language) —
-// the raw Dr/Cr trees live in the Treasury "Сделки" tab, not here.
+// src/pages/treasury_v2/tabs/DealsTab.jsx
+// Treasury "Сделки" tab — the accounting deal report. All offices (respects the
+// Treasury office picker), real-time. Each deal row shows the «пришло → ушло · спред»
+// one-liner collapsed; expanded → the Dr/Cr <TransactionEntries> tree (this IS the
+// bookkeeping view — the manager-language version lives on the Cashier main page).
+// Type chips default to "deal" but can be widened (all / transfer / topup / …).
 import React, { useState, useMemo, useEffect } from "react";
-import { useTranslation } from "../../i18n/translations.jsx";
-import { useLedger } from "../../store/ledger.jsx";
-import { transactionTree } from "../../lib/treasury/v2selectors.js";
-import { dealSummary } from "../../lib/treasury/dealSummary.js";
-import PeriodPicker, { presetWindow } from "../../pages/treasury_v2/PeriodPicker.jsx";
-import TransactionRow from "../../pages/treasury_v2/parts/TransactionRow.jsx";
-import DealDetail from "./DealDetail.jsx";
+import { useTranslation } from "../../../i18n/translations.jsx";
+import { transactionTree } from "../../../lib/treasury/v2selectors.js";
+import { dealSummary } from "../../../lib/treasury/dealSummary.js";
+import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
+import TransactionRow from "../parts/TransactionRow.jsx";
 
+const TYPES = ["deal", "all", "transfer", "topup", "adjustment", "manual", "reversal"];
 const fmtAmt = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 function formatDealSummary(s, t) {
@@ -27,13 +25,13 @@ function formatDealSummary(s, t) {
   return line || null;
 }
 
-export default function CashierLedgerDeals({ officeFilter }) {
+export default function DealsTab({ ctx, officeFilter, onOpenSource }) {
   const { t } = useTranslation();
-  const ctx = useLedger();
   const [period, setPeriod] = useState(() => {
-    try { return localStorage.getItem("coinplata.cashier_deals_period") || "30d"; } catch { return "30d"; }
+    try { return localStorage.getItem("coinplata.treasury_deals_period") || "30d"; } catch { return "30d"; }
   });
-  const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.cashier_deals_period", v); } catch {} };
+  const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.treasury_deals_period", v); } catch {} };
+  const [typeFilter, setTypeFilter] = useState("deal");
 
   const win = useMemo(() => presetWindow(period), [period]);
   useEffect(() => {
@@ -41,19 +39,27 @@ export default function CashierLedgerDeals({ officeFilter }) {
   }, [win.from, ctx.sinceIso, ctx.extendWindow]);
   const truncated = ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso);
 
-  // Managers see deals only — no type chips. The accounting journal (transfers/topups/
-  // adjustments + Dr/Cr) is the Treasury's job.
   const tree = useMemo(
-    () => transactionTree(ctx, { type: "deal", officeFilter, period: { from: win.from, to: win.to } }),
-    [ctx, officeFilter, win.from, win.to]
+    () => transactionTree(ctx, { type: typeFilter, officeFilter, period: { from: win.from, to: win.to } }),
+    [ctx, typeFilter, officeFilter, win.from, win.to]
   );
   const accById = useMemo(() => new Map((ctx.accounts || []).map((a) => [a.id, a])), [ctx.accounts]);
 
   return (
     <div className="space-y-3">
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex flex-wrap items-center gap-4">
-        <span className="text-[13px] font-semibold text-slate-700">{t("cashier_deals_title")}</span>
         <PeriodPicker value={period} onChange={setP} />
+        <div className="flex items-center gap-1.5">
+          {TYPES.map((tp) => (
+            <button
+              key={tp}
+              onClick={() => setTypeFilter(tp)}
+              className={`px-2 py-1 rounded-[8px] text-[11px] font-medium ${typeFilter === tp ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+            >
+              {t(`trv2_journal_type_${tp}`)}
+            </button>
+          ))}
+        </div>
       </div>
       {truncated && (
         <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
@@ -66,8 +72,8 @@ export default function CashierLedgerDeals({ officeFilter }) {
             <TransactionRow
               key={node.tx.id}
               node={node}
-              summaryLine={formatDealSummary(dealSummary(node, accById), t)}
-              renderDetail={(n) => <DealDetail node={n} accById={accById} counterpartyName={ctx.counterpartyName} />}
+              onOpenSource={onOpenSource}
+              summaryLine={node.tx.kind === "deal" ? formatDealSummary(dealSummary(node, accById), t) : null}
             />
           ))
         )}

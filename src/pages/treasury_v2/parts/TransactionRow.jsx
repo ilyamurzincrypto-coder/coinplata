@@ -11,7 +11,11 @@ import EditTxNoteModal from "./EditTxNoteModal.jsx";
 // while the row is collapsed (e.g. the Cashier passes a deal's «пришло → ушло · спред»).
 // `onOpenSource` (optional) — when omitted, the "open source" link is hidden (the
 // Cashier has no transaction-detail modal; Treasury keeps passing it).
-export default function TransactionRow({ node, onOpenSource, summaryLine }) {
+// `renderDetail` (optional fn `(node) => ReactNode`) — when provided, the expanded
+// body renders this INSTEAD of the Dr/Cr <TransactionEntries> tree (the Cashier passes
+// a manager-friendly <DealDetail>). The "open source" link + reverse/edit-note actions
+// still render below it. When absent → the classic accounting view (default).
+export default function TransactionRow({ node, onOpenSource, summaryLine, renderDetail }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { tx, entries } = node;
@@ -48,7 +52,7 @@ export default function TransactionRow({ node, onOpenSource, summaryLine }) {
       </div>
       {expanded && (
         <div className="bg-slate-50/60">
-          <TransactionEntries entries={entries} />
+          {renderDetail ? renderDetail(node) : <TransactionEntries entries={entries} />}
           {tx.sourceRefId && onOpenSource && (
             <div className="px-6 pb-2">
               <button onClick={() => onOpenSource(tx)} className="text-[12px] text-indigo-600 hover:underline">

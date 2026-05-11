@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 
 vi.mock("../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k, lang: "ru" }) }));
 // Deterministic, time-independent window.
@@ -10,9 +10,21 @@ vi.mock("../../pages/treasury_v2/PeriodPicker.jsx", () => ({
   presetWindow: () => ({ from: "1970-01-01T00:00:00Z", to: "2999-12-31T00:00:00Z" }),
 }));
 // TransactionRow reaches into useCan via PermissionsProvider — out of scope here.
+// Render the summaryLine + invoke renderDetail so we can assert the Cashier wires
+// the manager DealDetail panel into the expansion.
 vi.mock("../../pages/treasury_v2/parts/TransactionRow.jsx", () => ({
   __esModule: true,
-  default: ({ node, summaryLine }) => <div data-testid="tx-row" data-summary={summaryLine || ""}>{node.tx.id}</div>,
+  default: ({ node, summaryLine, renderDetail }) => (
+    <div data-testid="tx-row" data-summary={summaryLine || ""}>
+      {node.tx.id}
+      {renderDetail && <div data-testid="tx-detail">{renderDetail(node)}</div>}
+    </div>
+  ),
+}));
+// DealDetail pulled in via the renderDetail prop — stub to a thin marker.
+vi.mock("./DealDetail.jsx", () => ({
+  __esModule: true,
+  default: ({ node }) => <div data-testid="deal-detail" data-tx={node.tx.id} />,
 }));
 
 const mockCtx = vi.fn();
@@ -46,18 +58,28 @@ const ENTRIES = [
 function setCtx() {
   mockCtx.mockReturnValue({
     accounts: ACCOUNTS, transactions: TRANSACTIONS, entries: ENTRIES, balances: [],
+    counterpartyName: () => "—",
     sinceIso: "1970-01-01T00:00:00Z", extendWindow: () => {},
   });
 }
 
 describe("CashierLedgerDeals", () => {
-  it("defaults to type=deal — shows only the deal transaction, with a «пришло → ушло · спред» summary", () => {
+  it("is a deals-only board — shows only the deal transaction (no transfer), no type chips", () => {
     setCtx();
     render(<CashierLedgerDeals officeFilter="all" />);
     const rows = screen.getAllByTestId("tx-row");
     expect(rows).toHaveLength(1);
-    expect(rows[0].textContent).toBe("tx_deal");
-    const summary = rows[0].getAttribute("data-summary");
+    expect(rows[0].textContent).toContain("tx_deal");
+    // no type-filter chips anymore
+    expect(screen.queryByRole("button", { name: "trv2_journal_type_all" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "trv2_journal_type_transfer" })).toBeNull();
+  });
+
+  it("shows the «пришло → ушло · спред» summary on the deal row", () => {
+    setCtx();
+    render(<CashierLedgerDeals officeFilter="all" />);
+    const row = screen.getByTestId("tx-row");
+    const summary = row.getAttribute("data-summary");
     expect(summary).toContain("cashier_deal_in");
     expect(summary).toContain("USD");
     expect(summary).toContain("cashier_deal_out");
@@ -65,18 +87,15 @@ describe("CashierLedgerDeals", () => {
     expect(summary).toContain("cashier_deal_margin");
   });
 
-  it("switching the type chip to «all» shows both transactions; transfer row has no deal summary", () => {
+  it("wires the manager DealDetail panel into the row expansion (not the Dr/Cr tree)", () => {
     setCtx();
     render(<CashierLedgerDeals officeFilter="all" />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_journal_type_all" }));
-    const rows = screen.getAllByTestId("tx-row");
-    expect(rows.map((r) => r.textContent).sort()).toEqual(["tx_deal", "tx_xfer"]);
-    const xferRow = rows.find((r) => r.textContent === "tx_xfer");
-    expect(xferRow.getAttribute("data-summary")).toBe(""); // kind !== deal → no summary
+    const detail = screen.getByTestId("deal-detail");
+    expect(detail.getAttribute("data-tx")).toBe("tx_deal");
   });
 
-  it("shows the empty state when there are no matching transactions", () => {
-    mockCtx.mockReturnValue({ accounts: ACCOUNTS, transactions: [], entries: [], balances: [], sinceIso: "1970-01-01T00:00:00Z", extendWindow: () => {} });
+  it("shows the empty state when there are no matching deals", () => {
+    mockCtx.mockReturnValue({ accounts: ACCOUNTS, transactions: [], entries: [], balances: [], counterpartyName: () => "—", sinceIso: "1970-01-01T00:00:00Z", extendWindow: () => {} });
     render(<CashierLedgerDeals officeFilter="all" />);
     expect(screen.getByText("trv2_journal_no_tx")).toBeInTheDocument();
   });

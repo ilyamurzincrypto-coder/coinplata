@@ -43,6 +43,20 @@ describe("TransactionRow", () => {
     expect(container.textContent).not.toContain("пришло");
   });
 
+  it("renders renderDetail(node) instead of the Dr/Cr entries when provided; without it shows the entries table", () => {
+    const renderDetail = vi.fn(() => <div data-testid="custom-detail">manager view</div>);
+    const { container } = render(<TransactionRow node={mkNode("deal")} renderDetail={renderDetail} />);
+    expand(container);
+    expect(screen.getByTestId("custom-detail")).toBeInTheDocument();
+    expect(renderDetail).toHaveBeenCalled();
+    // the Dr/Cr header from TransactionEntries must NOT render
+    expect(screen.queryByText("trv2_col_account")).toBeNull();
+    // default (no renderDetail) → entries table is shown
+    const { container: c2 } = render(<TransactionRow node={mkNode("deal")} />);
+    expand(c2);
+    expect(screen.getByText("trv2_col_account")).toBeInTheDocument();
+  });
+
   it("hides the 'open source' link when onOpenSource is not provided; shows + fires it when provided", () => {
     const { container, unmount } = render(<TransactionRow node={mkNode("deal")} />);
     expand(container);
