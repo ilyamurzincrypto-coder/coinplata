@@ -45,6 +45,10 @@ export default function CashierPage({
   formMounted = false,
   setFormMounted = () => {},
   onNavigate,
+  // demoDealSeed — пример из Справки («Попробовать в форме»): когда задан,
+  // форма создания сделки открывается пред-заполненной этими значениями.
+  demoDealSeed = null,
+  onDemoConsumed = () => {},
 }) {
   const { t } = useTranslation();
   const [balanceScope, setBalanceScope] = useState("selected");
@@ -62,6 +66,7 @@ export default function CashierPage({
   // ввод через sessionStorage — draft восстанавливается при возврате.
 
   const openCreate = () => {
+    onDemoConsumed(); // фолбэк: «+Новый обмен» всегда открывает чистую форму
     setFormMounted(true);
     setMode("create");
   };
@@ -69,6 +74,7 @@ export default function CashierPage({
   const closeCreate = () => {
     setMode("dashboard");
     setFormMounted(false); // discard: form unmounts
+    onDemoConsumed();
     try {
       sessionStorage.removeItem("coinplata.exchangeDraft");
     } catch {}
@@ -609,6 +615,15 @@ export default function CashierPage({
               </header>
 
               <div className="p-5">
+                {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
+                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-[10px] px-3 py-2">
+                    <span aria-hidden>🎓</span>
+                    <span>
+                      Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.
+                      Поправьте под свою сделку и проведите, либо закройте форму без сохранения.
+                    </span>
+                  </div>
+                )}
                 {formMounted && (
                   USE_NEW_DEAL_FORM ? (
                     // DealForm creates the deal itself (runSubmitFlow → createDeal),
@@ -627,6 +642,7 @@ export default function CashierPage({
                     <ExchangeForm
                       mode="create"
                       currentOffice={currentOffice}
+                      initialData={demoDealSeed || undefined}
                       onSubmit={handleFormSubmit}
                       submitting={submitting}
                     />

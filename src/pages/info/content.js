@@ -2,12 +2,15 @@
 // Plain-Russian manual of the service's features, rendered by InfoPage.
 // Each section: { id, title, what, related, can[], how?[], examples?[], sub?[] }.
 //   how      — пошаговое «как это работает».
-//   examples — worked-примеры: { title, intro?, steps?[], journal?[{dir:"dr"|"cr",account,amount,cur,note?}], note? }.
+//   examples — worked-примеры: { title, intro?, steps?[], journal?[{dir:"dr"|"cr",account,amount,cur,note?}], note?, try? }.
 //   journal  — мини-таблица проводок Дт/Кт (одна транзакция на пример); суммы иллюстративные.
+//   try      — кнопка «Попробовать» в Справке. У секции: { page, label? } → переход на экран.
+//              У примера: { dealSeed:{curIn,amtIn,outputs:[{currency,amount,rate}],counterparty?}, label? }
+//              → откроет форму создания сделки в Кассе, пред-заполненную этими значениями.
 
 export const INFO_SECTIONS = [
   {
-    id: "cashier", title: "Касса",
+    id: "cashier", title: "Касса", try: { page: "cashier", label: "Открыть Кассу" },
     what: "Главный экран оператора: текущие курсы и балансы счетов плюс создание сделок.",
     related: "Держится на счетах (движения денег), курсах (каналы и пары), клиентах и обязательствах (отложенные выплаты).",
     can: [
@@ -49,6 +52,15 @@ export const INFO_SECTIONS = [
           { dir: "cr", account: "Доход: спред", amount: 50, cur: "USD", note: "наш заработок" },
         ],
         note: "В Казначейство → Журнал это видно как одна транзакция «deal #…» с раскрывающимся деревом этих проводок. Балансы «Касса USD» и «Hot USDT» сдвинулись; в P&L за период появилось +$50 в доходах. Σ Дт = Σ Кт (в базовой валюте) — иначе провести нельзя.",
+        try: {
+          label: "Попробовать в форме",
+          dealSeed: {
+            curIn: "USD",
+            amtIn: "1000",
+            outputs: [{ currency: "USDT", amount: "950", rate: "1" }],
+            counterparty: "Демо-клиент",
+          },
+        },
       },
       {
         title: "Пример: пополнение (top-up) — клиент сдал $500 на свой баланс",
@@ -128,7 +140,7 @@ export const INFO_SECTIONS = [
     ],
   },
   {
-    id: "capital", title: "Капитал",
+    id: "capital", title: "Капитал", try: { page: "capital", label: "Открыть Капитал" },
     what: "Сводки по всему капиталу компании, пересчитанные в базовую валюту.",
     related: "Берёт балансы всех счетов, курсы (для пересчёта в базовую валюту), рефералов и клиентов.",
     can: [
@@ -157,7 +169,7 @@ export const INFO_SECTIONS = [
     ],
   },
   {
-    id: "accounts", title: "Счета",
+    id: "accounts", title: "Счета", try: { page: "accounts", label: "Открыть Счета" },
     what: "Список всех наших счетов: касса, банк, крипто-кошельки.",
     related: "Балансы берутся из v2-леджера (сумма проводок Дт/Кт по счёту). Привязаны к офисам. Крипто-кошельки несут адрес и сеть (TRC20/ERC20/...).",
     can: [
@@ -197,7 +209,7 @@ export const INFO_SECTIONS = [
     ],
   },
   {
-    id: "counterparties", title: "Контрагенты",
+    id: "counterparties", title: "Контрагенты", try: { page: "counterparties", label: "Открыть Контрагентов" },
     what: "Клиенты и OTC-партнёры в одном разделе.",
     related: "Связаны со сделками, обязательствами и рефералами.",
     can: [
@@ -221,7 +233,7 @@ export const INFO_SECTIONS = [
     ],
   },
   {
-    id: "treasury", title: "Казначейство",
+    id: "treasury", title: "Казначейство", try: { page: "treasury", label: "Открыть Казначейство" },
     what: "Бухгалтерский раздел на двойной записи: транзакции, журнальные проводки Дт/Кт и план счетов (≈174 счёта).",
     related: "Сюда попадает всё, что пишется в v2-леджер: сделки кассы, переводы, пополнения, корректировки, ручные проводки. Для базовой валюты использует курсы.",
     can: [
@@ -418,7 +430,7 @@ export const INFO_SECTIONS = [
     ],
   },
   {
-    id: "settings", title: "Настройки",
+    id: "settings", title: "Настройки", try: { page: "settings", label: "Открыть Настройки" },
     what: "Администрирование сервиса.",
     related: "Пользователи, права, офисы, курсы, базовая валюта.",
     can: [
