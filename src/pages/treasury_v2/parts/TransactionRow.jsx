@@ -6,7 +6,11 @@ import { useCan } from "../../../store/permissions.jsx";
 import TransactionEntries from "./TransactionEntries.jsx";
 import ReverseEntryModal from "./ReverseEntryModal.jsx";
 
-export default function TransactionRow({ node, onOpenSource }) {
+// `summaryLine` (optional string) — a one-line human summary shown under the title
+// while the row is collapsed (e.g. the Cashier passes a deal's «пришло → ушло · спред»).
+// `onOpenSource` (optional) — when omitted, the "open source" link is hidden (the
+// Cashier has no transaction-detail modal; Treasury keeps passing it).
+export default function TransactionRow({ node, onOpenSource, summaryLine }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { tx, entries } = node;
@@ -27,16 +31,19 @@ export default function TransactionRow({ node, onOpenSource }) {
         <span className="text-[11px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{tx.kind}</span>
         {isReversal && <span className="inline-flex items-center gap-0.5 text-[10px] text-rose-600"><RotateCcw className="w-3 h-3" />{t("trv2_journal_is_reversal")}</span>}
         {isReversed && <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">{t("trv2_pm_reversed_chip")}</span>}
-        <span className="flex-1 text-[12.5px] text-slate-700 truncate">{tx.description || sourceLabel}</span>
-        <span className="text-[11px] text-slate-400">{t("trv2_journal_entries_count").replace("{n}", String(entries.length))}</span>
-        <span className="font-mono text-[10px] text-slate-300">{tx.id.slice(0, 8)}</span>
+        <span className="flex-1 min-w-0 text-[12.5px] text-slate-700 truncate">
+          {tx.description || sourceLabel}
+          {!expanded && summaryLine && <span className="block text-[11px] text-slate-400 truncate">{summaryLine}</span>}
+        </span>
+        <span className="text-[11px] text-slate-400 shrink-0">{t("trv2_journal_entries_count").replace("{n}", String(entries.length))}</span>
+        <span className="font-mono text-[10px] text-slate-300 shrink-0">{tx.id.slice(0, 8)}</span>
       </div>
       {expanded && (
         <div className="bg-slate-50/60">
           <TransactionEntries entries={entries} />
-          {tx.sourceRefId && (
+          {tx.sourceRefId && onOpenSource && (
             <div className="px-6 pb-2">
-              <button onClick={() => onOpenSource?.(tx)} className="text-[12px] text-indigo-600 hover:underline">
+              <button onClick={() => onOpenSource(tx)} className="text-[12px] text-indigo-600 hover:underline">
                 {t("trv2_journal_open_source").replace("{label}", sourceLabel)}
               </button>
             </div>
