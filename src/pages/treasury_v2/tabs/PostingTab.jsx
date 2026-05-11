@@ -13,6 +13,7 @@ import {
 import AccountPicker from "../parts/AccountPicker.jsx";
 import TransactionEntries from "../parts/TransactionEntries.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
+import { POSTING_TEMPLATES, resolveTemplate } from "../../../lib/treasury/postingTemplates.js";
 
 let _lineSeq = 0;
 const newLine = () => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "", clientId: null, partnerId: null });
@@ -25,9 +26,19 @@ function fmtNum(n) {
 }
 
 export default function PostingTab({ ctx }) {
-  const { t } = useTranslation();
+  const { t, lang } = useTranslation();
   const accounts = ctx?.accounts || [];
   const currencies = useMemo(() => deriveCurrencies(accounts), [accounts]);
+  // Localised template options for the SearchableSelect. `lang` typically en/ru/tr;
+  // fall back to ru → en if a localisation slot is missing on some template.
+  const templateOpts = useMemo(
+    () => POSTING_TEMPLATES.map((tpl) => ({
+      id: tpl.id,
+      name: (tpl.name && (tpl.name[lang] || tpl.name.ru || tpl.name.en)) || tpl.id,
+      searchText: [tpl.name?.ru, tpl.name?.en, tpl.name?.tr, tpl.description?.ru, tpl.description?.en, tpl.description?.tr].filter(Boolean).join(" "),
+    })),
+    [lang]
+  );
 
   const [currency, setCurrency] = useState(() => currencies[0] || "USD");
   const [dateStr, setDateStr] = useState(todayInputValue);
@@ -75,6 +86,18 @@ export default function PostingTab({ ctx }) {
     setReason(""); setDescription(""); setDateStr(todayInputValue());
   }
 
+  // Pick a template → replace current lines with its resolved draft and pre-fill
+  // `reason` with the template's localised name (the accountant still types
+  // a more specific reason if they want; we just save them the keystrokes).
+  function applyTemplate(tplId) {
+    const tpl = POSTING_TEMPLATES.find((x) => x.id === tplId);
+    if (!tpl) return;
+    const { lines: tplLines, nextSeed } = resolveTemplate(tpl, accounts, currency, _lineSeq);
+    _lineSeq = nextSeed;
+    setLines(tplLines);
+    setReason(tpl.name?.[lang] || tpl.name?.ru || tpl.name?.en || tpl.id);
+  }
+
   async function submit() {
     if (!validation.ok || submitting) return;
     setSubmitting(true);
@@ -120,6 +143,18 @@ export default function PostingTab({ ctx }) {
               {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
+          <div className="flex items-center gap-2 text-[12.5px] ml-auto min-w-[260px]">
+            <span className="text-slate-500 shrink-0">{t("trv2_pm_template")}</span>
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                value={null}
+                options={templateOpts}
+                onChange={applyTemplate}
+                placeholder={t("trv2_pm_template_pick")}
+                emptyText={t("trv2_pm_template_empty")}
+              />
+            </div>
+          </div>
         </div>
 
         {/* lines table */}

@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
-vi.mock("../../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+vi.mock("../../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k, lang: "ru" }) }));
 const emitToastMock = vi.fn();
 vi.mock("../../../lib/toast.jsx", () => ({ emitToast: (...a) => emitToastMock(...a) }));
 const rpcMock = vi.fn();
@@ -14,6 +14,7 @@ const ACCOUNTS = [
   { id: "a1", code: "1110", name: "Cash USD", subtype: "cash", currency: "USD", clientDimRequired: false, partnerDimRequired: false, active: true },
   { id: "a2", code: "4010", name: "Spread USD", subtype: "spread", currency: "USD", clientDimRequired: false, partnerDimRequired: false, active: true },
   { id: "a3", code: "2110", name: "Customer Liab USD", subtype: "customer_liab", currency: "USD", clientDimRequired: true, partnerDimRequired: false, active: true },
+  { id: "a4", code: "5126", name: "Exchange fee USD", subtype: "exchange_fee", currency: "USD", clientDimRequired: false, partnerDimRequired: false, active: true },
 ];
 const ctx = {
   accounts: ACCOUNTS,
@@ -99,5 +100,20 @@ describe("PostingTab", () => {
     await waitFor(() => expect(post).not.toBeDisabled());
     fireEvent.click(post);
     await waitFor(() => expect(emitToastMock).toHaveBeenCalledWith("error", "trv2_pm_err_forbidden"));
+  });
+
+  it("picking a template pre-fills the lines and the reason field", async () => {
+    render(<PostingTab ctx={ctx} />);
+    // Open the template picker and pick "Комиссия биржи / вывода" (id=exchange_fee).
+    const tplButton = screen.getByRole("button", { name: /trv2_pm_template_pick/ });
+    fireEvent.click(tplButton);
+    fireEvent.click(screen.getByText(/Комиссия биржи/));
+    // Reason gets pre-filled with the localised template name.
+    const reasonInput = screen.getByPlaceholderText("trv2_pm_reason_ph");
+    await waitFor(() => expect(reasonInput.value).toMatch(/Комиссия биржи/));
+    // Dr exchange_fee USD → 5126 is unique → button now shows that account label.
+    expect(screen.getByRole("button", { name: /5126 · Exchange fee USD/ })).toBeInTheDocument();
+    // Cr cash USD → 1110 (only one cash account in the fixture) → also pre-filled.
+    expect(screen.getByRole("button", { name: /1110 · Cash USD/ })).toBeInTheDocument();
   });
 });
