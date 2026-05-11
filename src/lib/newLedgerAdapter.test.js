@@ -19,6 +19,7 @@ vi.mock("./supabase.js", () => ({
 import {
   inferCommissionFromLegacy,
   adaptLegacyDealPayload,
+  adaptLegacyAdjustmentPayload,
   resolveAccountCode,
 } from "./newLedgerAdapter.js";
 import { supabase } from "./supabase.js";
@@ -274,5 +275,61 @@ describe("adaptLegacyDealPayload — structural", () => {
     expect(v2.outLegs).toHaveLength(2);
     expect(v2.outLegs[0]).toMatchObject({ currency: "USDT", amount: 500, deferred: false, account_code: "1340" });
     expect(v2.outLegs[1]).toMatchObject({ currency: "USDT", amount: 450, deferred: true, account_code: "1340" });
+  });
+});
+
+describe("adaptLegacyAdjustmentPayload", () => {
+  function setup({ ledgerCode = "1110", currency = "USD", v2Total = 0 }) {
+    supabase.from.mockImplementation((tbl) => {
+      if (tbl === "accounts") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({
+            data: { ledger_account_code: ledgerCode, legacy_only: false, name: "Cash · USD", type: "cash", currency_code: currency },
+            error: null,
+          }),
+        };
+      }
+      if (tbl === "v_account_balances") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: { total: v2Total }, error: null }),
+        };
+      }
+      throw new Error(`unexpected table: ${tbl}`);
+    });
+  }
+
+  it("first entry: v2 balance 0, target 5000 → posts +5000 delta, kind=opening", async () => {
+    setup({ v2Total: 0 });
+    const v2 = await adaptLegacyAdjustmentPayload({ accountId: "acc-1", newBalance: 5000, note: "opening Mark USD" });
+    expect(v2).toMatchObject({ accountCode: "1110", amount: 5000, currencyCode: "USD", reason: "opening Mark USD", adjustmentKind: "opening" });
+    expect(v2.metadata.target_balance).toBe(5000);
+    expect(v2.metadata.prior_balance).toBe(0);
+  });
+
+  it("later correction: v2 balance 5000, target 4800 → posts −200 delta (not 4800)", async () => {
+    setup({ v2Total: 5000 });
+    const v2 = await adaptLegacyAdjustmentPayload({ accountId: "acc-1", newBalance: 4800, note: "miscount" });
+    expect(v2.amount).toBe(-200);
+    expect(v2.adjustmentKind).toBe("opening");
+    expect(v2.metadata.prior_balance).toBe(5000);
+  });
+
+  it("missing balance row → treats current as 0", async () => {
+    supabase.from.mockImplementation((tbl) => {
+      if (tbl === "accounts") {
+        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: { ledger_account_code: "1112", legacy_only: false, name: "Cash · TRY", type: "cash", currency_code: "TRY" }, error: null }) };
+      }
+      if (tbl === "v_account_balances") {
+        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) };
+      }
+      throw new Error(`unexpected table: ${tbl}`);
+    });
+    const v2 = await adaptLegacyAdjustmentPayload({ accountId: "acc-2", newBalance: 12345, note: "x" });
+    expect(v2).toMatchObject({ accountCode: "1112", amount: 12345, currencyCode: "TRY", adjustmentKind: "opening" });
   });
 });

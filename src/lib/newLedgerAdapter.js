@@ -356,11 +356,18 @@ export async function adaptLegacyTransferPayload(legacy) {
 /**
  * Adapt legacy BalanceAdjustmentModal → v2 create_adjustment payload.
  *
- * Legacy: { accountId, newBalance, note }.
- * Логика legacy: устанавливает balance = newBalance (delta = newBalance - currentBalance).
+ * Legacy: { accountId, newBalance, note }. The modal lets the user type the
+ * target balance; v2 `create_adjustment` takes a *delta*, so:
+ *   delta = newBalance − currentBalance
+ * where `currentBalance` is the account's balance **in the v2 ledger**
+ * (public.v_account_balances.total, which now reads from ledger.balances) —
+ * NOT the frozen legacy account_movements (those are empty post-cutover, so
+ * using them would post the full target as a delta on every adjustment and
+ * double the balance on the second one).
  *
- * v2 принимает amount (delta), не newBalance. Нужно посчитать delta:
- * delta = newBalance - currentLegacyBalance.
+ * adjustmentKind = 'opening' → the balancing side hits the per-currency
+ * "Opening Balance Equity" account (not retained_earnings). This is the modal's
+ * own intent ("корректировка начального баланса счёта", не влияет на P&L).
  *
  * Currency читаем из public.accounts.
  */
@@ -373,18 +380,14 @@ export async function adaptLegacyAdjustmentPayload(legacy) {
     .single();
   if (error) throw new Error(`adaptLegacyAdjustment: account lookup failed: ${error.message}`);
 
-  // Compute delta — нужен текущий balance из legacy account_movements.
-  const { data: movs, error: e2 } = await supabase
-    .from("account_movements")
-    .select("direction, amount")
+  // Current v2-ledger balance for this account.
+  const { data: bal, error: e2 } = await supabase
+    .from("v_account_balances")
+    .select("total")
     .eq("account_id", legacy.accountId)
-    .eq("reserved", false);
+    .maybeSingle();
   if (e2) throw new Error(`adaptLegacyAdjustment: balance lookup failed: ${e2.message}`);
-
-  const currentBal = (movs || []).reduce((sum, m) => {
-    const v = Number(m.amount);
-    return sum + (m.direction === "in" ? v : -v);
-  }, 0);
+  const currentBal = Number(bal?.total ?? 0);
   const delta = Number(legacy.newBalance) - currentBal;
 
   return {
@@ -392,12 +395,12 @@ export async function adaptLegacyAdjustmentPayload(legacy) {
     amount: delta,
     currencyCode: acc.currency_code,
     reason: legacy.note,
-    adjustmentKind: "reconciliation",
+    adjustmentKind: "opening",
     metadata: {
       legacy_form: true,
       account_name: acc.name,
-      legacy_target_balance: Number(legacy.newBalance),
-      legacy_current_balance: currentBal,
+      target_balance: Number(legacy.newBalance),
+      prior_balance: currentBal,
     },
   };
 }
