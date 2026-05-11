@@ -392,7 +392,7 @@ export default function ExchangeForm({
   // забыл выбрать счёт (без него submit упадёт).
   const pickDefaultAccountForCurrency = (cur) => {
     const found = (accounts || []).find(
-      (a) => a.active && a.currency === cur && a.officeId === currentOffice
+      (a) => a.active && !a.legacyOnly && a.currency === cur && a.officeId === currentOffice
     );
     return found?.id || "";
   };
@@ -574,7 +574,7 @@ export default function ExchangeForm({
   // ВСЕ офисы — current рендерится первой секцией, остальные — отмечаются как
   // interoffice transfer в AccountSelect. Картирован по active + currency.
   const availableAccounts = useMemo(
-    () => accounts.filter((a) => a.active && a.currency === curIn),
+    () => accounts.filter((a) => a.active && !a.legacyOnly && a.currency === curIn),
     [accounts, curIn]
   );
 
@@ -630,7 +630,7 @@ export default function ExchangeForm({
       const next = prev.map((o) => {
         if (o.outKind === "partner") return o;
         const outAccs = (accounts || []).filter(
-          (a) => a.active && a.currency === o.currency
+          (a) => a.active && !a.legacyOnly && a.currency === o.currency
         );
         // Existing accountId — не входит в список (валюта/active поменялись).
         if (o.accountId && !outAccs.some((a) => a.id === o.accountId)) {
@@ -1833,7 +1833,7 @@ export default function ExchangeForm({
             {inEnabled && !deferredIn && extraInputs.map((xi) => {
               const xiCur = xi.currency || curIn;
               const xiAccounts = (accounts || []).filter(
-                (a) => a.active && a.currency === xiCur
+                (a) => a.active && !a.legacyOnly && a.currency === xiCur
               );
               return (
                 <tr key={xi.id} className="border-b border-slate-200/70 even:bg-slate-50/60 hover:bg-slate-50/80 transition-colors">
@@ -1995,7 +1995,7 @@ export default function ExchangeForm({
                 const canRemoveO = outputs.length > 1;
                 const isCryptoOut = isCryptoCode(o.currency);
                 const outAccs = accounts.filter(
-                  (a) => a.active && a.currency === o.currency
+                  (a) => a.active && !a.legacyOnly && a.currency === o.currency
                 );
                 const availBal = resolveLegBalance(o);
                 const outAmtNum = parseFloat(o.amount) || 0;
@@ -3234,7 +3234,7 @@ function OutputRow({
   // Список счетов для валюты output'а — из ВСЕХ офисов. Current office сверху,
   // остальные помечаются как interoffice transfer внутри AccountSelect.
   const outAccounts = useMemo(
-    () => accounts.filter((a) => a.active && a.currency === o.currency),
+    () => accounts.filter((a) => a.active && !a.legacyOnly && a.currency === o.currency),
     [accounts, o.currency]
   );
 
