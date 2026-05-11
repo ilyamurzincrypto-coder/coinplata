@@ -1113,6 +1113,29 @@ export default function ExchangeForm({
     return !!xi.accountId;
   });
 
+  // Счёт обязателен на каждой «физической» ноге.
+  // v2-леджер (ledger.create_deal_v2) ЖЁСТКО требует account_code на каждой
+  // fresh-IN и physical-OUT ноге (даже на deferred — для будущего
+  // complete_deal_leg). Раньше legacy create_deal помечал ногу без счёта как
+  // ours_later (авто-обязательство) — отсюда был «warning, не блокер». В v2
+  // это hard-error «fresh source requires account_code» / «physical
+  // destination requires account_code» уже на стороне БД. Поэтому: нет счёта
+  // на нужной ноге → submit заблокирован.
+  //  • IN: счёт нужен, если секция IN включена, не «клиент платит позже/
+  //    со своего баланса» (deferredIn), не через партнёра, и основная
+  //    IN-сумма > 0. Партнёрский IN проверяется в inSideValid.
+  //  • OUT: счёт нужен на каждой заполненной ноге, кроме партнёрской
+  //    (та проверяется в outSidesValid).
+  const inAccountValid =
+    !inEnabled || deferredIn || inKind === "partner" ||
+    !(parseFloat(amtIn) > 0) || !!accountId;
+  const outAccountsValid = outputs.every((o) => {
+    const amt = parseFloat(o.amount);
+    if (!Number.isFinite(amt) || amt <= 0) return true;
+    if (o.outKind === "partner") return true;
+    return !!o.accountId;
+  });
+
   // exceedsInput больше НЕ блокирует submit — юзер часто хочет создать
   // сделку где OUT > IN (клиент доносит позже, остаток уходит в obligation
   // we_owe). Раньше форма насмерть резала такие сделки. Теперь только
@@ -1121,16 +1144,20 @@ export default function ExchangeForm({
   const canSubmit =
     hasAllAmounts && hasAllRates && noSameCurrency && hasClient &&
     inSideValid && outSidesValid && extraInputsValid &&
+    inAccountValid && outAccountsValid &&
     (!needsPayee || !!payeeUserId);
 
-  // --- account warnings (non-blocking) ---
-  // Список объектов {kind, label} для рендера под Submit.
+  // --- account warnings (теперь БЛОКИРУЮТ submit, см. inAccountValid/
+  // outAccountsValid выше) — список {kind, label} для рендера под Submit. ---
   const accountWarnings = useMemo(() => {
     const warnings = [];
-    if (!accountId) {
+    if (inEnabled && !deferredIn && inKind !== "partner" && parseFloat(amtIn) > 0 && !accountId) {
       warnings.push({ kind: "in", label: t("account_missing_in") });
     }
     outputs.forEach((o, idx) => {
+      const amt = parseFloat(o.amount);
+      if (!Number.isFinite(amt) || amt <= 0) return;
+      if (o.outKind === "partner") return;
       if (!o.accountId) {
         warnings.push({
           kind: "out",
@@ -1141,22 +1168,7 @@ export default function ExchangeForm({
       }
     });
     return warnings;
-  }, [accountId, outputs, t]);
-
-  // Сделка станет pending если хоть один OUT-leg без accountId — SQL
-  // create_deal помечает такой leg как ours_later (мы должны клиенту
-  // позже), а v_all_legs_complete=false → status=pending. Юзер часто
-  // не ожидает этого: думает что выдал сейчас, а в БД лежит pending
-  // со скрытой кнопкой «Завершить» в таблице.
-  const willBePending = useMemo(() => {
-    const outsWithoutAccount = outputs.filter((o) => {
-      const amt = parseFloat(o.amount);
-      if (!Number.isFinite(amt) || amt <= 0) return false;
-      if (o.outKind === "partner") return !o.partnerAccountId;
-      return !o.accountId;
-    });
-    return outsWithoutAccount.length > 0 ? outsWithoutAccount.length : 0;
-  }, [outputs]);
+  }, [accountId, inEnabled, deferredIn, inKind, amtIn, outputs, t]);
 
   // --- submit ---
   const buildTx = (clientId) => {
@@ -2669,7 +2681,7 @@ export default function ExchangeForm({
       {/* Warnings полоса НАД footer — отдельная строка, чтобы footer
           с кнопкой «Создать сделку» был фиксированной высоты и не
           зависел от количества/длины предупреждений. */}
-      {(canSubmit ? (willBePending > 0 || accountWarnings.length > 0 || (amtIn && outputs[0]?.amount)) : true) && (
+      {(canSubmit ? (accountWarnings.length > 0 || (amtIn && outputs[0]?.amount)) : true) && (
         <div className="px-4 py-1.5 border-t border-slate-200/70 bg-slate-50/50 flex items-center gap-1.5 flex-wrap text-[11px]">
           {amtIn && outputs[0]?.amount && (
             <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
@@ -2702,6 +2714,8 @@ export default function ExchangeForm({
                 ? t("enter_exchange_rate")
                 : !noSameCurrency
                 ? t("currencies_must_differ")
+                : (!inAccountValid || !outAccountsValid)
+                ? "Выберите счёт на каждой ноге сделки"
                 : exceedsInput
                 ? t("exceeds_remaining")
                 : needsPayee && !payeeUserId
@@ -2709,18 +2723,9 @@ export default function ExchangeForm({
                 : t("complete_the_form")}
             </span>
           )}
-          {willBePending > 0 && (
-            <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded px-2 py-0.5"
-              title={`У ${willBePending === 1 ? "одной OUT-ноги" : `${willBePending} OUT-ног`} нет счёта — станут «мы должны клиенту» (obligation). Сделка получит статус pending.`}
-            >
-              <AlertCircle className="w-3 h-3" />
-              Будет PENDING ({willBePending})
-            </span>
-          )}
           {accountWarnings.length > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-0.5"
               title={accountWarnings.map((w) => w.label).join("\n")}
             >
               <AlertCircle className="w-3 h-3" />
