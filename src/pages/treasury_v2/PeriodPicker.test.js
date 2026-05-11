@@ -3,10 +3,10 @@ import { presetWindow, previousWindow } from "./PeriodPicker.jsx";
 
 describe("presetWindow", () => {
   const NOW = new Date("2026-05-10T14:00:00Z"); // a Sunday
-  it("today → start of day to now", () => {
+  it("today → start of day to end of day (to = end of current UTC day, not the exact instant)", () => {
     const w = presetWindow("today", NOW);
     expect(w.from).toBe("2026-05-10T00:00:00.000Z");
-    expect(w.to).toBe(NOW.toISOString());
+    expect(w.to).toBe("2026-05-10T23:59:59.999Z");
   });
   it("month → 1st of month", () => {
     const w = presetWindow("month", NOW);

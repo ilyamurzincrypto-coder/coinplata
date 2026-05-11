@@ -3,8 +3,13 @@ import React from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 
 // Returns { from, to } ISO strings for a preset name. `now` injectable for tests.
+// `to` = END of the current UTC day, not the exact instant — иначе сделка,
+// созданная через минуту после рендера, оказывается «позже to» и выпадает из
+// transactionTree (видна только после перезагрузки страницы).
 export function presetWindow(preset, now = new Date()) {
-  const to = now.toISOString();
+  const endOfToday = new Date(now);
+  endOfToday.setUTCHours(23, 59, 59, 999);
+  const to = endOfToday.toISOString();
   const d = new Date(now);
   switch (preset) {
     case "today": { d.setUTCHours(0, 0, 0, 0); return { from: d.toISOString(), to }; }
