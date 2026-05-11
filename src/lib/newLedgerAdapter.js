@@ -105,34 +105,32 @@ export async function adaptLegacyDealPayload(legacy) {
   }
 
   // ── IN legs ──
+  // ВАЖНО: ExchangeForm кладёт ОСНОВНОЙ приём ПЕРВЫМ элементом legacy.inPayments
+  // (а не только доп. приёмы), и параллельно дублирует его в legacy.amountIn/
+  // currencyIn/inAccountId. Если есть непустой inPayments — он и есть полный
+  // список IN-ног; брать ещё и amountIn нельзя, иначе основная нога задвоится
+  // (в БД оказывалось 2× суммы прихода). Порядок:
+  //   1. deferredIn ("клиент платит позже / со своего баланса") → одна нога
+  //      source='from_balance' из amountIn, без счёта.
+  //   2. иначе непустой inPayments → fresh-ноги ИЗ НЕГО (multi-currency приём).
+  //   3. иначе amountIn>0 → одна fresh-нога (старые/OTC-вызовы без inPayments).
   const inLegs = [];
-  // Главный IN
-  if (Number(legacy.amountIn) > 0) {
-    const inLeg = {
-      currency: legacy.currencyIn,
-      amount: Number(legacy.amountIn),
-      source: legacy.deferredIn ? "from_balance" : "fresh",
-    };
-    if (!legacy.deferredIn) {
-      // fresh source — нужен account_code. partner accounts не маппим (Direction 3).
-      if (legacy.inAccountId) {
-        inLeg.account_code = await resolveAccountCode(legacy.inAccountId);
-      } else if (legacy.inPartnerAccountId) {
-        inLeg.account_code = await resolvePartnerAccountCode(legacy.inPartnerAccountId);
-      } else {
-        throw new Error("adapter: fresh IN requires inAccountId");
-      }
-    }
-    inLeg.rate_source = "market";
-    inLegs.push(inLeg);
-  }
+  const inPayments = (Array.isArray(legacy.inPayments) ? legacy.inPayments : [])
+    .filter((p) => Number(p?.amount) > 0);
 
-  // Multi-currency inPayments[]
-  if (Array.isArray(legacy.inPayments)) {
-    for (const p of legacy.inPayments) {
-      if (!(Number(p.amount) > 0)) continue;
+  if (legacy.deferredIn) {
+    if (Number(legacy.amountIn) > 0) {
+      inLegs.push({
+        currency: (legacy.currencyIn || "").toUpperCase(),
+        amount: Number(legacy.amountIn),
+        source: "from_balance",
+        rate_source: "market",
+      });
+    }
+  } else if (inPayments.length > 0) {
+    for (const p of inPayments) {
       const leg = {
-        currency: p.currency || legacy.currencyIn,
+        currency: (p.currency || legacy.currencyIn || "").toUpperCase(),
         amount: Number(p.amount),
         source: "fresh",
         rate_source: "market",
@@ -146,6 +144,22 @@ export async function adaptLegacyDealPayload(legacy) {
       }
       inLegs.push(leg);
     }
+  } else if (Number(legacy.amountIn) > 0) {
+    const inLeg = {
+      currency: (legacy.currencyIn || "").toUpperCase(),
+      amount: Number(legacy.amountIn),
+      source: "fresh",
+    };
+    // fresh source — нужен account_code. partner accounts не маппим (Direction 3).
+    if (legacy.inAccountId) {
+      inLeg.account_code = await resolveAccountCode(legacy.inAccountId);
+    } else if (legacy.inPartnerAccountId) {
+      inLeg.account_code = await resolvePartnerAccountCode(legacy.inPartnerAccountId);
+    } else {
+      throw new Error("adapter: fresh IN requires inAccountId");
+    }
+    inLeg.rate_source = "market";
+    inLegs.push(inLeg);
   }
 
   // ── OUT legs — built before the one-sided guard so it's available in both paths ──
