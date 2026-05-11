@@ -528,14 +528,16 @@ export async function rpcCancelWorkflowV2(payload) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Feature-flag helper — v2 ledger active iff VITE_USE_NEW_LEDGER === "true".
+// Feature-flag helper — v2 ledger.
 //
-// Phase 3 cutover (redone): the emergency-rollback kill-switch (extra
-// VITE_FORCE_V2 gate, 2026-05-10) is removed — v2 is gated solely by
-// VITE_USE_NEW_LEDGER. Rollback: set VITE_USE_NEW_LEDGER=false in Vercel +
-// redeploy (legacy createDeal returns; note legacy ledger tables are frozen,
-// so a full rollback also needs the runbook's un-freeze/grants step).
+// Cutover landed 2026-05-10; v2 is the product (legacy public.deals/
+// account_movements frozen via ledger.freeze_legacy_tables()). So v2 is now
+// ON BY DEFAULT regardless of env — the boevoy bild должен работать на v2
+// даже если переменной в Vercel нет (как USE_NEW_DEAL_FORM=false жёстко зашит
+// в CashierPage). Единственный способ ВЫКЛЮЧИТЬ — явный VITE_USE_NEW_LEDGER=false
+// в env (аварийный откат на legacy; полный откат всё равно требует un-freeze/
+// grants по docs/CUTOVER_RUNBOOK.md, плюс редеплой — Vite инлайнит env на сборке).
 // ─────────────────────────────────────────────────────────────────────
 const _ENV = typeof import.meta !== "undefined" ? import.meta.env : null;
 
-export const USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER === "true";
+export const USE_NEW_LEDGER = _ENV?.VITE_USE_NEW_LEDGER !== "false";
