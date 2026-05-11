@@ -356,17 +356,28 @@ export function trialBalance(ctx, period, officeFilter) {
 // attributed by effectiveDate). For each tx, each Dr leg's base amount is allocated across
 // the Cr legs in proportion to their base amounts. Row sums == Σ Dr turnover per account,
 // column sums == Σ Cr turnover per account.
-export function chessTurnover(ctx, period, officeFilter) {
+//
+// `currency` (optional): when a currency code is passed, the matrix is built in that
+// NATIVE currency — only entries in that currency are considered, amounts are not
+// converted to base, and the per-tx allocation runs over the same-currency Dr/Cr legs.
+// Row sums still equal each account's Dr turnover in that currency; for cross-currency
+// transactions the column sums may exceed Cr turnover (the "missing" leg is in another
+// currency) — that's the standard limitation of a single-currency turnover sheet.
+// When `currency` is falsy → the original base-currency behaviour.
+export function chessTurnover(ctx, period, officeFilter, currency = null) {
   const { transactions, entries, accounts, toBase } = ctx;
   const fromMs = new Date(period.from).getTime();
   const toMs = new Date(period.to).getTime();
+  const native = !!currency;
   const accById = new Map(accounts.map((a) => [a.id, a]));
   const entriesByTx = new Map();
   for (const e of entries) {
+    if (native && e.currency !== currency) continue;
     const arr = entriesByTx.get(e.transactionId) || [];
     arr.push(e);
     entriesByTx.set(e.transactionId, arr);
   }
+  const amountOf = (e) => (native ? Number(e.amount) || 0 : toBase(Number(e.amount), e.currency) || 0);
   const rows = new Map();
   const add = (drId, crId, v) => {
     let m = rows.get(drId);
@@ -377,19 +388,20 @@ export function chessTurnover(ctx, period, officeFilter) {
     const ts = new Date(t.effectiveDate).getTime();
     if (ts < fromMs || ts > toMs) continue;
     const txEntries = entriesByTx.get(t.id) || [];
+    if (txEntries.length === 0) continue;
     if (officeFilter !== "all" && officeFilter) {
       const touches = txEntries.some((e) => accById.get(e.accountId)?.officeId === officeFilter);
       if (!touches) continue;
     }
     const drLegs = [], crLegs = [];
     for (const e of txEntries) {
-      const base = toBase(Number(e.amount), e.currency) || 0;
-      if (e.direction === "dr") drLegs.push({ accId: e.accountId, base });
-      else crLegs.push({ accId: e.accountId, base });
+      const amt = amountOf(e);
+      if (e.direction === "dr") drLegs.push({ accId: e.accountId, amt });
+      else crLegs.push({ accId: e.accountId, amt });
     }
-    const totalCr = crLegs.reduce((s, c) => s + c.base, 0);
+    const totalCr = crLegs.reduce((s, c) => s + c.amt, 0);
     if (totalCr === 0) continue;
-    for (const d of drLegs) for (const c of crLegs) add(d.accId, c.accId, (d.base * c.base) / totalCr);
+    for (const d of drLegs) for (const c of crLegs) add(d.accId, c.accId, (d.amt * c.amt) / totalCr);
   }
   const rowTotals = new Map(), colTotals = new Map();
   const appearing = new Set();
@@ -409,7 +421,7 @@ export function chessTurnover(ctx, period, officeFilter) {
     const a = accById.get(id) || {};
     return { accountId: id, code: a.code || "?", name: a.name || "?", type: a.type, subtype: a.subtype || null };
   }).sort((a, b) => String(a.code).localeCompare(String(b.code)));
-  return { accounts: accList, rows, rowTotals, colTotals, grandTotal };
+  return { currency: currency || ctx.baseCurrency, isNative: native, accounts: accList, rows, rowTotals, colTotals, grandTotal };
 }
 
 export function balanceCheckTotals(ctx, officeFilter) {
