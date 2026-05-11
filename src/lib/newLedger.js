@@ -179,21 +179,27 @@ export async function rpcCreateWithdrawalV2(payload) {
  */
 export async function rpcCreateDealV2(payload) {
   const key = payload.idempotencyKey || newIdempotencyKey();
+  // Принимаем как camelCase (DealForm.buildTx), так и snake_case
+  // (adaptLegacyDealPayload — legacy ExchangeForm путь): иначе fresh-IN/
+  // physical-OUT ноги уходят в RPC без account_code и БД отбивает
+  // «fresh source requires account_code».
+  const accCode = (l) => l.accountCode ?? l.account_code;
+  const rateSrc = (l) => l.rateSource ?? l.rate_source;
   const inLegs = payload.inLegs.map((l) => ({
     currency: l.currency,
     amount: l.amount,
     source: l.source,
-    account_code: l.accountCode,
+    account_code: accCode(l),
     rate: l.rate,
-    rate_source: l.rateSource,
+    rate_source: rateSrc(l),
   }));
   const outLegs = payload.outLegs.map((l) => ({
     currency: l.currency,
     amount: l.amount,
     destination: l.destination,
-    account_code: l.accountCode,
+    account_code: accCode(l),
     rate: l.rate,
-    rate_source: l.rateSource,
+    rate_source: rateSrc(l),
     deferred: l.deferred ?? false,
   }));
   const params = {
