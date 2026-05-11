@@ -195,6 +195,15 @@ describe("transactionTree", () => {
     const tree = transactionTree(ctx, { type: "all", officeFilter: "all", period: { from: "2030-01-01T00:00:00Z", to: "2030-12-31T00:00:00Z" } });
     expect(tree).toEqual([]);
   });
+
+  it("counterpartyId filter keeps only tx that touch that client/partner in any entry", () => {
+    const ctx = makeLedgerCtx();
+    const tree = transactionTree(ctx, { type: "all", officeFilter: "all", counterpartyId: "client-1" });
+    // tx_deal_1 has entries je4/je5 with clientId=client-1 → kept; tx_open has no such entries → dropped.
+    expect(tree.map((t) => t.tx.id)).toEqual(["tx_deal_1"]);
+    // a counterparty no entry refers to → empty result.
+    expect(transactionTree(ctx, { type: "all", officeFilter: "all", counterpartyId: "client-nobody" })).toEqual([]);
+  });
 });
 
 import { pnlForPeriod } from "./v2selectors.js";
