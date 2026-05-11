@@ -2,7 +2,7 @@
 // Оборотно-сальдовая ведомость for a period: per-class sections, expandable account
 // rows (→ AccountInlineEntries filtered to the window), a balance-check footer, CSV export.
 import React, { useMemo, useState } from "react";
-import { ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronRight, ChevronDown, Search } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { trialBalance } from "../../../lib/treasury/v2selectors.js";
 import { exportCSV } from "../../../utils/csv.js";
@@ -40,6 +40,17 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
   const { t } = useTranslation();
   const tb = useMemo(() => trialBalance(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const allRows = tb.classes.flatMap((c) => c.accounts);
+  // Client-side "find" over account rows by code or name. Purely a viewport filter:
+  // class subtotals, the grand total, and the balance-check chips keep showing the
+  // true whole-ledger figures (they're explicitly labelled), so the books still
+  // visibly reconcile even while a filter is active.
+  const [q, setQ] = useState("");
+  const nq = q.trim().toLowerCase();
+  const matches = (a) => !nq || String(a.code).toLowerCase().includes(nq) || String(a.name).toLowerCase().includes(nq);
+  const visibleClasses = tb.classes
+    .map((c) => ({ ...c, _rows: c.accounts.filter(matches) }))
+    .filter((c) => c._rows.length > 0);
+  const visibleCount = visibleClasses.reduce((s, c) => s + c._rows.length, 0);
 
   function doExport() {
     exportCSV({
@@ -68,9 +79,24 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
   const chip = (ok) => ok ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800";
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 min-w-[220px] max-w-[320px] flex-1">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t("trv2_to_filter_ph")}
+            className="flex-1 min-w-0 bg-transparent text-[12px] outline-none"
+          />
+          {nq && <button onClick={() => setQ("")} className="shrink-0 text-slate-400 hover:text-slate-700 text-[12px]" title={t("trv2_to_filter_clear")}>×</button>}
+        </div>
+        {nq && <span className="text-[11px] text-slate-400">{t("trv2_to_filter_count")} {visibleCount} / {allRows.length}</span>}
+        <div className="flex-1" />
         <button onClick={doExport} className="text-[12px] px-2.5 py-1 rounded-[8px] bg-slate-100 text-slate-700 hover:bg-slate-200">{t("trv2_to_export_csv")}</button>
       </div>
+      {nq && visibleClasses.length === 0 ? (
+        <div className="bg-white rounded-[14px] border border-slate-200/70 px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_to_filter_no_match")}</div>
+      ) : (
       <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
         <table className="w-full text-[12px]">
           <thead>
@@ -83,7 +109,7 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
             </tr>
           </thead>
           <tbody>
-            {tb.classes.map((cls) => (
+            {visibleClasses.map((cls) => (
               <React.Fragment key={cls.type}>
                 <tr className="bg-slate-100/70">
                   <td className="px-2 py-1.5" colSpan={4}><span className="font-bold text-[12px] text-slate-700">{t(cls.labelKey)}</span></td>
@@ -92,7 +118,7 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
                   <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-slate-500">{formatBase(cls.subtotalInBase.creditTurnover, baseCurrency)}</td>
                   <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-slate-500">{formatBase(cls.subtotalInBase.closing, baseCurrency)}</td>
                 </tr>
-                {cls.accounts.map((row) => <AccountRow key={row.accountId} ctx={ctx} window={win} row={row} onOpenTx={onOpenTx} />)}
+                {cls._rows.map((row) => <AccountRow key={row.accountId} ctx={ctx} window={win} row={row} onOpenTx={onOpenTx} />)}
               </React.Fragment>
             ))}
           </tbody>
@@ -107,6 +133,7 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
           </tfoot>
         </table>
       </div>
+      )}
       <div className="flex flex-wrap gap-2 text-[11.5px]">
         <span className={`px-2 py-1 rounded ${chip(tb.check.turnoverOk)}`}>{t("trv2_to_check_turnover")} {tb.check.turnoverOk ? "✓" : `(Δ ${formatBase(tb.check.turnoverDelta, baseCurrency)})`}</span>
         <span className={`px-2 py-1 rounded ${chip(tb.check.openingOk)}`}>{t("trv2_to_check_opening")} {tb.check.openingOk ? "✓" : `(Δ ${formatBase(tb.check.openingDelta, baseCurrency)})`}</span>
