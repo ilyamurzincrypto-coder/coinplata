@@ -5,6 +5,7 @@ import { transactionTree } from "../../../lib/treasury/v2selectors.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
+import { exportCSV } from "../../../utils/csv.js";
 
 const TYPES = ["all", "deal", "transfer", "topup", "adjustment", "manual", "reversal"];
 
@@ -42,6 +43,51 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
     [ctx, typeFilter, officeFilter, counterpartyId, win.from, win.to]
   );
 
+  // Flatten the filtered tree into one row per journal entry, then hand off to exportCSV.
+  // Columns chosen so an auditor can reconstruct each transaction: tx_id + effective_date
+  // + kind/source group entries; side + code + name + amount + currency are the entry
+  // itself; client/partner ids preserve subconto; note carries free-text; reverses_tx_id
+  // ties storno rows to the original.
+  function doExport() {
+    const rows = [];
+    for (const node of tree) {
+      for (const e of node.entries) {
+        rows.push({
+          tx_id: node.tx.id,
+          effective_date: (node.tx.effectiveDate || "").slice(0, 10),
+          kind: node.tx.reversesTransactionId ? `${node.tx.kind} (reversal)` : node.tx.kind,
+          source_ref_id: node.tx.sourceRefId || "",
+          side: e.direction === "dr" ? "Дт" : "Кт",
+          account_code: e.accountCode,
+          account_name: e.accountName,
+          amount: e.amount,
+          currency: e.currency,
+          client_id: e.clientId || "",
+          partner_id: e.partnerId || "",
+          note: e.note || "",
+          reverses_tx_id: node.tx.reversesTransactionId || "",
+        });
+      }
+    }
+    const cols = [
+      { key: "tx_id", label: "tx_id" },
+      { key: "effective_date", label: "effective_date" },
+      { key: "kind", label: "kind" },
+      { key: "source_ref_id", label: "source_ref_id" },
+      { key: "side", label: "side" },
+      { key: "account_code", label: "account_code" },
+      { key: "account_name", label: "account_name" },
+      { key: "amount", label: "amount" },
+      { key: "currency", label: "currency" },
+      { key: "client_id", label: "client_id" },
+      { key: "partner_id", label: "partner_id" },
+      { key: "note", label: "note" },
+      { key: "reverses_tx_id", label: "reverses_tx_id" },
+    ];
+    const f = win.from.slice(0, 10), tt = win.to.slice(0, 10);
+    exportCSV({ filename: `journal_${f}_${tt}.csv`, columns: cols, rows });
+  }
+
   return (
     <div className="space-y-3">
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex flex-wrap items-center gap-4">
@@ -76,6 +122,11 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
             >×</button>
           )}
         </div>
+        <button
+          onClick={doExport}
+          disabled={tree.length === 0}
+          className="shrink-0 px-2.5 py-1 rounded-[8px] text-[12px] bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
+        >{t("trv2_journal_export_csv")}</button>
       </div>
       {truncated && (
         <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
