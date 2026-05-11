@@ -485,4 +485,47 @@ describe("chessTurnover", () => {
     expect(ch.rows.get("exp")?.get("eq")).toBeCloseTo(999, 6);
     expect(ch.rows.has("cash")).toBe(false);
   });
+
+  it("default (no currency) → base-currency matrix, currency=baseCurrency, isNative=false", () => {
+    const ch = chessTurnover(makeChessCtx(), P, "all");
+    expect(ch.currency).toBe("USD");
+    expect(ch.isNative).toBe(false);
+  });
+
+  it("native per-currency view: only legs in that currency; cross-currency deal splits across matrices", () => {
+    // A deal: Dr cash USD 100 / Cr cust_liab USD 100 / Dr cust_liab USD 95 / Cr hot USDT 95 / Cr spread USD 5.
+    const ctx = {
+      accounts: [
+        { id: "cash", code: "1110", name: "Cash USD", type: "asset", subtype: "cash", currency: "USD", officeId: null },
+        { id: "cust", code: "2110", name: "Cust liab USD", type: "liability", subtype: "customer_liab", currency: "USD", officeId: null },
+        { id: "hot", code: "1316", name: "Hot USDT", type: "asset", subtype: "crypto_input", currency: "USDT", officeId: null },
+        { id: "spr", code: "4010", name: "Spread USD", type: "revenue", subtype: "spread", currency: "USD", officeId: null },
+      ],
+      transactions: [{ id: "D", effectiveDate: "2026-05-10T00:00:00Z", createdAt: "2026-05-10T00:00:00Z", kind: "deal", sourceRefId: "1" }],
+      entries: [
+        { id: "d1", transactionId: "D", accountId: "cash", direction: "dr", amount: 100, currency: "USD" },
+        { id: "d2", transactionId: "D", accountId: "cust", direction: "cr", amount: 100, currency: "USD" },
+        { id: "d3", transactionId: "D", accountId: "cust", direction: "dr", amount: 95, currency: "USD" },
+        { id: "d4", transactionId: "D", accountId: "hot", direction: "cr", amount: 95, currency: "USDT" },
+        { id: "d5", transactionId: "D", accountId: "spr", direction: "cr", amount: 5, currency: "USD" },
+      ],
+      balances: [], toBase: (a) => Number(a), baseCurrency: "USD", officeFilter: "all",
+    };
+    const win = { from: "2026-05-01T00:00:00Z", to: "2026-05-31T00:00:00Z" };
+    const usd = chessTurnover(ctx, win, "all", "USD");
+    expect(usd.currency).toBe("USD");
+    expect(usd.isNative).toBe(true);
+    // USD legs: Dr cash 100, Cr cust 100, Dr cust 95, Cr spr 5 → totalCr(USD)=105
+    expect(usd.rows.get("cash").get("cust")).toBeCloseTo(100 * 100 / 105, 6);
+    expect(usd.rows.get("cash").get("spr")).toBeCloseTo(100 * 5 / 105, 6);
+    expect(usd.rows.get("cust").get("cust")).toBeCloseTo(95 * 100 / 105, 6);
+    expect(usd.rowTotals.get("cash")).toBeCloseTo(100, 6);
+    expect(usd.rowTotals.get("cust")).toBeCloseTo(95, 6);
+    expect(usd.accounts.find((a) => a.code === "1316")).toBeUndefined(); // USDT account absent from USD matrix
+    // USDT view: only the hot Cr leg, no USDT Dr leg → nothing to allocate → empty matrix.
+    const usdt = chessTurnover(ctx, win, "all", "USDT");
+    expect(usdt.currency).toBe("USDT");
+    expect(usdt.isNative).toBe(true);
+    expect(usdt.accounts).toEqual([]);
+  });
 });
