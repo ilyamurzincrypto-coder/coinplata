@@ -18,7 +18,7 @@ import DealForm from "../components/cashier/DealForm.jsx";
 const USE_NEW_DEAL_FORM = false;
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
-import TransactionsTable from "../components/TransactionsTable.jsx";
+import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
 import PendingTransfersBar from "../components/PendingTransfersBar.jsx";
 import EditTransactionModal from "../components/EditTransactionModal.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -547,14 +547,13 @@ export default function CashierPage({
             </div>
 
             {/* Transactions — grid-area "tx". Compact: row 3 full-width.
-                Expanded: row 3 col2 (рядом с продолжением sidebar). */}
+                Expanded: row 3 col2 (рядом с продолжением sidebar).
+                Список читается из v2-леджера (ledger.transactions/journal_entries),
+                чтобы оператор видел только что созданные сделки. Старый
+                TransactionsTable (поверх замороженной public.deals) отключён. */}
             <div className="min-w-0 lg:[grid-area:tx]">
               <PendingTransfersBar />
-              <TransactionsTable
-                currentOffice={currentOffice}
-                justCreatedId={justCreatedId}
-                onEdit={setEditingTx}
-              />
+              <CashierLedgerDeals officeFilter={currentOffice} />
             </div>
           </div>
         </div>

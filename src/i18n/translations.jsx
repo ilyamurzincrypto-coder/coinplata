@@ -48,6 +48,10 @@ const DICT = {
 
     // Exchange form
     new_exchange: "New exchange",
+    cashier_deals_title: "Deals",
+    cashier_deal_in: "in",
+    cashier_deal_out: "out",
+    cashier_deal_margin: "spread",
     // ── cashier (new DealForm v2, stage 1) ─────────────────────────
     cashier_title_new: "New deal",
     cashier_title_edit: "Edit deal",
@@ -1312,6 +1316,10 @@ const DICT = {
     updated_ago: "обновлено 2 мин назад",
 
     new_exchange: "Новая сделка",
+    cashier_deals_title: "Сделки",
+    cashier_deal_in: "пришло",
+    cashier_deal_out: "ушло",
+    cashier_deal_margin: "спред",
     // ── cashier (новая DealForm v2, этап 1) ────────────────────────
     cashier_title_new: "Новая сделка",
     cashier_title_edit: "Редактировать сделку",
@@ -2550,6 +2558,10 @@ const DICT = {
     updated_ago: "2 dk önce güncellendi",
 
     new_exchange: "Yeni işlem",
+    cashier_deals_title: "İşlemler",
+    cashier_deal_in: "gelen",
+    cashier_deal_out: "giden",
+    cashier_deal_margin: "marj",
     // ── cashier (yeni DealForm v2, aşama 1) ────────────────────────
     cashier_title_new: "Yeni işlem",
     cashier_title_edit: "İşlemi düzenle",
