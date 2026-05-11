@@ -8,6 +8,7 @@ import { balanceCheckTotals, transactionTree } from "../../lib/treasury/v2select
 import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
 import TransactionDetail from "./parts/TransactionDetail.jsx";
+import DashboardTab from "./tabs/DashboardTab.jsx";
 import AssetsTab from "./tabs/AssetsTab.jsx";
 import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
@@ -19,6 +20,7 @@ import PostingTab from "./tabs/PostingTab.jsx";
 import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
 
 const BASE_TABS = [
+  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab },
   { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
@@ -51,14 +53,14 @@ export default function TreasuryShell() {
     try { localStorage.setItem("coinplata.treasury_office", v); } catch {}
   };
 
-  const [activeTab, setActiveTab] = useState("assets");
+  const [activeTab, setActiveTab] = useState("dashboard");
 
-  // if the active tab disappeared (e.g. lost accounting:edit), fall back to assets
+  // if the active tab disappeared (e.g. lost accounting:edit), fall back to dashboard
   useEffect(() => {
-    if (!TABS.some((x) => x.id === activeTab)) setActiveTab("assets");
+    if (!TABS.some((x) => x.id === activeTab)) setActiveTab("dashboard");
   }, [TABS, activeTab]);
 
-  const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || AssetsTab;
+  const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || DashboardTab;
 
   const ctx = useMemo(
     () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName, counterpartyOptions }),
