@@ -30,7 +30,8 @@ const fx = vi.hoisted(() => {
 });
 
 vi.mock("../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k }) }));
-vi.mock("../../store/offices.jsx", () => ({ useOffices: () => ({ activeOffices: [] }) }));
+vi.mock("../../store/offices.jsx", () => ({ useOffices: () => ({ activeOffices: [], findOffice: () => null }) }));
+vi.mock("../../store/openObligations.js", () => ({ useOpenObligations: () => ({ items: [], loading: false }) }));
 vi.mock("../../store/baseCurrency.js", () => ({
   useBaseCurrency: () => ({ toBase: (a) => Number(a) || 0, formatBase: (a) => `$${Number(a) || 0}`, base: "USD" }),
 }));
@@ -51,17 +52,21 @@ vi.mock("../../lib/newLedger.js", () => ({ rpcCreateManualEntryV2: () => Promise
 import TreasuryShell from "./TreasuryShell.jsx";
 
 describe("TreasuryShell integration smoke", () => {
-  it("renders the 5 tabs and the active assets tab content", () => {
+  it("renders the tabs, opens on the Dashboard, and Assets tab content shows on click", () => {
     render(<TreasuryShell />);
-    for (const key of ["trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_pnl", "trv2_tab_journal"]) {
+    for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_pnl", "trv2_tab_journal"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
     }
+    // Dashboard is the landing tab → its capital card is visible
+    expect(screen.getByText("trv2_dash_capital")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     expect(screen.getByText("1110")).toBeInTheDocument();
     expect(screen.getByText("trv2_subtype_cash")).toBeInTheDocument();
   });
 
   it("expands an account row to reveal its inline Dr/Cr entries", () => {
     const { container } = render(<TreasuryShell />);
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     expect(container.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("1110"));
     expect(container.textContent).toContain("D-7"); // source-doc link in the inline entry table
