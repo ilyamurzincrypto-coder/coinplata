@@ -1,10 +1,12 @@
 // src/pages/treasury_v2/tabs/PnLTab.jsx
 import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../../i18n/translations.jsx";
+import { useCan } from "../../../store/permissions.jsx";
 import { pnlForPeriod } from "../../../lib/treasury/v2selectors.js";
 import { mergePnlSection, csvRowsForPnl } from "../../../lib/treasury/pnlCompare.js";
 import { exportCSV } from "../../../utils/csv.js";
 import PeriodPicker, { presetWindow, previousWindow } from "../PeriodPicker.jsx";
+import PeriodCloseModal from "../parts/PeriodCloseModal.jsx";
 
 const fmtSigned = (formatBase, baseCurrency, n) => `${n < 0 ? "−" : ""}${formatBase(Math.abs(n), baseCurrency)}`;
 
@@ -51,6 +53,8 @@ function Section({ titleKey, total, prevTotal, sign, formatBase, baseCurrency, a
 
 export default function PnLTab({ ctx, officeFilter, formatBase, baseCurrency }) {
   const { t } = useTranslation();
+  const can = useCan();
+  const [closeOpen, setCloseOpen] = useState(false);
   const [period, setPeriod] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_pnl_period") || "month"; } catch { return "month"; }
   });
@@ -91,7 +95,11 @@ export default function PnLTab({ ctx, officeFilter, formatBase, baseCurrency }) 
         <div className="flex-1" />
         <button onClick={toggleCompare} className={`px-2.5 py-1 rounded-[8px] text-[12px] font-medium ${compare ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>{t("trv2_pnl_compare")}</button>
         <button onClick={doExport} className="px-2.5 py-1 rounded-[8px] text-[12px] bg-slate-100 text-slate-700 hover:bg-slate-200">{t("trv2_pnl_export_csv")}</button>
+        {can("accounting", "edit") && (
+          <button onClick={() => setCloseOpen(true)} className="px-2.5 py-1 rounded-[8px] text-[12px] bg-slate-100 text-slate-700 hover:bg-slate-200">{t("trv2_pc_button")}</button>
+        )}
       </div>
+      {closeOpen && <PeriodCloseModal open onClose={() => setCloseOpen(false)} />}
       {truncated && (
         <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
       )}
