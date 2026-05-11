@@ -3,6 +3,8 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("../../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k }) }));
+const exportCSVMock = vi.fn();
+vi.mock("../../../utils/csv.js", () => ({ exportCSV: (...a) => exportCSVMock(...a) }));
 // PeriodPicker is unrelated to the counterparty-filter behaviour we're testing here;
 // stub it so a wide "all-time" window is used and the test isn't time-sensitive.
 vi.mock("../PeriodPicker.jsx", () => ({
@@ -53,6 +55,23 @@ describe("JournalTab", () => {
   it("renders both transactions when no counterparty filter is active", () => {
     render(<JournalTab ctx={ctx} officeFilter="all" onOpenSource={() => {}} />);
     expect(screen.getAllByTestId("tx-row")).toHaveLength(2);
+  });
+
+  it("Export CSV emits one row per journal_entry for the currently-filtered tree", () => {
+    exportCSVMock.mockReset();
+    render(<JournalTab ctx={ctx} officeFilter="all" onOpenSource={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: "trv2_journal_export_csv" }));
+    expect(exportCSVMock).toHaveBeenCalledTimes(1);
+    const call = exportCSVMock.mock.calls[0][0];
+    // 2 transactions × 2 entries each = 4 rows.
+    expect(call.rows).toHaveLength(4);
+    // Columns include the audit-trail essentials.
+    const cols = call.columns.map((c) => c.key);
+    expect(cols).toEqual(expect.arrayContaining(["tx_id", "side", "account_code", "amount", "currency", "client_id"]));
+    // Σ ids include both transactions.
+    expect(new Set(call.rows.map((r) => r.tx_id))).toEqual(new Set(["tx_a", "tx_b"]));
+    // Dt/Кт labels are rendered (no English "dr"/"cr" leaks).
+    expect(new Set(call.rows.map((r) => r.side))).toEqual(new Set(["Дт", "Кт"]));
   });
 
   it("counterparty picker filters the tree to only transactions touching the chosen client", () => {
