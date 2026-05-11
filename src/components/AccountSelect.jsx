@@ -10,6 +10,7 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Search, Check, X, Wallet, Building2, ArrowLeftRight } from "lucide-react";
 import { useOffices } from "../store/offices.jsx";
+import { useTranslation } from "../i18n/translations.jsx";
 
 // Иконки типов счетов (дублирует ACCOUNT_TYPE_ICONS из store/data, но для изоляции)
 const TYPE_ICONS = {
@@ -23,15 +24,17 @@ export default function AccountSelect({
   accounts,
   value,
   onChange,
-  placeholder = "Select account…",
+  placeholder,
   allowClear = true,
   currentOfficeId = null,
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef(null);
   const inputRef = useRef(null);
   const { offices } = useOffices();
+  const placeholderText = placeholder ?? t("select_account");
 
   const officeName = (id) => offices.find((o) => o.id === id)?.name || id;
 
@@ -88,7 +91,7 @@ export default function AccountSelect({
     if (current.length > 0) {
       out.push({
         id: "__current__",
-        label: `Current office · ${officeName(currentOfficeId)}`,
+        label: t("acsel_current_office").replace("{name}", officeName(currentOfficeId)),
         accounts: current,
       });
     }
@@ -97,10 +100,10 @@ export default function AccountSelect({
       for (const [officeId, list] of otherByOffice.entries()) {
         remote.push({ officeId, officeName: officeName(officeId), accounts: list });
       }
-      out.push({ id: "__others__", label: "Other offices · interoffice transfer", groups: remote });
+      out.push({ id: "__others__", label: t("acsel_other_offices"), groups: remote });
     }
     return out;
-  }, [filtered, currentOfficeId, offices]);
+  }, [filtered, currentOfficeId, offices, t]);
 
   const handlePick = (id) => {
     onChange(id);
@@ -129,7 +132,7 @@ export default function AccountSelect({
                 {isInteroffice && (
                   <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 ring-1 ring-amber-200">
                     <ArrowLeftRight className="w-2 h-2" />
-                    INTEROFFICE
+                    {t("acsel_interoffice_badge")}
                   </span>
                 )}
               </div>
@@ -142,7 +145,7 @@ export default function AccountSelect({
         ) : (
           <>
             <Wallet className="w-3.5 h-3.5 text-slate-400" />
-            <span className="flex-1 text-[13px] text-slate-400">{placeholder}</span>
+            <span className="flex-1 text-[13px] text-slate-400">{placeholderText}</span>
           </>
         )}
         <ChevronDown
@@ -159,7 +162,7 @@ export default function AccountSelect({
             onChange("");
           }}
           className="absolute top-1/2 right-8 -translate-y-1/2 p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700"
-          title="Clear"
+          title={t("acsel_clear")}
         >
           <X className="w-3 h-3" />
         </button>
@@ -169,7 +172,7 @@ export default function AccountSelect({
       {isInteroffice && !open && (
         <div className="mt-1 text-[10px] font-medium text-amber-800 bg-amber-50/80 border border-amber-200 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
           <ArrowLeftRight className="w-2.5 h-2.5" />
-          Interoffice transfer · balance comes from {officeName(selected.officeId)}
+          {t("acsel_interoffice_hint").replace("{office}", officeName(selected.officeId))}
         </div>
       )}
 
@@ -185,7 +188,7 @@ export default function AccountSelect({
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, currency…"
+              placeholder={t("acsel_search_placeholder")}
               className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-300 rounded-[8px] text-[12px] outline-none placeholder:text-slate-400"
             />
           </div>
@@ -194,7 +197,7 @@ export default function AccountSelect({
           <div className="max-h-72 overflow-auto py-1">
             {filtered.length === 0 && (
               <div className="px-3 py-4 text-center text-[12px] text-slate-400">
-                No accounts match
+                {t("acsel_no_match")}
               </div>
             )}
             {sections.map((section) => (
