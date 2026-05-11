@@ -149,6 +149,31 @@ export function RatesProvider({ children }) {
         .then((dbPairs) => {
           if (cancelled) return;
           if (!Array.isArray(dbPairs)) return;
+          // Для каждой валюты из загруженных пар гарантируем наличие channel.
+          // SEED_CHANNELS покрывает только «старые» 7 валют — для AED/BTC/USDC/…
+          // channelForCurrency ниже отдаёт synthetic `ch_<code>_auto`, а
+          // buildRatesLookup потом резолвит валюту по этому channelId; если id
+          // нет в channels — пара выпадает из lookup и getRate возвращает
+          // undefined (форма создания сделки не подставит курс). Регистрируем
+          // здесь ровно тот synthetic id, чтобы lookup сошёлся.
+          const referencedCurrencies = new Set();
+          dbPairs.forEach((db) => {
+            if (db.fromCurrency) referencedCurrencies.add(db.fromCurrency);
+            if (db.toCurrency) referencedCurrencies.add(db.toCurrency);
+          });
+          setChannels((prevCh) => {
+            const have = new Set(prevCh.map((c) => c.currencyCode));
+            const extra = [...referencedCurrencies]
+              .filter((code) => !have.has(code))
+              .map((code) => ({
+                id: `ch_${code.toLowerCase()}_auto`,
+                currencyCode: code,
+                kind: "cash",
+                isDefaultForCurrency: true,
+                synthetic: true,
+              }));
+            return extra.length ? [...prevCh, ...extra] : prevCh;
+          });
           // ПОЛНАЯ замена state — раньше делали merge только по seed pairs,
           // новые пары (USD→CHF etc.) из БД игнорировались и тихо исчезали
           // после refresh. Теперь строим pairs state целиком из dbPairs.
