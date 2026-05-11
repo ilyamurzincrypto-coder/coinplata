@@ -149,44 +149,62 @@ export async function adaptLegacyDealPayload(legacy) {
   }
 
   // ── OUT legs — built before the one-sided guard so it's available in both paths ──
+  // Deferral signals from the legacy ExchangeForm:
+  //   • `payNow: 0`              → the whole leg is "pay later" (the "мы платим позже" toggle)
+  //   • `0 < payNow < amount`    → partial payout: split into an immediate leg (payNow)
+  //                                 plus a deferred leg (amount − payNow)
+  //   • `payNow` undefined       → ordinary immediate leg
+  // Older OTC code also uses outKind 'ours_later' / 'partner_later'. Honor all of them.
   const outLegs = [];
   for (const o of legacy.outputs || []) {
-    const isLater = o.outKind === "ours_later" || o.outKind === "partner_later";
-    const isPartner = o.outKind === "partner_now" || !!o.partnerAccountId;
-    if (isPartner && !isLater) {
+    const amount = Number(o.amount);
+    const payNow = (o.payNow === undefined || o.payNow === null) ? undefined : Number(o.payNow);
+    const fullyLater = o.outKind === "ours_later" || o.outKind === "partner_later" || payNow === 0;
+    const isPartner = o.outKind === "partner_now" || o.outKind === "partner_later" || !!o.partnerAccountId;
+
+    if (isPartner && !fullyLater) {
       // Partner OUT — resolve via partner_accounts lookup instead of throwing.
       const code = await resolvePartnerAccountCode(o.partnerAccountId);
       outLegs.push({
         currency: o.currency.toUpperCase(),
-        amount: Number(o.amount),
+        amount,
         account_code: code,
         rate: Number(o.rate),
         deferred: false,
       });
       continue;
     }
-    const outLeg = {
-      currency: o.currency,
-      amount: Number(o.amount),
-      destination: "physical",
-      rate: Number(o.rate),
-      rate_source: o.manualRate ? "manual" : "market",
-      deferred: isLater,
-    };
-    if (!isLater && o.accountId) {
-      outLeg.account_code = await resolveAccountCode(o.accountId);
-    } else if (isLater) {
-      // deferred physical — но account_code всё равно нужен для будущего
-      // complete_deal_leg. Если не задан — это блокер, попросим явно.
-      if (!o.accountId) {
+
+    const accountCode = o.accountId ? await resolveAccountCode(o.accountId) : undefined;
+    const makeLeg = (amt, deferred) => {
+      const leg = {
+        currency: o.currency,
+        amount: amt,
+        destination: "physical",
+        rate: Number(o.rate),
+        rate_source: o.manualRate ? "manual" : "market",
+        deferred,
+      };
+      if (accountCode) {
+        leg.account_code = accountCode;
+      } else if (deferred) {
+        // deferred physical — account_code нужен для будущего complete_deal_leg
         throw new Error(
           "adapter: deferred OUT leg requires accountId for future complete_deal_leg. " +
-          "Legacy form should preserve target account even for ours_later/partner_later."
+          "Legacy form should preserve the target account even for deferred/partial legs."
         );
       }
-      outLeg.account_code = await resolveAccountCode(o.accountId);
+      return leg;
+    };
+
+    if (fullyLater) {
+      outLegs.push(makeLeg(amount, true));
+    } else if (payNow !== undefined && payNow > 0 && payNow < amount) {
+      outLegs.push(makeLeg(payNow, false));
+      outLegs.push(makeLeg(amount - payNow, true));
+    } else {
+      outLegs.push(makeLeg(amount, false));
     }
-    outLegs.push(outLeg);
   }
 
   // ── One-sided guards — route to dedicated RPCs instead of throwing ──
