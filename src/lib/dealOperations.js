@@ -68,7 +68,8 @@ export async function createDeal(payload) {
       currency: l.currency,
       amount: Number(l.amount),
       kind: "out",
-      account_code: l.accountCode,
+      // camelCase (DealForm) или snake_case (adaptLegacyDealPayload)
+      account_code: l.accountCode ?? l.account_code,
     }));
 
   if (deferredLegs.length > 0 && result.deal_tx_id) {
