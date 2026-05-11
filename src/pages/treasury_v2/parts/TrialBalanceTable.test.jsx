@@ -66,6 +66,27 @@ describe("TrialBalanceTable", () => {
     expect(screen.getByText("trv2_to_empty_osv")).toBeInTheDocument();
   });
 
+  it("the account filter narrows visible rows by code or name; clearing restores them", () => {
+    render(<TrialBalanceTable ctx={ctx} window={win} officeFilter="all" formatBase={(n) => `$${n}`} baseCurrency="USD" onOpenTx={() => {}} />);
+    const filter = screen.getByPlaceholderText("trv2_to_filter_ph");
+    fireEvent.change(filter, { target: { value: "spread" } });
+    expect(screen.getByText("4010")).toBeInTheDocument();
+    expect(screen.queryByText("1110")).toBeNull();
+    expect(screen.queryByText("2110")).toBeNull();
+    // matching by code also works
+    fireEvent.change(filter, { target: { value: "2110" } });
+    expect(screen.getByText("2110")).toBeInTheDocument();
+    expect(screen.queryByText("4010")).toBeNull();
+    // no match → message
+    fireEvent.change(filter, { target: { value: "zzz-nope" } });
+    expect(screen.getByText("trv2_to_filter_no_match")).toBeInTheDocument();
+    // clear → all back
+    fireEvent.click(screen.getByTitle("trv2_to_filter_clear"));
+    expect(screen.getByText("1110")).toBeInTheDocument();
+    expect(screen.getByText("4010")).toBeInTheDocument();
+    expect(screen.getByText("2110")).toBeInTheDocument();
+  });
+
   it("a dimensioned account expands to subconto sub-rows (resolved names), not the entry table", () => {
     render(<TrialBalanceTable ctx={ctx} window={win} officeFilter="all" formatBase={(n) => `$${n}`} baseCurrency="USD" onOpenTx={() => {}} />);
     expect(screen.getByText("2110")).toBeInTheDocument();

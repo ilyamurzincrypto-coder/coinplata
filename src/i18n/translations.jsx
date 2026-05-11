@@ -709,6 +709,10 @@ const DICT = {
     trv2_to_chess_note: "Cell = turnover that flowed from the row account (Dr) to the column account (Cr), in {cur}. For transactions with more than two legs, each Dr leg is allocated across the Cr legs in proportion to their size.",
     trv2_to_empty_osv: "No account activity in the selected period.",
     trv2_to_empty_chess: "No transactions in the selected period.",
+    trv2_to_filter_ph: "Filter accounts by code or name…",
+    trv2_to_filter_clear: "Clear filter",
+    trv2_to_filter_count: "shown:",
+    trv2_to_filter_no_match: "No accounts match the filter.",
     trv2_no_accounts: "No accounts in this class.",
     trv2_window_partial: "Showing the most recent data only — loading the rest of the selected period…",
 
@@ -1943,6 +1947,10 @@ const DICT = {
     trv2_to_chess_note: "Ячейка = оборот, ушедший со счёта строки (Дт) на счёт столбца (Кт), в {cur}. Для транзакций больше чем с двумя плечами каждое плечо Дт разносится по плечам Кт пропорционально их величине.",
     trv2_to_empty_osv: "Нет движений по счетам за выбранный период.",
     trv2_to_empty_chess: "Нет транзакций за выбранный период.",
+    trv2_to_filter_ph: "Фильтр счетов по коду или названию…",
+    trv2_to_filter_clear: "Сбросить фильтр",
+    trv2_to_filter_count: "показано:",
+    trv2_to_filter_no_match: "Под фильтр не подошёл ни один счёт.",
     trv2_no_accounts: "Нет счетов в этом классе.",
     trv2_window_partial: "Показаны только свежие данные — загружаем остаток выбранного периода…",
 
@@ -3175,6 +3183,10 @@ const DICT = {
     trv2_to_chess_note: "Hücre = satır hesabından (Borç) sütun hesabına (Alacak) akan ciro, {cur} cinsinden. İkiden fazla bacaklı işlemlerde her Borç bacağı, Alacak bacaklarına büyüklükleri oranında dağıtılır.",
     trv2_to_empty_osv: "Seçili dönemde hesap hareketi yok.",
     trv2_to_empty_chess: "Seçili dönemde işlem yok.",
+    trv2_to_filter_ph: "Hesapları koda veya ada göre filtrele…",
+    trv2_to_filter_clear: "Filtreyi temizle",
+    trv2_to_filter_count: "gösterilen:",
+    trv2_to_filter_no_match: "Filtreye uyan hesap yok.",
     trv2_no_accounts: "Bu sınıfta hesap yok.",
     trv2_window_partial: "Yalnızca en güncel veriler gösteriliyor — seçili dönemin kalanı yükleniyor…",
 
