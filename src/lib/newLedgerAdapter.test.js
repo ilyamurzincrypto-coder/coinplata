@@ -248,4 +248,31 @@ describe("adaptLegacyDealPayload — structural", () => {
       }],
     })).rejects.toThrow(/deferred OUT leg requires accountId/);
   });
+
+  it("ExchangeForm payNow:0 → the whole OUT leg becomes deferred", async () => {
+    setupAccountMock({
+      "acc-1316": { ledger_account_code: "1316", legacy_only: false, name: "Hot USDT" },
+      "acc-1340": { ledger_account_code: "1340", legacy_only: false, name: "Treasury USDT" },
+    });
+    const v2 = await adaptLegacyDealPayload({
+      officeId: "office-1", clientId: "client-1", currencyIn: "USD", amountIn: 1000, inAccountId: "acc-1316",
+      outputs: [{ currency: "USDT", amount: 950, rate: 1, accountId: "acc-1340", outKind: "ours", payNow: 0 }],
+    });
+    expect(v2.outLegs).toHaveLength(1);
+    expect(v2.outLegs[0]).toMatchObject({ currency: "USDT", amount: 950, deferred: true, account_code: "1340" });
+  });
+
+  it("ExchangeForm partial payNow (0 < payNow < amount) → splits into immediate + deferred legs", async () => {
+    setupAccountMock({
+      "acc-1316": { ledger_account_code: "1316", legacy_only: false, name: "Hot USDT" },
+      "acc-1340": { ledger_account_code: "1340", legacy_only: false, name: "Treasury USDT" },
+    });
+    const v2 = await adaptLegacyDealPayload({
+      officeId: "office-1", clientId: "client-1", currencyIn: "USD", amountIn: 1000, inAccountId: "acc-1316",
+      outputs: [{ currency: "USDT", amount: 950, rate: 1, accountId: "acc-1340", outKind: "ours", payNow: 500 }],
+    });
+    expect(v2.outLegs).toHaveLength(2);
+    expect(v2.outLegs[0]).toMatchObject({ currency: "USDT", amount: 500, deferred: false, account_code: "1340" });
+    expect(v2.outLegs[1]).toMatchObject({ currency: "USDT", amount: 450, deferred: true, account_code: "1340" });
+  });
 });
