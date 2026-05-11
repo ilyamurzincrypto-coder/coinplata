@@ -69,9 +69,10 @@ describe("PostingTab", () => {
     fireEvent.change(screen.getByPlaceholderText("trv2_pm_reason_ph"), { target: { value: "reclass" } });
     const post = screen.getByRole("button", { name: "trv2_pm_post" });
     expect(post).toBeDisabled(); // line 1 needs a client
-    expect(screen.getByRole("option", { name: "Иван Петров" })).toBeInTheDocument();
-    const cpSelect = screen.getAllByRole("combobox").find((el) => [...el.options].some((o) => o.value === "client-1"));
-    fireEvent.change(cpSelect, { target: { value: "client-1" } });
+    // SearchableSelect: button "trv2_pm_pick_counterparty" → open → click "Иван Петров".
+    const cpButton = screen.getByRole("button", { name: /trv2_pm_pick_counterparty/ });
+    fireEvent.click(cpButton);
+    fireEvent.click(screen.getByText("Иван Петров"));
     await waitFor(() => expect(post).not.toBeDisabled());
     fireEvent.click(post);
     await waitFor(() => expect(rpcMock).toHaveBeenCalledTimes(1));

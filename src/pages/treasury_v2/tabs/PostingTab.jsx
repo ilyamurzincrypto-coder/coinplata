@@ -12,6 +12,7 @@ import {
 } from "../../../lib/treasury/postingEntry.js";
 import AccountPicker from "../parts/AccountPicker.jsx";
 import TransactionEntries from "../parts/TransactionEntries.jsx";
+import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 
 let _lineSeq = 0;
 const newLine = () => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "", clientId: null, partnerId: null });
@@ -151,12 +152,13 @@ export default function PostingTab({ ctx }) {
                 <td className="px-2 py-1.5">
                   {(needsClient || needsPartner) && (
                     <>
-                      <select value={cpVal}
-                        onChange={(e) => patchLine(l.id, needsPartner ? { partnerId: e.target.value || null } : { clientId: e.target.value || null })}
-                        className={`min-w-0 w-full bg-slate-50 border rounded-[8px] px-2 py-1 text-[12px] outline-none ${cpErr ? "border-rose-300" : "border-slate-200"}`}>
-                        <option value="">{t("trv2_pm_pick_counterparty")}</option>
-                        {cpOpts.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                      </select>
+                      <SearchableSelect
+                        value={cpVal || null}
+                        options={cpOpts}
+                        placeholder={t("trv2_pm_pick_counterparty")}
+                        error={!!cpErr}
+                        onChange={(id) => patchLine(l.id, needsPartner ? { partnerId: id } : { clientId: id })}
+                      />
                       {cpErr && <div className="text-[10px] text-rose-600 mt-0.5">{t("trv2_pm_err_counterparty")}</div>}
                     </>
                   )}
