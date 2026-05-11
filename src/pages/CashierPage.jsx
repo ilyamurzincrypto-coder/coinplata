@@ -9,11 +9,13 @@ import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
 
-// Feature-flag для новой формы создания сделки.
-// Phase 3 cutover (redone): v2 DealForm активна iff VITE_USE_NEW_DEAL_FORM === "true".
-// Аварийный kill-switch (доп. VITE_FORCE_V2-гейт от 2026-05-10) убран. Откат — выставить
-// VITE_USE_NEW_DEAL_FORM=false в Vercel и передеплоить.
-const USE_NEW_DEAL_FORM = import.meta.env.VITE_USE_NEW_DEAL_FORM === "true";
+// Форма создания сделки: жёстко используем привычную ExchangeForm.
+// (Новая v2 DealForm — с боковой панелью курсов — отключена по запросу;
+// env-флаг VITE_USE_NEW_DEAL_FORM сейчас игнорируется. Чтобы вернуть v2-форму,
+// замените `false` на `import.meta.env.VITE_USE_NEW_DEAL_FORM === "true"`.)
+// Это НЕ трогает леджер: ExchangeForm пишет сделки через адаптер в тот же
+// ledger.create_deal_v2 — Казначейство/проводки работают как прежде.
+const USE_NEW_DEAL_FORM = false;
 import OtcDealWizard from "../components/OtcDealWizard.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import TransactionsTable from "../components/TransactionsTable.jsx";
