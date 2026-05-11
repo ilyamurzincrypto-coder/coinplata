@@ -15,6 +15,7 @@ import PnLTab from "./tabs/PnLTab.jsx";
 import TurnoverTab from "./tabs/TurnoverTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
 import PostingTab from "./tabs/PostingTab.jsx";
+import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
 
 const BASE_TABS = [
   { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
@@ -23,6 +24,7 @@ const BASE_TABS = [
   { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab },
   { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
   { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab },
+  { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },
 ];
 
 export default function TreasuryShell() {
