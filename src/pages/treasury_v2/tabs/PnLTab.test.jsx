@@ -4,6 +4,8 @@ import { I18nProvider } from "../../../i18n/translations.jsx";
 
 const exportCSVMock = vi.fn(() => true);
 vi.mock("../../../utils/csv.js", () => ({ exportCSV: (...a) => exportCSVMock(...a) }));
+// PnLTab uses useCan() to gate the "Close period" button — not exercised here.
+vi.mock("../../../store/permissions.jsx", () => ({ useCan: () => () => false }));
 
 import PnLTab from "./PnLTab.jsx";
 import { makeLedgerCtx } from "../../../lib/treasury/v2selectors.test.js";
