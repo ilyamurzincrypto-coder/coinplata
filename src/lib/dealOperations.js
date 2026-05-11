@@ -39,9 +39,18 @@ import {
   adaptLegacyAdjustmentPayload,
 } from "./newLedgerAdapter.js";
 
+// A v2-shaped deal payload (from DealForm's buildTx) already carries `inLegs`/`outLegs`
+// arrays — feed it straight to rpcCreateDealV2. The legacy ExchangeForm produces a flat
+// payload (amountIn / currencyIn / outputs) which still needs adaptLegacyDealPayload.
+// buildTx guarantees both leg arrays are non-empty, so a v2-shaped payload is never a
+// one-sided withdrawal/topup.
+function isV2DealShape(p) {
+  return p && Array.isArray(p.inLegs) && Array.isArray(p.outLegs);
+}
+
 export async function createDeal(payload) {
   if (!USE_NEW_LEDGER) return await rpcCreateDeal(payload);
-  const v2payload = await adaptLegacyDealPayload(payload);
+  const v2payload = isV2DealShape(payload) ? payload : await adaptLegacyDealPayload(payload);
 
   if (v2payload.kind === "withdrawal") {
     return await rpcCreateWithdrawalV2(v2payload);

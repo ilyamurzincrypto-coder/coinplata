@@ -306,6 +306,24 @@ describe("balanceCheckTotals", () => {
     expect(r.liabilities).toBe(0);
     expect(r.equity).toBe(0);
   });
+
+  it("folds unrealised P&L (revenue − expense) into equity so a profitable ledger still reconciles", () => {
+    // A tiny balanced ledger: cash 1030 = opening_equity 1000 + spread 50 − rent 20.
+    const ctx = makeLedgerCtx({
+      balances: [
+        { accountId: "ac_cash_usd_mark", currency: "USD", clientId: null, partnerId: null, balance: 1030 },
+        { accountId: "ac_opening_usd", currency: "USD", clientId: null, partnerId: null, balance: 1000 },
+        { accountId: "ac_spread_usd", currency: "USD", clientId: null, partnerId: null, balance: 50 },   // revenue
+        { accountId: "ac_rent_usd", currency: "USD", clientId: null, partnerId: null, balance: 20 },     // expense
+      ],
+    });
+    const r = balanceCheckTotals(ctx, "all");
+    expect(r.equityAccounts).toBe(1000);
+    expect(r.pnl).toBe(30);                 // 50 revenue − 20 expense
+    expect(r.equity).toBe(1030);            // equity accounts + P&L to date
+    expect(r.identityCheck.delta).toBe(0);  // 1030 assets − (0 liab + 1030 equity)
+    expect(r.identityCheck.ok).toBe(true);  // ← would be RED before the fix (delta = 30)
+  });
 });
 
 import { trialBalance } from "./v2selectors.js";

@@ -12,7 +12,11 @@ export default function BalanceCheckBar({ totals, formatBase, baseCurrency }) {
     <div className={`sticky bottom-0 px-5 py-2.5 border-t text-[12.5px] font-medium flex items-center gap-3 ${cls}`}>
       <Icon className={`w-4 h-4 shrink-0 ${ok ? "text-emerald-600" : "text-rose-600"}`} />
       <span className="tabular-nums">
-        {t("trv2_balance_check")}: {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)} = {t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} − {t("trv2_tab_liabilities")} {formatBase(totals.liabilities, baseCurrency)}
+        {t("trv2_balance_check")}: {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)}
+        {Math.abs(totals.pnl || 0) > 0.005 && (
+          <span className="opacity-70"> ({t("trv2_balance_incl_pnl")} {formatBase(totals.pnl, baseCurrency)})</span>
+        )}
+        {" = "}{t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} − {t("trv2_tab_liabilities")} {formatBase(totals.liabilities, baseCurrency)}
         {" "}
         {ok ? "✓" : t("trv2_balance_fail").replace("{delta}", formatBase(totals.identityCheck.delta, baseCurrency))}
       </span>

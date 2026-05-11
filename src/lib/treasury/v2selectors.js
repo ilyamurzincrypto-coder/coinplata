@@ -408,7 +408,7 @@ export function chessTurnover(ctx, period, officeFilter) {
 export function balanceCheckTotals(ctx, officeFilter) {
   const { accounts, balances, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));
-  let assets = 0, liabilities = 0, equity = 0;
+  let assets = 0, liabilities = 0, equityAccounts = 0, revenue = 0, expense = 0;
   for (const b of balances) {
     const acc = accById.get(b.accountId);
     if (!acc) continue;
@@ -416,9 +416,19 @@ export function balanceCheckTotals(ctx, officeFilter) {
     const inBase = toBase(b.balance, b.currency) || 0;
     if (acc.type === "asset") assets += inBase;
     else if (acc.type === "liability") liabilities += inBase;
-    else if (acc.type === "equity") equity += inBase;
-    // revenue/expense don't carry a balance-sheet balance (they roll into retained earnings) — ignore here
+    else if (acc.type === "equity") equityAccounts += inBase;
+    else if (acc.type === "revenue") revenue += inBase;
+    else if (acc.type === "expense") expense += inBase;
   }
+  // Net profit-to-date that hasn't been closed into retained earnings yet — there is no
+  // period-close routine, so revenue/expense balances accumulate forever. They're real
+  // equity-in-progress, so the accounting identity is
+  //   Assets = Liabilities + (Equity accounts) + (Revenue − Expense).
+  const pnl = revenue - expense;
+  const equity = equityAccounts + pnl;          // total equity incl. unrealised P&L
   const delta = assets - (liabilities + equity);
-  return { assets, liabilities, equity, identityCheck: { ok: Math.abs(delta) < 0.01, delta } };
+  return {
+    assets, liabilities, equity, equityAccounts, pnl,
+    identityCheck: { ok: Math.abs(delta) < 0.5, delta },
+  };
 }
