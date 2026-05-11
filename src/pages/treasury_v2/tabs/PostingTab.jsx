@@ -1,7 +1,9 @@
 // src/pages/treasury_v2/tabs/PostingTab.jsx
-// Posting Master — manual N-leg journal-entry editor (Spec C.1). Renders only
-// when the host (TreasuryShell) decides the user has accounting:edit; it does no
-// extra permission check of its own (the RPC also enforces owner/accountant).
+// Posting Master — manual N-leg journal-entry editor (Spec C.1), now multi-currency:
+// each line carries its own currency; for a mixed-currency entry the balance check is
+// Σ(Dr·fx) ≈ Σ(Cr·fx) in the base/reference currency (fx from ctx.toBase). Renders only
+// when the host (TreasuryShell) decides the user has accounting:edit; it does no extra
+// permission check of its own (the RPC also enforces owner/accountant).
 import React, { useMemo, useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
@@ -16,7 +18,7 @@ import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
 import { POSTING_TEMPLATES, resolveTemplate } from "../../../lib/treasury/postingTemplates.js";
 
 let _lineSeq = 0;
-const newLine = () => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "", clientId: null, partnerId: null });
+const newLine = (cur = "USD") => ({ id: `pm${++_lineSeq}`, accountCode: "", side: "dr", amount: "", clientId: null, partnerId: null, currency: cur });
 const todayInputValue = () => new Date().toISOString().slice(0, 10);
 // DB tx_backdate_sanity allows effective_date >= created_at - 90d.
 const minDateInputValue = () => new Date(Date.now() - 89 * 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -29,8 +31,12 @@ export default function PostingTab({ ctx }) {
   const { t, lang } = useTranslation();
   const accounts = ctx?.accounts || [];
   const currencies = useMemo(() => deriveCurrencies(accounts), [accounts]);
-  // Localised template options for the SearchableSelect. `lang` typically en/ru/tr;
-  // fall back to ru → en if a localisation slot is missing on some template.
+  // Reference currency for fx (the rates passed to the RPC are relative to it) = the base
+  // currency. fxOf(c) = how many base units per 1 unit of c.
+  const refCurrency = ctx?.baseCurrency || currencies[0] || "USD";
+  const fxOf = useMemo(() => (ctx?.toBase ? ((c) => ctx.toBase(1, c)) : (() => 1)), [ctx]);
+  const defaultLineCur = currencies.includes(refCurrency) ? refCurrency : (currencies[0] || refCurrency);
+
   const templateOpts = useMemo(
     () => POSTING_TEMPLATES.map((tpl) => ({
       id: tpl.id,
@@ -40,11 +46,11 @@ export default function PostingTab({ ctx }) {
     [lang]
   );
 
-  const [currency, setCurrency] = useState(() => currencies[0] || "USD");
+  const [defaultCur, setDefaultCur] = useState(defaultLineCur);
   const [dateStr, setDateStr] = useState(todayInputValue);
   const [reason, setReason] = useState("");
   const [description, setDescription] = useState("");
-  const [lines, setLines] = useState(() => [newLine(), { ...newLine(), side: "cr" }]);
+  const [lines, setLines] = useState(() => [newLine(defaultLineCur), { ...newLine(defaultLineCur), side: "cr" }]);
   const [submitting, setSubmitting] = useState(false);
 
   const accByCode = useMemo(() => {
@@ -52,49 +58,49 @@ export default function PostingTab({ ctx }) {
     return (code) => m.get(code) || null;
   }, [accounts]);
 
-  // dateStr can be "" if the user clears the native date input — fall back to now()
-  // so this never throws RangeError during render.
   const effectiveDateIso = (dateStr ? new Date(`${dateStr}T00:00:00.000Z`) : new Date()).toISOString();
-  const draft = { currency, effectiveDate: effectiveDateIso, reason, description, lines };
-  const { dr, cr, delta } = postingBalance(lines);
-  const validation = validatePostingDraft(draft, accByCode);
+  const draft = { effectiveDate: effectiveDateIso, reason, description, lines };
+  const lineCurs = [...new Set(lines.map((l) => l.currency).filter(Boolean))];
+  const multi = lineCurs.length > 1;
+  const { dr, cr, delta } = multi ? postingBalance(lines, fxOf) : postingBalance(lines);
+  const balanceTol = multi ? 0.5 : 0.01;
+  const balanced = Math.abs(delta) < balanceTol && dr > 0;
+  const balCur = multi ? refCurrency : (lineCurs[0] || "");
+  const validation = validatePostingDraft(draft, accByCode, fxOf);
   const lineErr = (id, field) => validation.errors.find((e) => e.lineId === id && e.field === field);
 
   function patchLine(id, patch) {
     setLines((ls) => ls.map((l) => (l.id === id ? { ...l, ...patch } : l)));
   }
   function setAmount(id, side, raw) {
-    // a line is either Dr or Cr — typing in one column flips `side`, so the
-    // other column's <input> (which reads `l.side === <other> ? l.amount : ""`) clears
     patchLine(id, { side, amount: raw });
   }
-  function addLine() { setLines((ls) => [...ls, newLine()]); }
+  function setLineCurrency(id, c) {
+    // changing a line's currency invalidates its account/counterparty pick
+    patchLine(id, { currency: c, accountCode: "", clientId: null, partnerId: null });
+  }
+  function addLine() { setLines((ls) => [...ls, newLine(defaultCur)]); }
   function removeLine(id) { setLines((ls) => (ls.length <= 2 ? ls : ls.filter((l) => l.id !== id))); }
 
-  // When the currency changes, drop any line whose account no longer matches.
-  function changeCurrency(c) {
-    setCurrency(c);
-    setLines((ls) => ls.map((l) => {
-      const a = accByCode(l.accountCode);
-      return a && a.currency === c ? l : { ...l, accountCode: "", clientId: null, partnerId: null };
-    }));
+  // Change the default currency — and switch every line to it (clearing accounts). This is
+  // the "make the whole entry in currency X" gesture; per-line selects override afterwards.
+  function changeDefaultCurrency(c) {
+    setDefaultCur(c);
+    setLines((ls) => ls.map((l) => (l.currency === c ? l : { ...l, currency: c, accountCode: "", clientId: null, partnerId: null })));
   }
 
   function resetForm() {
     _lineSeq = 0;
-    setLines([newLine(), { ...newLine(), side: "cr" }]);
+    setLines([newLine(defaultCur), { ...newLine(defaultCur), side: "cr" }]);
     setReason(""); setDescription(""); setDateStr(todayInputValue());
   }
 
-  // Pick a template → replace current lines with its resolved draft and pre-fill
-  // `reason` with the template's localised name (the accountant still types
-  // a more specific reason if they want; we just save them the keystrokes).
   function applyTemplate(tplId) {
     const tpl = POSTING_TEMPLATES.find((x) => x.id === tplId);
     if (!tpl) return;
-    const { lines: tplLines, nextSeed } = resolveTemplate(tpl, accounts, currency, _lineSeq);
+    const { lines: tplLines, nextSeed } = resolveTemplate(tpl, accounts, defaultCur, _lineSeq);
     _lineSeq = nextSeed;
-    setLines(tplLines);
+    setLines(tplLines.map((l) => ({ ...l, currency: defaultCur })));
     setReason(tpl.name?.[lang] || tpl.name?.ru || tpl.name?.en || tpl.id);
   }
 
@@ -102,25 +108,24 @@ export default function PostingTab({ ctx }) {
     if (!validation.ok || submitting) return;
     setSubmitting(true);
     try {
-      await rpcCreateManualEntryV2(buildManualEntryPayload(draft));
+      await rpcCreateManualEntryV2(buildManualEntryPayload(draft, refCurrency, fxOf));
       emitToast("success", t("trv2_pm_posted"));
       resetForm();
     } catch (e) {
       const msg = String(e?.message || "");
       if (/42501|permission|authenticated|Not authenticated|role/i.test(msg)) emitToast("error", t("trv2_pm_err_forbidden"));
-      else if (/balance/i.test(msg)) emitToast("error", t("trv2_pm_err_unbalanced"));
+      else if (/balance|fx rate/i.test(msg)) emitToast("error", `${t("trv2_pm_err_unbalanced")} (${msg})`);
       else emitToast("error", `${t("trv2_pm_err_generic")}: ${msg}`);
     } finally {
       setSubmitting(false);
     }
   }
 
-  // Preview rows in the TransactionEntries shape (accountCode/accountName/direction/amount/currency).
   const previewEntries = lines
     .filter((l) => l.accountCode && Number(l.amount) > 0)
     .map((l, i) => {
       const a = accByCode(l.accountCode);
-      return { id: `prev${i}`, direction: l.side, amount: Number(l.amount), currency, accountCode: a?.code || l.accountCode, accountName: a?.name || "?" };
+      return { id: `prev${i}`, direction: l.side, amount: Number(l.amount), currency: l.currency, accountCode: a?.code || l.accountCode, accountName: a?.name || "?" };
     });
 
   return (
@@ -128,7 +133,7 @@ export default function PostingTab({ ctx }) {
       <h2 className="text-[16px] font-bold">{t("trv2_pm_title")}</h2>
 
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-4 space-y-4">
-        {/* header: date + currency */}
+        {/* header: date + default currency + template */}
         <div className="flex flex-wrap items-center gap-5">
           <label className="flex items-center gap-2 text-[12.5px]">
             <span className="text-slate-500">{t("trv2_pm_effective_date")}</span>
@@ -138,9 +143,9 @@ export default function PostingTab({ ctx }) {
           </label>
           <label className="flex items-center gap-2 text-[12.5px]">
             <span className="text-slate-500">{t("trv2_pm_currency")}</span>
-            <select value={currency} onChange={(e) => changeCurrency(e.target.value)}
+            <select value={defaultCur} onChange={(e) => changeDefaultCurrency(e.target.value)}
               className="bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1.5 outline-none">
-              {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
+              {[...new Set([defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
           <div className="flex items-center gap-2 text-[12.5px] ml-auto min-w-[260px]">
@@ -161,6 +166,7 @@ export default function PostingTab({ ctx }) {
         <table className="w-full text-[12.5px]">
           <thead>
             <tr className="text-slate-400 text-[10px] uppercase tracking-wider">
+              <th className="text-left px-2 py-1 w-20">{t("trv2_pm_currency")}</th>
               <th className="text-left px-2 py-1">{t("trv2_pm_col_account")}</th>
               <th className="text-left px-2 py-1">{t("trv2_pm_col_counterparty")}</th>
               <th className="text-right px-2 py-1 w-32">{t("trv2_pm_col_dr")}</th>
@@ -177,10 +183,18 @@ export default function PostingTab({ ctx }) {
               const cpOpts = (needsClient || needsPartner) && ctx?.counterpartyOptions ? ctx.counterpartyOptions(cpKind) : [];
               const cpVal = needsPartner ? (l.partnerId || "") : needsClient ? (l.clientId || "") : "";
               const cpErr = lineErr(l.id, "counterparty");
+              const curErr = lineErr(l.id, "currency");
               return (
               <tr key={l.id} className="border-t border-slate-100 align-top">
                 <td className="px-2 py-1.5">
-                  <AccountPicker accounts={accounts} currency={currency} value={l.accountCode}
+                  <select value={l.currency || defaultCur} onChange={(e) => setLineCurrency(l.id, e.target.value)}
+                    className={`w-full bg-slate-50 border rounded-[8px] px-1.5 py-1 text-[12px] outline-none ${curErr ? "border-rose-300" : "border-slate-200"}`}>
+                    {[...new Set([l.currency || defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  {curErr && <div className="text-[10px] text-rose-600 mt-0.5">{curErr.message}</div>}
+                </td>
+                <td className="px-2 py-1.5">
+                  <AccountPicker accounts={accounts} currency={l.currency || defaultCur} value={l.accountCode}
                     onChange={(code) => patchLine(l.id, { accountCode: code, clientId: null, partnerId: null })} />
                   {(lineErr(l.id, "account")) && <div className="text-[10px] text-rose-600 mt-0.5">{lineErr(l.id, "account").message}</div>}
                 </td>
@@ -223,9 +237,11 @@ export default function PostingTab({ ctx }) {
         <button type="button" onClick={addLine} className="text-[12px] text-indigo-600 hover:underline">{t("trv2_pm_add_line")}</button>
 
         {/* balance indicator */}
-        <div className={`rounded-[10px] px-3 py-2 text-[12.5px] font-medium ${Math.abs(delta) < 0.01 && (dr > 0) ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-          {t("trv2_pm_balance").replace("{dr}", fmtNum(dr)).replace("{cr}", fmtNum(cr)).replace("{delta}", fmtNum(delta))}
-          {" — "}{Math.abs(delta) < 0.01 && dr > 0 ? t("trv2_pm_balanced") : t("trv2_pm_unbalanced")}
+        <div className={`rounded-[10px] px-3 py-2 text-[12.5px] font-medium ${balanced ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+          {multi
+            ? `${t("trv2_pm_balance_base")}: ${fmtNum(dr)} / ${fmtNum(cr)} ${balCur} (Δ ${fmtNum(delta)})`
+            : t("trv2_pm_balance").replace("{dr}", fmtNum(dr)).replace("{cr}", fmtNum(cr)).replace("{delta}", fmtNum(delta))}
+          {" — "}{balanced ? t("trv2_pm_balanced") : t("trv2_pm_unbalanced")}
         </div>
 
         {/* reason + description */}
