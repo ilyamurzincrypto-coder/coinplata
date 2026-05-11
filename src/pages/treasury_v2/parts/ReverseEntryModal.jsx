@@ -1,14 +1,16 @@
 // src/pages/treasury_v2/parts/ReverseEntryModal.jsx
-// Confirm-with-reason modal for reversing a manual journal entry. Calls
-// rpcReverseTransactionV2 (cascade:false) which already triggers bumpDataVersion()
-// via invokeLedger, so the Журнал refreshes on its own.
+// Confirm-with-reason modal for reversing a posted transaction (a manual journal
+// entry or a whole deal). Calls rpcReverseTransactionV2 — it triggers
+// bumpDataVersion() via invokeLedger, so the Журнал refreshes on its own.
+// `cascade` (default false): a manual entry reverses just itself; a deal is
+// reversed with cascade=true so any auto-created workflow / settled legs unwind too.
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
 import { rpcReverseTransactionV2 } from "../../../lib/newLedger.js";
 
-export default function ReverseEntryModal({ tx, onClose }) {
+export default function ReverseEntryModal({ tx, onClose, cascade = false }) {
   const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
@@ -18,7 +20,7 @@ export default function ReverseEntryModal({ tx, onClose }) {
     if (!ok || busy) return;
     setBusy(true);
     try {
-      await rpcReverseTransactionV2({ targetTxId: tx.id, reason: reason.trim(), cascade: false });
+      await rpcReverseTransactionV2({ targetTxId: tx.id, reason: reason.trim(), cascade: !!cascade });
       emitToast("success", t("trv2_pm_reverse_done"));
       onClose();
     } catch (e) {
@@ -34,7 +36,7 @@ export default function ReverseEntryModal({ tx, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div className="bg-white rounded-[14px] max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <header className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="text-[14px] font-bold">{t("trv2_pm_reverse_title")}</h3>
+          <h3 className="text-[14px] font-bold">{cascade ? t("trv2_journal_undo_deal_title") : t("trv2_pm_reverse_title")}</h3>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><X className="w-4 h-4" /></button>
         </header>
         <div className="p-5 space-y-3">

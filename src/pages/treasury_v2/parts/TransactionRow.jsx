@@ -18,9 +18,14 @@ export default function TransactionRow({ node, onOpenSource, summaryLine }) {
   const [reverseOpen, setReverseOpen] = useState(false);
   const isReversal = !!tx.reversesTransactionId;
   const isReversed = tx.status === "reversed";
-  // offer "Reverse" only on an original manual entry — not on a reversal-of-a-manual-entry,
-  // and not on one that's already been reversed.
-  const canReverseManual = tx.kind === "manual" && !isReversal && !isReversed && can("accounting", "edit");
+  const isDeal = tx.kind === "deal";
+  // Offer "reverse" / "undo deal" only on an ORIGINAL manual entry or deal — not on a
+  // reversal itself, and not on one that's already been reversed. Manual entries need
+  // accounting:edit (accountant); deals need transactions:edit (cashier can undo their own).
+  const canReverse = !isReversal && !isReversed && (
+    (tx.kind === "manual" && can("accounting", "edit")) ||
+    (isDeal && can("transactions", "edit"))
+  );
   const dt = new Date(tx.effectiveDate);
   const sourceLabel = tx.sourceRefId ? `${tx.kind} #${tx.sourceRefId}` : tx.kind;
   return (
@@ -48,16 +53,16 @@ export default function TransactionRow({ node, onOpenSource, summaryLine }) {
               </button>
             </div>
           )}
-          {canReverseManual && (
+          {canReverse && (
             <div className="px-6 pb-2">
               <button onClick={() => setReverseOpen(true)} className="text-[12px] text-rose-600 hover:underline">
-                {t("trv2_pm_reverse")}
+                {isDeal ? t("trv2_journal_undo_deal") : t("trv2_pm_reverse")}
               </button>
             </div>
           )}
         </div>
       )}
-      {reverseOpen && <ReverseEntryModal tx={tx} onClose={() => setReverseOpen(false)} />}
+      {reverseOpen && <ReverseEntryModal tx={tx} cascade={isDeal} onClose={() => setReverseOpen(false)} />}
     </div>
   );
 }
