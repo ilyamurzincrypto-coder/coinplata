@@ -23,7 +23,11 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
         ))
       )}
       <div className={`rounded-[10px] px-4 py-3 text-[12.5px] font-medium ${totals.identityCheck.ok ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
-        {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)} = {t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} − {t("trv2_tab_liabilities")} {formatBase(totals.liabilities, baseCurrency)} {totals.identityCheck.ok ? "✓" : `(Δ ${formatBase(totals.identityCheck.delta, baseCurrency)})`}
+        {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)}
+        {Math.abs(totals.pnl || 0) > 0.005 && (
+          <span className="opacity-70"> ({t("trv2_balance_incl_pnl")} {formatBase(totals.pnl, baseCurrency)})</span>
+        )}
+        {" = "}{t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} − {t("trv2_tab_liabilities")} {formatBase(totals.liabilities, baseCurrency)} {totals.identityCheck.ok ? "✓" : `(Δ ${formatBase(totals.identityCheck.delta, baseCurrency)})`}
       </div>
     </div>
   );

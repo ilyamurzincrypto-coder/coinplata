@@ -219,4 +219,51 @@ describe("dealOperations v2 wrappers", () => {
       }),
     );
   });
+
+  it("createDeal passes a v2-shaped payload (inLegs/outLegs) straight to rpcCreateDealV2, skipping the legacy adapter", async () => {
+    stubV2On();
+    const createDealV2Spy = vi.fn().mockResolvedValue({ deal_tx_id: "dtx-1" });
+    const adapterSpy = vi.fn();
+    vi.doMock("./newLedger.js", async () => {
+      const actual = await vi.importActual("./newLedger.js");
+      return { ...actual, USE_NEW_LEDGER: true, rpcCreateDealV2: createDealV2Spy };
+    });
+    vi.doMock("./newLedgerAdapter.js", async () => {
+      const actual = await vi.importActual("./newLedgerAdapter.js");
+      return { ...actual, adaptLegacyDealPayload: adapterSpy };
+    });
+    const { createDeal } = await import("./dealOperations.js");
+    const v2payload = {
+      clientId: "c-1", officeId: "o-1",
+      inLegs: [{ currency: "USD", amount: 1000, source: "fresh", accountCode: "1110" }],
+      outLegs: [{ currency: "USDT", amount: 950, destination: "physical", deferred: false, rate: 1, rateSource: "market", accountCode: "1340" }],
+      commission: [{ currency: "USDT", amount: 0.01, kind: "commission" }],
+      description: null, metadata: { source_form: "deal_v2" },
+    };
+    const res = await createDeal(v2payload);
+    expect(adapterSpy).not.toHaveBeenCalled();
+    expect(createDealV2Spy).toHaveBeenCalledWith(v2payload);
+    expect(res).toBe("dtx-1");
+  });
+
+  it("createDeal still routes a legacy-shaped payload through adaptLegacyDealPayload", async () => {
+    stubV2On();
+    const createDealV2Spy = vi.fn().mockResolvedValue({ deal_tx_id: "dtx-2" });
+    const adapterSpy = vi.fn().mockResolvedValue({
+      clientId: "c-1", officeId: "o-1", inLegs: [{}], outLegs: [{}], commission: [{}],
+    });
+    vi.doMock("./newLedger.js", async () => {
+      const actual = await vi.importActual("./newLedger.js");
+      return { ...actual, USE_NEW_LEDGER: true, rpcCreateDealV2: createDealV2Spy };
+    });
+    vi.doMock("./newLedgerAdapter.js", async () => {
+      const actual = await vi.importActual("./newLedgerAdapter.js");
+      return { ...actual, adaptLegacyDealPayload: adapterSpy };
+    });
+    const { createDeal } = await import("./dealOperations.js");
+    const legacyPayload = { officeId: "o-1", clientId: "c-1", currencyIn: "USD", amountIn: 1000, outputs: [{ currency: "USDT", amount: 950, rate: 1, accountId: "x" }] };
+    await createDeal(legacyPayload);
+    expect(adapterSpy).toHaveBeenCalledWith(legacyPayload);
+    expect(createDealV2Spy).toHaveBeenCalledOnce();
+  });
 });

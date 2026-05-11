@@ -612,10 +612,15 @@ export default function CashierPage({
               <div className="p-5">
                 {formMounted && (
                   USE_NEW_DEAL_FORM ? (
+                    // DealForm creates the deal itself (runSubmitFlow → createDeal),
+                    // shows its own success toast and bumps the data version. Its
+                    // onSubmit is just the "drawer is done" signal — close it. (Do NOT
+                    // pass handleFormSubmit here: that re-runs createDeal from a legacy
+                    // tx shape and produces a spurious error toast right after success.)
                     <DealForm
                       mode="create"
                       currentOffice={currentOffice}
-                      onSubmit={handleFormSubmit}
+                      onSubmit={() => closeCreate()}
                       submitting={submitting}
                       onCancel={() => setFormMounted(false)}
                     />
