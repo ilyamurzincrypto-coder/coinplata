@@ -3,7 +3,6 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useLedger } from "../../store/ledger.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
-import { useCan } from "../../store/permissions.jsx";
 import { balanceCheckTotals, transactionTree } from "../../lib/treasury/v2selectors.js";
 import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
@@ -17,7 +16,6 @@ import TurnoverTab from "./tabs/TurnoverTab.jsx";
 import CashFlowTab from "./tabs/CashFlowTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
 import DealsTab from "./tabs/DealsTab.jsx";
-import PostingTab from "./tabs/PostingTab.jsx";
 import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
 
 const BASE_TABS = [
@@ -33,19 +31,17 @@ const BASE_TABS = [
   { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },
 ];
 
+// Manual journal entries used to be a standalone tab; they now live as a "+ Ручная
+// проводка" button + modal inside the Журнал tab (so a posted entry appears in the
+// list right away, no tab switch). See JournalTab.jsx.
+const TABS = BASE_TABS;
+
 export default function TreasuryShell() {
   const { t } = useTranslation();
   const { accounts, balances, transactions, entries, loading, sinceIso, extendWindow, counterpartyName, counterpartyOptions } = useLedger();
   // useBaseCurrency() exposes the base code as `base`; alias it to baseCurrency
   // so the rest of Treasury (selectors + tabs) can use a consistent name.
   const { toBase, formatBase, base: baseCurrency } = useBaseCurrency();
-
-  const can = useCan();
-  const canPost = can("accounting", "edit");
-  const TABS = useMemo(
-    () => (canPost ? [...BASE_TABS, { id: "posting", labelKey: "trv2_pm_tab", component: PostingTab }] : BASE_TABS),
-    [canPost]
-  );
 
   const [officeFilter, setOfficeFilter] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_office") || "all"; } catch { return "all"; }
@@ -57,10 +53,10 @@ export default function TreasuryShell() {
 
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  // if the active tab disappeared (e.g. lost accounting:edit), fall back to dashboard
+  // if the active tab id ever becomes invalid, fall back to dashboard
   useEffect(() => {
     if (!TABS.some((x) => x.id === activeTab)) setActiveTab("dashboard");
-  }, [TABS, activeTab]);
+  }, [activeTab]);
 
   const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || DashboardTab;
 

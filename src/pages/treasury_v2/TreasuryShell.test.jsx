@@ -81,19 +81,28 @@ describe("TreasuryShell integration smoke", () => {
   });
 });
 
-describe("TreasuryShell — Posting Master tab gating", () => {
-  it("hides the Manual-entry tab without accounting:edit", () => {
-    canAccountingEdit = false;
+describe("TreasuryShell — manual entry is no longer a standalone tab", () => {
+  // Manual journal entries moved into the Журнал tab as a "+ Ручная проводка"
+  // button + modal — there is no top-level `trv2_pm_tab` chip in the shell anymore.
+  it("never renders a standalone Manual-entry tab, regardless of accounting:edit", () => {
+    canAccountingEdit = true;
     render(<TreasuryShell />);
     expect(screen.queryByRole("button", { name: "trv2_pm_tab" })).toBeNull();
   });
-  it("shows the Manual-entry tab with accounting:edit and can open it", () => {
+  it("opens the manual-entry editor from inside the Журнал tab when allowed", () => {
     canAccountingEdit = true;
     render(<TreasuryShell />);
-    const tab = screen.getByRole("button", { name: "trv2_pm_tab" });
-    expect(tab).toBeInTheDocument();
-    fireEvent.click(tab);
-    expect(screen.getByText("trv2_pm_title")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal" }));
+    expect(screen.queryByRole("button", { name: "trv2_pm_post" })).toBeNull(); // editor not open yet
+    fireEvent.click(screen.getByRole("button", { name: "trv2_journal_new_manual" }));
+    // PostingTab (with its "Провести" submit button) renders inside the modal
+    expect(screen.getByRole("button", { name: "trv2_pm_post" })).toBeInTheDocument();
+  });
+  it("hides the '+ Ручная проводка' button without accounting:edit", () => {
+    canAccountingEdit = false;
+    render(<TreasuryShell />);
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal" }));
+    expect(screen.queryByRole("button", { name: "trv2_journal_new_manual" })).toBeNull();
   });
 });
 

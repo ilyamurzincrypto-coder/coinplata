@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 
 vi.mock("../../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) => k }) }));
 const exportCSVMock = vi.fn();
@@ -18,6 +18,22 @@ vi.mock("../PeriodPicker.jsx", () => ({
 vi.mock("../parts/TransactionRow.jsx", () => ({
   __esModule: true,
   default: ({ node }) => <div data-testid="tx-row">{node.tx.id}</div>,
+}));
+// Modal renders via a portal — keep it inline so we can assert on its children.
+vi.mock("../../../components/ui/Modal.jsx", () => ({
+  __esModule: true,
+  default: ({ open, title, children }) => (open ? <div data-testid="modal" data-title={title}>{children}</div> : null),
+}));
+// PostingTab is exercised by its own test; here we just need a marker + a way to
+// trigger its onDone callback.
+vi.mock("./PostingTab.jsx", () => ({
+  __esModule: true,
+  default: ({ onDone }) => <button data-testid="posting-tab" onClick={() => onDone?.()}>posting-tab</button>,
+}));
+
+let canAccountingEdit = true;
+vi.mock("../../../store/permissions.jsx", () => ({
+  useCan: () => (section, level = "view") => (section === "accounting" && level === "edit" ? canAccountingEdit : true),
 }));
 
 import JournalTab from "./JournalTab.jsx";
@@ -46,6 +62,7 @@ const ctx = {
   toBase: (n) => n,
   sinceIso: "1970-01-01T00:00:00Z",
   extendWindow: () => {},
+  counterpartyName: (id) => ({ "client-1": "Иван Петров", "client-2": "Алексей Сидоров" }[id] || id),
   counterpartyOptions: (k) => k === "client"
     ? [{ id: "client-1", name: "Иван Петров" }, { id: "client-2", name: "Алексей Сидоров" }]
     : [{ id: "p1", name: "OTC Acme" }],
@@ -86,5 +103,52 @@ describe("JournalTab", () => {
     // Clearing brings both back.
     fireEvent.click(screen.getByRole("button", { name: "×" }));
     expect(screen.getAllByTestId("tx-row")).toHaveLength(2);
+  });
+
+  it("free-text search filters the tree (debounced); a no-match query shows the search empty state", () => {
+    vi.useFakeTimers();
+    try {
+      render(<JournalTab ctx={ctx} officeFilter="all" onOpenSource={() => {}} />);
+      const input = screen.getByPlaceholderText("trv2_search_placeholder");
+      // search by account name "Cash" — both tx touch account 1110 "Cash USD"
+      fireEvent.change(input, { target: { value: "cash" } });
+      act(() => { vi.advanceTimersByTime(250); });
+      expect(screen.getAllByTestId("tx-row")).toHaveLength(2);
+      // search by counterparty name resolved via ctx.counterpartyName
+      fireEvent.change(input, { target: { value: "иван" } });
+      act(() => { vi.advanceTimersByTime(250); });
+      expect(screen.getAllByTestId("tx-row").map((r) => r.textContent)).toEqual(["tx_a"]);
+      // search by a transaction id
+      fireEvent.change(input, { target: { value: "tx_b" } });
+      act(() => { vi.advanceTimersByTime(250); });
+      expect(screen.getAllByTestId("tx-row").map((r) => r.textContent)).toEqual(["tx_b"]);
+      // no match → distinct empty state
+      fireEvent.change(input, { target: { value: "zzz-nope" } });
+      act(() => { vi.advanceTimersByTime(250); });
+      expect(screen.queryAllByTestId("tx-row")).toHaveLength(0);
+      expect(screen.getByText("trv2_search_no_results")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("'+ Ручная проводка' button is hidden without accounting:edit", () => {
+    canAccountingEdit = false;
+    render(<JournalTab ctx={ctx} officeFilter="all" onOpenSource={() => {}} />);
+    expect(screen.queryByRole("button", { name: "trv2_journal_new_manual" })).toBeNull();
+    canAccountingEdit = true;
+  });
+
+  it("'+ Ручная проводка' opens the PostingTab in a modal; PostingTab.onDone closes it", () => {
+    canAccountingEdit = true;
+    render(<JournalTab ctx={ctx} officeFilter="all" onOpenSource={() => {}} />);
+    const btn = screen.getByRole("button", { name: "trv2_journal_new_manual" });
+    expect(screen.queryByTestId("modal")).toBeNull();
+    fireEvent.click(btn);
+    expect(screen.getByTestId("modal")).toHaveAttribute("data-title", "trv2_pm_title");
+    expect(screen.getByTestId("posting-tab")).toBeInTheDocument();
+    // PostingTab calls onDone after a successful post → modal closes.
+    fireEvent.click(screen.getByTestId("posting-tab"));
+    expect(screen.queryByTestId("modal")).toBeNull();
   });
 });

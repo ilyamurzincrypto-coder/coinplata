@@ -142,6 +142,45 @@ export function transactionTree(ctx, opts = {}) {
     }));
 }
 
+// The all-zero UUID is used as the "no counterparty" sentinel on entries — treat it
+// (and falsy values) as "no id" so we don't run counterpartyName() against it.
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+function nonZeroId(id) {
+  return id && id !== ZERO_UUID ? id : null;
+}
+
+// Free-text matcher for the Treasury list views (Журнал / Сделки). `q` is the
+// ALREADY-lowercased query; returns true when the empty query is passed (so callers
+// can skip filtering). A node matches if `q` is a substring of any of: the tx's
+// description / metadata.comment / metadata.client_nickname / kind / sourceRefId /
+// id; any entry's accountCode / accountName / currency / amount / note; the
+// counterparty name resolved from each entry's clientId/partnerId; and the optional
+// pre-formatted deal-summary line (`summaryText`).
+export function nodeMatchesSearch(node, q, ctx, accById, summaryText = "") {
+  if (!q) return true;
+  const tx = node?.tx || {};
+  const hay = [];
+  hay.push(tx.description, tx.metadata?.comment, tx.metadata?.client_nickname, tx.kind, tx.sourceRefId, tx.id);
+  const cpName = (id) => {
+    const real = nonZeroId(id);
+    if (!real || !ctx?.counterpartyName) return null;
+    try { return ctx.counterpartyName(real); } catch { return null; }
+  };
+  for (const e of node?.entries || []) {
+    hay.push(
+      e.accountCode || (accById && accById.get(e.accountId)?.code),
+      e.accountName || (accById && accById.get(e.accountId)?.name),
+      e.currency,
+      e.amount != null ? String(e.amount) : null,
+      e.note,
+      cpName(e.clientId),
+      cpName(e.partnerId),
+    );
+  }
+  if (summaryText) hay.push(summaryText);
+  return hay.some((v) => v != null && String(v).toLowerCase().includes(q));
+}
+
 // An entry's "when" for period reports is its transaction's effective_date — the
 // accounting date the user chose — NOT createdAt (insertion time). Back-dated manual
 // entries must land in the period they're dated, consistent with trialBalance /
