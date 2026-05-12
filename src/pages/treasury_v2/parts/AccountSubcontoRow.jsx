@@ -5,7 +5,10 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import AccountInlineEntries from "./AccountInlineEntries.jsx";
 
-export default function AccountSubcontoRow({ ctx, accountId, dim, formatBase, baseCurrency, onOpenTx }) {
+// `displayMul` — display-sign multiplier for the shown balances (1 by default; −1 for a
+// liability account's subconto rows). Presentation only — `dim.balance` / `dim.balanceInBase`
+// are untouched.
+export default function AccountSubcontoRow({ ctx, accountId, dim, formatBase, baseCurrency, onOpenTx, displayMul = 1 }) {
   const [expanded, setExpanded] = useState(false);
   const id = dim.clientId || dim.partnerId || null;
   const kind = dim.clientId ? "client" : dim.partnerId ? "partner" : "—";
@@ -17,8 +20,8 @@ export default function AccountSubcontoRow({ ctx, accountId, dim, formatBase, ba
         {expanded ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
         <span className="text-[10px] uppercase tracking-wider text-slate-400 w-12">{kind}</span>
         <span className="flex-1 text-[12px] text-slate-700 truncate">{name}</span>
-        <span className="text-[11.5px] text-slate-500 tabular-nums w-32 text-right">{Number(dim.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-        <span className="text-[12px] font-medium tabular-nums w-28 text-right">{formatBase(dim.balanceInBase, baseCurrency)}</span>
+        <span className="text-[11.5px] text-slate-500 tabular-nums w-32 text-right">{(Number(dim.balance) * displayMul).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
+        <span className="text-[12px] font-medium tabular-nums w-28 text-right">{formatBase(dim.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && <AccountInlineEntries ctx={ctx} accountId={accountId} dim={filter} onOpenTx={onOpenTx} />}
     </>

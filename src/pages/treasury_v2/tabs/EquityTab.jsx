@@ -48,7 +48,7 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
         {Math.abs(totals.pnl || 0) > 0.005 && (
           <span className="opacity-70"> ({t("trv2_balance_incl_pnl")} {formatBase(totals.pnl, baseCurrency)})</span>
         )}
-        {" = "}{t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} − {t("trv2_tab_liabilities")} {formatBase(totals.liabilities, baseCurrency)} {totals.identityCheck.ok ? "✓" : `(Δ ${formatBase(totals.identityCheck.delta, baseCurrency)})`}
+        {" = "}{t("trv2_tab_assets")} {formatBase(totals.assets, baseCurrency)} + {t("trv2_tab_liabilities")} {formatBase(-totals.liabilities, baseCurrency)} {totals.identityCheck.ok ? "✓" : `(Δ ${formatBase(totals.identityCheck.delta, baseCurrency)})`}
       </div>
       {addOpen && <ChartAccountModal open defaultType="equity" onClose={() => setAddOpen(false)} />}
     </div>

@@ -30,13 +30,14 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
           </button>
         )}
       </div>
+      <div className="text-[11.5px] text-slate-400">{t("trv2_liab_sign_note")}</div>
       {sections.length === 0 ? (
         <div className="p-5 text-slate-400 text-[13px]">{t("trv2_no_accounts")}</div>
       ) : (
         sections.map((s) => (
-          <ClassSection key={s.subtype} labelKey={s.labelKey} totalInBase={s.totalInBase} formatBase={formatBase} baseCurrency={baseCurrency}>
+          <ClassSection key={s.subtype} labelKey={s.labelKey} totalInBase={s.totalInBase} formatBase={formatBase} baseCurrency={baseCurrency} displayMul={-1}>
             {s.accounts.map((a) => (
-              <AccountRow key={`${a.accountId}-${a.currency}`} account={a} ctx={ctx} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={onOpenTx} />
+              <AccountRow key={`${a.accountId}-${a.currency}`} account={a} ctx={ctx} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={onOpenTx} displayMul={-1} />
             ))}
           </ClassSection>
         ))
