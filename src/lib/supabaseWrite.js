@@ -1435,66 +1435,51 @@ export async function rpcDeleteOfficeRate({ officeId, from, to }) {
 
 // ---------- accounts ----------
 
-// Маппим frontend account payload на БД колонки.
-// type: cash|bank|crypto|network (network → crypto в БД).
-// Address для crypto обязателен или nullable (constraint unique nulls not distinct).
+// Создаёт операционный счёт (касса / кошелёк / банк) через RPC create_account_v2:
+// атомарно делает ledger.accounts (asset, subtype cash | crypto_input, код в
+// диапазоне 19xx) + public.accounts со ссылкой на него. Так новый счёт сразу
+// работает в v2-леджере (можно подбить остаток через «Корректировку остатка» и
+// проводить на него сделки). Старый путь (прямой insert в public.accounts без
+// ledger-привязки + opening movement в замороженную account_movements) убран.
+// type: cash|bank|crypto|network (network → crypto). Остаток здесь = 0 — задаётся
+// отдельно через корректировку остатка (v2 adjustment).
 export async function insertAccount(payload) {
   assertConfigured();
   if (!payload?.name) throw new Error("Account name required");
   if (!payload?.officeId) throw new Error("Office required");
   if (!payload?.currency) throw new Error("Currency required");
 
-  // БД type: cash|bank|crypto
   const typeRaw = String(payload.type || "cash").toLowerCase();
   const dbType = typeRaw === "network" ? "crypto" : typeRaw;
   if (!["cash", "bank", "crypto"].includes(dbType)) {
     throw new Error(`Invalid account type: ${typeRaw}`);
   }
+  const networkId = payload.networkId || (payload.network ? String(payload.network).toUpperCase() : null);
 
-  const row = {
-    office_id: payload.officeId,
-    currency_code: payload.currency,
-    type: dbType,
-    name: String(payload.name).trim(),
-    bank_ref: payload.bankRef || null,
-    address: payload.address || null,
-    // network_id в БД в UPPERCASE ('TRC20'/'ERC20'/'BEP20'), FK на networks(id).
-    // Раньше .toLowerCase() ломал FK при создании крипто-счёта.
-    network_id: payload.networkId || (payload.network ? payload.network.toUpperCase() : null),
-    is_deposit: !!payload.isDeposit,
-    is_withdrawal: !!payload.isWithdrawal,
-    active: payload.active !== false,
-    opening_balance: Number(payload.balance) || 0,
-  };
-  const { data, error } = await supabase
-    .from("accounts")
-    .insert(row)
-    .select()
-    .maybeSingle();
-  if (error) throw new Error(formatSupabaseError(error, "insert account"));
+  const { data: newId, error } = await supabase.rpc("create_account_v2", {
+    p_office_id: payload.officeId,
+    p_currency_code: payload.currency,
+    p_type: dbType,
+    p_name: String(payload.name).trim(),
+    p_address: payload.address || null,
+    p_network_id: networkId,
+    p_is_deposit: !!payload.isDeposit,
+    p_is_withdrawal: !!payload.isWithdrawal,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "create account"));
 
-  // Если opening_balance > 0 — пишем opening movement (бэк не делает
-  // автоматически, только фронт)
-  if (data && row.opening_balance > 0) {
-    try {
-      await supabase.from("account_movements").insert({
-        account_id: data.id,
-        amount: row.opening_balance,
-        direction: "in",
-        currency_code: row.currency_code,
-        reserved: false,
-        source_kind: "opening",
-        source_ref_id: null,
-        note: "Opening balance",
-      });
-    } catch (mvErr) {
-      // eslint-disable-next-line no-console
-      console.warn("[opening movement]", mvErr);
-    }
+  // bank_ref не покрывается RPC — дописываем отдельно, если задан.
+  if (newId && payload.bankRef) {
+    try { await supabase.from("accounts").update({ bank_ref: payload.bankRef }).eq("id", newId); } catch (_e) { /* non-fatal */ }
   }
 
+  let row = null;
+  if (newId) {
+    const { data } = await supabase.from("accounts").select("*").eq("id", newId).maybeSingle();
+    row = data || null;
+  }
   bumpDataVersion();
-  return data;
+  return row || { id: newId };
 }
 
 export async function updateAccountRow(id, patch) {
