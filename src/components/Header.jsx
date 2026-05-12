@@ -14,9 +14,10 @@ import { useCan } from "../store/permissions.jsx";
 
 const NAV_PAGES = [
   { id: "cashier", key: "nav_cashier", section: "transactions" },
-  { id: "capital", key: "nav_capital", section: "capital" },
   { id: "accounts", key: "nav_accounts", section: "accounts" },
   { id: "counterparties", key: "nav_counterparties", section: "counterparties" },
+  // Казначейство переиспользует permission-секцию «capital» (отдельной
+  // страницы «Капитал» больше нет — её дашборд переехал сюда).
   { id: "treasury", key: "nav_treasury", section: "capital" },
   { id: "settings", key: "nav_settings", section: "settings" },
   { id: "info", key: "nav_info", section: "transactions" },

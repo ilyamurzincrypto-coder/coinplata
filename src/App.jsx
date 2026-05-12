@@ -5,7 +5,6 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header.jsx";
 import CashierPage from "./pages/CashierPage.jsx";
 import SettingsPage from "./pages/SettingsPage.jsx";
-import CapitalPage from "./pages/CapitalPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
@@ -47,11 +46,11 @@ import CommandPalette from "./components/CommandPalette.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
-  capital: "capital",
   accounts: "accounts",
   counterparties: "counterparties",
-  // Казначейство переиспользует permission «capital» — финансовый раздел,
-  // доступен тем же ролям что и Капитал.
+  // Казначейство переиспользует permission «capital» — финансовый раздел.
+  // Отдельной страницы «Капитал» больше нет (её дашборд переехал в Казначейство),
+  // но permission-секция `capital` остаётся — на ней висит Казначейство.
   treasury: "capital",
   settings: "settings",
 };
@@ -67,7 +66,9 @@ function Root() {
   // cashier если у роли нет прав на сохранённую страницу.
   const [page, setPage] = useState(() => {
     try {
-      const saved = localStorage.getItem("coinplata.page");
+      let saved = localStorage.getItem("coinplata.page");
+      // Страница «Капитал» удалена — её дашборд переехал в Казначейство.
+      if (saved === "capital") saved = "treasury";
       return saved && PAGE_SECTION[saved] !== undefined ? saved : "cashier";
     } catch {
       return "cashier";
@@ -120,8 +121,13 @@ function Root() {
     setPage("cashier");
   };
 
-  // Если на текущую страницу нет прав — отправляем на cashier
+  // Если на текущую страницу нет прав — отправляем на cashier.
+  // «Капитал» больше не существует как страница — редиректим на Казначейство.
   useEffect(() => {
+    if (page === "capital") {
+      setPage("treasury");
+      return;
+    }
     const section = PAGE_SECTION[page];
     if (section && !can(section)) {
       setPage("cashier");
@@ -134,8 +140,8 @@ function Root() {
   //   N — новая сделка (только на cashier, иначе переключит и откроет)
   //   /  — фокус на поиск в транзакциях
   //   Esc — свернуть форму создания сделки
-  //   G+C cashier, G+K capital, G+A accounts, G+L clients, G+O obligations,
-  //   G+S settings, G+R referrals
+  //   G+C cashier, G+K treasury, G+A accounts, G+P counterparties,
+  //   G+T treasury, G+S settings
   useKeyboardShortcuts({
     n: () => {
       if (!canShow("cashier")) return;
@@ -153,7 +159,7 @@ function Root() {
       if (exchangeMode === "create" || exchangeMode === "rates") setExchangeMode("dashboard");
     },
     "g c": () => handlePageChange("cashier"),
-    "g k": () => handlePageChange("capital"),
+    "g k": () => handlePageChange("treasury"),
     "g a": () => handlePageChange("accounts"),
     "g p": () => handlePageChange("counterparties"),
     "g t": () => handlePageChange("treasury"),
@@ -206,7 +212,6 @@ function Root() {
           onDemoConsumed={() => setDemoDealSeed(null)}
         />
       )}
-      {page === "capital" && canShow("capital") && <CapitalPage />}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
       {page === "treasury" && canShow("capital") && <TreasuryPage />}

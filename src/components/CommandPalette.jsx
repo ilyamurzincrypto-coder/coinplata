@@ -34,7 +34,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
   const PAGE_ITEMS = useMemo(
     () => [
       { id: "nav:cashier", kind: "page", label: t("nav_cashier"), page: "cashier" },
-      { id: "nav:capital", kind: "page", label: t("nav_capital"), page: "capital" },
+      { id: "nav:treasury", kind: "page", label: t("nav_treasury"), page: "treasury" },
       { id: "nav:accounts", kind: "page", label: t("nav_accounts"), page: "accounts" },
       { id: "nav:counterparties", kind: "page", label: t("nav_counterparties"), page: "counterparties" },
       { id: "nav:settings", kind: "page", label: t("nav_settings"), page: "settings" },
