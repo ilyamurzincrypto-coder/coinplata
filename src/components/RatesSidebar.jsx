@@ -13,9 +13,12 @@ import { TrendingUp, ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
+import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { FreshnessChip } from "../utils/rateFreshness.jsx";
 import { useNow } from "../hooks/useNow.js";
+import { isSupabaseConfigured } from "../lib/supabase.js";
+import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
 
 // Per-user избранные пары для дашборда — отдельный ключ от editor's
 // favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
@@ -49,6 +52,80 @@ function timeAgo(date, nowMs = Date.now()) {
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
   return `${Math.floor(diff / 3600)}h`;
+}
+
+// Находим default-пару направления from→to (через channels → currencyCode)
+// и возвращаем её spreadPercent (число; 0 если поля нет, null если пары нет).
+function findDefaultPairSpread(pairs, channels, fromCur, toCur) {
+  if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
+  const pair = pairs.find((p) => {
+    if (!p.isDefault) return false;
+    const f = channels.find((c) => c.id === p.fromChannelId)?.currencyCode;
+    const tt = channels.find((c) => c.id === p.toChannelId)?.currencyCode;
+    return f === fromCur && tt === toCur;
+  });
+  if (!pair) return null;
+  const sp = Number(pair.spreadPercent);
+  return Number.isFinite(sp) ? sp : 0;
+}
+
+// Маленький inline-текстфилд спреда возле котировки. Mirror PairRow "Spread input"
+// из RatesPage: локальный editing-string, sanitize on change, commit on blur/Enter.
+// При коммите — rpcUpdatePair({ syncReverse: false }) + audit. rpcUpdatePair сам
+// зовёт bumpDataVersion → RatesProvider перезагружается, оптимистик не нужен.
+function SpreadInlineInput({ from, to, currentSpread, t, logAudit }) {
+  const [str, setStr] = useState(
+    currentSpread == null ? "0" : String(currentSpread)
+  );
+  // Если внешнее значение поменялось (reload после bump) и поле не в фокусе —
+  // подхватываем новое. editing-флаг не нужен: при blur мы и так коммитим.
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setStr(currentSpread == null ? "0" : String(currentSpread));
+  }, [currentSpread, focused]);
+
+  const commit = async () => {
+    setFocused(false);
+    const n = Number(str);
+    if (!Number.isFinite(n)) return;
+    if (currentSpread != null && n === Number(currentSpread)) return;
+    const res = await withToast(
+      () =>
+        rpcUpdatePair({ fromCurrency: from, toCurrency: to, spreadPercent: n, syncReverse: false }),
+      { success: null, errorPrefix: "Spread update failed" }
+    );
+    if (res?.ok) {
+      logAudit?.({
+        action: "update",
+        entity: "pair",
+        entityId: `${from}_${to}`,
+        summary: `${from}→${to}: spread=${n}%`,
+      });
+    }
+  };
+
+  return (
+    <span
+      className="inline-flex items-center gap-0.5 shrink-0"
+      title={t("rates_sidebar_spread_tip") || "Spread % — applied rate = base × (1 + spread/100)"}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <input
+        type="text"
+        inputMode="decimal"
+        value={str}
+        onFocus={() => setFocused(true)}
+        onChange={(e) => {
+          setFocused(true);
+          setStr(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."));
+        }}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        className="w-[52px] text-[10px] tabular-nums bg-slate-50 border border-slate-200 rounded-[6px] px-1.5 py-0.5 outline-none focus:bg-white focus:border-slate-400"
+      />
+      <span className="text-[9px] text-slate-400">%</span>
+    </span>
+  );
 }
 
 // Короткое имя офиса для узкого таба. "Mraml Main office" → "Mraml"
@@ -96,6 +173,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { currentUser, updatePreferences } = useAuth();
+  const { addEntry: logAudit } = useAudit();
   const { t } = useTranslation();
   const nowMs = useNow(30_000);
   // Persistent expanded — RatesSidebar re-mount-ится при переключении
@@ -202,6 +280,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   // Если выбранный офис стал неактивен — фолбэк на global
   const selectedIsOffice = selectedTab !== GLOBAL_TAB;
   const selectedOfficeId = selectedIsOffice ? selectedTab : null;
+
+  // Inline spread-редактор возле котировки. Показываем только когда: список
+  // развёрнут (в compact строки слишком тесные), выбран Global tab (офисные
+  // override-спреды — отдельная история) и есть Supabase (в demo нет RPC).
+  const showSpreadEditor = expanded && selectedTab === GLOBAL_TAB && isSupabaseConfigured;
 
   // Office-aware getRate: если выбран офис, применяем его override. Global tab
   // передаёт null → чистый global rate.
@@ -422,8 +505,19 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                   <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
                   {b}
                 </span>
-                <span className="text-[14px] font-bold tabular-nums text-slate-900">
-                  {formatRate(rateAB)}
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[14px] font-bold tabular-nums text-slate-900">
+                    {formatRate(rateAB)}
+                  </span>
+                  {showSpreadEditor && (
+                    <SpreadInlineInput
+                      from={a}
+                      to={b}
+                      currentSpread={findDefaultPairSpread(pairs, channels, a, b)}
+                      t={t}
+                      logAudit={logAudit}
+                    />
+                  )}
                 </span>
               </div>
               {/* Direction 2: b → a */}
@@ -433,8 +527,19 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                   <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
                   {a}
                 </span>
-                <span className="text-[14px] font-bold tabular-nums text-slate-900">
-                  {formatRate(rateBA)}
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[14px] font-bold tabular-nums text-slate-900">
+                    {formatRate(rateBA)}
+                  </span>
+                  {showSpreadEditor && (
+                    <SpreadInlineInput
+                      from={b}
+                      to={a}
+                      currentSpread={findDefaultPairSpread(pairs, channels, b, a)}
+                      t={t}
+                      logAudit={logAudit}
+                    />
+                  )}
                 </span>
               </div>
             </div>
