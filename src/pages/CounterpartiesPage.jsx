@@ -36,7 +36,7 @@ export default function CounterpartiesPage() {
         <p className="text-[13px] text-slate-500 mt-1">{t("cp_subtitle")}</p>
       </div>
 
-      {/* Tab strip — паттерн идентичен CapitalPage */}
+      {/* Tab strip — общий паттерн с TreasuryShell */}
       <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;

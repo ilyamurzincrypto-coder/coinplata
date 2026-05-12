@@ -1,52 +1,194 @@
 // src/pages/treasury_v2/tabs/DashboardTab.jsx
-// Treasury «Дашборд» — read-only overview built from the v2 ledger: capital
-// identity, P&L for a period, asset balances by office, open obligations, and the
-// last few deals. Cards-only, no mutations. It's the Treasury landing tab.
+// Treasury landing tab — a click-through «funds» dashboard built from the v2 ledger.
+//
+// Top: a 3-level drill-down tree
+//   ДОСТУПНЫЕ СРЕДСТВА (наши активы) → by currency → by office/account
+//   СРЕДСТВА КЛИЕНТОВ (мы должны клиентам) → by currency → by client
+//   ИТОГО (в базовой): Активы · Обязательства клиентам · Чистый капитал
+// Below: small support cards — P&L for a period, open obligations, recent deals,
+// and the Σ Дт = Σ Кт identity indicator. Read-only, no mutations.
 import React, { useState, useMemo, useEffect } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { useOpenObligations } from "../../../store/openObligations.js";
-import { balanceCheckTotals, pnlForPeriod, groupByClass, transactionTree } from "../../../lib/treasury/v2selectors.js";
+import { balanceCheckTotals, pnlForPeriod, transactionTree } from "../../../lib/treasury/v2selectors.js";
 import { dealSummary } from "../../../lib/treasury/dealSummary.js";
 import { bucketObligations, obligationLegTotals } from "../../../lib/treasury/paymentCalendar.js";
+import { fmt, curSymbol } from "../../../utils/money.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
+
+const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
+const AVAILABLE_SUBTYPES = new Set(["cash", "crypto_input", "crypto_output"]);
 
 const fmtNum = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const fmtBaseAmount = (n, baseCurrency) => `${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`;
 const fmtSignedBase = (n, baseCurrency) => `${n < 0 ? "−" : ""}${fmtBaseAmount(Math.abs(n), baseCurrency)}`;
+const fmtCur = (amount, currency) => `${curSymbol(currency)}${fmt(amount, currency)}${curSymbol(currency) ? "" : ` ${currency}`}`;
 
 function Card({ className = "", children }) {
   return <div className={`bg-white rounded-[14px] border border-slate-200/70 p-4 ${className}`}>{children}</div>;
 }
 
-function CapitalCard({ ctx, officeFilter, baseCurrency }) {
+// ── Funds tree ─────────────────────────────────────────────────────────────
+// Builds the per-currency / per-leaf breakdown for one «kind» of money.
+//   kind="available": asset accounts with subtype ∈ {cash, crypto_input, crypto_output},
+//                     leaves grouped by office (account name + native balance).
+//   kind="client":    customer_liab accounts (type liability), leaves grouped by client.
+function buildFundsTree(ctx, kind, officeFilter, findOffice, counterpartyName, t) {
+  const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
+  const byCur = new Map(); // currency -> { currency, native, inBase, leaves: Map<leafKey,{key,label,native,inBase}> }
+
+  for (const b of ctx.balances || []) {
+    const acc = accById.get(b.accountId);
+    if (!acc) continue;
+    if (officeFilter !== "all" && officeFilter && acc.officeId !== officeFilter) continue;
+    if (kind === "available") {
+      if (acc.type !== "asset" || !AVAILABLE_SUBTYPES.has(acc.subtype)) continue;
+    } else {
+      if (acc.type !== "liability" || acc.subtype !== "customer_liab") continue;
+      if (b.clientId === ZERO_UUID) continue;
+    }
+    const native = Number(b.balance) || 0;
+    if (Math.abs(native) < 1e-9) continue;
+    const inBase = ctx.toBase(native, b.currency) || 0;
+    const cur = b.currency;
+    const bucket = byCur.get(cur) || { currency: cur, native: 0, inBase: 0, leaves: new Map() };
+    bucket.native += native;
+    bucket.inBase += inBase;
+
+    let leafKey, leafLabel;
+    if (kind === "available") {
+      leafKey = `${acc.officeId || "_none"}|${acc.id}`;
+      const officeName = acc.officeId ? (findOffice(acc.officeId)?.name || acc.officeId) : t("trv2_dash_no_office");
+      leafLabel = `${officeName} · ${acc.name}`;
+    } else {
+      leafKey = b.clientId || "_none";
+      leafLabel = b.clientId ? (counterpartyName ? counterpartyName(b.clientId) || b.clientId : b.clientId) : t("trv2_dash_no_office");
+    }
+    const leaf = bucket.leaves.get(leafKey) || { key: leafKey, label: leafLabel, native: 0, inBase: 0 };
+    leaf.native += native;
+    leaf.inBase += inBase;
+    bucket.leaves.set(leafKey, leaf);
+    byCur.set(cur, bucket);
+  }
+
+  const currencies = [...byCur.values()]
+    .map((c) => ({ ...c, leaves: [...c.leaves.values()].sort((a, b) => Math.abs(b.inBase) - Math.abs(a.inBase)) }))
+    .sort((a, b) => Math.abs(b.inBase) - Math.abs(a.inBase));
+  const totalInBase = currencies.reduce((s, c) => s + c.inBase, 0);
+  return { currencies, totalInBase };
+}
+
+function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, toggle }) {
   const { t } = useTranslation();
-  const totals = useMemo(() => balanceCheckTotals(ctx, officeFilter), [ctx, officeFilter]);
-  const ok = totals.identityCheck.ok;
+  const open = expanded.has(id);
+  return (
+    <div>
+      <div
+        onClick={() => toggle(id)}
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-slate-50 rounded-[8px] -mx-1"
+      >
+        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">{t(titleKey)}</div>
+          <div className="text-[11px] text-slate-400">{t(subKey)}</div>
+        </div>
+        <div className="text-[18px] font-bold tabular-nums text-slate-900 shrink-0">{fmtBaseAmount(tree.totalInBase, baseCurrency)}</div>
+      </div>
+      {open && (
+        <div className="pl-7 pr-1 pb-1">
+          {tree.currencies.length === 0 ? (
+            <div className="py-2 text-[12px] text-slate-400">{t("trv2_dash_empty_funds")}</div>
+          ) : (
+            tree.currencies.map((c) => {
+              const ckey = `${id}:${c.currency}`;
+              const copen = expanded.has(ckey);
+              return (
+                <div key={c.currency}>
+                  <div
+                    onClick={() => toggle(ckey)}
+                    className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-slate-50 rounded-[6px] -mx-1 px-1"
+                  >
+                    {copen ? <ChevronDown className="w-3.5 h-3.5 text-slate-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                    <span className="text-[12.5px] font-semibold text-slate-700 w-12 shrink-0">{c.currency}</span>
+                    <span className="text-[12.5px] tabular-nums text-slate-800">{fmtCur(c.native, c.currency)}</span>
+                    <span className="text-[11.5px] text-slate-400 tabular-nums ml-2">(≈ {fmtBaseAmount(c.inBase, baseCurrency)})</span>
+                  </div>
+                  {copen && (
+                    <div className="pl-6">
+                      {c.leaves.map((leaf) => (
+                        <div key={leaf.key} className="flex items-baseline gap-3 py-1 text-[12px]">
+                          <span className="text-slate-500 flex-1 truncate">{leaf.label}</span>
+                          <span className="tabular-nums text-slate-700 shrink-0">{fmtCur(leaf.native, c.currency)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
+  const { t } = useTranslation();
+  const { findOffice } = useOffices();
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggle = (key) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  const available = useMemo(
+    () => buildFundsTree(ctx, "available", officeFilter, findOffice, ctx.counterpartyName, t),
+    [ctx, officeFilter, findOffice, t]
+  );
+  const client = useMemo(
+    () => buildFundsTree(ctx, "client", officeFilter, findOffice, ctx.counterpartyName, t),
+    [ctx, officeFilter, findOffice, t]
+  );
+  const netCapital = available.totalInBase - client.totalInBase;
+
   return (
     <Card className="md:col-span-2 lg:col-span-3">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[13px] font-bold text-slate-900">{t("trv2_dash_capital")}</h3>
-        <span className={`text-[11.5px] font-medium px-2 py-0.5 rounded-full ${ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
-          {ok ? t("trv2_dash_identity_ok") : t("trv2_dash_identity_off").replace("{delta}", fmtBaseAmount(totals.identityCheck.delta, baseCurrency))}
-        </span>
+      <div className="space-y-1">
+        <FundsSection
+          id="available"
+          titleKey="trv2_dash_available_funds"
+          subKey="trv2_dash_available_sub"
+          tree={available}
+          baseCurrency={baseCurrency}
+          expanded={expanded}
+          toggle={toggle}
+        />
+        <div className="border-t border-slate-100" />
+        <FundsSection
+          id="client"
+          titleKey="trv2_dash_client_funds"
+          subKey="trv2_dash_client_sub"
+          tree={client}
+          baseCurrency={baseCurrency}
+          expanded={expanded}
+          toggle={toggle}
+        />
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        {[
-          { k: "trv2_dash_assets", v: totals.assets },
-          { k: "trv2_dash_liabilities", v: totals.liabilities },
-          { k: "trv2_dash_equity", v: totals.equity },
-        ].map((x) => (
-          <div key={x.k} className="rounded-[10px] bg-slate-50 px-3 py-2.5">
-            <div className="text-[11px] text-slate-500">{t(x.k)}</div>
-            <div className="text-[19px] font-bold tabular-nums text-slate-900">{fmtBaseAmount(x.v, baseCurrency)}</div>
-          </div>
-        ))}
+      <div className="mt-3 pt-3 border-t border-slate-200 rounded-[10px] bg-slate-50 px-3 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
+        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t("trv2_dash_totals")}</span>
+        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
+        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(client.totalInBase, baseCurrency)}</span></span>
+        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_net_capital")}</span> <span className={`font-bold tabular-nums ${netCapital < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(netCapital, baseCurrency)}</span></span>
       </div>
     </Card>
   );
 }
 
+// ── Support cards ──────────────────────────────────────────────────────────
 function PnLCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
   const { t } = useTranslation();
   const win = useMemo(() => presetWindow(period), [period]);
@@ -57,9 +199,7 @@ function PnLCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
   const net = pnl.netProfit;
   return (
     <Card>
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h3 className="text-[13px] font-bold text-slate-900">{t("trv2_dash_pnl")}</h3>
-      </div>
+      <h3 className="text-[13px] font-bold text-slate-900 mb-2">{t("trv2_dash_pnl")}</h3>
       <div className="mb-3"><PeriodPicker value={period} onChange={setPeriod} /></div>
       <div className="text-[11px] text-slate-500">{t("trv2_dash_net_profit")}</div>
       <div className={`text-[22px] font-bold tabular-nums ${net < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(net, baseCurrency)}</div>
@@ -68,51 +208,6 @@ function PnLCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
         <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_expense")}</span><span className="tabular-nums">−{fmtBaseAmount(pnl.expense.total, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_fx")}</span><span className="tabular-nums">{fmtSignedBase(pnl.fxNet, baseCurrency)}</span></div>
       </div>
-    </Card>
-  );
-}
-
-function ByOfficeCard({ ctx, baseCurrency }) {
-  const { t } = useTranslation();
-  const { findOffice } = useOffices();
-  // Pull every asset account regardless of the Treasury office picker, then group
-  // by the account's own officeId. groupByClass reads ctx.officeFilter internally,
-  // so feed it an "all" override.
-  const rows = useMemo(() => {
-    const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
-    const sections = groupByClass({ ...ctx, officeFilter: "all" }, "asset");
-    const byOffice = new Map(); // officeId|"" -> totalInBase
-    for (const sect of sections) {
-      for (const a of sect.accounts) {
-        const officeId = accById.get(a.accountId)?.officeId || "";
-        byOffice.set(officeId, (byOffice.get(officeId) || 0) + (a.balanceInBase || 0));
-      }
-    }
-    return [...byOffice.entries()]
-      .map(([officeId, total]) => ({
-        officeId,
-        name: officeId ? (findOffice(officeId)?.name || officeId) : t("trv2_dash_no_office"),
-        total,
-      }))
-      .sort((x, y) => y.total - x.total);
-  }, [ctx, findOffice, t]);
-  return (
-    <Card>
-      <h3 className="text-[13px] font-bold text-slate-900 mb-2">{t("trv2_dash_by_office")}</h3>
-      {rows.length === 0 ? (
-        <div className="text-[12px] text-slate-400">—</div>
-      ) : (
-        <table className="w-full text-[12.5px]">
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.officeId || "_none"} className="border-t border-slate-100 first:border-t-0">
-                <td className="py-1.5 text-slate-700">{r.name}</td>
-                <td className="py-1.5 text-right tabular-nums font-medium">{fmtBaseAmount(r.total, baseCurrency)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
     </Card>
   );
 }
@@ -159,7 +254,7 @@ function ObligationsCard({ officeFilter }) {
 }
 
 const fmtAmt = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
-function dealLine(node, accById, t) {
+function dealLine(node, accById) {
   const s = dealSummary(node, accById);
   if (!s) return null;
   const leg = (l) => `${fmtAmt(l.amount)} ${l.currency}`;
@@ -173,7 +268,7 @@ function RecentDealsCard({ ctx, officeFilter, onOpenSource, period }) {
   const { t } = useTranslation();
   const win = useMemo(() => presetWindow(period), [period]);
   const tree = useMemo(
-    () => transactionTree(ctx, { type: "deal", officeFilter, period: { from: win.from, to: win.to } }).slice(0, 8),
+    () => transactionTree(ctx, { type: "deal", officeFilter, period: { from: win.from, to: win.to } }).slice(0, 6),
     [ctx, officeFilter, win.from, win.to]
   );
   const accById = useMemo(() => new Map((ctx.accounts || []).map((a) => [a.id, a])), [ctx.accounts]);
@@ -188,7 +283,7 @@ function RecentDealsCard({ ctx, officeFilter, onOpenSource, period }) {
         <div className="divide-y divide-slate-100">
           {tree.map((node) => {
             const { tx } = node;
-            const line = dealLine(node, accById, t);
+            const line = dealLine(node, accById);
             const date = new Date(tx.effectiveDate).toISOString().slice(0, 10);
             const clickable = !!onOpenSource;
             return (
@@ -209,18 +304,39 @@ function RecentDealsCard({ ctx, officeFilter, onOpenSource, period }) {
   );
 }
 
+function IdentityCard({ ctx, officeFilter, baseCurrency }) {
+  const { t } = useTranslation();
+  const totals = useMemo(() => balanceCheckTotals(ctx, officeFilter), [ctx, officeFilter]);
+  const ok = totals.identityCheck.ok;
+  return (
+    <Card>
+      <h3 className="text-[13px] font-bold text-slate-900 mb-2">{t("trv2_dash_capital")}</h3>
+      <div className={`text-[12px] font-medium px-2.5 py-1.5 rounded-[8px] inline-block ${ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+        {ok ? t("trv2_dash_identity_ok") : t("trv2_dash_identity_off").replace("{delta}", fmtBaseAmount(totals.identityCheck.delta, baseCurrency))}
+      </div>
+      <div className="mt-3 space-y-1 text-[12px]">
+        <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_assets")}</span><span className="tabular-nums">{fmtBaseAmount(totals.assets, baseCurrency)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_liabilities")}</span><span className="tabular-nums">{fmtBaseAmount(totals.liabilities, baseCurrency)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_equity")}</span><span className="tabular-nums">{fmtBaseAmount(totals.equity, baseCurrency)}</span></div>
+      </div>
+    </Card>
+  );
+}
+
 export default function DashboardTab({ ctx, officeFilter, baseCurrency, onOpenSource }) {
   const [period, setPeriodState] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_dash_period") || "month"; } catch { return "month"; }
   });
   const setPeriod = (v) => { setPeriodState(v); try { localStorage.setItem("coinplata.treasury_dash_period", v); } catch {} };
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      <CapitalCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
-      <PnLCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} period={period} setPeriod={setPeriod} />
-      <ByOfficeCard ctx={ctx} baseCurrency={baseCurrency} />
-      <ObligationsCard officeFilter={officeFilter} />
-      <RecentDealsCard ctx={ctx} officeFilter={officeFilter} onOpenSource={onOpenSource} period={period} />
+    <div className="space-y-4">
+      <FundsTreeCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <PnLCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} period={period} setPeriod={setPeriod} />
+        <ObligationsCard officeFilter={officeFilter} />
+        <IdentityCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
+        <RecentDealsCard ctx={ctx} officeFilter={officeFilter} onOpenSource={onOpenSource} period={period} />
+      </div>
     </div>
   );
 }
