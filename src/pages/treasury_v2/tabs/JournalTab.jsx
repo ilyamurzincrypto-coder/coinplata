@@ -1,22 +1,38 @@
 // src/pages/treasury_v2/tabs/JournalTab.jsx
 import React, { useState, useMemo, useEffect } from "react";
+import { Search } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
-import { transactionTree } from "../../../lib/treasury/v2selectors.js";
+import { useCan } from "../../../store/permissions.jsx";
+import { transactionTree, nodeMatchesSearch } from "../../../lib/treasury/v2selectors.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
+import Modal from "../../../components/ui/Modal.jsx";
+import PostingTab from "./PostingTab.jsx";
 import { exportCSV } from "../../../utils/csv.js";
 
 const TYPES = ["all", "deal", "transfer", "topup", "adjustment", "manual", "reversal"];
 
 export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
   const { t } = useTranslation();
+  const can = useCan();
+  const canPost = can("accounting", "edit");
+  const [postingOpen, setPostingOpen] = useState(false);
   const [period, setPeriod] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_journal_period") || "30d"; } catch { return "30d"; }
   });
   const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.treasury_journal_period", v); } catch {} };
   const [typeFilter, setTypeFilter] = useState("all");
   const [counterpartyId, setCounterpartyId] = useState(null);
+
+  // Free-text search across the (already period/type/counterparty-filtered) tree.
+  // Debounced ~200ms so typing doesn't re-filter on every keystroke.
+  const [searchRaw, setSearchRaw] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchRaw.trim().toLowerCase()), 200);
+    return () => clearTimeout(id);
+  }, [searchRaw]);
 
   // Client + partner options merged into one picker (single id-space — `transactionTree`
   // matches either client_id or partner_id on entries against this id). The label
@@ -42,6 +58,11 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
     () => transactionTree(ctx, { type: typeFilter, officeFilter, counterpartyId, period: { from: win.from, to: win.to } }),
     [ctx, typeFilter, officeFilter, counterpartyId, win.from, win.to]
   );
+  const accById = useMemo(() => new Map((ctx.accounts || []).map((a) => [a.id, a])), [ctx.accounts]);
+  const filtered = useMemo(
+    () => (search ? tree.filter((n) => nodeMatchesSearch(n, search, ctx, accById)) : tree),
+    [tree, search, ctx, accById]
+  );
 
   // Flatten the filtered tree into one row per journal entry, then hand off to exportCSV.
   // Columns chosen so an auditor can reconstruct each transaction: tx_id + effective_date
@@ -50,7 +71,7 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
   // ties storno rows to the original.
   function doExport() {
     const rows = [];
-    for (const node of tree) {
+    for (const node of filtered) {
       for (const e of node.entries) {
         rows.push({
           tx_id: node.tx.id,
@@ -103,7 +124,16 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-1.5 ml-auto min-w-[220px]">
+        <div className="flex items-center gap-1.5 min-w-[200px] flex-1">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <input
+            value={searchRaw}
+            onChange={(e) => setSearchRaw(e.target.value)}
+            placeholder={t("trv2_search_placeholder")}
+            className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] outline-none"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 min-w-[220px]">
           <span className="text-[11px] text-slate-500 shrink-0">{t("trv2_journal_filter_cp")}</span>
           <div className="flex-1 min-w-0">
             <SearchableSelect
@@ -122,9 +152,15 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
             >×</button>
           )}
         </div>
+        {canPost && (
+          <button
+            onClick={() => setPostingOpen(true)}
+            className="shrink-0 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-slate-900 text-white hover:bg-slate-800"
+          >{t("trv2_journal_new_manual")}</button>
+        )}
         <button
           onClick={doExport}
-          disabled={tree.length === 0}
+          disabled={filtered.length === 0}
           className="shrink-0 px-2.5 py-1 rounded-[8px] text-[12px] bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
         >{t("trv2_journal_export_csv")}</button>
       </div>
@@ -132,12 +168,29 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
         <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
       )}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-        {tree.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_journal_no_tx")}</div>
+        {filtered.length === 0 ? (
+          <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">
+            {search ? t("trv2_search_no_results") : t("trv2_journal_no_tx")}
+          </div>
         ) : (
-          tree.map((node) => <TransactionRow key={node.tx.id} node={node} onOpenSource={onOpenSource} />)
+          filtered.map((node) => <TransactionRow key={node.tx.id} node={node} onOpenSource={onOpenSource} />)
         )}
       </section>
+
+      {postingOpen && (
+        <Modal open onClose={() => setPostingOpen(false)} title={t("trv2_pm_title")} width="4xl">
+          <div className="px-5 py-4">
+            <PostingTab
+              ctx={ctx}
+              onDone={() => {
+                setPostingOpen(false);
+                // make the freshly-posted `manual` tx visible regardless of the type chip
+                setTypeFilter((tp) => (tp === "all" || tp === "manual" ? tp : "all"));
+              }}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -207,6 +207,51 @@ describe("transactionTree", () => {
   });
 });
 
+import { nodeMatchesSearch } from "./v2selectors.js";
+
+describe("nodeMatchesSearch", () => {
+  const ctx = makeLedgerCtx();
+  const accById = new Map(ctx.accounts.map((a) => [a.id, a]));
+  const tree = transactionTree(ctx, { type: "all", officeFilter: "all" });
+  const dealNode = tree.find((n) => n.tx.id === "tx_deal_1");
+  const openNode = tree.find((n) => n.tx.id === "tx_open");
+  // counterpartyName is used to resolve clientId/partnerId — the fixture's ctx doesn't
+  // ship one, so add a tiny resolver for the dimensioned customer-liab entries.
+  const ctxWithCp = { ...ctx, counterpartyName: (id) => (id === "client-1" ? "Иван Петров" : null) };
+
+  it("an empty query matches anything", () => {
+    expect(nodeMatchesSearch(dealNode, "", ctx, accById)).toBe(true);
+  });
+  it("matches by counterparty name resolved from an entry's clientId", () => {
+    expect(nodeMatchesSearch(dealNode, "иван", ctxWithCp, accById)).toBe(true);
+    expect(nodeMatchesSearch(openNode, "иван", ctxWithCp, accById)).toBe(false); // opening tx has no client-1 entry
+  });
+  it("matches by an entry amount (as string)", () => {
+    expect(nodeMatchesSearch(dealNode, "95", ctx, accById)).toBe(true); // je5/je6 amount 95
+    expect(nodeMatchesSearch(dealNode, "777", ctx, accById)).toBe(false);
+  });
+  it("matches by account name / code", () => {
+    expect(nodeMatchesSearch(dealNode, "spread", ctx, accById)).toBe(true);  // ac_spread_usd name
+    expect(nodeMatchesSearch(dealNode, "1110", ctx, accById)).toBe(true);    // ac_cash_usd_mark code
+  });
+  it("matches by currency code", () => {
+    expect(nodeMatchesSearch(dealNode, "usdt", ctx, accById)).toBe(true);    // je6 currency USDT
+    expect(nodeMatchesSearch(openNode, "usdt", ctx, accById)).toBe(false);   // opening tx is all USD
+  });
+  it("matches by tx kind / sourceRefId / id / metadata", () => {
+    expect(nodeMatchesSearch(dealNode, "deal", ctx, accById)).toBe(true);     // kind
+    expect(nodeMatchesSearch(dealNode, "deal-42", ctx, accById)).toBe(true);  // sourceRefId
+    expect(nodeMatchesSearch(dealNode, "tx_deal_1", ctx, accById)).toBe(true);// id
+    expect(nodeMatchesSearch(dealNode, "петров", ctx, accById)).toBe(true);   // metadata.client_nickname
+  });
+  it("matches by the optional deal-summary text passed in", () => {
+    expect(nodeMatchesSearch(dealNode, "exchange-in-text", ctx, accById, "exchange-in-text 100 USD")).toBe(true);
+  });
+  it("negative case: a query found nowhere returns false", () => {
+    expect(nodeMatchesSearch(dealNode, "completely-unrelated-string", ctx, accById)).toBe(false);
+  });
+});
+
 import { pnlForPeriod } from "./v2selectors.js";
 
 describe("pnlForPeriod", () => {

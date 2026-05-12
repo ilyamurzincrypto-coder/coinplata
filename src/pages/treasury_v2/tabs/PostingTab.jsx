@@ -27,7 +27,10 @@ function fmtNum(n) {
   return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
-export default function PostingTab({ ctx }) {
+// `onDone` (optional) — called after a successful post (used by the host modal in
+// JournalTab to close itself; the data-version bump fired by the RPC reloads the
+// ledger so the new entry shows up in the Журнал list immediately).
+export default function PostingTab({ ctx, onDone }) {
   const { t, lang } = useTranslation();
   const accounts = ctx?.accounts || [];
   const currencies = useMemo(() => deriveCurrencies(accounts), [accounts]);
@@ -111,6 +114,7 @@ export default function PostingTab({ ctx }) {
       await rpcCreateManualEntryV2(buildManualEntryPayload(draft, refCurrency, fxOf));
       emitToast("success", t("trv2_pm_posted"));
       resetForm();
+      onDone?.();
     } catch (e) {
       const msg = String(e?.message || "");
       if (/42501|permission|authenticated|Not authenticated|role/i.test(msg)) emitToast("error", t("trv2_pm_err_forbidden"));

@@ -5,8 +5,9 @@
 // bookkeeping view — the manager-language version lives on the Cashier main page).
 // Type chips default to "deal" but can be widened (all / transfer / topup / …).
 import React, { useState, useMemo, useEffect } from "react";
+import { Search } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
-import { transactionTree } from "../../../lib/treasury/v2selectors.js";
+import { transactionTree, nodeMatchesSearch } from "../../../lib/treasury/v2selectors.js";
 import { dealSummary } from "../../../lib/treasury/dealSummary.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
@@ -33,6 +34,14 @@ export default function DealsTab({ ctx, officeFilter, onOpenSource }) {
   const setP = (v) => { setPeriod(v); try { localStorage.setItem("coinplata.treasury_deals_period", v); } catch {} };
   const [typeFilter, setTypeFilter] = useState("deal");
 
+  // Free-text search across the (already period/type-filtered) tree, debounced ~200ms.
+  const [searchRaw, setSearchRaw] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchRaw.trim().toLowerCase()), 200);
+    return () => clearTimeout(id);
+  }, [searchRaw]);
+
   const win = useMemo(() => presetWindow(period), [period]);
   useEffect(() => {
     if (ctx.extendWindow && ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso)) ctx.extendWindow(win.from);
@@ -44,6 +53,11 @@ export default function DealsTab({ ctx, officeFilter, onOpenSource }) {
     [ctx, typeFilter, officeFilter, win.from, win.to]
   );
   const accById = useMemo(() => new Map((ctx.accounts || []).map((a) => [a.id, a])), [ctx.accounts]);
+  const summaryOf = (node) => (node.tx.kind === "deal" ? formatDealSummary(dealSummary(node, accById), t) : null);
+  const filtered = useMemo(
+    () => (search ? tree.filter((n) => nodeMatchesSearch(n, search, ctx, accById, summaryOf(n) || "")) : tree),
+    [tree, search, ctx, accById, t]
+  );
 
   return (
     <div className="space-y-3">
@@ -60,20 +74,31 @@ export default function DealsTab({ ctx, officeFilter, onOpenSource }) {
             </button>
           ))}
         </div>
+        <div className="flex items-center gap-1.5 min-w-[200px] flex-1">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <input
+            value={searchRaw}
+            onChange={(e) => setSearchRaw(e.target.value)}
+            placeholder={t("trv2_search_placeholder")}
+            className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] outline-none"
+          />
+        </div>
       </div>
       {truncated && (
         <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
       )}
       <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-        {tree.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_journal_no_tx")}</div>
+        {filtered.length === 0 ? (
+          <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">
+            {search ? t("trv2_search_no_results") : t("trv2_journal_no_tx")}
+          </div>
         ) : (
-          tree.map((node) => (
+          filtered.map((node) => (
             <TransactionRow
               key={node.tx.id}
               node={node}
               onOpenSource={onOpenSource}
-              summaryLine={node.tx.kind === "deal" ? formatDealSummary(dealSummary(node, accById), t) : null}
+              summaryLine={summaryOf(node)}
             />
           ))
         )}
