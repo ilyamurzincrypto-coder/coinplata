@@ -12,12 +12,10 @@ function readInitialLang() {
     const stored = localStorage.getItem(LANG_STORAGE_KEY);
     if (stored && SUPPORTED_LANGS.includes(stored)) return stored;
   } catch {}
-  // Browser locale fallback: ru-RU → RU, tr-* → TR, прочее → EN
-  if (typeof navigator !== "undefined") {
-    const browserLang = (navigator.language || "").slice(0, 2).toUpperCase();
-    if (SUPPORTED_LANGS.includes(browserLang)) return browserLang;
-  }
-  return "EN";
+  // Дефолт — RU (русскоязычная команда). EN/TR — через переключатель в шапке
+  // (выбор запоминается в localStorage). Браузерную локаль больше не учитываем —
+  // иначе у тех, у кого браузер на английском, всё открывалось на EN.
+  return "RU";
 }
 
 const DICT = {
