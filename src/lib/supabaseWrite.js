@@ -1489,6 +1489,7 @@ export async function updateAccountRow(id, patch) {
   if (patch.name != null) row.name = String(patch.name).trim();
   if (patch.active !== undefined) row.active = !!patch.active;
   if (patch.address !== undefined) row.address = patch.address || null;
+  if (patch.networkId !== undefined) row.network_id = patch.networkId ? String(patch.networkId).trim().toUpperCase() : null;
   if (patch.bankRef !== undefined) row.bank_ref = patch.bankRef || null;
   if (patch.accountingCode !== undefined) {
     row.accounting_code = patch.accountingCode ? String(patch.accountingCode).trim() : null;
@@ -1497,6 +1498,34 @@ export async function updateAccountRow(id, patch) {
   const { error } = await supabase.from("accounts").update(row).eq("id", id);
   if (error) throw new Error(formatSupabaseError(error, "update account"));
   bumpDataVersion();
+}
+
+// Удобная обёртка над updateAccountRow с inline-id в payload: { id, name, address, networkId, active }.
+// Используется EditAccountModal на странице «Счета».
+export async function updateAccount({ id, ...patch }) {
+  return updateAccountRow(id, patch);
+}
+
+// Создаёт «чистый» счёт плана счетов (ledger.accounts) — без public.accounts-обёртки,
+// без opening movement. Код генерируется автоматически в диапазоне класса
+// (asset 19xx / liability 29xx / equity 39xx / revenue 49xx / expense 59xx).
+// Возвращает новый код. Свежесозданный счёт нулевой — не ломает Σ Дт = Σ Кт.
+export async function rpcCreateLedgerAccount({ name, type, subtype, currency, officeId }) {
+  assertConfigured();
+  if (!name || !String(name).trim()) throw new Error("Account name required");
+  if (!type) throw new Error("Account type required");
+  if (!subtype) throw new Error("Account subtype required");
+  if (!currency) throw new Error("Currency required");
+  const { data, error } = await supabase.rpc("create_ledger_account", {
+    p_name: String(name).trim(),
+    p_type: String(type),
+    p_subtype: String(subtype),
+    p_currency: requireCurrency(currency, "currency"),
+    p_office_id: officeId || null,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "create_ledger_account"));
+  bumpDataVersion();
+  return data;
 }
 
 // План счетов — обновить код счёта на любой entity.
