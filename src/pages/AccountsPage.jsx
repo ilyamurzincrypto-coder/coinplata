@@ -15,6 +15,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Trash2,
+  Pencil,
   Download,
   Upload,
   ArrowLeftRight as ArrowLeftRightIcon,
@@ -40,6 +41,7 @@ import AccountHistoryModal from "../components/accounts/AccountHistoryModal.jsx"
 import TransferHistoryModal from "../components/accounts/TransferHistoryModal.jsx";
 import OtcDealModal from "../components/OtcDealModal.jsx";
 import AddAccountModal from "../components/accounts/AddAccountModal.jsx";
+import EditAccountModal from "../components/accounts/EditAccountModal.jsx";
 import DeleteDealButton from "../components/DeleteDealButton.jsx";
 import DeleteTransferButton from "../components/DeleteTransferButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
@@ -47,6 +49,7 @@ import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { deactivateAccountRow, withToast } from "../lib/supabaseWrite.js";
+import { useCan } from "../store/permissions.jsx";
 
 const CURRENCY_ORDER = ["USD", "USDT", "EUR", "TRY", "GBP"];
 const curIndex = (code) => {
@@ -120,6 +123,8 @@ export default function AccountsPage() {
   const { transactions } = useTransactions();
   const { addEntry: logAudit } = useAudit();
   const { currentUser } = useAuth();
+  const can = useCan();
+  const canEditAccount = can("accounting", "edit") || can("settings", "edit");
   const canManageOffices = currentUser?.role === "admin" || currentUser?.role === "owner";
   const { activeOffices, swapOfficesOrder } = useOffices();
   const { dict: curDict } = useCurrencies();
@@ -147,6 +152,7 @@ export default function AccountsPage() {
   const [otcOpen, setOtcOpen] = useState(false);
   const [otcFromAccount, setOtcFromAccount] = useState(null);
   const [addAccountFor, setAddAccountFor] = useState(null);
+  const [editAccountFor, setEditAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("operations");
 
@@ -540,6 +546,7 @@ export default function AccountsPage() {
                       }}
                       onHistory={setHistoryFor}
                       onDelete={handleDeleteAccount}
+                      onEdit={canEditAccount ? setEditAccountFor : null}
                       onAddAccount={(prefill) =>
                         setAddAccountFor({
                           officeId: office.id,
@@ -605,6 +612,11 @@ export default function AccountsPage() {
         prefill={addAccountFor?.prefill}
         onClose={() => setAddAccountFor(null)}
       />
+      <EditAccountModal
+        open={!!editAccountFor}
+        account={editAccountFor}
+        onClose={() => setEditAccountFor(null)}
+      />
       <AccountsImportModal open={importOpen} onClose={() => setImportOpen(false)} />
     </main>
   );
@@ -653,6 +665,7 @@ function CurrencyRow({
   onOtc,
   onHistory,
   onDelete,
+  onEdit,
   onAddAccount,
 }) {
   const { currency, totals, channelBlocks, accountsCount } = data;
@@ -769,6 +782,7 @@ function CurrencyRow({
                   onOtc={onOtc}
                   onHistory={onHistory}
                   onDelete={onDelete}
+                  onEdit={onEdit}
                   onAddAccount={onAddAccount}
                 />
               ))}
@@ -794,6 +808,7 @@ function ChannelBlock({
   onOtc,
   onHistory,
   onDelete,
+  onEdit,
   onAddAccount,
 }) {
   const label = channelShortLabel(channel);
@@ -845,6 +860,7 @@ function ChannelBlock({
             onOtc={onOtc}
             onHistory={onHistory}
             onDelete={onDelete}
+            onEdit={onEdit}
           />
         ))}
       </div>
@@ -855,7 +871,7 @@ function ChannelBlock({
 // -------- AccountCard --------
 // Раньше карточки были text-[9..13]px и иконки w-2.5 — кликнуть в них было
 // «надо постараться». Подняли до читаемых размеров.
-function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onAdjust, onTransfer, onOtc, onHistory, onDelete }) {
+function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, onAdjust, onTransfer, onOtc, onHistory, onDelete, onEdit }) {
   const total = balanceOf(a.id);
   const reserved = reservedOf(a.id);
   const available = availableOf(a.id);
@@ -933,6 +949,15 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
             title="Скорректировать баланс — поправить остаток без изменения P&L"
           >
             <Scale className="w-3 h-3" />
+          </button>
+        )}
+        {onEdit && (
+          <button
+            onClick={() => onEdit(a)}
+            className="text-[11px] font-semibold text-slate-600 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors"
+            title="Редактировать счёт — имя, адрес, сеть, активность"
+          >
+            <Pencil className="w-3 h-3" />
           </button>
         )}
         <button
