@@ -16,6 +16,7 @@ import {
   Coins,
   Network as NetworkIcon,
   ArrowLeft,
+  ArrowLeftRight,
   AlertTriangle,
   CheckCircle2,
   Building2,
@@ -42,8 +43,10 @@ import { useAuth } from "../store/auth.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { emitToast } from "../lib/toast.jsx";
 import {
   rpcUpdatePair,
+  rpcSetAllPairSpreads,
   rpcUpsertOfficeRate,
   rpcDeleteOfficeRate,
   withToast,
@@ -92,6 +95,18 @@ function formatRelativeTime(dt, nowMs = Date.now(), locale) {
   } catch {
     return new Date(ms).toLocaleDateString("en", { day: "2-digit", month: "short" });
   }
+}
+
+// Форматирование "обратного" курса (1/rate) с достаточной точностью для
+// мелких десятичных — чтобы не показывать "0.0000". Большие числа — 4 знака;
+// мелкие — 6 значащих цифр (без хвостовых нулей).
+function formatInverseRate(v) {
+  if (!Number.isFinite(v) || v <= 0) return "—";
+  if (v >= 1) return v.toFixed(4);
+  const s = v.toPrecision(6);
+  // toPrecision может вернуть экспоненту для очень мелких — в этом случае
+  // оставляем как есть; иначе убираем хвостовые нули.
+  return s.includes("e") ? s : s.replace(/\.?0+$/, "");
 }
 
 export default function RatesPage({ onBack }) {
@@ -231,11 +246,11 @@ export default function RatesPage({ onBack }) {
     }));
   }, [existingPairs]);
 
-  // Унифицированный updater: передать {baseRate?, spreadPercent?}.
-  // После миграции 0065 update_pair изменяет ТОЛЬКО переданную пару —
-  // sell и buy полностью независимы (без auto-sync через триггер).
-  // Чтобы изменить обратную пару, явно вызови handleSetRate(to, from, ...).
-  const handleSetRate = async (from, to, { baseRate, spreadPercent } = {}) => {
+  // Унифицированный updater: передать {baseRate?, spreadPercent?, syncReverse?}.
+  // update_pair с p_sync_reverse=true (дефолт): любое изменение base_rate
+  // автоматически выставляет обратной default-паре base_rate = 1/new.
+  // Передай syncReverse:false чтобы поправить ТОЛЬКО эту пару.
+  const handleSetRate = async (from, to, { baseRate, spreadPercent, syncReverse } = {}) => {
     if (baseRate != null) {
       const n = Number(baseRate);
       if (!Number.isFinite(n) || n <= 0) return;
@@ -290,6 +305,7 @@ export default function RatesPage({ onBack }) {
             toCurrency: to,
             ...(baseRate != null ? { baseRate: Number(baseRate) } : {}),
             ...(spreadPercent != null ? { spreadPercent: Number(spreadPercent) } : {}),
+            ...(syncReverse != null ? { syncReverse } : {}),
           }),
         { success: null, errorPrefix: "Update failed" }
       );
@@ -314,6 +330,32 @@ export default function RatesPage({ onBack }) {
           summary: `${from}→${to}: rate ${baseRate}`,
         });
       }
+    }
+  };
+
+  // Bulk spread — выставить spread_percent на ВСЕ default-пары разом.
+  // RPC set_all_pair_spreads возвращает число обновлённых пар. После успеха
+  // bumpDataVersion → rates store перезагружается → строки обновляются.
+  const handleBulkSpread = async (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return;
+    if (!isSupabaseConfigured) return;
+    const res = await withToast(
+      () => rpcSetAllPairSpreads(n),
+      { success: null, errorPrefix: "Bulk spread failed" }
+    );
+    if (res.ok) {
+      const count = Number(res.result) || 0;
+      const msg = (t("rates_bulk_spread_done") || "Spread {n}% set on {count} pairs")
+        .replace("{n}", String(n))
+        .replace("{count}", String(count));
+      emitToast("success", msg);
+      logAudit({
+        action: "update",
+        entity: "pair",
+        entityId: "all",
+        summary: `Bulk spread ${n}% applied to ${count} pairs`,
+      });
     }
   };
 
@@ -577,6 +619,14 @@ export default function RatesPage({ onBack }) {
               </div>
             </div>
 
+            {/* Bulk spread — выставить spread % на все default-пары разом.
+                Только в "all" tab (bulk spread = global концепт, у офисных
+                override'ов спред не bulk-овый) и только для тех кто может
+                редактировать (страница уже это гейтит). */}
+            {activeOffice === "all" && isSupabaseConfigured && (
+              <BulkSpreadControl onApply={handleBulkSpread} />
+            )}
+
             {/* Favorites — sticky top-секция. Каждый юзер сам выбирает свои
                 избранные пары (per-user, server-persisted в preferences).
                 Отдельно от dashboardFavorites — RatesSidebar и редактор не
@@ -734,6 +784,61 @@ export default function RatesPage({ onBack }) {
         <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} />
       )}
     </main>
+  );
+}
+
+// ---------------- Bulk spread control ----------------
+// Маленький inline-блок: number input + "Применить ко всем" → ставит spread %
+// на все default-пары через set_all_pair_spreads. После успеха rates store
+// перезагружается (bumpDataVersion) и строки обновляются.
+function BulkSpreadControl({ onApply }) {
+  const { t } = useTranslation();
+  const [val, setVal] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const num = Number(String(val).trim().replace(",", "."));
+  const canApply = String(val).trim() !== "" && Number.isFinite(num) && !busy;
+
+  const apply = async () => {
+    if (!canApply) return;
+    setBusy(true);
+    try {
+      await onApply(num);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-[12px] px-4 py-3 flex items-center gap-3 flex-wrap">
+      <span className="text-[12px] font-semibold text-slate-700">
+        {t("rates_bulk_spread_label") || "Spread on all pairs"}
+      </span>
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={val}
+          onChange={(e) => setVal(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."))}
+          onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
+          placeholder="0.5"
+          className="w-[90px] bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+        />
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">%</span>
+      </div>
+      <button
+        type="button"
+        onClick={apply}
+        disabled={!canApply}
+        className={`inline-flex items-center px-3 py-1.5 rounded-[10px] text-[12px] font-semibold ${
+          canApply
+            ? "bg-slate-900 text-white hover:bg-slate-800"
+            : "bg-slate-200 text-slate-400 cursor-not-allowed"
+        }`}
+      >
+        {busy ? "…" : (t("rates_bulk_spread_apply") || "Apply to all")}
+      </button>
+    </div>
   );
 }
 
@@ -900,22 +1005,39 @@ function PairRow({
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
             {isOfficeTab ? (t("rates_office_base") || "Office base") : (t("rates_base_rate") || "Base rate")}
           </span>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={baseStr}
-            onChange={(e) => {
-              setEditingBase(true);
-              setBaseStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
-            }}
-            onBlur={commitBase}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            className={`w-[120px] bg-slate-50 border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
-              hasOverride && isOfficeTab
-                ? "border-indigo-300 focus:border-indigo-500"
-                : "border-slate-200 focus:border-slate-400"
-            }`}
-          />
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={baseStr}
+              onChange={(e) => {
+                setEditingBase(true);
+                setBaseStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
+              }}
+              onBlur={commitBase}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              className={`w-[120px] bg-slate-50 border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
+                hasOverride && isOfficeTab
+                  ? "border-indigo-300 focus:border-indigo-500"
+                  : "border-slate-200 focus:border-slate-400"
+              }`}
+            />
+            {/* Force re-sync обратной пары = 1/этой. Только в global ("all")
+                табе — у офисных override'ов нет чистой "обратной пары".
+                Обычное редактирование base уже синхронит reverse server-side;
+                эта кнопка нужна когда обратная пара дрейфанула со старых
+                данных. */}
+            {!isOfficeTab && Number.isFinite(Number(effectiveBase)) && Number(effectiveBase) > 0 && (
+              <button
+                type="button"
+                onClick={() => onUpdate({ baseRate: Number(effectiveBase), syncReverse: true })}
+                className="shrink-0 p-1 rounded-[6px] text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                title={t("rates_sync_reverse_tip") || "Пересчитать обратную пару = 1/этой"}
+              >
+                <ArrowLeftRight className="w-3 h-3" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Spread input */}
@@ -940,7 +1062,7 @@ function PairRow({
           </div>
         </div>
 
-        {/* Effective rate (computed) */}
+        {/* Effective rate (computed) + inverse direction hint */}
         <div className="flex flex-col items-start">
           <span
             className="text-[9px] font-bold text-slate-400 uppercase tracking-wider cursor-help"
@@ -951,6 +1073,14 @@ function PairRow({
           <span className="text-[14px] font-bold text-slate-900 tabular-nums">
             {effectiveRate != null ? Number(effectiveRate).toFixed(4) : "—"}
           </span>
+          {effectiveRate != null && Number(effectiveRate) > 0 && (
+            <span className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">
+              {(t("rates_inverse_hint") || "↔ 1 {to} = {rate} {from}")
+                .replace("{to}", to)
+                .replace("{rate}", formatInverseRate(1 / Number(effectiveRate)))
+                .replace("{from}", from)}
+            </span>
+          )}
         </div>
 
         {/* Updated at — когда курс был последний раз изменён.

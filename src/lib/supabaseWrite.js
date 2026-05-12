@@ -975,7 +975,7 @@ export async function deleteExpenseById(id) {
 // ref_update_admin (только owner/admin) и терял сетевые ошибки в общем
 // TypeError Fetch. RPC обходит RLS, пускает accountant, бросает clear
 // exceptions (в т.ч. P0002 "No default pair found" если пары нет).
-export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent }) {
+export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spreadPercent, syncReverse }) {
   assertConfigured();
   const from = requireCurrency(fromCurrency, "fromCurrency");
   const to = requireCurrency(toCurrency, "toCurrency");
@@ -993,13 +993,16 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
   }
   if (baseRateNum == null && spreadNum == null) return;
 
-  // После миграции 0065 update_pair изменяет ТОЛЬКО переданную пару — без
-  // авто-синхронизации reverse. Sell и buy полностью независимы.
+  // p_sync_reverse (default true на уровне БД): когда меняется base_rate,
+  // обратная default-пара получает base_rate = 1/new. Передаём явно — каждый
+  // base-edit синхронизирует reverse, пока вызывающий не выставит
+  // syncReverse: false.
   const { error } = await supabase.rpc("update_pair", {
     p_from: from,
     p_to: to,
     p_base_rate: baseRateNum,
     p_spread: spreadNum,
+    p_sync_reverse: syncReverse !== false,
   });
   if (error) {
     // Явный differentiation сетевых ошибок от RPC-ошибок — чтобы toast
@@ -1014,6 +1017,18 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
     throw new Error(formatSupabaseError(error, "update_pair"));
   }
   bumpDataVersion();
+}
+
+// Массовая установка spread_percent на ВСЕ default-пары. Возвращает число
+// обновлённых пар (RPC set_all_pair_spreads → integer).
+export async function rpcSetAllPairSpreads(spreadPercent) {
+  assertConfigured();
+  const s = Number(spreadPercent);
+  if (!Number.isFinite(s)) throw new Error("spread must be a number");
+  const { data, error } = await supabase.rpc("set_all_pair_spreads", { p_spread: s });
+  if (error) throw new Error(formatSupabaseError(error, "set_all_pair_spreads"));
+  bumpDataVersion();
+  return data; // count of pairs updated
 }
 
 // ---------- categories ----------
