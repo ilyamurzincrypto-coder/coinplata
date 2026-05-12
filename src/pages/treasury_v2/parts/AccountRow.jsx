@@ -4,7 +4,11 @@ import { ChevronRight, ChevronDown } from "lucide-react";
 import AccountInlineEntries from "./AccountInlineEntries.jsx";
 import AccountSubcontoRow from "./AccountSubcontoRow.jsx";
 
-export default function AccountRow({ account, ctx, formatBase, baseCurrency, onOpenTx }) {
+// `displayMul` — display-sign multiplier for the shown balances (1 by default; −1 for
+// liability accounts so an obligation reads as a negative number). Presentation only —
+// the underlying ledger figures (`account.balance` / `account.balanceInBase` / `dims`) are
+// untouched; the multiplier is applied at render and passed down to subconto rows.
+export default function AccountRow({ account, ctx, formatBase, baseCurrency, onOpenTx, displayMul = 1 }) {
   const [expanded, setExpanded] = useState(false);
   const dims = account.dims; // null for a plain account; array for a dimensioned one
   return (
@@ -17,9 +21,9 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
         <span className="font-mono text-[11px] text-slate-400 w-12">{account.code}</span>
         <span className="flex-1 text-[12.5px] font-medium text-slate-900 truncate">{account.name}</span>
         <span className="text-[12px] text-slate-500 tabular-nums w-32 text-right">
-          {Number(account.balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} {account.currency}
+          {(Number(account.balance) * displayMul).toLocaleString(undefined, { maximumFractionDigits: 2 })} {account.currency}
         </span>
-        <span className="text-[12.5px] font-semibold tabular-nums w-28 text-right">{formatBase(account.balanceInBase, baseCurrency)}</span>
+        <span className="text-[12.5px] font-semibold tabular-nums w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && (dims
         ? (dims.length === 0
@@ -33,6 +37,7 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
                   formatBase={formatBase}
                   baseCurrency={baseCurrency}
                   onOpenTx={onOpenTx}
+                  displayMul={displayMul}
                 />
               )))
         : <AccountInlineEntries ctx={ctx} accountId={account.accountId} onOpenTx={onOpenTx} />)}

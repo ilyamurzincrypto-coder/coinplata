@@ -10,6 +10,15 @@ function passesOfficeFilter(account, officeFilter) {
   return account.officeId === officeFilter;
 }
 
+// Display-sign convention (DISPLAY ONLY — does not touch ledger data / RPCs / the
+// selectors' computed values). Assets/expenses keep their stored normal-side magnitude;
+// liabilities (Cr-normal "we owe") are negated at display time so an obligation reads as
+// a negative number ("we owe $940" → −$940). Equity stays positive (Кт − Дт magnitude).
+// So the identity reads literally: Капитал = Активы + Пассивы (Пассивы being negative).
+export function displaySign(accountType) {
+  return accountType === "liability" ? -1 : 1;
+}
+
 export const SUBTYPE_LABEL_KEYS = {
   cash: "trv2_subtype_cash",
   bank: "trv2_subtype_bank",

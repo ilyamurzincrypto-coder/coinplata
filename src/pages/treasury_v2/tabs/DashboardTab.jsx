@@ -25,6 +25,7 @@ const fmtNum = (n) => Number(n || 0).toLocaleString(undefined, { maximumFraction
 const fmtBaseAmount = (n, baseCurrency) => `${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`;
 const fmtSignedBase = (n, baseCurrency) => `${n < 0 ? "−" : ""}${fmtBaseAmount(Math.abs(n), baseCurrency)}`;
 const fmtCur = (amount, currency) => `${curSymbol(currency)}${fmt(amount, currency)}${curSymbol(currency) ? "" : ` ${currency}`}`;
+const fmtSignedCur = (amount, currency) => `${amount < 0 ? "−" : ""}${fmtCur(Math.abs(amount), currency)}`;
 
 function Card({ className = "", children }) {
   return <div className={`bg-white rounded-[14px] border border-slate-200/70 p-4 ${className}`}>{children}</div>;
@@ -80,9 +81,13 @@ function buildFundsTree(ctx, kind, officeFilter, findOffice, counterpartyName, t
   return { currencies, totalInBase };
 }
 
-function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, toggle }) {
+// `displayMul` — display-sign multiplier (1 for our assets; −1 for the client-funds
+// section, so what we owe clients reads as a negative figure). Presentation only.
+function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, toggle, displayMul = 1 }) {
   const { t } = useTranslation();
   const open = expanded.has(id);
+  const baseAmt = (n) => (displayMul < 0 ? fmtSignedBase(n * displayMul, baseCurrency) : fmtBaseAmount(n, baseCurrency));
+  const curAmt = (n, ccy) => (displayMul < 0 ? fmtSignedCur(n * displayMul, ccy) : fmtCur(n, ccy));
   return (
     <div>
       <div
@@ -94,7 +99,7 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
           <div className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">{t(titleKey)}</div>
           <div className="text-[11px] text-slate-400">{t(subKey)}</div>
         </div>
-        <div className="text-[18px] font-bold tabular-nums text-slate-900 shrink-0">{fmtBaseAmount(tree.totalInBase, baseCurrency)}</div>
+        <div className="text-[18px] font-bold tabular-nums text-slate-900 shrink-0">{baseAmt(tree.totalInBase)}</div>
       </div>
       {open && (
         <div className="pl-7 pr-1 pb-1">
@@ -112,15 +117,15 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
                   >
                     {copen ? <ChevronDown className="w-3.5 h-3.5 text-slate-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
                     <span className="text-[12.5px] font-semibold text-slate-700 w-12 shrink-0">{c.currency}</span>
-                    <span className="text-[12.5px] tabular-nums text-slate-800">{fmtCur(c.native, c.currency)}</span>
-                    <span className="text-[11.5px] text-slate-400 tabular-nums ml-2">(≈ {fmtBaseAmount(c.inBase, baseCurrency)})</span>
+                    <span className="text-[12.5px] tabular-nums text-slate-800">{curAmt(c.native, c.currency)}</span>
+                    <span className="text-[11.5px] text-slate-400 tabular-nums ml-2">(≈ {baseAmt(c.inBase)})</span>
                   </div>
                   {copen && (
                     <div className="pl-6">
                       {c.leaves.map((leaf) => (
                         <div key={leaf.key} className="flex items-baseline gap-3 py-1 text-[12px]">
                           <span className="text-slate-500 flex-1 truncate">{leaf.label}</span>
-                          <span className="tabular-nums text-slate-700 shrink-0">{fmtCur(leaf.native, c.currency)}</span>
+                          <span className="tabular-nums text-slate-700 shrink-0">{curAmt(leaf.native, c.currency)}</span>
                         </div>
                       ))}
                     </div>
@@ -153,7 +158,9 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
     () => buildFundsTree(ctx, "client", officeFilter, findOffice, ctx.counterpartyName, t),
     [ctx, officeFilter, findOffice, t]
   );
-  const netCapital = available.totalInBase - client.totalInBase;
+  // Пассивы shown signed ("we owe" = minus); identity reads literally Капитал = Активы + Пассивы.
+  const passives = -client.totalInBase;
+  const netCapital = available.totalInBase + passives; // == available − |client liabilities|
 
   return (
     <Card className="md:col-span-2 lg:col-span-3">
@@ -176,12 +183,15 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
           baseCurrency={baseCurrency}
           expanded={expanded}
           toggle={toggle}
+          displayMul={-1}
         />
       </div>
       <div className="mt-3 pt-3 border-t border-slate-200 rounded-[10px] bg-slate-50 px-3 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
         <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t("trv2_dash_totals")}</span>
         <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
-        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(client.totalInBase, baseCurrency)}</span></span>
+        <span className="text-slate-400">+</span>
+        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtSignedBase(passives, baseCurrency)}</span></span>
+        <span className="text-slate-400">=</span>
         <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_net_capital")}</span> <span className={`font-bold tabular-nums ${netCapital < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(netCapital, baseCurrency)}</span></span>
       </div>
     </Card>
@@ -316,7 +326,7 @@ function IdentityCard({ ctx, officeFilter, baseCurrency }) {
       </div>
       <div className="mt-3 space-y-1 text-[12px]">
         <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_assets")}</span><span className="tabular-nums">{fmtBaseAmount(totals.assets, baseCurrency)}</span></div>
-        <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_liabilities")}</span><span className="tabular-nums">{fmtBaseAmount(totals.liabilities, baseCurrency)}</span></div>
+        <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_liabilities")}</span><span className="tabular-nums">{fmtSignedBase(-totals.liabilities, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-slate-500">{t("trv2_dash_equity")}</span><span className="tabular-nums">{fmtBaseAmount(totals.equity, baseCurrency)}</span></div>
       </div>
     </Card>
