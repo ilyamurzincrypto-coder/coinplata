@@ -1,31 +1,16 @@
 // src/components/cashier/CashierLedgerDeals.jsx
-// The Cashier's deal list — a manager-friendly deal-detail board, NOT an accounting
-// journal. Reads straight from the v2 ledger (ledger.transactions / journal_entries
-// via LedgerProvider) so an operator sees the deals they just created, scoped to the
-// current office. Each row collapses to a «пришло → ушло · маржа» one-liner; expanded
-// it shows <DealDetail> (counterparty / status / amounts in manager language) —
-// the raw Dr/Cr trees live in the Treasury "Сделки" tab, not here.
+// The Cashier's deal list — a manager-friendly deal board, NOT an accounting journal.
+// Reads straight from the v2 ledger (ledger.transactions / journal_entries via
+// LedgerProvider) so an operator sees the deals they just created, scoped to the
+// current office. Each row is a deal "slip" (time · counterparty · «пришло → ушло» ·
+// маржа · статус); expanded → <DealDetail> in manager language. Raw Dr/Cr trees live
+// in the Treasury "Сделки"/"Журнал" tabs, not here — see CashierDealRow.
 import React, { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useLedger } from "../../store/ledger.jsx";
 import { transactionTree } from "../../lib/treasury/v2selectors.js";
-import { dealSummary } from "../../lib/treasury/dealSummary.js";
 import PeriodPicker, { presetWindow } from "../../pages/treasury_v2/PeriodPicker.jsx";
-import TransactionRow from "../../pages/treasury_v2/parts/TransactionRow.jsx";
-import DealDetail from "./DealDetail.jsx";
-
-const fmtAmt = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
-
-function formatDealSummary(s, t) {
-  if (!s) return null;
-  const leg = (l) => `${fmtAmt(l.amount)} ${l.currency}${l.accountName ? ` (${l.accountName})` : ""}`;
-  const sides = [];
-  if (s.in.length) sides.push(`${t("cashier_deal_in")} ${s.in.map(leg).join(" + ")}`);
-  if (s.out.length) sides.push(`${t("cashier_deal_out")} ${s.out.map(leg).join(" + ")}`);
-  let line = sides.join(" → ");
-  if (s.margin.length) line += ` · ${t("cashier_deal_margin")} ${s.margin.map((m) => `${fmtAmt(m.amount)} ${m.currency}`).join(" + ")}`;
-  return line || null;
-}
+import CashierDealRow from "./CashierDealRow.jsx";
 
 export default function CashierLedgerDeals({ officeFilter }) {
   const { t } = useTranslation();
@@ -63,11 +48,11 @@ export default function CashierLedgerDeals({ officeFilter }) {
           <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_journal_no_tx")}</div>
         ) : (
           tree.map((node) => (
-            <TransactionRow
+            <CashierDealRow
               key={node.tx.id}
               node={node}
-              summaryLine={formatDealSummary(dealSummary(node, accById), t)}
-              renderDetail={(n) => <DealDetail node={n} accById={accById} counterpartyName={ctx.counterpartyName} />}
+              accById={accById}
+              counterpartyName={ctx.counterpartyName}
             />
           ))
         )}
