@@ -7,13 +7,14 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown, RotateCcw, CheckCircle2, Clock } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useCan } from "../../store/permissions.jsx";
-import { dealSummary } from "../../lib/treasury/dealSummary.js";
+import { dealSummary, dealRate } from "../../lib/treasury/dealSummary.js";
 import DealDetail from "./DealDetail.jsx";
 import ReverseEntryModal from "../../pages/treasury_v2/parts/ReverseEntryModal.jsx";
 import EditTxNoteModal from "../../pages/treasury_v2/parts/EditTxNoteModal.jsx";
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 const fmtAmt = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const fmtRate = (r) => Number(r).toLocaleString(undefined, { maximumSignificantDigits: 6 });
 const legStr = (l) => `${fmtAmt(l.amount)} ${l.currency}`;
 
 // node — { tx, entries }; accById — Map<accountId, account>; counterpartyName — fn(clientId)→name
@@ -38,9 +39,11 @@ export default function CashierDealRow({ node, accById, counterpartyName }) {
   const inStr = s && s.in.length ? s.in.map(legStr).join(" + ") : "—";
   const outStr = s && s.out.length ? s.out.map(legStr).join(" + ") : "—";
   const marginStr = s && s.margin.length ? s.margin.map(legStr).join(" + ") : null;
+  const rate = dealRate(s);
 
   const isReversed = tx.status === "reversed";
   const isReversal = !!tx.reversesTransactionId;
+  const isOtc = meta.kind === "otc";
   const hasObligation = !!meta.has_deferred;
   const canReverse = !isReversal && !isReversed && can("transactions", "edit");
   const canEditNote = can("transactions", "edit") || can("accounting", "edit");
@@ -55,8 +58,12 @@ export default function CashierDealRow({ node, accById, counterpartyName }) {
         {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-300 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
         <span className="text-[11px] text-slate-400 tabular-nums w-[64px] shrink-0">{dtStr}</span>
         <span className="text-[12.5px] font-semibold text-slate-800 w-[120px] truncate shrink-0" title={counterparty}>{counterparty}</span>
+        {isOtc && (
+          <span className="text-[9.5px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 shrink-0">OTC</span>
+        )}
         <span className="flex-1 min-w-0 text-[12.5px] text-slate-700 truncate tabular-nums">
           {inStr} <span className="text-slate-300 mx-0.5">→</span> {outStr}
+          {rate && <span className="text-slate-400 ml-2">@ {fmtRate(rate.rate)}</span>}
         </span>
         {marginStr && (
           <span className="text-[11.5px] text-emerald-700 font-medium tabular-nums shrink-0 whitespace-nowrap">{t("cashier_deal_margin")} {marginStr}</span>

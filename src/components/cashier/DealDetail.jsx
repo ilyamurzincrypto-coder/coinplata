@@ -7,10 +7,11 @@
 // NO Дт/Кт, NO account codes — accounting lives in the Treasury "Сделки" tab.
 import React from "react";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { dealSummary } from "../../lib/treasury/dealSummary.js";
+import { dealSummary, dealRate } from "../../lib/treasury/dealSummary.js";
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
 const fmtAmt = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const fmtRate = (r) => Number(r).toLocaleString(undefined, { maximumSignificantDigits: 6 });
 
 // Internal clearing / margin buckets — not "пришло"/"ушло" the manager cares about.
 const SKIP_SUBTYPES_IN = new Set(["fx_clearing"]);
@@ -69,6 +70,7 @@ export default function DealDetail({ node, accById, counterpartyName }) {
   // Margin / fee — prefer revenue Cr (via dealSummary), else fall back to `unearned` Cr.
   let marginLines = [];
   const summary = dealSummary(node, accById);
+  const rate = dealRate(summary); // { rate, from, to } | null — clean 1↔1 exchange only
   if (summary && summary.margin.length) {
     marginLines = summary.margin.map((m) => `${fmtAmt(m.amount)} ${m.currency}`);
   } else {
@@ -110,6 +112,9 @@ export default function DealDetail({ node, accById, counterpartyName }) {
         )}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-slate-100 text-[12px] text-slate-600">
           <span><span className="text-slate-400">{t("cashdeal_counterparty")}:</span> <span className="font-medium text-slate-700">{counterparty}</span></span>
+          {rate && (
+            <span><span className="text-slate-400">{t("cashdeal_rate")}:</span> <span className="font-medium text-slate-700 tabular-nums">{fmtRate(rate.rate)}</span> <span className="text-slate-400">{rate.to}/{rate.from}</span></span>
+          )}
           <span className="inline-flex items-center gap-1.5">
             <span className="text-slate-400">{t("cashdeal_status")}:</span>
             <span className="font-medium text-slate-700">{statusLabel}</span>
