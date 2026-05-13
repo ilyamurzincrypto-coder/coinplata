@@ -7,3 +7,4 @@ dist-ssr
 .idea
 .vercel
 .claude/
+supabase/.temp/

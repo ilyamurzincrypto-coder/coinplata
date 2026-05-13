@@ -281,10 +281,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const selectedIsOffice = selectedTab !== GLOBAL_TAB;
   const selectedOfficeId = selectedIsOffice ? selectedTab : null;
 
-  // Inline spread-редактор возле котировки. Показываем только когда: список
-  // развёрнут (в compact строки слишком тесные), выбран Global tab (офисные
-  // override-спреды — отдельная история) и есть Supabase (в demo нет RPC).
-  const showSpreadEditor = expanded && selectedTab === GLOBAL_TAB && isSupabaseConfigured;
+  // Inline spread-редактор возле котировки — у КАЖДОЙ пары (и в compact, и в
+  // expanded). Показываем на Global tab (офисные override-спреды — в полном
+  // редакторе) и только когда есть Supabase (в demo нет RPC).
+  const showSpreadEditor = selectedTab === GLOBAL_TAB && isSupabaseConfigured;
 
   // Office-aware getRate: если выбран офис, применяем его override. Global tab
   // передаёт null → чистый global rate.
