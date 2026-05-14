@@ -386,9 +386,9 @@ export default function ExternalRatesWidget({ compact = false }) {
                 </div>
 
                 {/* Список пар: каждая строка независима. У каждой пары —
-                    свой режим (Без спреда / Фил со спредом / Ручная
-                    корректировка) и свои поля. Никакого общего калькулятора
-                    на источник. */}
+                    свой спред и значение. Плюс реверс — обратное
+                    направление (1/mid) тоже видно отдельной строкой со
+                    своим спредом. */}
                 <div className="divide-y divide-slate-100 -mx-1">
                   {sourceRows.map((r) => {
                     const mid = Number.isFinite(r.mid)
@@ -401,19 +401,52 @@ export default function ExternalRatesWidget({ compact = false }) {
                     const copied = copiedKey === copyKey;
                     const hasSpread =
                       spreadStr !== "" && Number.isFinite(Number(spreadStr)) && Number(spreadStr) !== 0;
+
+                    // Реверс: 1/mid (если 0 или NaN → null, скрываем)
+                    const reverseMid =
+                      Number.isFinite(mid) && Math.abs(mid) > 1e-12 ? 1 / mid : null;
+                    const reversePairStr = (() => {
+                      const parts = String(r.pair).split("_");
+                      return parts.length === 2 ? `${parts[1]}_${parts[0]}` : null;
+                    })();
+                    const reverseKey = `${r.source}:${r.pair}:rev`;
+                    const reverseSpreadStr = perPairSpread[reverseKey] ?? "";
+                    const reverseFinal = computePairRate(reverseMid, reverseSpreadStr);
+                    const reverseCopyKey = `${r.source}_${r.pair}_rev`;
+                    const reverseCopied = copiedKey === reverseCopyKey;
+                    const reverseHasSpread =
+                      reverseSpreadStr !== "" &&
+                      Number.isFinite(Number(reverseSpreadStr)) &&
+                      Number(reverseSpreadStr) !== 0;
+
                     return (
-                      <PerPairRow
-                        key={copyKey}
-                        pair={r.pair}
-                        mid={mid}
-                        spread={spreadStr}
-                        onSpreadChange={(v) => updatePairSpread(pairKey, v)}
-                        finalRate={finalRate}
-                        hasSpread={hasSpread}
-                        accent={meta.accent}
-                        copied={copied}
-                        onCopy={() => copyValue(copyKey, finalRate)}
-                      />
+                      <React.Fragment key={copyKey}>
+                        <PerPairRow
+                          pair={r.pair}
+                          mid={mid}
+                          spread={spreadStr}
+                          onSpreadChange={(v) => updatePairSpread(pairKey, v)}
+                          finalRate={finalRate}
+                          hasSpread={hasSpread}
+                          accent={meta.accent}
+                          copied={copied}
+                          onCopy={() => copyValue(copyKey, finalRate)}
+                        />
+                        {reverseMid != null && reversePairStr && (
+                          <PerPairRow
+                            pair={reversePairStr}
+                            mid={reverseMid}
+                            spread={reverseSpreadStr}
+                            onSpreadChange={(v) => updatePairSpread(reverseKey, v)}
+                            finalRate={reverseFinal}
+                            hasSpread={reverseHasSpread}
+                            accent={meta.accent}
+                            copied={reverseCopied}
+                            onCopy={() => copyValue(reverseCopyKey, reverseFinal)}
+                            isReverse
+                          />
+                        )}
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -429,10 +462,20 @@ export default function ExternalRatesWidget({ compact = false }) {
 // Одна строка котировки: пара · своё поле спреда % · итоговый курс · копи.
 // Никаких чипов/режимов. Пустой спред = 0 = показываем mid. Любой ненулевой
 // = mid × (1 + spread/100). Хранится в localStorage per pair.
-function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, accent, copied, onCopy }) {
+function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, accent, copied, onCopy, isReverse = false }) {
   return (
-    <div className="flex items-center gap-2 px-1 py-1.5">
-      <span className="text-[13.5px] font-bold text-slate-700 tracking-wide w-[78px] shrink-0">
+    <div
+      className={`flex items-center gap-2 px-1 py-1.5 ${
+        isReverse ? "bg-slate-50/40" : ""
+      }`}
+    >
+      <span
+        className={`text-[13.5px] font-bold tracking-wide w-[78px] shrink-0 inline-flex items-center gap-1 ${
+          isReverse ? "text-slate-500 italic" : "text-slate-700"
+        }`}
+        title={isReverse ? "Реверс — 1 / прямой курс" : undefined}
+      >
+        {isReverse && <span className="text-[10px] text-slate-300">↔</span>}
         {formatPair(pair)}
       </span>
       <div className="relative shrink-0">
