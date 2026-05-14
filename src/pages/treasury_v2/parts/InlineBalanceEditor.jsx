@@ -36,10 +36,21 @@ export default function InlineBalanceEditor({
   className = "",
   // suffix: что показать после числа в read-only режиме (например "USD")
   suffix = "",
+  // Субконто-измерение: если редактируем баланс конкретного клиента/партнёра
+  // на dimensioned счёте, передаём сюда. target-линия получит этот dim,
+  // а Opening Equity (counter) — нет.
+  clientId = null,
+  partnerId = null,
+  // Кастомный баланс для отображения/расчёта дельты (вместо account.balance).
+  // Нужен для субконто-строк: parent account.balance — это сумма по всем
+  // клиентам, а нам нужен баланс именно этого dim.
+  balanceOverride = null,
 }) {
   const can = useCan();
   const canEdit = can("accounting", "edit");
-  const displayed = Number(account?.balance || 0) * displayMul;
+  const rawBalance =
+    balanceOverride != null ? Number(balanceOverride) : Number(account?.balance || 0);
+  const displayed = rawBalance * displayMul;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -88,6 +99,8 @@ export default function InlineBalanceEditor({
         newDisplayed: parsed,
         displayMul,
         accounts,
+        clientId,
+        partnerId,
       });
       if (res.noop) {
         emitToast("info", "Без изменений");

@@ -333,29 +333,6 @@ export default function RatesPage({ onBack }) {
     }
   };
 
-  // Block spread — выставить spreadPercent на все пары внутри одного блока
-  // (Favorites / FROM-группа USD/EUR/TRY/USDT/…). Цикл по парам через
-  // handleSetRate — он сам выбирает global pair или office override в
-  // зависимости от activeOffice. Используется в section-header'ах списка.
-  const handleBlockSpread = async (pairsInBlock, value) => {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return;
-    if (!Array.isArray(pairsInBlock) || pairsInBlock.length === 0) return;
-    let ok = 0;
-    let failed = 0;
-    // Последовательно, чтобы каждая ошибка отдельным тостом не сыпала спам.
-    for (const p of pairsInBlock) {
-      try {
-        await handleSetRate(p.from, p.to, { spreadPercent: n });
-        ok += 1;
-      } catch (e) {
-        failed += 1;
-      }
-    }
-    if (ok > 0) emitToast("success", `Spread ${n}% применён к ${ok} паре(ам)`);
-    if (failed > 0) emitToast("error", `Не удалось обновить ${failed} пар(ы)`);
-  };
-
   // Bulk spread — выставить spread_percent на ВСЕ default-пары разом.
   // RPC set_all_pair_spreads возвращает число обновлённых пар. После успеха
   // bumpDataVersion → rates store перезагружается → строки обновляются.
@@ -663,7 +640,7 @@ export default function RatesPage({ onBack }) {
               if (favRows.length === 0) return null;
               return (
                 <section className="bg-amber-50/40 rounded-[14px] border border-amber-200 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2 flex-wrap">
+                  <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
                     <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
                     <span className="text-[13px] font-bold text-amber-900">
                       Избранное
@@ -671,32 +648,6 @@ export default function RatesPage({ onBack }) {
                     <span className="text-[10px] text-amber-700/70 uppercase tracking-wider">
                       {favRows.length} · быстрое редактирование
                     </span>
-                    {isSupabaseConfigured && (
-                      <BlockSpreadControl
-                        isOfficeTab={activeOffice !== "all"}
-                        pairsWithSpread={favRows.map((p) => {
-                          const isOfficeTab = activeOffice !== "all";
-                          const override = isOfficeTab
-                            ? getOfficeOverride(activeOffice, p.from, p.to)
-                            : null;
-                          const globalPair = allPairs.find((pp) => {
-                            const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
-                            const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
-                            return pp.isDefault && f === p.from && t2 === p.to;
-                          });
-                          const currentSpread = isOfficeTab
-                            ? (override?.spreadPercent ?? 0)
-                            : (globalPair?.spreadPercent ?? 0);
-                          return { from: p.from, to: p.to, currentSpread };
-                        })}
-                        onApply={(n) =>
-                          handleBlockSpread(
-                            favRows.map((p) => ({ from: p.from, to: p.to })),
-                            n
-                          )
-                        }
-                      />
-                    )}
                   </div>
                   <div className="divide-y divide-amber-100 bg-white">
                     {favRows.map((p) => {
@@ -747,37 +698,11 @@ export default function RatesPage({ onBack }) {
                     key={g.from}
                     className="bg-white rounded-[14px] border border-slate-200 overflow-hidden"
                   >
-                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/40 flex items-center gap-2 flex-wrap">
+                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/40 flex items-center gap-2">
                       <span className="text-[13px] font-bold text-slate-900">{g.from}</span>
                       <span className="text-[10px] text-slate-500 uppercase tracking-wider">
                         {g.pairs.length} {t("rates_pairs_count") || "pairs"}
                       </span>
-                      {isSupabaseConfigured && (
-                        <BlockSpreadControl
-                          isOfficeTab={activeOffice !== "all"}
-                          pairsWithSpread={g.pairs.map((p) => {
-                            const isOfficeTab = activeOffice !== "all";
-                            const override = isOfficeTab
-                              ? getOfficeOverride(activeOffice, p.from, p.to)
-                              : null;
-                            const globalPair = allPairs.find((pp) => {
-                              const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
-                              const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
-                              return pp.isDefault && f === p.from && t2 === p.to;
-                            });
-                            const currentSpread = isOfficeTab
-                              ? (override?.spreadPercent ?? 0)
-                              : (globalPair?.spreadPercent ?? 0);
-                            return { from: p.from, to: p.to, currentSpread };
-                          })}
-                          onApply={(n) =>
-                            handleBlockSpread(
-                              g.pairs.map((p) => ({ from: p.from, to: p.to })),
-                              n
-                            )
-                          }
-                        />
-                      )}
                     </div>
                     <div className="divide-y divide-slate-100">
                       {g.pairs.map((p) => {
@@ -866,106 +791,6 @@ export default function RatesPage({ onBack }) {
 // Маленький inline-блок: number input + "Применить ко всем" → ставит spread %
 // на все default-пары через set_all_pair_spreads. После успеха rates store
 // перезагружается (bumpDataVersion) и строки обновляются.
-// Inline-контрол спреда для секции (FROM-группы или Favorites): одно поле,
-// которое применяется ко всем парам в блоке. Текущее значение = spread у пар
-// блока, если все одинаковые — показываем число, иначе "mixed".
-// pairsWithSpread: массив { from, to, currentSpread } (currentSpread может
-// быть undefined/null — учтём как 0 для отображения).
-function BlockSpreadControl({ pairsWithSpread, onApply, isOfficeTab }) {
-  const { t } = useTranslation();
-  const [val, setVal] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [focused, setFocused] = useState(false);
-
-  // Группируем спреды → если все равны, показываем единое число; иначе mixed.
-  const uniqueSpreads = React.useMemo(() => {
-    const set = new Set();
-    pairsWithSpread.forEach((p) => set.add(Number(p.currentSpread || 0)));
-    return [...set];
-  }, [pairsWithSpread]);
-  const sharedSpread = uniqueSpreads.length === 1 ? uniqueSpreads[0] : null;
-  const isMixed = uniqueSpreads.length > 1;
-
-  // При входе/выходе focus — синхронизируем поле с актуальным sharedSpread.
-  React.useEffect(() => {
-    if (!focused) {
-      setVal(sharedSpread != null ? String(sharedSpread) : "");
-    }
-  }, [sharedSpread, focused]);
-
-  const num = Number(String(val).trim().replace(",", "."));
-  const canApply =
-    String(val).trim() !== "" &&
-    Number.isFinite(num) &&
-    !busy &&
-    pairsWithSpread.length > 0 &&
-    num !== sharedSpread;
-
-  const apply = async () => {
-    if (!canApply) return;
-    setBusy(true);
-    try {
-      await onApply(num);
-    } finally {
-      setBusy(false);
-      setFocused(false);
-    }
-  };
-
-  return (
-    <div
-      className="inline-flex items-center gap-1.5 ml-auto"
-      onClick={(e) => e.stopPropagation()}
-      title={
-        isOfficeTab
-          ? "Применить спред ко всем парам блока (office override)"
-          : "Применить спред ко всем парам блока"
-      }
-    >
-      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-        {t("rates_spread") || "Spread"}
-      </span>
-      <div className="relative">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={val}
-          onFocus={() => setFocused(true)}
-          onChange={(e) => {
-            setFocused(true);
-            setVal(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."));
-          }}
-          onBlur={() => setFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") apply();
-          }}
-          placeholder={isMixed ? "mixed" : "0"}
-          className={`w-[68px] bg-slate-50 border rounded-[8px] pl-2 pr-5 py-0.5 text-[12px] tabular-nums outline-none focus:bg-white ${
-            isMixed
-              ? "border-amber-300 placeholder:text-amber-600"
-              : "border-slate-200 focus:border-slate-400"
-          }`}
-        />
-        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-          %
-        </span>
-      </div>
-      <button
-        type="button"
-        onClick={apply}
-        disabled={!canApply}
-        className={`px-2 py-0.5 rounded-[6px] text-[11px] font-semibold transition-colors ${
-          canApply
-            ? "bg-slate-900 text-white hover:bg-slate-800"
-            : "bg-slate-100 text-slate-400 cursor-not-allowed"
-        }`}
-      >
-        {busy ? "…" : "Apply"}
-      </button>
-    </div>
-  );
-}
-
 function BulkSpreadControl({ onApply }) {
   const { t } = useTranslation();
   const [val, setVal] = useState("");
@@ -1055,11 +880,16 @@ function PairRow({
     : globalPair?.rate ?? globalValue;
 
   const [baseStr, setBaseStr] = useState(String(effectiveBase ?? ""));
+  const [spreadStr, setSpreadStr] = useState(String(effectiveSpread ?? ""));
   const [editingBase, setEditingBase] = useState(false);
+  const [editingSpread, setEditingSpread] = useState(false);
 
   React.useEffect(() => {
     if (!editingBase) setBaseStr(String(effectiveBase ?? ""));
   }, [effectiveBase, editingBase]);
+  React.useEffect(() => {
+    if (!editingSpread) setSpreadStr(String(effectiveSpread ?? ""));
+  }, [effectiveSpread, editingSpread]);
 
   const hasOverride = !!officeOverride;
 
@@ -1068,6 +898,13 @@ function PairRow({
     const n = Number(baseStr);
     if (Number.isFinite(n) && n > 0 && n !== Number(effectiveBase)) {
       onUpdate({ baseRate: n });
+    }
+  };
+  const commitSpread = () => {
+    setEditingSpread(false);
+    const n = Number(spreadStr);
+    if (Number.isFinite(n) && n !== Number(effectiveSpread)) {
+      onUpdate({ spreadPercent: n });
     }
   };
 
@@ -1203,17 +1040,26 @@ function PairRow({
           </div>
         </div>
 
-        {/* Spread — read-only label. Per-pair input убран: спред меняется
-            одним полем на блок (Favorites / FROM-группа) в шапке секции. */}
+        {/* Spread input — редактируется на КАЖДОЙ паре (не на блок). */}
         <div className="flex flex-col items-start">
           <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
-            {t("rates_spread") || "Spread"}
+            {t("rates_spread") || "Spread %"}
           </span>
-          <span className="text-[12px] font-semibold text-slate-600 tabular-nums px-2 py-1">
-            {Number.isFinite(Number(effectiveSpread))
-              ? `${Number(effectiveSpread).toFixed(2)}%`
-              : "—"}
-          </span>
+          <div className="relative">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={spreadStr}
+              onChange={(e) => {
+                setEditingSpread(true);
+                setSpreadStr(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."));
+              }}
+              onBlur={commitSpread}
+              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+              className="w-[80px] bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">%</span>
+          </div>
         </div>
 
         {/* Effective rate (computed) + inverse direction hint */}

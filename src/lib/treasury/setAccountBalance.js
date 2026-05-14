@@ -48,6 +48,10 @@ export function findOpeningEquityFor(accounts, currency) {
 //   oldDisplayed, newDisplayed: number           — старое и новое значение в формате отображения
 //   displayMul: 1 | -1                            — мультипликатор отображения (asset=+1, liability=−1)
 //   accounts: array из ctx.accounts               — нужен чтобы найти Opening Equity
+//   clientId, partnerId: uuid|null                — субконто-измерение для target-линии
+//                                                  (нужно когда target — dimensioned счёт, например
+//                                                  «Обязательства перед клиентами» по конкретному клиенту).
+//                                                  Opening Equity 3100 — plain, dim ему не передаём.
 //
 // Бросает SetBalanceError при невалидном вводе / отсутствии 3100 / попытке
 // править сам Opening Equity (его правят через прибыль/убыток в Журнале).
@@ -58,6 +62,8 @@ export function buildSetBalancePayload({
   displayMul = 1,
   accounts,
   effectiveDate,
+  clientId = null,
+  partnerId = null,
 }) {
   if (!target?.code || !target?.currency) {
     throw new SetBalanceError("bad_target", "Bad target account");
@@ -98,18 +104,39 @@ export function buildSetBalancePayload({
   const targetDir = internalDelta > 0 ? "dr" : "cr";
   const openingDir = internalDelta > 0 ? "cr" : "dr";
 
+  // Target-линия получает client/partner dim, если он передан (для субконто).
+  // Counter (Opening Equity 3100) — всегда без dim, это plain equity счёт.
+  const targetLine = {
+    accountCode: target.code,
+    direction: targetDir,
+    amount,
+    currencyCode: target.currency,
+  };
+  if (clientId) targetLine.clientId = clientId;
+  if (partnerId) targetLine.partnerId = partnerId;
+
+  const dimSuffix = clientId
+    ? ` · client=${String(clientId).slice(0, 8)}`
+    : partnerId
+    ? ` · partner=${String(partnerId).slice(0, 8)}`
+    : "";
+
   return {
     noop: false,
     payload: {
       lines: [
-        { accountCode: target.code, direction: targetDir, amount, currencyCode: target.currency },
+        targetLine,
         { accountCode: opening.code, direction: openingDir, amount, currencyCode: target.currency },
       ],
       currencyCode: target.currency,
-      reason: `Set balance ${target.code} → ${newD}`,
-      description: `Inline-correction · ${oldD} → ${newD} (${target.currency})`,
+      reason: `Set balance ${target.code}${dimSuffix} → ${newD}`,
+      description: `Inline-correction · ${oldD} → ${newD} (${target.currency})${dimSuffix}`,
       effectiveDate: effectiveDate || new Date().toISOString(),
-      metadata: { source: "treasury_inline_set_balance" },
+      metadata: {
+        source: "treasury_inline_set_balance",
+        ...(clientId ? { client_id: clientId } : {}),
+        ...(partnerId ? { partner_id: partnerId } : {}),
+      },
     },
   };
 }
