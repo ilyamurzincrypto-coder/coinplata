@@ -56,7 +56,13 @@ const ROLE_DEFAULTS = {
     income_expense: "edit",
     settings: "edit",
     audit: "edit",
-    accounting: "view",  // admin видит, но approve/reject — только accountant/owner
+    // Раньше admin был только accounting:view (approve/reject капитальные
+    // операции делал только accountant/owner). С 2026-05 admin получает
+    // accounting:edit — Казначейство стало UI-источником правды (inline-edit
+    // остатков, ручные проводки). Серверный _require_role в
+    // public.create_manual_entry также включает admin (см. миграцию
+    // posting_master_2_allow_admin.sql).
+    accounting: "edit",
     counterparties: "edit",
   },
   manager: {

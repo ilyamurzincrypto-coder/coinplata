@@ -368,10 +368,14 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     </span>
                   </div>
 
-                  {/* SELL — клиент отдаёт A, получает B. Крупно. */}
-                  <div className="flex items-baseline justify-between mb-1">
+                  {/* SELL — клиент отдаёт A, получает B. Крупно.
+                      Компактный layout: пара + число рядом (gap-2.5), без
+                      justify-between — глаз раньше шёл через пустоту. Pair
+                      контейнер фикс-ширины чтобы числа в SELL/BUY вертикально
+                      выравнивались. */}
+                  <div className="flex items-baseline gap-2.5 mb-1">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center ${
+                      className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
@@ -387,9 +391,9 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   </div>
 
                   {/* BUY — клиент отдаёт B, получает A. Тот же юнит (B per A). */}
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-baseline gap-2.5">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center ${
+                      className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
                         isActive ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
@@ -427,13 +431,13 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     {crossPairs.length} {crossPairs.length === 1 ? "pair" : "pairs"}
                   </div>
                 </div>
-                <div className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1 auto-cols-[minmax(160px,1fr)]">
+                <div className="grid grid-rows-4 grid-flow-col gap-x-4 gap-y-1 auto-cols-[minmax(140px,1fr)]">
                   {crossPairs.map(({ to: t2, rate: r2 }) => (
                     <div
                       key={t2}
-                      className="flex items-baseline justify-between px-2.5 py-1.5 rounded-[8px] hover:bg-slate-50 transition-colors"
+                      className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-[8px] hover:bg-slate-50 transition-colors"
                     >
-                      <span className="text-[12px] font-semibold text-slate-500 tracking-wide">
+                      <span className="text-[12px] font-semibold text-slate-500 tracking-wide w-10 shrink-0">
                         {t2}
                       </span>
                       <span className="text-[14px] font-bold tabular-nums text-slate-900">
