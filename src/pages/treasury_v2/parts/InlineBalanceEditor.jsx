@@ -11,7 +11,7 @@
 // Гард: видим только при accounting:edit. Сам Opening Equity inline не
 // правится (там Журнал → ручная проводка).
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2, Pencil, X } from "lucide-react";
+import { Loader2, Pencil, Plus, X } from "lucide-react";
 import { useCan } from "../../../store/permissions.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
 import { setAccountBalance, SetBalanceError } from "../../../lib/treasury/setAccountBalance.js";
@@ -45,7 +45,14 @@ export default function InlineBalanceEditor({
   clientId = null,
   partnerId = null,
   balanceOverride = null,
+  // mode="newDim" — режим добавления НОВОГО субконто (контрагент ещё не
+  // записан на этом счёте). В попровере появляется пикер клиента/партнёра
+  // первым полем. balance стартует с 0. Триггер — "+ Контрагент" кнопка.
+  mode = "edit",
+  dimKind = null, // 'client' | 'partner'
+  dimOptions = [], // [{id, name}]
 }) {
+  const isNewDim = mode === "newDim";
   const can = useCan();
   const canEdit = can("accounting", "edit");
   const rawBalance =
@@ -57,6 +64,7 @@ export default function InlineBalanceEditor({
   const [reason, setReason] = useState("");
   const [dateStr, setDateStr] = useState(todayInputValue);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedDimId, setSelectedDimId] = useState("");
   const popoverRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -87,9 +95,10 @@ export default function InlineBalanceEditor({
   function startEdit(e) {
     e?.stopPropagation();
     if (!editable || submitting) return;
-    setDraft(displayed.toFixed(2));
+    setDraft(isNewDim ? "0" : displayed.toFixed(2));
     setReason("");
     setDateStr(todayInputValue());
+    setSelectedDimId("");
     setEditing(true);
   }
 
@@ -97,6 +106,7 @@ export default function InlineBalanceEditor({
     setEditing(false);
     setDraft("");
     setReason("");
+    setSelectedDimId("");
   }
 
   async function commit() {
@@ -109,11 +119,22 @@ export default function InlineBalanceEditor({
       emitToast("error", "Заполни комментарий (обязательно для аудита)");
       return;
     }
+    if (isNewDim && !selectedDimId) {
+      emitToast("error", `Выбери ${dimKind === "client" ? "клиента" : "партнёра"}`);
+      return;
+    }
     try {
       setSubmitting(true);
       const effDate = dateStr
         ? new Date(`${dateStr}T12:00:00.000Z`).toISOString()
         : new Date().toISOString();
+      // В newDim режиме dim берётся из пикера и забивает clientId/partnerId.
+      const effClientId = isNewDim
+        ? (dimKind === "client" ? selectedDimId : null)
+        : clientId;
+      const effPartnerId = isNewDim
+        ? (dimKind === "partner" ? selectedDimId : null)
+        : partnerId;
       const res = await setAccountBalance({
         target: {
           code: account.code,
@@ -121,12 +142,12 @@ export default function InlineBalanceEditor({
           type: account.type,
           subtype: account.subtype,
         },
-        oldDisplayed: displayed,
+        oldDisplayed: isNewDim ? 0 : displayed,
         newDisplayed: parsed,
         displayMul,
         accounts,
-        clientId,
-        partnerId,
+        clientId: effClientId,
+        partnerId: effPartnerId,
         effectiveDate: effDate,
         reason: reason.trim(),
       });
@@ -170,6 +191,20 @@ export default function InlineBalanceEditor({
     if (!editable) {
       return <span className={className}>{ro}</span>;
     }
+    // Триггер в newDim режиме: "+ Контрагент" вместо плашки с числом.
+    if (isNewDim) {
+      return (
+        <button
+          type="button"
+          onClick={startEdit}
+          title={`Добавить ${dimKind === "client" ? "клиента" : "партнёра"} с начальным остатком`}
+          className={`${className} inline-flex items-center gap-1 cursor-pointer rounded px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50/70 ring-1 ring-emerald-200 hover:bg-emerald-100 transition-colors`}
+        >
+          <Plus className="w-3 h-3" strokeWidth={2.5} />
+          {dimKind === "client" ? "Клиент" : "Партнёр"}
+        </button>
+      );
+    }
     return (
       <button
         type="button"
@@ -191,18 +226,27 @@ export default function InlineBalanceEditor({
       className={`${className} inline-block relative`}
       onClick={(e) => e.stopPropagation()}
     >
-      <span className="inline-flex items-center justify-end gap-1 rounded px-1.5 py-0.5 -mx-1 bg-amber-100 ring-1 ring-amber-300">
-        <span className="tabular-nums text-amber-900">{fmtNum(displayed)}</span>
-        {suffix ? <span className="text-amber-700/70"> {suffix}</span> : null}
-        <Pencil className="w-3 h-3 text-amber-600 shrink-0" strokeWidth={2.5} />
-      </span>
+      {isNewDim ? (
+        <span className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 ring-1 ring-emerald-300">
+          <Plus className="w-3 h-3" strokeWidth={2.5} />
+          {dimKind === "client" ? "Клиент" : "Партнёр"}
+        </span>
+      ) : (
+        <span className="inline-flex items-center justify-end gap-1 rounded px-1.5 py-0.5 -mx-1 bg-amber-100 ring-1 ring-amber-300">
+          <span className="tabular-nums text-amber-900">{fmtNum(displayed)}</span>
+          {suffix ? <span className="text-amber-700/70"> {suffix}</span> : null}
+          <Pencil className="w-3 h-3 text-amber-600 shrink-0" strokeWidth={2.5} />
+        </span>
+      )}
       <div
-        className="absolute right-0 top-full mt-1 z-50 w-[280px] bg-white rounded-[12px] border border-slate-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.25)] p-3 text-left"
+        className={`absolute ${isNewDim ? "left-0" : "right-0"} top-full mt-1 z-50 w-[280px] bg-white rounded-[12px] border border-slate-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.25)] p-3 text-left`}
         onKeyDown={onKeyDown}
       >
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-            Корректировка остатка
+            {isNewDim
+              ? `Новый ${dimKind === "client" ? "клиент" : "партнёр"}`
+              : "Корректировка остатка"}
           </span>
           <button
             type="button"
@@ -215,9 +259,32 @@ export default function InlineBalanceEditor({
           </button>
         </div>
 
+        {isNewDim && (
+          <label className="block mb-2">
+            <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+              {dimKind === "client" ? "Клиент *" : "Партнёр *"}
+            </span>
+            <select
+              value={selectedDimId}
+              onChange={(e) => setSelectedDimId(e.target.value)}
+              disabled={submitting}
+              className="w-full text-[12px] px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+            >
+              <option value="">— выбери —</option>
+              {dimOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <label className="block mb-2">
           <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-            Новый остаток ({account.currency})
+            {isNewDim
+              ? `Начальный остаток (${account.currency})`
+              : `Новый остаток (${account.currency})`}
           </span>
           <input
             ref={inputRef}

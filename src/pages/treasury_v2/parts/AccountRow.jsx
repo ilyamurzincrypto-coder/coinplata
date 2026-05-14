@@ -12,6 +12,13 @@ import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 export default function AccountRow({ account, ctx, formatBase, baseCurrency, onOpenTx, displayMul = 1 }) {
   const [expanded, setExpanded] = useState(false);
   const dims = account.dims; // null for a plain account; array for a dimensioned one
+
+  // Поднимаем metadata родителя из chart of accounts — нужно чтобы понять
+  // какой kind dim требуется (client vs partner) для нового субконто.
+  const parentFull = (ctx?.accounts || []).find((a) => a.id === account.accountId);
+  const wantsClient = !!parentFull?.clientDimRequired;
+  const wantsPartner = !!parentFull?.partnerDimRequired;
+  const dimKind = wantsClient ? "client" : wantsPartner ? "partner" : null;
   return (
     <>
       <div
@@ -43,20 +50,48 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
         <span className="text-[12.5px] font-semibold tabular-nums w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && (dims
-        ? (dims.length === 0
-            ? <div className="pl-9 pr-4 py-2 text-[11px] text-slate-400">—</div>
-            : dims.map((d, i) => (
-                <AccountSubcontoRow
-                  key={`${d.clientId || ""}-${d.partnerId || ""}-${i}`}
-                  ctx={ctx}
-                  accountId={account.accountId}
-                  dim={d}
-                  formatBase={formatBase}
-                  baseCurrency={baseCurrency}
-                  onOpenTx={onOpenTx}
-                  displayMul={displayMul}
-                />
-              )))
+        ? (
+            <>
+              {dims.length === 0 ? (
+                <div className="pl-9 pr-4 py-2 text-[11px] text-slate-400">—</div>
+              ) : (
+                dims.map((d, i) => (
+                  <AccountSubcontoRow
+                    key={`${d.clientId || ""}-${d.partnerId || ""}-${i}`}
+                    ctx={ctx}
+                    accountId={account.accountId}
+                    dim={d}
+                    formatBase={formatBase}
+                    baseCurrency={baseCurrency}
+                    onOpenTx={onOpenTx}
+                    displayMul={displayMul}
+                  />
+                ))
+              )}
+              {/* «+ Контрагент» — добавить новый субсчёт. Видно если у
+                  родителя задан client_dim_required или partner_dim_required. */}
+              {dimKind && parentFull && (
+                <div className="pl-9 pr-4 py-2 border-t border-slate-100 bg-slate-50/30">
+                  <InlineBalanceEditor
+                    mode="newDim"
+                    dimKind={dimKind}
+                    dimOptions={ctx?.counterpartyOptions ? ctx.counterpartyOptions(dimKind) : []}
+                    account={{
+                      code: parentFull.code,
+                      currency: parentFull.currency,
+                      type: parentFull.type,
+                      subtype: parentFull.subtype,
+                      balance: 0,
+                    }}
+                    balanceOverride={0}
+                    displayMul={displayMul}
+                    accounts={ctx?.accounts || []}
+                    suffix={parentFull.currency}
+                  />
+                </div>
+              )}
+            </>
+          )
         : <AccountInlineEntries ctx={ctx} accountId={account.accountId} onOpenTx={onOpenTx} />)}
     </>
   );
