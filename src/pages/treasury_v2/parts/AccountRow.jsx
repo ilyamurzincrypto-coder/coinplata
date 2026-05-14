@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown } from "lucide-react";
 import AccountInlineEntries from "./AccountInlineEntries.jsx";
 import AccountSubcontoRow from "./AccountSubcontoRow.jsx";
+import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 
 // `displayMul` — display-sign multiplier for the shown balances (1 by default; −1 for
 // liability accounts so an obligation reads as a negative number). Presentation only —
@@ -21,7 +22,23 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
         <span className="font-mono text-[11px] text-slate-400 w-12">{account.code}</span>
         <span className="flex-1 text-[12.5px] font-medium text-slate-900 truncate">{account.name}</span>
         <span className="text-[12px] text-slate-500 tabular-nums w-32 text-right">
-          {(Number(account.balance) * displayMul).toLocaleString(undefined, { maximumFractionDigits: 2 })} {account.currency}
+          {/* Если у юзера нет accounting:edit и счёт — субконто-агрегат
+              (dims != null), редактор всё равно деградирует в read-only;
+              для dimensioned счетов inline-edit на родителе блокируем
+              (там надо выбирать клиента/партнёра — отдельная итерация). */}
+          {dims ? (
+            <>
+              {(Number(account.balance) * displayMul).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+              {account.currency}
+            </>
+          ) : (
+            <InlineBalanceEditor
+              account={account}
+              displayMul={displayMul}
+              accounts={ctx?.accounts || []}
+              suffix={account.currency}
+            />
+          )}
         </span>
         <span className="text-[12.5px] font-semibold tabular-nums w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
       </div>

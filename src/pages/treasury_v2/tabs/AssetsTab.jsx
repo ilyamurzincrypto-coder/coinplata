@@ -13,6 +13,7 @@ import { assetsByOfficeCurrency } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import AccountInlineEntries from "../parts/AccountInlineEntries.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
+import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -106,7 +107,20 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                               {accOpen ? <ChevronDown className="w-3 h-3 text-slate-300" /> : <ChevronRight className="w-3 h-3 text-slate-300" />}
                               <span className="font-mono text-[11px] text-slate-400 w-12 shrink-0">{a.code}</span>
                               <span className="flex-1 text-[12.5px] text-slate-900 truncate">{a.name}</span>
-                              <span className="text-[12px] text-slate-600 tabular-nums">{nativeFmt(a.balance, a.currency)}</span>
+                              <span className="text-[12px] text-slate-600 tabular-nums">
+                                <InlineBalanceEditor
+                                  account={{
+                                    code: a.code,
+                                    currency: a.currency,
+                                    type: "asset",
+                                    subtype: null,
+                                    balance: a.balance,
+                                  }}
+                                  displayMul={1}
+                                  accounts={ctx?.accounts || []}
+                                  suffix={a.currency}
+                                />
+                              </span>
                             </div>
                             {accOpen && <AccountInlineEntries ctx={ctx} accountId={a.accountId} onOpenTx={onOpenTx} />}
                           </React.Fragment>
