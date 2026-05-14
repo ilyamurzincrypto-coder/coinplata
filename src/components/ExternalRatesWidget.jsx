@@ -8,11 +8,15 @@
 //   • Группировка по source с цветной пиллой.
 //   • Подпись origin URL + частоты обновления — кассир видит откуда
 //     цифра и насколько свежая.
-//   • Калькулятор спреда per-source: «Спред %» — bid/ask раздвигаются
-//     вокруг mid (наш курс продажи/покупки с маржей).
+//   • PER-PAIR режим отображения (хранится локально в localStorage):
+//       1. "auto"    — показываем mid как есть («Без спреда»)
+//       2. "spread"  — mid × (1 + spread%) («Фил со спредом»)
+//       3. "manual"  — ручное число, перекрывает mid («Ручная корректировка»)
+//     Каждой паре свой режим и свои поля. Никакого общего калькулятора
+//     на весь источник — каждая котировка независима.
 
 import React, { useEffect, useState } from "react";
-import { Globe, RefreshCcw, Calculator, ChevronDown, ChevronUp, Copy, Check, Pencil, Info } from "lucide-react";
+import { Globe, RefreshCcw, ChevronDown, ChevronUp, Copy, Check, Pencil, Info } from "lucide-react";
 import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { useNow } from "../hooks/useNow.js";
@@ -82,10 +86,29 @@ const SOURCES = {
 // дальше центробанки и ECB-кроссы.
 const SOURCE_ORDER = ["harem", "binance", "tcmb", "cbr", "ecb"];
 const REFRESH_INTERVAL = "каждые 5 мин";
-const SPREAD_KEY = "coinplata.externalSpread";
+// Per-pair config: { "source:pair": { mode: "auto"|"spread"|"manual",
+//                                     spreadPct?: number, manualValue?: number } }
+const PER_PAIR_KEY = "coinplata.externalRatesPerPair";
 const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
 // Скрытые пары — Set<"source:pair">. По умолчанию ничего не скрыто.
 const HIDDEN_KEY = "coinplata.externalRatesHidden";
+
+const MODES = {
+  auto: { label: "Без спреда", chip: "bg-slate-100 text-slate-600 ring-slate-200" },
+  spread: { label: "Фил со спредом", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  manual: { label: "Ручная корректировка", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
+};
+
+function modeShortLabel(cfg) {
+  if (!cfg || cfg.mode === "auto" || !cfg.mode) return "Авто";
+  if (cfg.mode === "spread") {
+    const n = Number(cfg.spreadPct);
+    if (Number.isFinite(n) && n !== 0) return `+${n}%`;
+    return "Спред";
+  }
+  if (cfg.mode === "manual") return "Ручной";
+  return "Авто";
+}
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
@@ -130,17 +153,27 @@ function formatPair(pair) {
   return `${a}/${b}`;
 }
 
-// Калькулятор спреда. Раздвигает bid/ask от середины на `pct` процентов.
-//   spread=0.5 → bid·=(1-0.005), ask·=(1+0.005). Это «наш» курс с маржей.
-function applySpread(bid, ask, pct) {
-  const s = Number(pct) / 100;
-  if (!Number.isFinite(s) || s === 0) return { bid, ask };
-  const mid = bid && ask ? (bid + ask) / 2 : bid || ask;
-  if (!mid) return { bid, ask };
-  return {
-    bid: bid ? bid - mid * s : null,
-    ask: ask ? ask + mid * s : null,
-  };
+// Вычисление отображаемого числа в зависимости от режима строки.
+//   "auto"   → mid как есть
+//   "spread" → mid × (1 + spreadPct/100)
+//   "manual" → cfg.manualValue (mid игнорируется)
+// Возвращает null, если данных не хватает (нет mid в режиме auto/spread,
+// или manualValue не число в режиме manual).
+function computePerPairValue(mid, cfg) {
+  if (!cfg || cfg.mode === "auto" || !cfg.mode) {
+    return Number.isFinite(mid) ? mid : null;
+  }
+  if (cfg.mode === "spread") {
+    if (!Number.isFinite(mid)) return null;
+    const s = Number(cfg.spreadPct);
+    if (!Number.isFinite(s)) return mid;
+    return mid * (1 + s / 100);
+  }
+  if (cfg.mode === "manual") {
+    const v = Number(cfg.manualValue);
+    return Number.isFinite(v) ? v : null;
+  }
+  return Number.isFinite(mid) ? mid : null;
 }
 
 export default function ExternalRatesWidget({ compact = false }) {
@@ -162,21 +195,28 @@ export default function ExternalRatesWidget({ compact = false }) {
       localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch {}
   }, [collapsed]);
-  // Спред per-source persist в localStorage — опциональная настройка.
-  // По умолчанию калькулятор СВЁРНУТ (showCalc[source] = false). Юзер
-  // открывает иконкой калькулятора в шапке source — тогда появляется
-  // input. Раздвижение bid/ask применяется только если показан + введён.
-  const [spreadBySource, setSpreadBySource] = useState(() => {
+  // Per-pair config: режим + опциональные значения. Key — "source:pair".
+  // Хранится в localStorage; по умолчанию режим "auto" (показываем mid).
+  const [perPairConfig, setPerPairConfig] = useState(() => {
     try {
-      const raw = localStorage.getItem(SPREAD_KEY);
+      const raw = localStorage.getItem(PER_PAIR_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch {
       return {};
     }
   });
-  const [showCalc, setShowCalc] = useState({});
-  const toggleCalc = (source) => {
-    setShowCalc((prev) => ({ ...prev, [source]: !prev[source] }));
+  const updatePerPair = (key, patch) => {
+    setPerPairConfig((prev) => {
+      const next = { ...prev, [key]: { ...(prev[key] || { mode: "auto" }), ...patch } };
+      // Если ушли в auto и нет полезных значений — чистим запись.
+      if (next[key].mode === "auto" && next[key].spreadPct == null && next[key].manualValue == null) {
+        delete next[key];
+      }
+      try {
+        localStorage.setItem(PER_PAIR_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   };
   // Hidden pairs Set — фильтр для отображения. Юзер выключает в settings.
   const [hidden, setHidden] = useState(() => {
@@ -213,16 +253,6 @@ export default function ExternalRatesWidget({ compact = false }) {
       setTimeout(() => setCopiedKey((k) => (k === key ? null : k)), 1200);
     } catch {}
   };
-  const updateSpread = (source, value) => {
-    setSpreadBySource((prev) => {
-      const next = { ...prev, [source]: value };
-      try {
-        localStorage.setItem(SPREAD_KEY, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   const reload = React.useCallback(() => {
     setLoading(true);
     loadExternalRatesLatest()
@@ -346,16 +376,10 @@ export default function ExternalRatesWidget({ compact = false }) {
             const sourceRows = allSourceRows.filter((r) => !hidden.has(`${r.source}:${r.pair}`));
             if (sourceRows.length === 0) return null;
             const fetchedAt = sourceRows[0]?.fetchedAt;
-            const spread = spreadBySource[source] != null ? spreadBySource[source] : "";
-            const spreadNum = Number(spread);
-            const calcOpen = !!showCalc[source];
-            const hasSpread = calcOpen && Number.isFinite(spreadNum) && spreadNum !== 0;
             return (
               <div key={source} className="px-4 py-3 space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {/* Source-pill — hover показывает описание через title=
-                      (native browser tooltip). Info-иконка как hint что
-                      есть подсказка. */}
+                  {/* Source-pill — hover показывает описание через title= */}
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider ring-1 cursor-help ${meta.tone}`}
                     title={meta.description || meta.origin}
@@ -366,17 +390,6 @@ export default function ExternalRatesWidget({ compact = false }) {
                   <span className="text-[11px] text-slate-500 tabular-nums">
                     {timeAgo(fetchedAt, nowMs)} назад
                   </span>
-                  <button
-                    onClick={() => toggleCalc(source)}
-                    title="Калькулятор спреда — опционно показать курс с маржой"
-                    className={`ml-auto p-1.5 rounded transition-colors ${
-                      calcOpen
-                        ? "bg-slate-900 text-white"
-                        : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
-                    }`}
-                  >
-                    <Calculator className="w-3.5 h-3.5" />
-                  </button>
                 </div>
                 <div className="space-y-0.5">
                   <div
@@ -396,90 +409,34 @@ export default function ExternalRatesWidget({ compact = false }) {
                   )}
                 </div>
 
-                {/* Калькулятор спреда — раскрывается по иконке. Раздвигает
-                    bid/ask вокруг mid: bid−=mid·s, ask+=mid·s. */}
-                {calcOpen && (
-                  <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
-                    <Calculator className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-                      Спред
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={spread}
-                      onChange={(e) =>
-                        updateSpread(source, e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."))
-                      }
-                      placeholder="0"
-                      autoFocus
-                      className="flex-1 bg-transparent outline-none text-[12px] tabular-nums font-semibold text-slate-900 min-w-0 text-right"
-                    />
-                    <span className="text-[10px] text-slate-400 font-bold">%</span>
-                  </div>
-                )}
-
-                {/* Список пар: одна колонка «Курс» (mid). Без покупки/
-                    продажи — это публичные котировки источника, не наш
-                    bid/ask со спредом. Размер — крупнее предыдущей итерации
-                    (text-[14px]) чтобы кассир видел цифры без напряга. */}
+                {/* Список пар: каждая строка независима. У каждой пары —
+                    свой режим (Без спреда / Фил со спредом / Ручная
+                    корректировка) и свои поля. Никакого общего калькулятора
+                    на источник. */}
                 <div className="divide-y divide-slate-100 -mx-1">
                   {sourceRows.map((r) => {
                     const mid = Number.isFinite(r.mid)
                       ? r.mid
                       : (r.bid != null && r.ask != null ? (r.bid + r.ask) / 2 : (r.bid ?? r.ask));
-                    const adjusted = hasSpread && mid != null
-                      ? mid * (1 + spreadNum / 100)
-                      : null;
-                    const displayValue = hasSpread ? adjusted : mid;
+                    const pairKey = `${r.source}:${r.pair}`;
+                    const cfg = perPairConfig[pairKey] || { mode: "auto" };
+                    const displayValue = computePerPairValue(mid, cfg);
                     const copyKey = `${r.source}_${r.pair}`;
                     const copied = copiedKey === copyKey;
-                    // Native title= с переносами через \n — браузер
-                    // показывает tooltip без стилей, но работает в скролле.
-                    const rowTooltip = [
-                      `${meta.label} · ${formatPair(r.pair)}`,
-                      meta.origin,
-                      `Снимок: ${timeAgo(fetchedAt, nowMs)} назад`,
-                      hasSpread
-                        ? `Спред ${spreadNum > 0 ? "+" : ""}${spreadNum}% применён к midrate`
-                        : null,
-                    ].filter(Boolean).join("\n");
+                    const isCustom = cfg.mode && cfg.mode !== "auto";
                     return (
-                      <div
+                      <PerPairRow
                         key={copyKey}
-                        title={rowTooltip}
-                        className="flex items-center justify-between gap-2 px-1 py-1.5 cursor-help"
-                      >
-                        <span className="text-[13.5px] font-bold text-slate-700 tracking-wide">
-                          {formatPair(r.pair)}
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-right leading-tight">
-                            <span className={`text-[15px] font-bold tabular-nums ${hasSpread ? meta.accent : "text-slate-900"}`}>
-                              {fmtRate(displayValue)}
-                            </span>
-                            {hasSpread && mid != null && (
-                              <span className="block text-[10px] text-slate-400 tabular-nums">
-                                от {fmtRate(mid)}
-                              </span>
-                            )}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => copyValue(copyKey, displayValue)}
-                            title={`Скопировать ${fmtRate(displayValue)}`}
-                            className={`p-1 rounded transition-colors ${
-                              copied
-                                ? "text-emerald-600 bg-emerald-50"
-                                : "text-slate-300 hover:text-slate-900 hover:bg-slate-100"
-                            }`}
-                          >
-                            {copied
-                              ? <Check className="w-3.5 h-3.5" />
-                              : <Copy className="w-3 h-3" />}
-                          </button>
-                        </div>
-                      </div>
+                        pair={r.pair}
+                        mid={mid}
+                        cfg={cfg}
+                        onUpdate={(patch) => updatePerPair(pairKey, patch)}
+                        displayValue={displayValue}
+                        isCustom={isCustom}
+                        accent={meta.accent}
+                        copied={copied}
+                        onCopy={() => copyValue(copyKey, displayValue)}
+                      />
                     );
                   })}
                 </div>
@@ -489,5 +446,97 @@ export default function ExternalRatesWidget({ compact = false }) {
         </div>
       ))}
     </section>
+  );
+}
+
+// Одна строка котировки — независимая. Слева: пара + chip с режимом
+// (клик меняет режим по кругу: auto → spread → manual → auto). Справа:
+// значение + копировать. При режиме spread/manual в строке появляется
+// поле ввода соответствующего значения.
+function PerPairRow({ pair, mid, cfg, onUpdate, displayValue, isCustom, accent, copied, onCopy }) {
+  const mode = cfg?.mode || "auto";
+  const meta = MODES[mode] || MODES.auto;
+  const cycleMode = () => {
+    const next = mode === "auto" ? "spread" : mode === "spread" ? "manual" : "auto";
+    const patch = { mode: next };
+    // Auto-инициализируем поля при переключении, чтобы юзеру не приходилось
+    // нажимать ещё раз — режим уже «осмысленный».
+    if (next === "spread" && cfg?.spreadPct == null) patch.spreadPct = 0;
+    if (next === "manual" && cfg?.manualValue == null && Number.isFinite(mid)) {
+      patch.manualValue = Number(mid).toFixed(4);
+    }
+    onUpdate(patch);
+  };
+  return (
+    <div className="flex items-center gap-2 px-1 py-1.5">
+      <span className="text-[13.5px] font-bold text-slate-700 tracking-wide w-[78px] shrink-0">
+        {formatPair(pair)}
+      </span>
+      <button
+        type="button"
+        onClick={cycleMode}
+        title={`Режим: ${meta.label}. Клик — переключить.`}
+        className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 shrink-0 ${meta.chip} hover:brightness-95 transition-all`}
+      >
+        {modeShortLabel(cfg)}
+      </button>
+      {mode === "spread" && (
+        <div className="relative shrink-0">
+          <input
+            type="text"
+            inputMode="decimal"
+            value={cfg.spreadPct == null ? "" : String(cfg.spreadPct)}
+            onChange={(e) =>
+              onUpdate({
+                spreadPct: e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."),
+              })
+            }
+            placeholder="0"
+            className="w-[60px] bg-emerald-50 border border-emerald-200 focus:bg-white focus:border-emerald-400 rounded-[6px] pl-2 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right"
+          />
+          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-emerald-600 font-bold">%</span>
+        </div>
+      )}
+      {mode === "manual" && (
+        <input
+          type="text"
+          inputMode="decimal"
+          value={cfg.manualValue == null ? "" : String(cfg.manualValue)}
+          onChange={(e) =>
+            onUpdate({
+              manualValue: e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."),
+            })
+          }
+          placeholder={Number.isFinite(mid) ? fmtRate(mid) : "0.0000"}
+          className="w-[88px] bg-amber-50 border border-amber-200 focus:bg-white focus:border-amber-400 rounded-[6px] px-2 py-0.5 text-[11px] tabular-nums outline-none text-right shrink-0"
+        />
+      )}
+      <span className="ml-auto text-right leading-tight">
+        <span
+          className={`text-[15px] font-bold tabular-nums ${
+            isCustom ? accent || "text-emerald-700" : "text-slate-900"
+          }`}
+        >
+          {fmtRate(displayValue)}
+        </span>
+        {isCustom && Number.isFinite(mid) && (
+          <span className="block text-[10px] text-slate-400 tabular-nums">
+            от {fmtRate(mid)}
+          </span>
+        )}
+      </span>
+      <button
+        type="button"
+        onClick={onCopy}
+        title={`Скопировать ${fmtRate(displayValue)}`}
+        className={`p-1 rounded transition-colors shrink-0 ${
+          copied
+            ? "text-emerald-600 bg-emerald-50"
+            : "text-slate-300 hover:text-slate-900 hover:bg-slate-100"
+        }`}
+      >
+        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3 h-3" />}
+      </button>
+    </div>
   );
 }
