@@ -273,7 +273,7 @@ function GroupCard({
   );
 
   const assetsBlock = (
-    <div className="overflow-y-auto flex-1" style={{ maxHeight: 220 }}>
+    <div className="overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
       {rows.length === 0 ? (
         <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
       ) : (
@@ -325,7 +325,7 @@ function GroupCard({
       {/* Divider */}
       <div className="mt-3 border-t border-slate-200" />
       {/* Assets list with scroll */}
-      <div className="mt-2 overflow-y-auto flex-1" style={{ maxHeight: 220 }}>
+      <div className="mt-2 overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
         {rows.length === 0 ? (
           <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
         ) : (

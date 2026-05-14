@@ -429,7 +429,7 @@ export default function CashierPage({
       {isDashboard && (
         <div
           key="dashboard"
-          className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
+          className="max-w-[1400px] xl:max-w-[1700px] 2xl:max-w-[2100px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
         >
           {/* Layout через CSS Grid named areas. Sidebar ВСЕГДА узкий
               (~220px). При expand → раскрывается ВНИЗ (больше пар, scroll
