@@ -1,18 +1,21 @@
-// Inline-редактирование итогового остатка счёта прямо в Казначействе
-// (AssetsTab leaf / AccountRow для Equity & Liabilities). Клик по балансу →
-// маленький input с текущим значением → Enter/Blur коммитит проводку
-// против Opening Equity {currency}. Esc — отмена.
+// Inline-редактирование итогового остатка счёта в Казначействе. Боевой
+// режим: при клике на янтарную плашку открывается компактный поповер с
+// полями:
+//   • Новый остаток (число, в формате отображения с учётом displayMul)
+//   • Комментарий (обязательно — audit trail)
+//   • Дата эффекта (по умолчанию сегодня)
+//   • Тип: «Корректировка» (default → Retained Earnings) или
+//          «Начальный остаток» (→ Opening Equity)
 //
-// Если у юзера нет accounting:edit — рендерится как обычная текстовая
-// надпись (без рамки/курсора), визуально неотличимая от старого read-only
-// варианта. Сервер ledger.create_manual_entry тоже требует owner/accountant.
+// Save → ledger.create_adjustment → source_kind='adjustment' в Журнале.
+// Гард: видим только при accounting:edit. Сам Opening Equity inline не
+// правится (там Журнал → ручная проводка).
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil, X } from "lucide-react";
 import { useCan } from "../../../store/permissions.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
 import { setAccountBalance, SetBalanceError } from "../../../lib/treasury/setAccountBalance.js";
 
-// Форматирует число для отображения как "1 234.56" (фикс 2 знака, локаль).
 function fmtNum(value) {
   return Number(value || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -20,7 +23,6 @@ function fmtNum(value) {
   });
 }
 
-// Парсим ввод (поддерживаем запятую, минус, пробелы как разделители тысяч).
 function parseInput(raw) {
   if (raw == null) return NaN;
   const s = String(raw).trim().replace(/\s+/g, "").replace(",", ".");
@@ -29,21 +31,19 @@ function parseInput(raw) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function todayInputValue() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+
 export default function InlineBalanceEditor({
   account, // { code, currency, type, subtype, balance, ... }
-  displayMul = 1, // +1 asset / -1 liability
-  accounts, // ctx.accounts (chart of accounts) — нужно чтобы найти 3100
+  displayMul = 1,
+  accounts, // ctx.accounts — нужен в setAccountBalance чтобы найти Opening Equity
   className = "",
-  // suffix: что показать после числа в read-only режиме (например "USD")
   suffix = "",
-  // Субконто-измерение: если редактируем баланс конкретного клиента/партнёра
-  // на dimensioned счёте, передаём сюда. target-линия получит этот dim,
-  // а Opening Equity (counter) — нет.
   clientId = null,
   partnerId = null,
-  // Кастомный баланс для отображения/расчёта дельты (вместо account.balance).
-  // Нужен для субконто-строк: parent account.balance — это сумма по всем
-  // клиентам, а нам нужен баланс именно этого dim.
   balanceOverride = null,
 }) {
   const can = useCan();
@@ -51,10 +51,18 @@ export default function InlineBalanceEditor({
   const rawBalance =
     balanceOverride != null ? Number(balanceOverride) : Number(account?.balance || 0);
   const displayed = rawBalance * displayMul;
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [reason, setReason] = useState("");
+  const [dateStr, setDateStr] = useState(todayInputValue);
   const [submitting, setSubmitting] = useState(false);
+  const popoverRef = useRef(null);
   const inputRef = useRef(null);
+
+  const isOpeningEquity =
+    account?.type === "equity" && (account?.subtype || "") === "opening_balance";
+  const editable = canEdit && !isOpeningEquity;
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -63,21 +71,32 @@ export default function InlineBalanceEditor({
     }
   }, [editing]);
 
-  // Editing запрещаем для Opening Equity 3100 — корр счёт совпадает.
-  const isOpeningEquity =
-    account?.type === "equity" && (account?.subtype || "") === "opening_balance";
-  const editable = canEdit && !isOpeningEquity;
+  // Close on outside click
+  useEffect(() => {
+    if (!editing) return undefined;
+    const onClick = (e) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
+        // Не закрываем если идёт сабмит, чтобы не сорвать запрос
+        if (!submitting) cancel();
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [editing, submitting]);
 
   function startEdit(e) {
     e?.stopPropagation();
     if (!editable || submitting) return;
     setDraft(displayed.toFixed(2));
+    setReason("");
+    setDateStr(todayInputValue());
     setEditing(true);
   }
 
   function cancel() {
     setEditing(false);
     setDraft("");
+    setReason("");
   }
 
   async function commit() {
@@ -86,8 +105,15 @@ export default function InlineBalanceEditor({
       emitToast("error", "Введи число");
       return;
     }
+    if (!reason.trim()) {
+      emitToast("error", "Заполни комментарий (обязательно для аудита)");
+      return;
+    }
     try {
       setSubmitting(true);
+      const effDate = dateStr
+        ? new Date(`${dateStr}T12:00:00.000Z`).toISOString()
+        : new Date().toISOString();
       const res = await setAccountBalance({
         target: {
           code: account.code,
@@ -101,6 +127,8 @@ export default function InlineBalanceEditor({
         accounts,
         clientId,
         partnerId,
+        effectiveDate: effDate,
+        reason: reason.trim(),
       });
       if (res.noop) {
         emitToast("info", "Без изменений");
@@ -109,6 +137,7 @@ export default function InlineBalanceEditor({
       }
       setEditing(false);
       setDraft("");
+      setReason("");
     } catch (err) {
       const msg =
         err instanceof SetBalanceError
@@ -121,7 +150,7 @@ export default function InlineBalanceEditor({
   }
 
   function onKeyDown(e) {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       commit();
     } else if (e.key === "Escape") {
@@ -130,13 +159,14 @@ export default function InlineBalanceEditor({
     }
   }
 
+  const ro = (
+    <span className="tabular-nums">
+      {fmtNum(displayed)}
+      {suffix ? <span className="text-slate-400"> {suffix}</span> : null}
+    </span>
+  );
+
   if (!editing) {
-    const ro = (
-      <span className="tabular-nums">
-        {fmtNum(displayed)}
-        {suffix ? <span className="text-slate-400"> {suffix}</span> : null}
-      </span>
-    );
     if (!editable) {
       return <span className={className}>{ro}</span>;
     }
@@ -153,28 +183,104 @@ export default function InlineBalanceEditor({
     );
   }
 
+  // Editing — поповер с формой. Останавливаем bubble клика, чтобы не
+  // схлопывать родительский раскрытый счёт.
   return (
     <span
-      className={`${className} inline-flex items-center justify-end gap-1`}
+      ref={popoverRef}
+      className={`${className} inline-block relative`}
       onClick={(e) => e.stopPropagation()}
     >
-      <input
-        ref={inputRef}
-        type="text"
-        inputMode="decimal"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
+      <span className="inline-flex items-center justify-end gap-1 rounded px-1.5 py-0.5 -mx-1 bg-amber-100 ring-1 ring-amber-300">
+        <span className="tabular-nums text-amber-900">{fmtNum(displayed)}</span>
+        {suffix ? <span className="text-amber-700/70"> {suffix}</span> : null}
+        <Pencil className="w-3 h-3 text-amber-600 shrink-0" strokeWidth={2.5} />
+      </span>
+      <div
+        className="absolute right-0 top-full mt-1 z-50 w-[280px] bg-white rounded-[12px] border border-slate-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.25)] p-3 text-left"
         onKeyDown={onKeyDown}
-        onBlur={() => {
-          // Если ничего не ввели или фокус ушёл — фиксируем; если значение
-          // не парсится, выводим тост через commit()
-          if (!submitting) commit();
-        }}
-        disabled={submitting}
-        className="w-24 text-right tabular-nums text-[12px] px-1.5 py-0.5 border border-amber-400 rounded bg-white outline-none focus:ring-2 focus:ring-amber-200"
-      />
-      {suffix ? <span className="text-slate-400 text-[11px]">{suffix}</span> : null}
-      {submitting && <Loader2 className="w-3 h-3 animate-spin text-amber-500" />}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            Корректировка остатка
+          </span>
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={submitting}
+            className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+            title="Отмена (Esc)"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        <label className="block mb-2">
+          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+            Новый остаток ({account.currency})
+          </span>
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="decimal"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={submitting}
+            className="w-full text-right tabular-nums text-[14px] font-semibold px-2 py-1.5 border border-amber-300 rounded-[8px] bg-amber-50 outline-none focus:bg-white focus:ring-2 focus:ring-amber-200"
+          />
+        </label>
+
+        <label className="block mb-2">
+          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+            Комментарий *
+          </span>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="напр. инвентаризация 14.05"
+            disabled={submitting}
+            className="w-full text-[12px] px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+          />
+        </label>
+
+        <label className="block mb-2">
+          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+            Дата эффекта
+          </span>
+          <input
+            type="date"
+            value={dateStr}
+            onChange={(e) => setDateStr(e.target.value)}
+            disabled={submitting}
+            className="w-full text-[12px] tabular-nums px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+          />
+        </label>
+
+        <div className="text-[10.5px] text-slate-400 mb-2 leading-snug">
+          Корр-счёт: Opening Equity {account.currency}. Δ = новый − старый.
+        </div>
+
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            type="button"
+            onClick={cancel}
+            disabled={submitting}
+            className="px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            onClick={commit}
+            disabled={submitting}
+            className="px-3 py-1 rounded-[8px] text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 inline-flex items-center gap-1.5"
+          >
+            {submitting && <Loader2 className="w-3 h-3 animate-spin" />}
+            Сохранить
+          </button>
+        </div>
+      </div>
     </span>
   );
 }

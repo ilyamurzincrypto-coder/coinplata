@@ -404,7 +404,10 @@ export async function rpcCreateAdjustmentV2(payload) {
     p_reason: payload.reason,
     p_adjustment_kind: payload.adjustmentKind,
     p_balancing_account: payload.balancingAccount ?? null,
+    p_effective_date: payload.effectiveDate || new Date().toISOString(),
     p_metadata: payload.metadata ?? {},
+    p_client_id: payload.clientId ?? null,
+    p_partner_id: payload.partnerId ?? null,
   };
   return await invokeLedger("create_adjustment", params);
 }
