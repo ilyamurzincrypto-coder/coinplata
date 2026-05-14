@@ -10,7 +10,8 @@
 // Save → ledger.create_adjustment → source_kind='adjustment' в Журнале.
 // Гард: видим только при accounting:edit. Сам Opening Equity inline не
 // правится (там Журнал → ручная проводка).
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Loader2, Pencil, Plus, X } from "lucide-react";
 import { useCan } from "../../../store/permissions.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
@@ -65,6 +66,9 @@ export default function InlineBalanceEditor({
   const [dateStr, setDateStr] = useState(todayInputValue);
   const [submitting, setSubmitting] = useState(false);
   const [selectedDimId, setSelectedDimId] = useState("");
+  // Позиция popover'a через portal: считаем от триггера.
+  const triggerRef = useRef(null);
+  const [popPos, setPopPos] = useState({ top: 0, left: 0, side: "below" });
   const popoverRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -79,12 +83,52 @@ export default function InlineBalanceEditor({
     }
   }, [editing]);
 
-  // Close on outside click
+  // Пересчёт позиции popover'a при открытии и на scroll/resize.
+  useLayoutEffect(() => {
+    if (!editing || !triggerRef.current) return undefined;
+    const recompute = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const POP_WIDTH = 280;
+      const POP_HEIGHT_MIN = 240; // достаточно для базового набора полей
+      const margin = 8;
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
+      // Стандартно — под триггером, выравнивание по правому краю.
+      let top = rect.bottom + 4;
+      let left = rect.right - POP_WIDTH;
+      let side = "below";
+      // Если не влезает снизу — кидаем сверху.
+      if (top + POP_HEIGHT_MIN > viewportH - margin) {
+        const altTop = rect.top - POP_HEIGHT_MIN - 4;
+        if (altTop > margin) {
+          top = altTop;
+          side = "above";
+        }
+      }
+      // Удерживаем popover в viewport по горизонтали.
+      if (left < margin) left = margin;
+      if (left + POP_WIDTH > viewportW - margin) {
+        left = viewportW - POP_WIDTH - margin;
+      }
+      setPopPos({ top, left, side });
+    };
+    recompute();
+    window.addEventListener("resize", recompute);
+    window.addEventListener("scroll", recompute, true);
+    return () => {
+      window.removeEventListener("resize", recompute);
+      window.removeEventListener("scroll", recompute, true);
+    };
+  }, [editing]);
+
+  // Close on outside click (учитываем и popover в portal, и trigger).
   useEffect(() => {
     if (!editing) return undefined;
     const onClick = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) {
-        // Не закрываем если идёт сабмит, чтобы не сорвать запрос
+      const inPop = popoverRef.current && popoverRef.current.contains(e.target);
+      const inTrigger = triggerRef.current && triggerRef.current.contains(e.target);
+      if (!inPop && !inTrigger) {
         if (!submitting) cancel();
       }
     };
@@ -187,61 +231,58 @@ export default function InlineBalanceEditor({
     </span>
   );
 
-  if (!editing) {
-    if (!editable) {
-      return <span className={className}>{ro}</span>;
-    }
-    // Триггер в newDim режиме: "+ Контрагент" вместо плашки с числом.
-    if (isNewDim) {
-      return (
-        <button
-          type="button"
-          onClick={startEdit}
-          title={`Добавить ${dimKind === "client" ? "клиента" : "партнёра"} с начальным остатком`}
-          className={`${className} inline-flex items-center gap-1 cursor-pointer rounded px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50/70 ring-1 ring-emerald-200 hover:bg-emerald-100 transition-colors`}
-        >
-          <Plus className="w-3 h-3" strokeWidth={2.5} />
-          {dimKind === "client" ? "Клиент" : "Партнёр"}
-        </button>
-      );
-    }
-    return (
-      <button
-        type="button"
-        onClick={startEdit}
-        title="Кликни чтобы вбить новый остаток"
-        className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded px-1.5 py-0.5 -mx-1 bg-amber-50/60 ring-1 ring-amber-200/70 text-amber-900 hover:bg-amber-100 hover:ring-amber-300 transition-colors`}
-      >
-        {ro}
-        <Pencil className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={2.5} />
-      </button>
-    );
+  if (!editable) {
+    return <span className={className}>{ro}</span>;
   }
 
-  // Editing — поповер с формой. Останавливаем bubble клика, чтобы не
-  // схлопывать родительский раскрытый счёт.
-  return (
-    <span
-      ref={popoverRef}
-      className={`${className} inline-block relative`}
-      onClick={(e) => e.stopPropagation()}
+  // Триггер всегда виден; popover в portal'е (чтобы не клипать overflow-hidden
+  // родителями). При editing меняем visual триггера на "активный".
+  const triggerEl = isNewDim ? (
+    <button
+      type="button"
+      ref={triggerRef}
+      onClick={startEdit}
+      title={`Добавить ${dimKind === "client" ? "клиента" : "партнёра"} с начальным остатком`}
+      className={`${className} inline-flex items-center gap-1 cursor-pointer rounded px-2 py-1 text-[11px] font-semibold ${
+        editing
+          ? "text-emerald-700 bg-emerald-100 ring-1 ring-emerald-300"
+          : "text-emerald-700 bg-emerald-50/70 ring-1 ring-emerald-200 hover:bg-emerald-100"
+      } transition-colors`}
     >
-      {isNewDim ? (
-        <span className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 ring-1 ring-emerald-300">
-          <Plus className="w-3 h-3" strokeWidth={2.5} />
-          {dimKind === "client" ? "Клиент" : "Партнёр"}
-        </span>
-      ) : (
-        <span className="inline-flex items-center justify-end gap-1 rounded px-1.5 py-0.5 -mx-1 bg-amber-100 ring-1 ring-amber-300">
-          <span className="tabular-nums text-amber-900">{fmtNum(displayed)}</span>
-          {suffix ? <span className="text-amber-700/70"> {suffix}</span> : null}
-          <Pencil className="w-3 h-3 text-amber-600 shrink-0" strokeWidth={2.5} />
-        </span>
-      )}
-      <div
-        className={`absolute ${isNewDim ? "left-0" : "right-0"} top-full mt-1 z-50 w-[280px] bg-white rounded-[12px] border border-slate-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.25)] p-3 text-left`}
-        onKeyDown={onKeyDown}
-      >
+      <Plus className="w-3 h-3" strokeWidth={2.5} />
+      {dimKind === "client" ? "Клиент" : "Партнёр"}
+    </button>
+  ) : (
+    <button
+      type="button"
+      ref={triggerRef}
+      onClick={startEdit}
+      title="Кликни чтобы вбить новый остаток"
+      className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded px-1.5 py-0.5 -mx-1 ${
+        editing
+          ? "bg-amber-100 ring-1 ring-amber-300 text-amber-900"
+          : "bg-amber-50/60 ring-1 ring-amber-200/70 text-amber-900 hover:bg-amber-100 hover:ring-amber-300"
+      } transition-colors`}
+    >
+      {ro}
+      <Pencil className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={2.5} />
+    </button>
+  );
+
+  if (!editing) {
+    return triggerEl;
+  }
+
+  // Editing — popover через portal в body, position: fixed.
+  const popover = (
+    <div
+      ref={popoverRef}
+      style={{ position: "fixed", top: popPos.top, left: popPos.left, width: 280 }}
+      className="z-[1000]"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={onKeyDown}
+    >
+      <div className="bg-white rounded-[12px] border border-slate-200 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] p-3 text-left">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
             {isNewDim
@@ -348,6 +389,13 @@ export default function InlineBalanceEditor({
           </button>
         </div>
       </div>
-    </span>
+    </div>
+  );
+
+  return (
+    <>
+      {triggerEl}
+      {typeof document !== "undefined" ? createPortal(popover, document.body) : null}
+    </>
   );
 }
