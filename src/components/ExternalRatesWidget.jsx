@@ -93,22 +93,6 @@ const COLLAPSED_KEY = "coinplata.externalRatesCollapsed";
 // Скрытые пары — Set<"source:pair">. По умолчанию ничего не скрыто.
 const HIDDEN_KEY = "coinplata.externalRatesHidden";
 
-const MODES = {
-  auto: { label: "Без спреда", chip: "bg-slate-100 text-slate-600 ring-slate-200" },
-  spread: { label: "Фил со спредом", chip: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
-  manual: { label: "Ручная корректировка", chip: "bg-amber-50 text-amber-700 ring-amber-200" },
-};
-
-function modeShortLabel(cfg) {
-  if (!cfg || cfg.mode === "auto" || !cfg.mode) return "Авто";
-  if (cfg.mode === "spread") {
-    const n = Number(cfg.spreadPct);
-    if (Number.isFinite(n) && n !== 0) return `+${n}%`;
-    return "Спред";
-  }
-  if (cfg.mode === "manual") return "Ручной";
-  return "Авто";
-}
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
@@ -153,27 +137,12 @@ function formatPair(pair) {
   return `${a}/${b}`;
 }
 
-// Вычисление отображаемого числа в зависимости от режима строки.
-//   "auto"   → mid как есть
-//   "spread" → mid × (1 + spreadPct/100)
-//   "manual" → cfg.manualValue (mid игнорируется)
-// Возвращает null, если данных не хватает (нет mid в режиме auto/spread,
-// или manualValue не число в режиме manual).
-function computePerPairValue(mid, cfg) {
-  if (!cfg || cfg.mode === "auto" || !cfg.mode) {
-    return Number.isFinite(mid) ? mid : null;
-  }
-  if (cfg.mode === "spread") {
-    if (!Number.isFinite(mid)) return null;
-    const s = Number(cfg.spreadPct);
-    if (!Number.isFinite(s)) return mid;
-    return mid * (1 + s / 100);
-  }
-  if (cfg.mode === "manual") {
-    const v = Number(cfg.manualValue);
-    return Number.isFinite(v) ? v : null;
-  }
-  return Number.isFinite(mid) ? mid : null;
+// Считаем итоговый курс = mid × (1 + spread%/100). Если spread пуст/0 — = mid.
+function computePairRate(mid, spreadStr) {
+  if (!Number.isFinite(mid)) return null;
+  const s = Number(String(spreadStr ?? "").replace(",", "."));
+  if (!Number.isFinite(s) || s === 0) return mid;
+  return mid * (1 + s / 100);
 }
 
 export default function ExternalRatesWidget({ compact = false }) {
@@ -195,23 +164,30 @@ export default function ExternalRatesWidget({ compact = false }) {
       localStorage.setItem(COLLAPSED_KEY, collapsed ? "1" : "0");
     } catch {}
   }, [collapsed]);
-  // Per-pair config: режим + опциональные значения. Key — "source:pair".
-  // Хранится в localStorage; по умолчанию режим "auto" (показываем mid).
-  const [perPairConfig, setPerPairConfig] = useState(() => {
+  // Per-pair spread: { "source:pair": spreadPctString } — хранится локально.
+  // Пустая строка / отсутствие ключа = спред 0 (показываем mid как есть).
+  const [perPairSpread, setPerPairSpread] = useState(() => {
     try {
       const raw = localStorage.getItem(PER_PAIR_KEY);
-      return raw ? JSON.parse(raw) : {};
+      const parsed = raw ? JSON.parse(raw) : {};
+      // Backwards-compat: если в storage остались old-shape объекты вида
+      // { mode, spreadPct, manualValue } — вытащим оттуда spreadPct.
+      const flat = {};
+      Object.entries(parsed || {}).forEach(([k, v]) => {
+        if (typeof v === "string" || typeof v === "number") flat[k] = String(v);
+        else if (v && typeof v === "object" && v.spreadPct != null) flat[k] = String(v.spreadPct);
+      });
+      return flat;
     } catch {
       return {};
     }
   });
-  const updatePerPair = (key, patch) => {
-    setPerPairConfig((prev) => {
-      const next = { ...prev, [key]: { ...(prev[key] || { mode: "auto" }), ...patch } };
-      // Если ушли в auto и нет полезных значений — чистим запись.
-      if (next[key].mode === "auto" && next[key].spreadPct == null && next[key].manualValue == null) {
-        delete next[key];
-      }
+  const updatePairSpread = (key, value) => {
+    setPerPairSpread((prev) => {
+      const next = { ...prev };
+      const cleaned = String(value || "").replace(/[^\d.,-]/g, "").replace(",", ".");
+      if (cleaned === "" || cleaned === "0") delete next[key];
+      else next[key] = cleaned;
       try {
         localStorage.setItem(PER_PAIR_KEY, JSON.stringify(next));
       } catch {}
@@ -419,23 +395,24 @@ export default function ExternalRatesWidget({ compact = false }) {
                       ? r.mid
                       : (r.bid != null && r.ask != null ? (r.bid + r.ask) / 2 : (r.bid ?? r.ask));
                     const pairKey = `${r.source}:${r.pair}`;
-                    const cfg = perPairConfig[pairKey] || { mode: "auto" };
-                    const displayValue = computePerPairValue(mid, cfg);
+                    const spreadStr = perPairSpread[pairKey] ?? "";
+                    const finalRate = computePairRate(mid, spreadStr);
                     const copyKey = `${r.source}_${r.pair}`;
                     const copied = copiedKey === copyKey;
-                    const isCustom = cfg.mode && cfg.mode !== "auto";
+                    const hasSpread =
+                      spreadStr !== "" && Number.isFinite(Number(spreadStr)) && Number(spreadStr) !== 0;
                     return (
                       <PerPairRow
                         key={copyKey}
                         pair={r.pair}
                         mid={mid}
-                        cfg={cfg}
-                        onUpdate={(patch) => updatePerPair(pairKey, patch)}
-                        displayValue={displayValue}
-                        isCustom={isCustom}
+                        spread={spreadStr}
+                        onSpreadChange={(v) => updatePairSpread(pairKey, v)}
+                        finalRate={finalRate}
+                        hasSpread={hasSpread}
                         accent={meta.accent}
                         copied={copied}
-                        onCopy={() => copyValue(copyKey, displayValue)}
+                        onCopy={() => copyValue(copyKey, finalRate)}
                       />
                     );
                   })}
@@ -449,77 +426,46 @@ export default function ExternalRatesWidget({ compact = false }) {
   );
 }
 
-// Одна строка котировки — независимая. Слева: пара + chip с режимом
-// (клик меняет режим по кругу: auto → spread → manual → auto). Справа:
-// значение + копировать. При режиме spread/manual в строке появляется
-// поле ввода соответствующего значения.
-function PerPairRow({ pair, mid, cfg, onUpdate, displayValue, isCustom, accent, copied, onCopy }) {
-  const mode = cfg?.mode || "auto";
-  const meta = MODES[mode] || MODES.auto;
-  const cycleMode = () => {
-    const next = mode === "auto" ? "spread" : mode === "spread" ? "manual" : "auto";
-    const patch = { mode: next };
-    // Auto-инициализируем поля при переключении, чтобы юзеру не приходилось
-    // нажимать ещё раз — режим уже «осмысленный».
-    if (next === "spread" && cfg?.spreadPct == null) patch.spreadPct = 0;
-    if (next === "manual" && cfg?.manualValue == null && Number.isFinite(mid)) {
-      patch.manualValue = Number(mid).toFixed(4);
-    }
-    onUpdate(patch);
-  };
+// Одна строка котировки: пара · своё поле спреда % · итоговый курс · копи.
+// Никаких чипов/режимов. Пустой спред = 0 = показываем mid. Любой ненулевой
+// = mid × (1 + spread/100). Хранится в localStorage per pair.
+function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, accent, copied, onCopy }) {
   return (
     <div className="flex items-center gap-2 px-1 py-1.5">
       <span className="text-[13.5px] font-bold text-slate-700 tracking-wide w-[78px] shrink-0">
         {formatPair(pair)}
       </span>
-      <button
-        type="button"
-        onClick={cycleMode}
-        title={`Режим: ${meta.label}. Клик — переключить.`}
-        className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 shrink-0 ${meta.chip} hover:brightness-95 transition-all`}
-      >
-        {modeShortLabel(cfg)}
-      </button>
-      {mode === "spread" && (
-        <div className="relative shrink-0">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={cfg.spreadPct == null ? "" : String(cfg.spreadPct)}
-            onChange={(e) =>
-              onUpdate({
-                spreadPct: e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."),
-              })
-            }
-            placeholder="0"
-            className="w-[60px] bg-emerald-50 border border-emerald-200 focus:bg-white focus:border-emerald-400 rounded-[6px] pl-2 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right"
-          />
-          <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-emerald-600 font-bold">%</span>
-        </div>
-      )}
-      {mode === "manual" && (
+      <div className="relative shrink-0">
         <input
           type="text"
           inputMode="decimal"
-          value={cfg.manualValue == null ? "" : String(cfg.manualValue)}
-          onChange={(e) =>
-            onUpdate({
-              manualValue: e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."),
-            })
-          }
-          placeholder={Number.isFinite(mid) ? fmtRate(mid) : "0.0000"}
-          className="w-[88px] bg-amber-50 border border-amber-200 focus:bg-white focus:border-amber-400 rounded-[6px] px-2 py-0.5 text-[11px] tabular-nums outline-none text-right shrink-0"
+          value={spread}
+          onChange={(e) => onSpreadChange(e.target.value)}
+          placeholder="0"
+          title="Спред % для этой пары — итог = mid × (1 + spread/100)"
+          className={`w-[64px] border rounded-[6px] pl-2 pr-5 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
+            hasSpread
+              ? "bg-emerald-50 border-emerald-200 focus:border-emerald-400"
+              : "bg-slate-50 border-slate-200 focus:border-slate-400"
+          }`}
         />
-      )}
+        <span
+          className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
+            hasSpread ? "text-emerald-600" : "text-slate-400"
+          }`}
+        >
+          %
+        </span>
+      </div>
       <span className="ml-auto text-right leading-tight">
         <span
           className={`text-[15px] font-bold tabular-nums ${
-            isCustom ? accent || "text-emerald-700" : "text-slate-900"
+            hasSpread ? accent || "text-emerald-700" : "text-slate-900"
           }`}
         >
-          {fmtRate(displayValue)}
+          {fmtRate(finalRate)}
         </span>
-        {isCustom && Number.isFinite(mid) && (
+        {hasSpread && Number.isFinite(mid) && (
           <span className="block text-[10px] text-slate-400 tabular-nums">
             от {fmtRate(mid)}
           </span>
@@ -528,7 +474,7 @@ function PerPairRow({ pair, mid, cfg, onUpdate, displayValue, isCustom, accent, 
       <button
         type="button"
         onClick={onCopy}
-        title={`Скопировать ${fmtRate(displayValue)}`}
+        title={`Скопировать ${fmtRate(finalRate)}`}
         className={`p-1 rounded transition-colors shrink-0 ${
           copied
             ? "text-emerald-600 bg-emerald-50"
