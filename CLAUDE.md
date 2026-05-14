@@ -4,17 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+Package manager: **pnpm** (pinned via `packageManager: pnpm@11.1.1` in `package.json`).
+
 ```bash
-npm run dev       # Vite dev server on http://localhost:5173
-npm run build     # produces dist/ (target ~100 KB gzip)
-npm run preview   # serve dist/ locally
+pnpm install      # install deps
+pnpm dev          # Vite dev server on http://localhost:5173
+pnpm build        # produces dist/ (target ~100 KB gzip)
+pnpm preview      # serve dist/ locally
+pnpm test         # vitest run
 ```
 
-No test runner, linter, or type-checker is configured. Verify changes by running `npm run build` and exercising the feature in the dev server.
+There is a `vitest` suite but no linter or type-checker. Verify changes with `pnpm build` + manual exercise in the dev server.
 
 ## Deploy
 
-`git push` to the main branch → Netlify builds automatically (config in `netlify.toml`, SPA rewrite to `/index.html`). A `vercel.json` is kept for parity but Netlify is the live target.
+`git push` to the main branch → **Vercel** builds automatically (config in `vercel.json`, SPA rewrite to `/index.html`). Netlify is no longer used.
 
 ## Feature flags
 
