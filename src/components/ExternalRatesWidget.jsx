@@ -181,13 +181,13 @@ export default function ExternalRatesWidget({ compact = false }) {
   const [loading, setLoading] = useState(true);
   const nowMs = useNow(60_000);
   // Сворачиваемый блок — persist в localStorage чтобы юзер не открывал заново.
-  // По умолчанию свёрнут (compact=true) — занимает 1 строку.
+  // По умолчанию РАСКРЫТ (per-pair настройки иначе не видны новому юзеру).
   const [collapsed, setCollapsed] = useState(() => {
     try {
       const raw = localStorage.getItem(COLLAPSED_KEY);
-      return raw == null ? true : raw === "1";
+      return raw == null ? false : raw === "1";
     } catch {
-      return true;
+      return false;
     }
   });
   useEffect(() => {
