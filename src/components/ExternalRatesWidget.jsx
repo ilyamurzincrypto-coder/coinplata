@@ -102,27 +102,6 @@ function fmtRate(v) {
   return v.toFixed(6);
 }
 
-// Bank-style форматирование: для маленьких чисел масштабируем на 10/100/1000…
-// чтобы получить читаемое значение (>= 1). Возвращает { display, scale,
-// scaledValue }: scale > 1 означает «значение × scale», подписываем «за {scale}».
-//   0.022016 → { display: "2.2016", scale: 100,  scaledValue: 2.2016 } → «2.2016 за 100»
-//   0.000035 → { display: "3.5000", scale: 100000, scaledValue: 3.5 } → «3.5000 за 100 000»
-function formatBankRate(v) {
-  if (!Number.isFinite(v)) return { display: "—", scale: 1, scaledValue: null };
-  const abs = Math.abs(v);
-  if (abs >= 1 || abs === 0) {
-    return { display: fmtRate(v), scale: 1, scaledValue: v };
-  }
-  let scale = 1;
-  let scaled = v;
-  // Подбираем минимальный scale из {10, 100, 1000, …} такой что |v*scale| >= 1.
-  while (Math.abs(scaled) < 1 && scale < 1e9) {
-    scale *= 10;
-    scaled = v * scale;
-  }
-  return { display: fmtRate(scaled), scale, scaledValue: scaled };
-}
-
 // Лёгкий tooltip — показывается по hover/focus родителя через group-hover.
 // Position: absolute сверху или снизу в зависимости от места. Без портала
 // (не нужен — родитель z-index достаточно высокий).
@@ -159,12 +138,17 @@ function formatPair(pair) {
   return `${a}/${b}`;
 }
 
-// Считаем итоговый курс = mid × (1 + spread%/100). Если spread пуст/0 — = mid.
-function computePairRate(mid, spreadStr) {
-  if (!Number.isFinite(mid)) return null;
+// Bank-board: купим (BUY) и продадим (SELL) — две цены на mid, разведённые
+// спредом. BUY ниже mid (мы платим меньше TRY за 1 USD когда покупаем USD у
+// клиента), SELL выше (мы получаем больше TRY когда продаём USD клиенту).
+//   spread = 0.5% → BUY = mid × 0.995, SELL = mid × 1.005
+// Пустой/0 спред → BUY = SELL = mid.
+function computeBuySell(mid, spreadStr) {
+  if (!Number.isFinite(mid)) return { buy: null, sell: null };
   const s = Number(String(spreadStr ?? "").replace(",", "."));
-  if (!Number.isFinite(s) || s === 0) return mid;
-  return mid * (1 + s / 100);
+  if (!Number.isFinite(s) || s === 0) return { buy: mid, sell: mid };
+  const half = s / 100;
+  return { buy: mid * (1 - half), sell: mid * (1 + half) };
 }
 
 export default function ExternalRatesWidget({ compact = false }) {
@@ -410,10 +394,8 @@ export default function ExternalRatesWidget({ compact = false }) {
                   )}
                 </div>
 
-                {/* Список пар: каждая строка независима. У каждой пары —
-                    свой спред и значение. Плюс реверс — обратное
-                    направление (1/mid) тоже видно отдельной строкой со
-                    своим спредом. */}
+                {/* Bank-board: одна строка на пару, у каждой свой спред
+                    и обе цены (КУПИМ ниже mid, ПРОДАДИМ выше). */}
                 <div className="divide-y divide-slate-100 -mx-1">
                   {sourceRows.map((r) => {
                     const mid = Number.isFinite(r.mid)
@@ -421,60 +403,29 @@ export default function ExternalRatesWidget({ compact = false }) {
                       : (r.bid != null && r.ask != null ? (r.bid + r.ask) / 2 : (r.bid ?? r.ask));
                     const pairKey = `${r.source}:${r.pair}`;
                     const spreadStr = perPairSpread[pairKey] ?? "";
-                    const finalRate = computePairRate(mid, spreadStr);
-                    const copyKey = `${r.source}_${r.pair}`;
-                    const copied = copiedKey === copyKey;
+                    const { buy, sell } = computeBuySell(mid, spreadStr);
+                    const buyKey = `${r.source}_${r.pair}_buy`;
+                    const sellKey = `${r.source}_${r.pair}_sell`;
+                    const buyCopied = copiedKey === buyKey;
+                    const sellCopied = copiedKey === sellKey;
                     const hasSpread =
                       spreadStr !== "" && Number.isFinite(Number(spreadStr)) && Number(spreadStr) !== 0;
-
-                    // Реверс: 1/mid (если 0 или NaN → null, скрываем)
-                    const reverseMid =
-                      Number.isFinite(mid) && Math.abs(mid) > 1e-12 ? 1 / mid : null;
-                    const reversePairStr = (() => {
-                      const parts = String(r.pair).split("_");
-                      return parts.length === 2 ? `${parts[1]}_${parts[0]}` : null;
-                    })();
-                    const reverseKey = `${r.source}:${r.pair}:rev`;
-                    const reverseSpreadStr = perPairSpread[reverseKey] ?? "";
-                    const reverseFinal = computePairRate(reverseMid, reverseSpreadStr);
-                    const reverseCopyKey = `${r.source}_${r.pair}_rev`;
-                    const reverseCopied = copiedKey === reverseCopyKey;
-                    const reverseHasSpread =
-                      reverseSpreadStr !== "" &&
-                      Number.isFinite(Number(reverseSpreadStr)) &&
-                      Number(reverseSpreadStr) !== 0;
-
-                    // Копируем то ЧТО ВИДИТ юзер — отмасштабированный bank-вид
-                    const fwdScaled = formatBankRate(finalRate).scaledValue;
-                    const revScaled = formatBankRate(reverseFinal).scaledValue;
                     return (
-                      <React.Fragment key={copyKey}>
-                        <PerPairRow
-                          pair={r.pair}
-                          mid={mid}
-                          spread={spreadStr}
-                          onSpreadChange={(v) => updatePairSpread(pairKey, v)}
-                          finalRate={finalRate}
-                          hasSpread={hasSpread}
-                          accent={meta.accent}
-                          copied={copied}
-                          onCopy={() => copyValue(copyKey, fwdScaled ?? finalRate)}
-                        />
-                        {reverseMid != null && reversePairStr && (
-                          <PerPairRow
-                            pair={reversePairStr}
-                            mid={reverseMid}
-                            spread={reverseSpreadStr}
-                            onSpreadChange={(v) => updatePairSpread(reverseKey, v)}
-                            finalRate={reverseFinal}
-                            hasSpread={reverseHasSpread}
-                            accent={meta.accent}
-                            copied={reverseCopied}
-                            onCopy={() => copyValue(reverseCopyKey, revScaled ?? reverseFinal)}
-                            isReverse
-                          />
-                        )}
-                      </React.Fragment>
+                      <PerPairRow
+                        key={`${r.source}_${r.pair}`}
+                        pair={r.pair}
+                        mid={mid}
+                        spread={spreadStr}
+                        onSpreadChange={(v) => updatePairSpread(pairKey, v)}
+                        buy={buy}
+                        sell={sell}
+                        hasSpread={hasSpread}
+                        accent={meta.accent}
+                        buyCopied={buyCopied}
+                        sellCopied={sellCopied}
+                        onCopyBuy={() => copyValue(buyKey, buy)}
+                        onCopySell={() => copyValue(sellKey, sell)}
+                      />
                     );
                   })}
                 </div>
@@ -490,23 +441,26 @@ export default function ExternalRatesWidget({ compact = false }) {
 // Одна строка котировки: пара · своё поле спреда % · итоговый курс · копи.
 // Никаких чипов/режимов. Пустой спред = 0 = показываем mid. Любой ненулевой
 // = mid × (1 + spread/100). Хранится в localStorage per pair.
-function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, accent, copied, onCopy, isReverse = false }) {
-  // Bank-style scaling — для маленьких реверсов показываем «2.2016 за 100».
-  const { display: rateDisplay, scale: rateScale } = formatBankRate(finalRate);
-  const { display: midDisplay, scale: midScale } = formatBankRate(mid);
+// Банковское табло: пара · спред% · КУПИМ / ПРОДАДИМ. Два значения на
+// одну строку, без реверс-строки и без «за N». Спред разводит mid в обе
+// стороны симметрично: buy = mid × (1 − s/2 эквивалент s%), sell = mid × (1 + s%).
+function PerPairRow({
+  pair,
+  mid,
+  spread,
+  onSpreadChange,
+  buy,
+  sell,
+  hasSpread,
+  accent,
+  buyCopied,
+  sellCopied,
+  onCopyBuy,
+  onCopySell,
+}) {
   return (
-    <div
-      className={`flex items-center gap-2 px-1 py-1.5 ${
-        isReverse ? "bg-slate-50/40" : ""
-      }`}
-    >
-      <span
-        className={`text-[13.5px] font-bold tracking-wide w-[78px] shrink-0 inline-flex items-center gap-1 ${
-          isReverse ? "text-slate-500 italic" : "text-slate-700"
-        }`}
-        title={isReverse ? "Реверс — 1 / прямой курс" : undefined}
-      >
-        {isReverse && <span className="text-[10px] text-slate-300">↔</span>}
+    <div className="flex items-center gap-2 px-1 py-1.5">
+      <span className="text-[13.5px] font-bold tracking-wide w-[64px] shrink-0 text-slate-700">
         {formatPair(pair)}
       </span>
       <div className="relative shrink-0">
@@ -516,53 +470,63 @@ function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, a
           value={spread}
           onChange={(e) => onSpreadChange(e.target.value)}
           placeholder="0"
-          title="Спред % для этой пары — итог = mid × (1 + spread/100)"
-          className={`w-[64px] border rounded-[6px] pl-2 pr-5 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
+          title="Спред % — на сколько разводим купим/продадим относительно mid"
+          className={`w-[54px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
             hasSpread
               ? "bg-emerald-50 border-emerald-200 focus:border-emerald-400"
               : "bg-slate-50 border-slate-200 focus:border-slate-400"
           }`}
         />
         <span
-          className={`absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
+          className={`absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
             hasSpread ? "text-emerald-600" : "text-slate-400"
           }`}
         >
           %
         </span>
       </div>
-      <span className="ml-auto text-right leading-tight">
-        <span
-          className={`text-[15px] font-bold tabular-nums ${
-            hasSpread ? accent || "text-emerald-700" : "text-slate-900"
-          }`}
-        >
-          {rateDisplay}
-        </span>
-        {rateScale > 1 && (
-          <span className="ml-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
-            за {rateScale.toLocaleString("ru-RU")}
-          </span>
-        )}
-        {hasSpread && Number.isFinite(mid) && (
-          <span className="block text-[10px] text-slate-400 tabular-nums">
-            от {midDisplay}
-            {midScale > 1 && ` (за ${midScale.toLocaleString("ru-RU")})`}
-          </span>
-        )}
-      </span>
-      <button
-        type="button"
-        onClick={onCopy}
-        title={`Скопировать ${rateDisplay}${rateScale > 1 ? ` (за ${rateScale})` : ""}`}
-        className={`p-1 rounded transition-colors shrink-0 ${
-          copied
-            ? "text-emerald-600 bg-emerald-50"
-            : "text-slate-300 hover:text-slate-900 hover:bg-slate-100"
-        }`}
-      >
-        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3 h-3" />}
-      </button>
+      <BuySellCell
+        label="КУПИМ"
+        value={buy}
+        tone="rose"
+        copied={buyCopied}
+        onCopy={onCopyBuy}
+      />
+      <BuySellCell
+        label="ПРОДАДИМ"
+        value={sell}
+        tone="emerald"
+        copied={sellCopied}
+        onCopy={onCopySell}
+      />
     </div>
+  );
+}
+
+function BuySellCell({ label, value, tone, copied, onCopy }) {
+  const toneCls =
+    tone === "rose"
+      ? "text-rose-700"
+      : tone === "emerald"
+      ? "text-emerald-700"
+      : "text-slate-900";
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      title={`${label} ${fmtRate(value)} — клик копирует`}
+      className={`flex-1 min-w-0 text-right leading-tight px-1 py-0.5 rounded transition-colors ${
+        copied ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-slate-50"
+      }`}
+    >
+      <span className="block text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">
+        {label}
+      </span>
+      <span
+        className={`block text-[14px] font-bold tabular-nums ${toneCls}`}
+      >
+        {fmtRate(value)}
+      </span>
+    </button>
   );
 }
