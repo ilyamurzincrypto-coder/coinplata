@@ -4,17 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Package manager: **pnpm** (pinned via `packageManager: pnpm@11.1.1` in `package.json`).
+Package manager: **npm** (откатились с pnpm 2026-05-14: Vercel в CI-режиме pnpm 10+ падал на ERR_PNPM_IGNORED_BUILDS из-за esbuild build script).
 
 ```bash
-pnpm install      # install deps
-pnpm dev          # Vite dev server on http://localhost:5173
-pnpm build        # produces dist/ (target ~100 KB gzip)
-pnpm preview      # serve dist/ locally
-pnpm test         # vitest run
+npm install       # install deps
+npm run dev       # Vite dev server on http://localhost:5173
+npm run build     # produces dist/ (target ~100 KB gzip)
+npm run preview   # serve dist/ locally
+npm test          # vitest run
 ```
 
-There is a `vitest` suite but no linter or type-checker. Verify changes with `pnpm build` + manual exercise in the dev server.
+There is a `vitest` suite but no linter or type-checker. Verify changes with `npm run build` + manual exercise in the dev server.
 
 ## Deploy
 
