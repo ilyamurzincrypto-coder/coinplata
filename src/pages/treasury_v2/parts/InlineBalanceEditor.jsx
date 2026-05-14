@@ -7,7 +7,7 @@
 // надпись (без рамки/курсора), визуально неотличимая от старого read-only
 // варианта. Сервер ledger.create_manual_entry тоже требует owner/accountant.
 import React, { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { useCan } from "../../../store/permissions.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
 import { setAccountBalance, SetBalanceError } from "../../../lib/treasury/setAccountBalance.js";
@@ -144,10 +144,11 @@ export default function InlineBalanceEditor({
       <button
         type="button"
         onClick={startEdit}
-        title={isOpeningEquity ? undefined : "Кликни чтобы вбить новый остаток"}
-        className={`${className} cursor-text rounded px-1 -mx-1 hover:bg-amber-50 hover:ring-1 hover:ring-amber-200 transition-colors`}
+        title="Кликни чтобы вбить новый остаток"
+        className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded px-1.5 py-0.5 -mx-1 bg-amber-50/60 ring-1 ring-amber-200/70 text-amber-900 hover:bg-amber-100 hover:ring-amber-300 transition-colors`}
       >
         {ro}
+        <Pencil className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={2.5} />
       </button>
     );
   }
