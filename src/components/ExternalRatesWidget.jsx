@@ -96,9 +96,31 @@ const HIDDEN_KEY = "coinplata.externalRatesHidden";
 
 function fmtRate(v) {
   if (!Number.isFinite(v)) return "—";
-  if (v >= 100) return v.toFixed(2);
-  if (v >= 1) return v.toFixed(4);
+  const abs = Math.abs(v);
+  if (abs >= 100) return v.toFixed(2);
+  if (abs >= 1) return v.toFixed(4);
   return v.toFixed(6);
+}
+
+// Bank-style форматирование: для маленьких чисел масштабируем на 10/100/1000…
+// чтобы получить читаемое значение (>= 1). Возвращает { display, scale,
+// scaledValue }: scale > 1 означает «значение × scale», подписываем «за {scale}».
+//   0.022016 → { display: "2.2016", scale: 100,  scaledValue: 2.2016 } → «2.2016 за 100»
+//   0.000035 → { display: "3.5000", scale: 100000, scaledValue: 3.5 } → «3.5000 за 100 000»
+function formatBankRate(v) {
+  if (!Number.isFinite(v)) return { display: "—", scale: 1, scaledValue: null };
+  const abs = Math.abs(v);
+  if (abs >= 1 || abs === 0) {
+    return { display: fmtRate(v), scale: 1, scaledValue: v };
+  }
+  let scale = 1;
+  let scaled = v;
+  // Подбираем минимальный scale из {10, 100, 1000, …} такой что |v*scale| >= 1.
+  while (Math.abs(scaled) < 1 && scale < 1e9) {
+    scale *= 10;
+    scaled = v * scale;
+  }
+  return { display: fmtRate(scaled), scale, scaledValue: scaled };
 }
 
 // Лёгкий tooltip — показывается по hover/focus родителя через group-hover.
@@ -186,7 +208,10 @@ export default function ExternalRatesWidget({ compact = false }) {
     setPerPairSpread((prev) => {
       const next = { ...prev };
       const cleaned = String(value || "").replace(/[^\d.,-]/g, "").replace(",", ".");
-      if (cleaned === "" || cleaned === "0") delete next[key];
+      // Удаляем ключ ТОЛЬКО при пустой строке. Раньше также чистили "0",
+      // из-за чего юзер не мог набрать "0.5" — после ввода "0" поле
+      // сбрасывалось и точка попадала в пустое поле.
+      if (cleaned === "") delete next[key];
       else next[key] = cleaned;
       try {
         localStorage.setItem(PER_PAIR_KEY, JSON.stringify(next));
@@ -419,6 +444,9 @@ export default function ExternalRatesWidget({ compact = false }) {
                       Number.isFinite(Number(reverseSpreadStr)) &&
                       Number(reverseSpreadStr) !== 0;
 
+                    // Копируем то ЧТО ВИДИТ юзер — отмасштабированный bank-вид
+                    const fwdScaled = formatBankRate(finalRate).scaledValue;
+                    const revScaled = formatBankRate(reverseFinal).scaledValue;
                     return (
                       <React.Fragment key={copyKey}>
                         <PerPairRow
@@ -430,7 +458,7 @@ export default function ExternalRatesWidget({ compact = false }) {
                           hasSpread={hasSpread}
                           accent={meta.accent}
                           copied={copied}
-                          onCopy={() => copyValue(copyKey, finalRate)}
+                          onCopy={() => copyValue(copyKey, fwdScaled ?? finalRate)}
                         />
                         {reverseMid != null && reversePairStr && (
                           <PerPairRow
@@ -442,7 +470,7 @@ export default function ExternalRatesWidget({ compact = false }) {
                             hasSpread={reverseHasSpread}
                             accent={meta.accent}
                             copied={reverseCopied}
-                            onCopy={() => copyValue(reverseCopyKey, reverseFinal)}
+                            onCopy={() => copyValue(reverseCopyKey, revScaled ?? reverseFinal)}
                             isReverse
                           />
                         )}
@@ -463,6 +491,9 @@ export default function ExternalRatesWidget({ compact = false }) {
 // Никаких чипов/режимов. Пустой спред = 0 = показываем mid. Любой ненулевой
 // = mid × (1 + spread/100). Хранится в localStorage per pair.
 function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, accent, copied, onCopy, isReverse = false }) {
+  // Bank-style scaling — для маленьких реверсов показываем «2.2016 за 100».
+  const { display: rateDisplay, scale: rateScale } = formatBankRate(finalRate);
+  const { display: midDisplay, scale: midScale } = formatBankRate(mid);
   return (
     <div
       className={`flex items-center gap-2 px-1 py-1.5 ${
@@ -506,18 +537,24 @@ function PerPairRow({ pair, mid, spread, onSpreadChange, finalRate, hasSpread, a
             hasSpread ? accent || "text-emerald-700" : "text-slate-900"
           }`}
         >
-          {fmtRate(finalRate)}
+          {rateDisplay}
         </span>
+        {rateScale > 1 && (
+          <span className="ml-1 text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+            за {rateScale.toLocaleString("ru-RU")}
+          </span>
+        )}
         {hasSpread && Number.isFinite(mid) && (
           <span className="block text-[10px] text-slate-400 tabular-nums">
-            от {fmtRate(mid)}
+            от {midDisplay}
+            {midScale > 1 && ` (за ${midScale.toLocaleString("ru-RU")})`}
           </span>
         )}
       </span>
       <button
         type="button"
         onClick={onCopy}
-        title={`Скопировать ${fmtRate(finalRate)}`}
+        title={`Скопировать ${rateDisplay}${rateScale > 1 ? ` (за ${rateScale})` : ""}`}
         className={`p-1 rounded transition-colors shrink-0 ${
           copied
             ? "text-emerald-600 bg-emerald-50"
