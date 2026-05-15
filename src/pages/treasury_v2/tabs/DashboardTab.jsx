@@ -140,7 +140,28 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
   );
 }
 
-function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
+// Преобразуем pnl-класс (revenue / expense) в дерево по валюте → счетам.
+// pnlClass: { total, accounts: [{code, name, currency, amountInBase, entryCount}] }
+function pnlClassToTree(pnlClass) {
+  const byCur = new Map();
+  for (const a of pnlClass.accounts || []) {
+    const bucket = byCur.get(a.currency) || { currency: a.currency, native: 0, inBase: 0, leaves: [] };
+    bucket.inBase += a.amountInBase;
+    bucket.leaves.push({
+      key: a.code,
+      label: `${a.code} · ${a.name}`,
+      native: a.amountInBase, // native не хранится в aggregateClass — показываем base
+      inBase: a.amountInBase,
+    });
+    byCur.set(a.currency, bucket);
+  }
+  const currencies = [...byCur.values()]
+    .map((c) => ({ ...c, leaves: c.leaves.slice().sort((x, y) => Math.abs(y.inBase) - Math.abs(x.inBase)) }))
+    .sort((x, y) => Math.abs(y.inBase) - Math.abs(x.inBase));
+  return { currencies, totalInBase: pnlClass.total || 0 };
+}
+
+function FundsTreeCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
   const { t } = useTranslation();
   const { findOffice } = useOffices();
   const [expanded, setExpanded] = useState(() => new Set());
@@ -158,9 +179,23 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
     () => buildFundsTree(ctx, "client", officeFilter, findOffice, ctx.counterpartyName, t),
     [ctx, officeFilter, findOffice, t]
   );
+
+  // P&L за период — для секций «Доходы» / «Расходы».
+  const win = useMemo(() => presetWindow(period), [period]);
+  useEffect(() => {
+    if (ctx.extendWindow && ctx.sinceIso && new Date(win.from) < new Date(ctx.sinceIso)) ctx.extendWindow(win.from);
+  }, [win.from, ctx.sinceIso, ctx.extendWindow]);
+  const pnl = useMemo(
+    () => pnlForPeriod(ctx, { from: win.from, to: win.to }, officeFilter),
+    [ctx, win.from, win.to, officeFilter]
+  );
+  const revenueTree = useMemo(() => pnlClassToTree(pnl.revenue), [pnl]);
+  const expenseTree = useMemo(() => pnlClassToTree(pnl.expense), [pnl]);
+
   // Пассивы shown signed ("we owe" = minus); identity reads literally Капитал = Активы + Пассивы.
   const passives = -client.totalInBase;
-  const netCapital = available.totalInBase + passives; // == available − |client liabilities|
+  const netCapital = available.totalInBase + passives;
+  const netProfit = (pnl.revenue.total || 0) - (pnl.expense.total || 0) + (pnl.fxNet || 0);
 
   return (
     <Card className="md:col-span-2 lg:col-span-3">
@@ -185,14 +220,56 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency }) {
           toggle={toggle}
           displayMul={-1}
         />
+        <div className="border-t border-slate-100" />
+        {/* Период для доход/расход — общий с PnLCard ниже. */}
+        <div className="px-3 py-2 flex items-center gap-2 text-[11px] text-slate-500">
+          <span className="font-bold uppercase tracking-wide">Период доходов/расходов:</span>
+          <PeriodPicker value={period} onChange={setPeriod} />
+        </div>
+        <FundsSection
+          id="revenue"
+          titleKey="trv2_dash_revenue"
+          subKey="trv2_dash_revenue_sub"
+          tree={revenueTree}
+          baseCurrency={baseCurrency}
+          expanded={expanded}
+          toggle={toggle}
+        />
+        <div className="border-t border-slate-100" />
+        <FundsSection
+          id="expense"
+          titleKey="trv2_dash_expense"
+          subKey="trv2_dash_expense_sub"
+          tree={expenseTree}
+          baseCurrency={baseCurrency}
+          expanded={expanded}
+          toggle={toggle}
+          displayMul={-1}
+        />
       </div>
-      <div className="mt-3 pt-3 border-t border-slate-200 rounded-[10px] bg-slate-50 px-3 py-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
-        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t("trv2_dash_totals")}</span>
-        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
-        <span className="text-slate-400">+</span>
-        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtSignedBase(passives, baseCurrency)}</span></span>
-        <span className="text-slate-400">=</span>
-        <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_net_capital")}</span> <span className={`font-bold tabular-nums ${netCapital < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(netCapital, baseCurrency)}</span></span>
+      <div className="mt-3 pt-3 border-t border-slate-200 rounded-[10px] bg-slate-50 px-3 py-2.5 space-y-1.5">
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t("trv2_dash_totals")}</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
+          <span className="text-slate-400">+</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-slate-900">{fmtSignedBase(passives, baseCurrency)}</span></span>
+          <span className="text-slate-400">=</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_net_capital")}</span> <span className={`font-bold tabular-nums ${netCapital < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(netCapital, baseCurrency)}</span></span>
+        </div>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px] pt-1 border-t border-slate-200/70">
+          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">За период</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_revenue")}</span> <span className="font-bold tabular-nums text-emerald-700">+{fmtBaseAmount(pnl.revenue.total || 0, baseCurrency)}</span></span>
+          <span className="text-slate-400">−</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_expense")}</span> <span className="font-bold tabular-nums text-rose-700">{fmtBaseAmount(pnl.expense.total || 0, baseCurrency)}</span></span>
+          {Math.abs(pnl.fxNet || 0) > 0.005 && (
+            <>
+              <span className="text-slate-400">+</span>
+              <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_fx")}</span> <span className="font-bold tabular-nums text-slate-700">{fmtSignedBase(pnl.fxNet, baseCurrency)}</span></span>
+            </>
+          )}
+          <span className="text-slate-400">=</span>
+          <span className="text-slate-600"><span className="text-slate-500">{t("trv2_dash_net_profit")}</span> <span className={`font-bold tabular-nums ${netProfit < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(netProfit, baseCurrency)}</span></span>
+        </div>
       </div>
     </Card>
   );
@@ -340,9 +417,16 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, onOpenSo
   const setPeriod = (v) => { setPeriodState(v); try { localStorage.setItem("coinplata.treasury_dash_period", v); } catch {} };
   return (
     <div className="space-y-4">
-      <FundsTreeCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
+      <FundsTreeCard
+        ctx={ctx}
+        officeFilter={officeFilter}
+        baseCurrency={baseCurrency}
+        period={period}
+        setPeriod={setPeriod}
+      />
+      {/* PnLCard убран — доходы/расходы и сводка прибыли теперь в верхней
+          FundsTreeCard. Здесь оставляем только сопутствующие карточки. */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <PnLCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} period={period} setPeriod={setPeriod} />
         <ObligationsCard officeFilter={officeFilter} />
         <IdentityCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
         <RecentDealsCard ctx={ctx} officeFilter={officeFilter} onOpenSource={onOpenSource} period={period} />
