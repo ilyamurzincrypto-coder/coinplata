@@ -19,7 +19,10 @@ import { fmt, curSymbol } from "../../../utils/money.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 
 const ZERO_UUID = "00000000-0000-0000-0000-000000000000";
-const AVAILABLE_SUBTYPES = new Set(["cash", "crypto_input", "crypto_output"]);
+// «Доступные средства» = cash & cash equivalents по IAS 7: наличные,
+// банковские счета (демандо-депозиты), крипто-кошельки. Inter-office
+// и clearing-счета — внутренние, в available не входят.
+const AVAILABLE_SUBTYPES = new Set(["cash", "bank", "crypto_input", "crypto_output"]);
 
 const fmtNum = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const fmtBaseAmount = (n, baseCurrency) => `${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`;

@@ -35,7 +35,10 @@ import { trialBalance } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 
-const CASH_SUBTYPES = new Set(["cash", "crypto_input", "crypto_output"]);
+// Cash & cash equivalents по IAS 7: наличные, банковские демандо-депозиты,
+// крипто-кошельки (на вход/выход). Inter-office/clearing/fx_clearing —
+// внутренние клиринговые счета, не реальные деньги.
+const CASH_SUBTYPES = new Set(["cash", "bank", "crypto_input", "crypto_output"]);
 
 const fmtBaseAmount = (n, baseCurrency) => `${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`;
 const fmtSignedBase = (n, baseCurrency) => `${n < 0 ? "−" : ""}${fmtBaseAmount(Math.abs(n), baseCurrency)}`;
