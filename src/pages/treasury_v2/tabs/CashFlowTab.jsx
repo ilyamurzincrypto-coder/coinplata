@@ -21,12 +21,14 @@
 import React, { useState, useMemo, useEffect } from "react";
 import {
   ChevronRight, ChevronDown, ArrowUpDown, Briefcase, Banknote,
-  ArrowUpRight, ArrowDownRight, Minus, Download,
+  ArrowUpRight, ArrowDownRight, Minus, Download, Building2,
+  TrendingUp, ShieldCheck, ShieldAlert, Globe,
 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
-import { trialBalance } from "../../../lib/treasury/v2selectors.js";
+import { trialBalance, pnlForPeriod } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { exportCSV } from "../../../utils/csv.js";
+import { useOffices } from "../../../store/offices.jsx";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 
 // IAS 7 cash & cash equivalents
@@ -112,6 +114,13 @@ function buildCashFlow(ctx, win, officeFilter) {
   const fromMs = new Date(win.from).getTime();
   const toMs = new Date(win.to).getTime();
 
+  // Per-office метрики Operating (только когда officeFilter='all' имеет смысл,
+  // но считаем всегда — UI решит показывать или нет).
+  const perOffice = new Map(); // officeId|"__none__" → { officeId, netBase, txCount }
+  // Метрики сделок для топ-карточки.
+  let dealCount = 0;
+  let dealTurnoverBase = 0; // gross input от клиентов на cash (sum positives для kind=deal*)
+
   const txCashLegs = new Map();
   const txNonCashLegs = new Map();
   for (const e of ctx.entries || []) {
@@ -160,9 +169,12 @@ function buildCashFlow(ctx, win, officeFilter) {
       const sg = operatingSubgroup(kind, nonCashLegs);
       bucket.bySubgroup.set(sg, (bucket.bySubgroup.get(sg) || 0) + sumCashBase);
     }
+    const isDeal = kind === "deal" || kind === "deal_v2" || kind === "exchange";
+    if (isDeal) dealCount += 1;
     for (const leg of cashLegs) {
       if (leg.signedBase > 0) bucket.inflowBase += leg.signedBase;
       else bucket.outflowBase += -leg.signedBase;
+      if (isDeal && leg.signedBase > 0) dealTurnoverBase += leg.signedBase;
       const e = leg.e;
       const amt = Math.abs(Number(e.amount) || 0);
       const ccyBucket = bucket.byCurrency.get(e.currency) || { currency: e.currency, inflow: 0, outflow: 0, net: 0, netBase: 0 };
@@ -171,6 +183,14 @@ function buildCashFlow(ctx, win, officeFilter) {
       ccyBucket.net += leg.signedNative;
       ccyBucket.netBase += leg.signedBase;
       bucket.byCurrency.set(e.currency, ccyBucket);
+      // Per-office по cash ноге (только Operating: для смыслового management)
+      if (category === "operating") {
+        const offKey = leg.acc.officeId || "__none__";
+        const off = perOffice.get(offKey) || { officeId: leg.acc.officeId || null, netBase: 0, txIds: new Set() };
+        off.netBase += leg.signedBase;
+        off.txIds.add(txId);
+        perOffice.set(offKey, off);
+      }
     }
     bucket.netBase += sumCashBase;
   }
@@ -185,7 +205,72 @@ function buildCashFlow(ctx, win, officeFilter) {
   const totalNetBase = SECTIONS.reduce((s, c) => s + sections[c].netBase, 0);
   const closingBase = openingBase + totalNetBase;
   const hasMovement = txCashLegs.size > 0;
-  return { sections, totalNetBase, openingBase, closingBase, hasMovement, internalTxCount, win };
+
+  // Маржа от сделок — извлекаем из revenue/expense accounts pnlForPeriod.
+  // Sum of revenue.total − expense.total (для обменника revenue = спред +
+  // комиссия, expense = network fees, exchange fees). Это близко к чистой
+  // марже на сделках, если других неоперационных доходов нет за период.
+  const pnl = pnlForPeriod(ctx, win, officeFilter);
+  const marginBase = (pnl.revenue.total || 0) - (pnl.expense.total || 0);
+  const marginPct = dealTurnoverBase > 0.01 ? (marginBase / dealTurnoverBase) * 100 : null;
+  const avgDealSize = dealCount > 0 ? dealTurnoverBase / dealCount : 0;
+
+  const perOfficeList = [...perOffice.values()]
+    .map((o) => ({ ...o, txCount: o.txIds.size, txIds: undefined }))
+    .sort((a, b) => Math.abs(b.netBase) - Math.abs(a.netBase));
+
+  return {
+    sections, totalNetBase, openingBase, closingBase, hasMovement, internalTxCount, win,
+    deals: { count: dealCount, turnoverBase: dealTurnoverBase, marginBase, marginPct, avgDealSize },
+    perOffice: perOfficeList,
+  };
+}
+
+// FX exposure: нетто-позиция по каждой валюте (cash equivalents) на конец
+// периода. Для управленца — видеть валютный риск: «у меня перевес в USDT,
+// если упадёт — потеряю».
+function buildFxExposure(ctx, win, officeFilter) {
+  const tb = trialBalance(ctx, { from: win.from, to: win.to }, officeFilter);
+  const byCurrency = new Map();
+  for (const cls of tb.classes) {
+    for (const a of cls.accounts) {
+      if (a.type !== "asset" || !CASH_SUBTYPES.has(a.subtype)) continue;
+      const cur = a.currency;
+      const native = Number(a.closing) || 0;
+      const inBase = Number(a.closingInBase) || 0;
+      if (Math.abs(native) < 1e-9) continue;
+      const bucket = byCurrency.get(cur) || { currency: cur, native: 0, inBase: 0 };
+      bucket.native += native;
+      bucket.inBase += inBase;
+      byCurrency.set(cur, bucket);
+    }
+  }
+  const totalBase = [...byCurrency.values()].reduce((s, b) => s + b.inBase, 0);
+  const list = [...byCurrency.values()]
+    .map((b) => ({ ...b, sharePct: totalBase > 0.01 ? (b.inBase / totalBase) * 100 : 0 }))
+    .sort((a, b) => Math.abs(b.inBase) - Math.abs(a.inBase));
+  return { byCurrency: list, totalBase };
+}
+
+// Coverage ratio: сколько раз cash покрывает обязательства перед клиентами.
+// > 1.0 — комфортно; 0.8–1.0 — тонко; < 0.8 — недостаточно ликвидности.
+function buildCoverage(ctx, win, officeFilter) {
+  const tb = trialBalance(ctx, { from: win.from, to: win.to }, officeFilter);
+  let cashTotal = 0;
+  let obligationsTotal = 0; // в base, положительный знак = «должны клиентам»
+  for (const cls of tb.classes) {
+    for (const a of cls.accounts) {
+      if (a.type === "asset" && CASH_SUBTYPES.has(a.subtype)) {
+        cashTotal += Number(a.closingInBase) || 0;
+      } else if (a.type === "liability" && a.subtype === "customer_liab") {
+        // У liability Cr-normal: closingInBase отрицательный (Dr−Cr).
+        // Сумма обязательств = |closing| (минус-знак отбрасываем для display).
+        obligationsTotal += Math.abs(Number(a.closingInBase) || 0);
+      }
+    }
+  }
+  const ratio = obligationsTotal > 0.01 ? cashTotal / obligationsTotal : null;
+  return { cashTotal, obligationsTotal, ratio };
 }
 
 // Окно предыдущего периода такой же длины (для сравнения).
@@ -246,7 +331,7 @@ function PrevDelta({ current, previous, baseCurrency }) {
   );
 }
 
-function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, toggle }) {
+function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, toggle, perOffice, findOffice }) {
   const open = expanded.has(id);
   const netToneCls = data.netBase < 0 ? "text-rose-600" : data.netBase > 0 ? "text-emerald-600" : "text-slate-600";
   const Icon = meta.icon || Minus;
@@ -300,6 +385,40 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                 })}
               <div className="border-t border-slate-200 my-1" />
             </div>
+          )}
+          {/* Per-office breakdown — только в Operating и только в режиме «все офисы» */}
+          {id === "operating" && perOffice && perOffice.length > 0 && (
+            <details className="text-[11.5px]">
+              <summary className="cursor-pointer text-slate-500 hover:text-slate-800 py-1 inline-flex items-center gap-1">
+                <Building2 className="w-3 h-3" />
+                по офисам ({perOffice.length})
+              </summary>
+              <table className="w-full mt-1">
+                <thead>
+                  <tr className="text-[10px] text-slate-400 uppercase tracking-wider">
+                    <th className="text-left py-1 font-bold">Офис</th>
+                    <th className="text-right py-1 font-bold">Транзакций</th>
+                    <th className="text-right py-1 font-bold">Нетто (base)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {perOffice.map((o) => {
+                    const name = o.officeId
+                      ? (findOffice?.(o.officeId)?.name || o.officeId.slice(0, 8))
+                      : "Без офиса";
+                    return (
+                      <tr key={o.officeId || "__none__"} className="border-t border-slate-100">
+                        <td className="py-1 text-slate-700">{name}</td>
+                        <td className="py-1 text-right tabular-nums text-slate-500">{o.txCount}</td>
+                        <td className={`py-1 text-right tabular-nums font-semibold ${o.netBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {fmtSignedBase(o.netBase, baseCurrency)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </details>
           )}
           {data.byKind.size === 0 ? (
             <div className="text-[12px] text-slate-400 py-1">Движений в этой секции нет за период.</div>
@@ -390,6 +509,7 @@ function doCsvExport(cf, prevCf, baseCurrency, periodLabel) {
 
 export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
   const { t } = useTranslation();
+  const { findOffice } = useOffices();
   const [period, setPeriodState] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_cashflow_period") || "month"; } catch { return "month"; }
   });
@@ -406,6 +526,8 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
 
   const cf = useMemo(() => buildCashFlow(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const prevCf = useMemo(() => buildCashFlow(ctx, prevWin, officeFilter), [ctx, prevWin, officeFilter]);
+  const fx = useMemo(() => buildFxExposure(ctx, win, officeFilter), [ctx, win, officeFilter]);
+  const cov = useMemo(() => buildCoverage(ctx, win, officeFilter), [ctx, win, officeFilter]);
 
   const [expanded, setExpanded] = useState(() => new Set(["operating"]));
   const toggle = (key) => setExpanded((prev) => {
@@ -437,11 +559,17 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
           {t("trv2_cf_empty")}
         </Card>
       ) : (
+        <>
+        {/* Top metrics — управленческая сводка: сделки/маржа + coverage. */}
+        <MetricsCard cf={cf} cov={cov} baseCurrency={baseCurrency} />
+
         <Card className="!p-0">
           <CategorySection
             id="operating" meta={SECTION_META.operating} data={cf.sections.operating}
             prevNet={prevCf.sections.operating.netBase}
             baseCurrency={baseCurrency} t={t} expanded={expanded} toggle={toggle}
+            perOffice={officeFilter === "all" ? cf.perOffice : null}
+            findOffice={findOffice}
           />
           <CategorySection
             id="investing" meta={SECTION_META.investing} data={cf.sections.investing}
@@ -485,7 +613,126 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
             )}
           </div>
         </Card>
+
+        {/* FX exposure — нетто-позиция по валютам на конец периода */}
+        <FxExposureCard fx={fx} baseCurrency={baseCurrency} />
+        </>
       )}
+    </div>
+  );
+}
+
+// ─── MetricsCard ───────────────────────────────────────────────────────
+// Карточка управленческих метрик: сделки, оборот, маржа, средний чек,
+// Coverage ratio (cash покрывает обязательства перед клиентами).
+function MetricsCard({ cf, cov, baseCurrency }) {
+  const deals = cf.deals;
+  const covOk = cov.ratio == null || cov.ratio >= 1.0;
+  const covWarn = cov.ratio != null && cov.ratio < 1.0 && cov.ratio >= 0.8;
+  const covIcon = covOk ? ShieldCheck : ShieldAlert;
+  const CovIcon = covIcon;
+  return (
+    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Metric
+          icon={TrendingUp}
+          iconWrapCls="bg-emerald-50 text-emerald-600"
+          label="Сделок"
+          value={deals.count.toLocaleString("ru-RU")}
+          sub={deals.count > 0 ? `avg ${fmtBaseAmount(deals.avgDealSize, baseCurrency)}` : "—"}
+        />
+        <Metric
+          icon={ArrowDownRight}
+          iconWrapCls="bg-emerald-50 text-emerald-600"
+          label="Оборот"
+          value={fmtBaseAmount(deals.turnoverBase, baseCurrency)}
+          sub="клиентские поступления (gross)"
+        />
+        <Metric
+          icon={ArrowUpDown}
+          iconWrapCls={deals.marginBase >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}
+          label="Маржа"
+          value={fmtSignedBase(deals.marginBase, baseCurrency)}
+          sub={deals.marginPct != null ? `${deals.marginPct >= 0 ? "+" : ""}${deals.marginPct.toFixed(2)}%` : "—"}
+          tone={deals.marginBase < 0 ? "rose" : "emerald"}
+        />
+        <Metric
+          icon={covIcon}
+          iconWrapCls={covOk ? "bg-emerald-50 text-emerald-600" : covWarn ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}
+          label="Coverage"
+          value={cov.ratio != null ? `${cov.ratio.toFixed(2)}×` : "—"}
+          sub={
+            cov.obligationsTotal > 0.01
+              ? `${fmtBaseAmount(cov.cashTotal, baseCurrency)} / ${fmtBaseAmount(cov.obligationsTotal, baseCurrency)}`
+              : "обязательств нет"
+          }
+          tone={covOk ? "emerald" : covWarn ? "amber" : "rose"}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate" }) {
+  const valueToneCls =
+    tone === "emerald" ? "text-emerald-700"
+    : tone === "rose" ? "text-rose-700"
+    : tone === "amber" ? "text-amber-700"
+    : "text-slate-900";
+  return (
+    <div className="flex items-start gap-2.5">
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconWrapCls}`}>
+        <Icon className="w-4 h-4" strokeWidth={2.5} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-[10px] text-slate-500 uppercase tracking-wide font-bold">{label}</div>
+        <div className={`text-[18px] font-bold tabular-nums leading-tight ${valueToneCls}`}>{value}</div>
+        <div className="text-[10.5px] text-slate-400 tabular-nums truncate" title={sub}>{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── FxExposureCard ────────────────────────────────────────────────────
+// На конец периода: сколько у нас в каждой валюте (cash equivalents),
+// доля каждой в общем cash-портфеле — видеть валютный риск.
+function FxExposureCard({ fx, baseCurrency }) {
+  if (!fx.byCurrency.length) return null;
+  return (
+    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Globe className="w-4 h-4 text-slate-500" />
+        <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
+          Валютная позиция на конец периода
+        </h3>
+        <span className="text-[11px] text-slate-400 ml-auto">
+          Σ ≈ {fmtBaseAmount(fx.totalBase, baseCurrency)}
+        </span>
+      </div>
+      <div className="space-y-1">
+        {fx.byCurrency.map((b) => (
+          <div key={b.currency} className="flex items-center gap-3 text-[12.5px]">
+            <span className="font-bold text-slate-700 w-12 shrink-0">{b.currency}</span>
+            <span className="tabular-nums text-slate-800 w-32 shrink-0">{fmtSignedCur(b.native, b.currency)}</span>
+            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden min-w-[80px]">
+              <div
+                className={`h-full ${b.inBase >= 0 ? "bg-emerald-400" : "bg-rose-400"}`}
+                style={{ width: `${Math.min(100, Math.abs(b.sharePct))}%` }}
+              />
+            </div>
+            <span className="text-slate-500 text-[11px] tabular-nums w-12 text-right shrink-0">
+              {b.sharePct.toFixed(0)}%
+            </span>
+            <span className="text-slate-500 text-[11.5px] tabular-nums w-24 text-right shrink-0">
+              ≈ {fmtSignedBase(b.inBase, baseCurrency)}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 pt-2 border-t border-slate-100 text-[10.5px] text-slate-400 leading-snug">
+        Если в одной валюте сильный перевес (например 70% в USDT) — валютный риск:
+        падение этой валюты ощутимо ударит по капиталу.
+      </div>
     </div>
   );
 }
