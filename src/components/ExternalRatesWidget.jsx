@@ -463,27 +463,48 @@ function PerPairRow({
       <span className="text-[13.5px] font-bold tracking-wide w-[64px] shrink-0 text-slate-700">
         {formatPair(pair)}
       </span>
-      <div className="relative shrink-0">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={spread}
-          onChange={(e) => onSpreadChange(e.target.value)}
-          placeholder="0"
-          title="Спред % — на сколько разводим купим/продадим относительно mid"
-          className={`w-[54px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
-            hasSpread
-              ? "bg-emerald-50 border-emerald-200 focus:border-emerald-400"
-              : "bg-slate-50 border-slate-200 focus:border-slate-400"
-          }`}
-        />
-        <span
-          className={`absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
-            hasSpread ? "text-emerald-600" : "text-slate-400"
-          }`}
+      <div className="relative shrink-0 inline-flex items-center gap-0.5">
+        {/* Sign-toggle: «±» — флипает знак текущего спреда (для случаев
+            когда у клиента надо НЕ задирать а наоборот подвинуть курс
+            «в его пользу»). Особенно нужен на мобильной decimal-клавиатуре
+            где нет минуса. */}
+        <button
+          type="button"
+          onClick={() => {
+            const s = String(spread ?? "").trim();
+            if (!s || s === "-") return;
+            const next = s.startsWith("-") ? s.slice(1) : "-" + s;
+            onSpreadChange(next);
+          }}
+          title="Перевернуть знак спреда (плюс ↔ минус)"
+          className="w-5 h-[22px] rounded text-[11px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
         >
-          %
-        </span>
+          ±
+        </button>
+        <div className="relative">
+          {/* inputMode='text' — даём полную клавиатуру на мобиле, чтобы
+              можно было набрать минус. На десктопе ничем не отличается. */}
+          <input
+            type="text"
+            inputMode="text"
+            value={spread}
+            onChange={(e) => onSpreadChange(e.target.value)}
+            placeholder="0"
+            title="Спред % — на сколько разводим купим/продадим относительно mid. Может быть отрицательным (тогда КУПИМ выше mid а ПРОДАДИМ ниже)."
+            className={`w-[58px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
+              hasSpread
+                ? "bg-emerald-50 border-emerald-200 focus:border-emerald-400"
+                : "bg-slate-50 border-slate-200 focus:border-slate-400"
+            }`}
+          />
+          <span
+            className={`absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
+              hasSpread ? "text-emerald-600" : "text-slate-400"
+            }`}
+          >
+            %
+          </span>
+        </div>
       </div>
       <BuySellCell
         label="КУПИМ"
