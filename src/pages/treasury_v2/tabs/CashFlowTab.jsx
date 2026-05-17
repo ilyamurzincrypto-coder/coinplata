@@ -22,7 +22,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import {
   ChevronRight, ChevronDown, ArrowUpDown, Briefcase, Banknote,
   ArrowUpRight, ArrowDownRight, Minus, Download, Building2,
-  TrendingUp, ShieldCheck, ShieldAlert, Globe,
+  TrendingUp, ShieldCheck, ShieldAlert, Globe, Info, Activity,
 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { trialBalance, pnlForPeriod } from "../../../lib/treasury/v2selectors.js";
@@ -273,6 +273,35 @@ function buildCoverage(ctx, win, officeFilter) {
   return { cashTotal, obligationsTotal, ratio };
 }
 
+// Daily buckets: для каждого дня периода считаем netto cash flow (по cash
+// equivalents). Возвращает массив { dateKey: "YYYY-MM-DD", netBase }.
+// Используется для sparkline-визуализации активности.
+function buildDailyFlow(ctx, win, officeFilter) {
+  const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
+  const txEffMs = new Map((ctx.transactions || []).map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
+  const fromMs = new Date(win.from).getTime();
+  const toMs = new Date(win.to).getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+  // Pre-fill дней нулями для непрерывного sparkline.
+  const buckets = new Map();
+  for (let t = fromMs; t <= toMs; t += dayMs) {
+    const key = new Date(t).toISOString().slice(0, 10);
+    buckets.set(key, 0);
+  }
+  for (const e of ctx.entries || []) {
+    const acc = accById.get(e.accountId);
+    if (!isCash(acc) || !passesOffice(acc, officeFilter)) continue;
+    const ts = txEffMs.has(e.transactionId) ? txEffMs.get(e.transactionId) : new Date(e.createdAt).getTime();
+    if (ts < fromMs || ts > toMs) continue;
+    const amt = Number(e.amount) || 0;
+    const signedNative = e.direction === "dr" ? amt : -amt;
+    const signedBase = ctx.toBase(signedNative, e.currency) || 0;
+    const key = new Date(ts).toISOString().slice(0, 10);
+    buckets.set(key, (buckets.get(key) || 0) + signedBase);
+  }
+  return [...buckets.entries()].map(([dateKey, netBase]) => ({ dateKey, netBase }));
+}
+
 // Окно предыдущего периода такой же длины (для сравнения).
 function previousWindow(win) {
   const from = new Date(win.from).getTime();
@@ -285,6 +314,42 @@ function previousWindow(win) {
 
 function kindLabel(kind, t) {
   return t(`trv2_journal_type_${kind}`, kind);
+}
+
+// Маленькая info-иконка с native-tooltip (title=) — даём подсказки на
+// неочевидных метриках без отдельной библиотеки tooltip'ов.
+function InfoTip({ text, className = "" }) {
+  return (
+    <span
+      title={text}
+      className={`inline-flex items-center text-slate-300 hover:text-slate-500 cursor-help ${className}`}
+    >
+      <Info className="w-3 h-3" />
+    </span>
+  );
+}
+
+// Sparkline ежедневного cash flow. Высота баров пропорциональна
+// |max| из всех дней. Цвет: emerald = inflow (>0), rose = outflow (<0).
+function Sparkline({ days, baseCurrency }) {
+  if (!days || days.length === 0) return null;
+  const maxAbs = Math.max(0.01, ...days.map((d) => Math.abs(d.netBase)));
+  return (
+    <div className="flex items-end gap-px h-10 min-w-[100px]">
+      {days.map((d) => {
+        const heightPct = Math.max(2, (Math.abs(d.netBase) / maxAbs) * 100);
+        const positive = d.netBase >= 0;
+        return (
+          <div
+            key={d.dateKey}
+            title={`${d.dateKey}: ${d.netBase >= 0 ? "+" : "−"}${Math.abs(d.netBase).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`}
+            className={`flex-1 min-w-[3px] rounded-t-[1px] ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
+            style={{ height: `${heightPct}%` }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 function Card({ children, className = "" }) {
@@ -331,7 +396,7 @@ function PrevDelta({ current, previous, baseCurrency }) {
   );
 }
 
-function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, toggle, perOffice, findOffice }) {
+function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, toggle, perOffice, findOffice, daily }) {
   const open = expanded.has(id);
   const netToneCls = data.netBase < 0 ? "text-rose-600" : data.netBase > 0 ? "text-emerald-600" : "text-slate-600";
   const Icon = meta.icon || Minus;
@@ -365,6 +430,21 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
       </div>
       {open && (
         <div className="px-4 py-2 bg-slate-50/30 space-y-2">
+          {/* Operating sparkline — ежедневная активность за период */}
+          {id === "operating" && daily && daily.length > 1 && (
+            <div className="bg-white border border-slate-100 rounded-[10px] px-3 py-2 flex items-center gap-3">
+              <div className="flex items-center gap-1 text-[10px] text-slate-500 uppercase font-bold tracking-wider shrink-0">
+                <Activity className="w-3 h-3" />
+                Дневная активность
+              </div>
+              <div className="flex-1 min-w-0">
+                <Sparkline days={daily} baseCurrency={baseCurrency} />
+              </div>
+              <div className="text-[10px] text-slate-400 shrink-0">
+                {daily.length} {daily.length === 1 ? "день" : daily.length < 5 ? "дня" : "дней"}
+              </div>
+            </div>
+          )}
           {/* Operating — direct-method подгруппы */}
           {id === "operating" && data.bySubgroup && data.bySubgroup.size > 0 && (
             <div className="space-y-1">
@@ -528,6 +608,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
   const prevCf = useMemo(() => buildCashFlow(ctx, prevWin, officeFilter), [ctx, prevWin, officeFilter]);
   const fx = useMemo(() => buildFxExposure(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const cov = useMemo(() => buildCoverage(ctx, win, officeFilter), [ctx, win, officeFilter]);
+  const daily = useMemo(() => buildDailyFlow(ctx, win, officeFilter), [ctx, win, officeFilter]);
 
   const [expanded, setExpanded] = useState(() => new Set(["operating"]));
   const toggle = (key) => setExpanded((prev) => {
@@ -570,6 +651,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
             baseCurrency={baseCurrency} t={t} expanded={expanded} toggle={toggle}
             perOffice={officeFilter === "all" ? cf.perOffice : null}
             findOffice={findOffice}
+            daily={daily}
           />
           <CategorySection
             id="investing" meta={SECTION_META.investing} data={cf.sections.investing}
@@ -640,6 +722,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
           label="Сделок"
           value={deals.count.toLocaleString("ru-RU")}
           sub={deals.count > 0 ? `avg ${fmtBaseAmount(deals.avgDealSize, baseCurrency)}` : "—"}
+          tip="Количество клиентских сделок за период (deal / exchange). Avg = средний размер сделки (gross приход)."
         />
         <Metric
           icon={ArrowDownRight}
@@ -647,6 +730,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
           label="Оборот"
           value={fmtBaseAmount(deals.turnoverBase, baseCurrency)}
           sub="клиентские поступления (gross)"
+          tip="Σ всех клиентских поступлений (Dr на cash от deal / exchange). Это валовой оборот, не прибыль."
         />
         <Metric
           icon={ArrowUpDown}
@@ -655,6 +739,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
           value={fmtSignedBase(deals.marginBase, baseCurrency)}
           sub={deals.marginPct != null ? `${deals.marginPct >= 0 ? "+" : ""}${deals.marginPct.toFixed(2)}%` : "—"}
           tone={deals.marginBase < 0 ? "rose" : "emerald"}
+          tip="Доходы (спред + комиссия) минус расходы (сетевые/обменные fee'и) за период. Та же цифра, что в P&L. % считается от оборота."
         />
         <Metric
           icon={covIcon}
@@ -667,13 +752,14 @@ function MetricsCard({ cf, cov, baseCurrency }) {
               : "обязательств нет"
           }
           tone={covOk ? "emerald" : covWarn ? "amber" : "rose"}
+          tip="Сколько раз наш кэш покрывает обязательства перед клиентами. ≥ 1.0× — комфортно (можем закрыть всё). 0.8–1.0× — тонко. < 0.8× — недостаточно ликвидности, есть риск не выдать клиентам."
         />
       </div>
     </div>
   );
 }
 
-function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate" }) {
+function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate", tip }) {
   const valueToneCls =
     tone === "emerald" ? "text-emerald-700"
     : tone === "rose" ? "text-rose-700"
@@ -685,7 +771,10 @@ function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate" }) 
         <Icon className="w-4 h-4" strokeWidth={2.5} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] text-slate-500 uppercase tracking-wide font-bold">{label}</div>
+        <div className="text-[10px] text-slate-500 uppercase tracking-wide font-bold inline-flex items-center gap-1">
+          {label}
+          {tip && <InfoTip text={tip} />}
+        </div>
         <div className={`text-[18px] font-bold tabular-nums leading-tight ${valueToneCls}`}>{value}</div>
         <div className="text-[10.5px] text-slate-400 tabular-nums truncate" title={sub}>{sub}</div>
       </div>
@@ -705,6 +794,7 @@ function FxExposureCard({ fx, baseCurrency }) {
         <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
           Валютная позиция на конец периода
         </h3>
+        <InfoTip text="Нетто-баланс по каждой валюте в cash equivalents (cash + bank + crypto). Если в одной валюте сильный перевес (>50%) — валютный риск: падение этой валюты ощутимо ударит по капиталу. Для обменника норма — разные валюты пропорционально объёмам сделок." />
         <span className="text-[11px] text-slate-400 ml-auto">
           Σ ≈ {fmtBaseAmount(fx.totalBase, baseCurrency)}
         </span>
