@@ -12,6 +12,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
+import BalanceSubLine from "./balances/BalanceSubLine.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -173,9 +174,13 @@ function DeltaPair({ today, yesterday, currency, size = "sm", title }) {
 // ------- UI: one currency row (Total / Reserved / Available) -------
 
 // Строго: name слева, сумма справа, available-зеленый только если > 0 и без reserved.
-// Compact пакет: иконка | название+сеть | сумма (h2) + ≈USD · сегодня · вчера (caption).
-// Высота строки ~44px. Zero-row (amount < 0.01) — иконка и сумма muted,
-// USD/дельта-строка не рендерится (показывать нечего).
+// Compact пакет: иконка | название+сеть | сумма (h2) + toggle-sub-line.
+// Высота строки ~44px. Zero-row (amount < 0.01) — иконка muted, сумма
+// muted-soft, sub-line не рендерится.
+//
+// rowKeyPrefix — стабильный префикс (officeId:groupKey), на его базе
+// формируется ID для BalanceSubLine localStorage. Без префикса USD в
+// Cash и USD в Bank разных офисов переключались бы вместе.
 function AssetRow({
   name,
   subtitle,         // optional network/sub-label, рендерится inline mono tag
@@ -186,11 +191,11 @@ function AssetRow({
   deltaYesterday,
   inBase,           // USD/EUR эквивалент native amount (число) — опционально
   base,             // тикер базовой валюты для рендера USD-эквивалента
+  rowKeyPrefix = "",
 }) {
   const hasReserved = reserved > 0;
   const isZero = Math.abs(amount || 0) < 0.01;
-  const showBase = !isZero && inBase != null && base && base !== currency;
-  const showDelta = !isZero && (delta !== 0 || deltaYesterday !== 0);
+  const rowId = `${rowKeyPrefix}:${currency}:${subtitle || ""}`;
   return (
     <div className="grid grid-cols-[32px_1fr_auto] items-center gap-3 px-1 py-2 border-b border-border-soft last:border-b-0">
       <div className={isZero ? "opacity-50" : ""}>
@@ -204,29 +209,23 @@ function AssetRow({
           </span>
         )}
       </div>
-      <div className="text-right flex flex-col leading-tight">
+      <div className="text-right flex flex-col items-end leading-tight gap-0.5">
         <div className={`font-mono tabular text-h2 font-bold ${isZero ? "text-muted-soft" : "text-ink"}`}>
           {curSymbol(currency)}{fmt(amount, currency)}
         </div>
-        {!isZero && (showBase || showDelta || hasReserved) && (
-          <div className="text-caption text-muted mt-0.5 inline-flex items-baseline gap-1.5 justify-end flex-wrap">
-            {showBase && (
-              <span className="font-mono tabular">
-                ≈ {curSymbol(base)}{fmt(inBase, base)}
-              </span>
-            )}
-            {showBase && (showDelta || hasReserved) && <span className="text-muted-soft">·</span>}
-            {showDelta && (
-              <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} size="sm" />
-            )}
-            {hasReserved && (
-              <>
-                {showDelta && <span className="text-muted-soft">·</span>}
-                <span className="font-mono tabular text-warning">
-                  −{fmt(reserved, currency)} pending
-                </span>
-              </>
-            )}
+        {!isZero && (
+          <BalanceSubLine
+            rowId={rowId}
+            usdEquivalent={inBase}
+            baseCcy={base}
+            nativeCcy={currency}
+            deltaToday={delta}
+            deltaYesterday={deltaYesterday}
+          />
+        )}
+        {!isZero && hasReserved && (
+          <div className="text-caption font-mono tabular text-warning">
+            −{fmt(reserved, currency)} pending
           </div>
         )}
       </div>
@@ -257,6 +256,7 @@ function GroupCard({
   emptyText,
   currency,
   base,           // ← для USD-эквивалентов в строках
+  rowKeyPrefix = "",   // ← стабильный префикс для localStorage в BalanceSubLine
   split = false,
   globalTotal,
   globalDelta,
@@ -334,6 +334,7 @@ function GroupCard({
               deltaYesterday={r.deltaYesterday}
               inBase={r.inBase}
               base={base}
+              rowKeyPrefix={rowKeyPrefix}
             />
           ))
         )}
@@ -484,6 +485,7 @@ function OfficeBlock({
               totalDeltaYesterday={cryptoDeltaYUsdt}
               currency="USDT"
               base={base}
+              rowKeyPrefix={`${office.id}:crypto`}
               emptyText="No crypto accounts"
               split
               globalTotal={globalCryptoTotal}
@@ -499,6 +501,7 @@ function OfficeBlock({
               totalDeltaYesterday={cashDeltaYBase}
               currency={base}
               base={base}
+              rowKeyPrefix={`${office.id}:cash`}
               emptyText="No cash accounts"
             />
             <GroupCard
@@ -510,6 +513,7 @@ function OfficeBlock({
               totalDeltaYesterday={bankDeltaYBase}
               currency={base}
               base={base}
+              rowKeyPrefix={`${office.id}:bank`}
               emptyText="No bank accounts"
             />
           </div>
