@@ -1,5 +1,6 @@
 // src/pages/treasury_v2/TreasuryShell.jsx
 import React, { useState, useMemo, useEffect } from "react";
+import { HelpCircle } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useLedger } from "../../store/ledger.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
@@ -36,7 +37,7 @@ const BASE_TABS = [
 // list right away, no tab switch). See JournalTab.jsx.
 const TABS = BASE_TABS;
 
-export default function TreasuryShell() {
+export default function TreasuryShell({ onOpenHelp = null }) {
   const { t } = useTranslation();
   const { accounts, balances, transactions, entries, loading, sinceIso, extendWindow, counterpartyName, counterpartyOptions } = useLedger();
   // useBaseCurrency() exposes the base code as `base`; alias it to baseCurrency
@@ -86,7 +87,19 @@ export default function TreasuryShell() {
     <div className="min-h-[calc(100vh-56px)] flex flex-col">
       <main className="flex-1 max-w-[1300px] w-full mx-auto px-6 py-6 space-y-5">
         <header className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-[24px] font-bold tracking-tight">{t("trv2_title")}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[24px] font-bold tracking-tight">{t("trv2_title")}</h1>
+            {onOpenHelp && (
+              <button
+                type="button"
+                onClick={() => onOpenHelp({ sectionId: "treasury", subId: activeTab })}
+                title={`Справка по разделу «${t(TABS.find((x) => x.id === activeTab)?.labelKey || "trv2_title")}»`}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <OfficePicker value={officeFilter} onChange={setOffice} />
             <span className="text-[12px] text-slate-400">{t("trv2_data_freshness").replace("{time}", freshTime)} · base: {baseCurrency}</span>

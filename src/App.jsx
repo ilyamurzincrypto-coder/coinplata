@@ -122,6 +122,14 @@ function Root() {
     setPage("cashier");
   };
 
+  // Контекстная справка: страница вызывает onOpenHelp({sectionId, subId?}),
+  // перекидываем на InfoPage с предраскрытой нужной секцией.
+  const [infoInitialSection, setInfoInitialSection] = useState(null);
+  const handleOpenHelp = (target) => {
+    setInfoInitialSection(target || null);
+    setPage("info");
+  };
+
   // Если на текущую страницу нет прав — отправляем на cashier.
   // «Капитал» больше не существует как страница — редиректим на Казначейство.
   useEffect(() => {
@@ -215,10 +223,16 @@ function Root() {
       )}
       {page === "accounts" && canShow("accounts") && <AccountsPage />}
       {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
-      {page === "treasury" && canShow("capital") && <TreasuryPage />}
+      {page === "treasury" && canShow("capital") && <TreasuryPage onOpenHelp={handleOpenHelp} />}
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
-      {page === "info" && canShow("info") && <InfoPage onNavigate={handlePageChange} onTryDeal={handleTryDeal} />}
+      {page === "info" && canShow("info") && (
+        <InfoPage
+          onNavigate={handlePageChange}
+          onTryDeal={handleTryDeal}
+          initialTarget={infoInitialSection}
+        />
+      )}
       {/* Глобальный «?» FAB — глоссарий доступен с любой страницы. На странице
           Справки не дублируем — там и так есть полный поиск/контент. */}
       {page !== "info" && (

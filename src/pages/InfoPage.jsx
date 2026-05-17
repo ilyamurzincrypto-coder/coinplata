@@ -594,9 +594,9 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
 }
 
 // ─── Main InfoPage ─────────────────────────────────────────────────────
-export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
+export default function InfoPage({ onNavigate = null, onTryDeal = null, initialTarget = null }) {
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState(INFO_SECTIONS[0]?.id || "");
+  const [activeId, setActiveId] = useState(() => initialTarget?.sectionId || INFO_SECTIONS[0]?.id || "");
   const [forceExpandAll, setForceExpandAll] = useState(false);
   const [readSet, setReadSet] = useState(() => {
     try {
@@ -656,6 +656,21 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
+
+  // Если запросили открыть конкретную секцию (контекстная справка) — скроллим
+  // к ней после рендера.
+  useEffect(() => {
+    if (initialTarget?.sectionId) {
+      const id = initialTarget.sectionId;
+      // requestAnimationFrame чтобы refs успели подцепиться
+      requestAnimationFrame(() => {
+        const el = sectionRefs.current.get(id);
+        if (el?.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        setActiveId(id);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTarget]);
 
   // Observer — обновляет activeId при скролле
   useEffect(() => {
