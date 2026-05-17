@@ -278,13 +278,15 @@ function GroupCard({
         {curSymbol(currency)}{fmt(headerTotal, currency)}
         <span className="text-caption text-muted-soft font-semibold ml-1.5">{currency}</span>
       </div>
-      <div className="mt-1">
+      {/* Delta «сегодня» / «вчера» столбиком под балансом */}
+      <div className="mt-2 flex justify-end">
         <DeltaPair
           today={headerDelta}
           yesterday={headerDeltaY}
           currency={currency}
           size="sm"
-          title={split ? "Общий по всем офисам · сегодня / вчера" : "Сегодня / вчера (до 00:00)"}
+          direction="column"
+          title={split ? "Общий по всем офисам · сегодня и вчера" : "Сегодня и вчера (до 00:00)"}
         />
       </div>
     </>
@@ -299,7 +301,9 @@ function GroupCard({
     <div className="bg-surface rounded-card p-card flex flex-col h-full min-h-[220px]">
       {headerBlock}
       <div className="mt-3 border-t border-border-soft" />
-      <div className="mt-2 overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
+      {/* Список активов — без max-height/скролла: показываем все строки
+          сразу, юзер видит остатки без прокручивания. */}
+      <div className="mt-2 flex-1">
         {rows.length === 0 ? (
           <div className="text-caption text-muted italic py-4 text-center">{emptyText}</div>
         ) : (
