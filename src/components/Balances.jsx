@@ -142,11 +142,20 @@ function deltaClass(value) {
 //   direction="row" (default) — в строку через слэш (для headerBlock, SummaryBadge)
 //   direction="column" — столбиком: today сверху, yesterday снизу, без слэша
 //     (для AssetRow под основной суммой)
+//
+// size: xs (11/10) | sm (12/10) | md (13/11) — поднял baseline после того
+// как юзер сказал что 8/10px подписи нечитаемо мелкие.
 function DeltaPair({ today, yesterday, currency, size = "xs", title, direction = "row" }) {
   const todayStr = fmtDelta(today, currency);
   const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
-  const sizeCls = size === "sm" ? "text-[11px]" : "text-[10px]";
-  const labelCls = size === "sm" ? "text-[9px]" : "text-[8px]";
+  const sizeCls =
+    size === "md" ? "text-body-sm" :
+    size === "sm" ? "text-caption" :
+    "text-[11px]";
+  const labelCls =
+    size === "md" ? "text-[11px]" :
+    size === "sm" ? "text-[10px]" :
+    "text-[10px]";
 
   if (direction === "column") {
     return (
@@ -196,21 +205,21 @@ function DeltaPair({ today, yesterday, currency, size = "xs", title, direction =
 function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYesterday }) {
   const hasReserved = reserved > 0;
   return (
-    <div className="flex items-center gap-3 py-2 border-b border-border-soft last:border-b-0">
+    <div className="flex items-center gap-2.5 py-1.5 border-b border-border-soft last:border-b-0">
       <CurrencyIcon ccy={currency} size="sm" />
       <div className="min-w-0 flex-1">
-        <div className="text-body-sm font-semibold text-ink truncate">{name}</div>
+        <div className="text-body-sm font-semibold text-ink truncate leading-tight">{name}</div>
         {subtitle && (
           <div className="text-[10px] text-muted truncate font-mono tracking-wide uppercase">{subtitle}</div>
         )}
       </div>
-      <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
-        <span className="text-body-sm font-semibold font-mono tabular text-ink">
+      <div className="text-right shrink-0 flex flex-col items-end gap-0">
+        <span className="text-body-sm font-semibold font-mono tabular text-ink leading-tight">
           {curSymbol(currency)}{fmt(amount, currency)}
         </span>
-        <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} direction="column" />
+        <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} direction="column" size="sm" />
         {hasReserved && (
-          <div className="text-[10px] text-warning font-mono tabular">
+          <div className="text-[10px] text-warning font-mono tabular leading-tight mt-0.5">
             −{fmt(reserved, currency)} pending
           </div>
         )}
@@ -284,7 +293,7 @@ function GroupCard({
           today={headerDelta}
           yesterday={headerDeltaY}
           currency={currency}
-          size="sm"
+          size="md"
           direction="column"
           title={split ? "Общий по всем офисам · сегодня и вчера" : "Сегодня и вчера (до 00:00)"}
         />
