@@ -621,3 +621,28 @@ export const INFO_SECTIONS = [
     ],
   },
 ];
+
+// ─── Glossary helpers ──────────────────────────────────────────────────
+// Парсим запись "Term (alias[, alias2]) — определение" в { primary, aliases,
+// definition }. Используется и в InfoPage (карточки) и в GlossaryFab
+// (глобальный поиск по терминам с любой страницы).
+export function parseGlossaryEntry(entry) {
+  const dashRe = /\s+—\s+/;
+  const idx = entry.search(dashRe);
+  const head = idx >= 0 ? entry.slice(0, idx).trim() : entry.trim();
+  const definition = idx >= 0 ? entry.slice(idx).replace(dashRe, "").trim() : "";
+  const aliasMatch = head.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  const primary = aliasMatch ? aliasMatch[1].trim() : head;
+  const aliases = aliasMatch
+    ? aliasMatch[2].split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+  return { primary, aliases, definition };
+}
+
+// Плоский список терминов из секции «glossary». Каждый элемент:
+//   { primary: "Движение", aliases: ["movement"], definition: "атомарное..." }
+export const GLOSSARY_TERMS = (() => {
+  const g = INFO_SECTIONS.find((s) => s.id === "glossary");
+  if (!g || !Array.isArray(g.can)) return [];
+  return g.can.map(parseGlossaryEntry).filter((t) => t.primary);
+})();

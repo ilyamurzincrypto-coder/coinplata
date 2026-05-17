@@ -9,6 +9,7 @@ import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import InfoPage from "./pages/InfoPage.jsx";
+import GlossaryFab from "./components/GlossaryFab.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -218,6 +219,11 @@ function Root() {
       <CommandPalette onNavigate={handlePageChange} />
       {page === "settings" && canShow("settings") && <SettingsPage />}
       {page === "info" && canShow("info") && <InfoPage onNavigate={handlePageChange} onTryDeal={handleTryDeal} />}
+      {/* Глобальный «?» FAB — глоссарий доступен с любой страницы. На странице
+          Справки не дублируем — там и так есть полный поиск/контент. */}
+      {page !== "info" && (
+        <GlossaryFab onOpenInfo={() => handlePageChange("info")} />
+      )}
     </div>
   );
 }
