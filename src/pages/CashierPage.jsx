@@ -1,6 +1,6 @@
 // src/pages/CashierPage.jsx
 import React, { useState } from "react";
-import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowLeftRight } from "lucide-react";
+import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowRightLeft } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
@@ -16,7 +16,7 @@ import DealForm from "../components/cashier/DealForm.jsx";
 // Это НЕ трогает леджер: ExchangeForm пишет сделки через адаптер в тот же
 // ledger.create_deal_v2 — Казначейство/проводки работают как прежде.
 const USE_NEW_DEAL_FORM = false;
-import OtcDealWizard from "../components/OtcDealWizard.jsx";
+import TransferModal from "../components/accounts/TransferModal.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
 // PendingTransfersBar (legacy public.transfers, frozen) and EditTransactionModal
@@ -54,7 +54,7 @@ export default function CashierPage({
   const [balanceScope, setBalanceScope] = useState("selected");
   const [justCreatedId, setJustCreatedId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [otcWizardOpen, setOtcWizardOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [cashClosureOpen, setCashClosureOpen] = useState(false);
   // RatesSidebar expanded state — поднимаем сюда чтобы grid columns
   // dashboard mode реактивно сужались/расширялись. Compact = top-6
@@ -468,8 +468,11 @@ export default function CashierPage({
             </aside>
 
             {/* CTA "+ New exchange" / "Resume" — большая основная кнопка
-                с подзаголовком «С КЛИЕНТОМ». Справа — компактная OTC
-                иконка-кнопка для сделки с партнёром. */}
+                с подзаголовком «С КЛИЕНТОМ». Справа — компактная кнопка
+                «Перемещение» для перевода между нашими счетами (это самое
+                частое действие после сделки с клиентом; OTC-сделки с
+                партнёрами создаются из обычной формы сделки через выбор
+                партнёрского счёта в IN/OUT). */}
             <section className="min-w-0 lg:[grid-area:cta] flex items-stretch gap-2">
               <div className="flex-1 min-w-0">
             {formMounted ? (
@@ -530,13 +533,13 @@ export default function CashierPage({
             )}
               </div>
               <button
-                onClick={() => setOtcWizardOpen(true)}
-                title="Открыть OTC wizard — сделка с партнёром, multi-payment, все 16 IN/OUT сценариев"
+                onClick={() => setTransferModalOpen(true)}
+                title="Создать перемещение — перевод между нашими счетами (касса → банк, офис → офис, кросс-валютный с курсом)"
                 className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 transition-colors shrink-0"
               >
-                <ArrowLeftRight className="w-5 h-5 mb-1" strokeWidth={2.5} />
-                <span className="text-[11px] font-bold tracking-tight">OTC</span>
-                <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">с партнёром</span>
+                <ArrowRightLeft className="w-5 h-5 mb-1" strokeWidth={2.5} />
+                <span className="text-[11px] font-bold tracking-tight">Перемещение</span>
+                <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">между счетами</span>
               </button>
             </section>
 
@@ -654,13 +657,9 @@ export default function CashierPage({
         </div>
       </div>
 
-      <OtcDealWizard
-        open={otcWizardOpen}
-        currentOffice={currentOffice}
-        onClose={() => setOtcWizardOpen(false)}
-        onCreated={(dealId) => {
-          if (dealId) setJustCreatedId(String(dealId));
-        }}
+      <TransferModal
+        open={transferModalOpen}
+        onClose={() => setTransferModalOpen(false)}
       />
 
       {/* CashClosureModal вынесен в Header через CashClosureBadge — здесь
