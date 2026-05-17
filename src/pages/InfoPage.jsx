@@ -15,7 +15,7 @@ import {
   ChevronRight, ChevronDown, Play, ArrowUpRight, Search, X,
   Wallet, TrendingUp, Banknote, Users, Building2, Settings as SettingsIcon,
   ShieldCheck, BookOpen, Sparkles, CheckCircle2, Clock, FileText,
-  Lightbulb, BookMarked, Hash,
+  Lightbulb, BookMarked, Hash, Printer,
 } from "lucide-react";
 import { INFO_SECTIONS } from "./info/content.js";
 
@@ -199,6 +199,40 @@ function Bullets({ items, ordered, query }) {
   );
 }
 
+// Парсим "Term (опц. короткое уточнение) — определение" → { term, definition }.
+// Если разделитель «—» не найден — возвращаем всё как determination, term=entry.
+function parseGlossaryEntry(entry) {
+  const dashRe = /\s+—\s+/;
+  const idx = entry.search(dashRe);
+  if (idx < 0) return { term: entry, definition: "" };
+  const term = entry.slice(0, idx).trim();
+  const definition = entry.slice(idx).replace(dashRe, "").trim();
+  return { term, definition };
+}
+
+// Рендер глоссария — карточки «термин · определение» вместо обычного bullet'а.
+function GlossaryGrid({ items, query }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1.5">
+      {items.map((entry, i) => {
+        const { term, definition } = parseGlossaryEntry(entry);
+        return (
+          <div key={i} className="rounded-[10px] bg-slate-50/60 border border-slate-100 px-3 py-2">
+            <div className="text-[12.5px] font-bold text-slate-900">
+              <Highlight text={term} query={query} />
+            </div>
+            {definition && (
+              <div className="text-[11.5px] text-slate-600 mt-0.5 leading-snug">
+                <Highlight text={definition} query={query} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function JournalMini({ lines }) {
   return (
     <table className="w-full mt-2 text-[11.5px] bg-slate-50/70 rounded-[8px] overflow-hidden">
@@ -333,7 +367,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
     <section
       ref={sectionRef}
       id={`info-section-${section.id}`}
-      className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden scroll-mt-20"
+      className="info-card bg-white rounded-[14px] border border-slate-200/70 overflow-hidden scroll-mt-20"
     >
       {/* Accent stripe сверху */}
       <div className={`h-1 ${meta.accentBg}`} />
@@ -383,8 +417,12 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
               <p className="text-[12.5px] text-slate-600"><span className="font-medium text-slate-700">С чем связано: </span><Highlight text={section.related} query={query} /></p>
               {Array.isArray(section.can) && section.can.length > 0 && (
                 <>
-                  <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Что умеет</div>
-                  <Bullets items={section.can} query={query} />
+                  <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                    {section.id === "glossary" ? "Термины" : "Что умеет"}
+                  </div>
+                  {section.id === "glossary"
+                    ? <GlossaryGrid items={section.can} query={query} />
+                    : <Bullets items={section.can} query={query} />}
                 </>
               )}
             </div>
@@ -426,7 +464,7 @@ function greetingByTime() {
   return "Доброй ночи";
 }
 
-function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJumpTo }) {
+function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJumpTo, onPrint }) {
   const greeting = greetingByTime();
   return (
     <section className="bg-gradient-to-br from-violet-50 via-indigo-50 to-emerald-50 rounded-[18px] border border-slate-200/70 p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_16px_rgba(15,23,42,0.06)]">
@@ -482,10 +520,21 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           <Clock className="w-3.5 h-3.5 text-slate-400" />
           обновлено {RECENT_UPDATES[0]?.date}
         </span>
+        {onPrint && (
+          <button
+            type="button"
+            onClick={onPrint}
+            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-[8px] text-[11.5px] font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 print:hidden"
+            title="Раскрыть все секции и открыть диалог печати"
+          >
+            <Printer className="w-3 h-3" strokeWidth={2.5} />
+            Печать / PDF
+          </button>
+        )}
       </div>
 
-      {/* What's new */}
-      <div className="mt-4">
+      {/* What's new (скрывается при печати) */}
+      <div className="mt-4 info-hero-extras">
         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 inline-flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-amber-500" />
           Что нового
@@ -548,6 +597,7 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
 export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState(INFO_SECTIONS[0]?.id || "");
+  const [forceExpandAll, setForceExpandAll] = useState(false);
   const [readSet, setReadSet] = useState(() => {
     try {
       const raw = localStorage.getItem(READ_KEY);
@@ -556,6 +606,17 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
   });
   const searchRef = useRef(null);
   const sectionRefs = useRef(new Map());
+
+  // «Печать / PDF» — раскрываем все секции, ждём reflow, потом window.print().
+  // После dialog'а закрытия — оставляем как было (user может закрыть руками).
+  const handlePrint = () => {
+    setForceExpandAll(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        try { window.print(); } catch {}
+      });
+    });
+  };
 
   // Cmd/Ctrl + K, Esc — toggle search
   useEffect(() => {
@@ -622,6 +683,14 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
 
   return (
     <InfoActionsCtx.Provider value={{ onNavigate, onTryDeal }}>
+      <style>{`
+        @media print {
+          /* На печати — узкий моноблок, без sidebar / hero декора. */
+          .info-toc-sidebar, .info-hero-extras { display: none !important; }
+          .info-grid { display: block !important; }
+          .info-card { break-inside: avoid; box-shadow: none !important; border-color: #e2e8f0 !important; margin-bottom: 8px; }
+        }
+      `}</style>
       <main className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6 space-y-5">
         <HeroSection
           query={query}
@@ -630,15 +699,18 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
           readCount={readSet.size}
           totalCount={INFO_SECTIONS.length}
           onJumpTo={jumpTo}
+          onPrint={handlePrint}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
-          <TocSidebar
-            sections={INFO_SECTIONS}
-            readSet={readSet}
-            activeId={activeId}
-            onClickItem={jumpTo}
-          />
+        <div className="info-grid grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-5">
+          <div className="info-toc-sidebar">
+            <TocSidebar
+              sections={INFO_SECTIONS}
+              readSet={readSet}
+              activeId={activeId}
+              onClickItem={jumpTo}
+            />
+          </div>
 
           <div className="min-w-0 space-y-3">
             {filtered.length === 0 ? (
@@ -658,7 +730,7 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null }) {
                 <SectionCard
                   key={s.id}
                   section={s}
-                  defaultOpen={i === 0 && !query}
+                  defaultOpen={(i === 0 && !query) || forceExpandAll}
                   query={query}
                   isRead={readSet.has(s.id)}
                   markRead={markRead}
