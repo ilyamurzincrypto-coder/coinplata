@@ -83,9 +83,12 @@ describe("DashboardTab — funds tree", () => {
 });
 
 describe("DashboardTab — support cards", () => {
-  it("renders the P&L card and the Σ Дт = Σ Кт identity indicator", () => {
+  it("renders Revenue/Expense sections in funds tree and identity indicator", () => {
     renderTab();
-    expect(screen.getByText("trv2_dash_pnl")).toBeInTheDocument();
+    // PnLCard убран — revenue/expense теперь секции внутри Funds Tree.
+    // Слова встречаются и как title секции и как label в итогах — берём all.
+    expect(screen.getAllByText("trv2_dash_revenue").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("trv2_dash_expense").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("trv2_dash_capital")).toBeInTheDocument();
     // fixture identity is off (no period close)
     expect(screen.getByText("trv2_dash_identity_off")).toBeInTheDocument();
