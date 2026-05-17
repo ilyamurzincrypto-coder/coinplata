@@ -9,7 +9,7 @@
 // Pending сделки пишут movements с reserved:true — это меняет reservedOf автоматически.
 
 import React, { useMemo, useState, useCallback } from "react";
-import { Wallet, Banknote, Building2, Coins, Clock, Layers, CheckCircle2, Lock } from "lucide-react";
+import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -51,7 +51,8 @@ function groupOfficeAccounts(
   deltaOf,
   dayStartMs,
   yesterdayStartMs,
-  currencyDict
+  currencyDict,
+  toBase  // (amount, currency) => number — для inBase в каждой строке
 ) {
   const cashMap = new Map();
   const bankMap = new Map();
@@ -100,6 +101,7 @@ function groupOfficeAccounts(
         available: v.total - v.reserved,
         delta: v.delta,
         deltaYesterday: v.deltaYesterday,
+        inBase: toBase ? toBase(v.total, currency) : null,
       }))
       .sort((a, b) => b.total - a.total);
 
@@ -113,6 +115,7 @@ function groupOfficeAccounts(
         available: v.total - v.reserved,
         delta: v.delta,
         deltaYesterday: v.deltaYesterday,
+        inBase: toBase ? toBase(v.total, currency) : null,
       }))
       .sort((a, b) => b.total - a.total),
   }));
@@ -138,60 +141,28 @@ function deltaClass(value) {
   return "text-muted";
 }
 
-// Рендер пары "сегодня / вчера".
-//   direction="row" (default) — в строку через слэш (для headerBlock, SummaryBadge)
-//   direction="column" — столбиком: today сверху, yesterday снизу, без слэша
-//     (для AssetRow под основной суммой)
-//
-// size: xs (11/10) | sm (12/10) | md (13/11) — поднял baseline после того
-// как юзер сказал что 8/10px подписи нечитаемо мелкие.
-function DeltaPair({ today, yesterday, currency, size = "xs", title, direction = "row" }) {
+// Рендер пары «X сегодня · Y вчера» — всегда в одну строку через middot.
+// Дельты — мелкими в caption-уровне, чтобы помещаться под суммой.
+//   size: sm (caption 12px) | md (body-sm 13px). По умолчанию sm.
+function DeltaPair({ today, yesterday, currency, size = "sm", title }) {
   const todayStr = fmtDelta(today, currency);
   const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
-  const sizeCls =
-    size === "md" ? "text-body-sm" :
-    size === "sm" ? "text-caption" :
-    "text-[11px]";
-  const labelCls =
-    size === "md" ? "text-[11px]" :
-    size === "sm" ? "text-[10px]" :
-    "text-[10px]";
-
-  if (direction === "column") {
-    return (
-      <span
-        className={`flex flex-col items-end ${sizeCls} font-mono font-semibold tabular leading-tight`}
-        title={title || (yStr ? "сегодня и вчера" : "Изменение с начала дня")}
-      >
-        <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(today)}`}>
-          {todayStr}
-          <span className={`${labelCls} font-semibold opacity-70`}>сегодня</span>
-        </span>
-        {yStr && (
-          <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
-            {yStr}
-            <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
-          </span>
-        )}
-      </span>
-    );
-  }
-
+  const sizeCls = size === "md" ? "text-body-sm" : "text-caption";
   return (
     <span
-      className={`inline-flex items-baseline gap-1 ${sizeCls} font-mono font-semibold tabular`}
-      title={title || (yStr ? "сегодня / вчера" : "Изменение с начала дня")}
+      className={`inline-flex items-baseline gap-1.5 ${sizeCls} font-mono font-semibold tabular`}
+      title={title || (yStr ? "Дельта сегодня · вчера" : "Дельта с начала дня")}
     >
-      <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(today)}`}>
+      <span className={`inline-flex items-baseline gap-1 ${deltaClass(today)}`}>
         {todayStr}
-        <span className={`${labelCls} font-semibold opacity-70`}>сегодня</span>
+        <span className="opacity-70 font-normal">сегодня</span>
       </span>
       {yStr && (
         <>
-          <span className="text-muted-soft font-normal">/</span>
-          <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
+          <span className="text-muted-soft font-normal">·</span>
+          <span className={`inline-flex items-baseline gap-1 ${deltaClass(yesterday)}`}>
             {yStr}
-            <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
+            <span className="opacity-70 font-normal">вчера</span>
           </span>
         </>
       )}
@@ -202,25 +173,60 @@ function DeltaPair({ today, yesterday, currency, size = "xs", title, direction =
 // ------- UI: one currency row (Total / Reserved / Available) -------
 
 // Строго: name слева, сумма справа, available-зеленый только если > 0 и без reserved.
-function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYesterday }) {
+// Compact пакет: иконка | название+сеть | сумма (h2) + ≈USD · сегодня · вчера (caption).
+// Высота строки ~44px. Zero-row (amount < 0.01) — иконка и сумма muted,
+// USD/дельта-строка не рендерится (показывать нечего).
+function AssetRow({
+  name,
+  subtitle,         // optional network/sub-label, рендерится inline mono tag
+  amount,
+  currency,
+  reserved,
+  delta,
+  deltaYesterday,
+  inBase,           // USD/EUR эквивалент native amount (число) — опционально
+  base,             // тикер базовой валюты для рендера USD-эквивалента
+}) {
   const hasReserved = reserved > 0;
+  const isZero = Math.abs(amount || 0) < 0.01;
+  const showBase = !isZero && inBase != null && base && base !== currency;
+  const showDelta = !isZero && (delta !== 0 || deltaYesterday !== 0);
   return (
-    <div className="flex items-center gap-2.5 py-1.5 border-b border-border-soft last:border-b-0">
-      <CurrencyIcon ccy={currency} size="sm" />
-      <div className="min-w-0 flex-1">
-        <div className="text-body-sm font-semibold text-ink truncate leading-tight">{name}</div>
+    <div className="grid grid-cols-[32px_1fr_auto] items-center gap-3 px-1 py-2 border-b border-border-soft last:border-b-0">
+      <div className={isZero ? "opacity-50" : ""}>
+        <CurrencyIcon ccy={currency} size="sm" />
+      </div>
+      <div className="text-body-sm font-semibold text-ink flex items-center gap-2 min-w-0">
+        <span className="truncate">{name}</span>
         {subtitle && (
-          <div className="text-[10px] text-muted truncate font-mono tracking-wide uppercase">{subtitle}</div>
+          <span className="text-[10px] font-bold font-mono text-muted tracking-wide uppercase shrink-0">
+            {subtitle}
+          </span>
         )}
       </div>
-      <div className="text-right shrink-0 flex flex-col items-end gap-0">
-        <span className="text-body-sm font-semibold font-mono tabular text-ink leading-tight">
+      <div className="text-right flex flex-col leading-tight">
+        <div className={`font-mono tabular text-h2 font-bold ${isZero ? "text-muted-soft" : "text-ink"}`}>
           {curSymbol(currency)}{fmt(amount, currency)}
-        </span>
-        <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} direction="column" size="sm" />
-        {hasReserved && (
-          <div className="text-[10px] text-warning font-mono tabular leading-tight mt-0.5">
-            −{fmt(reserved, currency)} pending
+        </div>
+        {!isZero && (showBase || showDelta || hasReserved) && (
+          <div className="text-caption text-muted mt-0.5 inline-flex items-baseline gap-1.5 justify-end flex-wrap">
+            {showBase && (
+              <span className="font-mono tabular">
+                ≈ {curSymbol(base)}{fmt(inBase, base)}
+              </span>
+            )}
+            {showBase && (showDelta || hasReserved) && <span className="text-muted-soft">·</span>}
+            {showDelta && (
+              <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} size="sm" />
+            )}
+            {hasReserved && (
+              <>
+                {showDelta && <span className="text-muted-soft">·</span>}
+                <span className="font-mono tabular text-warning">
+                  −{fmt(reserved, currency)} pending
+                </span>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -250,6 +256,7 @@ function GroupCard({
   totalDeltaYesterday,
   emptyText,
   currency,
+  base,           // ← для USD-эквивалентов в строках
   split = false,
   globalTotal,
   globalDelta,
@@ -287,15 +294,14 @@ function GroupCard({
         {curSymbol(currency)}{fmt(headerTotal, currency)}
         <span className="text-caption text-muted-soft font-semibold ml-1.5">{currency}</span>
       </div>
-      {/* Delta «сегодня» / «вчера» столбиком под балансом */}
-      <div className="mt-2 flex justify-end">
+      {/* Дельта сегодня · вчера — одной строкой через middot. */}
+      <div className="mt-1.5">
         <DeltaPair
           today={headerDelta}
           yesterday={headerDeltaY}
           currency={currency}
-          size="md"
-          direction="column"
-          title={split ? "Общий по всем офисам · сегодня и вчера" : "Сегодня и вчера (до 00:00)"}
+          size="sm"
+          title={split ? "Общий по всем офисам · сегодня · вчера" : "Сегодня · вчера (до 00:00)"}
         />
       </div>
     </>
@@ -326,6 +332,8 @@ function GroupCard({
               reserved={r.reserved}
               delta={r.delta}
               deltaYesterday={r.deltaYesterday}
+              inBase={r.inBase}
+              base={base}
             />
           ))
         )}
@@ -349,6 +357,7 @@ function cryptoRowsFromGroups(cryptoGroups) {
         reserved: n.reserved,
         delta: n.delta,
         deltaYesterday: n.deltaYesterday,
+        inBase: n.inBase,
       });
     });
   });
@@ -383,9 +392,10 @@ function OfficeBlock({
         deltaOf,
         dayStartMs,
         yesterdayStartMs,
-        currencyDict
+        currencyDict,
+        toBase
       ),
-    [accounts, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, currencyDict]
+    [accounts, balanceOf, reservedOf, deltaOf, dayStartMs, yesterdayStartMs, currencyDict, toBase]
   );
 
   const allAccs = accounts.filter((a) => a.active);
@@ -473,6 +483,7 @@ function OfficeBlock({
               totalDelta={cryptoDeltaUsdt}
               totalDeltaYesterday={cryptoDeltaYUsdt}
               currency="USDT"
+              base={base}
               emptyText="No crypto accounts"
               split
               globalTotal={globalCryptoTotal}
@@ -487,6 +498,7 @@ function OfficeBlock({
               totalDelta={cashDeltaBase}
               totalDeltaYesterday={cashDeltaYBase}
               currency={base}
+              base={base}
               emptyText="No cash accounts"
             />
             <GroupCard
@@ -497,6 +509,7 @@ function OfficeBlock({
               totalDelta={bankDeltaBase}
               totalDeltaYesterday={bankDeltaYBase}
               currency={base}
+              base={base}
               emptyText="No bank accounts"
             />
           </div>
@@ -568,6 +581,12 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
     const o = findOffice(currentOffice);
     return o ? [o] : [];
   }, [scope, activeOffices, currentOffice, findOffice]);
+
+  // Кол-во активных счетов в текущем scope — для counter-pill в section header.
+  const accountsInScope = useMemo(() => {
+    if (scope === "all") return accounts.filter((a) => a.active).length;
+    return accounts.filter((a) => a.active && a.officeId === currentOffice).length;
+  }, [accounts, scope, currentOffice]);
 
   // Конверсия крипты в USDT (нативную валюту крипто-блока) — НЕ в USD/EUR.
   // Для USDT → USDT = 1.0 (тривиально), для BTC/ETH → через convert().
@@ -645,69 +664,41 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
 
   return (
     <section className="w-full">
-      {/* Header with 3-metric summary */}
-      <div className="flex items-end justify-between mb-3 gap-3 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Wallet className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
-            <h2 className="text-micro text-muted uppercase">
-              {t("balances")}
-            </h2>
-          </div>
-          <div className="text-body-sm text-ink-soft font-medium flex items-center gap-2 flex-wrap">
+      {/* Section-header: h2 «Балансы» + counter + inline office + controls right.
+          Компактно (~44px), без отдельной sub-строки. */}
+      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+        <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
+          {t("balances")}
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+            {accountsInScope}
+          </span>
+          <span className="text-body-sm text-muted font-normal ml-2 inline-flex items-center gap-1.5 truncate">
             {scope === "selected" ? (
               <>
-                <Building2 className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
-                {findOffice(currentOffice)?.name || "—"}
+                <Building2 className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
+                <span className="truncate">{findOffice(currentOffice)?.name || "—"}</span>
               </>
             ) : (
               <>
-                <Layers className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
-                {t("all_offices")} · {activeOffices.length}
+                <Layers className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
+                <span className="truncate">{t("all_offices")} · {activeOffices.length}</span>
               </>
             )}
-          </div>
+          </span>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Tri-metric summary */}
-          <div className="inline-flex gap-1 bg-surface border border-border rounded-button p-1">
-            <SummaryBadge
-              label="Total"
-              value={grand.total}
-              sym={sym}
-              tone="slate"
-              delta={grand.delta}
-              deltaYesterday={grand.deltaYesterday}
-              deltaCurrency={base}
-            />
-            {grand.hasReserved && (
-              <SummaryBadge label="Pending" value={grand.reserved} sym={sym} tone="amber" icon={Clock} />
-            )}
-            {grand.hasObligations && (
-              <button
-                type="button"
-                onClick={() => setObligationsOpen(true)}
-                className="flex flex-col items-start rounded-badge px-2.5 py-1 text-danger bg-danger-soft hover:bg-danger-soft/70 transition-colors"
-                title="Open obligations — click to settle"
-              >
-                <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
-                  <Lock className="w-2.5 h-2.5" strokeWidth={2} />
-                  Obligations · {openObligationsCount}
-                </div>
-                <div className="text-body-sm font-mono font-semibold tabular">
-                  {sym}{fmt(grand.obligations)}
-                </div>
-              </button>
-            )}
-            <SummaryBadge
-              label="Available"
-              value={grand.available}
-              sym={sym}
-              tone="emerald"
-              icon={CheckCircle2}
-              emphasize
-            />
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {grand.hasObligations && (
+            <button
+              type="button"
+              onClick={() => setObligationsOpen(true)}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-badge bg-danger-soft text-danger text-caption font-semibold hover:bg-danger-soft/70 transition-colors"
+              title="Open obligations — click to settle"
+            >
+              <Lock className="w-3 h-3" strokeWidth={2} />
+              <span>Obligations · {openObligationsCount}</span>
+              <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
+            </button>
+          )}
           <SegmentedControl
             options={[
               { id: "selected", name: t("selected_office") },
@@ -717,15 +708,45 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
             onChange={onScopeChange}
             size="sm"
           />
-          {/* Display currency override — локальный переключатель USD/EUR.
-              Не меняет settings.baseCurrency; только пересчитывает
-              эквиваленты в шапке/блоках балансов. */}
           <SegmentedControl
             options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
             value={displayBase}
             onChange={setDisplayBase}
             size="sm"
           />
+        </div>
+      </div>
+
+      {/* Stat-strip: только Total + Available — крупные числа, дельта одной строкой
+          через middot. Без обёртки в карточку (Stripe-style). */}
+      <div className="grid grid-cols-2 gap-10 pb-5 mb-4 border-b border-border max-w-2xl">
+        <div className="flex flex-col gap-1">
+          <div className="text-micro text-muted uppercase">Total balance</div>
+          <div className="font-mono tabular text-display-lg text-ink leading-none">
+            {sym}{fmt(grand.total)}
+            <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
+          </div>
+          <div className="text-caption">
+            <DeltaPair
+              today={grand.delta}
+              yesterday={grand.deltaYesterday}
+              currency={base}
+              size="sm"
+            />
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <div className="text-micro text-muted uppercase inline-flex items-center gap-1.5">
+            <CheckCircle2 className="w-3 h-3 text-success" strokeWidth={2.2} />
+            Available
+          </div>
+          <div className="font-mono tabular text-display-lg text-ink leading-none">
+            {sym}{fmt(grand.available)}
+            <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
+          </div>
+          <div className="text-caption text-muted">
+            {accountsInScope} счетов{grand.hasReserved ? ` · ${sym}${fmt(grand.reserved)} pending` : ""}
+          </div>
         </div>
       </div>
 
@@ -767,45 +788,3 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
   );
 }
 
-// ------- Header summary badge -------
-
-function SummaryBadge({
-  label,
-  value,
-  sym,
-  tone,
-  icon: Icon,
-  emphasize,
-  delta,
-  deltaYesterday,
-  deltaCurrency,
-}) {
-  const tones = {
-    slate: "text-ink-soft",
-    amber: "text-warning bg-warning-soft",
-    emerald: emphasize ? "text-success bg-success-soft" : "text-success",
-  };
-  const showDelta = delta != null && deltaCurrency;
-  return (
-    <div className={`flex flex-col items-start rounded-badge px-2.5 py-1 ${tones[tone]}`}>
-      <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
-        {Icon && <Icon className="w-2.5 h-2.5" strokeWidth={2} />}
-        {label}
-      </div>
-      <div className="inline-flex items-baseline gap-2">
-        <div className={`font-mono tabular ${emphasize ? "text-body font-bold" : "text-body-sm font-semibold"}`}>
-          {sym}
-          {fmt(value)}
-        </div>
-        {showDelta && (
-          <DeltaPair
-            today={delta}
-            yesterday={deltaYesterday}
-            currency={deltaCurrency}
-            size="xs"
-          />
-        )}
-      </div>
-    </div>
-  );
-}
