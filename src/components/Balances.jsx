@@ -299,12 +299,12 @@ function GroupCard({
     //   низ (white)  = вклад этого офиса (total + assets list)
     // Тот же внешний bordered card → тот же визуальный footprint и высота.
     return (
-      <div className="bg-surface rounded-card p-2 flex flex-col h-full min-h-[220px] gap-2">
-        <div className="bg-accent-bg rounded-card-sm px-3 py-2.5">
+      <div className="bg-surface rounded-card p-card flex flex-col h-full min-h-[220px]">
+        <div className="bg-accent-bg rounded-card-sm px-3 py-2.5 -mx-1 -mt-1">
           {headerBlock}
         </div>
-        <div className="bg-surface-soft rounded-card-sm px-3 py-2 flex flex-col flex-1 min-h-0">
-          <div className="flex items-baseline justify-between mb-1">
+        <div className="mt-3 pt-3 flex flex-col flex-1 min-h-0 border-t border-border-soft">
+          <div className="flex items-baseline justify-between mb-1.5">
             <span className="text-micro text-muted uppercase">
               По офису
             </span>
