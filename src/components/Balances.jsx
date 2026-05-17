@@ -138,13 +138,36 @@ function deltaClass(value) {
   return "text-muted";
 }
 
-// Рендер пары "сегодня / вчера" через слэш с явными подписями
-// и individual цветами. Если yesterday не задан — рендерится только сегодня.
-function DeltaPair({ today, yesterday, currency, size = "xs", title }) {
+// Рендер пары "сегодня / вчера".
+//   direction="row" (default) — в строку через слэш (для headerBlock, SummaryBadge)
+//   direction="column" — столбиком: today сверху, yesterday снизу, без слэша
+//     (для AssetRow под основной суммой)
+function DeltaPair({ today, yesterday, currency, size = "xs", title, direction = "row" }) {
   const todayStr = fmtDelta(today, currency);
   const yStr = yesterday !== undefined ? fmtDelta(yesterday, currency) : null;
   const sizeCls = size === "sm" ? "text-[11px]" : "text-[10px]";
   const labelCls = size === "sm" ? "text-[9px]" : "text-[8px]";
+
+  if (direction === "column") {
+    return (
+      <span
+        className={`flex flex-col items-end ${sizeCls} font-mono font-semibold tabular leading-tight`}
+        title={title || (yStr ? "сегодня и вчера" : "Изменение с начала дня")}
+      >
+        <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(today)}`}>
+          {todayStr}
+          <span className={`${labelCls} font-semibold opacity-70`}>сегодня</span>
+        </span>
+        {yStr && (
+          <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
+            {yStr}
+            <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
+          </span>
+        )}
+      </span>
+    );
+  }
+
   return (
     <span
       className={`inline-flex items-baseline gap-1 ${sizeCls} font-mono font-semibold tabular`}
@@ -181,11 +204,11 @@ function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYest
           <div className="text-[10px] text-muted truncate font-mono tracking-wide uppercase">{subtitle}</div>
         )}
       </div>
-      <div className="text-right shrink-0">
-        <div className="text-body-sm font-semibold font-mono tabular text-ink inline-flex items-baseline gap-1.5">
-          <span>{curSymbol(currency)}{fmt(amount, currency)}</span>
-          <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} />
-        </div>
+      <div className="text-right shrink-0 flex flex-col items-end gap-0.5">
+        <span className="text-body-sm font-semibold font-mono tabular text-ink">
+          {curSymbol(currency)}{fmt(amount, currency)}
+        </span>
+        <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} direction="column" />
         {hasReserved && (
           <div className="text-[10px] text-warning font-mono tabular">
             −{fmt(reserved, currency)} pending
@@ -222,10 +245,6 @@ function GroupCard({
   globalTotal,
   globalDelta,
   globalDeltaYesterday,
-  // Для split-режима — отдельная валюта/значение нижнего "По офису" блока
-  // (Crypto: верх = global USDT, низ = local в USD/EUR base).
-  splitLocalTotal,
-  splitLocalCurrency,
 }) {
   // В split режиме верхний блок показывает GLOBAL значения (по всем офисам).
   // Если global props не переданы — fallback на локальные total/delta.
@@ -236,12 +255,11 @@ function GroupCard({
 
   const headerBlock = (
     <>
-      {/* Header: title */}
+      {/* Header: title + опциональный ALL OFFICES badge (для Crypto, где
+          верхний total = глобальный по всем офисам в USDT). */}
       <div className="flex items-center gap-1.5">
-        <Icon className={`w-3.5 h-3.5 ${split ? "text-accent" : "text-muted"}`} strokeWidth={1.75} />
-        <span className={`text-micro uppercase ${split ? "text-success" : "text-muted"}`}>
-          {title}
-        </span>
+        <Icon className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
+        <span className="text-micro text-muted uppercase">{title}</span>
         {split && (
           <span
             className="inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-[9px] font-bold tracking-wider uppercase"
@@ -255,7 +273,7 @@ function GroupCard({
         </span>
       </div>
 
-      {/* Total amount — one line, right-aligned via block */}
+      {/* Total amount — one line */}
       <div className="mt-2 text-display font-mono tabular text-ink leading-none">
         {curSymbol(currency)}{fmt(headerTotal, currency)}
         <span className="text-caption text-muted-soft font-semibold ml-1.5">{currency}</span>
@@ -272,59 +290,15 @@ function GroupCard({
     </>
   );
 
-  const assetsBlock = (
-    <div className="overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
-      {rows.length === 0 ? (
-        <div className="text-caption text-muted italic py-4 text-center">{emptyText}</div>
-      ) : (
-        rows.map((r, i) => (
-          <AssetRow
-            key={`${r.currency}_${r.subtitle || i}`}
-            name={r.currency}
-            subtitle={r.subtitle}
-            amount={r.total}
-            currency={r.currency}
-            reserved={r.reserved}
-            delta={r.delta}
-            deltaYesterday={r.deltaYesterday}
-          />
-        ))
-      )}
-    </div>
-  );
-
-  if (split) {
-    // Двух-контейнерный layout:
-    //   верх (slate) = общий остаток по всем офисам (globalTotal)
-    //   низ (white)  = вклад этого офиса (total + assets list)
-    // Тот же внешний bordered card → тот же визуальный footprint и высота.
-    return (
-      <div className="bg-surface rounded-card p-card flex flex-col h-full min-h-[220px]">
-        <div className="bg-accent-bg rounded-card-sm px-3 py-2.5 -mx-1 -mt-1">
-          {headerBlock}
-        </div>
-        <div className="mt-3 pt-3 flex flex-col flex-1 min-h-0 border-t border-border-soft">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-micro text-muted uppercase">
-              По офису
-            </span>
-            <span className="text-caption font-mono font-semibold tabular text-ink-soft">
-              {curSymbol(splitLocalCurrency || currency)}
-              {fmt(splitLocalTotal != null ? splitLocalTotal : total, splitLocalCurrency || currency)}
-            </span>
-          </div>
-          {assetsBlock}
-        </div>
-      </div>
-    );
-  }
-
+  // Единый layout для всех трёх карточек (Crypto / Cash / Bank).
+  // ALL OFFICES badge внутри headerBlock — единственное отличие Crypto.
+  // splitLocalTotal/splitLocalCurrency больше не используются — Crypto
+  // показывает globalTotal в верхнем числе, а assets list ниже остаётся
+  // по текущему офису как у Cash/Bank.
   return (
     <div className="bg-surface rounded-card p-card flex flex-col h-full min-h-[220px]">
       {headerBlock}
-      {/* Divider */}
       <div className="mt-3 border-t border-border-soft" />
-      {/* Assets list with scroll */}
       <div className="mt-2 overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
         {rows.length === 0 ? (
           <div className="text-caption text-muted italic py-4 text-center">{emptyText}</div>
@@ -470,8 +444,6 @@ function OfficeBlock({
         const cashTotalBase = sumBase(grouped.cash, "total");
         const bankTotalBase = sumBase(grouped.bank, "total");
         const cryptoTotalUsdt = sumUsdt(cryptoRows, "total");
-        // Per-office crypto в base (USD/EUR) — для нижнего "По офису" блока
-        const cryptoTotalBase = sumBase(cryptoRows, "total");
         const cashDeltaBase = sumBase(grouped.cash, "delta");
         const bankDeltaBase = sumBase(grouped.bank, "delta");
         const cryptoDeltaUsdt = sumUsdt(cryptoRows, "delta");
@@ -493,8 +465,6 @@ function OfficeBlock({
               globalTotal={globalCryptoTotal}
               globalDelta={globalCryptoDelta}
               globalDeltaYesterday={globalCryptoDeltaYesterday}
-              splitLocalTotal={cryptoTotalBase}
-              splitLocalCurrency={base}
             />
             <GroupCard
               title="Cash"
