@@ -332,13 +332,43 @@ function buildPairAnalytics(ctx, win, officeFilter) {
     const bucket = byPair.get(pairKey) || {
       pair: pairKey, fromCur: outCur, toCur: inCur,
       count: 0, turnoverBase: 0, marginBase: 0,
+      txs: [], // топ сделок для drill-down (по марже)
     };
     bucket.count += 1;
     bucket.turnoverBase += inBase;
     bucket.marginBase += revenue;
+    bucket.txs.push({
+      txId, kind, inCur, inBase, outCur, outBase, marginBase: revenue,
+      effectiveDate: new Date(txEffMs.get(txId)).toISOString(),
+    });
     byPair.set(pairKey, bucket);
   }
+  // Сортируем txs внутри каждой пары по |margin| desc, оставляем топ-5.
+  for (const bucket of byPair.values()) {
+    bucket.txs.sort((a, b) => Math.abs(b.marginBase) - Math.abs(a.marginBase));
+    bucket.txs = bucket.txs.slice(0, 5);
+  }
   return [...byPair.values()].sort((a, b) => Math.abs(b.marginBase) - Math.abs(a.marginBase));
+}
+
+// Прогноз окончания периода на основе текущего темпа.
+// Если периода ещё не прошло — экстраполируем nettoBase * total/elapsed.
+// Возвращает { applicable, projectedNet, daysElapsed, daysTotal }.
+function buildForecast(win, totalNetBase) {
+  const fromMs = new Date(win.from).getTime();
+  const toMs = new Date(win.to).getTime();
+  const nowMs = Date.now();
+  // Прогноз имеет смысл только если конец периода в будущем И мы внутри окна.
+  if (nowMs <= fromMs || nowMs >= toMs) {
+    return { applicable: false };
+  }
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysElapsed = Math.max(1, Math.ceil((nowMs - fromMs) / dayMs));
+  const daysTotal = Math.max(daysElapsed, Math.ceil((toMs - fromMs) / dayMs));
+  if (daysElapsed >= daysTotal - 0.5) return { applicable: false };
+  const pace = totalNetBase / daysElapsed;
+  const projectedNet = pace * daysTotal;
+  return { applicable: true, projectedNet, daysElapsed, daysTotal, pace };
 }
 
 // Алерты на основе текущей картины. Возвращает массив { severity, title,
@@ -712,6 +742,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
   const daily = useMemo(() => buildDailyFlow(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const pairs = useMemo(() => buildPairAnalytics(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const alerts = useMemo(() => buildAlerts(cf, fx, cov, baseCurrency), [cf, fx, cov, baseCurrency]);
+  const forecast = useMemo(() => buildForecast(win, cf.totalNetBase), [win, cf.totalNetBase]);
 
   const [expanded, setExpanded] = useState(() => new Set(["operating"]));
   const toggle = (key) => setExpanded((prev) => {
@@ -794,6 +825,23 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
                 <div className="text-[15px] font-bold tabular-nums text-slate-900">{fmtBaseAmount(cf.closingBase, baseCurrency)}</div>
               </div>
             </div>
+            {/* Прогноз на конец периода: если период не закрыт, и темп ясен */}
+            {forecast.applicable && (
+              <div className="mt-3 rounded-[10px] border border-indigo-100 bg-indigo-50/40 px-3 py-2 text-[12px] text-indigo-900 flex items-center gap-2 flex-wrap">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" strokeWidth={2.5} />
+                <span className="font-bold uppercase text-[10px] tracking-wider">Прогноз</span>
+                <span>
+                  День {forecast.daysElapsed} из {forecast.daysTotal} — при текущем темпе{" "}
+                  <span className="font-semibold tabular-nums" title={`Дневной пейс: ${fmtSignedBase(forecast.pace, baseCurrency)}`}>
+                    {fmtSignedBase(forecast.pace, baseCurrency)}/день
+                  </span>
+                  {" "}к концу периода будет{" "}
+                  <span className={`font-bold tabular-nums ${forecast.projectedNet < 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                    {fmtSignedBase(forecast.projectedNet, baseCurrency)}
+                  </span>
+                </span>
+              </div>
+            )}
             {cf.internalTxCount > 0 && (
               <div className="mt-2 text-[10.5px] text-slate-400">
                 Внутренние переводы между нашими счетами ({cf.internalTxCount} шт., netto 0) — исключены из отчёта.
@@ -922,7 +970,9 @@ function AlertsBanner({ alerts }) {
 // ─── PairAnalyticsCard ─────────────────────────────────────────────────
 // Какая валютная пара принесла больше всего маржи за период.
 // Сортировка по |marginBase| desc — топ-пары прибыльности видны сразу.
+// Клик по строке пары раскрывает топ-5 её сделок (drill-down).
 function PairAnalyticsCard({ pairs, baseCurrency }) {
+  const [expandedPair, setExpandedPair] = useState(null);
   const top = pairs.slice(0, 8);
   const totalMargin = pairs.reduce((s, p) => s + p.marginBase, 0);
   const totalTurnover = pairs.reduce((s, p) => s + p.turnoverBase, 0);
@@ -934,7 +984,7 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
         <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
           Топ валютных пар по марже
         </h3>
-        <InfoTip text="Сколько маржи принесла каждая пара (что отдали → что получили). Маржа считается из revenue/expense ног сделки. Помогает понять какие пары пушить и где задирать спред." />
+        <InfoTip text="Сколько маржи принесла каждая пара (что отдали → что получили). Маржа считается из revenue/expense ног сделки. Помогает понять какие пары пушить и где задирать спред. Клик по паре — топ-5 её сделок." />
         <span className="text-[11px] text-slate-400 ml-auto">
           Маржа Σ {fmtSignedBase(totalMargin, baseCurrency)} · оборот {fmtBaseAmount(totalTurnover, baseCurrency)}
         </span>
@@ -947,32 +997,66 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
             const widthPct = Math.max(2, (Math.abs(p.marginBase) / maxMargin) * 100);
             const positive = p.marginBase >= 0;
             const marginPct = p.turnoverBase > 0.01 ? (p.marginBase / p.turnoverBase) * 100 : null;
+            const isOpen = expandedPair === p.pair;
             return (
-              <div key={p.pair} className="flex items-center gap-2 text-[12.5px]">
-                <span className="inline-flex items-center gap-1 font-bold text-slate-700 w-28 shrink-0">
-                  {p.fromCur}
-                  <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
-                  {p.toCur}
-                </span>
-                <span className="text-slate-400 text-[11px] tabular-nums w-10 shrink-0">{p.count}×</span>
-                <span className="text-slate-500 text-[11px] tabular-nums w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
-                  {fmtBaseAmount(p.turnoverBase, baseCurrency)}
-                </span>
-                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
-                  <div
-                    className={`h-full ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
-                    style={{ width: `${widthPct}%` }}
-                  />
-                </div>
-                <span className={`text-right tabular-nums font-semibold w-24 shrink-0 ${positive ? "text-emerald-700" : "text-rose-700"}`}>
-                  {fmtSignedBase(p.marginBase, baseCurrency)}
-                </span>
-                {marginPct != null && (
-                  <span className={`text-right tabular-nums text-[10.5px] w-12 shrink-0 ${positive ? "text-emerald-600" : "text-rose-600"}`}>
-                    {positive ? "+" : ""}{marginPct.toFixed(2)}%
+              <React.Fragment key={p.pair}>
+                <div
+                  onClick={() => setExpandedPair(isOpen ? null : p.pair)}
+                  className="flex items-center gap-2 text-[12.5px] cursor-pointer hover:bg-slate-50 rounded-[6px] -mx-1 px-1 py-0.5"
+                >
+                  {isOpen
+                    ? <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                    : <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />}
+                  <span className="inline-flex items-center gap-1 font-bold text-slate-700 w-24 shrink-0">
+                    {p.fromCur}
+                    <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
+                    {p.toCur}
                   </span>
+                  <span className="text-slate-400 text-[11px] tabular-nums w-10 shrink-0">{p.count}×</span>
+                  <span className="text-slate-500 text-[11px] tabular-nums w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
+                    {fmtBaseAmount(p.turnoverBase, baseCurrency)}
+                  </span>
+                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                    <div
+                      className={`h-full ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
+                      style={{ width: `${widthPct}%` }}
+                    />
+                  </div>
+                  <span className={`text-right tabular-nums font-semibold w-24 shrink-0 ${positive ? "text-emerald-700" : "text-rose-700"}`}>
+                    {fmtSignedBase(p.marginBase, baseCurrency)}
+                  </span>
+                  {marginPct != null && (
+                    <span className={`text-right tabular-nums text-[10.5px] w-12 shrink-0 ${positive ? "text-emerald-600" : "text-rose-600"}`}>
+                      {positive ? "+" : ""}{marginPct.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+                {isOpen && p.txs.length > 0 && (
+                  <div className="pl-6 pr-1 pb-1 pt-0.5 bg-slate-50/40 rounded-b-[6px] -mx-1 mb-1">
+                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold py-1">
+                      Топ-{p.txs.length} сделок этой пары по марже
+                    </div>
+                    <table className="w-full text-[11.5px]">
+                      <tbody>
+                        {p.txs.map((tx) => (
+                          <tr key={tx.txId} className="border-t border-slate-100">
+                            <td className="py-1 text-slate-500 tabular-nums w-20">{tx.effectiveDate.slice(0, 10)}</td>
+                            <td className="py-1 text-slate-700">
+                              <span className="tabular-nums">{tx.outBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.outCur}</span>
+                              <ArrowRight className="w-2.5 h-2.5 mx-1 inline text-slate-400" />
+                              <span className="tabular-nums">{tx.inBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.inCur}</span>
+                              <span className="text-slate-400 text-[10px] ml-1">(в base)</span>
+                            </td>
+                            <td className={`py-1 text-right tabular-nums font-semibold ${tx.marginBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                              {fmtSignedBase(tx.marginBase, baseCurrency)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-              </div>
+              </React.Fragment>
             );
           })}
         </div>
