@@ -1,8 +1,18 @@
 // src/components/accounts/TransferModal.jsx
-// Перевод между счетами. Поддерживает cross-currency через явный rate.
+// Перевод между нашими счетами. Два явных поля суммы:
+//   • Сколько отправляем (валюта FROM-счёта)
+//   • Сколько принимаем (валюта TO-счёта)
+//
+// Одна валюта → ввод в одно поле автоматически дублируется во второе.
+// Разные валюты → оба поля редактируются независимо, между ними мелко
+// показывается фактический derived-курс toAmount / fromAmount (для info,
+// не для редактирования).
+//
+// Если to-счёт в другом офисе — обязателен выбор «Ответственного менеджера»
+// принимающей стороны (P2P, перевод pending → confirmed после подтверждения).
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ArrowRight, AlertCircle, Users } from "lucide-react";
+import { ArrowDown, AlertCircle, Users } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import GroupedAccountSelect from "../GroupedAccountSelect.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
@@ -10,7 +20,7 @@ import { useAuth } from "../../store/auth.jsx";
 import { useAudit } from "../../store/audit.jsx";
 import { useRates } from "../../store/rates.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
-import { fmt, curSymbol, multiplyAmount } from "../../utils/money.js";
+import { fmt, curSymbol } from "../../utils/money.js";
 import { officeName } from "../../store/data.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
 import { withToast } from "../../lib/supabaseWrite.js";
@@ -28,7 +38,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const [fromAmount, setFromAmount] = useState("");
-  const [rate, setRate] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  // Какое поле юзер правил последним — чтобы при смене to-счёта (валюта
+  // другая) при необходимости подтянуть рыночный курс от него.
+  const [lastEdited, setLastEdited] = useState(null); // "from" | "to" | null
   const [note, setNote] = useState("");
   const [toManagerId, setToManagerId] = useState("");
   const [busy, setBusy] = useState(false);
@@ -38,7 +51,8 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       setFromId(fromAccount?.id || "");
       setToId("");
       setFromAmount("");
-      setRate("");
+      setToAmount("");
+      setLastEdited(null);
       setNote("");
       setToManagerId("");
     }
@@ -47,14 +61,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   const from = activeAccounts.find((a) => a.id === fromId);
   const to = activeAccounts.find((a) => a.id === toId);
   const sameCurrency = from && to && from.currency === to.currency;
-  const needsRate = from && to && from.currency !== to.currency;
-  // Interoffice = OUT и IN счета принадлежат разным офисам. Тогда требуется
-  // явно выбрать ответственного менеджера на принимающей стороне (P2P).
-  // Transfer пишется как pending → confirmed после подтверждения от него.
+  const crossCurrency = from && to && from.currency !== to.currency;
   const isInterOffice = from && to && from.officeId !== to.officeId;
-  // Кандидаты — active manager/admin/owner принимающего офиса. Если у
-  // юзера есть officeId — фильтруем по нему. Если у нескольких юзеров нет
-  // officeId (admin/owner globally) — тоже добавляем (могут принять везде).
+
+  // Ответственный менеджер: only когда меж-офисный перевод
   const recipientCandidates = useMemo(() => {
     if (!isInterOffice || !to) return [];
     const allowedRoles = new Set(["manager", "admin", "owner"]);
@@ -63,36 +73,48 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       .filter((u) => !u.officeId || u.officeId === to.officeId)
       .map((u) => ({ id: u.id, name: u.name || u.email || u.id }));
   }, [isInterOffice, to, users]);
-  // Auto-pick первого кандидата при смене to-account
   useEffect(() => {
     if (!isInterOffice) {
       setToManagerId("");
       return;
     }
     if (toManagerId && recipientCandidates.find((c) => c.id === toManagerId)) return;
-    if (recipientCandidates.length > 0) {
-      setToManagerId(recipientCandidates[0].id);
-    }
+    if (recipientCandidates.length > 0) setToManagerId(recipientCandidates[0].id);
   }, [isInterOffice, recipientCandidates, toManagerId]);
 
-  // Auto-pull rate для cross-currency
+  // Когда выбраны оба счёта — для кросс-валютного авто-подтянем курс
+  // и заполним то поле которое ещё не трогали юзером. Не перекрываем то
+  // что юзер уже набрал руками.
   useEffect(() => {
-    if (needsRate && from && to && !rate) {
-      const r = getRate(from.currency, to.currency);
-      if (r) setRate(String(r));
+    if (!crossCurrency || !from || !to) return;
+    const fromN = parseFloat(fromAmount) || 0;
+    const toN = parseFloat(toAmount) || 0;
+    const r = getRate(from.currency, to.currency);
+    if (!r || !Number.isFinite(r) || r <= 0) return;
+    if (lastEdited === "from" && fromN > 0 && toN === 0) {
+      setToAmount(String((fromN * r).toFixed(2)));
+    } else if (lastEdited === "to" && toN > 0 && fromN === 0) {
+      setFromAmount(String((toN / r).toFixed(2)));
     }
-  }, [needsRate, from, to, rate, getRate]);
+  }, [crossCurrency, from, to, fromAmount, toAmount, lastEdited, getRate]);
+
+  // Same-currency: ввод в одно поле → дублируется во второе.
+  const onFromChange = (v) => {
+    const cleaned = v.replace(/[^\d.,]/g, "").replace(",", ".");
+    setFromAmount(cleaned);
+    setLastEdited("from");
+    if (sameCurrency) setToAmount(cleaned);
+  };
+  const onToChange = (v) => {
+    const cleaned = v.replace(/[^\d.,]/g, "").replace(",", ".");
+    setToAmount(cleaned);
+    setLastEdited("to");
+    if (sameCurrency) setFromAmount(cleaned);
+  };
 
   const fromAmt = parseFloat(fromAmount) || 0;
-  const rateNum = parseFloat(rate) || 0;
-
-  // Расчёт toAmount
-  const toAmount = useMemo(() => {
-    if (!fromAmt) return 0;
-    if (sameCurrency) return fromAmt;
-    if (needsRate && rateNum > 0) return multiplyAmount(fromAmt, rateNum, 2);
-    return 0;
-  }, [fromAmt, sameCurrency, needsRate, rateNum]);
+  const toAmt = parseFloat(toAmount) || 0;
+  const derivedRate = crossCurrency && fromAmt > 0 && toAmt > 0 ? toAmt / fromAmt : null;
 
   // Validation
   const sameAccount = fromId && toId && fromId === toId;
@@ -104,12 +126,12 @@ export default function TransferModal({ open, fromAccount, onClose }) {
     to &&
     !sameAccount &&
     fromAmt > 0 &&
-    (sameCurrency || (needsRate && rateNum > 0)) &&
-    // Interoffice: получатель-менеджер обязателен
+    toAmt > 0 &&
     (!isInterOffice || !!toManagerId);
 
   const handleSubmit = async () => {
     if (!canSubmit || busy) return;
+    const rateForPayload = sameCurrency ? null : derivedRate;
 
     if (isSupabaseConfigured) {
       setBusy(true);
@@ -120,15 +142,15 @@ export default function TransferModal({ open, fromAccount, onClose }) {
               fromAccountId: from.id,
               toAccountId: to.id,
               fromAmount: fromAmt,
-              toAmount,
-              rate: sameCurrency ? null : rateNum,
+              toAmount: toAmt,
+              rate: rateForPayload,
               note: note.trim(),
               toManagerId: isInterOffice ? toManagerId : null,
             }),
           {
             success: isInterOffice
               ? "Перевод отправлен — ждёт подтверждения получателя"
-              : "Transfer recorded",
+              : "Перевод записан",
             errorPrefix: "Transfer failed",
           }
         );
@@ -138,7 +160,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             action: "create",
             entity: "transfer",
             entityId: String(res.result || ""),
-            summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}${isInterOffice && recipient ? ` · ожидает ${recipient.name}` : ""}`,
+            summary:
+              `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}` +
+              `${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmt, to.currency)} ${to.currency}` + (derivedRate ? ` @ ${derivedRate.toFixed(6)}` : "")}` +
+              `${isInterOffice && recipient ? ` · ожидает ${recipient.name}` : ""}`,
           });
           onClose();
         }
@@ -152,10 +177,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       fromAccountId: from.id,
       toAccountId: to.id,
       fromAmount: fromAmt,
-      toAmount,
+      toAmount: toAmt,
       fromCurrency: from.currency,
       toCurrency: to.currency,
-      rate: sameCurrency ? null : rateNum,
+      rate: rateForPayload,
       note: note.trim(),
       createdBy: currentUser.id,
     });
@@ -163,7 +188,9 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       action: "create",
       entity: "transfer",
       entityId: rec.id,
-      summary: `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmount, to.currency)} ${to.currency} @ ${rateNum}`}`,
+      summary:
+        `${from.name} → ${to.name}: ${curSymbol(from.currency)}${fmt(fromAmt, from.currency)} ${from.currency}` +
+        `${sameCurrency ? "" : ` → ${curSymbol(to.currency)}${fmt(toAmt, to.currency)} ${to.currency}` + (derivedRate ? ` @ ${derivedRate.toFixed(6)}` : "")}`,
     });
     onClose();
   };
@@ -171,10 +198,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
   return (
     <Modal open={open} onClose={onClose} title={t("transfer_title")} width="lg">
       <div className="p-5 space-y-3">
-        {/* From */}
+        {/* From account */}
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("transfer_from")}
+            Откуда (счёт-источник)
           </label>
           <GroupedAccountSelect
             accounts={activeAccounts}
@@ -193,54 +220,27 @@ export default function TransferModal({ open, fromAccount, onClose }) {
           )}
         </div>
 
-        {/* Arrow indicator */}
-        <div className="flex justify-center py-1">
-          <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center">
-            <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-          </div>
-        </div>
-
-        {/* To */}
-        <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("transfer_to")}
-          </label>
-          <GroupedAccountSelect
-            accounts={activeAccounts.filter((a) => a.id !== fromId)}
-            value={toId}
-            onChange={setToId}
-            placeholder={t("select_account")}
-          />
-        </div>
-
-        {sameAccount && (
-          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 flex items-center gap-1.5">
-            <AlertCircle className="w-3.5 h-3.5" />
-            {t("transfer_same_account")}
-          </div>
-        )}
-
-        {/* Amount sent */}
+        {/* Сколько отправляем (OUT) */}
         {from && (
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-              {t("transfer_amount_sent")}
+              Сколько отправляем
             </label>
             <div
-              className={`relative flex items-baseline gap-2 bg-slate-50 rounded-[12px] border-2 transition-all px-4 py-3 ${
-                fromAmount ? (insufficient ? "border-amber-400" : "border-slate-400") : "border-slate-200"
+              className={`relative flex items-baseline gap-2 bg-rose-50/40 rounded-[12px] border-2 transition-all px-4 py-3 ${
+                fromAmount ? (insufficient ? "border-amber-400" : "border-rose-300") : "border-slate-200"
               }`}
             >
-              <span className="text-slate-400 text-[18px] font-semibold">{curSymbol(from.currency)}</span>
+              <span className="text-rose-500 text-[18px] font-semibold">{curSymbol(from.currency)}</span>
               <input
                 type="text"
                 inputMode="decimal"
                 value={fromAmount}
-                onChange={(e) => setFromAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
+                onChange={(e) => onFromChange(e.target.value)}
                 placeholder="0"
                 className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0"
               />
-              <span className="text-slate-400 text-[12px] font-bold tracking-wider">{from.currency}</span>
+              <span className="text-rose-500 text-[12px] font-bold tracking-wider">{from.currency}</span>
             </div>
             {insufficient && (
               <div className="mt-1.5 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1 inline-flex items-center gap-1">
@@ -251,37 +251,87 @@ export default function TransferModal({ open, fromAccount, onClose }) {
           </div>
         )}
 
-        {/* Rate для cross-currency */}
-        {needsRate && (
+        {/* Arrow indicator + derived rate hint при кросс-валютном */}
+        <div className="flex items-center justify-center gap-3 py-1">
+          <div className="w-8 h-8 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center">
+            <ArrowDown className="w-3.5 h-3.5 text-slate-400" strokeWidth={2.5} />
+          </div>
+          {crossCurrency && derivedRate && (
+            <span className="text-[10.5px] text-slate-500 tabular-nums" title="Фактический курс перевода = принимаем / отправляем">
+              1 {from.currency} = {derivedRate.toFixed(derivedRate >= 10 ? 2 : 4)} {to.currency}
+            </span>
+          )}
+        </div>
+
+        {/* To account */}
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            Куда (счёт-получатель)
+          </label>
+          <GroupedAccountSelect
+            accounts={activeAccounts.filter((a) => a.id !== fromId)}
+            value={toId}
+            onChange={setToId}
+            placeholder={t("select_account")}
+          />
+          {to && (
+            <div className="mt-1.5 text-[11px] text-slate-500 tabular-nums">
+              {officeName(to.officeId)}
+            </div>
+          )}
+        </div>
+
+        {sameAccount && (
+          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5" />
+            {t("transfer_same_account")}
+          </div>
+        )}
+
+        {/* Сколько принимаем (IN) */}
+        {to && (
           <div>
             <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-              {t("transfer_rate")} ({from.currency} → {to.currency})
+              Сколько принимаем
+              {sameCurrency && (
+                <span className="ml-2 text-[10px] text-slate-400 normal-case tracking-normal font-normal">
+                  · одна валюта — синхронится с «отправляем»
+                </span>
+              )}
             </label>
-            <input
-              type="text"
-              inputMode="decimal"
-              value={rate}
-              onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
-              placeholder="0.00"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
-            />
-            <p className="text-[11px] text-slate-500 mt-1">{t("transfer_cross_hint")}</p>
+            <div className="relative flex items-baseline gap-2 bg-emerald-50/60 rounded-[12px] border-2 border-emerald-200 px-4 py-3">
+              <span className="text-emerald-600 text-[18px] font-semibold">{curSymbol(to.currency)}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={toAmount}
+                onChange={(e) => onToChange(e.target.value)}
+                placeholder="0"
+                className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0"
+              />
+              <span className="text-emerald-600 text-[12px] font-bold tracking-wider">{to.currency}</span>
+            </div>
+            {crossCurrency && (
+              <p className="text-[10.5px] text-slate-500 mt-1">
+                Кросс-валютный перевод. Введи обе суммы вручную — это и есть курс по факту.
+              </p>
+            )}
           </div>
         )}
 
         {/* Interoffice → ответственный менеджер на принимающей стороне.
             P2P logic (миграция 0052): transfer создаётся как pending,
-            подтверждается выбранным менеджером. Ему приходит уведомление. */}
+            подтверждается выбранным менеджером. */}
         {isInterOffice && (
           <div className="bg-indigo-50/60 border border-indigo-200 rounded-[12px] p-3">
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-indigo-700 mb-1.5 tracking-wide uppercase">
               <Users className="w-3.5 h-3.5" />
-              Ответственный менеджер · {officeName(to.officeId)}
+              Ответственный за принятие · {officeName(to.officeId)}
             </label>
             {recipientCandidates.length === 0 ? (
               <div className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                Нет доступных менеджеров в офисе получателе. Назначьте
+                Нет доступных менеджеров в офисе получателе. Назначь
                 кого-то на этот офис в настройках.
               </div>
             ) : (
@@ -300,34 +350,18 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 </select>
                 <p className="text-[10.5px] text-indigo-700/80 mt-1.5">
                   Перевод отправится со статусом <strong>pending</strong>.
-                  Получатель увидит уведомление и должен подтвердить —
-                  только после этого деньги зачисляются.
+                  Получатель увидит уведомление и подтвердит — только
+                  после этого деньги зачисляются.
                 </p>
               </>
             )}
           </div>
         )}
 
-        {/* Amount received (computed) */}
-        {to && (fromAmt > 0) && (sameCurrency || (needsRate && rateNum > 0)) && (
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-              {t("transfer_amount_received")}
-            </label>
-            <div className="relative flex items-baseline gap-2 bg-emerald-50 rounded-[12px] border-2 border-emerald-300 px-4 py-3">
-              <span className="text-emerald-600 text-[18px] font-semibold">{curSymbol(to.currency)}</span>
-              <div className="flex-1 text-slate-900 tabular-nums text-[22px] font-bold tracking-tight">
-                {fmt(toAmount, to.currency)}
-              </div>
-              <span className="text-emerald-600 text-[12px] font-bold tracking-wider">{to.currency}</span>
-            </div>
-          </div>
-        )}
-
         {/* Note */}
         <div>
           <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
-            {t("topup_note")}
+            Комментарий (необязательно)
           </label>
           <input
             type="text"
