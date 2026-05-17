@@ -20,18 +20,32 @@ import DealsTab from "./tabs/DealsTab.jsx";
 import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
 import CorrespondentsTab from "./tabs/CorrespondentsTab.jsx";
 
+// Порядок вкладок выстроен по частоте использования для обменника:
+//   ОБЗОР:    Дашборд
+//   ОПЕРАЦИИ: Сделки, Платёжный календарь, ДДС  ← менеджер каждый день
+//   БАЛАНС:   Активы, Пассивы, Капитал, Корр-счета  ← на дату
+//   ОТЧЁТЫ:   P&L, Обороты  ← за период для бухгалтера
+//   ИСТОРИЯ:  Журнал  ← все транзакции с проводками
+//
+// `groupStart: true` — после этого таба рисуется тонкий разделитель в
+// tab strip, чтобы границы групп были видны глазом.
 const BASE_TABS = [
-  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab },
-  { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
+  // ── Обзор ──
+  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab, groupStart: true },
+  // ── Операции (управленческое) ──
+  { id: "deals", labelKey: "trv2_tab_deals", component: DealsTab, groupStart: true },
+  { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },
+  { id: "cashflow", labelKey: "trv2_tab_cashflow", component: CashFlowTab },
+  // ── Баланс на дату ──
+  { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab, groupStart: true },
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
-  { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab },
-  { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
-  { id: "cashflow", labelKey: "trv2_tab_cashflow", component: CashFlowTab },
   { id: "correspondents", labelKey: "trv2_tab_correspondents", component: CorrespondentsTab },
-  { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab },
-  { id: "deals", labelKey: "trv2_tab_deals", component: DealsTab },
-  { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },
+  // ── Отчёты за период ──
+  { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab, groupStart: true },
+  { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
+  // ── История ──
+  { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab, groupStart: true },
 ];
 
 // Manual journal entries used to be a standalone tab; they now live as a "+ Ручная
@@ -108,19 +122,26 @@ export default function TreasuryShell({ onOpenHelp = null }) {
           </div>
         </header>
 
-        <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
-          {TABS.map((tab) => {
+        <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 items-center overflow-x-auto">
+          {TABS.map((tab, idx) => {
             const isActive = activeTab === tab.id;
+            // Тонкий вертикальный разделитель ПЕРЕД табом, открывающим
+            // новую логическую группу (кроме самого первого).
+            const showDivider = tab.groupStart && idx > 0;
             return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
-                  isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                }`}
-              >
-                {t(tab.labelKey)}
-              </button>
+              <React.Fragment key={tab.id}>
+                {showDivider && (
+                  <span className="mx-1 w-px h-6 bg-slate-200 shrink-0" aria-hidden />
+                )}
+                <button
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+                    isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  }`}
+                >
+                  {t(tab.labelKey)}
+                </button>
+              </React.Fragment>
             );
           })}
         </div>
