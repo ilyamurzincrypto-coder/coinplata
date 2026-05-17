@@ -11,6 +11,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { Wallet, Banknote, Building2, Coins, Clock, Layers, CheckCircle2, Lock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
+import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import { useAccounts } from "../store/accounts.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
@@ -131,10 +132,10 @@ function fmtDelta(value, currency, opts = {}) {
 }
 
 function deltaClass(value) {
-  if (!Number.isFinite(value)) return "text-slate-400";
-  if (value > 0.01) return "text-emerald-600";
-  if (value < -0.01) return "text-rose-600";
-  return "text-slate-400";
+  if (!Number.isFinite(value)) return "text-muted";
+  if (value > 0.01) return "text-success";
+  if (value < -0.01) return "text-danger";
+  return "text-muted";
 }
 
 // Рендер пары "сегодня / вчера" через слэш с явными подписями
@@ -146,7 +147,7 @@ function DeltaPair({ today, yesterday, currency, size = "xs", title }) {
   const labelCls = size === "sm" ? "text-[9px]" : "text-[8px]";
   return (
     <span
-      className={`inline-flex items-baseline gap-1 ${sizeCls} font-bold tabular-nums`}
+      className={`inline-flex items-baseline gap-1 ${sizeCls} font-mono font-semibold tabular`}
       title={title || (yStr ? "сегодня / вчера" : "Изменение с начала дня")}
     >
       <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(today)}`}>
@@ -155,7 +156,7 @@ function DeltaPair({ today, yesterday, currency, size = "xs", title }) {
       </span>
       {yStr && (
         <>
-          <span className="text-slate-300 font-normal">/</span>
+          <span className="text-muted-soft font-normal">/</span>
           <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
             {yStr}
             <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
@@ -172,20 +173,21 @@ function DeltaPair({ today, yesterday, currency, size = "xs", title }) {
 function AssetRow({ name, subtitle, amount, currency, reserved, delta, deltaYesterday }) {
   const hasReserved = reserved > 0;
   return (
-    <div className="flex items-baseline justify-between gap-2 py-1.5 border-b border-slate-100 last:border-b-0">
+    <div className="flex items-center gap-3 py-2 border-b border-border-soft last:border-b-0">
+      <CurrencyIcon ccy={currency} size="sm" />
       <div className="min-w-0 flex-1">
-        <div className="text-[12px] font-semibold text-slate-800 truncate">{name}</div>
+        <div className="text-body-sm font-semibold text-ink truncate">{name}</div>
         {subtitle && (
-          <div className="text-[10px] text-slate-400 truncate">{subtitle}</div>
+          <div className="text-[10px] text-muted truncate font-mono tracking-wide uppercase">{subtitle}</div>
         )}
       </div>
       <div className="text-right shrink-0">
-        <div className="text-[13px] font-semibold tabular-nums text-slate-900 inline-flex items-baseline gap-1.5">
+        <div className="text-body-sm font-semibold font-mono tabular text-ink inline-flex items-baseline gap-1.5">
           <span>{curSymbol(currency)}{fmt(amount, currency)}</span>
           <DeltaPair today={delta} yesterday={deltaYesterday} currency={currency} />
         </div>
         {hasReserved && (
-          <div className="text-[10px] text-amber-700 tabular-nums">
+          <div className="text-[10px] text-warning font-mono tabular">
             −{fmt(reserved, currency)} pending
           </div>
         )}
@@ -236,29 +238,27 @@ function GroupCard({
     <>
       {/* Header: title */}
       <div className="flex items-center gap-1.5">
-        <Icon className={`w-3.5 h-3.5 ${split ? "text-emerald-500" : "text-slate-400"}`} />
-        <span className={`text-[11px] font-bold tracking-[0.15em] uppercase ${
-          split ? "text-emerald-700" : "text-slate-600"
-        }`}>
+        <Icon className={`w-3.5 h-3.5 ${split ? "text-accent" : "text-muted"}`} strokeWidth={1.75} />
+        <span className={`text-micro uppercase ${split ? "text-success" : "text-muted"}`}>
           {title}
         </span>
         {split && (
           <span
-            className="text-[8px] font-bold text-emerald-700 uppercase tracking-wider px-1 py-px rounded bg-emerald-100 ring-1 ring-emerald-200"
+            className="inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-[9px] font-bold tracking-wider uppercase"
             title="Общий остаток по всем офисам"
           >
             All offices
           </span>
         )}
-        <span className="ml-auto text-[10px] font-semibold text-slate-400 tabular-nums">
+        <span className="ml-auto text-[10px] font-semibold text-muted-soft font-mono tabular">
           {rows.length}
         </span>
       </div>
 
       {/* Total amount — one line, right-aligned via block */}
-      <div className="mt-2 text-[24px] font-bold tabular-nums tracking-tight text-slate-900 leading-none">
+      <div className="mt-2 text-display font-mono tabular text-ink leading-none">
         {curSymbol(currency)}{fmt(headerTotal, currency)}
-        <span className="text-[12px] text-slate-400 font-medium ml-1.5">{currency}</span>
+        <span className="text-caption text-muted-soft font-semibold ml-1.5">{currency}</span>
       </div>
       <div className="mt-1">
         <DeltaPair
@@ -275,7 +275,7 @@ function GroupCard({
   const assetsBlock = (
     <div className="overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
       {rows.length === 0 ? (
-        <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
+        <div className="text-caption text-muted italic py-4 text-center">{emptyText}</div>
       ) : (
         rows.map((r, i) => (
           <AssetRow
@@ -299,16 +299,16 @@ function GroupCard({
     //   низ (white)  = вклад этого офиса (total + assets list)
     // Тот же внешний bordered card → тот же визуальный footprint и высота.
     return (
-      <div className="bg-white border border-slate-200 rounded-[14px] p-2 flex flex-col h-full min-h-[220px] gap-2">
-        <div className="bg-gradient-to-br from-emerald-50 via-indigo-50/40 to-slate-50 border border-emerald-200/60 rounded-[10px] px-3 py-2.5">
+      <div className="bg-surface rounded-card p-2 flex flex-col h-full min-h-[220px] gap-2">
+        <div className="bg-accent-bg rounded-card-sm px-3 py-2.5">
           {headerBlock}
         </div>
-        <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2 flex flex-col flex-1 min-h-0">
+        <div className="bg-surface-soft rounded-card-sm px-3 py-2 flex flex-col flex-1 min-h-0">
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
+            <span className="text-micro text-muted uppercase">
               По офису
             </span>
-            <span className="text-[11px] font-bold tabular-nums text-slate-700">
+            <span className="text-caption font-mono font-semibold tabular text-ink-soft">
               {curSymbol(splitLocalCurrency || currency)}
               {fmt(splitLocalTotal != null ? splitLocalTotal : total, splitLocalCurrency || currency)}
             </span>
@@ -320,14 +320,14 @@ function GroupCard({
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-[14px] p-4 flex flex-col h-full min-h-[220px]">
+    <div className="bg-surface rounded-card p-card flex flex-col h-full min-h-[220px]">
       {headerBlock}
       {/* Divider */}
-      <div className="mt-3 border-t border-slate-200" />
+      <div className="mt-3 border-t border-border-soft" />
       {/* Assets list with scroll */}
       <div className="mt-2 overflow-y-auto flex-1 max-h-[260px] xl:max-h-[440px] 2xl:max-h-[600px]">
         {rows.length === 0 ? (
-          <div className="text-[11px] text-slate-400 italic py-4 text-center">{emptyText}</div>
+          <div className="text-caption text-muted italic py-4 text-center">{emptyText}</div>
         ) : (
           rows.map((r, i) => (
             <AssetRow
@@ -429,11 +429,11 @@ function OfficeBlock({
   return (
     <div className="space-y-3">
       {/* Office header */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-100">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border-soft">
         <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-slate-500" />
-          <h3 className="text-[14px] font-semibold text-slate-900">{office.name}</h3>
-          <span className="text-[11px] text-slate-400">· {allAccs.length} accounts</span>
+          <Building2 className="w-4 h-4 text-muted" strokeWidth={1.75} />
+          <h3 className="text-h3 text-ink">{office.name}</h3>
+          <span className="text-caption text-muted">· {allAccs.length} accounts</span>
         </div>
         {!hideTotals && (
           <div className="flex items-center gap-2 text-[12px] tabular-nums">
@@ -527,15 +527,15 @@ function OfficeBlock({
 
 function MiniStat({ label, value, sym, tone, icon: Icon }) {
   const tones = {
-    slate: "bg-slate-100 text-slate-700",
-    amber: "bg-amber-50 text-amber-700",
-    emerald: "bg-emerald-50 text-emerald-700",
+    slate: "bg-surface-sunk text-ink-soft",
+    amber: "bg-warning-soft text-warning",
+    emerald: "bg-success-soft text-success",
   };
   return (
-    <div className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 ${tones[tone] || tones.slate}`}>
-      {Icon && <Icon className="w-3 h-3" />}
+    <div className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 ${tones[tone] || tones.slate}`}>
+      {Icon && <Icon className="w-3 h-3" strokeWidth={2} />}
       <span className="text-[9px] font-bold uppercase tracking-wider opacity-75">{label}</span>
-      <span className="font-bold">
+      <span className="font-mono font-semibold tabular">
         {sym}
         {fmt(value)}
       </span>
@@ -666,31 +666,28 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       <div className="flex items-end justify-between mb-3 gap-3 flex-wrap">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Wallet className="w-3.5 h-3.5 text-slate-400" />
-            <h2 className="text-[11px] font-semibold text-slate-500 tracking-widest uppercase">
+            <Wallet className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
+            <h2 className="text-micro text-muted uppercase">
               {t("balances")}
             </h2>
           </div>
-          <div className="text-[13px] text-slate-600 font-medium flex items-center gap-2 flex-wrap">
+          <div className="text-body-sm text-ink-soft font-medium flex items-center gap-2 flex-wrap">
             {scope === "selected" ? (
               <>
-                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                <Building2 className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
                 {findOffice(currentOffice)?.name || "—"}
               </>
             ) : (
               <>
-                <Layers className="w-3.5 h-3.5 text-slate-400" />
+                <Layers className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
                 {t("all_offices")} · {activeOffices.length}
               </>
             )}
-            {/* Дельта дня показывается в SummaryBadge «Total» ниже,
-                здесь дубль убран — юзеру одних и тех же чисел в трёх
-                местах было слишком много. */}
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {/* Tri-metric summary */}
-          <div className="inline-flex gap-1 bg-white border border-slate-200 rounded-[10px] p-1">
+          <div className="inline-flex gap-1 bg-surface border border-border rounded-button p-1">
             <SummaryBadge
               label="Total"
               value={grand.total}
@@ -707,14 +704,14 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
               <button
                 type="button"
                 onClick={() => setObligationsOpen(true)}
-                className="flex flex-col items-start rounded-md px-2.5 py-1 text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors"
+                className="flex flex-col items-start rounded-badge px-2.5 py-1 text-danger bg-danger-soft hover:bg-danger-soft/70 transition-colors"
                 title="Open obligations — click to settle"
               >
                 <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
-                  <Lock className="w-2.5 h-2.5" />
+                  <Lock className="w-2.5 h-2.5" strokeWidth={2} />
                   Obligations · {openObligationsCount}
                 </div>
-                <div className="text-[13px] font-semibold tabular-nums">
+                <div className="text-body-sm font-mono font-semibold tabular">
                   {sym}{fmt(grand.obligations)}
                 </div>
               </button>
@@ -751,10 +748,10 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
 
       <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
 
-      {/* Unified container */}
-      <div className="w-full bg-white rounded-[14px] border border-slate-200/70 p-4 md:p-5">
+      {/* Unified container — без border (правила DS: карточка в покое чистая) */}
+      <div className="w-full bg-surface rounded-card p-card md:p-card-lg">
         {officesToRender.length === 0 ? (
-          <div className="py-10 text-center text-[13px] text-slate-400">No active offices</div>
+          <div className="py-10 text-center text-body-sm text-muted">No active offices</div>
         ) : (
           <div className="space-y-6">
             {officesToRender.map((office) => {
@@ -801,19 +798,19 @@ function SummaryBadge({
   deltaCurrency,
 }) {
   const tones = {
-    slate: "text-slate-700",
-    amber: "text-amber-700 bg-amber-50",
-    emerald: emphasize ? "text-emerald-700 bg-emerald-50" : "text-emerald-700",
+    slate: "text-ink-soft",
+    amber: "text-warning bg-warning-soft",
+    emerald: emphasize ? "text-success bg-success-soft" : "text-success",
   };
   const showDelta = delta != null && deltaCurrency;
   return (
-    <div className={`flex flex-col items-start rounded-md px-2.5 py-1 ${tones[tone]}`}>
+    <div className={`flex flex-col items-start rounded-badge px-2.5 py-1 ${tones[tone]}`}>
       <div className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider opacity-75">
-        {Icon && <Icon className="w-2.5 h-2.5" />}
+        {Icon && <Icon className="w-2.5 h-2.5" strokeWidth={2} />}
         {label}
       </div>
       <div className="inline-flex items-baseline gap-2">
-        <div className={`tabular-nums ${emphasize ? "text-[15px] font-bold" : "text-[13px] font-semibold"}`}>
+        <div className={`font-mono tabular ${emphasize ? "text-body font-bold" : "text-body-sm font-semibold"}`}>
           {sym}
           {fmt(value)}
         </div>
