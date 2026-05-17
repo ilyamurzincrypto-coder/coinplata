@@ -4,20 +4,51 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#root {
-  height: 100%;
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    margin: 0;
+    @apply bg-bg text-ink font-sans;
+    /* cv11/ss01/ss03 — улучшают читаемость cyrillic + латиницы (Pretendard
+       и Inter оба поддерживают эти OpenType фичи) */
+    font-feature-settings: "cv11", "ss01", "ss03";
+  }
+  button {
+    font-family: inherit;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+@layer utilities {
+  /* Tabular numerals для чисел в колонках. Применяется в .tabular или
+     автоматически на font-mono — см. ниже. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Все числа в .font-mono / .num получают tnum/zero/ss02 (slashed zero) */
+  .font-mono,
+  .num,
+  [class*="tabular-nums"] {
+    font-feature-settings: "tnum", "ss02", "zero", "cv11";
+  }
+
+  /* Emerald glow вокруг status dot (используется в navbar и live indicators) */
+  .glow-dot {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.8);
+  }
 }
 
-button {
-  font-family: inherit;
+/* ── Legacy keyframes (используются в существующих компонентах) ───────── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
