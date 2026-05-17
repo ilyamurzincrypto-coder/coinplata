@@ -23,33 +23,6 @@ import { useNow } from "../hooks/useNow.js";
 // списка, остальные пары следуют за ними.
 const DASHBOARD_FAV_KEY = "dashboardFavorites";
 
-// Brand-цвета валют для индикатор-точек рядом с тикером.
-// Stablecoins / fiat — близкие к официальным брэндам, чтобы оператор
-// узнавал валюту мгновенно (как на coinpoint, бирже).
-const CURRENCY_DOT = {
-  USDT: "#26A17B",
-  USDC: "#2775CA",
-  USD:  "#1F7D53",
-  EUR:  "#0052B4",
-  TRY:  "#E30A17",
-  RUB:  "#D52B1E",
-  GBP:  "#6F4D8C",
-  CHF:  "#D52B1E",
-  BTC:  "#F7931A",
-  ETH:  "#627EEA",
-  TON:  "#0098EA",
-};
-function CurrencyDot({ code, size = 6 }) {
-  const c = CURRENCY_DOT[code] || "#94a3b8"; // slate-400 fallback
-  return (
-    <span
-      className="inline-block rounded-full shrink-0"
-      style={{ width: size, height: size, background: c }}
-      aria-hidden
-    />
-  );
-}
-
 // Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
 // После гидрации берём реальный динамический список из useRates.allTradePairs.
 // Порядок: USDT первая (мост), затем USD, TRY, EUR — основные рабочие пары.
@@ -434,12 +407,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 >
                   <Star className={`w-3 h-3 ${fav ? "fill-amber-400" : ""}`} />
                 </button>
-                <span className="text-[10.5px] font-bold text-slate-400 tracking-wider uppercase inline-flex items-center gap-1">
-                  <CurrencyDot code={a} />
-                  {a}
-                  <span className="opacity-60">/</span>
-                  <CurrencyDot code={b} />
-                  {b}
+                <span className="text-[10.5px] font-bold text-slate-400 tracking-wider uppercase">
+                  {a} / {b}
                 </span>
                 <FreshnessChip updatedAt={pairUpdatedAt(a, b)} />
                 {pairHasOverride && (
