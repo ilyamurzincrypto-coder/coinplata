@@ -18,6 +18,7 @@ import CashFlowTab from "./tabs/CashFlowTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
 import DealsTab from "./tabs/DealsTab.jsx";
 import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
+import CorrespondentsTab from "./tabs/CorrespondentsTab.jsx";
 
 const BASE_TABS = [
   { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab },
@@ -27,6 +28,7 @@ const BASE_TABS = [
   { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab },
   { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
   { id: "cashflow", labelKey: "trv2_tab_cashflow", component: CashFlowTab },
+  { id: "correspondents", labelKey: "trv2_tab_correspondents", component: CorrespondentsTab },
   { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab },
   { id: "deals", labelKey: "trv2_tab_deals", component: DealsTab },
   { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },

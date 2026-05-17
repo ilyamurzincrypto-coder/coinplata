@@ -21,9 +21,12 @@ const TYPE_LABEL_KEYS = {
   expense: "trv2_acctype_expense",
 };
 // Подтипы, имеющие смысл для каждого класса (для дропдауна). Список — из SUBTYPE_LABEL_KEYS.
+// nostro/loro — корреспондентские счета (см. Справку → Глоссарий):
+//   nostro = наши деньги у внешней стороны (биржа, банк-корреспондент)
+//   loro   = чужие деньги у нас (партнёр оставил оборотные средства)
 const SUBTYPES_BY_TYPE = {
-  asset: ["cash", "bank", "crypto_input", "crypto_output", "inter_office", "clearing", "fx_clearing"],
-  liability: ["customer_liab", "partner_liab", "unearned", "clearing"],
+  asset: ["cash", "bank", "nostro", "crypto_input", "crypto_output", "inter_office", "clearing", "fx_clearing"],
+  liability: ["customer_liab", "partner_liab", "loro", "unearned", "clearing"],
   equity: ["opening_balance", "retained_earnings", "owner_contribution", "fx_gain", "fx_loss"],
   revenue: ["spread", "commission", "fx_gain"],
   expense: ["exchange_fee", "network_fee", "commission", "fx_loss"],

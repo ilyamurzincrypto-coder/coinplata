@@ -30,6 +30,8 @@ export const SUBTYPE_LABEL_KEYS = {
   customer_liab: "trv2_subtype_customer_liab",
   partner_liab: "trv2_subtype_partner_liab",
   unearned: "trv2_subtype_unearned",
+  nostro: "trv2_subtype_nostro",
+  loro: "trv2_subtype_loro",
   opening_balance: "trv2_subtype_opening_balance",
   retained_earnings: "trv2_subtype_retained_earnings",
   owner_contribution: "trv2_subtype_owner_contribution",
