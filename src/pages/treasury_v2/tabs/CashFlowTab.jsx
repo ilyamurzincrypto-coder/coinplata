@@ -23,6 +23,7 @@ import {
   ChevronRight, ChevronDown, ArrowUpDown, Briefcase, Banknote,
   ArrowUpRight, ArrowDownRight, Minus, Download, Building2,
   TrendingUp, ShieldCheck, ShieldAlert, Globe, Info, Activity,
+  AlertTriangle, AlertOctagon, Zap, ArrowRight,
 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { trialBalance, pnlForPeriod } from "../../../lib/treasury/v2selectors.js";
@@ -271,6 +272,102 @@ function buildCoverage(ctx, win, officeFilter) {
   }
   const ratio = obligationsTotal > 0.01 ? cashTotal / obligationsTotal : null;
   return { cashTotal, obligationsTotal, ratio };
+}
+
+// Pair analytics: для каждой клиентской сделки определяем пару валют
+// (out → in, что отдали → что получили со стороны кассы) и собираем:
+//   • count       — сколько сделок по этой паре
+//   • turnoverBase — gross оборот в base (сумма IN-ноги)
+//   • marginBase   — маржа = revenue − expense entries той же транзакции
+// Сортируем по марже desc — топ-пары приносящие прибыль.
+function buildPairAnalytics(ctx, win, officeFilter) {
+  const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
+  const txEffMs = new Map((ctx.transactions || []).map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
+  const txKindMap = new Map((ctx.transactions || []).map((t) => [t.id, t.kind || "unknown"]));
+  const fromMs = new Date(win.from).getTime();
+  const toMs = new Date(win.to).getTime();
+  const DEAL_KINDS = new Set(["deal", "deal_v2", "exchange", "exchange_in", "exchange_out"]);
+
+  // Группируем entries по транзакции для разбора каждой сделки целиком.
+  const txEntries = new Map();
+  for (const e of ctx.entries || []) {
+    const ts = txEffMs.has(e.transactionId) ? txEffMs.get(e.transactionId) : new Date(e.createdAt).getTime();
+    if (ts < fromMs || ts > toMs) continue;
+    const list = txEntries.get(e.transactionId) || [];
+    list.push(e);
+    txEntries.set(e.transactionId, list);
+  }
+
+  const byPair = new Map();
+  for (const [txId, entries] of txEntries.entries()) {
+    const kind = txKindMap.get(txId);
+    if (!DEAL_KINDS.has(kind)) continue;
+    // Собираем IN/OUT cash ноги (доминантные).
+    let inCur = null, inBase = 0;
+    let outCur = null, outBase = 0;
+    let revenue = 0;
+    for (const e of entries) {
+      const acc = accById.get(e.accountId);
+      if (!acc) continue;
+      const amt = Number(e.amount) || 0;
+      if (isCash(acc)) {
+        if (!passesOffice(acc, officeFilter)) continue;
+        const inBaseLeg = ctx.toBase(amt, e.currency) || 0;
+        if (e.direction === "dr") {
+          // Берём первый IN; если несколько — суммируем по той же валюте.
+          if (inCur == null) inCur = e.currency;
+          if (e.currency === inCur) inBase += inBaseLeg;
+        } else {
+          if (outCur == null) outCur = e.currency;
+          if (e.currency === outCur) outBase += inBaseLeg;
+        }
+      } else if (acc.type === "revenue") {
+        revenue += ctx.toBase(e.direction === "cr" ? amt : -amt, e.currency) || 0;
+      } else if (acc.type === "expense") {
+        revenue -= ctx.toBase(e.direction === "dr" ? amt : -amt, e.currency) || 0;
+      }
+    }
+    if (!inCur || !outCur) continue;
+    const pairKey = `${outCur}_${inCur}`;
+    const bucket = byPair.get(pairKey) || {
+      pair: pairKey, fromCur: outCur, toCur: inCur,
+      count: 0, turnoverBase: 0, marginBase: 0,
+    };
+    bucket.count += 1;
+    bucket.turnoverBase += inBase;
+    bucket.marginBase += revenue;
+    byPair.set(pairKey, bucket);
+  }
+  return [...byPair.values()].sort((a, b) => Math.abs(b.marginBase) - Math.abs(a.marginBase));
+}
+
+// Алерты на основе текущей картины. Возвращает массив { severity, title,
+// detail }. severity: 'warn' | 'critical'.
+function buildAlerts(cf, fx, cov, baseCurrency) {
+  const alerts = [];
+  if (cov.ratio != null && cov.ratio < 0.8) {
+    alerts.push({
+      severity: "critical",
+      title: "Недостаточно ликвидности для покрытия обязательств клиентам",
+      detail: `Cash ${fmtBaseAmount(cov.cashTotal, baseCurrency)} < обязательств ${fmtBaseAmount(cov.obligationsTotal, baseCurrency)} (coverage ${cov.ratio.toFixed(2)}×). Нужно либо довложить, либо закрыть часть обязательств перед выдачей новых.`,
+    });
+  } else if (cov.ratio != null && cov.ratio < 1.0) {
+    alerts.push({
+      severity: "warn",
+      title: "Тонкая ликвидность",
+      detail: `Coverage ${cov.ratio.toFixed(2)}×. Cash покрывает обязательства, но запаса нет — следи за выдачами и думай про пополнение.`,
+    });
+  }
+  // FX-концентрация: одна валюта >70% портфеля
+  const concentratedCur = fx.byCurrency.find((b) => b.sharePct > 70);
+  if (concentratedCur) {
+    alerts.push({
+      severity: "warn",
+      title: `Сильный валютный перевес: ${concentratedCur.currency} ${concentratedCur.sharePct.toFixed(0)}%`,
+      detail: `Бо́льшая часть кэша (${fmtBaseAmount(concentratedCur.inBase, baseCurrency)} из ${fmtBaseAmount(fx.totalBase, baseCurrency)}) в одной валюте. Если она упадёт — серьёзный удар по капиталу. Подумай о хедже или ребалансе.`,
+    });
+  }
+  return alerts;
 }
 
 // Daily buckets: для каждого дня периода считаем netto cash flow (по cash
@@ -556,7 +653,7 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
   );
 }
 
-function doCsvExport(cf, prevCf, baseCurrency, periodLabel) {
+function doCsvExport(cf, prevCf, pairs, baseCurrency, periodLabel) {
   const rows = [];
   const push = (section, kind, label, amount, prev) => rows.push({ section, kind, label, amount, prev });
   for (const [secId, data] of Object.entries(cf.sections)) {
@@ -574,6 +671,10 @@ function doCsvExport(cf, prevCf, baseCurrency, periodLabel) {
   push("ИТОГ", "", "Чистое изменение", cf.totalNetBase, prevCf?.totalNetBase ?? 0);
   push("ИТОГ", "", "На начало периода", cf.openingBase, null);
   push("ИТОГ", "", "На конец периода", cf.closingBase, null);
+  // Полный список валютных пар (не только топ-8 из UI).
+  for (const p of pairs || []) {
+    push("Пары", `${p.fromCur}_${p.toCur}`, `${p.fromCur} → ${p.toCur} (${p.count}×, оборот ${p.turnoverBase.toFixed(2)})`, p.marginBase, null);
+  }
   exportCSV({
     filename: `cashflow_${periodLabel}.csv`,
     columns: [
@@ -609,6 +710,8 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
   const fx = useMemo(() => buildFxExposure(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const cov = useMemo(() => buildCoverage(ctx, win, officeFilter), [ctx, win, officeFilter]);
   const daily = useMemo(() => buildDailyFlow(ctx, win, officeFilter), [ctx, win, officeFilter]);
+  const pairs = useMemo(() => buildPairAnalytics(ctx, win, officeFilter), [ctx, win, officeFilter]);
+  const alerts = useMemo(() => buildAlerts(cf, fx, cov, baseCurrency), [cf, fx, cov, baseCurrency]);
 
   const [expanded, setExpanded] = useState(() => new Set(["operating"]));
   const toggle = (key) => setExpanded((prev) => {
@@ -626,7 +729,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
         <span className="text-[11px] text-slate-400">Стандарт: IAS 7 · 3 секции · сравнение с прошлым периодом</span>
         <button
           type="button"
-          onClick={() => doCsvExport(cf, prevCf, baseCurrency, periodLabel)}
+          onClick={() => doCsvExport(cf, prevCf, pairs, baseCurrency, periodLabel)}
           disabled={!cf.hasMovement}
           className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
         >
@@ -634,6 +737,9 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
           CSV
         </button>
       </div>
+
+      {/* Alerts всегда сверху (даже когда нет движений, coverage может сигналить) */}
+      {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
       {!cf.hasMovement ? (
         <Card className="text-center text-[12.5px] text-slate-400 py-8">
@@ -695,6 +801,9 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
             )}
           </div>
         </Card>
+
+        {/* Pair analytics — какая валютная пара принесла больше всего маржи */}
+        {pairs.length > 0 && <PairAnalyticsCard pairs={pairs} baseCurrency={baseCurrency} />}
 
         {/* FX exposure — нетто-позиция по валютам на конец периода */}
         <FxExposureCard fx={fx} baseCurrency={baseCurrency} />
@@ -778,6 +887,101 @@ function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate", ti
         <div className={`text-[18px] font-bold tabular-nums leading-tight ${valueToneCls}`}>{value}</div>
         <div className="text-[10.5px] text-slate-400 tabular-nums truncate" title={sub}>{sub}</div>
       </div>
+    </div>
+  );
+}
+
+// ─── AlertsBanner ──────────────────────────────────────────────────────
+// Управленческие алерты: красные (critical) и жёлтые (warn). Появляются
+// автоматически при недостаточной ликвидности и сильном FX-перевесе.
+function AlertsBanner({ alerts }) {
+  if (!alerts.length) return null;
+  return (
+    <div className="space-y-2">
+      {alerts.map((a, i) => {
+        const critical = a.severity === "critical";
+        const Icon = critical ? AlertOctagon : AlertTriangle;
+        const wrap = critical
+          ? "bg-rose-50 border-rose-200 text-rose-900"
+          : "bg-amber-50 border-amber-200 text-amber-900";
+        const iconCls = critical ? "text-rose-600" : "text-amber-600";
+        return (
+          <div key={i} className={`rounded-[12px] border px-4 py-3 flex items-start gap-3 ${wrap}`}>
+            <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconCls}`} strokeWidth={2.5} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-bold">{a.title}</div>
+              <div className="text-[11.5px] opacity-80 mt-0.5 leading-snug">{a.detail}</div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── PairAnalyticsCard ─────────────────────────────────────────────────
+// Какая валютная пара принесла больше всего маржи за период.
+// Сортировка по |marginBase| desc — топ-пары прибыльности видны сразу.
+function PairAnalyticsCard({ pairs, baseCurrency }) {
+  const top = pairs.slice(0, 8);
+  const totalMargin = pairs.reduce((s, p) => s + p.marginBase, 0);
+  const totalTurnover = pairs.reduce((s, p) => s + p.turnoverBase, 0);
+  const maxMargin = Math.max(0.01, ...top.map((p) => Math.abs(p.marginBase)));
+  return (
+    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <Zap className="w-4 h-4 text-amber-500" />
+        <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
+          Топ валютных пар по марже
+        </h3>
+        <InfoTip text="Сколько маржи принесла каждая пара (что отдали → что получили). Маржа считается из revenue/expense ног сделки. Помогает понять какие пары пушить и где задирать спред." />
+        <span className="text-[11px] text-slate-400 ml-auto">
+          Маржа Σ {fmtSignedBase(totalMargin, baseCurrency)} · оборот {fmtBaseAmount(totalTurnover, baseCurrency)}
+        </span>
+      </div>
+      {top.length === 0 ? (
+        <div className="text-[12px] text-slate-400 py-2">Сделок за период нет.</div>
+      ) : (
+        <div className="space-y-1">
+          {top.map((p) => {
+            const widthPct = Math.max(2, (Math.abs(p.marginBase) / maxMargin) * 100);
+            const positive = p.marginBase >= 0;
+            const marginPct = p.turnoverBase > 0.01 ? (p.marginBase / p.turnoverBase) * 100 : null;
+            return (
+              <div key={p.pair} className="flex items-center gap-2 text-[12.5px]">
+                <span className="inline-flex items-center gap-1 font-bold text-slate-700 w-28 shrink-0">
+                  {p.fromCur}
+                  <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
+                  {p.toCur}
+                </span>
+                <span className="text-slate-400 text-[11px] tabular-nums w-10 shrink-0">{p.count}×</span>
+                <span className="text-slate-500 text-[11px] tabular-nums w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
+                  {fmtBaseAmount(p.turnoverBase, baseCurrency)}
+                </span>
+                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                  <div
+                    className={`h-full ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
+                    style={{ width: `${widthPct}%` }}
+                  />
+                </div>
+                <span className={`text-right tabular-nums font-semibold w-24 shrink-0 ${positive ? "text-emerald-700" : "text-rose-700"}`}>
+                  {fmtSignedBase(p.marginBase, baseCurrency)}
+                </span>
+                {marginPct != null && (
+                  <span className={`text-right tabular-nums text-[10.5px] w-12 shrink-0 ${positive ? "text-emerald-600" : "text-rose-600"}`}>
+                    {positive ? "+" : ""}{marginPct.toFixed(2)}%
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {pairs.length > 8 && (
+        <div className="mt-2 text-[10.5px] text-slate-400">
+          Показаны топ-8 из {pairs.length} пар. Полный список — в CSV экспорте.
+        </div>
+      )}
     </div>
   );
 }
