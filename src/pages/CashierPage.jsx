@@ -1,6 +1,6 @@
 // src/pages/CashierPage.jsx
 import React, { useState } from "react";
-import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowRightLeft } from "lucide-react";
+import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowRightLeft, HelpCircle } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
@@ -49,6 +49,7 @@ export default function CashierPage({
   // форма создания сделки открывается пред-заполненной этими значениями.
   demoDealSeed = null,
   onDemoConsumed = () => {},
+  onOpenHelp = null,
 }) {
   const { t } = useTranslation();
   const [balanceScope, setBalanceScope] = useState("selected");
@@ -541,6 +542,16 @@ export default function CashierPage({
                 <span className="text-[11px] font-bold tracking-tight">Перемещение</span>
                 <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">между счетами</span>
               </button>
+              {onOpenHelp && (
+                <button
+                  type="button"
+                  onClick={() => onOpenHelp({ sectionId: "cashier" })}
+                  title="Справка по Кассе — горячие клавиши, формы, частые сценарии"
+                  className="self-start flex items-center justify-center w-9 h-9 mt-1 rounded-full text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+                >
+                  <HelpCircle className="w-5 h-5" strokeWidth={2.5} />
+                </button>
+              )}
             </section>
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от

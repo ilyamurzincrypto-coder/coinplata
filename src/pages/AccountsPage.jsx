@@ -22,6 +22,7 @@ import {
   Wallet as WalletIcon,
   ChevronUp,
   ChevronDown,
+  HelpCircle,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -117,7 +118,7 @@ function DeltaPair({ today, yesterday, currency, size = "xs" }) {
   );
 }
 
-export default function AccountsPage() {
+export default function AccountsPage({ onOpenHelp = null }) {
   const { t } = useTranslation();
   const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount, movements, transfers } = useAccounts();
   const { transactions } = useTransactions();
@@ -317,7 +318,19 @@ export default function AccountsPage() {
       {/* Header — title + totals */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
+            {onOpenHelp && (
+              <button
+                type="button"
+                onClick={() => onOpenHelp({ sectionId: "accounts" })}
+                title="Справка по разделу «Счета»"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              >
+                <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
           <p className="text-[12px] text-slate-500">{t("accounts_subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

@@ -14,7 +14,7 @@
 // унифицированный профиль партнёра — в шаге 2.2).
 
 import React, { useState } from "react";
-import { Users2, Scale } from "lucide-react";
+import { Users2, Scale, HelpCircle } from "lucide-react";
 import ListTab from "./counterparties/ListTab.jsx";
 import ObligationsTab from "./counterparties/ObligationsTab.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -24,7 +24,7 @@ const TABS = [
   { id: "obligations", key: "cp_tab_obligations", icon: Scale, component: ObligationsTab },
 ];
 
-export default function CounterpartiesPage() {
+export default function CounterpartiesPage({ onOpenHelp = null }) {
   const { t } = useTranslation();
   const [active, setActive] = useState("list");
   const ActiveComponent = TABS.find((x) => x.id === active)?.component || ListTab;
@@ -32,7 +32,19 @@ export default function CounterpartiesPage() {
   return (
     <main className="max-w-[1300px] mx-auto px-6 py-6 space-y-5">
       <div>
-        <h1 className="text-[24px] font-bold tracking-tight">{t("cp_title")}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-[24px] font-bold tracking-tight">{t("cp_title")}</h1>
+          {onOpenHelp && (
+            <button
+              type="button"
+              onClick={() => onOpenHelp({ sectionId: "counterparties" })}
+              title="Справка по разделу «Контрагенты»"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
         <p className="text-[13px] text-slate-500 mt-1">{t("cp_subtitle")}</p>
       </div>
 

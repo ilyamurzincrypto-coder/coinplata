@@ -219,13 +219,14 @@ function Root() {
           onNavigate={handlePageChange}
           demoDealSeed={demoDealSeed}
           onDemoConsumed={() => setDemoDealSeed(null)}
+          onOpenHelp={handleOpenHelp}
         />
       )}
-      {page === "accounts" && canShow("accounts") && <AccountsPage />}
-      {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage />}
+      {page === "accounts" && canShow("accounts") && <AccountsPage onOpenHelp={handleOpenHelp} />}
+      {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage onOpenHelp={handleOpenHelp} />}
       {page === "treasury" && canShow("capital") && <TreasuryPage onOpenHelp={handleOpenHelp} />}
       <CommandPalette onNavigate={handlePageChange} />
-      {page === "settings" && canShow("settings") && <SettingsPage />}
+      {page === "settings" && canShow("settings") && <SettingsPage onOpenHelp={handleOpenHelp} />}
       {page === "info" && canShow("info") && (
         <InfoPage
           onNavigate={handlePageChange}

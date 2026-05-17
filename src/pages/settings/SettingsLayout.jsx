@@ -3,7 +3,7 @@
 // Active tab хранится локально в state; URL не трогаем (нет роутера).
 
 import React, { useState } from "react";
-import { Settings as SettingsIcon, Users, Shield, ScrollText, Building2, Book, Handshake, Hash } from "lucide-react";
+import { Settings as SettingsIcon, Users, Shield, ScrollText, Building2, Book, Handshake, Hash, HelpCircle } from "lucide-react";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { useAuth } from "../../store/auth.jsx";
 import GeneralTab from "./GeneralTab.jsx";
@@ -26,7 +26,7 @@ const TABS = [
   { id: "audit", labelKey: "settings_audit", icon: ScrollText, component: AuditLogTab, adminOnly: true },
 ];
 
-export default function SettingsLayout() {
+export default function SettingsLayout({ onOpenHelp = null }) {
   const { t } = useTranslation();
   const { isAdmin, currentUser } = useAuth();
   const [active, setActive] = useState("general");
@@ -37,7 +37,19 @@ export default function SettingsLayout() {
   return (
     <main className="max-w-[1200px] mx-auto px-6 py-6">
       <div className="mb-5">
-        <h1 className="text-[24px] font-bold tracking-tight">{t("settings_title")}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-[24px] font-bold tracking-tight">{t("settings_title")}</h1>
+          {onOpenHelp && (
+            <button
+              type="button"
+              onClick={() => onOpenHelp({ sectionId: "settings", subId: active })}
+              title="Справка по разделу «Настройки»"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            >
+              <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
+            </button>
+          )}
+        </div>
         <p className="text-[13px] text-slate-500 mt-1">
           {t("logged_in_as")}{" "}
           <span className="font-semibold text-slate-900">{currentUser.name}</span>

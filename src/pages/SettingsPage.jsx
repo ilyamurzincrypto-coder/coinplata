@@ -5,6 +5,6 @@
 import React from "react";
 import SettingsLayout from "./settings/SettingsLayout.jsx";
 
-export default function SettingsPage() {
-  return <SettingsLayout />;
+export default function SettingsPage({ onOpenHelp = null }) {
+  return <SettingsLayout onOpenHelp={onOpenHelp} />;
 }
