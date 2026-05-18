@@ -9,7 +9,7 @@
 // Pending сделки пишут movements с reserved:true — это меняет reservedOf автоматически.
 
 import React, { useMemo, useState, useCallback } from "react";
-import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock } from "lucide-react";
+import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock, Clock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import BalanceSubLine from "./balances/BalanceSubLine.jsx";
@@ -426,14 +426,16 @@ function OfficeBlock({
 
   return (
     <div className="space-y-3">
-      {/* Office header */}
-      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border-soft">
-        <div className="flex items-center gap-2">
-          <Building2 className="w-4 h-4 text-muted" strokeWidth={1.75} />
-          <h3 className="text-h3 text-ink">{office.name}</h3>
-          <span className="text-caption text-muted">· {allAccs.length} accounts</span>
-        </div>
-        {!hideTotals && (
+      {/* Office header — рендерится только в multi-office режиме.
+          При scope=selected (один офис) header дублирует section-header
+          выше («Балансы N · Mark Antalya»), скрываем его целиком. */}
+      {!hideTotals && (
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-border-soft">
+          <div className="flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-muted" strokeWidth={1.75} />
+            <h3 className="text-h3 text-ink">{office.name}</h3>
+            <span className="text-caption text-muted">· {allAccs.length} accounts</span>
+          </div>
           <div className="flex items-center gap-2 text-[12px] tabular-nums">
             <MiniStat label="Total" value={totals.total} sym={curSymbol(base)} tone="slate" />
             {totals.hasReserved && (
@@ -453,8 +455,8 @@ function OfficeBlock({
               icon={CheckCircle2}
             />
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 3 равные колонки — Cash / Bank / Crypto. Стабильный layout
           независимо от количества валют. */}
@@ -668,127 +670,134 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
 
   return (
     <section className="w-full">
-      {/* Section-header: h2 «Балансы» + counter + inline office + controls right.
-          pt-3.5 (14px) — выравнивает верхнюю кромку «Балансы» с заголовком
-          «КУРСЫ» в RatesSidebar (там 14px от top-edge карточки до текста). */}
-      <div className="flex items-center justify-between gap-3 mb-3 pt-3.5 flex-wrap">
-        <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
-          {t("balances")}
-          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
-            {accountsInScope}
-          </span>
-          <span className="text-body-sm text-muted font-normal ml-2 inline-flex items-center gap-1.5 truncate">
-            {scope === "selected" ? (
-              <>
-                <Building2 className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
-                <span className="truncate">{findOffice(currentOffice)?.name || "—"}</span>
-              </>
-            ) : (
-              <>
-                <Layers className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
-                <span className="truncate">{t("all_offices")} · {activeOffices.length}</span>
-              </>
-            )}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {grand.hasObligations && (
-            <button
-              type="button"
-              onClick={() => setObligationsOpen(true)}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-badge bg-danger-soft text-danger text-caption font-semibold hover:bg-danger-soft/70 transition-colors"
-              title="Open obligations — click to settle"
-            >
-              <Lock className="w-3 h-3" strokeWidth={2} />
-              <span>Obligations · {openObligationsCount}</span>
-              <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
-            </button>
-          )}
-          <SegmentedControl
-            options={[
-              { id: "selected", name: t("selected_office") },
-              { id: "all", name: t("all_offices") },
-            ]}
-            value={scope}
-            onChange={onScopeChange}
-            size="sm"
-          />
-          <SegmentedControl
-            options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
-            value={displayBase}
-            onChange={setDisplayBase}
-            size="sm"
-          />
-        </div>
-      </div>
-
-      {/* Stat-strip: только Total + Available — крупные числа, дельта одной строкой
-          через middot. Без обёртки в карточку (Stripe-style). */}
-      <div className="grid grid-cols-2 gap-10 pb-5 mb-4 border-b border-border max-w-2xl">
-        <div className="flex flex-col gap-1">
-          <div className="text-micro text-muted uppercase">Total balance</div>
-          <div className="font-mono tabular text-display-lg text-ink leading-none">
-            {sym}{fmt(grand.total)}
-            <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
+      {/* Всё внутри ОДНОЙ карточки — header (Балансы + офис + controls)
+          → stat-strip (Total + Available + border-b) → office blocks.
+          pt-3.5 (14px) от top-edge до заголовка — синхронизировано с
+          RatesSidebar (там тоже 14px). items-start на grid Кассы не
+          даёт карточке растягиваться. */}
+      <div className="w-full bg-surface rounded-card">
+        {/* Header */}
+        <div className="px-card pt-3.5 pb-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
+            {t("balances")}
+            <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+              {accountsInScope}
+            </span>
+            <span className="text-body-sm text-muted font-normal ml-2 inline-flex items-center gap-1.5 truncate">
+              {scope === "selected" ? (
+                <>
+                  <Building2 className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
+                  <span className="truncate">{findOffice(currentOffice)?.name || "—"}</span>
+                </>
+              ) : (
+                <>
+                  <Layers className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
+                  <span className="truncate">{t("all_offices")} · {activeOffices.length}</span>
+                </>
+              )}
+            </span>
           </div>
-          <div className="text-caption">
-            <DeltaPair
-              today={grand.delta}
-              yesterday={grand.deltaYesterday}
-              currency={base}
+          <div className="flex items-center gap-2 flex-wrap">
+            {grand.hasObligations && (
+              <button
+                type="button"
+                onClick={() => setObligationsOpen(true)}
+                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-badge bg-danger-soft text-danger text-caption font-semibold hover:bg-danger-soft/70 transition-colors"
+                title="Open obligations — click to settle"
+              >
+                <Lock className="w-3 h-3" strokeWidth={2} />
+                <span>Obligations · {openObligationsCount}</span>
+                <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
+              </button>
+            )}
+            <SegmentedControl
+              options={[
+                { id: "selected", name: t("selected_office") },
+                { id: "all", name: t("all_offices") },
+              ]}
+              value={scope}
+              onChange={onScopeChange}
+              size="sm"
+            />
+            <SegmentedControl
+              options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
+              value={displayBase}
+              onChange={setDisplayBase}
               size="sm"
             />
           </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <div className="text-micro text-muted uppercase inline-flex items-center gap-1.5">
-            <CheckCircle2 className="w-3 h-3 text-success" strokeWidth={2.2} />
-            Available
+
+        {/* Stat-strip: Total + Available + delta. Border-b на всю ширину
+            карточки, контент ограничен max-w-2xl. */}
+        <div className="px-card pb-5 border-b border-border">
+          <div className="grid grid-cols-2 gap-10 max-w-2xl">
+            <div className="flex flex-col gap-1">
+              <div className="text-micro text-muted uppercase">Total balance</div>
+              <div className="font-mono tabular text-display-lg text-ink leading-none">
+                {sym}{fmt(grand.total)}
+                <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
+              </div>
+              <div className="text-caption">
+                <DeltaPair
+                  today={grand.delta}
+                  yesterday={grand.deltaYesterday}
+                  currency={base}
+                  size="sm"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <div className="text-micro text-muted uppercase inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3 h-3 text-success" strokeWidth={2.2} />
+                Available
+              </div>
+              <div className="font-mono tabular text-display-lg text-ink leading-none">
+                {sym}{fmt(grand.available)}
+                <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
+              </div>
+              <div className="text-caption text-muted">
+                {accountsInScope} счетов{grand.hasReserved ? ` · ${sym}${fmt(grand.reserved)} pending` : ""}
+              </div>
+            </div>
           </div>
-          <div className="font-mono tabular text-display-lg text-ink leading-none">
-            {sym}{fmt(grand.available)}
-            <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
-          </div>
-          <div className="text-caption text-muted">
-            {accountsInScope} счетов{grand.hasReserved ? ` · ${sym}${fmt(grand.reserved)} pending` : ""}
-          </div>
+        </div>
+
+        {/* Office blocks */}
+        <div className="px-card py-5">
+          {officesToRender.length === 0 ? (
+            <div className="py-6 text-center text-body-sm text-muted">No active offices</div>
+          ) : (
+            <div className="space-y-6">
+              {officesToRender.map((office) => {
+                const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
+                return (
+                  <OfficeBlock
+                    key={office.id}
+                    office={office}
+                    accounts={officeAccs}
+                    balanceOf={balanceOf}
+                    reservedOf={reservedOf}
+                    deltaOf={deltaOf}
+                    dayStartMs={dayStartMs}
+                    yesterdayStartMs={yesterdayStartMs}
+                    currencyDict={currencyDict}
+                    toBase={toBase}
+                    toUsdt={toUsdt}
+                    base={base}
+                    globalCryptoTotal={globalCrypto.total}
+                    globalCryptoDelta={globalCrypto.delta}
+                    globalCryptoDeltaYesterday={globalCrypto.deltaYesterday}
+                    hideTotals={officesToRender.length === 1}
+                  />
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
-
-      {/* Unified container — без border (правила DS: карточка в покое чистая) */}
-      <div className="w-full bg-surface rounded-card p-card md:p-card-lg">
-        {officesToRender.length === 0 ? (
-          <div className="py-10 text-center text-body-sm text-muted">No active offices</div>
-        ) : (
-          <div className="space-y-6">
-            {officesToRender.map((office) => {
-              const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
-              return (
-                <OfficeBlock
-                  key={office.id}
-                  office={office}
-                  accounts={officeAccs}
-                  balanceOf={balanceOf}
-                  reservedOf={reservedOf}
-                  deltaOf={deltaOf}
-                  dayStartMs={dayStartMs}
-                  yesterdayStartMs={yesterdayStartMs}
-                  currencyDict={currencyDict}
-                  toBase={toBase}
-                  toUsdt={toUsdt}
-                  base={base}
-                  globalCryptoTotal={globalCrypto.total}
-                  globalCryptoDelta={globalCrypto.delta}
-                  globalCryptoDeltaYesterday={globalCrypto.deltaYesterday}
-                  hideTotals={officesToRender.length === 1}
-                />
-              );
-            })}
-          </div>
-        )}
-      </div>
     </section>
   );
 }
