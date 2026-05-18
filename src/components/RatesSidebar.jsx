@@ -1,31 +1,37 @@
 // src/components/RatesSidebar.jsx
-// Компактный вертикальный список торговых пар для CREATE-режима CashierPage.
-// Каждый блок = одна пара с двумя направлениями (a→b и b→a), как в RatesBar.
-// Кассир видит и покупку и продажу не переключая внимание.
+// Виджет «Курсы» — левая колонка главной (Касса).
 //
-// Office tabs сверху — переключение между Global / каждым активным офисом.
-// Дефолт = currentOffice из header. rates office-aware: если у офиса есть
-// override для пары — показываем его курс, иначе global fallback.
-// Бейдж OFC на паре = override активен (курс отличается от global).
+// Структура и состав данных не менялись (Шаг 4.12):
+//   • Office tabs (Global + офисы) — anchor SegmentedControl-стиль, токены DS
+//   • Карточки пар — header (★ + парные иконки 18px + USDT·USD mono + OFC + age-pill)
+//     + quotes (две колонки направлений с mini-coin → mini-coin + value)
+//   • Favorited → тёплый фон #FFFCEF (тёплый, не конфликтует с emerald CTA)
+//   • Expanded state — все пары + group separators («★ Избранные», «Все пары»),
+//     state в localStorage `coinplata:rates-expanded`
+//   • Edit-кнопка → «Изм.» с pencil 10px
+//   • Поиск только в expanded mode
+//
+// Office switcher и логика favorites/expanded/search/freshness — anchor,
+// бизнес-логика не тронута.
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { TrendingUp, ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
-import { FreshnessChip } from "../utils/rateFreshness.jsx";
+import { freshnessOf, shortAge, tooltipFor } from "../utils/rateFreshness.jsx";
 import { useNow } from "../hooks/useNow.js";
+import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 
 // Per-user избранные пары для дашборда — отдельный ключ от editor's
 // favoriteRatePairs (RatesBar). Хранится в users.preferences.dashboardFavorites
-// как массив пар [["A","B"], ...]. Если есть избранные — они всегда сверху
-// списка, остальные пары следуют за ними.
+// как массив пар [["A","B"], ...].
 const DASHBOARD_FAV_KEY = "dashboardFavorites";
 
-// Фолбэк на случай если allTradePairs ещё не гидрировался (mid-load из DB).
-// После гидрации берём реальный динамический список из useRates.allTradePairs.
-// Порядок: USDT первая (мост), затем USD, TRY, EUR — основные рабочие пары.
+// Expand/collapse state per-browser (localStorage по ТЗ Шаг 4.12).
+const EXPAND_STORAGE_KEY = "coinplata:rates-expanded";
+
 const FALLBACK_PAIRS = [
   ["USDT", "USD"],
   ["USDT", "TRY"],
@@ -37,6 +43,9 @@ const FALLBACK_PAIRS = [
 
 const GLOBAL_TAB = "__global__";
 
+// Минимум показываемых пар в свёрнутом state (ТЗ — 5).
+const COMPACT_LIMIT = 5;
+
 function formatRate(value) {
   if (!value && value !== 0) return "—";
   if (value >= 10) return value.toFixed(2);
@@ -44,36 +53,68 @@ function formatRate(value) {
   return value.toFixed(6);
 }
 
-function timeAgo(date, nowMs = Date.now()) {
+function timeAgoShort(date, nowMs = Date.now()) {
+  if (!date) return "—";
   const diff = Math.floor((nowMs - date.getTime()) / 1000);
   if (diff < 60) return `${diff}s`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-  return `${Math.floor(diff / 3600)}h`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }
 
-
-// Короткое имя офиса для узкого таба. "Mraml Main office" → "Mraml"
 function shortOfficeName(name) {
   if (!name) return "Office";
   const firstWord = String(name).trim().split(/\s+/)[0];
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-// Минимум показываемых пар в compact mode. Реальное число вычисляется
-// через ResizeObserver на pairs-container — столько пар сколько помещается
-// в available height без скролла. Минимум 5 — раньше было 3 и при
-// переключении чипсетов офисов (когда они переносились в 2 строки и
-// съедали высоту) число пар проседало до 4. 5 — стабильный минимум:
-// если высоты совсем не хватает, появится небольшой скролл внутри,
-// но юзер всегда увидит 5 курсов сразу.
-const COMPACT_MIN = 5;
-// Approx высота одной pair-карточки в px (header + 2 строки sell/buy).
-const PAIR_ROW_HEIGHT = 62;
+// Age-pill: семантические цвета по ТЗ 4.12.
+//   ≤1д — success (fresh)
+//   1-3д — warning (mid)
+//   >3д — danger (stale)
+// Если данных нет — нейтральный muted-pill.
+function AgePill({ updatedAt }) {
+  const { ageMs } = freshnessOf(updatedAt);
+  if (!Number.isFinite(ageMs)) {
+    return (
+      <span className="inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold bg-surface-soft text-muted">
+        —
+      </span>
+    );
+  }
+  const days = ageMs / (24 * 60 * 60 * 1000);
+  const tone = days <= 1
+    ? "bg-success-soft text-success"
+    : days <= 3
+      ? "bg-warning-soft text-warning"
+      : "bg-danger-soft text-danger";
+  return (
+    <span
+      className={`inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold ${tone}`}
+      title={tooltipFor(updatedAt)}
+    >
+      {shortAge(ageMs)}
+    </span>
+  );
+}
+
+// QuoteSide — одна из двух колонок quotes-блока.
+function QuoteSide({ from, to, value, ringColorClass }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="inline-flex items-center gap-0.5 shrink-0">
+        <CurrencyIcon ccy={from} pair={to} size="xs" ringColorClass={ringColorClass} />
+      </span>
+      <span className="font-mono tabular text-[14px] font-bold text-ink shrink-0">
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs, pairs, channels } = useRates();
 
-  // Lookup updatedAt для пары (a,b) — берём максимум из обоих направлений.
   const pairUpdatedAt = React.useCallback((a, b) => {
     if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
     const matches = pairs.filter((p) => {
@@ -94,31 +135,27 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     });
     return latest ? new Date(latest) : null;
   }, [pairs, channels]);
+
   const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
   const nowMs = useNow(30_000);
-  // Persistent expanded — RatesSidebar re-mount-ится при переключении
-  // dashboard ↔ create mode (родитель {isDashboard && ...}), и без
-  // sessionStorage юзер терял "развёрнутое" состояние и не видел кнопку
-  // "Свернуть" после возвращения. Ключ session-scoped — на новой сессии
-  // браузера начинаем со compact.
+
+  // Expand/collapse — localStorage по ТЗ 4.12 (был sessionStorage в legacy).
   const [expanded, setExpanded] = useState(() => {
     try {
-      return sessionStorage.getItem("coinplata.ratesSidebarExpanded") === "1";
+      return localStorage.getItem(EXPAND_STORAGE_KEY) === "true";
     } catch {
       return false;
     }
   });
   useEffect(() => {
     try {
-      sessionStorage.setItem(
-        "coinplata.ratesSidebarExpanded",
-        expanded ? "1" : "0"
-      );
+      localStorage.setItem(EXPAND_STORAGE_KEY, String(expanded));
     } catch {}
   }, [expanded]);
+
   const [query, setQuery] = useState("");
 
   // --- Dashboard favorites (per-user, server-persisted) ---
@@ -132,10 +169,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const favKeys = useMemo(() => {
     const set = new Set();
     dashboardFavorites.forEach(([a, b]) => {
-      // Сохраняем ключ как ОТСОРТИРОВАННАЯ пара чтобы matched независимо
-      // от direction (auto-flip для удобных чисел не должен ломать ⭐).
-      const key = [a, b].sort().join("_");
-      set.add(key);
+      set.add([a, b].sort().join("_"));
     });
     return set;
   }, [dashboardFavorites]);
@@ -159,63 +193,26 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     },
     [favKeys, dashboardFavorites, updatePreferences]
   );
-  // Динамически вычисляем сколько пар умещается в available height
-  // pairs-container в compact mode. ResizeObserver следит за изменениями.
-  const [fitCount, setFitCount] = useState(COMPACT_MIN);
+
   const pairsRef = useRef(null);
 
-  useEffect(() => {
-    if (expanded || !pairsRef.current || typeof ResizeObserver === "undefined") {
-      return undefined;
-    }
-    const el = pairsRef.current;
-    const compute = () => {
-      const h = el.clientHeight;
-      // Учитываем padding контейнера (p-1 = 4px each side) + gap между
-      // парами (space-y-0.5 = 2px).
-      const usable = h - 8;
-      if (usable <= 0) return;
-      const count = Math.max(
-        COMPACT_MIN,
-        Math.floor(usable / (PAIR_ROW_HEIGHT + 2))
-      );
-      setFitCount((prev) => (prev === count ? prev : count));
-    };
-    compute();
-    const ro = new ResizeObserver(compute);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [expanded, tradePairs.length]);
-
-  // Сообщаем родителю что expanded — он подстраивает grid columns
-  // (sidebar шире → main колонка уже).
   useEffect(() => {
     onExpandedChange?.(expanded);
   }, [expanded, onExpandedChange]);
 
-  // Выбранная вкладка: "__global__" или officeId. Следуем за currentOffice
-  // (когда кассир меняет офис в header — sidebar тоже переключается).
   const [selectedTab, setSelectedTab] = useState(currentOffice || GLOBAL_TAB);
   useEffect(() => {
     if (currentOffice) setSelectedTab(currentOffice);
   }, [currentOffice]);
 
-  // Если выбранный офис стал неактивен — фолбэк на global
   const selectedIsOffice = selectedTab !== GLOBAL_TAB;
   const selectedOfficeId = selectedIsOffice ? selectedTab : null;
 
-  // Sidebar в Кассе — только инфо-панель курсов. Spread редактируется на
-  // странице «Курсы» (RatesPage), куда ведёт кнопка «Открыть редактор курсов»
-  // (Pencil) в шапке этого компонента.
-
-  // Office-aware getRate: если выбран офис, применяем его override. Global tab
-  // передаёт null → чистый global rate.
   const getRateForTab = React.useCallback(
     (from, to) => getRateRaw(from, to, selectedOfficeId),
     [getRateRaw, selectedOfficeId]
   );
 
-  // Проверка — есть ли override у текущего выбранного офиса для этой пары
   const hasOverride = React.useCallback(
     (from, to) => {
       if (!selectedOfficeId) return false;
@@ -231,86 +228,139 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     [selectedOfficeId, getOfficeOverride, getRateRaw]
   );
 
-  // Visible pairs — фильтр по поиску + sort: favorites первыми + лимит compact.
-  // Внутри favorites порядок такой как сохранён в preferences (юзерский).
-  // Внутри non-favorites — порядок исходного tradePairs (priority-based).
-  const visiblePairs = useMemo(() => {
+  // Список с favorites сверху + поиск.
+  // В свёрнутом state — только 5 favorites (если их меньше — все имеющиеся).
+  // В expanded — favorites + others, разделённые group-separator'ами.
+  const { favoritesList, othersList, totalCount } = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = tradePairs;
-    if (q) {
-      list = list.filter(([a, b]) => {
-        const ab = `${a} ${b}`.toLowerCase();
-        const ba = `${b} ${a}`.toLowerCase();
-        return (
-          a.toLowerCase().includes(q) ||
-          b.toLowerCase().includes(q) ||
-          ab.includes(q) ||
-          ba.includes(q)
-        );
-      });
-    }
-    // Сортируем: favorites первыми (в порядке preferences), затем остальные.
-    if (favKeys.size > 0) {
-      const favs = [];
-      const rest = [];
-      list.forEach(([a, b]) => {
-        if (isFavorite(a, b)) favs.push([a, b]);
-        else rest.push([a, b]);
-      });
-      list = [...favs, ...rest];
-    }
-    if (!expanded && !q) {
-      list = list.slice(0, fitCount);
-    }
-    return list;
-  }, [tradePairs, query, expanded, fitCount, favKeys, isFavorite]);
+    const filter = (pair) => {
+      if (!q) return true;
+      const [a, b] = pair;
+      const ab = `${a} ${b}`.toLowerCase();
+      const ba = `${b} ${a}`.toLowerCase();
+      return (
+        a.toLowerCase().includes(q) ||
+        b.toLowerCase().includes(q) ||
+        ab.includes(q) ||
+        ba.includes(q)
+      );
+    };
+    const favs = [];
+    const rest = [];
+    tradePairs.forEach((p) => {
+      if (!filter(p)) return;
+      if (isFavorite(p[0], p[1])) favs.push(p);
+      else rest.push(p);
+    });
+    return { favoritesList: favs, othersList: rest, totalCount: tradePairs.length };
+  }, [tradePairs, query, isFavorite]);
 
-  const totalCount = tradePairs.length;
-  const showingCount = visiblePairs.length;
-  const hasHidden = !expanded && !query && totalCount > showingCount;
+  // Свёрнутое: только 5 favorites (или меньше если их меньше).
+  // Если favorites нет совсем — показываем первые 5 «обычных» (хорошее UX).
+  const collapsedFavorites = useMemo(() => {
+    if (favoritesList.length > 0) return favoritesList.slice(0, COMPACT_LIMIT);
+    return othersList.slice(0, COMPACT_LIMIT);
+  }, [favoritesList, othersList]);
+
+  const hasHidden = !expanded && !query && (totalCount > collapsedFavorites.length);
+
+  // Renderер одной rate-карточки.
+  const renderRateCard = ([a, b], idx) => {
+    const fav = isFavorite(a, b);
+    const rateAB = getRateForTab(a, b);
+    const rateBA = getRateForTab(b, a);
+    const pairHasOverride = hasOverride(a, b) || hasOverride(b, a);
+    const updated = pairUpdatedAt(a, b);
+
+    const cardBg = fav
+      ? "bg-[#FFFCEF] hover:bg-[#FFF8DE]"
+      : "bg-surface hover:bg-surface-soft";
+    const ringColorClass = fav
+      ? "border-[#FFFCEF] group-hover:border-[#FFF8DE]"
+      : "border-surface group-hover:border-surface-soft";
+    const dividerBg = fav ? "bg-[#F5EBC8]" : "bg-border-soft";
+
+    return (
+      <div
+        key={`${a}-${b}`}
+        className={`group rounded-[10px] px-3 py-2.5 transition-colors duration-150 ease-apple ${cardBg}`}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <button
+            type="button"
+            onClick={(e) => toggleFavorite(a, b, e)}
+            className={`shrink-0 transition-colors ${
+              fav ? "text-[#FBBF24] hover:text-amber-500" : "text-border hover:text-amber-400"
+            }`}
+            title={fav ? "Убрать из избранного" : "В избранное"}
+            aria-label={fav ? "Убрать из избранного" : "В избранное"}
+          >
+            <Star className="w-3 h-3" strokeWidth={2} fill={fav ? "currentColor" : "none"} />
+          </button>
+          <CurrencyIcon ccy={a} pair={b} size="sm" ringColorClass={ringColorClass} />
+          <span className="font-mono font-bold text-[11px] text-ink tracking-tight">
+            {a}<span className="text-muted-soft mx-0.5">·</span>{b}
+          </span>
+          <span className="flex-1" />
+          {pairHasOverride && (
+            <span
+              className="inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold bg-surface-soft text-muted tracking-wide"
+              title="Office override активен"
+            >
+              OFC
+            </span>
+          )}
+          <AgePill updatedAt={updated} />
+        </div>
+
+        {/* Quotes — две колонки */}
+        <div className="pl-5 grid grid-cols-[1fr_1px_1fr] gap-3 items-center">
+          <QuoteSide from={a} to={b} value={formatRate(rateAB)} ringColorClass={ringColorClass} />
+          <div className={`self-stretch min-h-[22px] ${dividerBg}`} />
+          <QuoteSide from={b} to={a} value={formatRate(rateBA)} ringColorClass={ringColorClass} />
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <aside className="bg-white rounded-[18px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03),0_8px_24px_-8px_rgba(15,23,42,0.08)] h-full flex flex-col overflow-hidden">
-      <header className="px-3 py-3 border-b border-slate-100 shrink-0 bg-gradient-to-b from-slate-50/40 to-transparent">
+    <aside className="bg-surface rounded-card-lg shadow-card-hover h-full flex flex-col overflow-hidden">
+      {/* Header: «Курсы» + live-dot + relative time + кнопка Изм. */}
+      <header className="px-3 pt-3 pb-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0" />
-            <h2 className="text-[15px] font-bold text-slate-900 tracking-tight uppercase truncate">
-              {t("rates") || "Rates"}
-            </h2>
+            <h2 className="text-h2 text-ink truncate">{t("rates") || "Курсы"}</h2>
+            <span className="inline-flex items-center gap-1.5 text-caption text-muted font-mono tabular">
+              <span className="w-1.5 h-1.5 rounded-full bg-success glow-dot animate-pulse" />
+              {timeAgoShort(lastUpdated, nowMs)}
+            </span>
           </div>
           {onOpenRates && (
             <button
               type="button"
               onClick={onOpenRates}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-white border border-slate-200 text-slate-900 text-[12.5px] font-semibold hover:border-slate-300 hover:shadow-sm transition-all duration-200 shrink-0"
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-button bg-surface border border-border text-ink text-caption font-medium hover:bg-surface-soft transition-colors shrink-0"
               title={t("edit_rates") || "Редактировать курсы"}
             >
-              <Pencil className="w-3.5 h-3.5 text-slate-400" />
-              <span>{t("rates_change_short") || "Изменить"}</span>
+              <Pencil className="w-3 h-3 text-muted" strokeWidth={2.2} />
+              <span>Изм.</span>
             </button>
           )}
         </div>
-        <span className="inline-flex items-center gap-1 text-[10.5px] text-slate-400 mt-0.5">
-          <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-          {timeAgo(lastUpdated, nowMs)} ago
-        </span>
       </header>
 
-      {/* Office tabs: Global + каждый активный офис. Стиль матчит
-          SegmentedControl — белая «карточка» с эмеральдовым ring для
-          активного, чтобы визуально парный с CTA «Новая сделка»
-          и Balances scope. */}
-      <div className="px-2 pt-2 flex flex-wrap gap-1 border-b border-slate-100 pb-2 shrink-0">
+      {/* Office switcher — anchor SegmentedControl-стиль на токенах DS. */}
+      <div className="mx-2 my-2 inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill overflow-x-auto shrink-0">
         <button
           type="button"
           onClick={() => setSelectedTab(GLOBAL_TAB)}
-          className={`px-3 py-1.5 text-[12px] font-bold rounded-[10px] tracking-wider uppercase transition-all duration-200 ${
+          className={`h-7 px-2.5 rounded-pill text-[11px] font-semibold font-mono tracking-wider transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
             selectedTab === GLOBAL_TAB
-              ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
-              : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              ? "bg-surface text-ink shadow-seg"
+              : "text-muted hover:text-ink"
           }`}
-          title="Global rates — без учёта per-office override"
+          title="Global rates"
         >
           Global
         </button>
@@ -321,10 +371,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               key={off.id}
               type="button"
               onClick={() => setSelectedTab(off.id)}
-              className={`px-3 py-1.5 text-[12px] font-bold rounded-[10px] tracking-wider transition-all duration-200 ${
+              className={`h-7 px-2.5 rounded-pill text-[11px] font-semibold tracking-wide transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
                 isSel
-                  ? "bg-white text-slate-900 ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  ? "bg-surface text-ink shadow-seg"
+                  : "text-muted hover:text-ink"
               }`}
               title={off.name || "Office"}
             >
@@ -334,162 +384,88 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         })}
       </div>
 
-      {/* Search — только в expanded mode. В compact показываем top 4 пар,
-          поиск не нужен — экономим высоту sidebar чтобы не растягивать
-          row1 (transactions прижмутся к Balances без gap). */}
+      {/* Search — только в expanded mode. */}
       {expanded && (
-        <div className="px-2 pt-2 pb-1 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1">
-            <Search className="w-3 h-3 text-slate-400 shrink-0" />
+        <div className="px-2 pb-1 shrink-0">
+          <div className="flex items-center gap-1.5 bg-surface-sunk rounded-input px-2 py-1.5 ring-1 ring-inset ring-transparent focus-within:ring-accent focus-within:bg-surface transition-all">
+            <Search className="w-3 h-3 text-muted shrink-0" strokeWidth={2} />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="USD, TRY, EUR…"
-              className="flex-1 min-w-0 bg-transparent outline-none text-[11px] text-slate-900 placeholder:text-slate-400"
+              className="flex-1 min-w-0 bg-transparent outline-none text-caption text-ink placeholder:text-muted-soft"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="p-0.5 rounded hover:bg-slate-200 text-slate-500 transition-colors shrink-0"
+                className="p-0.5 rounded hover:bg-surface-soft text-muted transition-colors shrink-0"
                 title="Очистить"
               >
-                <X className="w-3 h-3" />
+                <X className="w-3 h-3" strokeWidth={2} />
               </button>
             )}
           </div>
         </div>
       )}
 
+      {/* Список пар */}
       <div
         ref={pairsRef}
-        className={`p-1 space-y-0.5 ${
+        className={`p-1.5 space-y-1 ${
           expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"
         }`}
       >
-        {visiblePairs.map(([a, b], idx) => {
-          const fav = isFavorite(a, b);
-          // Divider после последнего favorite — визуально отделить группу.
-          const isLastFav =
-            fav &&
-            !query &&
-            idx + 1 < visiblePairs.length &&
-            !isFavorite(visiblePairs[idx + 1][0], visiblePairs[idx + 1][1]);
-          // Два направления — каждое со своим курсом из БД.
-          // a→b и b→a показываются независимо. Никакой sell/buy метки —
-          // юзер сразу видит "USD → USDT 1.0000" и "USDT → USD 1.0200".
-          const rateAB = getRateForTab(a, b);
-          const rateBA = getRateForTab(b, a);
-          const pairHasOverride = hasOverride(a, b) || hasOverride(b, a);
-          return (
-            <React.Fragment key={`${a}-${b}`}>
-            <div
-              className={`px-2 py-1 rounded-[8px] transition-colors ${
-                fav
-                  ? "bg-amber-50/70 ring-1 ring-amber-200"
-                  : pairHasOverride
-                  ? "bg-indigo-50/60 ring-1 ring-indigo-100"
-                  : "bg-slate-50"
-              }`}
-            >
-              {/* Header: ⭐ + freshness dot + override-бейдж. */}
-              <div className="flex items-center gap-1 mb-0.5">
-                <button
-                  type="button"
-                  onClick={(e) => toggleFavorite(a, b, e)}
-                  className={`shrink-0 transition-colors ${
-                    fav
-                      ? "text-amber-500 hover:text-amber-600"
-                      : "text-slate-300 hover:text-amber-500"
-                  }`}
-                  title={fav ? "Убрать из избранного" : "В избранное"}
-                >
-                  <Star className={`w-3 h-3 ${fav ? "fill-amber-400" : ""}`} />
-                </button>
-                <span className="text-[10.5px] font-bold text-slate-400 tracking-wider uppercase">
-                  {a} / {b}
-                </span>
-                <FreshnessChip updatedAt={pairUpdatedAt(a, b)} />
-                {pairHasOverride && (
-                  <span
-                    className="ml-auto px-1 py-px rounded text-[8px] font-bold bg-indigo-100 text-indigo-700 tracking-wider"
-                    title="Office override активен"
-                  >
-                    OFC
-                  </span>
-                )}
-              </div>
-              {/* Direction 1: a → b — компактный layout: пара + число прямо
-                  рядом, без justify-between (раньше глаз шёл через пустоту). */}
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold text-slate-700 inline-flex items-center gap-0.5 tracking-tight w-[72px] shrink-0">
-                  {a}
-                  <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
-                  {b}
-                </span>
-                <span className="text-[14px] font-bold tabular-nums text-slate-900">
-                  {formatRate(rateAB)}
-                </span>
-              </div>
-              {/* Direction 2: b → a */}
-              <div className="flex items-center gap-2">
-                <span className="text-[12px] font-semibold text-slate-700 inline-flex items-center gap-0.5 tracking-tight w-[72px] shrink-0">
-                  {b}
-                  <ArrowRight className="w-2.5 h-2.5 mx-0.5 text-slate-400" />
-                  {a}
-                </span>
-                <span className="text-[14px] font-bold tabular-nums text-slate-900">
-                  {formatRate(rateBA)}
-                </span>
-              </div>
-            </div>
-            {isLastFav && (
-              <div className="my-1 border-t border-dashed border-slate-200" />
+        {expanded ? (
+          <>
+            {/* Группа: ★ Избранные */}
+            {favoritesList.length > 0 && (
+              <>
+                <GroupSeparator label={`★ Избранные · ${favoritesList.length}`} />
+                {favoritesList.map(renderRateCard)}
+              </>
             )}
-            </React.Fragment>
-          );
-        })}
-        {/* Empty state при поиске */}
-        {query && visiblePairs.length === 0 && (
-          <div className="text-center py-6 text-[11px] text-slate-400">
-            ничего не найдено
-          </div>
+            {/* Группа: Все пары */}
+            {othersList.length > 0 && (
+              <>
+                <GroupSeparator label={`Все пары · ${othersList.length}`} />
+                {othersList.map(renderRateCard)}
+              </>
+            )}
+            {query && favoritesList.length === 0 && othersList.length === 0 && (
+              <div className="text-center py-6 text-caption text-muted">
+                ничего не найдено
+              </div>
+            )}
+          </>
+        ) : (
+          /* Compact: 5 favorites (или first 5 если favorites нет) — без separator'ов */
+          collapsedFavorites.map(renderRateCard)
         )}
       </div>
 
-      {/* Toggle "Show all / Compact" — внизу списка.
-          • expanded=true → кнопка "Свернуть" видна ВСЕГДА (даже при
-            активном поиске — иначе юзер раскрыл, ввёл фильтр и не может
-            свернуть назад одной кнопкой).
-          • expanded=false → кнопка "Показать все" видна только если
-            есть скрытые пары и нет активного поиска (поиск показывает
-            всё что нашлось). */}
-      {/* Toggle всегда виден если в списке больше пар чем compact-min.
-          Раньше при включении «все офисы» sidebar становился высоким,
-          fitCount подбирал showingCount === totalCount → hasHidden=false
-          → кнопка пропадала, юзер не мог свернуть. Теперь кнопка
-          рендерится по факту наличия пар. */}
+      {/* Footer toggle */}
       {tradePairs.length > 0 && (
-        <div className="border-t border-slate-100 px-2 py-2 shrink-0">
+        <div className="border-t border-border-soft px-3 py-2 shrink-0">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="w-full inline-flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-[8px] text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+            className="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
           >
             {expanded ? (
               <>
-                <ChevronUp className="w-3 h-3" />
+                <ChevronUp className="w-3 h-3" strokeWidth={2.2} />
                 Свернуть
               </>
             ) : hasHidden ? (
               <>
-                <ChevronDown className="w-3 h-3" />
-                Показать все ({totalCount - showingCount})
+                <ChevronDown className="w-3 h-3" strokeWidth={2.2} />
+                Показать все ({totalCount})
               </>
             ) : (
               <>
-                <ChevronDown className="w-3 h-3" />
+                <ChevronDown className="w-3 h-3" strokeWidth={2.2} />
                 Развернуть
               </>
             )}
@@ -497,5 +473,17 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       )}
     </aside>
+  );
+}
+
+// GroupSeparator: «★ Избранные · N» / «Все пары · N» + hairline справа.
+function GroupSeparator({ label }) {
+  return (
+    <div className="px-2 pt-3 pb-1 flex items-center gap-2">
+      <span className="text-[10px] font-bold tracking-wider text-muted-soft uppercase whitespace-nowrap shrink-0">
+        {label}
+      </span>
+      <span className="flex-1 border-t border-border-soft" />
+    </div>
   );
 }

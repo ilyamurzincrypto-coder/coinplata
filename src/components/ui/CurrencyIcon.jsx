@@ -43,10 +43,11 @@ export const CCY_SYMBOL = {
 };
 
 const SIZE_MAP = {
-  sm: { box: 18, text: "text-[9px]" },
+  xs: { box: 12, text: "text-[7px]"  },
+  sm: { box: 18, text: "text-[9px]"  },
   md: { box: 28, text: "text-[12px]" },
-  lg: { box: 36, text: "text-sm" },
-  xl: { box: 44, text: "text-base" },
+  lg: { box: 36, text: "text-sm"     },
+  xl: { box: 44, text: "text-base"   },
 };
 
 function Single({ ccy, size = "lg", className = "" }) {
@@ -64,18 +65,23 @@ function Single({ ccy, size = "lg", className = "" }) {
   );
 }
 
-function Pair({ from, to, size = "sm", className = "" }) {
-  // Для парных кружков используем меньший размер.
-  const inner = size === "md" ? "sm" : size; // парные иконки всегда small inside
+// Pair — две перекрывающиеся иконки.
+//   ringColorClass — Tailwind border-color класс под фон карточки.
+//     На favorited-фоне обводка должна быть в цвет fav-bg, иначе белая
+//     обводка торчит на жёлтом. По умолчанию border-surface (white).
+//   overlap — насколько вторая иконка перекрывает первую (для xs=12px
+//     уменьшаем, иначе вылазит за рамку).
+function Pair({ from, to, size = "sm", className = "", ringColorClass = "border-surface" }) {
+  const overlap = size === "xs" ? "-ml-1" : "-ml-1.5";
   return (
     <div className={`inline-flex items-center ${className}`}>
-      <Single ccy={from} size={inner} className="border-[1.5px] border-surface" />
-      <Single ccy={to}   size={inner} className="border-[1.5px] border-surface -ml-1.5" />
+      <Single ccy={from} size={size} className={`border-[1.5px] ${ringColorClass}`} />
+      <Single ccy={to}   size={size} className={`border-[1.5px] ${ringColorClass} ${overlap}`} />
     </div>
   );
 }
 
-export default function CurrencyIcon({ ccy, pair, size, className }) {
-  if (pair) return <Pair from={ccy} to={pair} size={size} className={className} />;
+export default function CurrencyIcon({ ccy, pair, size, className, ringColorClass }) {
+  if (pair) return <Pair from={ccy} to={pair} size={size} className={className} ringColorClass={ringColorClass} />;
   return <Single ccy={ccy} size={size} className={className} />;
 }
