@@ -315,8 +315,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   };
 
   return (
-    // БЕЗ обёртки bg-surface — рендерится прямо на bg-bg
-    <aside className="flex flex-col">
+    // Карточка с белым фоном, p-1.5 — компактный внешний padding.
+    // Растягивания по высоте не будет: на CashierPage grid стоит items-start.
+    <aside className="bg-surface rounded-card p-1.5 flex flex-col">
       {/* Header виджета: 📈 КУРСЫ + live-dot + relative time + Изм. */}
       <header className="px-2.5 pt-2.5 pb-1 shrink-0">
         <div className="flex items-center justify-between gap-2">
