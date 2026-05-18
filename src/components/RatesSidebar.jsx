@@ -18,6 +18,7 @@ import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { freshnessOf, shortAge, tooltipFor } from "../utils/rateFreshness.jsx";
 import { useNow } from "../hooks/useNow.js";
+import { displayRate, formatRate } from "../lib/rates.js";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 
 const DASHBOARD_FAV_KEY = "dashboardFavorites";
@@ -40,13 +41,6 @@ const COMPACT_MIN = 5;
 // Approx высота одной rate-карточки в px (padding + header + quotes
 // + space-y между карточками). Используется для расчёта fitCount.
 const PAIR_ROW_HEIGHT = 64;
-
-function formatRate(value) {
-  if (!value && value !== 0) return "—";
-  if (value >= 10) return value.toFixed(2);
-  if (value >= 1) return value.toFixed(4);
-  return value.toFixed(6);
-}
 
 function timeAgoShort(date, nowMs = Date.now()) {
   if (!date) return "—";
@@ -92,15 +86,19 @@ function AgePill({ updatedAt }) {
   );
 }
 
-// QuoteSide — одна из двух колонок quotes-блока: [mini⚪ → mini⚪] + value.
-function QuoteSide({ from, to, value, ringColorClass }) {
+// QuoteSide — одна из двух колонок quotes-блока: [mini⚪ mini⚪] + value.
+// Принимает rawRate + from/to. Если raw < 1, displayRate инвертирует
+// (1/raw + swap from↔to). Иконки парных мини-кружков рендерятся в порядке
+// d.from → d.to — это и есть единственный визуальный «след» инверсии.
+function QuoteSide({ from, to, rawRate, ringColorClass }) {
+  const d = displayRate(rawRate, from, to);
   return (
     <div className="flex items-center justify-between gap-1">
       <span className="inline-flex items-center gap-0.5 shrink-0">
-        <CurrencyIcon ccy={from} pair={to} size="xs" ringColorClass={ringColorClass} />
+        <CurrencyIcon ccy={d.from} pair={d.to} size="xs" ringColorClass={ringColorClass} />
       </span>
       <span className="font-mono tabular text-[13px] font-bold text-ink tracking-tight shrink-0">
-        {value}
+        {formatRate(d.rate)}
       </span>
     </div>
   );
@@ -332,11 +330,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           <AgePill updatedAt={updated} />
         </div>
 
-        {/* Quotes — две колонки через 1px vertical divider */}
+        {/* Quotes — две колонки через 1px vertical divider.
+            rawRate напрямую (без formatRate) — внутри QuoteSide
+            displayRate инвертирует если < 1 + formatRate округляет. */}
         <div className="pl-4 grid grid-cols-[1fr_1px_1fr] gap-2 items-center">
-          <QuoteSide from={a} to={b} value={formatRate(rateAB)} ringColorClass={ringColorClass} />
+          <QuoteSide from={a} to={b} rawRate={rateAB} ringColorClass={ringColorClass} />
           <div className={`self-stretch min-h-[20px] ${dividerBg}`} />
-          <QuoteSide from={b} to={a} value={formatRate(rateBA)} ringColorClass={ringColorClass} />
+          <QuoteSide from={b} to={a} rawRate={rateBA} ringColorClass={ringColorClass} />
         </div>
       </div>
     );
