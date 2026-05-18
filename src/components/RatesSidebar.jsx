@@ -316,8 +316,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
   return (
     // Карточка с белым фоном, p-1.5 — компактный внешний padding.
-    // Растягивания по высоте не будет: на CashierPage grid стоит items-start.
-    <aside className="bg-surface rounded-card p-1.5 flex flex-col">
+    // h-full + flex flex-col — карточка растягивается до высоты grid-cell
+    // (grid items-stretch by default), а внутренний spacer flex-1 перед
+    // footer'ом съедает свободное пространство → низ выровнен с балансами.
+    <aside className="bg-surface rounded-card p-1.5 flex flex-col h-full">
       {/* Header виджета: 📈 КУРСЫ + live-dot + relative time + Изм.
           pt-2 на header'е + p-1.5 (6px) на корне = 14px от top-edge
           карточки до текста — выравнивается с заголовком «Балансы». */}
