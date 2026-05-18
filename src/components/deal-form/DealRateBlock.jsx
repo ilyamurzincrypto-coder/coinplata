@@ -1,15 +1,16 @@
 // src/components/deal-form/DealRateBlock.jsx
 //
 // Чёрная капсула с курсом — визуальный «шарнир» между блоками IN и OUT.
-// Phase 1: inline-edit курса + источник + (опционально) маржа справа.
-// Phase 2 — добавим DealRateAutocomplete (dropdown с курсами по офисам).
+// Phase 2: подключён DealRateAutocomplete — dropdown с курсами по офисам.
 
 import React from "react";
 import { ArrowLeftRight } from "lucide-react";
+import DealRateAutocomplete from "./DealRateAutocomplete.jsx";
 
 export default function DealRateBlock({
   rate,             // string-input value
   onRateChange,
+  onSelectSuggestion,   // callback при выборе из dropdown — пробрасывает source
   fromCcy,
   toCcy,
   sourceLabel,      // например "Terra City" или "Global"
@@ -33,13 +34,13 @@ export default function DealRateBlock({
           Курс обмена
         </div>
         <div className="flex items-baseline gap-2">
-          <input
-            type="text"
-            inputMode="decimal"
+          <DealRateAutocomplete
             value={rate}
-            onChange={(e) => onRateChange(e.target.value)}
-            placeholder="0.0000"
-            className="bg-transparent text-white font-mono tabular text-h2 font-bold border-b border-transparent focus:border-white/40 outline-none transition-colors w-32 min-w-0"
+            onChange={onRateChange}
+            onSelect={onSelectSuggestion}
+            from={fromCcy}
+            to={toCcy}
+            inputClassName="bg-transparent text-white font-mono tabular text-h2 font-bold border-b border-transparent focus:border-white/40 outline-none transition-colors w-32 min-w-0 placeholder:text-white/30"
           />
           <span className="text-body-sm text-white/60 font-mono">
             {fromCcy} → {toCcy}

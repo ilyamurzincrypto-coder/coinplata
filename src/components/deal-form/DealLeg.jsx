@@ -11,10 +11,12 @@
 import React from "react";
 import { ChevronDown } from "lucide-react";
 import CurrencyIcon from "../ui/CurrencyIcon.jsx";
+import BalanceHint from "./BalanceHint.jsx";
 
 export default function DealLeg({
   number,           // "1" | "2" (просто display)
   label,            // "Клиент даёт" | "Мы отдаём"
+  direction,        // "in" | "out" — для BalanceHint
   amount,
   onAmountChange,
   currency,
@@ -65,13 +67,19 @@ export default function DealLeg({
         />
       </div>
 
-      {/* Account-pill */}
-      <div className="flex items-center gap-2">
+      {/* Account-pill + balance hint */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <AccountPill
           accountId={accountId}
           options={accountOptions}
           currency={currency}
           onChange={onAccountChange}
+        />
+        <BalanceHint
+          accountId={accountId}
+          amount={amount}
+          direction={direction}
+          currency={currency}
         />
       </div>
     </div>

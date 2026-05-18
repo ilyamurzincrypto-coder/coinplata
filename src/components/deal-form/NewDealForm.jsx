@@ -32,12 +32,14 @@ import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useRates } from "../../store/rates.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
+import { useOffices } from "../../store/offices.jsx";
 import { multiplyAmount } from "../../utils/money.js";
 import DealHeader from "./DealHeader.jsx";
 import DealLeg from "./DealLeg.jsx";
 import DealRateBlock from "./DealRateBlock.jsx";
 import DealSummary from "./DealSummary.jsx";
 import { displayRate, formatRate } from "../../lib/rates.js";
+import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
 
 export default function NewDealForm({
   currentOffice,
@@ -46,9 +48,10 @@ export default function NewDealForm({
   onCancel,
   submitting = false,
 }) {
-  const { getRate: getRateRaw } = useRates();
-  const { accounts } = useAccounts();
+  const { getRate: getRateRaw, pairs: ratePairs, channels: rateChannels } = useRates();
+  const { accounts, balanceOf } = useAccounts();
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
+  const { findOffice } = useOffices();
 
   const getRate = useCallback(
     (from, to) => getRateRaw(from, to, currentOffice),
@@ -72,6 +75,10 @@ export default function NewDealForm({
   const [accountIdIn, setAccountIdIn] = useState(initialData?.accountIdIn || "");
   const [accountIdOut, setAccountIdOut] = useState(initialData?.accountIdOut || "");
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || "");
+  // rateSourceOffice — выбранный office из autocomplete dropdown.
+  //   null = текущий office (default), "__global__" = Global без override,
+  //   officeId = override другого офиса.
+  const [rateSourceOffice, setRateSourceOffice] = useState(null);
 
   // ── Auto-fill rate из useRates когда юзер не правил его руками ────────
   useEffect(() => {
@@ -118,6 +125,44 @@ export default function NewDealForm({
     () => accounts.filter((a) => a.officeId === currentOffice && a.active !== false),
     [accounts, currentOffice]
   );
+
+  // ── Reverse rate handler — swap from/to + flip rate value ─────────────
+  const reverseRate = useCallback(() => {
+    setCurIn((prev) => {
+      setCurOut(prev);
+      return curOut;
+    });
+    setAmtIn((prev) => { setAmtOut(prev); return amtOut; });
+    // rate сам пересчитается auto-effect (rateTouched=false после reset)
+    setRateTouched(false);
+  }, [curOut, amtOut]);
+
+  // ── Source label для rate-капсулы ─────────────────────────────────────
+  const sourceLabel = useMemo(() => {
+    if (rateSourceOffice === "__global__") return "Global";
+    const oid = rateSourceOffice || currentOffice;
+    if (!oid) return "Global";
+    const o = findOffice(oid);
+    return o?.name || "Office";
+  }, [rateSourceOffice, currentOffice, findOffice]);
+
+  // ── Age label — для текущего источника курса ──────────────────────────
+  const ageLabel = useMemo(() => {
+    if (!ratePairs || !rateChannels) return null;
+    const matches = ratePairs.filter((p) => {
+      const fc = rateChannels.find((c) => c.id === p.fromChannelId)?.currencyCode;
+      const tc = rateChannels.find((c) => c.id === p.toChannelId)?.currencyCode;
+      return p.isDefault && ((fc === curIn && tc === curOut) || (fc === curOut && tc === curIn));
+    });
+    let latest = null;
+    matches.forEach((m) => {
+      if (!m.updatedAt) return;
+      const t = new Date(m.updatedAt).getTime();
+      if (Number.isFinite(t) && (!latest || t > latest)) latest = t;
+    });
+    if (!latest) return null;
+    return shortAge(freshnessOf(new Date(latest)).ageMs);
+  }, [ratePairs, rateChannels, curIn, curOut]);
 
   // ── Summary line ──────────────────────────────────────────────────────
   const summary = useMemo(() => {
@@ -212,12 +257,16 @@ export default function NewDealForm({
       <DealHeader
         counterparty={counterparty}
         onCounterpartyChange={setCounterparty}
+        onSelectClient={(c) => {
+          // Phase 3 — здесь авто-включим Реферал toggle если c.tag === "referral"
+        }}
         onClose={onCancel}
       />
 
       <DealLeg
         number="1"
         label="Клиент даёт"
+        direction="in"
         amount={amtIn}
         onAmountChange={setAmtIn}
         currency={curIn}
@@ -231,16 +280,23 @@ export default function NewDealForm({
       <DealRateBlock
         rate={rate}
         onRateChange={(v) => { setRate(v); setRateTouched(true); }}
+        onSelectSuggestion={(s) => {
+          setRateTouched(true);
+          setRateSourceOffice(s.key);
+        }}
         fromCcy={curIn}
         toCcy={curOut}
-        sourceLabel={currentOffice ? "Office" : "Global"}
+        sourceLabel={sourceLabel}
+        ageLabel={ageLabel}
         marginUsd={marginInfo.marginUsd}
         spreadPct={marginInfo.spreadPct}
+        onReverse={reverseRate}
       />
 
       <DealLeg
         number="2"
         label="Мы отдаём"
+        direction="out"
         amount={amtOut}
         onAmountChange={(v) => { setAmtOut(v); setAmtOutTouched(true); }}
         currency={curOut}
