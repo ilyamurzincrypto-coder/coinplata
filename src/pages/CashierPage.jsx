@@ -8,14 +8,18 @@ import RatesPage from "./RatesPage.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
+import NewDealForm from "../components/deal-form/NewDealForm.jsx";
 
-// Форма создания сделки: жёстко используем привычную ExchangeForm.
-// (Новая v2 DealForm — с боковой панелью курсов — отключена по запросу;
-// env-флаг VITE_USE_NEW_DEAL_FORM сейчас игнорируется. Чтобы вернуть v2-форму,
-// замените `false` на `import.meta.env.VITE_USE_NEW_DEAL_FORM === "true"`.)
-// Это НЕ трогает леджер: ExchangeForm пишет сделки через адаптер в тот же
-// ledger.create_deal_v2 — Казначейство/проводки работают как прежде.
+// Форма создания сделки. По умолчанию — legacy ExchangeForm.
+// • VITE_USE_NEW_DEAL_FORM_REDESIGN=true → новая редизайн-форма (Phase 1+,
+//   src/components/deal-form/NewDealForm.jsx) — minimal viable каркас,
+//   submit идёт через тот же createDeal(payload).
+// • USE_NEW_DEAL_FORM (legacy v2 с RatesPanel sidebar) — оставлен false,
+//   юзер от него отказался отдельно.
+// ledger.create_deal_v2 — единая точка записи для обеих форм.
 const USE_NEW_DEAL_FORM = false;
+const USE_NEW_DEAL_FORM_REDESIGN =
+  import.meta.env?.VITE_USE_NEW_DEAL_FORM_REDESIGN === "true";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
@@ -639,12 +643,18 @@ export default function CashierPage({
                   </div>
                 )}
                 {formMounted && (
-                  USE_NEW_DEAL_FORM ? (
-                    // DealForm creates the deal itself (runSubmitFlow → createDeal),
-                    // shows its own success toast and bumps the data version. Its
-                    // onSubmit is just the "drawer is done" signal — close it. (Do NOT
-                    // pass handleFormSubmit here: that re-runs createDeal from a legacy
-                    // tx shape and produces a spurious error toast right after success.)
+                  USE_NEW_DEAL_FORM_REDESIGN ? (
+                    // Phase 1 redesign — новая форма, использует тот же
+                    // handleFormSubmit что и ExchangeForm (один контракт payload).
+                    <NewDealForm
+                      currentOffice={currentOffice}
+                      initialData={demoDealSeed || undefined}
+                      onSubmit={handleFormSubmit}
+                      onCancel={() => setFormMounted(false)}
+                      submitting={submitting}
+                    />
+                  ) : USE_NEW_DEAL_FORM ? (
+                    // Legacy v2 DealForm — отключена по запросу юзера.
                     <DealForm
                       mode="create"
                       currentOffice={currentOffice}
