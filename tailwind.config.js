@@ -45,14 +45,19 @@ export default {
         },
 
         // ── Status ───────────────────────────────────────────────────
-        success:       "#10B981",
+        success:        "#047857",
         "success-soft": "#D1FAE5",
-        danger:        "#F04452",
-        "danger-soft":  "#FFE4E6",
-        warning:       "#FF9F2D",
-        "warning-soft": "#FFEDD5",
-        info:          "#3B82F6",
+        danger:         "#B91C1C",
+        "danger-soft":  "#FEE2E2",
+        warning:        "#B45309",
+        "warning-soft": "#FEF3C7",
+        info:           "#3B82F6",
         "info-soft":    "#DBEAFE",
+
+        // ── Favorite rate-card backgrounds (Шаг 4.12) ────────────────
+        "fav-bg":       "#FFFCEF",
+        "fav-bg-hover": "#FFF8DE",
+        "fav-divider":  "#F5EBC8",
       },
 
       borderRadius: {

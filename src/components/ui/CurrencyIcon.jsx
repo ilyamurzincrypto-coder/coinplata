@@ -43,7 +43,7 @@ export const CCY_SYMBOL = {
 };
 
 const SIZE_MAP = {
-  xs: { box: 12, text: "text-[7px]"  },
+  xs: { box: 11, text: "text-[7px]"  },
   sm: { box: 18, text: "text-[9px]"  },
   md: { box: 28, text: "text-[12px]" },
   lg: { box: 36, text: "text-sm"     },
