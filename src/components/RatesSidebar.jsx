@@ -440,9 +440,15 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         )}
       </div>
 
-      {/* Footer — collapse/expand. Не показываем если нечего скрывать. */}
+      {/* Spacer — съедает свободное пространство между списком пар и
+          footer'ом когда карточка длиннее своего контента (например когда
+          правая колонка с балансами длиннее). Footer прижимается к низу. */}
+      <div className="flex-1" />
+
+      {/* Footer — collapse/expand. border-t визуально отделяет от
+          пустого пространства/последней rate-карточки. */}
       {showFootButton && (
-        <div className="px-2 py-1.5 shrink-0">
+        <div className="px-2 py-2 mt-1 border-t border-border-soft flex items-center justify-center shrink-0">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}

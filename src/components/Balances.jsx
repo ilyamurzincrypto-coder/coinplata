@@ -673,9 +673,10 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
       {/* Всё внутри ОДНОЙ карточки — header (Балансы + офис + controls)
           → stat-strip (Total + Available + border-b) → office blocks.
           pt-3.5 (14px) от top-edge до заголовка — синхронизировано с
-          RatesSidebar (там тоже 14px). items-start на grid Кассы не
-          даёт карточке растягиваться. */}
-      <div className="w-full bg-surface rounded-card">
+          RatesSidebar (там тоже 14px). flex flex-col — на случай если
+          грид колонка балансов окажется короче колонки курсов, пустое
+          место образуется естественно под списком (без footer'а). */}
+      <div className="w-full bg-surface rounded-card flex flex-col">
         {/* Header */}
         <div className="px-card pt-3.5 pb-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
