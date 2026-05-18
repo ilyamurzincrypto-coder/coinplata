@@ -669,8 +669,9 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
   return (
     <section className="w-full">
       {/* Section-header: h2 «Балансы» + counter + inline office + controls right.
-          Компактно (~44px), без отдельной sub-строки. */}
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+          pt-3.5 (14px) — выравнивает верхнюю кромку «Балансы» с заголовком
+          «КУРСЫ» в RatesSidebar (там 14px от top-edge карточки до текста). */}
+      <div className="flex items-center justify-between gap-3 mb-3 pt-3.5 flex-wrap">
         <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
           {t("balances")}
           <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
