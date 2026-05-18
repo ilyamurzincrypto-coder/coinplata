@@ -10,7 +10,7 @@
 // age-индикатор, OFC-маркер, office switcher, favorites, edit, expand.
 // Логика favorites/office override/search/freshness — anchor, не тронута.
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { TrendingUp, ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
@@ -33,7 +33,13 @@ const FALLBACK_PAIRS = [
 ];
 
 const GLOBAL_TAB = "__global__";
-const COMPACT_LIMIT = 5;
+// Минимум пар в свёрнутом state (даже если высоты не хватает — ровно 5
+// рендерим, последние могут уйти под overflow-hidden). Реальное число
+// вычисляется ResizeObserver'ом по доступной высоте pairs-контейнера.
+const COMPACT_MIN = 5;
+// Approx высота одной rate-карточки в px (padding + header + quotes
+// + space-y между карточками). Используется для расчёта fitCount.
+const PAIR_ROW_HEIGHT = 64;
 
 function formatRate(value) {
   if (!value && value !== 0) return "—";
@@ -241,17 +247,39 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     return { favoritesList: favs, othersList: rest, totalCount: tradePairs.length };
   }, [tradePairs, query, isFavorite]);
 
-  // Compact: 5 favorites; если favorites нет — first 5 обычных.
+  // ResizeObserver — измеряет доступную высоту pairs-контейнера и
+  // вычисляет сколько rate-карточек поместится (COMPACT_MIN минимум).
+  // При раскрытии — не мерим, COMPACT_MIN остаётся (не используется).
+  const pairsRef = useRef(null);
+  const [fitCount, setFitCount] = useState(COMPACT_MIN);
+
+  useEffect(() => {
+    if (expanded || !pairsRef.current || typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+    const el = pairsRef.current;
+    const compute = () => {
+      const h = el.clientHeight;
+      if (h <= 0) return;
+      const count = Math.max(COMPACT_MIN, Math.floor(h / PAIR_ROW_HEIGHT));
+      setFitCount((prev) => (prev === count ? prev : count));
+    };
+    compute();
+    const ro = new ResizeObserver(compute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [expanded, tradePairs.length]);
+
+  // Compact: favorites сверху + догрузка из others до fitCount.
+  // Если favorites > fitCount — обрезаем favorites.
   const collapsedList = useMemo(() => {
-    if (favoritesList.length > 0) return favoritesList.slice(0, COMPACT_LIMIT);
-    return othersList.slice(0, COMPACT_LIMIT);
-  }, [favoritesList, othersList]);
+    if (favoritesList.length >= fitCount) return favoritesList.slice(0, fitCount);
+    const fill = othersList.slice(0, fitCount - favoritesList.length);
+    return [...favoritesList, ...fill];
+  }, [favoritesList, othersList, fitCount]);
 
   // Foot-кнопка показывается только если есть скрытые пары.
-  const hiddenCount = Math.max(
-    0,
-    (favoritesList.length > COMPACT_LIMIT ? favoritesList.length - COMPACT_LIMIT : 0) + othersList.length
-  );
+  const hiddenCount = Math.max(0, totalCount - collapsedList.length);
   const showFootButton = expanded || hiddenCount > 0;
 
   const renderRateCard = ([a, b]) => {
@@ -415,8 +443,15 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       )}
 
-      {/* Список пар */}
-      <div className={`px-1.5 py-1 space-y-0.5 ${expanded ? "max-h-[70vh] overflow-y-auto" : ""}`}>
+      {/* Список пар.
+          • Compact: flex-1 — растёт до доступной высоты cell, ResizeObserver
+            на pairsRef измеряет clientHeight и пересчитывает fitCount.
+          • Expanded: max-h-[70vh] overflow-y-auto — скроллим внутри, выше
+            footer/spacer-нет (он не нужен — pairs не flex-1 в этом режиме). */}
+      <div
+        ref={pairsRef}
+        className={`px-1.5 py-1 space-y-0.5 ${expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"}`}
+      >
         {expanded ? (
           <>
             {favoritesList.length > 0 && (
@@ -442,10 +477,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         )}
       </div>
 
-      {/* Spacer — съедает свободное пространство между списком пар и
-          footer'ом когда карточка длиннее своего контента (например когда
-          правая колонка с балансами длиннее). Footer прижимается к низу. */}
-      <div className="flex-1" />
+      {/* Spacer — только в expanded mode (pairs не flex-1 там, max-h-70vh).
+          Если cell выше — spacer заполнит остаток, footer прижмётся к низу.
+          В compact pairs сам flex-1, spacer не нужен. */}
+      {expanded && <div className="flex-1" />}
 
       {/* Footer — collapse/expand. border-t визуально отделяет от
           пустого пространства/последней rate-карточки. */}
