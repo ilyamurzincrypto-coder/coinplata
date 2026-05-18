@@ -10,16 +10,16 @@ import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
 import NewDealForm from "../components/deal-form/NewDealForm.jsx";
 
-// Форма создания сделки. По умолчанию — legacy ExchangeForm.
-// • VITE_USE_NEW_DEAL_FORM_REDESIGN=true → новая редизайн-форма (Phase 1+,
-//   src/components/deal-form/NewDealForm.jsx) — minimal viable каркас,
-//   submit идёт через тот же createDeal(payload).
-// • USE_NEW_DEAL_FORM (legacy v2 с RatesPanel sidebar) — оставлен false,
-//   юзер от него отказался отдельно.
-// ledger.create_deal_v2 — единая точка записи для обеих форм.
+// Форма создания сделки. По умолчанию — новая редизайн-форма (Phase 1+).
+// Чтобы вернуть legacy ExchangeForm — выставить
+// VITE_USE_NEW_DEAL_FORM_REDESIGN=false явно в Vercel ENV.
+//   • new redesign (default) — src/components/deal-form/NewDealForm.jsx
+//   • USE_NEW_DEAL_FORM (legacy v2 с RatesPanel sidebar) — false, юзер
+//     отказался отдельно
+// ledger.create_deal_v2 — единая точка записи для всех вариантов.
 const USE_NEW_DEAL_FORM = false;
 const USE_NEW_DEAL_FORM_REDESIGN =
-  import.meta.env?.VITE_USE_NEW_DEAL_FORM_REDESIGN === "true";
+  import.meta.env?.VITE_USE_NEW_DEAL_FORM_REDESIGN !== "false";
 import TransferModal from "../components/accounts/TransferModal.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
