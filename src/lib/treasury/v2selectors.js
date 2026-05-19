@@ -120,6 +120,108 @@ export function assetsByOfficeCurrency(ctx) {
     });
 }
 
+/**
+ * Зеркало assetsByOfficeCurrency() для пассивов с группировкой по
+ * контрагенту вместо office. Иерархия:
+ *   Counterparty (client/partner) → Currency → Source ledger.account leaf
+ *
+ * Используется в Treasury → Пассивы (counterparty-режим, default) и
+ * в DealForm для отображения балансов клиента.
+ *
+ * @param {object} ctx - { accounts, balances, toBase, clientById, partnerById, officeFilter }
+ * @param {"client" | "partner"} cpKind - какой пул показывать
+ * @returns Array<{
+ *   id, kind, name, full_name, telegram, tag, isReferral, referrer_id,
+ *   totalInBase,
+ *   byCurrency: Array<{ currency, balance, balanceInBase,
+ *     sourceAccounts: Array<{ accountId, code, name, subtype, balance }> }>
+ * }>
+ */
+export function liabilitiesByCounterparty(ctx, cpKind = "client") {
+  const { accounts, balances, toBase, clientById, partnerById, officeFilter } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+
+  // Какие subtypes допустимы:
+  //   client → customer_liab, unearned (последний без dim в БД, но
+  //     если когда-то будет — сюда же)
+  //   partner → partner_liab
+  const allowedSubtypes = cpKind === "client"
+    ? new Set(["customer_liab", "unearned"])
+    : new Set(["partner_liab"]);
+
+  const cpMap = new Map();
+
+  for (const b of balances) {
+    const balanceNum = Number(b.balance) || 0;
+    if (Math.abs(balanceNum) < 1e-9) continue;
+
+    const acc = accById.get(b.accountId);
+    if (!acc || acc.type !== "liability") continue;
+    if (!allowedSubtypes.has(acc.subtype)) continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+
+    const cpId = cpKind === "client" ? b.clientId : b.partnerId;
+    if (!cpId) continue;
+
+    const cpData = cpKind === "client"
+      ? clientById?.get?.(cpId)
+      : partnerById?.get?.(cpId);
+    if (!cpData) continue; // архивирован или загрузка ещё не пришла
+
+    let cp = cpMap.get(cpId);
+    if (!cp) {
+      cp = {
+        id: cpId,
+        kind: cpKind,
+        name: cpData.nickname || cpData.name || String(cpId).slice(0, 8),
+        full_name: cpData.full_name || null,
+        telegram: cpData.telegram || null,
+        tag: cpData.tag || null,
+        isReferral: !!(cpData.tag && /referral|реферал/i.test(cpData.tag)),
+        referrer_id: cpData.referrer_id || null,
+        totalInBase: 0,
+        byCurrency: new Map(),
+      };
+      cpMap.set(cpId, cp);
+    }
+
+    const ccyKey = b.currencyCode || b.currency || "?";
+    let cur = cp.byCurrency.get(ccyKey);
+    if (!cur) {
+      cur = { currency: ccyKey, balance: 0, balanceInBase: 0, sourceAccounts: [] };
+      cp.byCurrency.set(ccyKey, cur);
+    }
+    cur.balance += balanceNum;
+    const inBase = toBase ? (toBase(balanceNum, ccyKey) || 0) : 0;
+    cur.balanceInBase += inBase;
+    cur.sourceAccounts.push({
+      accountId: b.accountId,
+      code: acc.code,
+      name: acc.name,
+      subtype: acc.subtype,
+      balance: balanceNum,
+    });
+    cp.totalInBase += inBase;
+  }
+
+  return [...cpMap.values()]
+    .map((cp) => ({
+      ...cp,
+      byCurrency: [...cp.byCurrency.values()]
+        .sort((a, b) => Math.abs(b.balanceInBase) - Math.abs(a.balanceInBase))
+        .map((c) => ({
+          ...c,
+          sourceAccounts: c.sourceAccounts.slice().sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)),
+        })),
+    }))
+    .sort((a, b) => {
+      // Реферальные сверху, потом по |totalInBase| desc
+      if (a.isReferral && !b.isReferral) return -1;
+      if (!a.isReferral && b.isReferral) return 1;
+      return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
+    });
+}
+
 export function accountEntries(ctx, accountId, limit = 50, period = null, dim = null) {
   const { entries, transactions } = ctx;
   const txById = new Map(transactions.map((t) => [t.id, t]));

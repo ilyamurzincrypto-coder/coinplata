@@ -17,11 +17,11 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { Search, Plus, X, Star } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
-import { useObligations } from "../../store/obligations.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useRates } from "../../store/rates.jsx";
 import { convert } from "../../utils/convert.js";
 import { fmt, curSymbol } from "../../utils/money.js";
+import { useClientsBalancesBatch } from "../../hooks/useClientLedgerBalances.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 function initialsOf(name) {
@@ -151,9 +151,13 @@ export default function DealClientAutocomplete({
   }, [counterparties, value, clientStats]);
 
   // "Недавние клиенты" — за последние 7 дней (когда query пустой)
-  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const isRecentMode = !value || !value.trim();
   const sectionTitle = isRecentMode ? "Недавние клиенты" : "Совпадения";
+
+  // Batch-балансы из ledger.v_client_balances для всех видимых клиентов.
+  // Один SELECT с IN на все ID вместо N запросов.
+  const visibleIds = useMemo(() => results.map((c) => c.id).filter(Boolean), [results]);
+  const { data: balancesMap } = useClientsBalancesBatch(visibleIds);
 
   useEffect(() => { setHi(0); }, [value]);
 
@@ -292,6 +296,7 @@ export default function DealClientAutocomplete({
                   client={c}
                   query={value}
                   highlighted={i === hi}
+                  balances={balancesMap[c.id] || []}
                   onMouseEnter={() => setHi(i)}
                   onClick={() => selectClient(c)}
                 />
@@ -338,8 +343,10 @@ export default function DealClientAutocomplete({
 }
 
 // ── ClientRow ──────────────────────────────────────────────────────────
-function ClientRow({ client, query, highlighted, onMouseEnter, onClick }) {
-  const balances = useClientBalancesArr(client.id);
+// balances приходит сверху из batch-запроса useClientsBalancesBatch
+// (один SELECT для всех видимых строк) — не вызываем useClientBalances
+// per-row чтобы не множить запросы.
+function ClientRow({ client, query, highlighted, balances = [], onMouseEnter, onClick }) {
   const stats = client._stats || {};
   const isReferral = !!(client.tag && /referral|реферал/i.test(client.tag));
   return (
@@ -391,7 +398,7 @@ function ClientRow({ client, query, highlighted, onMouseEnter, onClick }) {
             )}
           </div>
         )}
-        {/* Line 3: balances */}
+        {/* Line 3: balances из ledger.v_client_balances (через batch hook) */}
         {balances.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
             <span className="text-[10px] text-muted-soft uppercase tracking-wider font-semibold">баланс:</span>
@@ -399,12 +406,12 @@ function ClientRow({ client, query, highlighted, onMouseEnter, onClick }) {
               <span
                 key={b.currency}
                 className={`text-tiny font-mono tabular font-semibold ${
-                  b.amount > 0 ? "text-success" :
-                  b.amount < 0 ? "text-danger" :
+                  b.balance > 0 ? "text-success" :
+                  b.balance < 0 ? "text-danger" :
                   "text-muted-soft"
                 }`}
               >
-                {b.amount > 0 ? "+" : ""}{fmt(b.amount, b.currency)} {curSymbol(b.currency) || b.currency}
+                {b.balance > 0 ? "+" : ""}{fmt(b.balance, b.currency)} {curSymbol(b.currency) || b.currency}
               </span>
             ))}
             {balances.length > 3 && (
@@ -427,28 +434,6 @@ function ClientRow({ client, query, highlighted, onMouseEnter, onClick }) {
       </div>
     </button>
   );
-}
-
-// Хук — преобразует Map в массив ненулевых balances.
-function useClientBalancesArr(clientId) {
-  const { obligations } = useObligations();
-  return useMemo(() => {
-    if (!clientId) return [];
-    const map = {};
-    for (const o of obligations || []) {
-      if (o.clientId !== clientId) continue;
-      if (o.status !== "open") continue;
-      const remaining = (Number(o.amount) || 0) - (Number(o.paidAmount) || 0);
-      const cur = o.currency;
-      if (!cur) continue;
-      const sign = o.direction === "we_owe" ? 1 : -1;
-      map[cur] = (map[cur] || 0) + sign * remaining;
-    }
-    return Object.entries(map)
-      .filter(([_, v]) => Math.abs(v) > 0.01)
-      .map(([currency, amount]) => ({ currency, amount }))
-      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-  }, [obligations, clientId]);
 }
 
 function plural(n) {
