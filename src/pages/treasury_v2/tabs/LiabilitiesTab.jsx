@@ -9,7 +9,7 @@ import { Plus } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { usePartners } from "../../../store/partners.jsx";
-import { updateClientRow } from "../../../lib/supabaseWrite.js";
+import { updateClientRow, rpcArchiveClient, rpcDeleteClient } from "../../../lib/supabaseWrite.js";
 import { emitToast } from "../../../lib/toast.jsx";
 import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js";
 import CounterpartyGroup from "../parts/CounterpartyGroup.jsx";
@@ -20,7 +20,7 @@ const CP_FILTER_KEY = "coinplata:liabilities-cp-filter";
 export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
   const { t } = useTranslation();
   const can = useCan();
-  const { updatePartner } = usePartners();
+  const { updatePartner, removePartner } = usePartners();
   const [dialogOpen, setDialogOpen] = useState(false);
 
   // Inline rename контрагента из карточки.
@@ -37,6 +37,37 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
       throw err;
     }
   }, [updatePartner]);
+
+  // Archive — мягкое скрытие, история остаётся.
+  const archiveCounterparty = useCallback(async (cp) => {
+    try {
+      if (cp.kind === "client") {
+        await rpcArchiveClient(cp.id, true);
+      } else {
+        // partners.update.archived нет — деактивируем через soft-delete RPC.
+        await removePartner(cp.id);
+      }
+      emitToast("success", "Архивирован");
+    } catch (err) {
+      emitToast("error", err?.message || "Не удалось архивировать");
+      throw err;
+    }
+  }, [removePartner]);
+
+  // Delete — hard, RPC проверит наличие проводок и упадёт с понятной ошибкой.
+  const deleteCounterparty = useCallback(async (cp) => {
+    try {
+      if (cp.kind === "client") {
+        await rpcDeleteClient(cp.id);
+      } else {
+        await removePartner(cp.id);
+      }
+      emitToast("success", "Удалён");
+    } catch (err) {
+      emitToast("error", err?.message || "Не удалось удалить");
+      throw err;
+    }
+  }, [removePartner]);
 
   const [cpFilter, setCpFilter] = useState(() => {
     try {
@@ -119,6 +150,8 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
               baseCurrency={baseCurrency}
               canEdit={can("accounting", "edit")}
               onRename={renameCounterparty}
+              onArchive={archiveCounterparty}
+              onDelete={deleteCounterparty}
             />
           ))}
         </div>

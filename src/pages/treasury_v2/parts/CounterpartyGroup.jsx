@@ -14,6 +14,7 @@ import { ChevronRight, ChevronDown, Star } from "lucide-react";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import Avatar from "../../../components/ui/Avatar.jsx";
 import InlineNameEdit from "../../../components/ui/InlineNameEdit.jsx";
+import CounterpartyActionsMenu from "../../../components/ui/CounterpartyActionsMenu.jsx";
 
 function fmtCompact(value) {
   const v = Math.abs(Number(value) || 0);
@@ -22,7 +23,7 @@ function fmtCompact(value) {
   return `${Math.round(v)}`;
 }
 
-export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false, onRename, canEdit = false }) {
+export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false, onRename, onArchive, onDelete, canEdit = false }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isCredit = cp.totalInBase > 0;     // мы должны контрагенту
   const isDebit  = cp.totalInBase < 0;     // контрагент должен нам
@@ -77,13 +78,22 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
             <span className="text-tiny text-muted font-mono truncate">{cp.telegram}</span>
           )}
         </div>
-        <div className="text-right shrink-0 flex flex-col items-end leading-tight">
-          <span className={`text-body-sm font-mono tabular font-bold whitespace-nowrap ${toneCls}`}>
-            {signStr}{formatBase ? formatBase(Math.abs(cp.totalInBase), baseCurrency) : `$${fmtCompact(cp.totalInBase)}`}
-          </span>
-          <span className="text-tiny text-muted-soft">
-            {cp.byCurrency.length} {cp.byCurrency.length === 1 ? "валюта" : "валют"}
-          </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <div className="text-right shrink-0 flex flex-col items-end leading-tight">
+            <span className={`text-body-sm font-mono tabular font-bold whitespace-nowrap ${toneCls}`}>
+              {signStr}{formatBase ? formatBase(Math.abs(cp.totalInBase), baseCurrency) : `$${fmtCompact(cp.totalInBase)}`}
+            </span>
+            <span className="text-tiny text-muted-soft">
+              {cp.byCurrency.length} {cp.byCurrency.length === 1 ? "валюта" : "валют"}
+            </span>
+          </div>
+          {canEdit && (onArchive || onDelete) && (
+            <CounterpartyActionsMenu
+              kind={cp.kind}
+              onArchive={onArchive ? () => onArchive(cp) : undefined}
+              onDelete={onDelete ? () => onDelete(cp) : undefined}
+            />
+          )}
         </div>
       </div>
 
