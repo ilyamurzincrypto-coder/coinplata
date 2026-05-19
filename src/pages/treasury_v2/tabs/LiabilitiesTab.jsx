@@ -4,8 +4,8 @@
 // Group-by-counterparty единственный режим (legacy by-type-tabs убран).
 // Фильтр client / partner / all + кнопка «+ Обязательство» → CreateLiabilityDialog.
 
-import React, { useState, useMemo, useCallback } from "react";
-import { Plus } from "lucide-react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { Plus, Search } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { usePartners } from "../../../store/partners.jsx";
@@ -16,6 +16,13 @@ import CounterpartyGroup from "../parts/CounterpartyGroup.jsx";
 import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
 
 const CP_FILTER_KEY = "coinplata:liabilities-cp-filter";
+const SORT_KEY = "coinplata:liabilities-sort";
+const NONZERO_KEY = "coinplata:liabilities-nonzero";
+const SORT_OPTIONS = [
+  { id: "balance", label: "По балансу" },
+  { id: "name", label: "По имени" },
+  { id: "referral", label: "Реферал first" },
+];
 
 export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
   const { t } = useTranslation();
@@ -82,14 +89,72 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
     try { localStorage.setItem(CP_FILTER_KEY, v); } catch {}
   };
 
+  const [sortMode, setSortMode] = useState(() => {
+    try {
+      const v = localStorage.getItem(SORT_KEY);
+      return SORT_OPTIONS.some((o) => o.id === v) ? v : "balance";
+    } catch {
+      return "balance";
+    }
+  });
+  const setSortModePersist = (v) => {
+    setSortMode(v);
+    try { localStorage.setItem(SORT_KEY, v); } catch {}
+  };
+
+  const [nonZeroOnly, setNonZeroOnly] = useState(() => {
+    try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
+  });
+  const setNonZeroPersist = (v) => {
+    setNonZeroOnly(v);
+    try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {}
+  };
+
+  // Поиск debounce 150ms — для длинных списков. raw — что в input,
+  // applied — что применяется к фильтру.
+  const [searchRaw, setSearchRaw] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchRaw.trim().toLowerCase()), 150);
+    return () => clearTimeout(id);
+  }, [searchRaw]);
+
   const clientGroups = useMemo(() => liabilitiesByCounterparty(ctx, "client"), [ctx]);
   const partnerGroups = useMemo(() => liabilitiesByCounterparty(ctx, "partner"), [ctx]);
 
   const visibleGroups = useMemo(() => {
-    if (cpFilter === "client") return clientGroups;
-    if (cpFilter === "partner") return partnerGroups;
-    return [...clientGroups, ...partnerGroups];
-  }, [cpFilter, clientGroups, partnerGroups]);
+    let list = cpFilter === "client" ? clientGroups
+            : cpFilter === "partner" ? partnerGroups
+            : [...clientGroups, ...partnerGroups];
+
+    // Filter: только ненулевые балансы
+    if (nonZeroOnly) {
+      list = list.filter((g) => Math.abs(g.totalInBase) > 0.005);
+    }
+
+    // Filter: поиск по имени/telegram/tag
+    if (search) {
+      list = list.filter((g) => {
+        const haystack = [g.name, g.telegram, g.tag].filter(Boolean).map((s) => String(s).toLowerCase());
+        return haystack.some((s) => s.includes(search));
+      });
+    }
+
+    // Sort
+    const sorted = [...list];
+    if (sortMode === "balance") {
+      sorted.sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase));
+    } else if (sortMode === "name") {
+      sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else {
+      // referral first then balance
+      sorted.sort((a, b) => {
+        if (a.isReferral !== b.isReferral) return a.isReferral ? -1 : 1;
+        return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
+      });
+    }
+    return sorted;
+  }, [cpFilter, clientGroups, partnerGroups, nonZeroOnly, search, sortMode]);
 
   const grandTotalInBase = useMemo(
     () => [...clientGroups, ...partnerGroups].reduce((s, g) => s + g.totalInBase, 0),
@@ -121,8 +186,8 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
         )}
       </div>
 
-      {/* CP-type filter */}
-      <div className="flex items-center gap-2">
+      {/* Toolbar: CP-type filter + sort + non-zero toggle + search */}
+      <div className="bg-surface rounded-card p-2.5 flex items-center gap-2 flex-wrap">
         <SegmentedSmall
           value={cpFilter}
           onChange={setCpFilterPersist}
@@ -132,6 +197,33 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
             { id: "partner", label: `Партнёры · ${partnerGroups.length}` },
           ]}
         />
+        <SegmentedSmall
+          value={sortMode}
+          onChange={setSortModePersist}
+          options={SORT_OPTIONS}
+        />
+        <button
+          type="button"
+          onClick={() => setNonZeroPersist(!nonZeroOnly)}
+          className={`h-7 px-2.5 rounded-pill text-tiny font-semibold transition-all whitespace-nowrap ${
+            nonZeroOnly
+              ? "bg-ink text-white"
+              : "bg-surface-sunk text-muted hover:text-ink"
+          }`}
+          title="Скрыть нулевые балансы"
+        >
+          Ненулевые
+        </button>
+        <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+          <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" strokeWidth={2} />
+          <input
+            type="text"
+            value={searchRaw}
+            onChange={(e) => setSearchRaw(e.target.value)}
+            placeholder="Поиск по имени, telegram"
+            className="flex-1 min-w-0 h-7 px-2 rounded-input bg-surface-sunk text-ink text-caption placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+          />
+        </div>
       </div>
 
       <div className="text-tiny text-muted-soft">{t("trv2_liab_sign_note")}</div>
