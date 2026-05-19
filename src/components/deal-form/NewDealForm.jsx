@@ -260,6 +260,21 @@ export default function NewDealForm({
     if (seed?.deferredOut) return "us_later";
     return "now";
   });
+  // partialPayNow: { [outputId]: amountString } — заполняется только когда timing='partial'.
+  // На submit передаём только когда timing='partial' (иначе бек ругается).
+  const [partialPayNow, setPartialPayNow] = useState(() => {
+    if (seed?.partialPayNow && typeof seed.partialPayNow === "object") {
+      return { ...seed.partialPayNow };
+    }
+    return {};
+  });
+  // Если юзер ушёл с timing='partial' — затираем accumulated map, иначе на
+  // следующем сабмите со старым timing случайно передадутся pay-now значения.
+  useEffect(() => {
+    if (timing !== "partial" && Object.keys(partialPayNow).length > 0) {
+      setPartialPayNow({});
+    }
+  }, [timing, partialPayNow]);
   const [referral, setReferral] = useState(!!seed?.referral);
   const [referralAuto, setReferralAuto] = useState(false);
   const [applyMinFee, setApplyMinFee] = useState(
@@ -305,6 +320,7 @@ export default function NewDealForm({
         comment, inTxHash,
         commissionUsd, customFeeUsd,
         plannedLocal, backdateAt,
+        partialPayNow: timing === "partial" ? partialPayNow : {},
       });
       setDraftSavedAt(Date.now());
     }, 600);
@@ -313,6 +329,7 @@ export default function NewDealForm({
     inputs, outputs, counterparty,
     timing, referral, applyMinFee, comment, inTxHash,
     commissionUsd, customFeeUsd, plannedLocal, backdateAt,
+    partialPayNow,
   ]);
 
   // ── Re-render для подписи «X секунд назад» каждые 5с ──────────────────
@@ -539,7 +556,7 @@ export default function NewDealForm({
       deferredIn: timing === "client_later",
       deferredOut: timing === "us_later",
       partialMode: timing === "partial",
-      partialPayNow: {},
+      partialPayNow: timing === "partial" ? partialPayNow : {},
       plannedLocal,
       backdateAt,
       applyMinFee,
@@ -556,7 +573,7 @@ export default function NewDealForm({
     canSubmit, amtIn, curIn, outputs, accountIdIn, counterparty, timing,
     referral, applyMinFee, comment, inTxHash,
     commissionUsd, customFeeUsd, plannedLocal, backdateAt,
-    onSubmit,
+    partialPayNow, onSubmit,
   ]);
 
   // ── Hotkeys: ⌘↵ submit, Esc cancel ─────────────────────────────────────
@@ -746,6 +763,64 @@ export default function NewDealForm({
       )}
 
       <DealTimingSelector value={timing} onChange={setTiming} />
+
+      {/* Partial-split UI — только при timing='partial' */}
+      {timing === "partial" && outputs.length > 0 && (
+        <div className="px-6 py-3 border-b border-border-soft bg-accent-bg/30">
+          <div className="text-micro text-accent uppercase font-semibold mb-2">
+            К получению сейчас
+          </div>
+          <div className="space-y-1.5">
+            {outputs.map((o, idx) => {
+              const planned = parseFloat(o.amount) || 0;
+              const nowVal = parseFloat(partialPayNow[o.id] ?? "0") || 0;
+              const remaining = Math.max(0, planned - nowVal);
+              return (
+                <div key={o.id} className="flex items-center gap-2 text-caption">
+                  <span className="text-tiny font-bold text-muted-soft font-mono tabular w-6">
+                    #{idx + 1}
+                  </span>
+                  <span className="text-ink-soft font-mono text-caption min-w-[48px]">
+                    {o.currency}
+                  </span>
+                  <span className="text-muted text-tiny">сейчас</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={partialPayNow[o.id] ?? ""}
+                    placeholder="0"
+                    onChange={(e) => {
+                      const clean = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
+                      setPartialPayNow((prev) => ({ ...prev, [o.id]: clean }));
+                    }}
+                    className="flex-1 h-7 px-2 rounded-input bg-surface text-ink text-caption font-mono tabular font-semibold border-0 ring-1 ring-inset ring-accent/30 focus:ring-accent focus:outline-none transition-all"
+                  />
+                  {planned > 0 && remaining > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPartialPayNow((prev) => ({ ...prev, [o.id]: String(planned) }))
+                      }
+                      className="h-6 px-1.5 rounded-badge text-tiny font-bold text-accent bg-surface hover:bg-accent-bg ring-1 ring-accent/20 transition-colors whitespace-nowrap"
+                      title={`Платим всё: ${planned} ${o.currency}`}
+                    >
+                      Всё
+                    </button>
+                  )}
+                  <span className="text-tiny text-muted-soft whitespace-nowrap font-mono tabular">
+                    / {planned || 0}
+                  </span>
+                  {remaining > 0 && (
+                    <span className="text-tiny font-bold text-accent whitespace-nowrap font-mono tabular">
+                      должны {remaining}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <DealOptions
         referral={referral}
