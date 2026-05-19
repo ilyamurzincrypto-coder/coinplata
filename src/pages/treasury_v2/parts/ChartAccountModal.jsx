@@ -122,11 +122,11 @@ export default function ChartAccountModal({ open, onClose, defaultOfficeId = nul
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("trv2_chart_type")}</label>
+            <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_type")}</label>
             <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[13px] font-semibold outline-none"
+              className="w-full h-10 bg-surface-sunk text-ink rounded-input px-3 text-body-sm font-semibold border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all duration-150 ease-apple"
             >
               {TYPES.map((tp) => (
                 <option key={tp} value={tp}>{t(TYPE_LABEL_KEYS[tp])}</option>
@@ -134,50 +134,54 @@ export default function ChartAccountModal({ open, onClose, defaultOfficeId = nul
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("trv2_chart_subtype")}</label>
+            <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_subtype")}</label>
             <SearchableSelect value={subtype} onChange={(v) => setSubtype(v || subtype)} options={subtypeOptions} />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("trv2_chart_currency")}</label>
+            <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_currency")}</label>
             <SearchableSelect value={currency} onChange={(v) => setCurrency(v || currency)} options={currencyOptions} />
           </div>
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("trv2_chart_office")}</label>
+            <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_office")}</label>
             <SearchableSelect value={officeId} onChange={(v) => setOfficeId(v || NO_OFFICE)} options={officeOptions} />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{t("trv2_chart_name")}</label>
+          <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_name")}</label>
           <input
             type="text"
             value={effectiveName}
             onChange={(e) => { setName(e.target.value); setNameTouched(true); }}
             placeholder={suggestedName}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full h-10 bg-surface-sunk text-ink placeholder:text-muted-soft rounded-input px-3 text-body border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all duration-150 ease-apple"
           />
-          <p className="text-[10.5px] text-slate-500 mt-1">
+          <p className="text-tiny text-muted mt-1">
             {t("trv2_chart_add_hint")}
           </p>
         </div>
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
+          type="button"
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors disabled:opacity-60"
+          className="h-9 px-4 rounded-button bg-surface border border-border text-ink text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-60"
         >
           {t("cancel")}
         </button>
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+          className={`h-9 px-4 rounded-button text-body-sm font-semibold transition-all ${
+            canSubmit
+              ? "bg-ink text-white hover:bg-black hover:-translate-y-px shadow-cta-glow"
+              : "bg-ink/40 text-white cursor-not-allowed"
           }`}
         >
           {busy ? t("trv2_chart_add_btn") + "…" : t("save")}

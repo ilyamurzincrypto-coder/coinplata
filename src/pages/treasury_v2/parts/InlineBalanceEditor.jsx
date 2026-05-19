@@ -225,9 +225,9 @@ export default function InlineBalanceEditor({
   }
 
   const ro = (
-    <span className="tabular-nums">
+    <span className="font-mono tabular">
       {fmtNum(displayed)}
-      {suffix ? <span className="text-slate-400"> {suffix}</span> : null}
+      {suffix ? <span className="text-muted-soft"> {suffix}</span> : null}
     </span>
   );
 
@@ -243,11 +243,11 @@ export default function InlineBalanceEditor({
       ref={triggerRef}
       onClick={startEdit}
       title={`Добавить ${dimKind === "client" ? "клиента" : "партнёра"} с начальным остатком`}
-      className={`${className} inline-flex items-center gap-1 cursor-pointer rounded px-2 py-1 text-[11px] font-semibold ${
+      className={`${className} inline-flex items-center gap-1 cursor-pointer rounded-badge px-2 py-1 text-tiny font-semibold transition-colors ${
         editing
-          ? "text-emerald-700 bg-emerald-100 ring-1 ring-emerald-300"
-          : "text-emerald-700 bg-emerald-50/70 ring-1 ring-emerald-200 hover:bg-emerald-100"
-      } transition-colors`}
+          ? "text-success bg-success-soft ring-1 ring-success/30"
+          : "text-success bg-accent-bg ring-1 ring-accent/20 hover:bg-success-soft"
+      }`}
     >
       <Plus className="w-3 h-3" strokeWidth={2.5} />
       {dimKind === "client" ? "Клиент" : "Партнёр"}
@@ -258,14 +258,14 @@ export default function InlineBalanceEditor({
       ref={triggerRef}
       onClick={startEdit}
       title="Кликни чтобы вбить новый остаток"
-      className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded px-1.5 py-0.5 -mx-1 ${
+      className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded-badge px-1.5 py-0.5 -mx-1 transition-colors ${
         editing
-          ? "bg-amber-100 ring-1 ring-amber-300 text-amber-900"
-          : "bg-amber-50/60 ring-1 ring-amber-200/70 text-amber-900 hover:bg-amber-100 hover:ring-amber-300"
-      } transition-colors`}
+          ? "bg-warning-soft ring-1 ring-warning/40 text-warning"
+          : "bg-warning-soft/60 ring-1 ring-warning/20 text-warning hover:bg-warning-soft"
+      }`}
     >
       {ro}
-      <Pencil className="w-3 h-3 text-amber-500 shrink-0" strokeWidth={2.5} />
+      <Pencil className="w-3 h-3 text-warning shrink-0" strokeWidth={2.5} />
     </button>
   );
 
@@ -282,9 +282,9 @@ export default function InlineBalanceEditor({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={onKeyDown}
     >
-      <div className="bg-white rounded-[12px] border border-slate-200 shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] p-3 text-left">
+      <div className="bg-surface rounded-card-lg border border-border shadow-modal p-3 text-left">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+          <span className="text-micro text-muted uppercase">
             {isNewDim
               ? `Новый ${dimKind === "client" ? "клиент" : "партнёр"}`
               : "Корректировка остатка"}
@@ -293,23 +293,23 @@ export default function InlineBalanceEditor({
             type="button"
             onClick={cancel}
             disabled={submitting}
-            className="p-0.5 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+            className="p-0.5 rounded-badge text-muted hover:text-ink hover:bg-surface-soft transition-colors"
             title="Отмена (Esc)"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3.5 h-3.5" strokeWidth={2} />
           </button>
         </div>
 
         {isNewDim && (
           <label className="block mb-2">
-            <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+            <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
               {dimKind === "client" ? "Клиент *" : "Партнёр *"}
             </span>
             <select
               value={selectedDimId}
               onChange={(e) => setSelectedDimId(e.target.value)}
               disabled={submitting}
-              className="w-full text-[12px] px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+              className="w-full h-9 text-caption px-2 rounded-input bg-surface-sunk text-ink border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
             >
               <option value="">— выбери —</option>
               {dimOptions.map((opt) => (
@@ -322,7 +322,7 @@ export default function InlineBalanceEditor({
         )}
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
             {isNewDim
               ? `Начальный остаток (${account.currency})`
               : `Новый остаток (${account.currency})`}
@@ -334,12 +334,12 @@ export default function InlineBalanceEditor({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={submitting}
-            className="w-full text-right tabular-nums text-[14px] font-semibold px-2 py-1.5 border border-amber-300 rounded-[8px] bg-amber-50 outline-none focus:bg-white focus:ring-2 focus:ring-amber-200"
+            className="w-full h-9 text-right font-mono tabular text-body font-semibold px-2 rounded-input bg-warning-soft text-warning ring-1 ring-inset ring-warning/30 focus:bg-surface focus:ring-warning focus:shadow-[0_0_0_3px_rgba(180,83,9,0.12)] focus:outline-none transition-all"
           />
         </label>
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
             Комментарий *
           </span>
           <input
@@ -348,12 +348,12 @@ export default function InlineBalanceEditor({
             onChange={(e) => setReason(e.target.value)}
             placeholder="напр. инвентаризация 14.05"
             disabled={submitting}
-            className="w-full text-[12px] px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+            className="w-full h-9 text-caption px-2 rounded-input bg-surface-sunk text-ink placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
           />
         </label>
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
             Дата эффекта
           </span>
           <input
@@ -361,11 +361,11 @@ export default function InlineBalanceEditor({
             value={dateStr}
             onChange={(e) => setDateStr(e.target.value)}
             disabled={submitting}
-            className="w-full text-[12px] tabular-nums px-2 py-1.5 border border-slate-200 rounded-[8px] bg-slate-50 outline-none focus:bg-white focus:border-slate-400"
+            className="w-full h-9 text-caption font-mono tabular px-2 rounded-input bg-surface-sunk text-ink border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
           />
         </label>
 
-        <div className="text-[10.5px] text-slate-400 mb-2 leading-snug">
+        <div className="text-tiny text-muted-soft mb-2 leading-snug">
           Корр-счёт: Opening Equity {account.currency}. Δ = новый − старый.
         </div>
 
@@ -374,7 +374,7 @@ export default function InlineBalanceEditor({
             type="button"
             onClick={cancel}
             disabled={submitting}
-            className="px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            className="h-8 px-2.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft disabled:opacity-50 transition-colors"
           >
             Отмена
           </button>
@@ -382,7 +382,7 @@ export default function InlineBalanceEditor({
             type="button"
             onClick={commit}
             disabled={submitting}
-            className="px-3 py-1 rounded-[8px] text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-60 inline-flex items-center gap-1.5"
+            className="h-8 px-3 rounded-button text-caption font-semibold bg-ink text-white hover:bg-black shadow-cta-glow disabled:opacity-60 inline-flex items-center gap-1.5 transition-all"
           >
             {submitting && <Loader2 className="w-3 h-3 animate-spin" />}
             Сохранить

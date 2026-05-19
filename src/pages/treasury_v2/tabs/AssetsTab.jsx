@@ -3,9 +3,17 @@
 // Уровень 1 — офис (acc.officeId; null → «Без офиса»), total всех его asset-счетов в базе.
 // Уровень 2 — валюта внутри офиса (native total + ≈ base).
 // Уровень 3 (листья) — конкретные ledger.accounts; клик по листу разворачивает его проводки.
-// В шапке — кнопка «+ Счёт в план» (только can("accounting","edit")) → ChartAccountModal.
+//
+// Visual refresh на DS-токены (то же что Balances / Liabilities / RatesSidebar):
+//   • bg-surface, text-ink/muted, border-border-soft
+//   • text-h2/h3/caption/micro (без halfpixel)
+//   • Корневая карточка без border (правило DS)
+//   • CurrencyIcon на currency-row для единообразия с Balances
+//
+// Логика не тронута: expanded Set + ключи, permission checks, drill-down.
+
 import React, { useMemo, useState } from "react";
-import { ChevronRight, ChevronDown, Plus } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Building2 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { useOffices } from "../../../store/offices.jsx";
@@ -14,6 +22,7 @@ import { fmt, curSymbol } from "../../../utils/money.js";
 import AccountInlineEntries from "../parts/AccountInlineEntries.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
+import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -38,14 +47,22 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
 
   return (
     <div className="space-y-3">
+      {/* Header — h2 + counter + ≈ total + primary action */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[12px] text-slate-500">
-          {t("trv2_tab_assets")} · {formatBase(grandTotal, baseCurrency)}
-        </span>
+        <div className="text-h2 text-ink flex items-center gap-2">
+          {t("trv2_tab_assets")}
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+            {tree.length}
+          </span>
+          <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
+            ≈ {formatBase(grandTotal, baseCurrency)}
+          </span>
+        </div>
         {can("accounting", "edit") && (
           <button
+            type="button"
             onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-slate-900 text-white text-[12.5px] font-semibold hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             {t("trv2_chart_add_btn")}
@@ -54,9 +71,16 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
       </div>
 
       {tree.length === 0 ? (
-        <div className="p-5 text-slate-400 text-[13px]">{t("trv2_no_accounts")}</div>
+        <div className="bg-surface rounded-card p-card">
+          <div className="py-10 text-center">
+            <div className="inline-flex w-11 h-11 rounded-full bg-surface-sunk text-muted-soft items-center justify-center mb-3">
+              <Building2 className="w-5 h-5" strokeWidth={2} />
+            </div>
+            <div className="text-body font-semibold text-ink mb-1">{t("trv2_no_accounts")}</div>
+          </div>
+        </div>
       ) : (
-        <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+        <div className="bg-surface rounded-card overflow-hidden">
           {tree.map((office) => {
             const officeKey = `office:${office.officeId || "none"}`;
             const officeOpen = expanded.has(officeKey);
@@ -64,16 +88,21 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
               ? (findOffice(office.officeId)?.name || office.officeId)
               : t("trv2_assets_no_office");
             return (
-              <div key={officeKey} className="border-t border-slate-100 first:border-t-0">
+              <div key={officeKey} className="border-t border-border-soft first:border-t-0">
                 {/* Level 1 — office */}
-                <div
-                  className="px-4 py-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 bg-slate-50/40"
+                <button
+                  type="button"
+                  className="w-full grid grid-cols-[16px_1fr_auto] items-center gap-3 px-card py-2.5 hover:bg-surface-soft transition-colors text-left bg-surface-soft/40"
                   onClick={() => toggle(officeKey)}
                 >
-                  {officeOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-                  <span className="flex-1 text-[13px] font-bold text-slate-900 truncate">{officeName}</span>
-                  <span className="text-[13px] font-semibold tabular-nums">{formatBase(office.totalInBase, baseCurrency)}</span>
-                </div>
+                  {officeOpen
+                    ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
+                    : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+                  <span className="text-h3 text-ink font-semibold truncate">{officeName}</span>
+                  <span className="text-body-sm font-mono tabular font-bold text-ink">
+                    {formatBase(office.totalInBase, baseCurrency)}
+                  </span>
+                </button>
 
                 {officeOpen && office.currencies.map((cur) => {
                   const curKey = `${officeKey}|cur:${cur.currency}`;
@@ -82,17 +111,29 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                   return (
                     <div key={curKey}>
                       {/* Level 2 — currency */}
-                      <div
-                        className="pl-9 pr-4 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-50 border-t border-slate-100"
+                      <button
+                        type="button"
+                        className="w-full grid grid-cols-[16px_18px_1fr_auto] items-center gap-2 pl-9 pr-card py-2 hover:bg-surface-soft transition-colors text-left border-t border-border-soft"
                         onClick={() => toggle(curKey)}
                       >
-                        {curOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-                        <span className="flex-1 text-[12.5px] font-semibold text-slate-800 tracking-wider">{cur.currency}</span>
-                        <span className="text-[12px] text-slate-700 tabular-nums">{nativeFmt(cur.total, cur.currency)}</span>
-                        {!isBase && (
-                          <span className="text-[11.5px] text-slate-400 tabular-nums">(≈ {formatBase(cur.totalInBase, baseCurrency)})</span>
-                        )}
-                      </div>
+                        {curOpen
+                          ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
+                          : <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />}
+                        <CurrencyIcon ccy={cur.currency} size="sm" />
+                        <span className="text-caption font-semibold text-ink-soft tracking-wider">
+                          {cur.currency}
+                        </span>
+                        <div className="text-right shrink-0 flex items-baseline gap-2">
+                          <span className="text-body-sm font-mono tabular font-semibold text-ink">
+                            {nativeFmt(cur.total, cur.currency)}
+                          </span>
+                          {!isBase && (
+                            <span className="text-tiny text-muted-soft font-mono tabular">
+                              (≈ {formatBase(cur.totalInBase, baseCurrency)})
+                            </span>
+                          )}
+                        </div>
+                      </button>
 
                       {curOpen && cur.accounts.map((a) => {
                         const accKey = `${curKey}|acc:${a.accountId}`;
@@ -101,13 +142,18 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                           <React.Fragment key={accKey}>
                             {/* Level 3 — leaf account */}
                             <div
-                              className="pl-16 pr-4 py-1.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 border-t border-slate-100"
+                              className="grid grid-cols-[16px_48px_1fr_auto] items-center gap-2 pl-16 pr-card py-1.5 hover:bg-surface-soft transition-colors border-t border-border-soft cursor-pointer"
                               onClick={() => toggle(accKey)}
                             >
-                              {accOpen ? <ChevronDown className="w-3 h-3 text-slate-300" /> : <ChevronRight className="w-3 h-3 text-slate-300" />}
-                              <span className="font-mono text-[11px] text-slate-400 w-12 shrink-0">{a.code}</span>
-                              <span className="flex-1 text-[12.5px] text-slate-900 truncate">{a.name}</span>
-                              <span className="text-[12px] text-slate-600 tabular-nums">
+                              {accOpen
+                                ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />}
+                              <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
+                              <span className="text-body-sm text-ink truncate">{a.name}</span>
+                              <span
+                                className="text-body-sm font-mono tabular text-ink-soft"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <InlineBalanceEditor
                                   account={{
                                     code: a.code,
