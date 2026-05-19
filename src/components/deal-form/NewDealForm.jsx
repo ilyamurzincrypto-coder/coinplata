@@ -38,6 +38,9 @@ import DealHeader from "./DealHeader.jsx";
 import DealLeg from "./DealLeg.jsx";
 import DealRateBlock from "./DealRateBlock.jsx";
 import DealSummary from "./DealSummary.jsx";
+import DealTimingSelector from "./DealTimingSelector.jsx";
+import DealOptions from "./DealOptions.jsx";
+import DealAdvanced from "./DealAdvanced.jsx";
 import { displayRate, formatRate } from "../../lib/rates.js";
 import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
 
@@ -79,6 +82,35 @@ export default function NewDealForm({
   //   null = текущий office (default), "__global__" = Global без override,
   //   officeId = override другого офиса.
   const [rateSourceOffice, setRateSourceOffice] = useState(null);
+
+  // Timing — производный state. Маппится в submit payload как
+  //   now           → deferredIn=false, deferredOut=false, partialMode=false
+  //   client_later  → deferredIn=true
+  //   us_later      → deferredOut=true
+  //   partial       → partialMode=true
+  const [timing, setTiming] = useState(() => {
+    if (initialData?.partialMode) return "partial";
+    if (initialData?.deferredIn) return "client_later";
+    if (initialData?.deferredOut) return "us_later";
+    return "now";
+  });
+
+  // Options + advanced
+  const [referral, setReferral] = useState(!!initialData?.referral);
+  const [referralAuto, setReferralAuto] = useState(false);
+  const [applyMinFee, setApplyMinFee] = useState(
+    typeof initialData?.applyMinFee === "boolean" ? initialData.applyMinFee : true
+  );
+  const [comment, setComment] = useState(initialData?.comment || "");
+  const [inTxHash, setInTxHash] = useState(initialData?.inTxHash || "");
+  const [commissionUsd, setCommissionUsd] = useState(
+    initialData?.commissionUsd != null ? String(initialData.commissionUsd) : ""
+  );
+  const [customFeeUsd, setCustomFeeUsd] = useState(
+    initialData?.customFeeUsd != null ? String(initialData.customFeeUsd) : ""
+  );
+  const [plannedLocal, setPlannedLocal] = useState(initialData?.plannedLocal || "");
+  const [backdateAt, setBackdateAt] = useState(initialData?.backdateAt || "");
 
   // ── Auto-fill rate из useRates когда юзер не правил его руками ────────
   useEffect(() => {
@@ -199,10 +231,8 @@ export default function NewDealForm({
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
-    // Payload в shape совместимом с ExchangeForm.onSubmit:
-    //   { amtIn, curIn, outputs: [{ currency, amount, rate, accountId, ... }],
-    //     counterparty, accountId (IN account), referral, ... }
-    // CashierPage.handleSubmit преобразует это в createDeal(payload).
+    // Payload в shape совместимом с ExchangeForm.onSubmit.
+    // CashierPage.handleFormSubmit → createDeal(payload) → ledger.create_deal_v2.
     const payload = {
       amtIn: parseFloat(amtIn),
       curIn,
@@ -222,20 +252,28 @@ export default function NewDealForm({
       ],
       counterparty: counterparty.trim(),
       accountId: accountIdIn || "",
-      referral: false,
-      comment: "",
-      inTxHash: "",
-      deferredIn: false,
-      deferredOut: false,
-      partialMode: false,
+      referral,
+      comment,
+      inTxHash,
+      // Timing → ExchangeForm-совместимые булевы:
+      deferredIn: timing === "client_later",
+      deferredOut: timing === "us_later",
+      partialMode: timing === "partial",
       partialPayNow: {},
-      plannedLocal: "",
-      applyMinFee: true,
+      plannedLocal,
+      backdateAt,
+      applyMinFee,
+      // Advanced numerics:
+      commissionUsd: commissionUsd ? parseFloat(commissionUsd) : undefined,
+      customFeeUsd: customFeeUsd ? parseFloat(customFeeUsd) : undefined,
     };
     onSubmit(payload);
   }, [
     canSubmit, amtIn, curIn, curOut, amtOut, rate, rateTouched,
-    accountIdIn, accountIdOut, counterparty, onSubmit,
+    accountIdIn, accountIdOut, counterparty, timing,
+    referral, applyMinFee, comment, inTxHash,
+    commissionUsd, customFeeUsd, plannedLocal, backdateAt,
+    onSubmit,
   ]);
 
   // ── Hotkey ⌘↵ — submit ────────────────────────────────────────────────
@@ -256,9 +294,19 @@ export default function NewDealForm({
     <div className="bg-surface rounded-card overflow-hidden">
       <DealHeader
         counterparty={counterparty}
-        onCounterpartyChange={setCounterparty}
+        onCounterpartyChange={(v) => {
+          setCounterparty(v);
+          // Если юзер очистил или поменял имя — авто-реферал сбрасываем
+          if (referralAuto) {
+            setReferral(false);
+            setReferralAuto(false);
+          }
+        }}
         onSelectClient={(c) => {
-          // Phase 3 — здесь авто-включим Реферал toggle если c.tag === "referral"
+          if (c?.tag && /referral|реферал/i.test(c.tag)) {
+            setReferral(true);
+            setReferralAuto(true);
+          }
         }}
         onClose={onCancel}
       />
@@ -305,6 +353,36 @@ export default function NewDealForm({
         accountId={accountIdOut}
         accountOptions={accountOptions}
         onAccountChange={setAccountIdOut}
+      />
+
+      <DealTimingSelector
+        value={timing}
+        onChange={setTiming}
+      />
+
+      <DealOptions
+        referral={referral}
+        onReferralChange={(v) => { setReferral(v); if (!v) setReferralAuto(false); }}
+        referralAuto={referralAuto}
+        applyMinFee={applyMinFee}
+        onApplyMinFeeChange={setApplyMinFee}
+        deferredOut={timing === "us_later"}
+        onDeferredOutChange={(v) => setTiming(v ? "us_later" : "now")}
+      />
+
+      <DealAdvanced
+        comment={comment}
+        onCommentChange={setComment}
+        inTxHash={inTxHash}
+        onInTxHashChange={setInTxHash}
+        commissionUsd={commissionUsd}
+        onCommissionUsdChange={setCommissionUsd}
+        customFeeUsd={customFeeUsd}
+        onCustomFeeUsdChange={setCustomFeeUsd}
+        plannedLocal={plannedLocal}
+        onPlannedLocalChange={setPlannedLocal}
+        backdateAt={backdateAt}
+        onBackdateAtChange={setBackdateAt}
       />
 
       <DealSummary
