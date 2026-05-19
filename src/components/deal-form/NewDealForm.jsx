@@ -21,6 +21,7 @@ import DealHeader from "./DealHeader.jsx";
 import DealLeg from "./DealLeg.jsx";
 import DealLegNested from "./DealLegNested.jsx";
 import DealRateBlock from "./DealRateBlock.jsx";
+import DealRateMatrix from "./DealRateMatrix.jsx";
 import DealSummary from "./DealSummary.jsx";
 import DealTimingSelector from "./DealTimingSelector.jsx";
 import DealOptions from "./DealOptions.jsx";
@@ -773,6 +774,17 @@ export default function NewDealForm({
           ))}
         </div>
       )}
+
+      {/* Матрица курсов для multi-IN × multi-OUT — рядом-справочник.
+          При 1×1 не показывается (rate-капсула выше уже всё держит). */}
+      <DealRateMatrix
+        inputs={inputs}
+        outputs={outputs}
+        getRate={getRate}
+        onApplyRate={(outIdx, rateStr) => {
+          patchOutput(outIdx, { rate: rateStr, manualRate: false });
+        }}
+      />
 
       <DealTimingSelector value={timing} onChange={setTiming} />
 
