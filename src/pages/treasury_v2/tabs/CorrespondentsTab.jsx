@@ -120,29 +120,29 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
   const total = items.reduce((s, it) => s + it.balanceInBase * displayMul, 0);
   const colorCls =
     color === "emerald"
-      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-      : "bg-rose-50 text-rose-700 ring-rose-200";
+      ? "bg-success-soft text-success border-success/20"
+      : "bg-danger-soft text-danger border-danger/20";
   return (
-    <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-      <header className="px-4 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider ring-1 ${colorCls}`}>
+    <div className="bg-surface rounded-card overflow-hidden">
+      <header className="px-card py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-badge text-tiny font-bold uppercase tracking-wider border ${colorCls}`}>
           {title}
         </span>
-        <span className="text-[11.5px] text-slate-400">{hint}</span>
-        <span className="ml-auto text-[14px] font-bold tabular-nums text-slate-900">
+        <span className="text-caption text-muted-soft">{hint}</span>
+        <span className="ml-auto text-body font-bold font-mono tabular text-ink whitespace-nowrap">
           {fmtSignedBase(total, baseCurrency)}
         </span>
       </header>
       {items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12.5px] text-slate-400">Счетов этого типа нет</div>
+        <div className="px-card py-6 text-center text-body-sm text-muted">Счетов этого типа нет</div>
       ) : (
-        <table className="w-full text-[12.5px]">
+        <table className="w-full text-caption">
           <thead>
-            <tr className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
-              <th className="text-left py-1.5 px-4 font-bold w-6"></th>
+            <tr className="text-micro text-muted-soft uppercase tracking-wider border-b border-border-soft">
+              <th className="text-left py-1.5 px-card font-bold w-6"></th>
               <th className="text-left py-1.5 font-bold">Счёт</th>
               <th className="text-right py-1.5 font-bold">Остаток</th>
-              <th className="text-right py-1.5 px-4 font-bold">≈ в base</th>
+              <th className="text-right py-1.5 px-card font-bold">≈ в base</th>
             </tr>
           </thead>
           <tbody>
@@ -153,24 +153,24 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
                 <React.Fragment key={it.account.id}>
                   <tr
                     onClick={() => hasDims && setOpenId(isOpen ? null : it.account.id)}
-                    className={`border-t border-slate-100 ${hasDims ? "cursor-pointer hover:bg-slate-50" : ""}`}
+                    className={`border-t border-border-soft transition-colors ${hasDims ? "cursor-pointer hover:bg-surface-soft" : ""}`}
                   >
-                    <td className="py-1.5 px-4">
-                      {hasDims && (isOpen ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />)}
+                    <td className="py-1.5 px-card">
+                      {hasDims && (isOpen ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} /> : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />)}
                     </td>
                     <td className="py-1.5">
-                      <span className="font-mono text-[10.5px] text-slate-400 mr-1.5">{it.account.code}</span>
-                      <span className="font-medium text-slate-800">{it.account.name}</span>
+                      <span className="font-mono text-tiny text-muted-soft mr-1.5">{it.account.code}</span>
+                      <span className="font-medium text-ink">{it.account.name}</span>
                     </td>
-                    <td className="py-1.5 text-right tabular-nums text-slate-700">
+                    <td className="py-1.5 text-right font-mono tabular text-ink-soft whitespace-nowrap">
                       {fmtCur(it.balance * displayMul, it.currency)}
                     </td>
-                    <td className="py-1.5 px-4 text-right tabular-nums font-semibold text-slate-900">
+                    <td className="py-1.5 px-card text-right font-mono tabular font-semibold text-ink whitespace-nowrap">
                       {fmtSignedBase(it.balanceInBase * displayMul, baseCurrency)}
                     </td>
                   </tr>
                   {isOpen && hasDims && (
-                    <tr className="bg-slate-50/40">
+                    <tr className="bg-surface-soft/40">
                       <td colSpan={4} className="py-1.5 px-8">
                         <div className="space-y-0.5">
                           {it.dims.map((d, i) => {
@@ -178,11 +178,11 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
                             const name = ctx?.counterpartyName ? ctx.counterpartyName(id) : String(id || "").slice(0, 8);
                             const kind = d.clientId ? "client" : d.partnerId ? "partner" : "";
                             return (
-                              <div key={`${id || ""}_${i}`} className="flex items-baseline gap-3 text-[11.5px]">
-                                <span className="text-slate-400 text-[10px] uppercase tracking-wider w-12">{kind}</span>
-                                <span className="text-slate-700 flex-1 truncate">{name || "—"}</span>
-                                <span className="tabular-nums text-slate-700 w-28 text-right">{fmtCur(d.balance * displayMul, it.currency)}</span>
-                                <span className="tabular-nums text-slate-500 w-24 text-right">{fmtSignedBase(d.balanceInBase * displayMul, baseCurrency)}</span>
+                              <div key={`${id || ""}_${i}`} className="flex items-baseline gap-3 text-caption">
+                                <span className="text-muted-soft text-micro uppercase tracking-wider w-12">{kind}</span>
+                                <span className="text-ink-soft flex-1 truncate">{name || "—"}</span>
+                                <span className="font-mono tabular text-ink-soft w-28 text-right whitespace-nowrap">{fmtCur(d.balance * displayMul, it.currency)}</span>
+                                <span className="font-mono tabular text-muted w-24 text-right whitespace-nowrap">{fmtSignedBase(d.balanceInBase * displayMul, baseCurrency)}</span>
                               </div>
                             );
                           })}
@@ -208,11 +208,11 @@ export default function CorrespondentsTab({ ctx, officeFilter, baseCurrency }) {
   return (
     <div className="space-y-4">
       {/* Header / explainer */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] px-4 py-3 flex items-start gap-3 flex-wrap">
-        <Globe className="w-4 h-4 text-slate-500 mt-0.5 shrink-0" />
+      <div className="bg-surface rounded-card px-card py-3 flex items-start gap-3 flex-wrap">
+        <Globe className="w-4 h-4 text-muted mt-0.5 shrink-0" strokeWidth={2} />
         <div className="flex-1 min-w-0">
-          <h2 className="text-[13.5px] font-bold text-slate-900">Корреспондентские счета</h2>
-          <p className="text-[11.5px] text-slate-500 leading-snug mt-0.5">
+          <h2 className="text-body-sm font-bold text-ink">Корреспондентские счета</h2>
+          <p className="text-caption text-muted leading-snug mt-0.5">
             <strong>NOSTRO</strong> — наши деньги у внешней стороны (биржа, банк-корреспондент,
             партнёр держит наш оборот). По бухгалтерии — актив subtype="nostro".
             <br />
@@ -223,7 +223,7 @@ export default function CorrespondentsTab({ ctx, officeFilter, baseCurrency }) {
       </div>
 
       {!hasAnything ? (
-        <div className="bg-white border border-slate-200/70 rounded-[14px] px-4 py-10 text-center text-[12.5px] text-slate-400">
+        <div className="bg-surface rounded-card px-card py-10 text-center text-body-sm text-muted">
           Корр-счета не заведены. Создать новый: «+ Счёт в план» в Активах (subtype "nostro") или
           в Пассивах (subtype "loro").
         </div>
@@ -250,34 +250,34 @@ export default function CorrespondentsTab({ ctx, officeFilter, baseCurrency }) {
 
           {/* Net по валютам — Σ NOSTRO − |LORO| */}
           {data.netList.length > 0 && (
-            <div className="bg-white border border-slate-200/70 rounded-[14px] overflow-hidden">
-              <header className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-                <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-                <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
+            <div className="bg-surface rounded-card overflow-hidden">
+              <header className="px-card py-3 border-b border-border-soft flex items-center gap-2">
+                <ArrowUpDown className="w-3.5 h-3.5 text-muted" strokeWidth={2} />
+                <h3 className="text-h3 text-ink font-semibold">
                   Чистая позиция по валютам
                 </h3>
-                <span className="text-[11px] text-slate-400 ml-auto">NOSTRO − |LORO|</span>
+                <span className="text-tiny text-muted-soft ml-auto font-mono">NOSTRO − |LORO|</span>
               </header>
-              <table className="w-full text-[12.5px]">
+              <table className="w-full text-caption">
                 <thead>
-                  <tr className="text-[10px] text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                    <th className="text-left py-1.5 px-4 font-bold">Валюта</th>
+                  <tr className="text-micro text-muted-soft uppercase tracking-wider border-b border-border-soft">
+                    <th className="text-left py-1.5 px-card font-bold">Валюта</th>
                     <th className="text-right py-1.5 font-bold">NOSTRO</th>
                     <th className="text-right py-1.5 font-bold">LORO</th>
-                    <th className="text-right py-1.5 px-4 font-bold">Net (в base)</th>
+                    <th className="text-right py-1.5 px-card font-bold">Net (в base)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.netList.map((row) => (
-                    <tr key={row.currency} className="border-t border-slate-100">
-                      <td className="py-1.5 px-4 font-bold text-slate-700">{row.currency}</td>
-                      <td className="py-1.5 text-right tabular-nums text-emerald-700">
+                    <tr key={row.currency} className="border-t border-border-soft hover:bg-surface-soft transition-colors">
+                      <td className="py-1.5 px-card font-bold text-ink-soft font-mono">{row.currency}</td>
+                      <td className="py-1.5 text-right font-mono tabular text-success whitespace-nowrap">
                         {row.nostro > 0 ? `+${fmtCur(row.nostro, row.currency)}` : "—"}
                       </td>
-                      <td className="py-1.5 text-right tabular-nums text-rose-700">
+                      <td className="py-1.5 text-right font-mono tabular text-danger whitespace-nowrap">
                         {row.loroAbs > 0 ? `−${fmtCur(row.loroAbs, row.currency)}` : "—"}
                       </td>
-                      <td className={`py-1.5 px-4 text-right tabular-nums font-semibold ${row.netBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      <td className={`py-1.5 px-card text-right font-mono tabular font-semibold whitespace-nowrap ${row.netBase < 0 ? "text-danger" : "text-success"}`}>
                         {fmtSignedBase(row.netBase, baseCurrency)}
                       </td>
                     </tr>

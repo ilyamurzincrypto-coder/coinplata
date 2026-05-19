@@ -61,35 +61,40 @@ export default function DealsTab({ ctx, officeFilter, onOpenSource }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex flex-wrap items-center gap-4">
+      <div className="bg-surface rounded-card p-3 flex flex-wrap items-center gap-4">
         <PeriodPicker value={period} onChange={setP} />
-        <div className="flex items-center gap-1.5">
+        <div className="inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill">
           {TYPES.map((tp) => (
             <button
               key={tp}
+              type="button"
               onClick={() => setTypeFilter(tp)}
-              className={`px-2 py-1 rounded-[8px] text-[11px] font-medium ${typeFilter === tp ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              className={`h-7 px-2.5 rounded-pill text-tiny font-semibold transition-all duration-150 ease-apple whitespace-nowrap ${
+                typeFilter === tp
+                  ? "bg-surface text-ink shadow-seg"
+                  : "text-muted hover:text-ink"
+              }`}
             >
               {t(`trv2_journal_type_${tp}`)}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1.5 min-w-[200px] flex-1">
-          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
           <input
             value={searchRaw}
             onChange={(e) => setSearchRaw(e.target.value)}
             placeholder={t("trv2_search_placeholder")}
-            className="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] outline-none"
+            className="flex-1 min-w-0 h-7 px-2 rounded-input bg-surface-sunk text-ink text-caption border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
           />
         </div>
       </div>
       {truncated && (
-        <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
+        <div className="rounded-card px-card py-2 text-caption bg-warning-soft text-warning border border-warning/20">{t("trv2_window_partial")}</div>
       )}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <section className="bg-surface rounded-card overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="px-4 py-8 text-center text-[12.5px] text-slate-400">
+          <div className="px-card py-8 text-center text-body-sm text-muted">
             {search ? t("trv2_search_no_results") : t("trv2_journal_no_tx")}
           </div>
         ) : (
