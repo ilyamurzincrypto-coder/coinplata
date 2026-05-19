@@ -177,7 +177,12 @@ export function liabilitiesByCounterparty(ctx, cpKind = "client") {
         full_name: cpData.full_name || null,
         telegram: cpData.telegram || null,
         tag: cpData.tag || null,
-        isReferral: !!(cpData.tag && /referral|реферал/i.test(cpData.tag)),
+        // 0108: канон — boolean clients.is_referral; legacy tag-эвристика
+        // оставлена fallback'ом для in-memory объектов без is_referral.
+        isReferral: !!(
+          cpData.isReferral === true ||
+          (cpData.tag && /referral|реферал/i.test(cpData.tag))
+        ),
         referrer_id: cpData.referrer_id || null,
         totalInBase: 0,
         byCurrency: new Map(),

@@ -252,6 +252,8 @@ export async function loadClients() {
     // 0103: реферер (клиент, который привёл данного)
     referrerId: r.referrer_id || null,
     accountingCode: r.accounting_code || null,
+    // 0108: настоящий boolean признак реферала (вместо хака [referral] в note)
+    isReferral: r.is_referral === true,
   }));
 }
 

@@ -1568,6 +1568,7 @@ export async function updateClientRow(id, patch) {
   if (patch.tag !== undefined) row.tag = patch.tag || null;
   if (patch.note !== undefined) row.note = patch.note || null;
   if (patch.referrerId !== undefined) row.referrer_id = patch.referrerId || null;
+  if (patch.isReferral !== undefined) row.is_referral = !!patch.isReferral;
   if (Object.keys(row).length === 0) return;
   const { error } = await supabase
     .from("clients")
@@ -1669,7 +1670,7 @@ export async function ensureClient({ nickname, telegram, counterpartyId }, loade
   }
 }
 
-export async function insertClient({ nickname, fullName, telegram, tag, note, referrerId }) {
+export async function insertClient({ nickname, fullName, telegram, tag, note, referrerId, isReferral }) {
   assertConfigured();
   if (typeof nickname !== "string" || nickname.trim().length === 0) {
     throw new Error("nickname: required");
@@ -1685,6 +1686,7 @@ export async function insertClient({ nickname, fullName, telegram, tag, note, re
       tag: tag || null,
       note: note || "",
       referrer_id: referrerId || null,
+      is_referral: !!isReferral,
     })
     .select()
     .maybeSingle();

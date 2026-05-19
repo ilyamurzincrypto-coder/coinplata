@@ -49,10 +49,10 @@ export default function DealClientChip({ client, onClear }) {
   const { base: baseCcy } = useBaseCurrency();
   const { getRate } = useRates();
 
-  // DB-tag не может содержать "referral" (constraint VIP/Regular/New/Risky),
-  // поэтому quick-create сохраняет признак реферала в clients.note как
-  // "[referral]". Проверяем оба источника.
+  // Канон — boolean clients.is_referral (0108). Старые источники
+  // (tag/note) поддерживаем для совместимости.
   const isReferral = !!(
+    client?.isReferral === true ||
     (client?.tag && /referral|реферал/i.test(client.tag)) ||
     (client?.note && /\[referral\]/i.test(client.note))
   );

@@ -215,18 +215,18 @@ export default function DealClientAutocomplete({
           nickname: q,
           telegram: createTelegram.trim() || "",
           tag: null,
-          // DB constraint на clients.tag разрешает только VIP/Regular/New/Risky.
-          // Признак реферала сохраняем в note как [referral] чтобы он переживал
-          // reload (auto-detect в DealForm.onSelectClient смотрит на note).
-          note: createIsReferral ? "[referral]" : "",
+          note: "",
+          // 0108: настоящий boolean isReferral вместо хака [referral] в note.
+          isReferral: !!createIsReferral,
         });
         if (row?.id) {
           created = {
             id: row.id,
             nickname: row.nickname || q,
             telegram: row.telegram || createTelegram.trim() || "",
-            tag: createIsReferral ? "referral" : "",
+            tag: row.tag || "",
             note: row.note || "",
+            isReferral: row.is_referral === true,
           };
         }
       }
