@@ -5,12 +5,13 @@
 // Фильтр client / partner / all + кнопка «+ Обязательство» → CreateLiabilityDialog.
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Download } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { usePartners } from "../../../store/partners.jsx";
 import { updateClientRow, rpcArchiveClient, rpcDeleteClient } from "../../../lib/supabaseWrite.js";
 import { emitToast } from "../../../lib/toast.jsx";
+import { exportCSV } from "../../../utils/csv.js";
 import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js";
 import CounterpartyGroup from "../parts/CounterpartyGroup.jsx";
 import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
@@ -174,16 +175,28 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
             {clientGroups.length} клиентов · {partnerGroups.length} партнёров
           </span>
         </div>
-        {can("accounting", "edit") && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setDialogOpen(true)}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
+            onClick={() => doExport(visibleGroups, baseCurrency)}
+            disabled={visibleGroups.length === 0}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
+            title="Экспорт всех видимых контрагентов в CSV"
           >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            Обязательство
+            <Download className="w-3.5 h-3.5" strokeWidth={2.5} />
+            CSV
           </button>
-        )}
+          {can("accounting", "edit") && (
+            <button
+              type="button"
+              onClick={() => setDialogOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Обязательство
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Toolbar: CP-type filter + sort + non-zero toggle + search */}
@@ -259,6 +272,56 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
       />
     </div>
   );
+}
+
+// One row per (counterparty × currency × source_account) — даёт бухгалтеру
+// все срезы баланса без дальнейшей перекомпоновки.
+function doExport(groups, baseCurrency) {
+  const rows = [];
+  for (const cp of groups) {
+    for (const cur of cp.byCurrency) {
+      if (!cur.sourceAccounts || cur.sourceAccounts.length === 0) {
+        rows.push({
+          kind: cp.kind,
+          name: cp.name,
+          telegram: cp.telegram || "",
+          isReferral: cp.isReferral ? "true" : "false",
+          currency: cur.currency,
+          balance: cur.balance,
+          balanceInBase: cur.balanceInBase,
+          accountCode: "",
+          accountName: "",
+        });
+        continue;
+      }
+      for (const acc of cur.sourceAccounts) {
+        rows.push({
+          kind: cp.kind,
+          name: cp.name,
+          telegram: cp.telegram || "",
+          isReferral: cp.isReferral ? "true" : "false",
+          currency: cur.currency,
+          balance: acc.balance,
+          balanceInBase: undefined,  // accuracy per-account только в native
+          accountCode: acc.code,
+          accountName: acc.name,
+        });
+      }
+    }
+  }
+  const cols = [
+    { key: "kind", label: "kind" },
+    { key: "name", label: "name" },
+    { key: "telegram", label: "telegram" },
+    { key: "isReferral", label: "is_referral" },
+    { key: "accountCode", label: "account_code" },
+    { key: "accountName", label: "account_name" },
+    { key: "currency", label: "currency" },
+    { key: "balance", label: "balance_native" },
+    { key: "balanceInBase", label: `balance_${baseCurrency.toLowerCase()}` },
+  ];
+  const stamp = new Date().toISOString().slice(0, 10);
+  exportCSV({ filename: `liabilities_${stamp}.csv`, columns: cols, rows });
 }
 
 function SegmentedSmall({ value, onChange, options }) {
