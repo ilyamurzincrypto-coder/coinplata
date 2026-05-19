@@ -190,7 +190,7 @@ export default function LoginPage() {
         <div className="flex items-center justify-center mb-8 relative h-40">
           {/* Глубинный slow-pulse эмеральдовый halo */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-72 h-72 rounded-full bg-emerald-500/25 blur-[90px] animate-[logoGlow_4s_ease-in-out_infinite]" />
+            <div className="w-72 h-72 rounded-full bg-success-soft0/25 blur-[90px] animate-[logoGlow_4s_ease-in-out_infinite]" />
           </div>
           {/* Тёплый amber-halo — теплит низ свирла */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -217,7 +217,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div
-          className="relative bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+          className="relative bg-ink/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 60px -20px rgba(0,0,0,0.7)",
@@ -227,14 +227,14 @@ export default function LoginPage() {
             <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
               Sign in to your account
             </h1>
-            <p className="text-[13px] text-slate-400 mt-1.5">
+            <p className="text-[13px] text-muted-soft mt-1.5">
               Secure access to your cashier system
             </p>
           </header>
 
           {/* Notice: Supabase not configured */}
           {!isSupabaseConfigured && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[12px]">
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-warning-soft0/10 border border-amber-500/25 text-amber-300 text-[12px]">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
                 Backend not connected yet — this is a UI preview. Inputs are for
@@ -260,7 +260,7 @@ export default function LoginPage() {
                 onKeyDown={handleEmailKeyDown}
                 disabled={loading}
                 placeholder="you@company.com"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-slate-500 py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -274,7 +274,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="p-1 text-muted-soft hover:text-white/80 transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -295,7 +295,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-slate-500 py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -303,13 +303,13 @@ export default function LoginPage() {
             {(error || info) && (
               <div className="mt-4">
                 {error && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-rose-500/10 border border-rose-500/25 text-rose-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
                 {info && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
                     <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{info}</span>
                   </div>
@@ -323,8 +323,8 @@ export default function LoginPage() {
               disabled={loading || recoveryLoading}
               className={`mt-5 w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
                 loading || recoveryLoading
-                  ? "bg-emerald-500/60 text-slate-950/60 cursor-not-allowed"
-                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-slate-950 hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
+                  ? "bg-success-soft0/60 text-ink/60 cursor-not-allowed"
+                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
               }`}
             >
               {loading ? (
@@ -346,7 +346,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={loading || recoveryLoading}
-                className="text-[12px] font-medium text-slate-400 hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                className="text-[12px] font-medium text-muted-soft hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
               >
                 {recoveryLoading ? (
                   <>
@@ -360,19 +360,19 @@ export default function LoginPage() {
             </div>
           </form>
 
-          <p className="mt-6 text-center text-[11px] text-slate-500 leading-relaxed">
+          <p className="mt-6 text-center text-[11px] text-muted leading-relaxed">
             Don't have an account?{" "}
-            <span className="text-slate-400">Access is invite-only — ask an admin.</span>
+            <span className="text-muted-soft">Access is invite-only — ask an admin.</span>
           </p>
         </div>
 
         {/* Footer */}
-        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-slate-600">
+        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="w-3 h-3 text-slate-500" />
+            <ShieldCheck className="w-3 h-3 text-muted" />
             Secure · Private · Internal system
           </div>
-          <div className="text-slate-700">v{APP_VERSION}</div>
+          <div className="text-ink-soft">v{APP_VERSION}</div>
           {/* Escape hatch — если session cache "залип" и signin ведёт себя странно.
               Чистит все Supabase токены и перезагружает. */}
           <button
@@ -388,7 +388,7 @@ export default function LoginPage() {
               } catch {}
               window.location.reload();
             }}
-            className="mt-1 text-slate-600 hover:text-slate-400 underline underline-offset-2 transition-colors"
+            className="mt-1 text-ink-soft hover:text-muted-soft underline underline-offset-2 transition-colors"
           >
             Clear stored session
           </button>
@@ -425,9 +425,9 @@ function Field({ icon, label, htmlFor, children, className = "", rightSlot }) {
     >
       <label
         htmlFor={htmlFor}
-        className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 tracking-[0.1em] uppercase"
+        className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase"
       >
-        <span className="text-slate-500 group-focus-within:text-emerald-400 transition-colors">
+        <span className="text-muted group-focus-within:text-success transition-colors">
           {icon}
         </span>
         {label}

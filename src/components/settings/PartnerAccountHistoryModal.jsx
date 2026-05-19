@@ -93,7 +93,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
     >
       <div className="p-5 space-y-3">
         {/* Header summary */}
-        <div className="rounded-[12px] border border-slate-200 bg-slate-50/60 p-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-[12px] border border-border-soft bg-surface-soft/60 p-3 grid grid-cols-3 gap-2 text-center">
           <Stat label="Открытие" value={`${curSymbol(account.currency)}${fmt(account.openingBalance || 0, account.currency)}`} tone="slate" />
           <Stat label="Движений" value={String(movements.length)} tone="slate" />
           <Stat
@@ -111,23 +111,23 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
           <button
             type="button"
             onClick={() => setShowRelated((v) => !v)}
-            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-soft hover:text-ink transition-colors"
             title="Сделки в которых участвовал этот партнёрский счёт"
           >
             <Link2 className="w-3 h-3" />
             {showRelated ? "Скрыть связанные сделки" : "Показать связанные сделки"}
             {relatedDeals.length > 0 && (
-              <span className="text-[10px] text-slate-400 tabular-nums">({relatedDeals.length})</span>
+              <span className="text-[10px] text-muted-soft tabular-nums">({relatedDeals.length})</span>
             )}
           </button>
         </div>
 
         {showRelated && (
-          <div className="rounded-[10px] border border-slate-200 bg-slate-50/50 p-3">
+          <div className="rounded-[10px] border border-border-soft bg-surface-soft/50 p-3">
             {loadingRelated ? (
-              <div className="text-[12px] text-slate-400 text-center py-4">Загрузка…</div>
+              <div className="text-[12px] text-muted-soft text-center py-4">Загрузка…</div>
             ) : relatedDeals.length === 0 ? (
-              <div className="text-[12px] text-slate-400 text-center py-4">Нет сделок с этим счётом</div>
+              <div className="text-[12px] text-muted-soft text-center py-4">Нет сделок с этим счётом</div>
             ) : (
               <div className="space-y-1.5 max-h-48 overflow-auto">
                 {relatedDeals.map((d) => {
@@ -136,28 +136,28 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
+                      className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
+                        <span className="text-muted-soft tabular-nums whitespace-nowrap text-[10px]">
                           {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                         </span>
                         {isOtc && (
-                          <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                          <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-accent-bg text-accent ring-indigo-200">
                             {d.kind === "broker" ? "BROKER" : "OTC"}
                           </span>
                         )}
-                        <span className="text-slate-600 truncate">
+                        <span className="text-ink-soft truncate">
                           {d.counterparty || "—"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <div className="text-right tabular-nums">
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-semibold text-ink">
                             {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                           </div>
                           {d.profit !== 0 && (
-                            <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                            <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-success" : "text-danger"}`}>
                               {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
                             </div>
                           )}
@@ -176,25 +176,25 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
         )}
 
         {/* Table */}
-        <div className="rounded-[12px] border border-slate-200 bg-white overflow-hidden">
+        <div className="rounded-[12px] border border-border-soft bg-white overflow-hidden">
           {loading && (
-            <div className="px-5 py-12 text-center text-[13px] text-slate-400">Загрузка…</div>
+            <div className="px-5 py-12 text-center text-[13px] text-muted-soft">Загрузка…</div>
           )}
           {error && !loading && (
-            <div className="px-5 py-8 text-center text-[12.5px] text-rose-600 bg-rose-50">
+            <div className="px-5 py-8 text-center text-[12.5px] text-danger bg-danger-soft">
               Ошибка: {error}
             </div>
           )}
           {!loading && !error && movements.length === 0 && (
-            <div className="px-5 py-12 text-center text-[13px] text-slate-400">
-              <History className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+            <div className="px-5 py-12 text-center text-[13px] text-muted-soft">
+              <History className="w-8 h-8 mx-auto text-muted-soft mb-2" />
               Движений пока не было
             </div>
           )}
           {!loading && !error && movements.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
-                <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+                <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
                   <tr>
                     <th className="px-3 py-2 text-left">Дата</th>
                     <th className="px-3 py-2 text-left">Тип</th>
@@ -208,27 +208,27 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
                     const isIn = m.direction === "in";
                     const tone = SOURCE_KIND_TONE[m.sourceKind] || "slate";
                     const toneCls = {
-                      emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-                      rose: "bg-rose-50 text-rose-700 ring-rose-200",
-                      indigo: "bg-indigo-50 text-indigo-700 ring-indigo-200",
-                      amber: "bg-amber-50 text-amber-700 ring-amber-200",
-                      slate: "bg-slate-100 text-slate-700 ring-slate-200",
+                      emerald: "bg-success-soft text-success ring-emerald-200",
+                      rose: "bg-danger-soft text-danger ring-rose-200",
+                      indigo: "bg-accent-bg text-accent ring-indigo-200",
+                      amber: "bg-warning-soft text-warning ring-amber-200",
+                      slate: "bg-surface-sunk text-ink-soft ring-border-soft",
                     }[tone];
                     const d = new Date(m.createdAt);
                     return (
-                      <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                        <td className="px-3 py-2.5 whitespace-nowrap text-slate-700 tabular-nums">
+                      <tr key={m.id} className="border-b border-border-soft last:border-0 hover:bg-surface-soft">
+                        <td className="px-3 py-2.5 whitespace-nowrap text-ink-soft tabular-nums">
                           <div className="font-semibold">{d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}</div>
-                          <div className="text-[10px] text-slate-400">{d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
+                          <div className="text-[10px] text-muted-soft">{d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</div>
                         </td>
                         <td className="px-3 py-2.5">
                           {isIn ? (
-                            <span className="inline-flex items-center gap-0.5 text-emerald-700 text-[11px] font-bold">
+                            <span className="inline-flex items-center gap-0.5 text-success text-[11px] font-bold">
                               <ArrowDownLeft className="w-3 h-3" />
                               IN
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-0.5 text-rose-700 text-[11px] font-bold">
+                            <span className="inline-flex items-center gap-0.5 text-danger text-[11px] font-bold">
                               <ArrowUpRight className="w-3 h-3" />
                               OUT
                             </span>
@@ -239,22 +239,22 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
                             {SOURCE_KIND_LABEL[m.sourceKind] || m.sourceKind}
                           </span>
                           {m.sourceRefId && (
-                            <div className="text-[9.5px] text-slate-400 mt-0.5 tabular-nums">
+                            <div className="text-[9.5px] text-muted-soft mt-0.5 tabular-nums">
                               ref: #{m.sourceRefId}
                               {m.sourceLegIndex != null && ` · leg ${m.sourceLegIndex + 1}`}
                             </div>
                           )}
                           {m.note && (
-                            <div className="text-[10px] text-slate-500 italic mt-0.5 truncate max-w-[200px]" title={m.note}>
+                            <div className="text-[10px] text-muted italic mt-0.5 truncate max-w-[200px]" title={m.note}>
                               «{m.note}»
                             </div>
                           )}
                         </td>
-                        <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${isIn ? "text-emerald-700" : "text-rose-700"}`}>
+                        <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${isIn ? "text-success" : "text-danger"}`}>
                           {isIn ? "+" : "−"}{fmt(m.amount, m.currency)}
-                          <span className="text-[9.5px] text-slate-400 font-normal ml-1">{m.currency}</span>
+                          <span className="text-[9.5px] text-muted-soft font-normal ml-1">{m.currency}</span>
                         </td>
-                        <td className="px-3 py-2.5 text-right tabular-nums text-slate-700">
+                        <td className="px-3 py-2.5 text-right tabular-nums text-ink-soft">
                           {fmt(m.balanceAfter, account.currency)}
                         </td>
                       </tr>
@@ -267,10 +267,10 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
         </div>
       </div>
 
-      <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end">
+      <div className="px-5 py-3.5 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           Закрыть
         </button>
@@ -281,12 +281,12 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    slate: "text-slate-700",
-    emerald: "text-emerald-700",
-  }[tone] || "text-slate-700";
+    slate: "text-ink-soft",
+    emerald: "text-success",
+  }[tone] || "text-ink-soft";
   return (
     <div>
-      <div className="text-[9.5px] font-bold text-slate-500 tracking-wider uppercase mb-0.5">{label}</div>
+      <div className="text-[9.5px] font-bold text-muted tracking-wider uppercase mb-0.5">{label}</div>
       <div className={`text-[14px] font-bold tabular-nums ${cls}`}>{value}</div>
     </div>
   );

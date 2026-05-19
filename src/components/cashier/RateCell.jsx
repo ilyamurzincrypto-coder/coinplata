@@ -47,9 +47,9 @@ export default function RateCell({
         className={
           `w-full bg-transparent border-0 outline-none ` +
           `text-[13px] tabular-nums text-right ` +
-          `placeholder:text-slate-300 ` +
-          `focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
-          (manual ? "text-amber-700 font-semibold " : "text-slate-700 ") +
+          `placeholder:text-muted-soft ` +
+          `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
+          (manual ? "text-warning font-semibold " : "text-ink-soft ") +
           `disabled:opacity-50`
         }
       />
@@ -58,7 +58,7 @@ export default function RateCell({
           type="button"
           onClick={handleResetMarket}
           title={`Сбросить на market: ${marketRate}`}
-          className="absolute right-0 -translate-y-1/2 top-1/2 mr-0.5 p-0.5 text-amber-600 hover:text-amber-800"
+          className="absolute right-0 -translate-y-1/2 top-1/2 mr-0.5 p-0.5 text-warning hover:text-amber-800"
         >
           <Edit2 className="w-3 h-3" />
         </button>

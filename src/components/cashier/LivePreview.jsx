@@ -63,30 +63,30 @@ export default function LivePreview({
   return (
     <div className="flex items-center gap-3 flex-wrap text-[12px]">
       {/* Direction */}
-      <div className="inline-flex items-center gap-1.5 text-slate-700 font-semibold tabular-nums">
-        <span className="text-emerald-700">{inSummary || "—"}</span>
-        <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-rose-700">{outSummary || "—"}</span>
+      <div className="inline-flex items-center gap-1.5 text-ink-soft font-semibold tabular-nums">
+        <span className="text-success">{inSummary || "—"}</span>
+        <ArrowRight className="w-3.5 h-3.5 text-muted-soft" />
+        <span className="text-danger">{outSummary || "—"}</span>
       </div>
 
       {/* Margin */}
       {marginInfo && !noCommission && (
-        <div className="inline-flex items-center gap-1 text-slate-600">
-          <span className="text-[10px] uppercase tracking-wider text-slate-400">margin:</span>
+        <div className="inline-flex items-center gap-1 text-ink-soft">
+          <span className="text-[10px] uppercase tracking-wider text-muted-soft">margin:</span>
           <span
             className={
               "tabular-nums font-semibold " +
               (marginInfo.marginUsd > 0
-                ? "text-emerald-700"
+                ? "text-success"
                 : marginInfo.marginUsd < 0
-                  ? "text-rose-700"
-                  : "text-slate-500")
+                  ? "text-danger"
+                  : "text-muted")
             }
           >
             {marginInfo.sign}
             {curSymbol(base)}
             {fmt(Math.abs(marginInfo.marginUsd), base)}
-            <span className="text-slate-400 font-normal ml-1">
+            <span className="text-muted-soft font-normal ml-1">
               ({marginInfo.sign}{Math.abs(marginInfo.marginPct).toFixed(2)}%)
             </span>
           </span>
@@ -95,19 +95,19 @@ export default function LivePreview({
 
       {/* Warnings */}
       {noCommission && (
-        <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+        <span className="inline-flex items-center gap-1 text-warning font-semibold">
           <AlertTriangle className="w-3 h-3" />
           {t("conditions_chip_no_commission")}
         </span>
       )}
       {hasOverdraft && (
-        <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
+        <span className="inline-flex items-center gap-1 text-danger font-semibold">
           <AlertTriangle className="w-3 h-3" />
           overdraft
         </span>
       )}
       {hasShortage && (
-        <span className="inline-flex items-center gap-1 text-rose-700 font-semibold">
+        <span className="inline-flex items-center gap-1 text-danger font-semibold">
           <AlertTriangle className="w-3 h-3" />
           kassa empty
         </span>

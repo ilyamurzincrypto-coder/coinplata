@@ -92,13 +92,13 @@ export default function PendingTransfersBar() {
   };
 
   return (
-    <section className="mb-4 bg-amber-50/40 border border-amber-200 rounded-[14px] overflow-hidden">
+    <section className="mb-4 bg-warning-soft/40 border border-amber-200 rounded-[14px] overflow-hidden">
       <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
-        <Clock className="w-4 h-4 text-amber-700" />
+        <Clock className="w-4 h-4 text-warning" />
         <span className="text-[13px] font-bold text-amber-900">
           Перемещения · ожидают подтверждения
         </span>
-        <span className="text-[10px] text-amber-700/70 uppercase tracking-wider">
+        <span className="text-[10px] text-warning/70 uppercase tracking-wider">
           {myPending.length} {canSeeAll ? "· все офисы" : "· мои"}
         </span>
       </div>
@@ -119,39 +119,39 @@ export default function PendingTransfersBar() {
             <div key={tr.id} className="px-4 py-3 flex items-center gap-3 flex-wrap">
               <div className="shrink-0">
                 {isIncoming ? (
-                  <ArrowDownToLine className="w-4 h-4 text-emerald-600" />
+                  <ArrowDownToLine className="w-4 h-4 text-success" />
                 ) : (
-                  <ArrowUpFromLine className="w-4 h-4 text-slate-500" />
+                  <ArrowUpFromLine className="w-4 h-4 text-muted" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-slate-900 inline-flex items-center gap-2 flex-wrap">
+                <div className="text-[13px] font-bold text-ink inline-flex items-center gap-2 flex-wrap">
                   <span className="tabular-nums">
                     {curSymbol(fromCur)}
                     {fmt(tr.fromAmount, fromCur)} {fromCur}
                   </span>
                   {fromCur !== toCur && (
                     <>
-                      <span className="text-slate-400">→</span>
+                      <span className="text-muted-soft">→</span>
                       <span className="tabular-nums">
                         {curSymbol(toCur)}
                         {fmt(tr.toAmount, toCur)} {toCur}
                       </span>
                       {tr.rate && (
-                        <span className="text-[10px] text-slate-500">
+                        <span className="text-[10px] text-muted">
                           @ {tr.rate}
                         </span>
                       )}
                     </>
                   )}
                 </div>
-                <div className="text-[11px] text-slate-500 inline-flex items-center gap-1.5 flex-wrap">
+                <div className="text-[11px] text-muted inline-flex items-center gap-1.5 flex-wrap">
                   <Building2 className="w-3 h-3" />
                   <span>
                     {fromAcc ? officeName(fromAcc.officeId) : "—"} →{" "}
                     {toAcc ? officeName(toAcc.officeId) : "—"}
                   </span>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-muted-soft">·</span>
                   <span>
                     {isIncoming
                       ? `от ${sender?.name || "коллеги"}`
@@ -159,7 +159,7 @@ export default function PendingTransfersBar() {
                   </span>
                   {tr.note && (
                     <>
-                      <span className="text-slate-300">·</span>
+                      <span className="text-muted-soft">·</span>
                       <span className="italic truncate">{tr.note}</span>
                     </>
                   )}
@@ -179,7 +179,7 @@ export default function PendingTransfersBar() {
                     <button
                       onClick={() => run("reject", tr)}
                       disabled={busyId === tr.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-60 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-semibold bg-danger-soft text-danger border border-rose-200 hover:bg-rose-100 disabled:opacity-60 transition-colors"
                     >
                       <XCircle className="w-3 h-3" />
                       Отклонить
@@ -190,7 +190,7 @@ export default function PendingTransfersBar() {
                   <button
                     onClick={() => run("cancel", tr)}
                     disabled={busyId === tr.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 disabled:opacity-60 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11px] font-semibold bg-surface-sunk text-ink-soft border border-border-soft hover:bg-surface-sunk disabled:opacity-60 transition-colors"
                   >
                     <Ban className="w-3 h-3" />
                     Отменить

@@ -36,23 +36,23 @@ export default function AccountHistoryModal({ account, onClose }) {
       subtitle={`${account.currency} · ${t("acc_history")}`}
       width="lg"
     >
-      <div className="p-5 border-b border-slate-100 bg-slate-50/40">
-        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+      <div className="p-5 border-b border-border-soft bg-surface-soft/40">
+        <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1">
           {t("current_balance")}
         </div>
-        <div className="text-[24px] font-bold tabular-nums tracking-tight text-slate-900">
+        <div className="text-[24px] font-bold tabular-nums tracking-tight text-ink">
           {curSymbol(account.currency)}
           {fmt(balanceOf(account.id), account.currency)}{" "}
-          <span className="text-[13px] text-slate-500 font-medium">{account.currency}</span>
+          <span className="text-[13px] text-muted font-medium">{account.currency}</span>
         </div>
-        <div className="text-[11px] text-slate-500 mt-1 tabular-nums">
+        <div className="text-[11px] text-muted mt-1 tabular-nums">
           {entryCount} {t("acc_movements_count") || "движений"}
         </div>
       </div>
 
       <div className="max-h-[60vh] overflow-auto">
         {!ledgerAcc ? (
-          <div className="p-8 text-center text-[13px] text-slate-400">
+          <div className="p-8 text-center text-[13px] text-muted-soft">
             {t("acc_no_ledger_link") || "Счёт не привязан к плану счетов v2 — истории нет."}
           </div>
         ) : (

@@ -103,27 +103,27 @@ export default function TopUpModal({ account, onClose }) {
   return (
     <Modal open={!!account} onClose={onClose} title={t("topup_title")} subtitle={account.name} width="md">
       <div className="p-5 space-y-4">
-        <div className="bg-slate-50 rounded-[10px] border border-slate-200 px-4 py-3">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+        <div className="bg-surface-soft rounded-[10px] border border-border-soft px-4 py-3">
+          <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1">
             {t("current_balance")}
           </div>
-          <div className="text-[20px] font-bold tabular-nums tracking-tight text-slate-900">
+          <div className="text-[20px] font-bold tabular-nums tracking-tight text-ink">
             {curSymbol(account.currency)}
             {fmt(currentBalance, account.currency)}{" "}
-            <span className="text-[12px] text-slate-500 font-medium">{account.currency}</span>
+            <span className="text-[12px] text-muted font-medium">{account.currency}</span>
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("topup_amount")}
           </label>
           <div
-            className={`relative flex items-baseline gap-2 bg-slate-50 rounded-[12px] border-2 transition-all px-4 py-3 ${
-              amount ? "border-emerald-400" : "border-slate-200"
+            className={`relative flex items-baseline gap-2 bg-surface-soft rounded-[12px] border-2 transition-all px-4 py-3 ${
+              amount ? "border-emerald-400" : "border-border-soft"
             }`}
           >
-            <span className="text-slate-400 text-[18px] font-semibold">{curSymbol(account.currency)}</span>
+            <span className="text-muted-soft text-[18px] font-semibold">{curSymbol(account.currency)}</span>
             <input
               type="text"
               inputMode="decimal"
@@ -131,17 +131,17 @@ export default function TopUpModal({ account, onClose }) {
               onChange={(e) => setAmount(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
               placeholder="0"
               autoFocus
-              className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[22px] font-bold tracking-tight min-w-0"
+              className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[22px] font-bold tracking-tight min-w-0"
             />
-            <span className="text-slate-400 text-[12px] font-bold tracking-wider">{account.currency}</span>
+            <span className="text-muted-soft text-[12px] font-bold tracking-wider">{account.currency}</span>
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Source
           </label>
-          <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full gap-0.5 flex-wrap">
+          <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full gap-0.5 flex-wrap">
             {[
               { id: "opening", label: "Opening" },
               { id: "external", label: "External" },
@@ -153,7 +153,7 @@ export default function TopUpModal({ account, onClose }) {
                 type="button"
                 onClick={() => setSource(o.id)}
                 className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
-                  source === o.id ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-900"
+                  source === o.id ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
                 }`}
               >
                 {o.label}
@@ -163,7 +163,7 @@ export default function TopUpModal({ account, onClose }) {
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("topup_note")}
           </label>
           <input
@@ -171,15 +171,15 @@ export default function TopUpModal({ account, onClose }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
           />
         </div>
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
@@ -188,8 +188,8 @@ export default function TopUpModal({ account, onClose }) {
           disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
             canSubmit && !busy
-              ? "bg-emerald-500 text-white hover:bg-emerald-600"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-success-soft0 text-white hover:bg-emerald-600"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {busy ? "Processing…" : t("topup_confirm")}

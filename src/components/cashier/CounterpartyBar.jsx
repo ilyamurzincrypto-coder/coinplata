@@ -18,7 +18,7 @@ export default function CounterpartyBar({
   return (
     <div
       className={`px-4 flex items-center gap-3 border-b transition-colors ${
-        showRequiredError ? "border-rose-500" : "border-slate-200/70"
+        showRequiredError ? "border-rose-500" : "border-border-soft"
       }`}
       style={{ paddingTop: "var(--space-2)", paddingBottom: "var(--space-2)" }}
     >

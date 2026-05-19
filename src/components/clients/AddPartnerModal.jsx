@@ -58,7 +58,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder="Sheriff Exchange"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -68,7 +68,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
               placeholder="@username"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
           <Field label="Телефон (опционально)">
@@ -77,7 +77,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+7..."
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
         </div>
@@ -87,19 +87,19 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия…"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </Field>
-        <p className="text-[11.5px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2">
+        <p className="text-[11.5px] text-muted bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2">
           Чтобы добавить счета партнёру (валюты, сети, кошельки) — Настройки →
           Партнёры → раскрыть → «Счёт».
         </p>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>
@@ -118,7 +118,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+      <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
         {label}
       </label>
       {children}

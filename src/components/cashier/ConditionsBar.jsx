@@ -95,7 +95,7 @@ export default function ConditionsBar({
   );
 
   return (
-    <div className="border-t border-slate-200 px-3 py-2.5 bg-slate-50/30 space-y-1.5">
+    <div className="border-t border-border-soft px-3 py-2.5 bg-surface-soft/30 space-y-1.5">
       {/* Group 1: Расчёт */}
       <Row label={t("conditions_label_calculation")}>
         {MARGIN_OPTIONS.map((opt) => (
@@ -157,14 +157,14 @@ export default function ConditionsBar({
           width="sm"
         >
           <div className="px-5 py-4 space-y-4">
-            <p className="text-[13px] text-slate-700">
+            <p className="text-[13px] text-ink-soft">
               {t("conditions_no_commission_confirm_body")}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setPendingNoCommission(false)}
-                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12px] font-semibold"
+                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-[12px] font-semibold"
               >
                 {t("conditions_cancel")}
               </button>
@@ -186,7 +186,7 @@ export default function ConditionsBar({
 function Row({ label, children }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[11px] text-slate-400 uppercase tracking-wider w-20 shrink-0">
+      <span className="text-[11px] text-muted-soft uppercase tracking-wider w-20 shrink-0">
         {label}:
       </span>
       <div className="flex flex-wrap items-center gap-1.5">{children}</div>

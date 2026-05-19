@@ -31,10 +31,10 @@ const STATUS_FILTERS = [
 ];
 
 const STATUS_STYLE = {
-  pending: { icon: Clock, bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", label: "Pending" },
-  confirmed: { icon: CheckCircle2, bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", label: "Подтверждено" },
-  rejected: { icon: XCircle, bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", label: "Отклонено" },
-  cancelled: { icon: Ban, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200", label: "Отменено" },
+  pending: { icon: Clock, bg: "bg-warning-soft", text: "text-warning", border: "border-amber-200", label: "Pending" },
+  confirmed: { icon: CheckCircle2, bg: "bg-success-soft", text: "text-success", border: "border-emerald-200", label: "Подтверждено" },
+  rejected: { icon: XCircle, bg: "bg-danger-soft", text: "text-danger", border: "border-rose-200", label: "Отклонено" },
+  cancelled: { icon: Ban, bg: "bg-surface-sunk", text: "text-ink-soft", border: "border-border-soft", label: "Отменено" },
 };
 
 function formatDate(iso) {
@@ -173,14 +173,14 @@ export default function TransferHistoryModal({ open, onClose }) {
                 onClick={() => setStatusFilter(f.id)}
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11px] font-bold transition-colors ${
                   active
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    ? "bg-ink text-white"
+                    : "bg-surface-sunk text-ink-soft hover:bg-surface-sunk"
                 }`}
               >
                 {f.label}
                 <span
                   className={`tabular-nums text-[10px] px-1 rounded ${
-                    active ? "bg-white/20" : "bg-slate-200/70 text-slate-500"
+                    active ? "bg-white/20" : "bg-surface-sunk/70 text-muted"
                   }`}
                 >
                   {count}
@@ -188,20 +188,20 @@ export default function TransferHistoryModal({ open, onClose }) {
               </button>
             );
           })}
-          <div className="flex-1 min-w-[180px] flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1.5">
-            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <div className="flex-1 min-w-[180px] flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5">
+            <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по счёту, офису, менеджеру, заметке…"
-              className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 placeholder:text-slate-400 min-w-0"
+              className="flex-1 bg-transparent outline-none text-[12px] text-ink placeholder:text-muted-soft min-w-0"
             />
             {query && (
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="p-0.5 rounded hover:bg-slate-200 text-slate-500 transition-colors shrink-0"
+                className="p-0.5 rounded hover:bg-surface-sunk text-muted transition-colors shrink-0"
                 title="Очистить"
               >
                 <X className="w-3 h-3" />
@@ -211,7 +211,7 @@ export default function TransferHistoryModal({ open, onClose }) {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border disabled:opacity-50 transition-colors"
             title="Export CSV"
           >
             <Download className="w-3 h-3" />
@@ -220,13 +220,13 @@ export default function TransferHistoryModal({ open, onClose }) {
         </div>
 
         {/* Список */}
-        <div className="bg-slate-50/40 border border-slate-200 rounded-[10px] overflow-hidden max-h-[60vh] overflow-y-auto">
+        <div className="bg-surface-soft/40 border border-border-soft rounded-[10px] overflow-hidden max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-[12px] text-slate-400 italic">
+            <div className="py-10 text-center text-[12px] text-muted-soft italic">
               Ничего не найдено
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 bg-white">
+            <div className="divide-y divide-border-soft bg-white">
               {filtered.map((t) => {
                 const fromAcc = accById(t.fromAccountId);
                 const toAcc = accById(t.toAccountId);
@@ -238,28 +238,28 @@ export default function TransferHistoryModal({ open, onClose }) {
                 const fromCur = fromAcc?.currency || "—";
                 const toCur = toAcc?.currency || "—";
                 return (
-                  <div key={t.id} className="px-4 py-3 hover:bg-slate-50/60 transition-colors">
+                  <div key={t.id} className="px-4 py-3 hover:bg-surface-soft/60 transition-colors">
                     <div className="flex items-center gap-3 flex-wrap">
                       {isInterOffice ? (
-                        <ArrowUpFromLine className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <ArrowUpFromLine className="w-4 h-4 text-accent shrink-0" />
                       ) : (
-                        <ArrowDownToLine className="w-4 h-4 text-slate-400 shrink-0" />
+                        <ArrowDownToLine className="w-4 h-4 text-muted-soft shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-bold text-slate-900 inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-[13px] font-bold text-ink inline-flex items-center gap-2 flex-wrap">
                           <span className="tabular-nums">
                             {curSymbol(fromCur)}
                             {fmt(t.fromAmount, fromCur)} {fromCur}
                           </span>
                           {fromCur !== toCur && (
                             <>
-                              <span className="text-slate-400">→</span>
+                              <span className="text-muted-soft">→</span>
                               <span className="tabular-nums">
                                 {curSymbol(toCur)}
                                 {fmt(t.toAmount, toCur)} {toCur}
                               </span>
                               {t.rate && (
-                                <span className="text-[10px] text-slate-500 font-normal">
+                                <span className="text-[10px] text-muted font-normal">
                                   @ {t.rate}
                                 </span>
                               )}
@@ -272,40 +272,40 @@ export default function TransferHistoryModal({ open, onClose }) {
                             {styl.label}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 inline-flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <div className="text-[11px] text-muted inline-flex items-center gap-1.5 flex-wrap mt-0.5">
                           <Building2 className="w-3 h-3" />
                           <span className="truncate">
                             {fromAcc ? `${officeName(fromAcc.officeId)} · ${fromAcc.name}` : "—"}
                           </span>
-                          <span className="text-slate-300">→</span>
+                          <span className="text-muted-soft">→</span>
                           <span className="truncate">
                             {toAcc ? `${officeName(toAcc.officeId)} · ${toAcc.name}` : "—"}
                           </span>
                         </div>
-                        <div className="text-[10.5px] text-slate-400 inline-flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <div className="text-[10.5px] text-muted-soft inline-flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span>{formatDate(t.createdAt)}</span>
                           {sender && (
                             <>
-                              <span className="text-slate-300">·</span>
+                              <span className="text-muted-soft">·</span>
                               <span>от {sender.name}</span>
                             </>
                           )}
                           {receiver && (
                             <>
-                              <span className="text-slate-300">→</span>
+                              <span className="text-muted-soft">→</span>
                               <span>{receiver.name}</span>
                             </>
                           )}
                           {t.note && (
                             <>
-                              <span className="text-slate-300">·</span>
+                              <span className="text-muted-soft">·</span>
                               <span className="italic truncate">{t.note}</span>
                             </>
                           )}
                           {t.confirmationNote && (
                             <>
-                              <span className="text-slate-300">·</span>
-                              <span className="italic text-slate-500 truncate">
+                              <span className="text-muted-soft">·</span>
+                              <span className="italic text-muted truncate">
                                 {t.status === "rejected" || t.status === "cancelled"
                                   ? "причина: "
                                   : "заметка: "}

@@ -21,7 +21,7 @@ export default function AddressInline({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-700"
+        className="inline-flex items-center gap-1 text-muted hover:text-ink-soft"
       >
         {open ? (
           <ChevronDown className="w-3 h-3" />
@@ -30,11 +30,11 @@ export default function AddressInline({
         )}
         <span>
           {address ? (
-            <span className="text-slate-700 font-mono text-[11px]">
+            <span className="text-ink-soft font-mono text-[11px]">
               {address.slice(0, 8)}…{address.slice(-6)}{network ? ` · ${network}` : ""}
             </span>
           ) : (
-            <span className="text-slate-400">+ адрес кошелька</span>
+            <span className="text-muted-soft">+ адрес кошелька</span>
           )}
         </span>
       </button>
@@ -46,12 +46,12 @@ export default function AddressInline({
             value={address || ""}
             onChange={(e) => onAddressChange(e.target.value)}
             placeholder="Адрес кошелька"
-            className="flex-1 bg-slate-50 border border-slate-200 focus:border-slate-400 rounded-[var(--radius-cell)] px-2 py-1 text-[12px] font-mono outline-none"
+            className="flex-1 bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-[12px] font-mono outline-none"
           />
           <select
             value={network || ""}
             onChange={(e) => onNetworkChange(e.target.value || null)}
-            className="bg-slate-50 border border-slate-200 focus:border-slate-400 rounded-[var(--radius-cell)] px-2 py-1 text-[12px] outline-none"
+            className="bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-[12px] outline-none"
           >
             <option value="">— сеть —</option>
             {NETWORKS.map((n) => (

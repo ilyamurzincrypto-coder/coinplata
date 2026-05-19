@@ -13,7 +13,7 @@ export default function BalanceBadge({
   shortage,         // number: на сколько overdraft (для tooltip)
 }) {
   if (amount == null || !currency) return null;
-  const tone = overdraft ? "text-rose-600 font-semibold" : "text-slate-400";
+  const tone = overdraft ? "text-danger font-semibold" : "text-muted-soft";
   const title = overdraft && shortage != null
     ? `${label}: ${currency} overdraft ${fmt(shortage, currency)}`
     : `${label}: ${curSymbol(currency)}${fmt(amount, currency)} ${currency}`;

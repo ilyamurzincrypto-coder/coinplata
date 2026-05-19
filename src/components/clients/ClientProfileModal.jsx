@@ -162,7 +162,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
       <div className="p-5 space-y-4 max-h-[70vh] overflow-auto">
         {/* Tag selector */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tag:</span>
+          <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Tag:</span>
           <TagBtn active={!client.tag} onClick={() => updateCounterparty(client.id, { tag: "" })}>None</TagBtn>
           {CLIENT_TAGS.map((tg) => (
             <TagBtn key={tg} active={client.tag === tg} onClick={() => updateCounterparty(client.id, { tag: tg })}>{tg}</TagBtn>
@@ -171,14 +171,14 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
 
         {/* Referrer selector */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-muted uppercase tracking-wider">
             <UserPlus className="w-3 h-3" />
             Привёл
           </span>
           <select
             value={client.referrerId || ""}
             onChange={(e) => updateCounterparty(client.id, { referrerId: e.target.value || null })}
-            className="bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none focus:bg-white focus:border-slate-400 max-w-[260px]"
+            className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none focus:bg-white focus:border-accent max-w-[260px]"
           >
             <option value="">— нет —</option>
             {referrerOptions.map((c) => (
@@ -189,18 +189,18 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
             ))}
           </select>
           {referrer && (
-            <span className="text-[11px] text-slate-500">
-              реферер: <span className="font-semibold text-slate-700">{referrer.name || referrer.nickname}</span>
+            <span className="text-[11px] text-muted">
+              реферер: <span className="font-semibold text-ink-soft">{referrer.name || referrer.nickname}</span>
             </span>
           )}
         </div>
 
         {/* Привёл клиентов (если этот — реферер) */}
         {referredBy.length > 0 && (
-          <div className="border border-indigo-100 bg-indigo-50/40 rounded-[10px] p-3">
+          <div className="border border-indigo-100 bg-accent-bg/40 rounded-[10px] p-3">
             <div className="flex items-center gap-1.5 mb-2">
-              <Users className="w-3 h-3 text-indigo-600" />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">
+              <Users className="w-3 h-3 text-accent" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
                 Привёл клиентов · {referredBy.length}
               </h3>
             </div>
@@ -208,7 +208,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               {referredBy.map((c) => (
                 <span
                   key={c.id}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-white border border-indigo-200 text-slate-700"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-white border border-indigo-200 text-ink-soft"
                   title={c.telegram || ""}
                 >
                   {c.nickname}
@@ -234,19 +234,19 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
 
         {/* Obligations — показываем только если есть открытые */}
         {clientObligations.length > 0 && (
-          <div className="border border-amber-200 bg-amber-50/50 rounded-[10px] p-3">
+          <div className="border border-amber-200 bg-warning-soft/50 rounded-[10px] p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700">
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
                 Open obligations · {clientObligations.length}
               </h3>
               <div className="flex items-center gap-3 text-[11px] tabular-nums">
                 {obligationTotals.theyOwe > 0 && (
-                  <span className="font-semibold text-emerald-700">
+                  <span className="font-semibold text-success">
                     They owe: {sym}{fmt(obligationTotals.theyOwe, base)}
                   </span>
                 )}
                 {obligationTotals.weOwe > 0 && (
-                  <span className="font-semibold text-rose-700">
+                  <span className="font-semibold text-danger">
                     We owe: {sym}{fmt(obligationTotals.weOwe, base)}
                   </span>
                 )}
@@ -264,24 +264,24 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
                   >
                     <span
                       className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                        isWeOwe ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+                        isWeOwe ? "bg-rose-100 text-danger" : "bg-emerald-100 text-success"
                       }`}
                     >
                       {isWeOwe ? "we owe" : "they owe"}
                     </span>
-                    <span className="font-semibold tabular-nums text-slate-900">
+                    <span className="font-semibold tabular-nums text-ink">
                       {fmt(remaining, cur)} {cur}
                     </span>
                     {(o.paidAmount || 0) > 0 && (
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-muted">
                         paid {fmt(o.paidAmount, cur)} / {fmt(o.amount, cur)}
                       </span>
                     )}
-                    <span className="text-slate-400 text-[10px] flex-1 min-w-0 truncate">
+                    <span className="text-muted-soft text-[10px] flex-1 min-w-0 truncate">
                       {o.note || ""}
                     </span>
                     {o.dealId && (
-                      <span className="text-slate-400 text-[10px] tabular-nums">#{o.dealId}</span>
+                      <span className="text-muted-soft text-[10px] tabular-nums">#{o.dealId}</span>
                     )}
                   </div>
                 );
@@ -293,12 +293,12 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         {/* Monthly activity — sparkline за последние 6 мес */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <BarChart3 className="w-3.5 h-3.5 text-slate-500" />
-            <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+            <BarChart3 className="w-3.5 h-3.5 text-muted" />
+            <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
               Monthly activity
             </h3>
           </div>
-          <div className="flex items-end gap-1 h-16 bg-slate-50 border border-slate-200 rounded-[10px] px-2 py-2">
+          <div className="flex items-end gap-1 h-16 bg-surface-soft border border-border-soft rounded-[10px] px-2 py-2">
             {monthly.map((m) => {
               const empty = m.volume === 0;
               const h = empty ? 2 : Math.max(4, (m.volume / maxMonthlyVol) * 52);
@@ -307,13 +307,13 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
                   <div
                     className={`w-full rounded-sm transition-colors cursor-default ${
                       empty
-                        ? "bg-slate-200"
-                        : "bg-indigo-400 hover:bg-indigo-500"
+                        ? "bg-surface-sunk"
+                        : "bg-indigo-400 hover:bg-accent-bg0"
                     }`}
                     style={{ height: `${h}px` }}
                     title={`${monthLabel(m.key)}: ${m.count} deals · ${sym}${fmt(m.volume, base)}`}
                   />
-                  <span className="text-[9px] text-slate-500 font-medium truncate">
+                  <span className="text-[9px] text-muted font-medium truncate">
                     {monthLabel(m.key).slice(0, 3)}
                   </span>
                 </div>
@@ -323,7 +323,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         </div>
         {walletGroups.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Overall risk:</span>
+            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Overall risk:</span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ring-1 ${riskLevelStyle(clientRisk.level)}`}>
               {riskLevelLabel(clientRisk.level)} · {clientRisk.score}
             </span>
@@ -331,8 +331,8 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         )}
 
         {client.note && (
-          <div className="text-[12px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-            <span className="font-semibold text-slate-500 uppercase text-[10px] tracking-wider mr-1.5">Note:</span>
+          <div className="text-[12px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+            <span className="font-semibold text-muted uppercase text-[10px] tracking-wider mr-1.5">Note:</span>
             {client.note}
           </div>
         )}
@@ -340,31 +340,31 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         {/* Wallets */}
         <div>
           <div className="flex items-center gap-1.5 mb-2">
-            <Wallet className="w-3.5 h-3.5 text-slate-500" />
-            <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">Crypto wallets</h3>
+            <Wallet className="w-3.5 h-3.5 text-muted" />
+            <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">Crypto wallets</h3>
           </div>
           {walletGroups.length === 0 ? (
-            <div className="text-[12px] text-slate-400 italic py-2">No wallets detected yet</div>
+            <div className="text-[12px] text-muted-soft italic py-2">No wallets detected yet</div>
           ) : (
             <div className="space-y-2">
               {walletGroups.map((g) => (
-                <div key={g.network} className="bg-slate-50/60 border border-slate-200 rounded-[10px] p-2.5">
+                <div key={g.network} className="bg-surface-soft/60 border border-border-soft rounded-[10px] p-2.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
-                    <NetworkIcon className="w-3 h-3 text-indigo-500" />
-                    <span className="text-[11px] font-bold tracking-wider text-slate-700">{g.network}</span>
-                    <span className="text-[10px] text-slate-400">· {g.wallets.length}</span>
+                    <NetworkIcon className="w-3 h-3 text-accent" />
+                    <span className="text-[11px] font-bold tracking-wider text-ink-soft">{g.network}</span>
+                    <span className="text-[10px] text-muted-soft">· {g.wallets.length}</span>
                   </div>
                   <div className="space-y-1">
                     {g.wallets.map((w) => (
                       <div key={w.id} className="flex items-center justify-between gap-2 text-[11px]">
-                        <span className="font-mono text-slate-600 truncate flex-1 min-w-0">{w.address}</span>
+                        <span className="font-mono text-ink-soft truncate flex-1 min-w-0">{w.address}</span>
                         <span
                           className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ring-1 ${riskLevelStyle(w.risk.riskLevel)}`}
                           title={(w.risk.flags || []).join(", ") || "no flags"}
                         >
                           {riskLevelLabel(w.risk.riskLevel)} · {w.risk.riskScore}
                         </span>
-                        <span className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">
+                        <span className="text-[10px] text-muted-soft tabular-nums whitespace-nowrap">
                           {w.usageCount} tx
                         </span>
                       </div>
@@ -379,7 +379,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         {/* Transactions */}
         <div>
           <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-            <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">Transactions · {clientTxs.length}</h3>
+            <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">Transactions · {clientTxs.length}</h3>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -416,7 +416,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
                   });
                 }}
                 disabled={filteredTxs.length === 0}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Export client history to CSV"
               >
                 Export
@@ -424,7 +424,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
+                className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
               >
                 <option value="all">All statuses</option>
                 <option value="completed">Completed</option>
@@ -435,7 +435,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               <select
                 value={curFilter}
                 onChange={(e) => setCurFilter(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
+                className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
               >
                 <option value="all">All currencies</option>
                 {uniqueCurrencies.map((c) => (
@@ -445,28 +445,28 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
             </div>
           </div>
           {filteredTxs.length === 0 ? (
-            <div className="text-[12px] text-slate-400 italic py-4 text-center">No transactions match filter</div>
+            <div className="text-[12px] text-muted-soft italic py-4 text-center">No transactions match filter</div>
           ) : (
-            <div className="border border-slate-200 rounded-[10px] overflow-hidden divide-y divide-slate-100">
+            <div className="border border-border-soft rounded-[10px] overflow-hidden divide-y divide-border-soft">
               {filteredTxs.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 px-3 py-2 text-[12px] hover:bg-slate-50">
-                  <span className="text-slate-400 tabular-nums">{tx.date} {tx.time}</span>
-                  <span className="font-semibold text-slate-900 tabular-nums">
+                <div key={tx.id} className="flex items-center gap-3 px-3 py-2 text-[12px] hover:bg-surface-soft">
+                  <span className="text-muted-soft tabular-nums">{tx.date} {tx.time}</span>
+                  <span className="font-semibold text-ink tabular-nums">
                     {fmt(tx.amtIn, tx.curIn)} {tx.curIn}
                   </span>
-                  <span className="text-slate-400">→</span>
-                  <span className="font-semibold text-slate-900 tabular-nums flex-1">
+                  <span className="text-muted-soft">→</span>
+                  <span className="font-semibold text-ink tabular-nums flex-1">
                     {(tx.outputs || []).map((o) => `${fmt(o.amount, o.currency)} ${o.currency}`).join(" + ")}
                   </span>
-                  <span className="text-[10px] uppercase tracking-wider text-slate-500">{tx.status || "completed"}</span>
+                  <span className="text-[10px] uppercase tracking-wider text-muted">{tx.status || "completed"}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors">Close</button>
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
+        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors">Close</button>
       </div>
     </Modal>
   );
@@ -474,12 +474,12 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
 
 function StatCard({ label, value, tone, small }) {
   const toneCls =
-    tone === "emerald" ? "text-emerald-700 bg-emerald-50 border-emerald-100"
-    : tone === "rose" ? "text-rose-700 bg-rose-50 border-rose-100"
-    : "text-slate-900 bg-slate-50/60 border-slate-200";
+    tone === "emerald" ? "text-success bg-success-soft border-emerald-100"
+    : tone === "rose" ? "text-danger bg-danger-soft border-rose-100"
+    : "text-ink bg-surface-soft/60 border-border-soft";
   return (
     <div className={`rounded-[8px] border p-2 ${toneCls}`}>
-      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{label}</div>
+      <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{label}</div>
       <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
         {value}
       </div>
@@ -493,7 +493,7 @@ function TagBtn({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
-        active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+        active ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
       }`}
     >
       {children}

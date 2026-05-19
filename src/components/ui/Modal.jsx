@@ -52,29 +52,29 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
     >
       {/* backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm animate-[fadeIn_120ms_ease-out]"
+        className="fixed inset-0 bg-ink/40 backdrop-blur-sm animate-[fadeIn_120ms_ease-out]"
         style={{ zIndex: 1000 }}
         aria-hidden="true"
       />
       {/* panel — z выше backdrop */}
       <div
-        className={`relative w-full ${widthCls} bg-white rounded-[18px] shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] border border-slate-200 mt-8 mb-8 animate-[slideUp_160ms_ease-out]`}
+        className={`relative w-full ${widthCls} bg-white rounded-[18px] shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] border border-border-soft mt-8 mb-8 animate-[slideUp_160ms_ease-out]`}
         style={{ zIndex: 1001 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         {(title || subtitle) && (
-          <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
+          <div className="px-5 py-4 border-b border-border-soft flex items-start justify-between gap-3">
             <div>
               {title && (
-                <h3 className="text-[17px] font-bold tracking-tight text-slate-900">{title}</h3>
+                <h3 className="text-[17px] font-bold tracking-tight text-ink">{title}</h3>
               )}
               {subtitle && (
-                <p className="text-[12px] text-slate-500 mt-0.5">{subtitle}</p>
+                <p className="text-[12px] text-muted mt-0.5">{subtitle}</p>
               )}
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-[8px] hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors"
+              className="p-1.5 rounded-[8px] hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
               aria-label="Close"
             >
               <X className="w-4 h-4" />

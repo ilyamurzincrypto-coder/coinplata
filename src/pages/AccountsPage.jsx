@@ -74,10 +74,10 @@ function fmtDelta(value, currency, opts = {}) {
   return `${sign}${symStr}${fmt(Math.abs(v), currency)}`;
 }
 function deltaClass(value) {
-  if (!Number.isFinite(value)) return "text-slate-400";
-  if (value > 0.01) return "text-emerald-600";
-  if (value < -0.01) return "text-rose-600";
-  return "text-slate-400";
+  if (!Number.isFinite(value)) return "text-muted-soft";
+  if (value > 0.01) return "text-success";
+  if (value < -0.01) return "text-danger";
+  return "text-muted-soft";
 }
 
 // Одна delta-ячейка для Excel-style сетки. Без подписи, цвет по знаку.
@@ -107,7 +107,7 @@ function DeltaPair({ today, yesterday, currency, size = "xs" }) {
       </span>
       {yStr && (
         <>
-          <span className="text-slate-300 font-normal">/</span>
+          <span className="text-muted-soft font-normal">/</span>
           <span className={`inline-flex items-baseline gap-0.5 ${deltaClass(yesterday)}`}>
             {yStr}
             <span className={`${labelCls} font-semibold opacity-70`}>вчера</span>
@@ -325,18 +325,18 @@ export default function AccountsPage({ onOpenHelp = null }) {
                 type="button"
                 onClick={() => onOpenHelp({ sectionId: "accounts" })}
                 title="Справка по разделу «Счета»"
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-soft hover:text-blue-600 hover:bg-blue-50 transition-colors"
               >
                 <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
               </button>
             )}
           </div>
-          <p className="text-[12px] text-slate-500">{t("accounts_subtitle")}</p>
+          <p className="text-[12px] text-muted">{t("accounts_subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
           <span
-            className="inline-flex items-center px-2.5 py-1.5 rounded-[10px] bg-slate-50 ring-1 ring-slate-200"
+            className="inline-flex items-center px-2.5 py-1.5 rounded-[10px] bg-surface-soft ring-1 ring-border-soft"
             title="Сегодня / вчера по всем офисам"
           >
             <DeltaPair
@@ -357,7 +357,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
               setTransferFrom(null);
               setTransferOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             {t("acc_transfer") || "Перевод"}
@@ -378,7 +378,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12.5px] font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold transition-colors"
             title={t("acc_import_tip") || "Import accounts from CSV"}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
           <button
             onClick={handleExportAccounts}
             disabled={accounts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 hover:text-slate-900 hover:border-slate-300 text-[12.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title={t("acc_export_tip") || "Export accounts to CSV"}
           >
             <Download className="w-3.5 h-3.5" />
@@ -397,7 +397,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+      <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
         {[
           { id: "operations", label: "Операции" },
           { id: "otc", label: "История OTC" },
@@ -411,8 +411,8 @@ export default function AccountsPage({ onOpenHelp = null }) {
               onClick={() => setActiveTab(tab.id)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
                 isActive
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
               }`}
             >
               {tab.label}
@@ -429,11 +429,11 @@ export default function AccountsPage({ onOpenHelp = null }) {
         return (
           <section
             key={office.id}
-            className="bg-white rounded-[12px] border border-slate-200/70 overflow-hidden"
+            className="bg-white rounded-[12px] border border-border-soft overflow-hidden"
           >
             {/* Office strip — Excel-style grid */}
             <div
-              className="px-4 py-2 border-b border-slate-100 grid items-center gap-x-3 bg-slate-50/40"
+              className="px-4 py-2 border-b border-border-soft grid items-center gap-x-3 bg-surface-soft/40"
               style={{ gridTemplateColumns: ACCT_GRID_COLS }}
             >
               {/* Col 1: имя + стрелки порядка (admin/owner) */}
@@ -446,7 +446,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
                         if (prev) swapOfficesOrder(office.id, prev.office.id);
                       }}
                       disabled={isFirstBlock}
-                      className="p-0 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                      className="p-0 rounded text-muted-soft hover:text-ink hover:bg-surface-sunk disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
                       title="Переместить выше"
                     >
                       <ChevronUp className="w-3 h-3" strokeWidth={2.5} />
@@ -457,49 +457,49 @@ export default function AccountsPage({ onOpenHelp = null }) {
                         if (next) swapOfficesOrder(office.id, next.office.id);
                       }}
                       disabled={isLastBlock}
-                      className="p-0 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
+                      className="p-0 rounded text-muted-soft hover:text-ink hover:bg-surface-sunk disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition-colors"
                       title="Переместить ниже"
                     >
                       <ChevronDown className="w-3 h-3" strokeWidth={2.5} />
                     </button>
                   </div>
                 )}
-                <Building2 className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <Building2 className="w-3.5 h-3.5 text-muted shrink-0" />
                 <h2 className="text-[13px] font-semibold tracking-tight truncate">{office.name}</h2>
-                <span className="text-[10px] text-slate-400 shrink-0">· {accsCount}</span>
+                <span className="text-[10px] text-muted-soft shrink-0">· {accsCount}</span>
               </div>
               {/* Col 2: сегодня */}
               <div className="text-right">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">сегодня</div>
+                <div className="text-[8px] font-bold text-muted-soft uppercase tracking-wider leading-none mb-0.5">сегодня</div>
                 <DeltaCell value={totals.delta} currency={base} />
               </div>
               {/* Col 3: вчера */}
               <div className="text-right">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">вчера</div>
+                <div className="text-[8px] font-bold text-muted-soft uppercase tracking-wider leading-none mb-0.5">вчера</div>
                 <DeltaCell value={totals.deltaYesterday} currency={base} />
               </div>
               {/* Col 4: reserved */}
               <div className="text-right">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">резерв</div>
+                <div className="text-[8px] font-bold text-muted-soft uppercase tracking-wider leading-none mb-0.5">резерв</div>
                 {totals.hasReserved ? (
-                  <span className="tabular-nums text-[11px] font-semibold text-amber-700">
+                  <span className="tabular-nums text-[11px] font-semibold text-warning">
                     {sym}{fmt(totals.reserved)}
                   </span>
                 ) : (
-                  <span className="text-slate-300 text-[11px]">—</span>
+                  <span className="text-muted-soft text-[11px]">—</span>
                 )}
               </div>
               {/* Col 5: total */}
               <div className="text-right">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">total</div>
-                <span className="tabular-nums text-[12px] font-bold text-slate-900">
+                <div className="text-[8px] font-bold text-muted-soft uppercase tracking-wider leading-none mb-0.5">total</div>
+                <span className="tabular-nums text-[12px] font-bold text-ink">
                   {sym}{fmt(totals.total)}
                 </span>
               </div>
               {/* Col 6: available */}
               <div className="text-right">
-                <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">доступно</div>
-                <span className="tabular-nums text-[12px] font-semibold text-emerald-700">
+                <div className="text-[8px] font-bold text-muted-soft uppercase tracking-wider leading-none mb-0.5">доступно</div>
+                <span className="tabular-nums text-[12px] font-semibold text-success">
                   {sym}{fmt(totals.available)}
                 </span>
               </div>
@@ -509,7 +509,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
                   onClick={() =>
                     setAddAccountFor({ officeId: office.id, officeName: office.name })
                   }
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-slate-900 text-white text-[10px] font-semibold hover:bg-slate-800 transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-ink text-white text-[10px] font-semibold hover:bg-ink transition-colors"
                 >
                   <Plus className="w-2.5 h-2.5" />
                   Add
@@ -519,14 +519,14 @@ export default function AccountsPage({ onOpenHelp = null }) {
 
             {/* Currency rows */}
             {currencyBlocks.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[12px] text-slate-400">
+              <div className="px-4 py-6 text-center text-[12px] text-muted-soft">
                 No accounts yet.
                 <div className="mt-2">
                   <button
                     onClick={() =>
                       setAddAccountFor({ officeId: office.id, officeName: office.name })
                     }
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                     Add first account
@@ -534,7 +534,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-border-soft">
                 {currencyBlocks.map((cb) => {
                   const key = `${office.id}|${cb.currency.code}`;
                   const isOpen = !!openMap[key];
@@ -640,22 +640,22 @@ function CompactTotals({ total, reserved, sym }) {
   const available = total - reserved;
   const hasReserved = reserved > 0;
   return (
-    <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 flex items-center gap-3 tabular-nums text-[12px]">
+    <div className="bg-white border border-border-soft rounded-[10px] px-3 py-1.5 flex items-center gap-3 tabular-nums text-[12px]">
       <span>
-        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mr-1">Total</span>
-        <span className="font-bold text-slate-900">
+        <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider mr-1">Total</span>
+        <span className="font-bold text-ink">
           {sym}
           {fmt(total)}
         </span>
       </span>
       {hasReserved && (
-        <span className="inline-flex items-center gap-0.5 text-amber-700">
+        <span className="inline-flex items-center gap-0.5 text-warning">
           <Clock className="w-2.5 h-2.5" />
           {sym}
           {fmt(reserved)}
         </span>
       )}
-      <span className="inline-flex items-center gap-0.5 text-emerald-700">
+      <span className="inline-flex items-center gap-0.5 text-success">
         <CheckCircle2 className="w-2.5 h-2.5" />
         {sym}
         {fmt(available)}
@@ -692,27 +692,27 @@ function CurrencyRow({
       <button
         type="button"
         onClick={onToggle}
-        className="w-full px-4 py-3 grid items-center gap-x-3 hover:bg-slate-50 transition-colors text-left"
+        className="w-full px-4 py-3 grid items-center gap-x-3 hover:bg-surface-soft transition-colors text-left"
         style={{ gridTemplateColumns: ACCT_GRID_COLS }}
       >
         {/* Col 1: имя валюты */}
         <div className="flex items-center gap-2 min-w-0">
           <ChevronRight
-            className={`w-4 h-4 text-slate-400 shrink-0 transition-transform ${
+            className={`w-4 h-4 text-muted-soft shrink-0 transition-transform ${
               isOpen ? "rotate-90" : ""
             }`}
           />
           <div
             className={`w-9 h-9 rounded-[8px] flex items-center justify-center text-[14px] font-bold shrink-0 ${
-              isCrypto ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"
+              isCrypto ? "bg-accent-bg text-accent" : "bg-surface-sunk text-ink-soft"
             }`}
           >
             {currency.symbol || currency.code[0]}
           </div>
-          <span className="text-[15px] font-bold tracking-wider text-slate-900">
+          <span className="text-[15px] font-bold tracking-wider text-ink">
             {currency.code}
           </span>
-          <span className="text-[11.5px] text-slate-500 shrink-0">
+          <span className="text-[11.5px] text-muted shrink-0">
             {accountsCount > 0 ? `${accountsCount} acc` : "—"}
           </span>
         </div>
@@ -727,22 +727,22 @@ function CurrencyRow({
         {/* Col 4: reserved */}
         <div className="text-right">
           {hasReserved ? (
-            <span className="tabular-nums text-[12.5px] font-semibold text-amber-700">
+            <span className="tabular-nums text-[12.5px] font-semibold text-warning">
               {symCcy}{fmt(totals.reserved, currency.code)}
             </span>
           ) : (
-            <span className="text-slate-300 text-[12.5px]">—</span>
+            <span className="text-muted-soft text-[12.5px]">—</span>
           )}
         </div>
         {/* Col 5: total */}
         <div className="text-right">
-          <span className="tabular-nums text-[14px] font-bold text-slate-900">
+          <span className="tabular-nums text-[14px] font-bold text-ink">
             {symCcy}{fmt(totals.total, currency.code)}
           </span>
         </div>
         {/* Col 6: available */}
         <div className="text-right">
-          <span className="tabular-nums text-[14px] font-semibold text-emerald-700">
+          <span className="tabular-nums text-[14px] font-semibold text-success">
             {symCcy}{fmt(totals.available, currency.code)}
           </span>
         </div>
@@ -752,12 +752,12 @@ function CurrencyRow({
 
       {/* Expanded content */}
       {isOpen && (
-        <div className="px-4 pb-3 pt-1 bg-slate-50/40">
+        <div className="px-4 pb-3 pt-1 bg-surface-soft/40">
           {/* Currency-level actions */}
           <div className="flex items-center gap-1.5 mb-3">
             <button
               onClick={() => onAddAccount({ currency: currency.code })}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Add account
@@ -765,7 +765,7 @@ function CurrencyRow({
             {channelBlocks.length > 0 && channelBlocks[0].accounts[0] && (
               <button
                 onClick={() => onTransfer(channelBlocks[0].accounts[0])}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
                 title={`Transfer from a ${currency.code} account`}
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -775,7 +775,7 @@ function CurrencyRow({
           </div>
 
           {channelBlocks.length === 0 ? (
-            <div className="text-[12px] text-slate-400 italic py-2 text-center bg-white border border-dashed border-slate-200 rounded-[8px]">
+            <div className="text-[12px] text-muted-soft italic py-2 text-center bg-white border border-dashed border-border-soft rounded-[8px]">
               No accounts
             </div>
           ) : (
@@ -827,32 +827,32 @@ function ChannelBlock({
   const label = channelShortLabel(channel);
   const isNetwork = channel.kind === "network";
   return (
-    <div className="bg-white border border-slate-200 rounded-[10px] p-3">
+    <div className="bg-white border border-border-soft rounded-[10px] p-3">
       <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {isNetwork ? (
-            <NetworkIcon className="w-4 h-4 text-indigo-500" />
+            <NetworkIcon className="w-4 h-4 text-accent" />
           ) : (
             <span className="text-[14px]">{channel.kind === "cash" ? "💵" : "🏦"}</span>
           )}
-          <span className="text-[12px] font-bold text-slate-700 tracking-wider uppercase">
+          <span className="text-[12px] font-bold text-ink-soft tracking-wider uppercase">
             {label}
           </span>
           {channel.gasFee != null && (
-            <span className="text-[11px] text-slate-500 tabular-nums">gas ${channel.gasFee}</span>
+            <span className="text-[11px] text-muted tabular-nums">gas ${channel.gasFee}</span>
           )}
           {channel.isDefaultForCurrency && (
-            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] font-bold text-success bg-success-soft px-1.5 py-0.5 rounded">
               default
             </span>
           )}
-          <span className="text-[11px] text-slate-400">· {accs.length}</span>
+          <span className="text-[11px] text-muted-soft">· {accs.length}</span>
         </div>
         <button
           onClick={() =>
             onAddAccount({ currency: currency.code, channelId: channel.id })
           }
-          className="inline-flex items-center gap-1 text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-[8px] px-2 py-1 transition-colors"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft rounded-[8px] px-2 py-1 transition-colors"
         >
           <Plus className="w-3 h-3" />
           Add
@@ -890,14 +890,14 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
   const available = availableOf(a.id);
   const hasReserved = reserved > 0.0001;
   return (
-    <div className="bg-white border border-slate-200 rounded-[10px] px-3 py-2.5 hover:border-slate-300 hover:shadow-sm transition-all">
+    <div className="bg-white border border-border-soft rounded-[10px] px-3 py-2.5 hover:border-border hover:shadow-sm transition-all">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-semibold text-slate-900 leading-tight truncate">
+          <div className="text-[14px] font-semibold text-ink leading-tight truncate">
             {a.name}
           </div>
           {a.address && (
-            <div className="text-[11px] font-mono text-slate-500 truncate mt-0.5">
+            <div className="text-[11px] font-mono text-muted truncate mt-0.5">
               {a.address.length > 22 ? `${a.address.slice(0, 12)}…${a.address.slice(-8)}` : a.address}
             </div>
           )}
@@ -905,13 +905,13 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
       </div>
 
       <div className="flex items-baseline justify-between gap-2 tabular-nums mb-2">
-        <span className="text-[17px] font-bold text-slate-900">
+        <span className="text-[17px] font-bold text-ink">
           {curSymbol(a.currency)}
           {fmt(total, a.currency)}
         </span>
         <span
           className={`text-[12px] font-semibold inline-flex items-center gap-1 ${
-            hasReserved ? "text-amber-700" : "text-emerald-700"
+            hasReserved ? "text-warning" : "text-success"
           }`}
         >
           {hasReserved ? (
@@ -928,10 +928,10 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         </span>
       </div>
 
-      <div className="flex items-center gap-1 pt-2 border-t border-slate-100">
+      <div className="flex items-center gap-1 pt-2 border-t border-border-soft">
         <button
           onClick={() => onTopUp(a)}
-          className="flex-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
+          className="flex-1 text-[11px] font-semibold text-success hover:bg-success-soft rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
           title="Top up"
         >
           <Plus className="w-3 h-3" />
@@ -939,7 +939,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         </button>
         <button
           onClick={() => onTransfer(a)}
-          className="flex-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
+          className="flex-1 text-[11px] font-semibold text-ink-soft hover:bg-surface-sunk rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
           title="Transfer"
         >
           <ArrowLeftRight className="w-3 h-3" />
@@ -948,7 +948,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         {onOtc && (
           <button
             onClick={() => onOtc(a)}
-            className="flex-1 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-50 rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
+            className="flex-1 text-[11px] font-semibold text-accent hover:bg-accent-bg rounded-[6px] px-2 py-1.5 transition-colors inline-flex items-center justify-center gap-1"
             title="OTC сделка с контрагентом — обмен валюты с партнёра, можно задним числом"
           >
             <ArrowLeftRight className="w-3 h-3" />
@@ -958,7 +958,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         {onAdjust && (
           <button
             onClick={() => onAdjust(a)}
-            className="text-[11px] font-semibold text-amber-700 hover:bg-amber-50 rounded-[6px] px-2 py-1.5 transition-colors"
+            className="text-[11px] font-semibold text-warning hover:bg-warning-soft rounded-[6px] px-2 py-1.5 transition-colors"
             title="Скорректировать баланс — поправить остаток без изменения P&L"
           >
             <Scale className="w-3 h-3" />
@@ -967,7 +967,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         {onEdit && (
           <button
             onClick={() => onEdit(a)}
-            className="text-[11px] font-semibold text-slate-600 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors"
+            className="text-[11px] font-semibold text-ink-soft hover:bg-surface-sunk rounded-[6px] px-2 py-1.5 transition-colors"
             title="Редактировать счёт — имя, адрес, сеть, активность"
           >
             <Pencil className="w-3 h-3" />
@@ -975,7 +975,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         )}
         <button
           onClick={() => onHistory(a)}
-          className="text-[11px] font-semibold text-slate-500 hover:bg-slate-100 rounded-[6px] px-2 py-1.5 transition-colors"
+          className="text-[11px] font-semibold text-muted hover:bg-surface-sunk rounded-[6px] px-2 py-1.5 transition-colors"
           title="History"
         >
           <HistoryIcon className="w-3 h-3" />
@@ -983,7 +983,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
         {onDelete && (
           <button
             onClick={() => onDelete(a)}
-            className="text-[11px] font-semibold text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-[6px] px-2 py-1.5 transition-colors"
+            className="text-[11px] font-semibold text-muted-soft hover:text-danger hover:bg-danger-soft rounded-[6px] px-2 py-1.5 transition-colors"
             title="Deactivate account"
           >
             <Trash2 className="w-3 h-3" />
@@ -1008,25 +1008,25 @@ function OtcHistoryPanel({ transactions, accountsById }) {
 
   if (otcDeals.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
-        <ArrowLeftRightIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-        <div className="text-[13px] text-slate-500">Нет OTC сделок</div>
+      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+        <ArrowLeftRightIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
+        <div className="text-[13px] text-muted">Нет OTC сделок</div>
       </section>
     );
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border-soft flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ArrowLeftRightIcon className="w-3.5 h-3.5 text-indigo-500" />
+          <ArrowLeftRightIcon className="w-3.5 h-3.5 text-accent" />
           <h2 className="text-[13px] font-semibold tracking-tight">История OTC</h2>
-          <span className="text-[11px] text-slate-400">· {otcDeals.length} сделок</span>
+          <span className="text-[11px] text-muted-soft">· {otcDeals.length} сделок</span>
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+          <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
             <tr>
               <th className="px-3 py-2 text-left">Дата</th>
               <th className="px-3 py-2 text-left">Тип</th>
@@ -1043,44 +1043,44 @@ function OtcHistoryPanel({ transactions, accountsById }) {
               const dt = new Date(tx.createdAtMs || tx.time || Date.now());
               const firstOut = (tx.outputs || [])[0];
               return (
-                <tr key={tx.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <tr key={tx.id} className="border-b border-border-soft last:border-0 hover:bg-surface-soft">
                   <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div className="font-semibold tabular-nums text-slate-700">
+                    <div className="font-semibold tabular-nums text-ink-soft">
                       {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                     </div>
-                    <div className="text-[10px] text-slate-400 tabular-nums">
+                    <div className="text-[10px] text-muted-soft tabular-nums">
                       {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-accent-bg text-accent ring-indigo-200">
                       {tx.kind === "broker" ? "BROKER" : "OTC"}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-600 max-w-[180px] truncate">
+                  <td className="px-3 py-2.5 text-ink-soft max-w-[180px] truncate">
                     {tx.counterparty || "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
                     <span className="font-semibold">{fmt(tx.amtIn, tx.curIn)}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">{tx.curIn}</span>
+                    <span className="text-[10px] text-muted-soft ml-1">{tx.curIn}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
                     {firstOut ? (
                       <>
                         <span className="font-semibold">{fmt(firstOut.amount, firstOut.currency)}</span>
-                        <span className="text-[10px] text-slate-400 ml-1">{firstOut.currency}</span>
+                        <span className="text-[10px] text-muted-soft ml-1">{firstOut.currency}</span>
                       </>
                     ) : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
                     {tx.profit > 0 ? (
-                      <span className="text-emerald-700 font-bold">+${fmt(tx.profit, "USD")}</span>
+                      <span className="text-success font-bold">+${fmt(tx.profit, "USD")}</span>
                     ) : tx.profit < 0 ? (
-                      <span className="text-rose-700 font-bold">−${fmt(Math.abs(tx.profit), "USD")}</span>
-                    ) : <span className="text-slate-300">—</span>}
+                      <span className="text-danger font-bold">−${fmt(Math.abs(tx.profit), "USD")}</span>
+                    ) : <span className="text-muted-soft">—</span>}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className="text-[10.5px] text-slate-500">{tx.status || "—"}</span>
+                    <span className="text-[10.5px] text-muted">{tx.status || "—"}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <DeleteDealButtonInline dealId={tx.id} />
@@ -1114,23 +1114,23 @@ function TransfersPanel({ transfers, accountsById }) {
 
   if (sorted.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
-        <WalletIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-        <div className="text-[13px] text-slate-500">Нет перемещений</div>
+      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+        <WalletIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
+        <div className="text-[13px] text-muted">Нет перемещений</div>
       </section>
     );
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
-        <ArrowLeftRightIcon className="w-3.5 h-3.5 text-sky-500" />
+    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border-soft flex items-center gap-2">
+        <ArrowLeftRightIcon className="w-3.5 h-3.5 text-info" />
         <h2 className="text-[13px] font-semibold tracking-tight">Перемещения</h2>
-        <span className="text-[11px] text-slate-400">· {sorted.length}</span>
+        <span className="text-[11px] text-muted-soft">· {sorted.length}</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+          <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
             <tr>
               <th className="px-3 py-2 text-left">Дата</th>
               <th className="px-3 py-2 text-left">Откуда</th>
@@ -1147,30 +1147,30 @@ function TransfersPanel({ transfers, accountsById }) {
               const to = accountsById[tr.toAccountId];
               const dt = new Date(tr.createdAt || 0);
               return (
-                <tr key={tr.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <tr key={tr.id} className="border-b border-border-soft last:border-0 hover:bg-surface-soft">
                   <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div className="font-semibold tabular-nums text-slate-700">
+                    <div className="font-semibold tabular-nums text-ink-soft">
                       {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                     </div>
-                    <div className="text-[10px] text-slate-400 tabular-nums">
+                    <div className="text-[10px] text-muted-soft tabular-nums">
                       {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                  <td className="px-3 py-2.5 text-ink-soft max-w-[180px] truncate">
                     {from?.name || "—"}
                   </td>
-                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                  <td className="px-3 py-2.5 text-ink-soft max-w-[180px] truncate">
                     {to?.name || "—"}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
-                    <span className="font-semibold text-rose-700">−{fmt(tr.fromAmount, tr.fromCurrency)}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">{tr.fromCurrency}</span>
+                    <span className="font-semibold text-danger">−{fmt(tr.fromAmount, tr.fromCurrency)}</span>
+                    <span className="text-[10px] text-muted-soft ml-1">{tr.fromCurrency}</span>
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
-                    <span className="font-semibold text-emerald-700">+{fmt(tr.toAmount, tr.toCurrency)}</span>
-                    <span className="text-[10px] text-slate-400 ml-1">{tr.toCurrency}</span>
+                    <span className="font-semibold text-success">+{fmt(tr.toAmount, tr.toCurrency)}</span>
+                    <span className="text-[10px] text-muted-soft ml-1">{tr.toCurrency}</span>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{tr.note || "—"}</td>
+                  <td className="px-3 py-2.5 text-muted max-w-xs truncate">{tr.note || "—"}</td>
                   <td className="px-3 py-2.5 text-right">
                     <DeleteTransferButton transferId={tr.id} onDeleted={handleDeleted} />
                   </td>
@@ -1196,23 +1196,23 @@ function LedgerPanel({ movements, accountsById }) {
 
   if (sorted.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-slate-200/70 p-8 text-center">
-        <HistoryIcon className="w-8 h-8 mx-auto text-slate-300 mb-2" />
-        <div className="text-[13px] text-slate-500">Нет операций</div>
+      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+        <HistoryIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
+        <div className="text-[13px] text-muted">Нет операций</div>
       </section>
     );
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
-        <HistoryIcon className="w-3.5 h-3.5 text-slate-500" />
+    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border-soft flex items-center gap-2">
+        <HistoryIcon className="w-3.5 h-3.5 text-muted" />
         <h2 className="text-[13px] font-semibold tracking-tight">Журнал</h2>
-        <span className="text-[11px] text-slate-400">· {sorted.length} (последние)</span>
+        <span className="text-[11px] text-muted-soft">· {sorted.length} (последние)</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-slate-50 border-b border-slate-200 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+          <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
             <tr>
               <th className="px-3 py-2 text-left">Дата</th>
               <th className="px-3 py-2 text-left">Счёт</th>
@@ -1227,28 +1227,28 @@ function LedgerPanel({ movements, accountsById }) {
               const dt = new Date(m.timestamp || 0);
               const isIn = m.direction === "in";
               return (
-                <tr key={m.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <tr key={m.id} className="border-b border-border-soft last:border-0 hover:bg-surface-soft">
                   <td className="px-3 py-2.5 whitespace-nowrap">
-                    <div className="font-semibold tabular-nums text-slate-700">
+                    <div className="font-semibold tabular-nums text-ink-soft">
                       {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                     </div>
-                    <div className="text-[10px] text-slate-400 tabular-nums">
+                    <div className="text-[10px] text-muted-soft tabular-nums">
                       {dt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-700 max-w-[180px] truncate">
+                  <td className="px-3 py-2.5 text-ink-soft max-w-[180px] truncate">
                     {acc?.name || "—"}
                   </td>
                   <td className="px-3 py-2.5">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-slate-50 text-slate-700 ring-slate-200">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ring-1 bg-surface-soft text-ink-soft ring-border-soft">
                       {m.source?.kind || "—"}
                     </span>
                   </td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${isIn ? "text-emerald-700" : "text-rose-700"}`}>
+                  <td className={`px-3 py-2.5 text-right tabular-nums font-bold ${isIn ? "text-success" : "text-danger"}`}>
                     {isIn ? "+" : "−"}{fmt(m.amount, m.currency)}
-                    <span className="text-[10px] text-slate-400 font-normal ml-1">{m.currency}</span>
+                    <span className="text-[10px] text-muted-soft font-normal ml-1">{m.currency}</span>
                   </td>
-                  <td className="px-3 py-2.5 text-slate-500 max-w-xs truncate">{m.source?.note || "—"}</td>
+                  <td className="px-3 py-2.5 text-muted max-w-xs truncate">{m.source?.note || "—"}</td>
                 </tr>
               );
             })}

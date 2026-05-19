@@ -37,13 +37,13 @@ export default function MasterDataTab() {
 
   return (
     <div>
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
-        <Book className="w-4 h-4 text-slate-500" />
+      <div className="px-5 py-4 border-b border-border-soft flex items-center gap-2">
+        <Book className="w-4 h-4 text-muted" />
         <h2 className="text-[16px] font-semibold tracking-tight">Master data</h2>
-        <span className="text-[11px] text-slate-400">· unified reference dictionaries</span>
+        <span className="text-[11px] text-muted-soft">· unified reference dictionaries</span>
       </div>
 
-      <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-1 flex-wrap">
+      <div className="px-5 py-3 border-b border-border-soft flex items-center gap-1 flex-wrap">
         {SECTIONS.map((s) => {
           const Icon = s.icon;
           const active = s.id === section;
@@ -53,8 +53,8 @@ export default function MasterDataTab() {
               onClick={() => setSection(s.id)}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold transition-colors ${
                 active
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
               }`}
             >
               <Icon className="w-3 h-3" />
@@ -183,7 +183,7 @@ function CategoriesSection() {
     <div className="p-5 space-y-5">
       <CategoryList
         title={t("cat_expense_heading")}
-        toneClass="bg-rose-50 text-rose-700 ring-rose-100"
+        toneClass="bg-danger-soft text-danger ring-rose-100"
         items={grouped.expense}
         allCategories={categories}
         onAdd={() => setEditing({ kind: "new", type: "expense" })}
@@ -194,7 +194,7 @@ function CategoriesSection() {
       />
       <CategoryList
         title={t("cat_income_heading")}
-        toneClass="bg-emerald-50 text-emerald-700 ring-emerald-100"
+        toneClass="bg-success-soft text-success ring-emerald-100"
         items={grouped.income}
         allCategories={categories}
         onAdd={() => setEditing({ kind: "new", type: "income" })}
@@ -204,8 +204,8 @@ function CategoriesSection() {
         t={t}
       />
 
-      <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 flex items-start gap-2">
-        <Info className="w-3 h-3 mt-0.5 text-slate-400 shrink-0" />
+      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+        <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
         <div>{t("cat_info_hint")}</div>
       </div>
 
@@ -247,26 +247,26 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
   }, [items]);
 
   return (
-    <section className="border border-slate-200 rounded-[12px] overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/40">
+    <section className="border border-border-soft rounded-[12px] overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border-soft flex items-center justify-between bg-surface-soft/40">
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ring-1 ${toneClass}`}>
             {items.length}
           </span>
-          <h3 className="text-[13px] font-semibold text-slate-900">{title}</h3>
+          <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
         </div>
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           {t("cat_add")}
         </button>
       </div>
       {items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12px] text-slate-400">{t("cat_none")}</div>
+        <div className="px-4 py-6 text-center text-[12px] text-muted-soft">{t("cat_none")}</div>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-border-soft">
           {tree.map((c) => (
             <div
               key={c.id}
@@ -275,22 +275,22 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
             >
               <div className="flex items-center gap-2 min-w-0">
                 {c.depth > 0 && (
-                  <span className="text-slate-300 select-none text-[12px] font-mono">└</span>
+                  <span className="text-muted-soft select-none text-[12px] font-mono">└</span>
                 )}
                 <div>
                   <div
                     className={`text-[13px] ${
-                      c.depth === 0 ? "font-bold text-slate-900" : "font-medium text-slate-600"
+                      c.depth === 0 ? "font-bold text-ink" : "font-medium text-ink-soft"
                     }`}
                   >
                     {c.name}
                     {c.orphan && (
-                      <span className="ml-2 text-[9px] font-bold text-amber-600 uppercase tracking-wider">
+                      <span className="ml-2 text-[9px] font-bold text-warning uppercase tracking-wider">
                         orphan
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                  <div className="text-[10px] text-muted uppercase tracking-wider">
                     {c.depth === 0 ? c.group : t("cat_subcategory")}
                   </div>
                 </div>
@@ -299,7 +299,7 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
                 {c.depth === 0 && onAddSub && (
                   <button
                     onClick={() => onAddSub(c)}
-                    className="p-1 rounded-md text-slate-500 hover:text-emerald-600 hover:bg-emerald-50"
+                    className="p-1 rounded-md text-muted hover:text-success hover:bg-success-soft"
                     title={t("cat_add_sub")}
                   >
                     <Plus className="w-3 h-3" />
@@ -307,14 +307,14 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
                 )}
                 <button
                   onClick={() => onEdit(c)}
-                  className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                  className="p-1 rounded-md text-muted hover:text-ink hover:bg-surface-sunk"
                   title={t("cat_edit")}
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
                 <button
                   onClick={() => onDelete(c)}
-                  className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                  className="p-1 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft"
                   title={t("cat_delete")}
                 >
                   <Trash2 className="w-3 h-3" />
@@ -387,21 +387,21 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
     >
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">{t("cat_name")}</label>
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_name")}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder={t("cat_name_placeholder")}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
             <div
-              className={`inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full ${
+              className={`inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full ${
                 typeLocked ? "opacity-60 cursor-not-allowed" : ""
               }`}
               title={typeLocked ? typeLockedReason : undefined}
@@ -421,7 +421,7 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
                     }
                   }}
                   className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
-                    type === tp ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   } ${typeLocked && type !== tp ? "cursor-not-allowed" : ""}`}
                 >
                   {tp === "expense" ? t("cat_type_expense") : t("cat_type_income")}
@@ -429,18 +429,18 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
               ))}
             </div>
             {typeLocked && (
-              <div className="text-[10px] text-amber-700 mt-1 flex items-start gap-1">
+              <div className="text-[10px] text-warning mt-1 flex items-start gap-1">
                 <span>⚠</span>
                 <span>{typeLockedReason}</span>
               </div>
             )}
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">{t("cat_group")}</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_group")}</label>
             <select
               value={group}
               onChange={(e) => setGroup(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             >
               {CATEGORY_GROUPS.map((g) => (
                 <option key={g.id} value={g.id}>{g.label}</option>
@@ -451,31 +451,31 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
 
         {/* Parent category select — доступен всегда кроме случая когда у редактируемой категории есть дети */}
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("cat_parent")}
           </label>
           <select
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           >
             <option value="">— {t("cat_parent_none")} —</option>
             {possibleParents.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          <div className="text-[11px] text-slate-500 mt-1">
+          <div className="text-[11px] text-muted mt-1">
             {parentId ? t("cat_parent_hint_sub") : t("cat_parent_hint_top")}
           </div>
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors">{t("cancel")}</button>
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
+        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">{t("cancel")}</button>
         <button
           onClick={() => onSave({ name: name.trim(), type, group, parentId: parentId || null })}
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >{t("save")}</button>
       </div>
@@ -568,47 +568,47 @@ function CurrenciesSection() {
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] text-slate-500">
+        <div className="text-[11px] text-muted">
           {currencies.length} currencies — shared with Dashboard → Rates.
         </div>
         <button
           onClick={() => setEditing({ kind: "new" })}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-800 transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           Add currency
         </button>
       </div>
 
-      <section className="border border-slate-200 rounded-[12px] overflow-hidden">
-        <div className="divide-y divide-slate-100">
+      <section className="border border-border-soft rounded-[12px] overflow-hidden">
+        <div className="divide-y divide-border-soft">
           {currencies.map((c) => (
             <div key={c.code} className="px-4 py-2 flex items-center justify-between gap-2 group">
               <div className="flex items-center gap-3">
                 <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center text-[13px] font-bold ${
-                  c.type === "crypto" ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-100" : "bg-slate-100 text-slate-700"
+                  c.type === "crypto" ? "bg-accent-bg text-accent ring-1 ring-indigo-100" : "bg-surface-sunk text-ink-soft"
                 }`}>
                   {c.symbol || c.code[0]}
                 </div>
                 <div>
-                  <div className="text-[13px] font-semibold text-slate-900 tracking-wide">{c.code}</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-[13px] font-semibold text-ink tracking-wide">{c.code}</div>
+                  <div className="text-[11px] text-muted">
                     {c.name} · {c.type} · {c.decimals}d
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => setEditing({ kind: "edit", data: c })} className="p-1 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100">
+                <button onClick={() => setEditing({ kind: "edit", data: c })} className="p-1 rounded-md text-muted hover:text-ink hover:bg-surface-sunk">
                   <Pencil className="w-3 h-3" />
                 </button>
-                <button onClick={() => handleDelete(c)} className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50">
+                <button onClick={() => handleDelete(c)} className="p-1 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft">
                   <Trash2 className="w-3 h-3" />
                 </button>
               </div>
             </div>
           ))}
           {currencies.length === 0 && (
-            <div className="px-4 py-6 text-center text-[12px] text-slate-400">No currencies yet</div>
+            <div className="px-4 py-6 text-center text-[12px] text-muted-soft">No currencies yet</div>
           )}
         </div>
       </section>
@@ -655,7 +655,7 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
       <div className="p-5 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">Code</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Code</label>
             <input
               type="text"
               value={code}
@@ -663,19 +663,19 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
               placeholder="USDC"
               maxLength={6}
               disabled={isEdit}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tracking-wider uppercase outline-none disabled:opacity-60"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-bold tracking-wider uppercase outline-none disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">Type</label>
-            <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Type</label>
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full">
               {["fiat", "crypto"].map((tp) => (
                 <button
                   key={tp}
                   type="button"
                   onClick={() => setType(tp)}
                   className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
-                    type === tp ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   }`}
                 >
                   {tp}
@@ -686,46 +686,46 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">Symbol</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Symbol</label>
             <input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">Name</label>
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">Decimals</label>
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Decimals</label>
           <input
             type="number"
             min={0}
             max={8}
             value={decimals}
             onChange={(e) => setDecimals(parseInt(e.target.value, 10) || 0)}
-            className="w-24 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
           />
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors">Cancel</button>
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
+        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">Cancel</button>
         <button
           onClick={() => onSave({ code: code.trim().toUpperCase(), type, symbol: symbol.trim(), name: name.trim() || code.trim().toUpperCase(), decimals })}
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >Save</button>
       </div>
@@ -750,21 +750,21 @@ function ChannelsSection() {
 
   return (
     <div className="p-5 space-y-3">
-      <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 flex items-start gap-2">
-        <Info className="w-3 h-3 mt-0.5 text-slate-400 shrink-0" />
+      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+        <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
         <div>
           Read-only view. Create or edit channels in{" "}
-          <span className="font-semibold text-slate-700">Dashboard → Edit rates</span> to keep a single source of truth.
+          <span className="font-semibold text-ink-soft">Dashboard → Edit rates</span> to keep a single source of truth.
         </div>
       </div>
-      <section className="border border-slate-200 rounded-[12px] overflow-hidden divide-y divide-slate-100">
+      <section className="border border-border-soft rounded-[12px] overflow-hidden divide-y divide-border-soft">
         {currencies.map((c) => {
           const chs = byCurrency.get(c.code) || [];
           if (chs.length === 0) return null;
           return (
             <div key={c.code} className="px-4 py-2.5">
-              <div className="text-[11px] font-bold tracking-wider text-slate-700 mb-1.5">
-                {c.code} <span className="text-slate-400 font-normal">· {c.type}</span>
+              <div className="text-[11px] font-bold tracking-wider text-ink-soft mb-1.5">
+                {c.code} <span className="text-muted-soft font-normal">· {c.type}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {chs.map((ch) => (
@@ -772,16 +772,16 @@ function ChannelsSection() {
                     key={ch.id}
                     className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold border ${
                       ch.kind === "network"
-                        ? "bg-indigo-50 text-indigo-700 border-indigo-100"
-                        : "bg-slate-50 text-slate-700 border-slate-200"
+                        ? "bg-accent-bg text-accent border-indigo-100"
+                        : "bg-surface-soft text-ink-soft border-border-soft"
                     }`}
                   >
                     {channelShortLabel(ch)}
                     {ch.isDefaultForCurrency && (
-                      <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 rounded">default</span>
+                      <span className="text-[9px] font-bold text-success bg-success-soft px-1 rounded">default</span>
                     )}
                     {ch.gasFee != null && (
-                      <span className="text-[9px] text-slate-500 tabular-nums">gas ${ch.gasFee}</span>
+                      <span className="text-[9px] text-muted tabular-nums">gas ${ch.gasFee}</span>
                     )}
                   </span>
                 ))}
@@ -800,13 +800,13 @@ function ChannelsSection() {
 function TagsSection() {
   return (
     <div className="p-5 space-y-3">
-      <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 flex items-start gap-2">
-        <Info className="w-3 h-3 mt-0.5 text-slate-400 shrink-0" />
-        <div>Built-in set. Extend in <span className="font-mono text-slate-700">src/store/data.js → CLIENT_TAGS</span>.</div>
+      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+        <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
+        <div>Built-in set. Extend in <span className="font-mono text-ink-soft">src/store/data.js → CLIENT_TAGS</span>.</div>
       </div>
       <div className="flex flex-wrap gap-2">
         {CLIENT_TAGS.map((tag) => (
-          <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-semibold bg-slate-100 text-slate-700 ring-1 ring-slate-200">
+          <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-semibold bg-surface-sunk text-ink-soft ring-1 ring-border-soft">
             {tag}
           </span>
         ))}

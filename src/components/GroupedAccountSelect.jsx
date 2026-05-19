@@ -159,41 +159,41 @@ export default function GroupedAccountSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 bg-slate-50 border rounded-[10px] px-3 py-2.5 text-left transition-colors ${
+        className={`w-full flex items-center gap-2 bg-surface-soft border rounded-[10px] px-3 py-2.5 text-left transition-colors ${
           open
-            ? "border-slate-400 ring-2 ring-slate-900/10 bg-white"
-            : "border-slate-200 hover:border-slate-300"
+            ? "border-accent/40 ring-2 ring-accent/20 bg-white"
+            : "border-border-soft hover:border-border"
         } ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
       >
         {selected ? (
           <SelectedBadge account={selected} office={officeById.get(selected.officeId)} channels={channels} />
         ) : (
-          <span className="text-[13px] text-slate-400">{placeholder}</span>
+          <span className="text-[13px] text-muted-soft">{placeholder}</span>
         )}
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 ml-auto transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-3.5 h-3.5 text-muted-soft ml-auto transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
       {open && (
-        <div className="absolute z-40 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-[10px] shadow-xl shadow-slate-900/10 overflow-hidden">
-          <div className="px-3 py-2 border-b border-slate-100 flex items-center gap-2 bg-slate-50">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
+        <div className="absolute z-40 left-0 right-0 mt-1 bg-white border border-border-soft rounded-[10px] shadow-xl shadow-soft overflow-hidden">
+          <div className="px-3 py-2 border-b border-border-soft flex items-center gap-2 bg-surface-soft">
+            <Search className="w-3.5 h-3.5 text-muted-soft" />
             <input
               type="text"
               value={query}
               autoFocus
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name, currency, office, network…"
-              className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-slate-400"
+              className="flex-1 bg-transparent outline-none text-[13px] placeholder:text-muted-soft"
             />
           </div>
 
           <div className="max-h-80 overflow-auto py-1">
             {/* Recent */}
             {!query && recentAccounts.length > 0 && (
-              <div className="border-b border-slate-100 mb-1">
-                <div className="px-3 pt-2 pb-1 text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+              <div className="border-b border-border-soft mb-1">
+                <div className="px-3 pt-2 pb-1 text-[9px] font-bold text-muted-soft uppercase tracking-widest flex items-center gap-1">
                   <Clock className="w-2.5 h-2.5" />
                   Recent
                 </div>
@@ -212,34 +212,34 @@ export default function GroupedAccountSelect({
             )}
 
             {grouped.length === 0 ? (
-              <div className="px-4 py-8 text-center text-[12px] text-slate-400">
+              <div className="px-4 py-8 text-center text-[12px] text-muted-soft">
                 No accounts match
               </div>
             ) : (
               grouped.map((officeBlock) => (
                 <div key={officeBlock.office.id} className="mb-1">
-                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 bg-slate-50/60 border-y border-slate-100 sticky top-0">
-                    <Building2 className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] font-bold text-slate-600 tracking-wider uppercase">
+                  <div className="px-3 pt-2 pb-1 flex items-center gap-1.5 bg-surface-soft/60 border-y border-border-soft sticky top-0">
+                    <Building2 className="w-3 h-3 text-muted-soft" />
+                    <span className="text-[10px] font-bold text-ink-soft tracking-wider uppercase">
                       {officeBlock.office.name}
                     </span>
                   </div>
                   {officeBlock.currencies.map((curBlock) => (
                     <div key={`${officeBlock.office.id}_${curBlock.currency}`} className="pl-4">
-                      <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                      <div className="px-2 pt-1.5 pb-0.5 text-[9px] font-bold text-muted-soft uppercase tracking-widest">
                         {curBlock.currency}
                       </div>
                       {curBlock.channels.map((chBlock) => (
                         <div key={chBlock.channel?.id || "unknown"}>
-                          <div className="px-3 pb-0.5 text-[10px] text-slate-500 flex items-center gap-1">
+                          <div className="px-3 pb-0.5 text-[10px] text-muted flex items-center gap-1">
                             {chBlock.channel?.kind === "network" ? (
-                              <NetworkIcon className="w-2.5 h-2.5 text-indigo-500" />
+                              <NetworkIcon className="w-2.5 h-2.5 text-accent" />
                             ) : (
                               <span className="text-[10px]">
                                 {chBlock.channel?.kind === "cash" ? "💵" : "🏦"}
                               </span>
                             )}
-                            <span className="font-semibold text-slate-600">
+                            <span className="font-semibold text-ink-soft">
                               {channelShortLabel(chBlock.channel)}
                             </span>
                           </div>
@@ -273,15 +273,15 @@ function SelectedBadge({ account, office, channels }) {
   const ch = resolveAccountChannel(account, channels);
   return (
     <div className="flex-1 min-w-0 flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700 tracking-wider">
+      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-surface-sunk text-ink-soft tracking-wider">
         {account.currency}
       </span>
-      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+      <span className="text-[10px] font-semibold text-muted uppercase tracking-wider">
         {channelShortLabel(ch)}
       </span>
-      <span className="text-[13px] font-medium text-slate-900 truncate">{account.name}</span>
+      <span className="text-[13px] font-medium text-ink truncate">{account.name}</span>
       {office && (
-        <span className="text-[10px] text-slate-400 truncate">· {office.name}</span>
+        <span className="text-[10px] text-muted-soft truncate">· {office.name}</span>
       )}
     </div>
   );
@@ -293,27 +293,27 @@ function AccountItem({ account: a, office, channels, balance, isSelected, onPick
     <button
       type="button"
       onClick={() => onPick(a)}
-      className={`w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-2 text-[12px] ${
+      className={`w-full text-left px-3 py-1.5 hover:bg-surface-soft flex items-center gap-2 text-[12px] ${
         indent ? "pl-6" : ""
-      } ${isSelected ? "bg-slate-100/60" : ""}`}
+      } ${isSelected ? "bg-surface-sunk/60" : ""}`}
     >
-      <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-700 tracking-wider">
+      <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-surface-sunk text-ink-soft tracking-wider">
         {a.currency}
       </span>
-      <span className="flex-1 min-w-0 truncate font-medium text-slate-900">
+      <span className="flex-1 min-w-0 truncate font-medium text-ink">
         {a.name}
       </span>
-      <span className="text-[10px] text-slate-400 tabular-nums">
+      <span className="text-[10px] text-muted-soft tabular-nums">
         {curSymbol(a.currency)}
         {fmt(balance, a.currency)}
       </span>
-      {office && <span className="text-[9px] text-slate-400 truncate max-w-[80px]">{office.name}</span>}
+      {office && <span className="text-[9px] text-muted-soft truncate max-w-[80px]">{office.name}</span>}
       {ch?.network && (
-        <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1 py-0.5 rounded">
+        <span className="text-[9px] font-bold text-accent bg-accent-bg px-1 py-0.5 rounded">
           {ch.network}
         </span>
       )}
-      {isSelected && <Check className="w-3 h-3 text-emerald-500" />}
+      {isSelected && <Check className="w-3 h-3 text-success" />}
     </button>
   );
 }

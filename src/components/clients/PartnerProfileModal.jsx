@@ -117,14 +117,14 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
         </div>
 
         {!partner.active && (
-          <div className="text-[11px] font-bold text-slate-500 bg-slate-200 inline-flex items-center px-2 py-0.5 rounded uppercase tracking-wider">
+          <div className="text-[11px] font-bold text-muted bg-surface-sunk inline-flex items-center px-2 py-0.5 rounded uppercase tracking-wider">
             {t("pp_deactivated")}
           </div>
         )}
 
         {partner.note && (
-          <div className="text-[12px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-            <span className="font-semibold text-slate-500 uppercase text-[10px] tracking-wider mr-1.5">
+          <div className="text-[12px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+            <span className="font-semibold text-muted uppercase text-[10px] tracking-wider mr-1.5">
               {t("pp_note")}:
             </span>
             {partner.note}
@@ -133,20 +133,20 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
 
         {/* Obligations card — рендерим только если есть открытые */}
         {partnerObligations.length > 0 && (
-          <div className="border border-amber-200 bg-amber-50/50 rounded-[10px] p-3">
+          <div className="border border-amber-200 bg-warning-soft/50 rounded-[10px] p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft flex items-center gap-1.5">
                 <Scale className="w-3 h-3" />
                 {t("pp_open_obligations")} · {partnerObligations.length}
               </h3>
               <div className="flex items-center gap-3 text-[11px] tabular-nums">
                 {obligationTotals.theyOwe > 0 && (
-                  <span className="font-semibold text-emerald-700">
+                  <span className="font-semibold text-success">
                     {t("pp_they_owe_label")}: {sym}{fmt(obligationTotals.theyOwe, base)}
                   </span>
                 )}
                 {obligationTotals.weOwe > 0 && (
-                  <span className="font-semibold text-rose-700">
+                  <span className="font-semibold text-danger">
                     {t("pp_we_owe_label")}: {sym}{fmt(obligationTotals.weOwe, base)}
                   </span>
                 )}
@@ -165,25 +165,25 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
                     <span
                       className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                         isWeOwe
-                          ? "bg-rose-100 text-rose-700"
-                          : "bg-emerald-100 text-emerald-700"
+                          ? "bg-rose-100 text-danger"
+                          : "bg-emerald-100 text-success"
                       }`}
                     >
                       {isWeOwe ? "we owe" : "they owe"}
                     </span>
-                    <span className="font-semibold tabular-nums text-slate-900">
+                    <span className="font-semibold tabular-nums text-ink">
                       {fmt(remaining, cur)} {cur}
                     </span>
                     {(o.paidAmount || 0) > 0 && (
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-muted">
                         paid {fmt(o.paidAmount, cur)} / {fmt(o.amount, cur)}
                       </span>
                     )}
-                    <span className="text-slate-400 text-[10px] flex-1 min-w-0 truncate">
+                    <span className="text-muted-soft text-[10px] flex-1 min-w-0 truncate">
                       {o.note || ""}
                     </span>
                     {o.dealId && (
-                      <span className="text-slate-400 text-[10px] tabular-nums">
+                      <span className="text-muted-soft text-[10px] tabular-nums">
                         #{o.dealId}
                       </span>
                     )}
@@ -198,17 +198,17 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              <Wallet className="w-3.5 h-3.5 text-slate-500" />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+              <Wallet className="w-3.5 h-3.5 text-muted" />
+              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
                 {t("pp_accounts_title")} · {allAccounts.length}
               </h3>
             </div>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-muted-soft">
               {t("pp_crud_hint_inline")}
             </span>
           </div>
           {allAccounts.length === 0 ? (
-            <div className="text-[12px] text-slate-400 italic py-3 text-center bg-slate-50 border border-slate-200 rounded-[10px]">
+            <div className="text-[12px] text-muted-soft italic py-3 text-center bg-surface-soft border border-border-soft rounded-[10px]">
               {t("pp_no_accounts")}
             </div>
           ) : (
@@ -229,10 +229,10 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
           )}
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
         >
           {t("close")}
         </button>
@@ -261,35 +261,35 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
     <div
       className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-[10px] border ${
         account.active
-          ? "bg-slate-50/60 border-slate-200"
-          : "bg-slate-100/60 border-slate-200 opacity-60"
+          ? "bg-surface-soft/60 border-border-soft"
+          : "bg-surface-sunk/60 border-border-soft opacity-60"
       }`}
     >
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+        <div className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-muted shrink-0">
           <Icon className="w-3.5 h-3.5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-slate-900 truncate">
+          <div className="text-[12px] font-semibold text-ink truncate">
             {account.name}
             {!account.active && (
-              <span className="ml-1.5 text-[8.5px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+              <span className="ml-1.5 text-[8.5px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                 off
               </span>
             )}
           </div>
-          <div className="text-[10px] text-slate-500 tabular-nums">
+          <div className="text-[10px] text-muted tabular-nums">
             {curSymbol(account.currency)}
             {fmt(balance, account.currency)}{" "}
             <span className="opacity-60">{account.currency}</span>
             {account.networkId && (
-              <span className="ml-1 text-slate-400">· {account.networkId}</span>
+              <span className="ml-1 text-muted-soft">· {account.networkId}</span>
             )}
           </div>
         </div>
         <button
           onClick={onHistory}
-          className="p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/70"
+          className="p-1.5 rounded-md text-muted-soft hover:text-ink-soft hover:bg-surface-sunk/70"
           title={t("pp_history_tip")}
         >
           <HistoryIcon className="w-3.5 h-3.5" />
@@ -299,7 +299,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
         <div className="flex items-center gap-1 flex-wrap">
           <button
             onClick={() => onSettlement("inflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
             title={t("pp_inflow_tip")}
           >
             <ArrowDownLeft className="w-3 h-3" />
@@ -307,7 +307,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
           </button>
           <button
             onClick={() => onSettlement("outflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
             title={t("pp_outflow_tip")}
           >
             <ArrowUpRight className="w-3 h-3" />
@@ -321,12 +321,12 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
 
 function StatCard({ label, value, tone, small }) {
   const toneCls =
-    tone === "emerald" ? "text-emerald-700 bg-emerald-50 border-emerald-100"
-    : tone === "rose" ? "text-rose-700 bg-rose-50 border-rose-100"
-    : "text-slate-900 bg-slate-50/60 border-slate-200";
+    tone === "emerald" ? "text-success bg-success-soft border-emerald-100"
+    : tone === "rose" ? "text-danger bg-danger-soft border-rose-100"
+    : "text-ink bg-surface-soft/60 border-border-soft";
   return (
     <div className={`rounded-[8px] border p-2 ${toneCls}`}>
-      <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{label}</div>
+      <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{label}</div>
       <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
         {value}
       </div>

@@ -242,13 +242,13 @@ export default function ListTab() {
   return (
     <div className="space-y-5">
       {/* Subtitle row — counts */}
-      <div className="text-[12.5px] text-slate-500">
+      <div className="text-[12.5px] text-muted">
         {counts.all} {t("cp_total")} · {counts.client} {t("cp_clients_lc")} · {counts.partner} {t("cp_partners_lc")} · {totalDeals} {t("cp_deals_lc")} · {sym}{fmt(totalVolume, base)} {t("cp_volume_lc")}
       </div>
 
       {/* Filters bar */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+      <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+        <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <TypeChip
               active={typeFilter === "all"}
@@ -280,16 +280,16 @@ export default function ListTab() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <Search className="w-3.5 h-3.5 text-muted-soft absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("cp_search_ph")}
-                className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/70 focus:bg-white focus:border-slate-300 rounded-[8px] text-[13px] outline-none w-64 transition-colors placeholder:text-slate-400"
+                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[13px] outline-none w-64 transition-colors placeholder:text-muted-soft"
               />
             </div>
-            <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px] gap-0.5">
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[8px] gap-0.5">
               {[
                 { id: "active", label: t("client_filter_active") },
                 {
@@ -304,8 +304,8 @@ export default function ListTab() {
                   onClick={() => setArchiveFilter(o.id)}
                   className={`px-2.5 py-1 text-[11px] font-semibold rounded-[6px] transition-all ${
                     archiveFilter === o.id
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900"
+                      ? "bg-white text-ink shadow-sm"
+                      : "text-muted hover:text-ink"
                   }`}
                 >
                   {o.label}
@@ -334,7 +334,7 @@ export default function ListTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
+              <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
                 <th className="px-5 py-2.5 font-bold">{t("cp_col_name")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("cp_col_type")}</th>
                 <th className="px-3 py-2.5 font-bold text-right">{t("cp_col_activity")}</th>
@@ -363,7 +363,7 @@ export default function ListTab() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                  <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-muted-soft">
                     {search
                       ? t("cp_no_match")
                       : archiveFilter === "archived"
@@ -450,7 +450,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
   return (
     <tr
       onClick={clickable ? onClick : undefined}
-      className={`group border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+      className={`group border-b border-border-soft hover:bg-surface-soft transition-colors ${
         clickable ? "cursor-pointer" : "cursor-default"
       } ${row.archived ? "opacity-60" : ""}`}
     >
@@ -459,20 +459,20 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
               isClient
-                ? "bg-gradient-to-br from-slate-200 to-slate-300 text-slate-700"
-                : "bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-700"
+                ? "bg-gradient-to-br from-surface-sunk to-surface-sunk text-ink-soft"
+                : "bg-gradient-to-br from-indigo-100 to-indigo-200 text-accent"
             }`}
           >
             {initials}
           </div>
           <div>
-            <div className="font-semibold text-slate-900 text-[13px] flex items-center gap-1.5">
+            <div className="font-semibold text-ink text-[13px] flex items-center gap-1.5">
               {row.name}
               {isClient && <ClientTag tag={row.tag} size="xs" />}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] text-muted">
               {row.telegram && (
-                <span className="inline-flex items-center gap-0.5 text-sky-600">
+                <span className="inline-flex items-center gap-0.5 text-info">
                   <Send className="w-2.5 h-2.5" />
                   {row.telegram}
                 </span>
@@ -491,31 +491,31 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
         <TypeBadge kind={row.kind} t={t} />
       </td>
       <td className="px-3 py-3 text-right tabular-nums font-semibold">
-        {row.deals == null ? <span className="text-slate-300">—</span> : row.deals}
+        {row.deals == null ? <span className="text-muted-soft">—</span> : row.deals}
       </td>
-      <td className="px-3 py-3 text-right tabular-nums text-slate-700 hidden sm:table-cell">
+      <td className="px-3 py-3 text-right tabular-nums text-ink-soft hidden sm:table-cell">
         {row.volume == null ? (
-          <span className="text-slate-300">—</span>
+          <span className="text-muted-soft">—</span>
         ) : (
           <>{sym}{fmt(row.volume, base)}</>
         )}
       </td>
       <td className="px-3 py-3 text-right tabular-nums hidden md:table-cell">
         {row.net == null ? (
-          <span className="text-slate-300">—</span>
+          <span className="text-muted-soft">—</span>
         ) : (
           <span
             className={`inline-flex items-center px-2 py-1 rounded-md text-[13px] font-bold ${
               row.net >= 0
-                ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100"
-                : "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
+                ? "bg-success-soft text-success ring-1 ring-emerald-100"
+                : "bg-danger-soft text-danger ring-1 ring-rose-100"
             }`}
           >
             {row.net >= 0 ? "+" : ""}{sym}{fmt(row.net, base)}
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-slate-500 text-[12px] tabular-nums whitespace-nowrap hidden lg:table-cell">
+      <td className="px-5 py-3 text-muted text-[12px] tabular-nums whitespace-nowrap hidden lg:table-cell">
         {row.lastActivity || "—"}
       </td>
       <td
@@ -529,7 +529,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
                 onClick={() => onArchive(false)}
                 disabled={busy}
                 title={t("client_restore_tip")}
-                className="p-1.5 rounded-md text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-md text-muted-soft hover:text-success hover:bg-success-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <ArchiveRestore className="w-3.5 h-3.5" />
               </button>
@@ -538,7 +538,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
                 onClick={() => onArchive(true)}
                 disabled={busy}
                 title={t("client_archive_tip")}
-                className="p-1.5 rounded-md text-slate-400 hover:text-amber-600 hover:bg-amber-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="p-1.5 rounded-md text-muted-soft hover:text-warning hover:bg-warning-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
                 <Archive className="w-3.5 h-3.5" />
               </button>
@@ -551,13 +551,13 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
                   ? t("client_delete_blocked_tip").replace("{n}", String(row.deals))
                   : t("client_delete_tip")
               }
-              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="p-1.5 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         ) : (
-          <span className="text-[10px] text-slate-300 italic">—</span>
+          <span className="text-[10px] text-muted-soft italic">—</span>
         )}
       </td>
     </tr>
@@ -567,14 +567,14 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
 function TypeBadge({ kind, t }) {
   if (kind === "client") {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-success-soft text-success ring-1 ring-emerald-200">
         <Users className="w-2.5 h-2.5" />
         {t("cp_type_client_badge")}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200">
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-bg text-accent ring-1 ring-indigo-200">
       <Handshake className="w-2.5 h-2.5" />
       {t("cp_type_partner_badge")}
     </span>
@@ -583,14 +583,14 @@ function TypeBadge({ kind, t }) {
 
 function TypeChip({ active, onClick, count, icon, tone = "slate", children }) {
   const toneActive = {
-    slate: "bg-slate-900 text-white border-slate-900",
+    slate: "bg-ink text-white border-ink",
     emerald: "bg-emerald-600 text-white border-emerald-600",
     indigo: "bg-indigo-600 text-white border-indigo-600",
   }[tone];
   const toneIdle = {
-    slate: "bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50",
-    emerald: "bg-white text-emerald-700 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50",
-    indigo: "bg-white text-indigo-700 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50",
+    slate: "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft",
+    emerald: "bg-white text-success border-emerald-200 hover:border-emerald-300 hover:bg-success-soft",
+    indigo: "bg-white text-accent border-indigo-200 hover:border-indigo-300 hover:bg-accent-bg",
   }[tone];
   return (
     <button
@@ -604,7 +604,7 @@ function TypeChip({ active, onClick, count, icon, tone = "slate", children }) {
       <span>{children}</span>
       <span
         className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
-          active ? "bg-white/20" : "bg-slate-100"
+          active ? "bg-white/20" : "bg-surface-sunk"
         }`}
       >
         {count}

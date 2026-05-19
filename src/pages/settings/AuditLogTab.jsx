@@ -21,11 +21,11 @@ function relativeTime(iso) {
 }
 
 const ACTION_STYLES = {
-  create: "bg-emerald-50 text-emerald-700",
-  update: "bg-sky-50 text-sky-700",
-  delete: "bg-rose-50 text-rose-700",
-  deactivate: "bg-amber-50 text-amber-800",
-  reactivate: "bg-indigo-50 text-indigo-700",
+  create: "bg-success-soft text-success",
+  update: "bg-info-soft text-info",
+  delete: "bg-danger-soft text-danger",
+  deactivate: "bg-warning-soft text-amber-800",
+  reactivate: "bg-accent-bg text-accent",
 };
 
 export default function AuditLogTab() {
@@ -120,11 +120,11 @@ export default function AuditLogTab() {
 
   return (
     <>
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+      <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <ScrollText className="w-4 h-4 text-slate-500" />
+          <ScrollText className="w-4 h-4 text-muted" />
           <h3 className="text-[15px] font-semibold tracking-tight">{t("audit_title")}</h3>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-muted-soft">
             · {t("audit_events_count").replace("{cur}", filtered.length).replace("{all}", log.length)}
           </span>
         </div>
@@ -132,27 +132,27 @@ export default function AuditLogTab() {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-3 h-3" />
             {t("export_csv")}
           </button>
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-muted-soft absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
-              className="pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200/70 focus:bg-white focus:border-slate-300 rounded-[8px] text-[13px] outline-none w-56 transition-colors placeholder:text-slate-400"
+              className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
             />
           </div>
         </div>
       </div>
 
       {/* Filter row */}
-      <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/40">
-        <Filter className="w-3.5 h-3.5 text-slate-400" />
+      <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap bg-surface-soft/40">
+        <Filter className="w-3.5 h-3.5 text-muted-soft" />
         <Select
           value={actionFilter}
           onChange={setActionFilter}
@@ -184,7 +184,7 @@ export default function AuditLogTab() {
         {hasActive && (
           <button
             onClick={clearFilters}
-            className="ml-auto px-2 py-1 rounded-[8px] text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200"
+            className="ml-auto px-2 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
           >
             {t("clear")}
           </button>
@@ -194,7 +194,7 @@ export default function AuditLogTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
+            <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
               <th className="px-5 py-2.5 font-bold">{t("audit_when")}</th>
               <th className="px-3 py-2.5 font-bold">{t("audit_who")}</th>
               <th className="px-3 py-2.5 font-bold">{t("audit_what")}</th>
@@ -208,41 +208,41 @@ export default function AuditLogTab() {
               const actionLabel = t(`action_${e.action}`) !== `action_${e.action}` ? t(`action_${e.action}`) : e.action;
               const entityLabel = t(`entity_${e.entity}`) !== `entity_${e.entity}` ? t(`entity_${e.entity}`) : e.entity;
               return (
-                <tr key={e.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <tr key={e.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
                   <td className="px-5 py-3 whitespace-nowrap">
-                    <div className="font-medium text-slate-900 tabular-nums">{relativeTime(e.timestamp)}</div>
-                    <div className="text-[11px] text-slate-400 tabular-nums">
+                    <div className="font-medium text-ink tabular-nums">{relativeTime(e.timestamp)}</div>
+                    <div className="text-[11px] text-muted-soft tabular-nums">
                       {new Date(e.timestamp).toLocaleString()}
                     </div>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-slate-700">{e.userName}</td>
+                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-ink-soft">{e.userName}</td>
                   <td className="px-3 py-3">
                     <span
                       className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
-                        ACTION_STYLES[e.action] || "bg-slate-100 text-slate-700"
+                        ACTION_STYLES[e.action] || "bg-surface-sunk text-ink-soft"
                       }`}
                     >
                       {actionLabel}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-slate-700">
+                  <td className="px-3 py-3 text-ink-soft">
                     {entityLabel}
                     {e.entityId && (
-                      <span className="ml-1 text-[10px] text-slate-400 font-mono">
+                      <span className="ml-1 text-[10px] text-muted-soft font-mono">
                         #{String(e.entityId).slice(0, 8)}
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-3 text-slate-600 max-w-md truncate" title={e.summary}>
+                  <td className="px-3 py-3 text-ink-soft max-w-md truncate" title={e.summary}>
                     {e.summary}
                   </td>
-                  <td className="px-5 py-3 font-mono text-[11px] text-slate-500 tabular-nums">{e.ip}</td>
+                  <td className="px-5 py-3 font-mono text-[11px] text-muted tabular-nums">{e.ip}</td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-muted-soft">
                   {log.length === 0 ? t("audit_empty") : t("oblig_no_match")}
                 </td>
               </tr>

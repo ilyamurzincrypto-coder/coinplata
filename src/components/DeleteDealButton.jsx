@@ -67,8 +67,8 @@ export default function DeleteDealButton({ dealId, onDeleted, size = "sm" }) {
       }
       className={`${padCls} rounded transition-colors ${
         confirm
-          ? "bg-rose-500 text-white hover:bg-rose-600"
-          : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+          ? "bg-danger-soft0 text-white hover:bg-rose-600"
+          : "text-muted-soft hover:text-danger hover:bg-danger-soft"
       } ${busy ? "opacity-60 cursor-wait" : ""}`}
     >
       <Trash2 className={sz} />

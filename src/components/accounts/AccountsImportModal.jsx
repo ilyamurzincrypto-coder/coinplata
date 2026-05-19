@@ -307,7 +307,7 @@ export default function AccountsImportModal({ open, onClose }) {
       <div className="px-5 pt-4">
         <div className="flex items-center gap-2">
           {[1, 2, 3].map((n) => (
-            <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-slate-900" : "bg-slate-200"}`} />
+            <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-ink" : "bg-surface-sunk"}`} />
           ))}
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function AccountsImportModal({ open, onClose }) {
             }}
             onClick={() => fileInputRef.current?.click()}
             className={`cursor-pointer rounded-[14px] border-2 border-dashed p-8 text-center transition-colors ${
-              dragOver ? "border-slate-900 bg-slate-50" : "border-slate-300 hover:border-slate-400 bg-slate-50/60"
+              dragOver ? "border-ink bg-surface-soft" : "border-border hover:border-accent/40 bg-surface-soft/60"
             }`}
           >
             <input
@@ -334,17 +334,17 @@ export default function AccountsImportModal({ open, onClose }) {
               className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
-            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <div className="text-[14px] font-semibold text-slate-900">
+            <Upload className="w-8 h-8 text-muted-soft mx-auto mb-2" />
+            <div className="text-[14px] font-semibold text-ink">
               {t("acc_import_drop") || "Drop .csv or .xlsx here, or click to browse"}
             </div>
-            <div className="text-[11px] text-slate-500 mt-1">
+            <div className="text-[11px] text-muted mt-1">
               {t("acc_import_hint") || "Columns: Office, Account, Currency, Type, Balance, Address (opt), Network (opt)"}
             </div>
           </div>
 
           {parseError && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-rose-50 border border-rose-200 text-[12px] text-rose-700">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-danger-soft border border-rose-200 text-[12px] text-danger">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <div>{parseError}</div>
             </div>
@@ -352,7 +352,7 @@ export default function AccountsImportModal({ open, onClose }) {
 
           <button
             onClick={handleTemplate}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-slate-200 hover:border-slate-300 text-[12px] font-semibold text-slate-700 hover:text-slate-900"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
           >
             <Download className="w-3.5 h-3.5" />
             {t("acc_import_template") || "Download template.csv"}
@@ -362,21 +362,21 @@ export default function AccountsImportModal({ open, onClose }) {
 
       {step === 2 && parsed && (
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-3 flex-wrap bg-slate-50 border border-slate-200 rounded-[10px] px-4 py-3">
-            <Info className="w-4 h-4 text-slate-500" />
-            <span className="text-[12px] font-semibold text-slate-900">{file?.name}</span>
-            <div className="h-4 w-px bg-slate-300" />
+          <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-[10px] px-4 py-3">
+            <Info className="w-4 h-4 text-muted" />
+            <span className="text-[12px] font-semibold text-ink">{file?.name}</span>
+            <div className="h-4 w-px bg-surface-sunk" />
             <Pill tone="emerald" label={`${parsed.summary.newCount} new`} />
             <Pill tone="slate" label={`${parsed.summary.duplicates} duplicate`} />
             {parsed.summary.errors > 0 && <Pill tone="rose" label={`${parsed.summary.errors} errors`} />}
           </div>
 
           {parsed.valid.length > 0 && (
-            <div className="border border-slate-200 rounded-[10px] overflow-hidden">
+            <div className="border border-border-soft rounded-[10px] overflow-hidden">
               <div className="max-h-[320px] overflow-auto">
                 <table className="w-full text-[12px]">
-                  <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
-                    <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase">
+                  <thead className="sticky top-0 bg-surface-soft border-b border-border-soft">
+                    <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase">
                       <th className="px-3 py-2">Office</th>
                       <th className="px-3 py-2">Account</th>
                       <th className="px-3 py-2">Cur</th>
@@ -386,16 +386,16 @@ export default function AccountsImportModal({ open, onClose }) {
                   </thead>
                   <tbody>
                     {parsed.valid.map((v, i) => (
-                      <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                        <td className="px-3 py-2 text-slate-700">{v.office.name}</td>
-                        <td className="px-3 py-2 font-semibold text-slate-900">{v.name}</td>
-                        <td className="px-3 py-2 text-slate-600">{v.currency}</td>
+                      <tr key={i} className="border-b border-border-soft last:border-0 hover:bg-surface-soft/60">
+                        <td className="px-3 py-2 text-ink-soft">{v.office.name}</td>
+                        <td className="px-3 py-2 font-semibold text-ink">{v.name}</td>
+                        <td className="px-3 py-2 text-ink-soft">{v.currency}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{v.balance || "—"}</td>
                         <td className="px-3 py-2">
                           {v.duplicate ? (
-                            <span className="text-[10px] font-bold uppercase text-slate-400">skip</span>
+                            <span className="text-[10px] font-bold uppercase text-muted-soft">skip</span>
                           ) : (
-                            <span className="text-[10px] font-bold uppercase text-emerald-700">new</span>
+                            <span className="text-[10px] font-bold uppercase text-success">new</span>
                           )}
                         </td>
                       </tr>
@@ -407,24 +407,24 @@ export default function AccountsImportModal({ open, onClose }) {
           )}
 
           {parsed.errors.length > 0 && (
-            <details className="border border-rose-200 rounded-[10px] bg-rose-50/40">
-              <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-rose-700 hover:bg-rose-50">
+            <details className="border border-rose-200 rounded-[10px] bg-danger-soft/40">
+              <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-danger hover:bg-danger-soft">
                 <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
                 {parsed.errors.length} errors — will be skipped
               </summary>
               <div className="max-h-[180px] overflow-auto">
                 {parsed.errors.map((err, i) => (
-                  <div key={i} className="px-3 py-1.5 text-[11px] border-t border-rose-100 text-slate-700">
-                    <span className="text-slate-400 tabular-nums mr-2">row {err.row}</span>
-                    <span className="text-rose-700 font-semibold">{err.reason}</span>
+                  <div key={i} className="px-3 py-1.5 text-[11px] border-t border-rose-100 text-ink-soft">
+                    <span className="text-muted-soft tabular-nums mr-2">row {err.row}</span>
+                    <span className="text-danger font-semibold">{err.reason}</span>
                   </div>
                 ))}
               </div>
             </details>
           )}
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-            <button type="button" onClick={reset} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+          <div className="flex items-center justify-between pt-2 border-t border-border-soft">
+            <button type="button" onClick={reset} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_upload_another")}
             </button>
@@ -432,7 +432,7 @@ export default function AccountsImportModal({ open, onClose }) {
               type="button"
               onClick={() => setStep(3)}
               disabled={parsed.summary.newCount === 0}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t("rimport_continue")}
               <ChevronRight className="w-3 h-3" />
@@ -443,7 +443,7 @@ export default function AccountsImportModal({ open, onClose }) {
 
       {step === 3 && parsed && (
         <div className="p-5 space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-[10px] px-4 py-3 space-y-1">
+          <div className="bg-warning-soft border border-amber-200 rounded-[10px] px-4 py-3 space-y-1">
             <div className="flex items-center gap-2 text-[13px] font-bold text-amber-900">
               <AlertTriangle className="w-4 h-4" />
               {t("acc_import_about") || "You're about to create accounts"}
@@ -460,27 +460,27 @@ export default function AccountsImportModal({ open, onClose }) {
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              className="mt-0.5 w-4 h-4 rounded border-border text-ink focus:ring-accent"
             />
-            <span className="text-[12px] text-slate-700">
+            <span className="text-[12px] text-ink-soft">
               {t("acc_import_ack") || "I understand this will create new accounts with opening balances."}
             </span>
           </label>
 
-          <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-            <button type="button" onClick={() => setStep(2)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+          <div className="flex items-center justify-between pt-2 border-t border-border-soft">
+            <button type="button" onClick={() => setStep(2)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_back")}
             </button>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100">
+              <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
                 {t("cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleApply}
                 disabled={!acknowledged || submitting}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                 {submitting ? t("rimport_applying") : t("acc_import_apply") || "Create accounts"}
@@ -495,9 +495,9 @@ export default function AccountsImportModal({ open, onClose }) {
 
 function Pill({ tone, label }) {
   const styles = {
-    emerald: "bg-emerald-100 text-emerald-700 ring-emerald-200",
-    slate: "bg-slate-100 text-slate-600 ring-slate-200",
-    rose: "bg-rose-100 text-rose-700 ring-rose-200",
+    emerald: "bg-emerald-100 text-success ring-emerald-200",
+    slate: "bg-surface-sunk text-ink-soft ring-border-soft",
+    rose: "bg-rose-100 text-danger ring-rose-200",
   }[tone];
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold tracking-wider ring-1 ${styles}`}>

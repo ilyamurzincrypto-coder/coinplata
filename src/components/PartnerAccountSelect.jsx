@@ -127,57 +127,57 @@ export default function PartnerAccountSelect({
         className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] border transition-colors ${
           selectedAcc
             ? "bg-white border-indigo-300 hover:border-indigo-400"
-            : "bg-slate-50 border-slate-200 hover:border-slate-300"
+            : "bg-surface-soft border-border-soft hover:border-border"
         }`}
       >
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 shrink-0">
+          <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center text-accent shrink-0">
             <Handshake className="w-3.5 h-3.5" />
           </div>
           <div className="text-left min-w-0 flex-1">
             {selectedAcc && selectedPartner ? (
               <>
-                <div className="text-[12px] font-bold text-slate-900 truncate">
+                <div className="text-[12px] font-bold text-ink truncate">
                   {selectedPartner.name} · {selectedAcc.name}
                 </div>
-                <div className="text-[10px] text-slate-500 tabular-nums">
+                <div className="text-[10px] text-muted tabular-nums">
                   {curSymbol(selectedAcc.currency)}
                   {fmt(balanceOf(selectedAcc.id), selectedAcc.currency)}{" "}
                   <span className="opacity-60">{selectedAcc.currency}</span>
                   {selectedAcc.networkId && (
-                    <span className="ml-1 text-slate-400">· {selectedAcc.networkId}</span>
+                    <span className="ml-1 text-muted-soft">· {selectedAcc.networkId}</span>
                   )}
                 </div>
               </>
             ) : (
-              <div className="text-[12px] text-slate-400">
+              <div className="text-[12px] text-muted-soft">
                 {currency ? `${placeholder} · ${currency}` : placeholder}
               </div>
             )}
           </div>
         </div>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <ChevronDown className="w-3.5 h-3.5 text-muted-soft shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full bg-white border border-slate-200 rounded-[12px] shadow-xl shadow-slate-900/10 max-h-72 overflow-auto">
+        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-[12px] shadow-xl shadow-soft max-h-72 overflow-auto">
           {/* Search */}
-          <div className="p-2 border-b border-slate-100">
-            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2 py-1.5">
-              <Search className="w-3 h-3 text-slate-400 shrink-0" />
+          <div className="p-2 border-b border-border-soft">
+            <div className="flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5">
+              <Search className="w-3 h-3 text-muted-soft shrink-0" />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Поиск партнёра / счёта"
-                className="flex-1 bg-transparent outline-none text-[12px] text-slate-900 placeholder:text-slate-400 min-w-0"
+                className="flex-1 bg-transparent outline-none text-[12px] text-ink placeholder:text-muted-soft min-w-0"
                 autoFocus
               />
               {query && (
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="p-0.5 rounded hover:bg-slate-200 text-slate-500 shrink-0"
+                  className="p-0.5 rounded hover:bg-surface-sunk text-muted shrink-0"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -187,8 +187,8 @@ export default function PartnerAccountSelect({
 
           {grouped.length === 0 ? (
             <div className="px-4 py-6 text-center">
-              <Wallet className="w-5 h-5 mx-auto text-slate-300 mb-1.5" />
-              <div className="text-[12px] text-slate-500 font-medium">
+              <Wallet className="w-5 h-5 mx-auto text-muted-soft mb-1.5" />
+              <div className="text-[12px] text-muted font-medium">
                 {availableAccs.length === 0
                   ? partnerHint
                     ? `У ${partnerHint.name} нет счёта в ${currency || ""}`
@@ -205,7 +205,7 @@ export default function PartnerAccountSelect({
                   Создать счёт {currency ? `· ${currency}` : ""}
                 </button>
               ) : (
-                <div className="text-[10.5px] text-slate-400 mt-1">
+                <div className="text-[10.5px] text-muted-soft mt-1">
                   Создайте счёт в Settings → Партнёры → раскрой партнёра → +Счёт
                 </div>
               )}
@@ -214,7 +214,7 @@ export default function PartnerAccountSelect({
             <div className="py-1">
               {grouped.map((g) => (
                 <div key={g.partner.id}>
-                  <div className="px-3 py-1.5 text-[9.5px] font-bold text-slate-400 tracking-[0.12em] uppercase bg-slate-50/60 border-y border-slate-100">
+                  <div className="px-3 py-1.5 text-[9.5px] font-bold text-muted-soft tracking-[0.12em] uppercase bg-surface-soft/60 border-y border-border-soft">
                     {g.partner.name}
                   </div>
                   {g.accounts.map((a) => {
@@ -225,21 +225,21 @@ export default function PartnerAccountSelect({
                         key={a.id}
                         type="button"
                         onClick={() => pick(a.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-indigo-50/40 transition-colors ${
-                          isSelected ? "bg-indigo-50/60" : ""
+                        className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-accent-bg/40 transition-colors ${
+                          isSelected ? "bg-accent-bg/60" : ""
                         }`}
                       >
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-surface-sunk flex items-center justify-center text-muted shrink-0">
                           <Icon className="w-3 h-3" />
                         </div>
                         <div className="flex-1 min-w-0 text-left">
-                          <div className="text-[12px] font-semibold text-slate-900 truncate">
+                          <div className="text-[12px] font-semibold text-ink truncate">
                             {a.name}
                             {a.networkId && (
-                              <span className="ml-1 text-[10px] text-slate-400">· {a.networkId}</span>
+                              <span className="ml-1 text-[10px] text-muted-soft">· {a.networkId}</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-slate-500 tabular-nums">
+                          <div className="text-[10px] text-muted tabular-nums">
                             {curSymbol(a.currency)}
                             {fmt(balanceOf(a.id), a.currency)}{" "}
                             <span className="opacity-60">{a.currency}</span>
@@ -255,11 +255,11 @@ export default function PartnerAccountSelect({
           {/* Quick-add button в шапке списка (если partnerId задан и
               счета уже есть — кассир может всё равно добавить ещё один) */}
           {partnerHint && grouped.length > 0 && (
-            <div className="px-2 py-2 border-t border-slate-100">
+            <div className="px-2 py-2 border-t border-border-soft">
               <button
                 type="button"
                 onClick={() => setAddAccOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-violet-50 text-violet-700 text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-accent-bg text-accent text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
               >
                 <Plus className="w-3 h-3" />
                 Добавить ещё счёт {currency ? `· ${currency}` : ""}

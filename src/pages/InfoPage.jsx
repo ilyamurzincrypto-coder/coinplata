@@ -32,17 +32,17 @@ const InfoActionsCtx = React.createContext({ onNavigate: null, onTryDeal: null }
 const SECTION_META = {
   cashier: {
     icon: Wallet,
-    accentBg: "bg-emerald-500",
-    accentSoft: "bg-emerald-50",
-    accentText: "text-emerald-700",
+    accentBg: "bg-success-soft0",
+    accentSoft: "bg-success-soft",
+    accentText: "text-success",
     accentRing: "ring-emerald-200",
     tldr: "Главный экран оператора: курсы, балансы, создание сделок, переводов, пополнений. Сюда оператор заходит каждую смену.",
   },
   capital: {
     icon: TrendingUp,
-    accentBg: "bg-amber-500",
-    accentSoft: "bg-amber-50",
-    accentText: "text-amber-700",
+    accentBg: "bg-warning-soft0",
+    accentSoft: "bg-warning-soft",
+    accentText: "text-warning",
     accentRing: "ring-amber-200",
     tldr: "Обзор капитала, прибыли и денежной позиции — теперь это лендинг Казначейства (страница «Капитал» удалена).",
   },
@@ -56,33 +56,33 @@ const SECTION_META = {
   },
   counterparties: {
     icon: Users,
-    accentBg: "bg-indigo-500",
-    accentSoft: "bg-indigo-50",
-    accentText: "text-indigo-700",
+    accentBg: "bg-accent-bg0",
+    accentSoft: "bg-accent-bg",
+    accentText: "text-accent",
     accentRing: "ring-indigo-200",
     tldr: "Клиенты и OTC-партнёры. Профили, обязательства, история сделок с каждым.",
   },
   treasury: {
     icon: Building2,
-    accentBg: "bg-violet-500",
-    accentSoft: "bg-violet-50",
-    accentText: "text-violet-700",
+    accentBg: "bg-accent-bg0",
+    accentSoft: "bg-accent-bg",
+    accentText: "text-accent",
     accentRing: "ring-violet-200",
     tldr: "Бухгалтерия на двойной записи: транзакции, проводки Дт/Кт, план счетов (~174). 9 разрезов: Дашборд, Сделки, Активы/Пассивы/Капитал, P&L, Обороты, ДДС, Журнал, Платёжный календарь.",
   },
   settings: {
     icon: SettingsIcon,
-    accentBg: "bg-slate-500",
-    accentSoft: "bg-slate-100",
-    accentText: "text-slate-700",
-    accentRing: "ring-slate-200",
+    accentBg: "bg-surface-soft0",
+    accentSoft: "bg-surface-sunk",
+    accentText: "text-ink-soft",
+    accentRing: "ring-border-soft",
     tldr: "Пользователи, права, офисы, курсы, базовая валюта. Матрица «роль × раздел × уровень».",
   },
   audit: {
     icon: ShieldCheck,
-    accentBg: "bg-rose-500",
-    accentSoft: "bg-rose-50",
-    accentText: "text-rose-700",
+    accentBg: "bg-danger-soft0",
+    accentSoft: "bg-danger-soft",
+    accentText: "text-danger",
     accentRing: "ring-rose-200",
     tldr: "Журнал действий пользователей — кто что менял и когда. Для разборов и compliance.",
   },
@@ -98,10 +98,10 @@ const SECTION_META = {
 
 const DEFAULT_META = {
   icon: FileText,
-  accentBg: "bg-slate-400",
-  accentSoft: "bg-slate-50",
-  accentText: "text-slate-700",
-  accentRing: "ring-slate-200",
+  accentBg: "bg-muted",
+  accentSoft: "bg-surface-soft",
+  accentText: "text-ink-soft",
+  accentRing: "ring-border-soft",
   tldr: null,
 };
 
@@ -176,8 +176,8 @@ function Highlight({ text, query }) {
 // ─── Components ────────────────────────────────────────────────────────
 function TryButton({ label, icon, onClick, variant = "indigo" }) {
   const cls = variant === "emerald"
-    ? "text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200"
-    : "text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border-indigo-200";
+    ? "text-success bg-success-soft hover:bg-emerald-100 border-emerald-200"
+    : "text-accent bg-accent-bg hover:bg-indigo-100 border-indigo-200";
   return (
     <button
       type="button"
@@ -193,7 +193,7 @@ function TryButton({ label, icon, onClick, variant = "indigo" }) {
 function Bullets({ items, ordered, query }) {
   const Tag = ordered ? "ol" : "ul";
   return (
-    <Tag className={`mt-1.5 space-y-1 text-[12.5px] text-slate-700 ${ordered ? "list-decimal" : "list-disc"} pl-5`}>
+    <Tag className={`mt-1.5 space-y-1 text-[12.5px] text-ink-soft ${ordered ? "list-decimal" : "list-disc"} pl-5`}>
       {items.map((b, i) => <li key={i}><Highlight text={b} query={query} /></li>)}
     </Tag>
   );
@@ -217,12 +217,12 @@ function GlossaryGrid({ items, query }) {
       {items.map((entry, i) => {
         const { term, definition } = parseGlossaryEntry(entry);
         return (
-          <div key={i} className="rounded-[10px] bg-slate-50/60 border border-slate-100 px-3 py-2">
-            <div className="text-[12.5px] font-bold text-slate-900">
+          <div key={i} className="rounded-[10px] bg-surface-soft/60 border border-border-soft px-3 py-2">
+            <div className="text-[12.5px] font-bold text-ink">
               <Highlight text={term} query={query} />
             </div>
             {definition && (
-              <div className="text-[11.5px] text-slate-600 mt-0.5 leading-snug">
+              <div className="text-[11.5px] text-ink-soft mt-0.5 leading-snug">
                 <Highlight text={definition} query={query} />
               </div>
             )}
@@ -235,15 +235,15 @@ function GlossaryGrid({ items, query }) {
 
 function JournalMini({ lines }) {
   return (
-    <table className="w-full mt-2 text-[11.5px] bg-slate-50/70 rounded-[8px] overflow-hidden">
+    <table className="w-full mt-2 text-[11.5px] bg-surface-soft/70 rounded-[8px] overflow-hidden">
       <tbody>
         {lines.map((l, i) => {
           const dr = l.dir === "dr";
           return (
-            <tr key={i} className="border-t border-slate-100 first:border-t-0">
-              <td className={`px-2 py-1 w-8 font-semibold ${dr ? "text-emerald-700" : "text-rose-700"}`}>{dr ? "Дт" : "Кт"}</td>
-              <td className="px-2 py-1">{l.account}{l.note ? <span className="text-slate-400"> · {l.note}</span> : null}</td>
-              <td className={`px-2 py-1 text-right tabular-nums w-28 ${dr ? "text-emerald-700" : "text-rose-700"}`}>{numFmt(l.amount)} {l.cur}</td>
+            <tr key={i} className="border-t border-border-soft first:border-t-0">
+              <td className={`px-2 py-1 w-8 font-semibold ${dr ? "text-success" : "text-danger"}`}>{dr ? "Дт" : "Кт"}</td>
+              <td className="px-2 py-1">{l.account}{l.note ? <span className="text-muted-soft"> · {l.note}</span> : null}</td>
+              <td className={`px-2 py-1 text-right tabular-nums w-28 ${dr ? "text-success" : "text-danger"}`}>{numFmt(l.amount)} {l.cur}</td>
             </tr>
           );
         })}
@@ -256,15 +256,15 @@ function ExampleCard({ ex, query }) {
   const { onTryDeal } = React.useContext(InfoActionsCtx);
   const dealSeed = ex.try?.dealSeed;
   return (
-    <div className="rounded-[10px] border border-slate-200/80 bg-white px-3 py-2.5">
-      <div className="text-[12.5px] font-semibold text-slate-900 inline-flex items-center gap-1.5">
-        <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+    <div className="rounded-[10px] border border-border-soft/80 bg-white px-3 py-2.5">
+      <div className="text-[12.5px] font-semibold text-ink inline-flex items-center gap-1.5">
+        <Lightbulb className="w-3.5 h-3.5 text-warning" />
         <Highlight text={ex.title} query={query} />
       </div>
-      {ex.intro && <div className="text-[12px] text-slate-500 mt-0.5"><Highlight text={ex.intro} query={query} /></div>}
+      {ex.intro && <div className="text-[12px] text-muted mt-0.5"><Highlight text={ex.intro} query={query} /></div>}
       {Array.isArray(ex.steps) && ex.steps.length > 0 && <Bullets items={ex.steps} ordered query={query} />}
       {Array.isArray(ex.journal) && ex.journal.length > 0 && <JournalMini lines={ex.journal} />}
-      {ex.note && <div className="text-[12px] text-slate-500 italic mt-2"><Highlight text={ex.note} query={query} /></div>}
+      {ex.note && <div className="text-[12px] text-muted italic mt-2"><Highlight text={ex.note} query={query} /></div>}
       {dealSeed && onTryDeal && (
         <div className="mt-2">
           <TryButton label={ex.try?.label || "Попробовать в форме"} onClick={() => onTryDeal(dealSeed)} variant="emerald" />
@@ -289,7 +289,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
   );
   if (visible.length <= 1) return null;
   return (
-    <div className="inline-flex gap-1 bg-slate-100 rounded-[10px] p-0.5">
+    <div className="inline-flex gap-1 bg-surface-sunk rounded-[10px] p-0.5">
       {visible.map((t) => {
         const Icon = t.icon;
         const isActive = active === t.id;
@@ -299,7 +299,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
             type="button"
             onClick={() => onChange(t.id)}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[11.5px] font-semibold transition-colors ${
-              isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              isActive ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink-soft"
             }`}
           >
             <Icon className="w-3 h-3" />
@@ -313,14 +313,14 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
 
 function SubCard({ sub, query }) {
   return (
-    <div className="rounded-[10px] border border-slate-100 bg-slate-50/50 px-3 py-2">
-      <div className="text-[12.5px] font-bold text-slate-900"><Highlight text={sub.title} query={query} /></div>
-      {sub.what && <div className="text-[12px] text-slate-500 italic mt-0.5"><Highlight text={sub.what} query={query} /></div>}
-      {sub.related && <div className="text-[12px] text-slate-500 mt-0.5"><span className="font-medium text-slate-600">Связано: </span><Highlight text={sub.related} query={query} /></div>}
+    <div className="rounded-[10px] border border-border-soft bg-surface-soft/50 px-3 py-2">
+      <div className="text-[12.5px] font-bold text-ink"><Highlight text={sub.title} query={query} /></div>
+      {sub.what && <div className="text-[12px] text-muted italic mt-0.5"><Highlight text={sub.what} query={query} /></div>}
+      {sub.related && <div className="text-[12px] text-muted mt-0.5"><span className="font-medium text-ink-soft">Связано: </span><Highlight text={sub.related} query={query} /></div>}
       {Array.isArray(sub.can) && sub.can.length > 0 && <Bullets items={sub.can} query={query} />}
       {Array.isArray(sub.how) && sub.how.length > 0 && (
         <div className="mt-2">
-          <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Как работает</div>
+          <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
           <Bullets items={sub.how} ordered query={query} />
         </div>
       )}
@@ -367,27 +367,27 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
     <section
       ref={sectionRef}
       id={`info-section-${section.id}`}
-      className="info-card bg-white rounded-[14px] border border-slate-200/70 overflow-hidden scroll-mt-20"
+      className="info-card bg-white rounded-[14px] border border-border-soft overflow-hidden scroll-mt-20"
     >
       {/* Accent stripe сверху */}
       <div className={`h-1 ${meta.accentBg}`} />
       <header
-        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50"
+        className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-surface-soft"
         onClick={() => setOpen((v) => !v)}
       >
         <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${meta.accentSoft} ${meta.accentText}`}>
           <Icon className="w-4 h-4" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-[14.5px] font-bold text-slate-900 inline-flex items-center gap-2">
+          <h2 className="text-[14.5px] font-bold text-ink inline-flex items-center gap-2">
             <Highlight text={section.title} query={query} />
-            {isRead && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" strokeWidth={2.5} />}
+            {isRead && <CheckCircle2 className="w-3.5 h-3.5 text-success" strokeWidth={2.5} />}
           </h2>
           {meta.tldr && !open && (
-            <p className="text-[11.5px] text-slate-500 mt-0.5 line-clamp-1">{meta.tldr}</p>
+            <p className="text-[11.5px] text-muted mt-0.5 line-clamp-1">{meta.tldr}</p>
           )}
         </div>
-        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+        {open ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-soft shrink-0" />}
       </header>
 
       {open && (
@@ -396,7 +396,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {meta.tldr && (
             <div className={`rounded-[10px] px-3 py-2 ring-1 ${meta.accentSoft} ${meta.accentRing}`}>
               <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${meta.accentText}`}>TL;DR</div>
-              <div className="text-[12.5px] text-slate-700">{meta.tldr}</div>
+              <div className="text-[12.5px] text-ink-soft">{meta.tldr}</div>
             </div>
           )}
           <div className="flex items-center gap-2 flex-wrap">
@@ -413,11 +413,11 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {/* Tabs content. При активном поиске показываем ВСЁ. */}
           {(activeTab === "tldr" || query) && (
             <div className="space-y-2">
-              <p className="text-[12.5px] text-slate-500 italic"><Highlight text={section.what} query={query} /></p>
-              <p className="text-[12.5px] text-slate-600"><span className="font-medium text-slate-700">С чем связано: </span><Highlight text={section.related} query={query} /></p>
+              <p className="text-[12.5px] text-muted italic"><Highlight text={section.what} query={query} /></p>
+              <p className="text-[12.5px] text-ink-soft"><span className="font-medium text-ink-soft">С чем связано: </span><Highlight text={section.related} query={query} /></p>
               {Array.isArray(section.can) && section.can.length > 0 && (
                 <>
-                  <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">
                     {section.id === "glossary" ? "Термины" : "Что умеет"}
                   </div>
                   {section.id === "glossary"
@@ -430,7 +430,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
 
           {(activeTab === "how" || query) && hasHow && (
             <div>
-              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Как работает</div>
+              <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
               <Bullets items={section.how} ordered query={query} />
             </div>
           )}
@@ -444,7 +444,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {/* Подразделы — всегда видны если есть */}
           {hasSub && (
             <div className="space-y-2 pt-1">
-              <div className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Подразделы</div>
+              <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Подразделы</div>
               {section.sub.map((ss) => <SubCard key={ss.id || ss.title} sub={ss} query={query} />)}
             </div>
           )}
@@ -467,16 +467,16 @@ function greetingByTime() {
 function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJumpTo, onPrint }) {
   const greeting = greetingByTime();
   return (
-    <section className="bg-gradient-to-br from-violet-50 via-indigo-50 to-emerald-50 rounded-[18px] border border-slate-200/70 p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_16px_rgba(15,23,42,0.06)]">
+    <section className="bg-gradient-to-br from-violet-50 via-indigo-50 to-emerald-50 rounded-[18px] border border-border-soft p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_16px_rgba(15,23,42,0.06)]">
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] bg-white flex items-center justify-center shadow-sm shrink-0">
-          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" strokeWidth={2.5} />
+          <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-warning" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-slate-900">
+          <h1 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-ink">
             {greeting}! Это справочник по сервису.
           </h1>
-          <p className="text-[12.5px] sm:text-[13px] text-slate-600 mt-1">
+          <p className="text-[12.5px] sm:text-[13px] text-ink-soft mt-1">
             Здесь все фичи кассы, казначейства и настроек простым языком. Разворачивай разделы,
             щёлкай «Попробовать» — попадёшь сразу на нужный экран. Поиск моментальный по всему тексту.
           </p>
@@ -485,20 +485,20 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
 
       {/* Search */}
       <div className="mt-4 relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <Search className="w-4 h-4 text-muted-soft absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           ref={searchRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск по справке…  (Cmd / Ctrl + K)"
-          className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-100 rounded-[12px] pl-10 pr-10 py-2.5 text-[14px] outline-none transition-all"
+          className="w-full bg-white border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-[12px] pl-10 pr-10 py-2.5 text-[14px] outline-none transition-all"
         />
         {query && (
           <button
             type="button"
             onClick={() => setQuery("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[6px] text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-[6px] text-muted-soft hover:text-ink-soft hover:bg-surface-sunk"
             title="Очистить (Esc)"
           >
             <X className="w-3.5 h-3.5" />
@@ -507,24 +507,24 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
       </div>
 
       {/* Stats strip */}
-      <div className="mt-4 flex items-center gap-4 flex-wrap text-[11.5px] text-slate-600">
+      <div className="mt-4 flex items-center gap-4 flex-wrap text-[11.5px] text-ink-soft">
         <span className="inline-flex items-center gap-1.5">
-          <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-          <span className="font-bold text-slate-900">{totalCount}</span> разделов
+          <BookOpen className="w-3.5 h-3.5 text-muted-soft" />
+          <span className="font-bold text-ink">{totalCount}</span> разделов
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-          <span className="font-bold text-slate-900">{readCount}</span> прочитано
+          <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+          <span className="font-bold text-ink">{readCount}</span> прочитано
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-slate-400" />
+          <Clock className="w-3.5 h-3.5 text-muted-soft" />
           обновлено {RECENT_UPDATES[0]?.date}
         </span>
         {onPrint && (
           <button
             type="button"
             onClick={onPrint}
-            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-[8px] text-[11.5px] font-medium bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 print:hidden"
+            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-[8px] text-[11.5px] font-medium bg-white border border-border-soft text-ink-soft hover:bg-surface-soft print:hidden"
             title="Раскрыть все секции и открыть диалог печати"
           >
             <Printer className="w-3 h-3" strokeWidth={2.5} />
@@ -535,8 +535,8 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
 
       {/* What's new (скрывается при печати) */}
       <div className="mt-4 info-hero-extras">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1.5 inline-flex items-center gap-1">
-          <Sparkles className="w-3 h-3 text-amber-500" />
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5 inline-flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-warning" />
           Что нового
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -545,11 +545,11 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
               key={i}
               type="button"
               onClick={() => onJumpTo && onJumpTo(u.sectionId)}
-              className="text-left bg-white rounded-[10px] border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all px-3 py-2"
+              className="text-left bg-white rounded-[10px] border border-border-soft hover:border-border hover:shadow-sm transition-all px-3 py-2"
             >
-              <div className="text-[10px] text-slate-400 tabular-nums">{u.date}</div>
-              <div className="text-[12px] font-semibold text-slate-900 mt-0.5">{u.title}</div>
-              <div className="text-[11px] text-slate-500 mt-1 line-clamp-2">{u.summary}</div>
+              <div className="text-[10px] text-muted-soft tabular-nums">{u.date}</div>
+              <div className="text-[12px] font-semibold text-ink mt-0.5">{u.title}</div>
+              <div className="text-[11px] text-muted mt-1 line-clamp-2">{u.summary}</div>
             </button>
           ))}
         </div>
@@ -562,8 +562,8 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
 function TocSidebar({ sections, readSet, activeId, onClickItem }) {
   return (
     <aside className="lg:sticky lg:top-4 lg:self-start">
-      <div className="bg-white rounded-[14px] border border-slate-200/70 p-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-2">
+      <div className="bg-white rounded-[14px] border border-border-soft p-3">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 px-2">
           Содержание
         </div>
         <nav className="space-y-0.5">
@@ -578,12 +578,12 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
                 type="button"
                 onClick={() => onClickItem(s.id)}
                 className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-[8px] text-[12.5px] text-left transition-colors ${
-                  isActive ? `${meta.accentSoft} ${meta.accentText} font-semibold` : "text-slate-600 hover:bg-slate-50"
+                  isActive ? `${meta.accentSoft} ${meta.accentText} font-semibold` : "text-ink-soft hover:bg-surface-soft"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "" : "text-slate-400"}`} strokeWidth={2.5} />
+                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "" : "text-muted-soft"}`} strokeWidth={2.5} />
                 <span className="flex-1 truncate">{s.title}</span>
-                {isRead && <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />}
+                {isRead && <CheckCircle2 className="w-3 h-3 text-success shrink-0" />}
               </button>
             );
           })}
@@ -729,13 +729,13 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null, initialT
 
           <div className="min-w-0 space-y-3">
             {filtered.length === 0 ? (
-              <div className="bg-white rounded-[14px] border border-slate-200/70 p-10 text-center">
-                <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                <div className="text-[13px] font-medium text-slate-600">Ничего не найдено по запросу «{query}»</div>
+              <div className="bg-white rounded-[14px] border border-border-soft p-10 text-center">
+                <Search className="w-8 h-8 text-muted-soft mx-auto mb-2" />
+                <div className="text-[13px] font-medium text-ink-soft">Ничего не найдено по запросу «{query}»</div>
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="mt-3 text-[12px] text-indigo-600 hover:text-indigo-700 underline"
+                  className="mt-3 text-[12px] text-accent hover:text-accent underline"
                 >
                   Очистить поиск
                 </button>

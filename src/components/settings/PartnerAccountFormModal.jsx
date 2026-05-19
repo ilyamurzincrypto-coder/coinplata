@@ -90,7 +90,7 @@ export default function PartnerAccountFormModal({
       <div className="p-5 space-y-3">
         {/* Имя */}
         <div>
-          <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+          <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
             Имя счёта
           </label>
           <input
@@ -99,20 +99,20 @@ export default function PartnerAccountFormModal({
             onChange={(e) => setName(e.target.value)}
             placeholder="USDT TRC20 / RUB Москва / EUR Sberbank…"
             autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
         {/* Валюта + тип в один ряд */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
               Валюта
             </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -122,7 +122,7 @@ export default function PartnerAccountFormModal({
             </select>
           </div>
           <div>
-            <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
               Тип счёта
             </label>
             <div className="grid grid-cols-3 gap-1">
@@ -136,8 +136,8 @@ export default function PartnerAccountFormModal({
                     onClick={() => setType(t.id)}
                     className={`flex flex-col items-center justify-center py-2 rounded-[8px] border-2 transition-colors ${
                       active
-                        ? "bg-indigo-50 border-indigo-400 text-indigo-900"
-                        : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
+                        ? "bg-accent-bg border-indigo-400 text-indigo-900"
+                        : "bg-white border-border-soft text-ink-soft hover:border-border"
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5 mb-0.5" />
@@ -152,13 +152,13 @@ export default function PartnerAccountFormModal({
         {/* Network для crypto */}
         {isCrypto && (
           <div>
-            <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
               Сеть
             </label>
             <select
               value={networkId}
               onChange={(e) => setNetworkId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
             >
               <option value="">— выберите сеть —</option>
               {CRYPTO_NETWORKS.map((n) => (
@@ -171,7 +171,7 @@ export default function PartnerAccountFormModal({
         {/* Address для crypto (опц.) */}
         {isCrypto && (
           <div>
-            <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+            <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
               Адрес (опционально)
             </label>
             <input
@@ -179,14 +179,14 @@ export default function PartnerAccountFormModal({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="0x... / T..."
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[12.5px] font-mono outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[12.5px] font-mono outline-none"
             />
           </div>
         )}
 
         {/* Opening balance */}
         <div>
-          <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+          <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
             Стартовый баланс
           </label>
           <input
@@ -200,9 +200,9 @@ export default function PartnerAccountFormModal({
               )
             }
             placeholder="0 (можно отрицательный)"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
           />
-          <p className="text-[10px] text-slate-500 mt-1">
+          <p className="text-[10px] text-muted mt-1">
             Текущий остаток на счёте партнёра. Может быть отрицательным —
             знак минус означает «партнёр в долгу со старого периода». Не
             влияет на наш баланс.
@@ -211,7 +211,7 @@ export default function PartnerAccountFormModal({
 
         {/* Note */}
         <div>
-          <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+          <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
             Заметка
           </label>
           <input
@@ -219,13 +219,13 @@ export default function PartnerAccountFormModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
         {/* Ledger account code */}
         <div>
-          <label className="block text-[10.5px] font-bold text-slate-500 mb-1.5 tracking-[0.1em] uppercase">
+          <label className="block text-[10.5px] font-bold text-muted mb-1.5 tracking-[0.1em] uppercase">
             Ledger account code{" "}
             <span className="normal-case font-normal tracking-normal">
               (чарт счетов: партнёрский Liab)
@@ -236,15 +236,15 @@ export default function PartnerAccountFormModal({
             value={ledgerAccountCode}
             onChange={(e) => setLedgerAccountCode(e.target.value)}
             placeholder="2210"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-mono outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-mono outline-none"
           />
         </div>
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 text-[13px] font-semibold hover:bg-slate-50"
+          className="px-4 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft"
         >
           Отмена
         </button>
@@ -254,7 +254,7 @@ export default function PartnerAccountFormModal({
           className={`px-4 py-2 rounded-[10px] text-[13px] font-bold transition-colors ${
             canSubmit
               ? "bg-indigo-600 text-white hover:bg-indigo-700"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           Сохранить

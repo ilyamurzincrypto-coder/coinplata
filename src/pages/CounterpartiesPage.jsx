@@ -39,17 +39,17 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
               type="button"
               onClick={() => onOpenHelp({ sectionId: "counterparties" })}
               title="Справка по разделу «Контрагенты»"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-soft hover:text-accent hover:bg-accent-bg transition-colors"
             >
               <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
             </button>
           )}
         </div>
-        <p className="text-[13px] text-slate-500 mt-1">{t("cp_subtitle")}</p>
+        <p className="text-[13px] text-muted mt-1">{t("cp_subtitle")}</p>
       </div>
 
       {/* Tab strip — общий паттерн с TreasuryShell */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+      <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = active === tab.id;
@@ -59,11 +59,11 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
               onClick={() => setActive(tab.id)}
               className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
                 isActive
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
               }`}
             >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : "text-slate-400"}`} />
+              <Icon className={`w-3.5 h-3.5 ${isActive ? "text-success" : "text-muted-soft"}`} />
               {t(tab.key)}
             </button>
           );

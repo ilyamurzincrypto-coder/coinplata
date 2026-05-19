@@ -307,7 +307,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             type="button"
             onClick={(e) => toggleFavorite(a, b, e)}
             className={`shrink-0 transition-colors ${
-              fav ? "text-[#FBBF24] hover:text-amber-500" : "text-border hover:text-amber-400"
+              fav ? "text-[#FBBF24] hover:text-warning" : "text-border hover:text-amber-400"
             }`}
             title={fav ? "Убрать из избранного" : "В избранное"}
             aria-label={fav ? "Убрать из избранного" : "В избранное"}

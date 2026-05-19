@@ -9,7 +9,7 @@ export default function Avatar({ initials, name, size = 24, className = "" }) {
     <div
       title={name}
       style={{ width: size, height: size }}
-      className={`shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold uppercase tracking-tight bg-slate-100 text-[var(--brand-primary)] ${className}`}
+      className={`shrink-0 rounded-full flex items-center justify-center text-[10px] font-bold uppercase tracking-tight bg-surface-sunk text-[var(--brand-primary)] ${className}`}
       aria-label={name}
     >
       {initials || "?"}

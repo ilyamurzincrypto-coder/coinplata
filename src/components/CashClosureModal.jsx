@@ -313,8 +313,8 @@ function OfficeBanner({ office, currentUser, closureDate, variant = "input" }) {
   const officeNm = office?.name || "—";
   const managerNm = currentUser?.full_name || currentUser?.email || "—";
   return (
-    <div className="rounded-[12px] border-2 border-indigo-300 bg-indigo-50 px-4 py-3">
-      <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 mb-0.5">
+    <div className="rounded-[12px] border-2 border-indigo-300 bg-accent-bg px-4 py-3">
+      <div className="text-[10px] font-bold uppercase tracking-wider text-accent mb-0.5">
         🔒 {variant === "summary" ? "Закрываем кассу" : "Закрытие кассы"}
       </div>
       <div className="text-[18px] font-extrabold text-indigo-900 tracking-tight leading-tight">
@@ -365,7 +365,7 @@ function InputStep({
 
         {/* Date */}
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
             <Calendar className="w-3 h-3 inline mr-1" />
             Дата закрытия
           </label>
@@ -373,7 +373,7 @@ function InputStep({
             type="date"
             value={closureDate}
             onChange={(e) => setClosureDate(e.target.value)}
-            className="bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2 text-[13px] outline-none"
+            className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] outline-none"
           />
         </div>
 
@@ -401,7 +401,7 @@ function InputStep({
         <button
           type="button"
           onClick={onAddCurrency}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] border-2 border-dashed border-slate-300 text-slate-600 text-[12.5px] font-semibold hover:border-slate-400 hover:bg-slate-50 transition-colors"
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] border-2 border-dashed border-border text-ink-soft text-[12.5px] font-semibold hover:border-accent/40 hover:bg-surface-soft transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Добавить валюту
@@ -409,7 +409,7 @@ function InputStep({
 
         {/* Comment */}
         <div>
-          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
             <MessageSquare className="w-3 h-3 inline mr-1" />
             Комментарий (опционально)
           </label>
@@ -418,28 +418,28 @@ function InputStep({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Например: смена Мурата"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] outline-none"
           />
         </div>
 
         {/* Soft warnings */}
         {allFilled && allZero && (
-          <div className="rounded-[10px] border border-amber-200 bg-amber-50 p-3 text-[12px] text-amber-900 flex items-center gap-2">
+          <div className="rounded-[10px] border border-amber-200 bg-warning-soft p-3 text-[12px] text-amber-900 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             Все нули — точно всё пусто?
           </div>
         )}
       </div>
 
-      <div className="px-5 py-3.5 border-t border-slate-100 sticky bottom-0 bg-white flex items-center justify-end gap-2">
+      <div className="px-5 py-3.5 border-t border-border-soft sticky bottom-0 bg-white flex items-center justify-end gap-2">
         <button
           ref={continueRef}
           onClick={onContinue}
           disabled={!allFilled}
           className={`px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-colors inline-flex items-center gap-1.5 ${
             allFilled
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
           title={!allFilled ? "Заполни все поля (можно 0)" : ""}
         >
@@ -456,18 +456,18 @@ function CurrencyInputRow({ row, value, onChange, onCopySystem, onKeyDown, input
   const showDeviation = row.hasInput && row.deviation;
   return (
     <div className={`rounded-[12px] border-2 p-3 transition-colors ${
-      showDeviation ? "border-amber-200 bg-amber-50/40" : "border-slate-200 bg-white focus-within:border-slate-400"
+      showDeviation ? "border-amber-200 bg-warning-soft/40" : "border-border-soft bg-white focus-within:border-accent/40"
     }`}>
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
-          <span className="text-[12px] font-bold text-slate-900">{row.currency}</span>
-          <span className="text-[18px] font-semibold text-slate-400">{sym}</span>
+          <span className="text-[12px] font-bold text-ink">{row.currency}</span>
+          <span className="text-[18px] font-semibold text-muted-soft">{sym}</span>
         </div>
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="p-0.5 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            className="p-0.5 rounded text-muted-soft hover:text-danger hover:bg-danger-soft transition-colors"
             title="Убрать валюту"
           >
             <X className="w-3.5 h-3.5" />
@@ -482,17 +482,17 @@ function CurrencyInputRow({ row, value, onChange, onCopySystem, onKeyDown, input
         onChange={(e) => onChange(e.target.value.replace(/[^\d.,\-]/g, "").replace(",", "."))}
         onKeyDown={onKeyDown}
         placeholder="0"
-        className="w-full bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[24px] font-bold tracking-tight"
+        className="w-full bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[24px] font-bold tracking-tight"
       />
       <button
         type="button"
         onClick={onCopySystem}
-        className="text-[10.5px] text-slate-500 hover:text-slate-900 underline-offset-2 hover:underline tabular-nums mt-0.5 transition-colors"
+        className="text-[10.5px] text-muted hover:text-ink underline-offset-2 hover:underline tabular-nums mt-0.5 transition-colors"
         title="Скопировать системный остаток в поле"
       >
         Система: {sym}{fmt(row.systemTotal, row.currency)}
         {showDeviation && (
-          <span className="ml-1.5 font-bold text-amber-700">
+          <span className="ml-1.5 font-bold text-warning">
             · разница {row.diff > 0 ? "+" : ""}{fmt(row.diff, row.currency)}
           </span>
         )}
@@ -520,7 +520,7 @@ function SummaryStep({
           variant="summary"
         />
         {comment && (
-          <div className="rounded-[10px] bg-slate-50 border border-slate-200 px-3 py-2 text-[12px] text-slate-600 italic">
+          <div className="rounded-[10px] bg-surface-soft border border-border-soft px-3 py-2 text-[12px] text-ink-soft italic">
             «{comment}»
           </div>
         )}
@@ -537,15 +537,15 @@ function SummaryStep({
                 className={`rounded-[12px] border-2 p-3 ${
                   r.deviation
                     ? noteOk
-                      ? "border-amber-200 bg-amber-50/40"
-                      : "border-amber-300 bg-amber-50"
-                    : "border-slate-200 bg-white"
+                      ? "border-amber-200 bg-warning-soft/40"
+                      : "border-amber-300 bg-warning-soft"
+                    : "border-border-soft bg-white"
                 }`}
               >
                 <div className="flex items-baseline justify-between mb-1">
-                  <span className="text-[13px] font-bold text-slate-900">{r.currency}</span>
+                  <span className="text-[13px] font-bold text-ink">{r.currency}</span>
                   {!r.deviation && r.hasInput && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-emerald-700">
+                    <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-success">
                       <CheckCircle2 className="w-3 h-3" />
                       Сходится
                     </span>
@@ -581,17 +581,17 @@ function SummaryStep({
         </div>
 
         {hasDeviationWithoutComment && (
-          <div className="rounded-[10px] bg-amber-50 border border-amber-200 px-3 py-2 text-[11.5px] text-amber-900">
+          <div className="rounded-[10px] bg-warning-soft border border-amber-200 px-3 py-2 text-[11.5px] text-amber-900">
             Прежде чем закрыть — заполни комментарии к расхождениям выше.
           </div>
         )}
       </div>
 
-      <div className="px-5 py-3.5 border-t border-slate-100 sticky bottom-0 bg-white flex items-center justify-between gap-2">
+      <div className="px-5 py-3.5 border-t border-border-soft sticky bottom-0 bg-white flex items-center justify-between gap-2">
         <button
           onClick={onBack}
           disabled={busy}
-          className="inline-flex items-center gap-1 px-3 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 disabled:opacity-60"
+          className="inline-flex items-center gap-1 px-3 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk disabled:opacity-60"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           Назад
@@ -609,15 +609,15 @@ function SummaryStep({
 
 function SummaryCell({ label, value, bold, muted, tone }) {
   const valueCls = tone === "amber"
-    ? "text-amber-700"
+    ? "text-warning"
     : tone === "subtle"
-      ? "text-slate-700"
+      ? "text-ink-soft"
       : muted
-        ? "text-slate-500"
-        : "text-slate-900";
+        ? "text-muted"
+        : "text-ink";
   return (
     <div>
-      <div className="text-[9.5px] font-bold text-slate-500 tracking-wider uppercase mb-0.5">{label}</div>
+      <div className="text-[9.5px] font-bold text-muted tracking-wider uppercase mb-0.5">{label}</div>
       <div className={`text-[13px] tabular-nums ${bold ? "font-bold" : "font-semibold"} ${valueCls}`}>
         {value}
       </div>
@@ -678,7 +678,7 @@ function HoldToConfirmButton({ onConfirm, disabled, busy, label }) {
       onTouchCancel={stop}
       className={`relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-colors min-w-[180px] select-none ${
         disabled || busy
-          ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+          ? "bg-surface-sunk text-muted-soft cursor-not-allowed"
           : "bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800"
       }`}
     >
@@ -716,11 +716,11 @@ function SuccessStep({ createdId, createdAt, onUndo, onClose }) {
   return (
     <div className="p-8 text-center space-y-5">
       <div className="w-14 h-14 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
-        <CheckCircle2 className="w-8 h-8 text-emerald-600" strokeWidth={2.5} />
+        <CheckCircle2 className="w-8 h-8 text-success" strokeWidth={2.5} />
       </div>
       <div>
-        <div className="text-[18px] font-bold text-slate-900">Касса закрыта</div>
-        <div className="text-[12px] text-slate-500 mt-1">
+        <div className="text-[18px] font-bold text-ink">Касса закрыта</div>
+        <div className="text-[12px] text-muted mt-1">
           Бухгалтер увидит и подтвердит
         </div>
       </div>
@@ -728,20 +728,20 @@ function SuccessStep({ createdId, createdAt, onUndo, onClose }) {
       {canUndo ? (
         <button
           onClick={onUndo}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border-2 border-slate-200 text-slate-700 text-[12.5px] font-bold hover:border-slate-400 hover:bg-slate-50 transition-colors tabular-nums"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border-2 border-border-soft text-ink-soft text-[12.5px] font-bold hover:border-accent/40 hover:bg-surface-soft transition-colors tabular-nums"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Отменить ({mm}:{ss})
         </button>
       ) : (
-        <div className="text-[11.5px] text-slate-400">
+        <div className="text-[11.5px] text-muted-soft">
           Время на отмену истекло. Если есть ошибка — попроси бухгалтера отклонить.
         </div>
       )}
 
       <button
         onClick={onClose}
-        className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[12.5px] font-semibold hover:bg-slate-800"
+        className="px-4 py-2 rounded-[10px] bg-ink text-white text-[12.5px] font-semibold hover:bg-ink"
       >
         Готово
       </button>
@@ -781,26 +781,26 @@ function CurrencyPickerSheet({ open, onClose, allCodes, excluded, onPick }) {
         className="bg-white rounded-t-[16px] shadow-2xl w-full max-w-md max-h-[60vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-2">
-          <Search className="w-4 h-4 text-slate-400" />
+        <div className="px-4 py-3 border-b border-border-soft flex items-center gap-2">
+          <Search className="w-4 h-4 text-muted-soft" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value.toUpperCase())}
             placeholder="EUR, GBP, USDT…"
-            className="flex-1 bg-transparent outline-none text-[14px] text-slate-900 placeholder:text-slate-300 tabular-nums tracking-wider font-mono"
+            className="flex-1 bg-transparent outline-none text-[14px] text-ink placeholder:text-muted-soft tabular-nums tracking-wider font-mono"
           />
           <button
             onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            className="p-1 rounded text-muted-soft hover:bg-surface-sunk hover:text-ink-soft"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
         <div className="overflow-y-auto flex-1">
           {filtered.length === 0 ? (
-            <div className="p-6 text-center text-[12px] text-slate-400">
+            <div className="p-6 text-center text-[12px] text-muted-soft">
               {query ? `Ничего не нашлось по «${query}»` : "Все валюты уже добавлены"}
             </div>
           ) : (
@@ -810,10 +810,10 @@ function CurrencyPickerSheet({ open, onClose, allCodes, excluded, onPick }) {
                   key={code}
                   type="button"
                   onClick={() => onPick(code)}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-slate-50 transition-colors"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-left hover:bg-surface-soft transition-colors"
                 >
-                  <span className="text-[14px] font-bold text-slate-400 w-12">{curSymbol(code)}</span>
-                  <span className="text-[13px] font-bold text-slate-900 tracking-wider">{code}</span>
+                  <span className="text-[14px] font-bold text-muted-soft w-12">{curSymbol(code)}</span>
+                  <span className="text-[13px] font-bold text-ink tracking-wider">{code}</span>
                 </button>
               ))}
             </div>

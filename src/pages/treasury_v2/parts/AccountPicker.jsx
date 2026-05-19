@@ -26,7 +26,7 @@ export default function AccountPicker({ accounts, currency, value, onChange }) {
   const showSystemHint = selected && SYSTEM_DRIVEN_SUBTYPES.has(selected.subtype);
 
   if (options.length === 0) {
-    return <span className="text-[12px] text-slate-400">{t("trv2_pm_no_accounts")}</span>;
+    return <span className="text-[12px] text-muted-soft">{t("trv2_pm_no_accounts")}</span>;
   }
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -39,7 +39,7 @@ export default function AccountPicker({ accounts, currency, value, onChange }) {
         />
       </div>
       {showSystemHint && (
-        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-warning-soft text-amber-700 border border-amber-200 whitespace-nowrap">
           {t("trv2_pm_system_account_hint")}
         </span>
       )}

@@ -54,7 +54,7 @@ export default function SubmitCTA({
           "inline-flex items-center gap-1.5 px-4 py-2 rounded-l-[var(--radius-section)] " +
           "text-[12.5px] font-bold uppercase tracking-wider " +
           (isDisabled
-            ? "bg-slate-200 text-slate-400 cursor-not-allowed "
+            ? "bg-surface-sunk text-muted-soft cursor-not-allowed "
             : "bg-indigo-600 hover:bg-indigo-700 text-white ")
         }
       >
@@ -75,7 +75,7 @@ export default function SubmitCTA({
         className={
           "inline-flex items-center px-2 py-2 border-l rounded-r-[var(--radius-section)] " +
           (isDisabled
-            ? "bg-slate-200 text-slate-400 border-slate-300 cursor-not-allowed "
+            ? "bg-surface-sunk text-muted-soft border-border cursor-not-allowed "
             : "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700 ")
         }
       >
@@ -83,18 +83,18 @@ export default function SubmitCTA({
       </button>
 
       {open && !isDisabled && (
-        <div className="absolute right-0 bottom-full mb-1 z-20 bg-white border border-slate-200 shadow-lg rounded-[var(--radius-cell)] py-1 min-w-[220px]">
+        <div className="absolute right-0 bottom-full mb-1 z-20 bg-white border border-border-soft shadow-lg rounded-[var(--radius-cell)] py-1 min-w-[220px]">
           <button
             type="button"
             onClick={() => { setOpen(false); onSubmitDraft?.(); }}
-            className="block w-full text-left px-3 py-2 text-[12.5px] text-slate-700 hover:bg-slate-50"
+            className="block w-full text-left px-3 py-2 text-[12.5px] text-ink-soft hover:bg-surface-soft"
           >
             {t("submit_save_draft")}
           </button>
           <button
             type="button"
             onClick={() => { setOpen(false); onSubmitAndNotify?.(); }}
-            className="block w-full text-left px-3 py-2 text-[12.5px] text-slate-700 hover:bg-slate-50"
+            className="block w-full text-left px-3 py-2 text-[12.5px] text-ink-soft hover:bg-surface-soft"
           >
             {t("submit_create_and_notify")}
           </button>

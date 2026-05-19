@@ -62,7 +62,7 @@ export function ToastProvider({ children }) {
                 ? "bg-red-600 text-white"
                 : t.kind === "success"
                 ? "bg-emerald-600 text-white"
-                : "bg-slate-900 text-white"
+                : "bg-ink text-white"
             }`}
           >
             {t.text}

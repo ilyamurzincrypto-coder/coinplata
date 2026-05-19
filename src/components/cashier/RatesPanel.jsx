@@ -54,11 +54,11 @@ export default function RatesPanel({
 
   return (
     <aside
-      className="bg-white border border-slate-200 rounded-[var(--radius-section)] flex flex-col"
+      className="bg-white border border-border-soft rounded-[var(--radius-section)] flex flex-col"
       style={{ width: "var(--rates-panel-width)", maxHeight: 480 }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50/50">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border-soft bg-surface-soft/50">
         <span className="text-label flex-1">{t("rates_title")}</span>
 
         {/* Filter dropdown */}
@@ -66,24 +66,24 @@ export default function RatesPanel({
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="appearance-none bg-white border border-slate-200 rounded-[var(--radius-cell)] pl-2 pr-6 py-0.5 text-[11px] font-semibold cursor-pointer outline-none focus:ring-1 focus:ring-slate-300"
+            className="appearance-none bg-white border border-border-soft rounded-[var(--radius-cell)] pl-2 pr-6 py-0.5 text-[11px] font-semibold cursor-pointer outline-none focus:ring-1 focus:ring-accent/20"
           >
             <option value="local">{t("rates_filter_local")}</option>
             <option value="global">{t("rates_filter_global")}</option>
           </select>
-          <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400 pointer-events-none" />
+          <ChevronDown className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-soft pointer-events-none" />
         </div>
 
         <button
           type="button"
           onClick={handleRefresh}
           title={t("rates_refresh")}
-          className="p-1 text-slate-500 hover:bg-slate-100 rounded"
+          className="p-1 text-muted hover:bg-surface-sunk rounded"
         >
           <RefreshCw className="w-3 h-3" />
         </button>
 
-        <span className="text-[10px] text-slate-400 tabular-nums">
+        <span className="text-[10px] text-muted-soft tabular-nums">
           {minutesAgo === 0 ? "now" : t("rates_updated_ago").replace("{{n}}", String(minutesAgo))}
         </span>
       </div>
@@ -91,7 +91,7 @@ export default function RatesPanel({
       {/* Active leg hint */}
       {onPickRate && (
         <div
-          className="px-3 py-1.5 text-[10px] text-slate-500 border-b border-slate-100 bg-slate-50/30"
+          className="px-3 py-1.5 text-[10px] text-muted border-b border-border-soft bg-surface-soft/30"
         >
           {activeLegSummary || t("rates_no_active_leg")}
         </div>
@@ -129,7 +129,7 @@ function RatesGrid({ currencies, getRate, officeId, onPickRate }) {
   return (
     <table className="w-full text-[11px] tabular-nums">
       <thead>
-        <tr className="bg-slate-50/40 text-slate-400">
+        <tr className="bg-surface-soft/40 text-muted-soft">
           <th className="text-left px-2 py-1 font-semibold uppercase tracking-wider"></th>
           {currencies.map((c) => (
             <th key={c} className="text-right px-1.5 py-1 font-bold">{c}</th>
@@ -138,12 +138,12 @@ function RatesGrid({ currencies, getRate, officeId, onPickRate }) {
       </thead>
       <tbody>
         {currencies.map((from) => (
-          <tr key={from} className="border-t border-slate-100">
-            <td className="px-2 py-1 font-bold text-slate-600">{from}</td>
+          <tr key={from} className="border-t border-border-soft">
+            <td className="px-2 py-1 font-bold text-ink-soft">{from}</td>
             {currencies.map((to) => {
               if (from === to) {
                 return (
-                  <td key={to} className="text-right px-1.5 py-1 text-slate-300">—</td>
+                  <td key={to} className="text-right px-1.5 py-1 text-muted-soft">—</td>
                 );
               }
               const rate = getRate(from, to, officeId);
@@ -168,20 +168,20 @@ function RatesGrid({ currencies, getRate, officeId, onPickRate }) {
 function RateCell({ from, to, rate, onPick }) {
   if (rate == null || !Number.isFinite(rate) || rate <= 0) {
     return (
-      <span className="block px-1.5 py-1 text-slate-300">—</span>
+      <span className="block px-1.5 py-1 text-muted-soft">—</span>
     );
   }
   const formatted = formatRate(rate);
   if (!onPick) {
     return (
-      <span className="block px-1.5 py-1 text-slate-700 tabular-nums">{formatted}</span>
+      <span className="block px-1.5 py-1 text-ink-soft tabular-nums">{formatted}</span>
     );
   }
   return (
     <button
       type="button"
       onClick={() => onPick(from, to, rate)}
-      className="block w-full px-1.5 py-1 text-right text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 cursor-pointer tabular-nums focus:outline-none focus:bg-indigo-50"
+      className="block w-full px-1.5 py-1 text-right text-ink-soft hover:bg-accent-bg hover:text-accent cursor-pointer tabular-nums focus:outline-none focus:bg-accent-bg"
       title={`${from} → ${to} · ${formatted}`}
     >
       {formatted}

@@ -33,19 +33,19 @@ export default function EditTxNoteModal({ tx, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div className="bg-white rounded-[14px] max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-        <header className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <header className="px-5 py-3 border-b border-border-soft flex items-center justify-between">
           <h3 className="text-[14px] font-bold">{t("trv2_tx_note_title")}</h3>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-surface-sunk"><X className="w-4 h-4" /></button>
         </header>
         <div className="p-5 space-y-3">
-          <p className="text-[12px] text-slate-500">{tx.description || tx.id}</p>
+          <p className="text-[12px] text-muted">{tx.description || tx.id}</p>
           <textarea autoFocus value={note} onChange={(e) => setNote(e.target.value)} rows={3}
             placeholder={t("trv2_tx_note_ph")}
-            className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-2.5 py-2 text-[12.5px] outline-none" />
+            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-2 text-[12.5px] outline-none" />
           <div className="flex items-center justify-end gap-2">
-            <button onClick={onClose} className="px-3 py-1.5 rounded-[8px] text-[12.5px] text-slate-600 hover:bg-slate-100">{t("trv2_pm_reverse_cancel")}</button>
+            <button onClick={onClose} className="px-3 py-1.5 rounded-[8px] text-[12.5px] text-ink-soft hover:bg-surface-sunk">{t("trv2_pm_reverse_cancel")}</button>
             <button onClick={save} disabled={busy}
-              className="px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold bg-slate-900 text-white disabled:opacity-40">
+              className="px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold bg-ink text-white disabled:opacity-40">
               {busy ? "…" : t("trv2_tx_note_save")}
             </button>
           </div>

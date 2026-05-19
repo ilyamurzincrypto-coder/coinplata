@@ -30,7 +30,7 @@ export default function FooterBar({
   const { t } = useTranslation();
   return (
     <div
-      className="px-4 border-t border-slate-200 bg-slate-50/40 flex items-center gap-3"
+      className="px-4 border-t border-border-soft bg-surface-soft/40 flex items-center gap-3"
       style={{ minHeight: "var(--footer-bar-height)" }}
     >
       {/* Undo/Redo */}
@@ -40,7 +40,7 @@ export default function FooterBar({
           onClick={onUndo}
           disabled={!canUndo}
           title="Отменить (Ctrl/Cmd+Z)"
-          className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+          className="p-1.5 rounded-[var(--radius-cell)] text-muted hover:bg-surface-sunk disabled:text-muted-soft disabled:hover:bg-transparent disabled:cursor-not-allowed"
         >
           <Undo2 className="w-3.5 h-3.5" />
         </button>
@@ -49,7 +49,7 @@ export default function FooterBar({
           onClick={onRedo}
           disabled={!canRedo}
           title="Повторить (Ctrl/Cmd+Shift+Z)"
-          className="p-1.5 rounded-[var(--radius-cell)] text-slate-500 hover:bg-slate-200 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+          className="p-1.5 rounded-[var(--radius-cell)] text-muted hover:bg-surface-sunk disabled:text-muted-soft disabled:hover:bg-transparent disabled:cursor-not-allowed"
         >
           <Redo2 className="w-3.5 h-3.5" />
         </button>

@@ -49,12 +49,12 @@ export default function PeriodPicker({ value, onChange }) {
         <button
           key={p}
           onClick={() => onChange(p)}
-          className={`px-2.5 py-1 rounded-[8px] text-[12px] font-medium transition-colors ${value === p ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+          className={`px-2.5 py-1 rounded-[8px] text-[12px] font-medium transition-colors ${value === p ? "bg-ink text-white" : "bg-surface-sunk text-ink-soft hover:bg-surface-sunk"}`}
         >
           {t(`trv2_period_${p === "30d" ? "30d" : p}`)}
         </button>
       ))}
-      <span className="text-[11px] text-slate-400">
+      <span className="text-[11px] text-muted-soft">
         {new Date(win.from).toISOString().slice(0, 10)} — {new Date(win.to).toISOString().slice(0, 10)} ({t("trv2_period_days").replace("{n}", String(days))})
       </span>
     </div>

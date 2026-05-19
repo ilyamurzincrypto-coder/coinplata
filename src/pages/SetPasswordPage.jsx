@@ -118,7 +118,7 @@ export default function SetPasswordPage() {
       <div className="relative w-full max-w-[420px] animate-[cardIn_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
         <div className="flex items-center justify-center gap-2.5 mb-6">
           <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.55)]">
-            <ArrowLeftRight className="w-4 h-4 text-slate-950" strokeWidth={2.5} />
+            <ArrowLeftRight className="w-4 h-4 text-ink" strokeWidth={2.5} />
           </div>
           <span className="text-[18px] font-bold tracking-tight text-white">
             CoinPlata
@@ -126,7 +126,7 @@ export default function SetPasswordPage() {
         </div>
 
         <div
-          className="relative bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+          className="relative bg-ink/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 60px -20px rgba(0,0,0,0.7)",
@@ -136,7 +136,7 @@ export default function SetPasswordPage() {
             <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
               Set your password
             </h1>
-            <p className="text-[13px] text-slate-400 mt-1.5">
+            <p className="text-[13px] text-muted-soft mt-1.5">
               Welcome{currentUser?.name ? `, ${currentUser.name}` : ""}! Choose a
               password to finish activation.
             </p>
@@ -144,7 +144,7 @@ export default function SetPasswordPage() {
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="bg-slate-950/60 border border-slate-800 rounded-[12px] px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 tracking-[0.1em] uppercase">
+              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> New password
               </label>
               <div className="flex items-center gap-2">
@@ -156,13 +156,13 @@ export default function SetPasswordPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={saving || success}
                   placeholder="••••••••"
-                  className="flex-1 bg-transparent outline-none text-[14px] text-white placeholder:text-slate-500 py-2.5 disabled:opacity-60"
+                  className="flex-1 bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   tabIndex={-1}
-                  className="p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="p-1 text-muted-soft hover:text-white/80 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
@@ -170,7 +170,7 @@ export default function SetPasswordPage() {
             </div>
 
             <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-[12px] px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500 tracking-[0.1em] uppercase">
+              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> Confirm password
               </label>
               <input
@@ -180,19 +180,19 @@ export default function SetPasswordPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 disabled={saving || success}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-slate-500 py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-rose-500/10 border border-rose-500/25 text-rose-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px]">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
                 <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Password saved. Loading your workspace…</span>
               </div>
@@ -203,8 +203,8 @@ export default function SetPasswordPage() {
               disabled={saving || success || !password || !confirm}
               className={`mt-5 w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
                 saving || success || !password || !confirm
-                  ? "bg-emerald-500/60 text-slate-950/60 cursor-not-allowed"
-                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-slate-950 hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"
+                  ? "bg-success-soft0/60 text-ink/60 cursor-not-allowed"
+                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"
               }`}
             >
               {saving ? (
@@ -227,9 +227,9 @@ export default function SetPasswordPage() {
           </form>
         </div>
 
-        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-slate-600">
+        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
-            <ShieldCheck className="w-3 h-3 text-slate-500" />
+            <ShieldCheck className="w-3 h-3 text-muted" />
             Secure · Private · Internal system
           </div>
         </footer>

@@ -175,29 +175,29 @@ export default function CashClosureBadge({ currentOffice }) {
     setModalOpen(true);
   };
   // Apple-style: тот же визуальный язык что OfficeSwitcher рядом —
-  // bg-white, border-slate-200, rounded-[10px], px-3 py-1.5, text-[13px].
+  // bg-white, border-border-soft, rounded-[10px], px-3 py-1.5, text-[13px].
   // Состояние выражается ТОЛЬКО через цветную точку слева. Без цветных фонов.
   const config = {
     closed: {
       label: t("cc_badge_closed"),
       sub: lastDate ? `${relativeDay(lastDate)} ${formatTime(lastDate)}` : "",
       icon: CheckCircle2,
-      iconCls: "text-emerald-500",
-      dot: "bg-emerald-500",
+      iconCls: "text-success",
+      dot: "bg-success-soft0",
     },
     open: {
       label: t("cc_badge_close"),
       sub: lastDate ? relativeDay(lastDate) : t("cc_never_closed"),
       icon: Lock,
-      iconCls: "text-slate-400",
-      dot: "bg-amber-500",
+      iconCls: "text-muted-soft",
+      dot: "bg-warning-soft0",
     },
     overdue: {
       label: t("cc_badge_overdue"),
       sub: lastDate ? `${t("cc_overdue_sub")} · ${relativeDay(lastDate)}` : t("cc_never_closed"),
       icon: AlertTriangle,
-      iconCls: "text-rose-500",
-      dot: "bg-rose-500 animate-pulse",
+      iconCls: "text-danger",
+      dot: "bg-danger-soft0 animate-pulse",
     },
   }[state];
 
@@ -209,7 +209,7 @@ export default function CashClosureBadge({ currentOffice }) {
         type="button"
         onClick={handleOpen}
         title={`${config.label} · ${config.sub}`}
-        className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-[10px] border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+        className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-[10px] border border-border-soft bg-white text-ink hover:border-border hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)]"
       >
         <span className="relative flex items-center justify-center shrink-0">
           <span className={`w-2 h-2 rounded-full ${config.dot}`} />
@@ -239,15 +239,15 @@ export default function CashClosureBadge({ currentOffice }) {
         <div className="p-5 space-y-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-              <Clock className="w-5 h-5 text-amber-600" />
+              <Clock className="w-5 h-5 text-warning" />
             </div>
             <div className="flex-1">
-              <p className="text-[13.5px] text-slate-700 leading-snug">
+              <p className="text-[13.5px] text-ink-soft leading-snug">
                 {t("cc_confirm_during_workday")}
               </p>
               {confirmInfo && (
-                <div className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-slate-500 tabular-nums bg-slate-50 border border-slate-200 rounded-[8px] px-2.5 py-1">
-                  <span className="font-semibold text-slate-700">{confirmInfo.closeTime}</span>
+                <div className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted tabular-nums bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-1">
+                  <span className="font-semibold text-ink-soft">{confirmInfo.closeTime}</span>
                   <span>·</span>
                   <span>~{confirmInfo.minsLeft} {t("cc_confirm_min_left")}</span>
                 </div>
@@ -255,18 +255,18 @@ export default function CashClosureBadge({ currentOffice }) {
             </div>
           </div>
         </div>
-        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+        <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={() => setConfirmInfo(null)}
-            className="px-4 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 text-[13px] font-semibold hover:border-slate-300 hover:bg-slate-50 transition-colors"
+            className="px-4 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:border-border hover:bg-surface-soft transition-colors"
           >
             {t("cc_confirm_continue")}
           </button>
           <button
             type="button"
             onClick={proceedFromConfirm}
-            className="px-4 py-2 rounded-[10px] bg-rose-500 text-white text-[13px] font-semibold hover:bg-rose-600 transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
+            className="px-4 py-2 rounded-[10px] bg-danger-soft0 text-white text-[13px] font-semibold hover:bg-rose-600 transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
           >
             {t("cc_confirm_close_anyway")}
           </button>

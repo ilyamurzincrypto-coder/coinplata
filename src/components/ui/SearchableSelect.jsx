@@ -84,18 +84,18 @@ export default function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className={`flex items-center gap-1 min-w-0 w-full bg-slate-50 border rounded-[8px] px-2 py-1 text-[12px] outline-none text-left
-          ${error ? "border-rose-300" : "border-slate-200"} ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white"}`}
+        className={`flex items-center gap-1 min-w-0 w-full bg-surface-soft border rounded-[8px] px-2 py-1 text-[12px] outline-none text-left
+          ${error ? "border-danger/40" : "border-border-soft"} ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white"}`}
       >
-        <span className={`flex-1 min-w-0 truncate ${selected ? "" : "text-slate-400"}`}>
+        <span className={`flex-1 min-w-0 truncate ${selected ? "" : "text-muted-soft"}`}>
           {selected ? selected.name : placeholder}
         </span>
-        <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+        <ChevronDown className="w-3 h-3 text-muted-soft shrink-0" />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-slate-200 rounded-[8px] shadow-lg min-w-[220px]">
-          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-slate-100">
-            <Search className="w-3 h-3 text-slate-400 shrink-0" />
+        <div className="absolute z-30 mt-1 left-0 right-0 bg-white border border-border-soft rounded-[8px] shadow-lg min-w-[220px]">
+          <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border-soft">
+            <Search className="w-3 h-3 text-muted-soft shrink-0" />
             <input
               ref={inputRef}
               value={q}
@@ -107,14 +107,14 @@ export default function SearchableSelect({
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-2 py-1.5 text-[12px] text-slate-400">{emptyText}</li>
+              <li className="px-2 py-1.5 text-[12px] text-muted-soft">{emptyText}</li>
             ) : (
               filtered.map((o) => (
                 <li key={o.id}>
                   <button
                     type="button"
                     onClick={() => pick(o.id)}
-                    className={`w-full text-left px-2 py-1.5 text-[12px] hover:bg-slate-50 ${o.id === value ? "font-semibold text-slate-900" : "text-slate-700"}`}
+                    className={`w-full text-left px-2 py-1.5 text-[12px] hover:bg-surface-soft ${o.id === value ? "font-semibold text-ink" : "text-ink-soft"}`}
                   >
                     {o.name}
                   </button>

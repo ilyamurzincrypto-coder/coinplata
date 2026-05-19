@@ -194,29 +194,29 @@ export default function ObligationsTab() {
       </div>
 
       {/* Filter bar — 6-direction flow chips */}
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 space-y-2">
+      <div className="bg-white border border-border-soft rounded-[12px] p-3 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 text-slate-400">
+          <div className="flex items-center gap-1.5 text-muted-soft">
             <Filter className="w-3.5 h-3.5" />
           </div>
           <FlowChip active={flowFilter === "all"} onClick={() => setFlowFilter("all")} count={flowCounts.all}>
             Все
           </FlowChip>
-          <span className="text-[10px] font-bold text-slate-400 ml-1">Клиент:</span>
+          <span className="text-[10px] font-bold text-muted-soft ml-1">Клиент:</span>
           <FlowChip active={flowFilter === "us_to_client"} onClick={() => setFlowFilter("us_to_client")} count={flowCounts.us_to_client} tone="rose">
             Мы → клиент
           </FlowChip>
           <FlowChip active={flowFilter === "client_to_us"} onClick={() => setFlowFilter("client_to_us")} count={flowCounts.client_to_us} tone="emerald">
             Клиент → нам
           </FlowChip>
-          <span className="text-[10px] font-bold text-slate-400 ml-1">Партнёр:</span>
+          <span className="text-[10px] font-bold text-muted-soft ml-1">Партнёр:</span>
           <FlowChip active={flowFilter === "us_to_partner"} onClick={() => setFlowFilter("us_to_partner")} count={flowCounts.us_to_partner} tone="rose">
             Мы → партнёр
           </FlowChip>
           <FlowChip active={flowFilter === "partner_to_us"} onClick={() => setFlowFilter("partner_to_us")} count={flowCounts.partner_to_us} tone="emerald">
             Партнёр → нам
           </FlowChip>
-          <span className="text-[10px] font-bold text-slate-400 ml-1">Внешние:</span>
+          <span className="text-[10px] font-bold text-muted-soft ml-1">Внешние:</span>
           <FlowChip active={flowFilter === "client_to_partner"} onClick={() => setFlowFilter("client_to_partner")} count={flowCounts.client_to_partner} tone="slate">
             Клиент → партнёр
           </FlowChip>
@@ -241,28 +241,28 @@ export default function ObligationsTab() {
             onChange={setOfficeFilter}
             options={[{ value: "all", label: t("oblig_all_offices") }, ...offices.map((o) => ({ value: o.id, label: o.name }))]}
             compact
-            icon={<Building2 className="w-3 h-3 text-slate-400" />}
+            icon={<Building2 className="w-3 h-3 text-muted-soft" />}
           />
           <Select
             value={currencyFilter}
             onChange={setCurrencyFilter}
             options={[{ value: "all", label: t("oblig_all_currencies") }, ...uniqueCurrencies.map((c) => ({ value: c, label: c }))]}
             compact
-            icon={<Coins className="w-3 h-3 text-slate-400" />}
+            icon={<Coins className="w-3 h-3 text-muted-soft" />}
           />
           <div className="flex-1 min-w-[160px] relative">
-            <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+            <Search className="w-3 h-3 text-muted-soft absolute left-2 top-1/2 -translate-y-1/2" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("oblig_search_ph")}
-              className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300"
+              className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
             />
           </div>
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t("export_csv")}
           </button>
@@ -270,11 +270,11 @@ export default function ObligationsTab() {
       </div>
 
       {/* Table */}
-      <section className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
+      <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
+              <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
                 <th className="px-5 py-2.5 hidden md:table-cell">{t("oblig_col_created")}</th>
                 <th className="px-3 py-2.5">{t("oblig_col_direction")}</th>
                 <th className="px-3 py-2.5">{t("oblig_col_client")}</th>
@@ -293,39 +293,39 @@ export default function ObligationsTab() {
                 const isWeOwe = o.direction === "we_owe";
                 const isOpen = o.status === "open";
                 return (
-                  <tr key={o.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/60">
-                    <td className="px-5 py-3 whitespace-nowrap text-slate-500 tabular-nums hidden md:table-cell">
+                  <tr key={o.id} className="border-b border-border-soft last:border-0 hover:bg-surface-soft/60">
+                    <td className="px-5 py-3 whitespace-nowrap text-muted tabular-nums hidden md:table-cell">
                       {(o.createdAt || "").slice(0, 10)}
                     </td>
                     <td className="px-3 py-3">
                       <span
                         className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                           isWeOwe
-                            ? "bg-rose-100 text-rose-700 ring-1 ring-rose-200"
-                            : "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+                            ? "bg-rose-100 text-danger ring-1 ring-rose-200"
+                            : "bg-emerald-100 text-success ring-1 ring-emerald-200"
                         }`}
                       >
                         {isWeOwe ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownLeft className="w-2.5 h-2.5" />}
                         {isWeOwe ? t("oblig_we_owe") : t("oblig_they_owe")}
                       </span>
                     </td>
-                    <td className="px-3 py-3 font-medium text-slate-900">
-                      {clientName(o.clientId) || <span className="text-slate-400 italic">—</span>}
+                    <td className="px-3 py-3 font-medium text-ink">
+                      {clientName(o.clientId) || <span className="text-muted-soft italic">—</span>}
                     </td>
-                    <td className="px-3 py-3 text-slate-600 hidden lg:table-cell">{officeName(o.officeId)}</td>
+                    <td className="px-3 py-3 text-ink-soft hidden lg:table-cell">{officeName(o.officeId)}</td>
                     <td className="px-3 py-3 text-right tabular-nums font-semibold hidden sm:table-cell">
                       {fmt(o.amount, o.currency)} {o.currency}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-slate-500 hidden lg:table-cell">
+                    <td className="px-3 py-3 text-right tabular-nums text-muted hidden lg:table-cell">
                       {(o.paidAmount || 0) > 0 ? fmt(o.paidAmount, o.currency) : "—"}
                     </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-bold text-slate-900 whitespace-nowrap">
+                    <td className="px-3 py-3 text-right tabular-nums font-bold text-ink whitespace-nowrap">
                       {fmt(rem, o.currency)} {o.currency}
                     </td>
                     <td className="px-3 py-3 hidden md:table-cell">
                       <StatusBadge status={o.status} />
                     </td>
-                    <td className="px-3 py-3 text-slate-500 tabular-nums hidden xl:table-cell">
+                    <td className="px-3 py-3 text-muted tabular-nums hidden xl:table-cell">
                       {o.dealId ? `#${o.dealId}` : "—"}
                     </td>
                     <td className="px-5 py-3 text-right">
@@ -336,8 +336,8 @@ export default function ObligationsTab() {
                             disabled={busyId === o.id}
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-white ${
                               isWeOwe
-                                ? "bg-rose-500 hover:bg-rose-600"
-                                : "bg-emerald-500 hover:bg-emerald-600"
+                                ? "bg-danger-soft0 hover:bg-rose-600"
+                                : "bg-success-soft0 hover:bg-emerald-600"
                             } disabled:opacity-50`}
                           >
                             <CheckCircle2 className="w-3 h-3" />
@@ -346,7 +346,7 @@ export default function ObligationsTab() {
                           <button
                             onClick={() => handleCancel(o)}
                             disabled={busyId === o.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-ink-soft hover:text-danger hover:bg-danger-soft disabled:opacity-50"
                             title={t("oblig_cancel_tip")}
                           >
                             <Ban className="w-3 h-3" />
@@ -360,7 +360,7 @@ export default function ObligationsTab() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-5 py-16 text-center">
-                    <div className="text-slate-400 text-[13px]">
+                    <div className="text-muted-soft text-[13px]">
                       {obligations.length === 0 ? t("oblig_empty") : t("oblig_no_match")}
                     </div>
                   </td>
@@ -384,13 +384,13 @@ export default function ObligationsTab() {
 
 function SummaryCard({ label, value, tone, icon, emphasize }) {
   const toneBg = {
-    emerald: "bg-emerald-50/70 border-emerald-200 text-emerald-700",
-    rose: "bg-rose-50/70 border-rose-200 text-rose-700",
+    emerald: "bg-success-soft/70 border-emerald-200 text-success",
+    rose: "bg-danger-soft/70 border-rose-200 text-danger",
   }[tone];
   return (
     <div
       className={`rounded-[14px] p-4 border ${toneBg} ${
-        emphasize ? "ring-2 ring-slate-900/5" : ""
+        emphasize ? "ring-2 ring-ink/5" : ""
       }`}
     >
       <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider opacity-70">
@@ -406,12 +406,12 @@ function FlowChip({ active, onClick, count = 0, tone = "slate", children }) {
   const toneActive = {
     rose:    "bg-rose-600 text-white border-rose-600",
     emerald: "bg-emerald-600 text-white border-emerald-600",
-    slate:   "bg-slate-900 text-white border-slate-900",
+    slate:   "bg-ink text-white border-ink",
   }[tone];
   const toneIdle = {
-    rose:    "bg-white text-rose-700 border-rose-200 hover:border-rose-300 hover:bg-rose-50",
-    emerald: "bg-white text-emerald-700 border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50",
-    slate:   "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50",
+    rose:    "bg-white text-danger border-rose-200 hover:border-danger/40 hover:bg-danger-soft",
+    emerald: "bg-white text-success border-emerald-200 hover:border-emerald-300 hover:bg-success-soft",
+    slate:   "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft",
   }[tone];
   return (
     <button
@@ -424,7 +424,7 @@ function FlowChip({ active, onClick, count = 0, tone = "slate", children }) {
       <span>{children}</span>
       {count > 0 && (
         <span className={`text-[9.5px] font-bold tabular-nums px-1 rounded ${
-          active ? "bg-white/20" : "bg-slate-100"
+          active ? "bg-white/20" : "bg-surface-sunk"
         }`}>
           {count}
         </span>
@@ -435,9 +435,9 @@ function FlowChip({ active, onClick, count = 0, tone = "slate", children }) {
 
 function StatusBadge({ status }) {
   const map = {
-    open: "bg-amber-100 text-amber-700 ring-amber-200",
-    closed: "bg-slate-100 text-slate-600 ring-slate-200",
-    cancelled: "bg-slate-100 text-slate-400 ring-slate-200 line-through",
+    open: "bg-amber-100 text-warning ring-amber-200",
+    closed: "bg-surface-sunk text-ink-soft ring-border-soft",
+    cancelled: "bg-surface-sunk text-muted-soft ring-border-soft line-through",
   };
   return (
     <span
@@ -521,18 +521,18 @@ function SettleObligationModal({ obligation, mode, onClose }) {
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">
             {mode === "settle" ? t("oblig_pay_from_account") : t("oblig_receive_to_account")}
           </label>
           {candidateAccounts.length === 0 ? (
-            <div className="text-[12px] text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+            <div className="text-[12px] text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
               {t("oblig_no_accounts").replace("{cur}", obligation.currency)}
             </div>
           ) : (
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
-              className="w-full px-3 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300"
+              className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
             >
               <option value="">{t("oblig_select_account")}</option>
               {candidateAccounts.map((a) => (
@@ -545,7 +545,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-[11px] font-bold uppercase tracking-wider text-muted mb-1">
             {t("oblig_amount_label")} ({obligation.currency})
           </label>
           <input
@@ -553,28 +553,28 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             step="any"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 text-[13px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300 tabular-nums"
+            className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border tabular-nums"
           />
-          <div className="flex items-center justify-between text-[11px] text-slate-500 mt-1">
+          <div className="flex items-center justify-between text-[11px] text-muted mt-1">
             <span>{t("oblig_remaining_hint")} {fmt(remaining, obligation.currency)}</span>
             <button
               type="button"
               onClick={() => setAmount(remaining)}
-              className="text-slate-700 hover:text-slate-900 font-semibold underline"
+              className="text-ink-soft hover:text-ink font-semibold underline"
             >
               {t("oblig_full_btn")}
             </button>
           </div>
           {insufficient && (
-            <div className="text-[11px] text-rose-600 mt-1">{t("oblig_insufficient")}</div>
+            <div className="text-[11px] text-danger mt-1">{t("oblig_insufficient")}</div>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
           >
             {t("cancel")}
           </button>
@@ -583,7 +583,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             onClick={handleSubmit}
             disabled={submitting || invalidAmount || !accountId || insufficient}
             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-white ${
-              mode === "settle" ? "bg-rose-500 hover:bg-rose-600" : "bg-emerald-500 hover:bg-emerald-600"
+              mode === "settle" ? "bg-danger-soft0 hover:bg-rose-600" : "bg-success-soft0 hover:bg-emerald-600"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <CheckCircle2 className="w-3 h-3" />
@@ -597,9 +597,9 @@ function SettleObligationModal({ obligation, mode, onClose }) {
 
 function InfoPill({ label, value }) {
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5">
-      <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</div>
-      <div className="text-[12px] font-semibold text-slate-900">{value}</div>
+    <div className="bg-surface-soft border border-border-soft rounded-md px-2.5 py-1.5">
+      <div className="text-[9px] font-bold uppercase tracking-wider text-muted-soft">{label}</div>
+      <div className="text-[12px] font-semibold text-ink">{value}</div>
     </div>
   );
 }

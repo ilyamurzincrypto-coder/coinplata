@@ -188,31 +188,31 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-slate-900/30 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-ink/30 backdrop-blur-sm"
       onClick={() => setOpen(false)}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[580px] bg-white rounded-[14px] border border-slate-200 shadow-[0_20px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
+        className="w-full max-w-[580px] bg-white rounded-[14px] border border-border-soft shadow-[0_20px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-border-soft">
+          <Search className="w-4 h-4 text-muted-soft shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKey}
             placeholder={t("palette_search_ph")}
-            className="flex-1 bg-transparent outline-none text-[15px] text-slate-900 placeholder:text-slate-400"
+            className="flex-1 bg-transparent outline-none text-[15px] text-ink placeholder:text-muted-soft"
           />
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 text-[10px] font-bold tracking-wider">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-surface-sunk text-muted text-[10px] font-bold tracking-wider">
             ESC
           </kbd>
         </div>
 
         <div className="max-h-[50vh] overflow-auto py-1">
           {items.length === 0 ? (
-            <div className="px-5 py-8 text-center text-slate-400 text-[13px]">
+            <div className="px-5 py-8 text-center text-muted-soft text-[13px]">
               {t("palette_no_match")} “{query}”
             </div>
           ) : (
@@ -221,7 +221,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
               const baseIdx = items.slice(0, gi).reduce((s, x) => s + x.items.length, 0);
               return (
                 <div key={g.group}>
-                  <div className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  <div className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-soft">
                     {g.group}
                   </div>
                   {g.items.map((it, ii) => {
@@ -239,17 +239,17 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
                         onClick={() => handleSelect(it)}
                         onMouseEnter={() => setCursor(idx)}
                         className={`w-full flex items-center gap-3 px-4 py-2 text-left transition-colors ${
-                          active ? "bg-slate-900 text-white" : "hover:bg-slate-50 text-slate-800"
+                          active ? "bg-ink text-white" : "hover:bg-surface-soft text-ink"
                         }`}
                       >
                         <span
                           className={`inline-flex items-center justify-center w-7 h-7 rounded-[8px] shrink-0 ${
-                            active ? "bg-white/10" : "bg-slate-100"
+                            active ? "bg-white/10" : "bg-surface-sunk"
                           }`}
                         >
                           {IconFor && (
                             <IconFor
-                              className={`w-3.5 h-3.5 ${active ? "text-white" : "text-slate-500"}`}
+                              className={`w-3.5 h-3.5 ${active ? "text-white" : "text-muted"}`}
                             />
                           )}
                         </span>
@@ -258,7 +258,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
                           {it.sub && (
                             <div
                               className={`text-[11px] truncate ${
-                                active ? "text-white/70" : "text-slate-500"
+                                active ? "text-white/70" : "text-muted"
                               }`}
                             >
                               {it.sub}
@@ -275,19 +275,19 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-4 py-2 border-t border-border-soft flex items-center justify-between text-[11px] text-muted">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">↑↓</kbd>
+              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">↑↓</kbd>
               {t("palette_hint_navigate")}
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">↵</kbd>
+              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">↵</kbd>
               {t("palette_hint_select")}
             </span>
           </div>
-          <div className="text-slate-400">
-            <kbd className="px-1 py-0.5 rounded bg-slate-100 text-slate-600 text-[9px] font-bold">⌘K</kbd> · {t("palette_hint_toggle")}
+          <div className="text-muted-soft">
+            <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">⌘K</kbd> · {t("palette_hint_toggle")}
           </div>
         </div>
       </div>

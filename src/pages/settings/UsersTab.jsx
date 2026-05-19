@@ -35,9 +35,9 @@ import { loadPendingInvites } from "../../lib/supabaseReaders.js";
 import { onDataBump } from "../../lib/dataVersion.jsx";
 
 const STATUS_STYLE = {
-  active: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  invited: "bg-sky-50 text-sky-700 ring-sky-200",
-  disabled: "bg-slate-100 text-slate-500 ring-slate-200",
+  active: "bg-success-soft text-success ring-emerald-200",
+  invited: "bg-info-soft text-info ring-sky-200",
+  disabled: "bg-surface-sunk text-muted ring-border-soft",
 };
 
 // Стабильный формат "DD.MM.YY HH:MM" — независимо от browser locale.
@@ -67,10 +67,10 @@ function StatusBadge({ status }) {
       <span
         className={`w-1.5 h-1.5 rounded-full ${
           status === "active"
-            ? "bg-emerald-500"
+            ? "bg-success-soft0"
             : status === "invited"
-            ? "bg-sky-500 animate-pulse"
-            : "bg-slate-400"
+            ? "bg-info-soft0 animate-pulse"
+            : "bg-muted"
         }`}
       />
       {label}
@@ -82,12 +82,12 @@ function RoleBadge({ role }) {
   const meta = ROLES[role] || { label: role };
   const cls =
     role === "owner"
-      ? "bg-amber-50 text-amber-800"
+      ? "bg-warning-soft text-amber-800"
       : role === "admin"
-      ? "bg-indigo-50 text-indigo-800"
+      ? "bg-accent-bg text-indigo-800"
       : role === "accountant"
-      ? "bg-emerald-50 text-emerald-800"
-      : "bg-slate-100 text-slate-700";
+      ? "bg-success-soft text-emerald-800"
+      : "bg-surface-sunk text-ink-soft";
   const Icon = role === "owner" ? Crown : role === "admin" ? Shield : null;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${cls}`}>
@@ -429,11 +429,11 @@ export default function UsersTab() {
 
   return (
     <>
-      <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+      <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <UsersIcon className="w-4 h-4 text-slate-500" />
+          <UsersIcon className="w-4 h-4 text-muted" />
           <h3 className="text-[15px] font-semibold tracking-tight">{t("settings_users")}</h3>
-          <span className="text-[11px] text-slate-400">
+          <span className="text-[11px] text-muted-soft">
             · {counts.active} active · {counts.invited} invited · {counts.disabled} disabled
           </span>
         </div>
@@ -451,7 +451,7 @@ export default function UsersTab() {
           {canManage && (
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
               Invite user
@@ -464,13 +464,13 @@ export default function UsersTab() {
           не клацнут / OTP упал / юзер ещё не пришёл). Чтобы админ видел
           "висячие" приглашения и мог их пересоздать/отменить. */}
       {visiblePending.length > 0 && (
-        <div className="px-5 py-3 border-b border-slate-100 bg-amber-50/40">
+        <div className="px-5 py-3 border-b border-border-soft bg-warning-soft/40">
           <div className="flex items-center gap-2 mb-2">
-            <Mail className="w-3.5 h-3.5 text-amber-700" />
+            <Mail className="w-3.5 h-3.5 text-warning" />
             <span className="text-[11px] font-bold text-amber-900 tracking-[0.12em] uppercase">
               Pending invites · {visiblePending.length}
             </span>
-            <span className="text-[11px] text-amber-700">
+            <span className="text-[11px] text-warning">
               — magic-link отправлен, но юзер ещё не пришёл
             </span>
           </div>
@@ -480,15 +480,15 @@ export default function UsersTab() {
                 key={inv.email}
                 className="flex items-center gap-2 px-3 py-2 bg-white rounded-[10px] border border-amber-200 text-[12px]"
               >
-                <Mail className="w-3 h-3 text-amber-600 shrink-0" />
+                <Mail className="w-3 h-3 text-warning shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-900 truncate">
+                  <div className="font-semibold text-ink truncate">
                     {inv.fullName || inv.email}
-                    <span className="ml-1.5 text-[10px] font-normal text-slate-500">
+                    <span className="ml-1.5 text-[10px] font-normal text-muted">
                       {inv.email}
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
+                  <div className="text-[10px] text-muted mt-0.5">
                     {ROLES[inv.role]?.label || inv.role}
                     {inv.createdAt && (
                       <>
@@ -510,7 +510,7 @@ export default function UsersTab() {
                     </button>
                     <button
                       onClick={() => handleCancelInvite(inv)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-rose-700 hover:text-rose-900 hover:bg-rose-50 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-danger hover:text-rose-900 hover:bg-danger-soft transition-colors"
                       title="Удалить приглашение"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -526,7 +526,7 @@ export default function UsersTab() {
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
           <thead>
-            <tr className="text-left text-[10px] font-bold text-slate-500 tracking-[0.1em] uppercase border-b border-slate-100">
+            <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
               <th className="px-5 py-2.5 font-bold">Name</th>
               <th className="px-3 py-2.5 font-bold">Email</th>
               <th className="px-3 py-2.5 font-bold">Role</th>
@@ -541,7 +541,7 @@ export default function UsersTab() {
               const isDisabled = u.status === "disabled";
               const isInvited = u.status === "invited";
               return (
-                <tr key={u.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <tr key={u.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">
                       <div
@@ -552,28 +552,28 @@ export default function UsersTab() {
                             ? "bg-gradient-to-br from-indigo-500 to-indigo-700"
                             : u.role === "accountant"
                             ? "bg-gradient-to-br from-emerald-500 to-emerald-700"
-                            : "bg-gradient-to-br from-slate-700 to-slate-900"
+                            : "bg-gradient-to-br from-ink to-ink"
                         } ${isDisabled ? "opacity-50 grayscale" : ""}`}
                       >
                         {u.initials}
                       </div>
                       <div>
-                        <div className={`text-[13px] font-semibold ${isDisabled ? "text-slate-500" : "text-slate-900"}`}>
+                        <div className={`text-[13px] font-semibold ${isDisabled ? "text-muted" : "text-ink"}`}>
                           {u.name}
                           {isSelf && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-indigo-600">(you)</span>
+                            <span className="ml-1.5 text-[10px] font-semibold text-accent">(you)</span>
                           )}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3 text-slate-600">{u.email || "—"}</td>
+                  <td className="px-3 py-3 text-ink-soft">{u.email || "—"}</td>
                   <td className="px-3 py-3">
                     {canManage && !isDisabled && !isSelf ? (
                       <select
                         value={u.role}
                         onChange={(e) => handleRoleChange(u, e.target.value)}
-                        className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-[8px] px-2 py-1 text-[12px] font-semibold outline-none"
+                        className="bg-surface-soft border border-border-soft hover:border-border rounded-[8px] px-2 py-1 text-[12px] font-semibold outline-none"
                       >
                         {ROLE_IDS.map((r) => (
                           <option key={r} value={r} disabled={r === "owner" && !isOwner}>
@@ -590,7 +590,7 @@ export default function UsersTab() {
                       <select
                         value={u.officeId || ""}
                         onChange={(e) => handleOfficeChange(u, e.target.value)}
-                        className="bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none max-w-[150px]"
+                        className="bg-surface-soft border border-border-soft hover:border-border rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none max-w-[150px]"
                       >
                         <option value="">{t("user_office_global")}</option>
                         {activeOffices.map((o) => (
@@ -600,7 +600,7 @@ export default function UsersTab() {
                         ))}
                       </select>
                     ) : (
-                      <span className="text-[12px] text-slate-600">
+                      <span className="text-[12px] text-ink-soft">
                         {u.officeId
                           ? offices.find((o) => o.id === u.officeId)?.name || "—"
                           : t("user_office_global")}
@@ -615,7 +615,7 @@ export default function UsersTab() {
                       {canManage && isInvited && (
                         <button
                           onClick={() => setActivateFor(u)}
-                          className="text-[11px] font-semibold text-sky-700 hover:text-sky-900 hover:bg-sky-50 px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-info hover:text-sky-900 hover:bg-info-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Mock activate — set password for this invited user"
                         >
                           <Key className="w-3 h-3" />
@@ -625,7 +625,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && u.status !== "disabled" && (
                         <button
                           onClick={() => setChangePwFor(u)}
-                          className="text-[11px] font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Set a new password directly"
                         >
                           <Lock className="w-3 h-3" />
@@ -635,7 +635,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && u.status === "active" && (
                         <button
                           onClick={() => handleResetPassword(u)}
-                          className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Invalidate password, send a fresh invite link"
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -645,7 +645,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && !isDisabled && (
                         <button
                           onClick={() => handleDisable(u)}
-                          className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-danger hover:text-rose-800 hover:bg-danger-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                         >
                           <Power className="w-3 h-3" />
                           Disable
@@ -654,7 +654,7 @@ export default function UsersTab() {
                       {canManage && isDisabled && (
                         <button
                           onClick={() => handleEnable(u)}
-                          className="text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-[11px] font-semibold text-success hover:text-emerald-900 hover:bg-success-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                         >
                           <RotateCcw className="w-3 h-3" />
                           Enable
@@ -667,7 +667,7 @@ export default function UsersTab() {
             })}
             {visibleUsers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-muted-soft">
                   No users match this filter
                 </td>
               </tr>
@@ -680,8 +680,8 @@ export default function UsersTab() {
         <div
           className={`px-5 py-2.5 text-[12px] font-medium border-t ${
             toast.tone === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : "bg-rose-50 text-rose-800 border-rose-200"
+              ? "bg-success-soft text-emerald-800 border-emerald-200"
+              : "bg-danger-soft text-rose-800 border-rose-200"
           }`}
         >
           {toast.msg}
@@ -765,12 +765,12 @@ function DirectPasswordModal({ user, onClose, onSave }) {
       width="md"
     >
       <div className="p-5 space-y-3">
-        <div className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+        <div className="text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Direct change — user's status stays as-is (active → active, invited → active).
           No invite email, no token. Current password is NOT shown.
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             New password
           </label>
           <input
@@ -779,11 +779,11 @@ function DirectPasswordModal({ user, onClose, onSave }) {
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
             autoComplete="new-password"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Confirm password
           </label>
           <input
@@ -791,19 +791,19 @@ function DirectPasswordModal({ user, onClose, onSave }) {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
             {error}
           </div>
         )}
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
@@ -812,8 +812,8 @@ function DirectPasswordModal({ user, onClose, onSave }) {
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
             canSubmit
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {saving ? "Saving…" : "Save"}
@@ -904,7 +904,7 @@ function CreateUserModal({ open, onClose, onCreated }) {
     <Modal open={open} onClose={onClose} title={t("invite_user_title")} width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             <UserIcon className="w-3 h-3 inline mr-1" /> {t("invite_field_name")}
           </label>
           <input
@@ -913,11 +913,11 @@ function CreateUserModal({ open, onClose, onCreated }) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder={t("invite_placeholder_name")}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("invite_field_email")}
           </label>
           <input
@@ -925,14 +925,14 @@ function CreateUserModal({ open, onClose, onCreated }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("invite_placeholder_email")}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("invite_field_role")}
           </label>
-          <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap">
+          <div className="inline-flex bg-surface-sunk p-1 rounded-[10px] gap-0.5 flex-wrap">
             {ROLE_IDS.map((r) => {
               const disabled = r === "owner" && !isOwner;
               return (
@@ -943,10 +943,10 @@ function CreateUserModal({ open, onClose, onCreated }) {
                   onClick={() => setRole(r)}
                   className={`px-3 py-1.5 text-[12px] font-semibold rounded-[8px] transition-all ${
                     role === r
-                      ? "bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm"
+                      ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
                       : disabled
-                      ? "text-slate-300 cursor-not-allowed"
-                      : "text-slate-500 hover:text-slate-900"
+                      ? "text-muted-soft cursor-not-allowed"
+                      : "text-muted hover:text-ink"
                   }`}
                 >
                   {ROLES[r].label}
@@ -955,18 +955,18 @@ function CreateUserModal({ open, onClose, onCreated }) {
             })}
           </div>
           {!isOwner && (
-            <p className="text-[10px] text-slate-500 mt-1">{t("invite_owner_only_hint")}</p>
+            <p className="text-[10px] text-muted mt-1">{t("invite_owner_only_hint")}</p>
           )}
         </div>
-        <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           {isSupabaseConfigured ? t("invite_info_hint") : t("invite_info_demo")}
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
           disabled={sending}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           {t("cancel")}
         </button>
@@ -975,8 +975,8 @@ function CreateUserModal({ open, onClose, onCreated }) {
           disabled={!name.trim() || sending}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
             name.trim() && !sending
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {sending ? t("invite_sending") : t("invite_send")}
@@ -1011,36 +1011,36 @@ function InviteTokenModal({ data, onClose }) {
       width="md"
     >
       <div className="p-5">
-        <div className="text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+        <div className="text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
           {t("invite_link_label")}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-slate-900 text-emerald-400 font-mono text-[12px] px-3 py-2.5 rounded-[10px] break-all select-all">
+          <div className="flex-1 bg-ink text-success font-mono text-[12px] px-3 py-2.5 rounded-[10px] break-all select-all">
             {fakeLink}
           </div>
           <button
             onClick={copy}
             className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-[10px] text-[13px] font-semibold transition-colors ${
-              copied ? "bg-emerald-500 text-white" : "bg-slate-900 text-white hover:bg-slate-800"
+              copied ? "bg-success-soft0 text-white" : "bg-ink text-white hover:bg-ink"
             }`}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             {copied ? t("btn_copied") : t("btn_copy")}
           </button>
         </div>
-        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-[10px] text-[12px] text-amber-900">
+        <div className="mt-3 p-3 bg-warning-soft border border-amber-200 rounded-[10px] text-[12px] text-amber-900">
           {t("invite_link_warn")}
           {isReset && ` ${t("invite_reset_warn_extra")}`}
         </div>
-        <div className="mt-3 text-[11px] text-slate-500">
+        <div className="mt-3 text-[11px] text-muted">
           Mock: in production, this link is sent to {data.user.email || "the user's email"}.
           For the demo, use the "Activate" action on this user to set a password.
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
         >
           Done
         </button>
@@ -1095,14 +1095,14 @@ function ActivateUserModal({ user, onClose, onActivate }) {
       width="md"
     >
       <div className="p-5 space-y-3">
-        <div className="text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+        <div className="text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Mock invite token:{" "}
-          <span className="font-mono text-[10px] bg-slate-900 text-emerald-400 px-1 rounded">
+          <span className="font-mono text-[10px] bg-ink text-success px-1 rounded">
             {user.inviteToken ? `${user.inviteToken.slice(0, 8)}…` : "—"}
           </span>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             New password
           </label>
           <input
@@ -1110,36 +1110,36 @@ function ActivateUserModal({ user, onClose, onActivate }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Confirm password
           </label>
           <input
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-[12px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2 inline-flex items-center gap-1">
+          <div className="text-[12px] font-medium text-success bg-success-soft border border-emerald-200 rounded-md px-3 py-2 inline-flex items-center gap-1">
             <Check className="w-3.5 h-3.5" />
             Activated
           </div>
         )}
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
@@ -1148,8 +1148,8 @@ function ActivateUserModal({ user, onClose, onActivate }) {
           disabled={!password || !confirm || success}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
             password && confirm && !success
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           Activate

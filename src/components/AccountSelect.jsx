@@ -117,26 +117,26 @@ export default function AccountSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full bg-slate-50 border rounded-[10px] px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
+        className={`w-full bg-surface-soft border rounded-[10px] px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
           open
-            ? "border-slate-400 bg-white ring-2 ring-slate-900/10"
-            : "border-slate-200 hover:border-slate-300"
+            ? "border-accent/40 bg-white ring-2 ring-accent/20"
+            : "border-border-soft hover:border-border"
         }`}
       >
         {selected ? (
           <>
             <span className="text-[15px]">{TYPE_ICONS[selected.type] || "•"}</span>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-slate-900 truncate flex items-center gap-1.5">
+              <div className="text-[13px] font-semibold text-ink truncate flex items-center gap-1.5">
                 {selected.name}
                 {isInteroffice && (
-                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 ring-1 ring-amber-200">
+                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-warning-soft text-amber-800 ring-1 ring-amber-200">
                     <ArrowLeftRight className="w-2 h-2" />
                     {t("acsel_interoffice_badge")}
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+              <div className="text-[10px] text-muted font-medium uppercase tracking-wider">
                 {selected.currency} · {selected.type}
                 {isInteroffice && ` · ${officeName(selected.officeId)}`}
               </div>
@@ -144,12 +144,12 @@ export default function AccountSelect({
           </>
         ) : (
           <>
-            <Wallet className="w-3.5 h-3.5 text-slate-400" />
-            <span className="flex-1 text-[13px] text-slate-400">{placeholderText}</span>
+            <Wallet className="w-3.5 h-3.5 text-muted-soft" />
+            <span className="flex-1 text-[13px] text-muted-soft">{placeholderText}</span>
           </>
         )}
         <ChevronDown
-          className={`w-3.5 h-3.5 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`w-3.5 h-3.5 text-muted-soft transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
 
@@ -161,7 +161,7 @@ export default function AccountSelect({
             e.stopPropagation();
             onChange("");
           }}
-          className="absolute top-1/2 right-8 -translate-y-1/2 p-0.5 rounded hover:bg-slate-200 text-slate-400 hover:text-slate-700"
+          className="absolute top-1/2 right-8 -translate-y-1/2 p-0.5 rounded hover:bg-surface-sunk text-muted-soft hover:text-ink-soft"
           title={t("acsel_clear")}
         >
           <X className="w-3 h-3" />
@@ -170,7 +170,7 @@ export default function AccountSelect({
 
       {/* Interoffice hint below trigger */}
       {isInteroffice && !open && (
-        <div className="mt-1 text-[10px] font-medium text-amber-800 bg-amber-50/80 border border-amber-200 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+        <div className="mt-1 text-[10px] font-medium text-amber-800 bg-warning-soft/80 border border-amber-200 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
           <ArrowLeftRight className="w-2.5 h-2.5" />
           {t("acsel_interoffice_hint").replace("{office}", officeName(selected.officeId))}
         </div>
@@ -179,35 +179,35 @@ export default function AccountSelect({
       {/* Dropdown */}
       {/** renders further down */}
       {open && (
-        <div className="absolute z-40 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-[12px] shadow-xl shadow-slate-900/10 overflow-hidden">
+        <div className="absolute z-40 top-full left-0 right-0 mt-1 bg-white border border-border-soft rounded-[12px] shadow-xl shadow-soft overflow-hidden">
           {/* Search */}
-          <div className="p-2 border-b border-slate-100 relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="p-2 border-b border-border-soft relative">
+            <Search className="w-3.5 h-3.5 text-muted-soft absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               ref={inputRef}
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("acsel_search_placeholder")}
-              className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-300 rounded-[8px] text-[12px] outline-none placeholder:text-slate-400"
+              className="w-full pl-7 pr-2 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[12px] outline-none placeholder:text-muted-soft"
             />
           </div>
 
           {/* List */}
           <div className="max-h-72 overflow-auto py-1">
             {filtered.length === 0 && (
-              <div className="px-3 py-4 text-center text-[12px] text-slate-400">
+              <div className="px-3 py-4 text-center text-[12px] text-muted-soft">
                 {t("acsel_no_match")}
               </div>
             )}
             {sections.map((section) => (
               <div key={section.id}>
                 {section.label && (
-                  <div className="px-3 pt-2 pb-1 text-[9px] font-bold text-slate-500 tracking-widest uppercase bg-slate-50/60 border-y border-slate-100 flex items-center gap-1">
+                  <div className="px-3 pt-2 pb-1 text-[9px] font-bold text-muted tracking-widest uppercase bg-surface-soft/60 border-y border-border-soft flex items-center gap-1">
                     {section.id === "__others__" ? (
-                      <ArrowLeftRight className="w-2.5 h-2.5 text-amber-600" />
+                      <ArrowLeftRight className="w-2.5 h-2.5 text-warning" />
                     ) : (
-                      <Building2 className="w-2.5 h-2.5 text-slate-400" />
+                      <Building2 className="w-2.5 h-2.5 text-muted-soft" />
                     )}
                     {section.label}
                   </div>
@@ -224,8 +224,8 @@ export default function AccountSelect({
                 {section.groups &&
                   section.groups.map((g) => (
                     <div key={g.officeId}>
-                      <div className="pl-5 pr-3 pt-1 pb-0.5 text-[10px] font-semibold text-slate-600 flex items-center gap-1">
-                        <Building2 className="w-2.5 h-2.5 text-slate-400" />
+                      <div className="pl-5 pr-3 pt-1 pb-0.5 text-[10px] font-semibold text-ink-soft flex items-center gap-1">
+                        <Building2 className="w-2.5 h-2.5 text-muted-soft" />
                         {g.officeName}
                       </div>
                       {g.accounts.map((a) => (
@@ -254,13 +254,13 @@ function AccountOption({ account: a, isActive, onPick, indent }) {
       type="button"
       onClick={() => onPick(a.id)}
       className={`w-full px-3 py-2 flex items-center gap-2 text-left transition-colors ${indent ? "pl-6" : ""} ${
-        isActive ? "bg-slate-900 text-white" : "hover:bg-slate-50 text-slate-900"
+        isActive ? "bg-ink text-white" : "hover:bg-surface-soft text-ink"
       }`}
     >
       <span className="text-[14px]">{TYPE_ICONS[a.type] || "•"}</span>
       <div className="flex-1 min-w-0">
         <div className="text-[13px] font-semibold truncate">{a.name}</div>
-        <div className={`text-[10px] font-medium uppercase tracking-wider ${isActive ? "text-slate-300" : "text-slate-500"}`}>
+        <div className={`text-[10px] font-medium uppercase tracking-wider ${isActive ? "text-muted-soft" : "text-muted"}`}>
           {a.currency} · {a.type}
         </div>
       </div>

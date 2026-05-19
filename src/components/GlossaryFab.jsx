@@ -81,7 +81,7 @@ export default function GlossaryFab({ onOpenInfo = null }) {
       type="button"
       onClick={() => setOpen((v) => !v)}
       title="Глоссарий — поиск по терминам (горячая клавиша ?)"
-      className="fixed bottom-4 right-4 z-[900] w-11 h-11 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),0_2px_4px_rgba(15,23,42,0.1)] flex items-center justify-center transition-all hover:scale-105 active:scale-95 print:hidden"
+      className="fixed bottom-4 right-4 z-[900] w-11 h-11 rounded-full bg-ink text-white hover:bg-ink shadow-[0_8px_24px_-6px_rgba(15,23,42,0.4),0_2px_4px_rgba(15,23,42,0.1)] flex items-center justify-center transition-all hover:scale-105 active:scale-95 print:hidden"
     >
       <HelpCircle className="w-5 h-5" strokeWidth={2.5} />
     </button>
@@ -94,24 +94,24 @@ export default function GlossaryFab({ onOpenInfo = null }) {
       {createPortal(fab, document.body)}
       {open && createPortal(
         <div
-          className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-end sm:justify-end p-3 sm:p-6 bg-slate-900/30 backdrop-blur-[1px]"
+          className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-end sm:justify-end p-3 sm:p-6 bg-ink/30 backdrop-blur-[1px]"
           onClick={() => { setOpen(false); setQuery(""); }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-[16px] w-full sm:w-[420px] max-h-[80vh] flex flex-col shadow-[0_20px_60px_-10px_rgba(15,23,42,0.4)] border border-slate-200"
+            className="bg-white rounded-[16px] w-full sm:w-[420px] max-h-[80vh] flex flex-col shadow-[0_20px_60px_-10px_rgba(15,23,42,0.4)] border border-border-soft"
           >
-            <header className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-slate-500 shrink-0" />
-              <h3 className="text-[14px] font-bold text-slate-900 flex-1">Глоссарий</h3>
-              <span className="hidden sm:inline-flex items-center text-[10px] font-medium text-slate-400">
-                <kbd className="px-1 py-0.5 rounded border border-slate-200 bg-slate-50 text-slate-600 mr-1">?</kbd>
+            <header className="px-4 py-3 border-b border-border-soft flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-muted shrink-0" />
+              <h3 className="text-[14px] font-bold text-ink flex-1">Глоссарий</h3>
+              <span className="hidden sm:inline-flex items-center text-[10px] font-medium text-muted-soft">
+                <kbd className="px-1 py-0.5 rounded border border-border-soft bg-surface-soft text-ink-soft mr-1">?</kbd>
                 открыть
               </span>
               <button
                 type="button"
                 onClick={() => { setOpen(false); setQuery(""); }}
-                className="p-1 rounded-[6px] text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                className="p-1 rounded-[6px] text-muted-soft hover:text-ink hover:bg-surface-sunk"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -119,35 +119,35 @@ export default function GlossaryFab({ onOpenInfo = null }) {
 
             <div className="px-3 pt-3 pb-1">
               <div className="relative">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-muted-soft absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   ref={inputRef}
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Двойная запись, ledger, субконто…"
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-100 rounded-[10px] pl-8 pr-3 py-2 text-[13px] outline-none transition-all"
+                  className="w-full bg-surface-soft border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-[10px] pl-8 pr-3 py-2 text-[13px] outline-none transition-all"
                 />
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-3 pb-3 pt-1 space-y-1.5">
               {results.length === 0 ? (
-                <div className="text-center py-10 text-[12.5px] text-slate-400">
+                <div className="text-center py-10 text-[12.5px] text-muted-soft">
                   По запросу «{query}» ничего не нашлось
                 </div>
               ) : (
                 results.map((t, i) => (
                   <div
                     key={`${t.primary}_${i}`}
-                    className="rounded-[10px] border border-slate-100 bg-slate-50/60 px-3 py-2"
+                    className="rounded-[10px] border border-border-soft bg-surface-soft/60 px-3 py-2"
                   >
                     <div className="flex items-baseline gap-2 flex-wrap">
-                      <span className="text-[12.5px] font-bold text-slate-900">
+                      <span className="text-[12.5px] font-bold text-ink">
                         <Highlight text={t.primary} query={query} />
                       </span>
                       {t.aliases.length > 0 && (
-                        <span className="text-[10.5px] text-slate-400 font-medium">
+                        <span className="text-[10.5px] text-muted-soft font-medium">
                           (
                           {t.aliases.map((a, k) => (
                             <React.Fragment key={k}>
@@ -160,7 +160,7 @@ export default function GlossaryFab({ onOpenInfo = null }) {
                       )}
                     </div>
                     {t.definition && (
-                      <div className="text-[11.5px] text-slate-600 mt-1 leading-snug">
+                      <div className="text-[11.5px] text-ink-soft mt-1 leading-snug">
                         <Highlight text={t.definition} query={query} />
                       </div>
                     )}
@@ -169,15 +169,15 @@ export default function GlossaryFab({ onOpenInfo = null }) {
               )}
             </div>
 
-            <footer className="px-3 py-2 border-t border-slate-100 flex items-center gap-2 bg-slate-50/40">
-              <span className="text-[11px] text-slate-500">
+            <footer className="px-3 py-2 border-t border-border-soft flex items-center gap-2 bg-surface-soft/40">
+              <span className="text-[11px] text-muted">
                 {GLOSSARY_TERMS.length} {GLOSSARY_TERMS.length === 1 ? "термин" : GLOSSARY_TERMS.length < 5 ? "термина" : "терминов"}
               </span>
               {onOpenInfo && (
                 <button
                   type="button"
                   onClick={() => { setOpen(false); setQuery(""); onOpenInfo(); }}
-                  className="ml-auto inline-flex items-center gap-1 text-[11.5px] font-semibold text-indigo-600 hover:text-indigo-700"
+                  className="ml-auto inline-flex items-center gap-1 text-[11.5px] font-semibold text-accent hover:text-accent"
                 >
                   Полная справка
                   <ArrowUpRight className="w-3 h-3" />

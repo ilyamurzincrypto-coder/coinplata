@@ -53,7 +53,7 @@ export default function StickyTitle({
 
   return (
     <header
-      className="sticky top-0 z-30 flex items-center gap-3 px-4 bg-white border-b border-slate-200/70"
+      className="sticky top-0 z-30 flex items-center gap-3 px-4 bg-white border-b border-border-soft"
       style={{ height: "var(--title-bar-height)" }}
     >
       {/* Title */}
@@ -72,7 +72,7 @@ export default function StickyTitle({
           options={officeOptions}
           compact
           icon={
-            <span className="text-label tracking-[0.08em] text-slate-500">
+            <span className="text-label tracking-[0.08em] text-muted">
               OFFICE
             </span>
           }
@@ -86,7 +86,7 @@ export default function StickyTitle({
             // c trigger по клику. Здесь вместо отдельного state делаем
             // компонентный обёртку.
           }}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-cell)] border border-slate-200 hover:border-slate-300 bg-white text-value transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-cell)] border border-border-soft hover:border-border bg-white text-value transition-colors"
           title={selectedManager?.name || ""}
         >
           <Avatar
@@ -97,14 +97,14 @@ export default function StickyTitle({
           <span className="hidden sm:inline truncate max-w-[140px]">
             {selectedManager?.name || t("loading")}
           </span>
-          <ChevronDown className="w-3 h-3 text-slate-400" />
+          <ChevronDown className="w-3 h-3 text-muted-soft" />
         </button>
 
         {/* Close X */}
         <button
           type="button"
           onClick={handleClose}
-          className="inline-flex items-center justify-center w-8 h-8 rounded-[var(--radius-cell)] text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-[var(--radius-cell)] text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
           aria-label={t("close")}
           title={t("close")}
         >

@@ -88,10 +88,10 @@ export default function DealLegsTable({
   }, [inLegs]);
 
   return (
-    <div className="border-t border-slate-200">
+    <div className="border-t border-border-soft">
       {/* Header */}
       <div
-        className="grid items-center px-3 py-2 bg-slate-50/60 border-b border-slate-200 text-label"
+        className="grid items-center px-3 py-2 bg-surface-soft/60 border-b border-border-soft text-label"
         style={{
           gridTemplateColumns: "70px 90px 1fr 110px 120px 1.4fr 32px",
           gap: "8px",
@@ -136,11 +136,11 @@ export default function DealLegsTable({
       </div>
 
       {/* Add buttons */}
-      <div className="px-3 py-2.5 flex items-center gap-2 border-t border-slate-100 bg-slate-50/30">
+      <div className="px-3 py-2.5 flex items-center gap-2 border-t border-border-soft bg-surface-soft/30">
         <button
           type="button"
           onClick={() => onAddLeg("in")}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-[11px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-success-soft hover:bg-emerald-100 border border-emerald-200 text-success text-[11px] font-bold uppercase tracking-wider"
         >
           <Plus className="w-3 h-3" />
           <ArrowDownLeft className="w-3 h-3" />
@@ -149,7 +149,7 @@ export default function DealLegsTable({
         <button
           type="button"
           onClick={() => onAddLeg("out")}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-danger-soft hover:bg-rose-100 border border-rose-200 text-danger text-[11px] font-bold uppercase tracking-wider"
         >
           <Plus className="w-3 h-3" />
           <ArrowUpRight className="w-3 h-3" />

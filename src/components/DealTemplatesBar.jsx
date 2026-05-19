@@ -27,8 +27,8 @@ export default function DealTemplatesBar({ onApply, currentFrom, currentTo }) {
   return (
     <div className="px-5 pt-3 pb-1">
       <div className="flex items-center gap-1.5 flex-wrap">
-        <div className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 mr-1">
-          <Zap className="w-3 h-3 text-amber-500" />
+        <div className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted mr-1">
+          <Zap className="w-3 h-3 text-warning" />
           {t("templates_quick")}
         </div>
         {templates.map((tpl) => {
@@ -40,8 +40,8 @@ export default function DealTemplatesBar({ onApply, currentFrom, currentTo }) {
               onClick={() => onApply?.(tpl)}
               className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold transition-colors border ${
                 active
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                  ? "bg-ink text-white border-ink"
+                  : "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft"
               }`}
               title={tpl.count > 0 ? t("templates_used_x").replace("{n}", tpl.count) : t("templates_suggested")}
             >
@@ -49,7 +49,7 @@ export default function DealTemplatesBar({ onApply, currentFrom, currentTo }) {
               <ArrowRight className="w-2.5 h-2.5 opacity-60" />
               <span className="tabular-nums">{tpl.to}</span>
               {tpl.count > 0 && (
-                <span className={`text-[9px] font-bold ${active ? "text-white/70" : "text-slate-400"}`}>
+                <span className={`text-[9px] font-bold ${active ? "text-white/70" : "text-muted-soft"}`}>
                   ×{tpl.count}
                 </span>
               )}

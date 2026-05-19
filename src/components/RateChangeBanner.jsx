@@ -110,47 +110,47 @@ export default function RateChangeBanner() {
   if (changes.length === 0) return null;
 
   return (
-    <div className="sticky top-0 z-30 bg-amber-50 border-b border-amber-200 shadow-[0_2px_8px_-4px_rgba(245,158,11,0.25)] animate-[slideDown_180ms_ease-out]">
+    <div className="sticky top-0 z-30 bg-warning-soft border-b border-amber-200 shadow-[0_2px_8px_-4px_rgba(245,158,11,0.25)] animate-[slideDown_180ms_ease-out]">
       <div className="max-w-[1400px] mx-auto px-6 py-2.5 flex items-center gap-3 flex-wrap">
-        <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-500 text-white shrink-0 relative">
+        <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-warning-soft0 text-white shrink-0 relative">
           <TrendingUp className="w-3.5 h-3.5" />
-          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-danger-soft0 animate-pulse" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[12px] font-bold text-amber-900 uppercase tracking-[0.1em]">
             Rates changed
             {changes.length > 1 && (
-              <span className="ml-1.5 text-[10px] text-amber-700 normal-case tracking-normal">
+              <span className="ml-1.5 text-[10px] text-warning normal-case tracking-normal">
                 · {changes.length} updates
               </span>
             )}
           </div>
           <div className="flex items-center gap-x-4 gap-y-0.5 flex-wrap mt-0.5">
             {changes.slice(0, 6).map((c) => (
-              <span key={c.id} className="text-[12px] text-slate-700 inline-flex items-center gap-1">
+              <span key={c.id} className="text-[12px] text-ink-soft inline-flex items-center gap-1">
                 <span className="font-semibold">{c.from}</span>
-                <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
+                <ArrowRight className="w-2.5 h-2.5 text-muted-soft" />
                 <span className="font-semibold">{c.to}</span>
-                <span className="text-slate-400">:</span>
+                <span className="text-muted-soft">:</span>
                 {c.oldRate != null && (
                   <>
-                    <span className="line-through text-slate-400 tabular-nums">
+                    <span className="line-through text-muted-soft tabular-nums">
                       {formatRate(c.oldRate)}
                     </span>
-                    <span className="text-slate-400">→</span>
+                    <span className="text-muted-soft">→</span>
                   </>
                 )}
-                <span className="font-bold text-slate-900 tabular-nums">
+                <span className="font-bold text-ink tabular-nums">
                   {formatRate(c.newRate)}
                 </span>
-                <span className="text-[10px] text-slate-500">by {c.byName}</span>
-                <span className="text-[10px] text-slate-400 tabular-nums">
+                <span className="text-[10px] text-muted">by {c.byName}</span>
+                <span className="text-[10px] text-muted-soft tabular-nums">
                   {formatTime(c.at)}
                 </span>
               </span>
             ))}
             {changes.length > 6 && (
-              <span className="text-[11px] text-slate-500 italic">
+              <span className="text-[11px] text-muted italic">
                 +{changes.length - 6} more
               </span>
             )}
@@ -158,7 +158,7 @@ export default function RateChangeBanner() {
         </div>
         <button
           onClick={() => setChanges([])}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors shrink-0"
         >
           <Check className="w-3 h-3" />
           Acknowledge

@@ -73,15 +73,15 @@ export function tooltipFor(updatedAt) {
 }
 
 const TONE_BG = {
-  fresh:    "bg-emerald-500",
-  stale:    "bg-amber-500",
-  outdated: "bg-rose-500",
+  fresh:    "bg-success-soft0",
+  stale:    "bg-warning-soft0",
+  outdated: "bg-danger-soft0",
 };
 
 const TONE_TEXT = {
-  fresh:    "text-emerald-700",
-  stale:    "text-amber-700",
-  outdated: "text-rose-700",
+  fresh:    "text-success",
+  stale:    "text-warning",
+  outdated: "text-danger",
 };
 
 const TONE_RING = {
@@ -130,9 +130,9 @@ export function FreshnessDot({ updatedAt, showLabel = false, size = "sm" }) {
 export function FreshnessChip({ updatedAt }) {
   const { state, ageMs } = freshnessOf(updatedAt);
   const cls = {
-    fresh:    "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    stale:    "bg-amber-50 text-amber-700 ring-amber-200",
-    outdated: "bg-rose-50 text-rose-700 ring-rose-200",
+    fresh:    "bg-success-soft text-success ring-emerald-200",
+    stale:    "bg-warning-soft text-warning ring-amber-200",
+    outdated: "bg-danger-soft text-danger ring-rose-200",
   }[state];
   return (
     <span

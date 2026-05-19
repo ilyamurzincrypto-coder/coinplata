@@ -7,19 +7,19 @@ import { Check } from "lucide-react";
 
 const STYLES = {
   default: {
-    bg: "bg-slate-100 hover:bg-slate-200",
-    text: "text-slate-600",
-    border: "border-slate-200",
+    bg: "bg-surface-sunk hover:bg-surface-sunk",
+    text: "text-ink-soft",
+    border: "border-border-soft",
   },
   active: {
-    bg: "bg-indigo-50 hover:bg-indigo-100",
-    text: "text-indigo-700",
+    bg: "bg-accent-bg hover:bg-indigo-100",
+    text: "text-accent",
     border: "border-indigo-300",
   },
   disabled: {
-    bg: "bg-slate-50",
-    text: "text-slate-300",
-    border: "border-slate-100",
+    bg: "bg-surface-soft",
+    text: "text-muted-soft",
+    border: "border-border-soft",
   },
 };
 

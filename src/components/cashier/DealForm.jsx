@@ -288,7 +288,7 @@ export default function DealForm({
 
   return (
     <div className="flex gap-3 items-start">
-    <div className="bg-white rounded-[var(--radius-section)] border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 min-w-0">
+    <div className="bg-white rounded-[var(--radius-section)] border border-border-soft shadow-sm overflow-hidden flex flex-col flex-1 min-w-0">
       <StickyTitle
         mode={mode}
         dealId={dealId}
@@ -301,7 +301,7 @@ export default function DealForm({
       />
 
       {draftPrompt && (
-        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center justify-between gap-3">
+        <div className="px-4 py-2.5 bg-warning-soft border-b border-amber-200 flex items-center justify-between gap-3">
           <span className="text-[12px] text-amber-900">
             Найден сохранённый черновик ({draftPrompt.legs.length} ноги). Восстановить?
           </span>

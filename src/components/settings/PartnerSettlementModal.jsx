@@ -123,7 +123,7 @@ export default function PartnerSettlementModal({
   return (
     <Modal open={!!open} onClose={handleClose} title={title} subtitle={subtitle} width="md">
       {USE_NEW_LEDGER && (
-        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-amber-50 border border-amber-200 text-[12.5px] text-amber-900">
+        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-warning-soft border border-amber-200 text-[12.5px] text-amber-900">
           <span className="font-semibold">Partner-движения отключены в режиме v2 ledger.</span>{" "}
           v2 recordPartnerInflow/Outflow ещё не реализованы. Попроси админа выключить{" "}
           <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
@@ -138,11 +138,11 @@ export default function PartnerSettlementModal({
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
             Сумма
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[12px] font-bold">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft text-[12px] font-bold">
               {curSymbol(ccy)}
             </span>
             <input
@@ -152,25 +152,25 @@ export default function PartnerSettlementModal({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
               autoFocus
-              className="w-full pl-8 pr-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] text-[14px] tabular-nums outline-none"
+              className="w-full pl-8 pr-3 py-2.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] text-[14px] tabular-nums outline-none"
             />
           </div>
         </div>
 
         {!isInflow && (
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
               С какой кассы выдаём ({ccy})
             </label>
             {eligibleAccounts.length === 0 ? (
-              <div className="text-[12px] text-rose-700 bg-rose-50 border border-rose-200 rounded-[8px] px-3 py-2">
+              <div className="text-[12px] text-danger bg-danger-soft border border-rose-200 rounded-[8px] px-3 py-2">
                 Нет активных счетов в {ccy}. Создай счёт в нужной валюте.
               </div>
             ) : (
               <select
                 value={fromAccountId}
                 onChange={(e) => setFromAccountId(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
               >
                 <option value="">— выбери счёт —</option>
                 {eligibleAccounts.map((a) => (
@@ -184,7 +184,7 @@ export default function PartnerSettlementModal({
         )}
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
             Комментарий (опционально)
           </label>
           <input
@@ -192,16 +192,16 @@ export default function PartnerSettlementModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={isInflow ? "Коротко зачем" : "Например: вернул долг кешем"}
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
           />
         </div>
       </div>
 
-      <div className="px-5 py-3.5 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-3.5 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={handleClose}
           disabled={busy}
-          className="px-3 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[12.5px] font-semibold hover:bg-slate-200"
+          className="px-3 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[12.5px] font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>

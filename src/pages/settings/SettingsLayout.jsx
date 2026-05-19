@@ -44,21 +44,21 @@ export default function SettingsLayout({ onOpenHelp = null }) {
               type="button"
               onClick={() => onOpenHelp({ sectionId: "settings", subId: active })}
               title="Справка по разделу «Настройки»"
-              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-soft hover:text-ink-soft hover:bg-surface-sunk transition-colors"
             >
               <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
             </button>
           )}
         </div>
-        <p className="text-[13px] text-slate-500 mt-1">
+        <p className="text-[13px] text-muted mt-1">
           {t("logged_in_as")}{" "}
-          <span className="font-semibold text-slate-900">{currentUser.name}</span>
+          <span className="font-semibold text-ink">{currentUser.name}</span>
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5 items-start">
         {/* Sidebar */}
-        <nav className="bg-white border border-slate-200/70 rounded-[12px] p-1.5 md:sticky md:top-[76px]">
+        <nav className="bg-white border border-border-soft rounded-[12px] p-1.5 md:sticky md:top-[76px]">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
@@ -68,11 +68,11 @@ export default function SettingsLayout({ onOpenHelp = null }) {
                 onClick={() => setActive(tab.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13px] text-left transition-colors ${
                   isActive
-                    ? "bg-slate-100 text-slate-900 font-semibold"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-surface-sunk text-ink font-semibold"
+                    : "text-ink-soft hover:bg-surface-soft hover:text-ink"
                 }`}
               >
-                <Icon className={`w-4 h-4 ${isActive ? "text-slate-900" : "text-slate-400"}`} />
+                <Icon className={`w-4 h-4 ${isActive ? "text-ink" : "text-muted-soft"}`} />
                 {tab.label || t(tab.labelKey)}
               </button>
             );
@@ -80,7 +80,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
         </nav>
 
         {/* Content */}
-        <div className="bg-white border border-slate-200/70 rounded-[14px] overflow-hidden">
+        <div className="bg-white border border-border-soft rounded-[14px] overflow-hidden">
           <ActiveComponent />
         </div>
       </div>

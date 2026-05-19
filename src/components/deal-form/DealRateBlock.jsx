@@ -86,7 +86,7 @@ export default function DealRateBlock({
           </button>
         )}
         {hasMargin && !warning && (
-          <div className={`text-tiny font-mono tabular font-bold ${marginPositive ? "text-accent-glow" : "text-rose-400"}`}>
+          <div className={`text-tiny font-mono tabular font-bold ${marginPositive ? "text-accent-glow" : "text-danger"}`}>
             {marginPositive ? "+" : "−"}${Math.abs(marginUsd).toFixed(2)}
             {Number.isFinite(spreadPct) && spreadPct !== 0 && (
               <span className="text-white/40 font-normal ml-1">· {(spreadPct * 100).toFixed(2)}%</span>

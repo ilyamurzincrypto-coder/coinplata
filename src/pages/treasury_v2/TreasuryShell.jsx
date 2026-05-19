@@ -96,7 +96,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
   const openSource = (tx) => setSelectedTx(txNodeById.get(tx?.id) || null);
 
   if (loading) {
-    return <main className="max-w-[1300px] mx-auto px-6 py-10 text-center text-slate-400">{t("trv2_loading")}</main>;
+    return <main className="max-w-[1300px] mx-auto px-6 py-10 text-center text-muted-soft">{t("trv2_loading")}</main>;
   }
 
   return (
@@ -110,7 +110,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
                 type="button"
                 onClick={() => onOpenHelp({ sectionId: "treasury", subId: activeTab })}
                 title={`Справка по разделу «${t(TABS.find((x) => x.id === activeTab)?.labelKey || "trv2_title")}»`}
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-slate-400 hover:text-violet-600 hover:bg-violet-50 transition-colors"
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-soft hover:text-violet-600 hover:bg-violet-50 transition-colors"
               >
                 <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
               </button>
@@ -118,11 +118,11 @@ export default function TreasuryShell({ onOpenHelp = null }) {
           </div>
           <div className="flex items-center gap-4">
             <OfficePicker value={officeFilter} onChange={setOffice} />
-            <span className="text-[12px] text-slate-400">{t("trv2_data_freshness").replace("{time}", freshTime)} · base: {baseCurrency}</span>
+            <span className="text-[12px] text-muted-soft">{t("trv2_data_freshness").replace("{time}", freshTime)} · base: {baseCurrency}</span>
           </div>
         </header>
 
-        <div className="bg-white border border-slate-200/70 rounded-[12px] p-1 flex gap-0.5 items-center overflow-x-auto">
+        <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 items-center overflow-x-auto">
           {TABS.map((tab, idx) => {
             const isActive = activeTab === tab.id;
             // Тонкий вертикальный разделитель ПЕРЕД табом, открывающим
@@ -131,12 +131,12 @@ export default function TreasuryShell({ onOpenHelp = null }) {
             return (
               <React.Fragment key={tab.id}>
                 {showDivider && (
-                  <span className="mx-1 w-px h-6 bg-slate-200 shrink-0" aria-hidden />
+                  <span className="mx-1 w-px h-6 bg-surface-sunk shrink-0" aria-hidden />
                 )}
                 <button
                   onClick={() => setActiveTab(tab.id)}
                   className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
-                    isActive ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    isActive ? "bg-ink text-white" : "text-ink-soft hover:bg-surface-soft hover:text-ink"
                   }`}
                 >
                   {t(tab.labelKey)}

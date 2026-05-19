@@ -7,10 +7,10 @@ export default function BalanceCheckBar({ totals, formatBase, baseCurrency }) {
   const { t } = useTranslation();
   const ok = totals.identityCheck.ok;
   const Icon = ok ? CheckCircle2 : AlertTriangle;
-  const cls = ok ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-rose-50 border-rose-200 text-rose-900";
+  const cls = ok ? "bg-success-soft border-emerald-200 text-emerald-900" : "bg-danger-soft border-rose-200 text-rose-900";
   return (
     <div className={`sticky bottom-0 px-5 py-2.5 border-t text-[12.5px] font-medium flex items-center gap-3 ${cls}`}>
-      <Icon className={`w-4 h-4 shrink-0 ${ok ? "text-emerald-600" : "text-rose-600"}`} />
+      <Icon className={`w-4 h-4 shrink-0 ${ok ? "text-success" : "text-danger"}`} />
       <span className="tabular-nums">
         {t("trv2_balance_check")}: {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)}
         {Math.abs(totals.pnl || 0) > 0.005 && (

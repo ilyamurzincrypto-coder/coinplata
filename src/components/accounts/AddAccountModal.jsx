@@ -193,13 +193,13 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
               Currency
             </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none"
+              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none"
             >
               {currencies.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -209,14 +209,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             </select>
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
               Channel
             </label>
             <select
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
               disabled={currencyChannels.length === 0}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none disabled:opacity-60"
+              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none disabled:opacity-60"
             >
               {currencyChannels.length === 0 && <option>— no channels —</option>}
               {currencyChannels.map((c) => (
@@ -228,7 +228,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               ))}
             </select>
             {currencyChannels.length === 0 && (
-              <p className="text-[11px] text-amber-700 mt-1">
+              <p className="text-[11px] text-warning mt-1">
                 Add a channel for {currency} in Dashboard → Edit rates first.
               </p>
             )}
@@ -240,14 +240,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             другом офисе (кнопка Clone — копирует channel/name/address/bankRef,
             office и opening balance не трогает). */}
         {existingSameCurrency.length > 0 && (
-          <div className="border border-slate-200 rounded-[10px] bg-slate-50/60 overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-slate-200 bg-slate-100/60 flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">
+          <div className="border border-border-soft rounded-[10px] bg-surface-soft/60 overflow-hidden">
+            <div className="px-3 py-1.5 border-b border-border-soft bg-surface-sunk/60 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase">
                 {currency} · {existingSameCurrency.length} existing
               </span>
-              <span className="text-[10px] text-slate-400">Click Clone to copy config</span>
+              <span className="text-[10px] text-muted-soft">Click Clone to copy config</span>
             </div>
-            <div className="max-h-[140px] overflow-y-auto divide-y divide-slate-200">
+            <div className="max-h-[140px] overflow-y-auto divide-y divide-border-soft">
               {existingSameCurrency.map((a) => {
                 const ch = resolveAccountChannel(a, channels);
                 const sameOffice = a.officeId === officeId;
@@ -257,17 +257,17 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
                     className="flex items-center gap-2 px-3 py-1.5 text-[12px] hover:bg-white transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-slate-800 truncate">{a.name}</div>
-                      <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                      <div className="font-semibold text-ink truncate">{a.name}</div>
+                      <div className="text-[10px] text-muted flex items-center gap-1.5 mt-0.5">
                         <Building2 className="w-2.5 h-2.5" />
-                        <span className={sameOffice ? "text-indigo-600 font-semibold" : ""}>
+                        <span className={sameOffice ? "text-accent font-semibold" : ""}>
                           {officeLookup.get(a.officeId) || "—"}
                         </span>
-                        <span className="text-slate-300">·</span>
+                        <span className="text-muted-soft">·</span>
                         <span className="font-mono">{channelShortLabel(ch)}</span>
                         {(a.address || a.bankRef) && (
                           <>
-                            <span className="text-slate-300">·</span>
+                            <span className="text-muted-soft">·</span>
                             <span className="font-mono truncate">
                               {(a.address || a.bankRef || "").slice(0, 18)}
                               {(a.address || a.bankRef || "").length > 18 ? "…" : ""}
@@ -279,7 +279,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
                     <button
                       type="button"
                       onClick={() => handleClone(a)}
-                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:bg-surface-soft transition-colors"
                       title="Скопировать конфиг: channel, name, адрес/реквизиты"
                     >
                       <Copy className="w-3 h-3" />
@@ -293,7 +293,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
         )}
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
             {t("acc_name") || "Name"}
           </label>
           <input
@@ -302,14 +302,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             onChange={(e) => setName(e.target.value)}
             placeholder={isCryptoChannel ? "TRC20 Main" : "Cash · Safe A"}
             autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
         {isCryptoChannel && (
           <>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+              <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
                 Wallet address
               </label>
               <input
@@ -317,9 +317,9 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={selectedChannel?.network === "ERC20" ? "0x…" : "T…"}
-                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
               />
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-[10px] text-muted mt-1">
                 Used by polling to auto-detect incoming transactions.
               </p>
             </div>
@@ -340,7 +340,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
 
         {showBankRefField && (
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
               {isQrChannel ? "QR payload / payment link" : "Bank details (optional)"}
             </label>
             <input
@@ -348,12 +348,12 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               value={bankRef}
               onChange={(e) => setBankRef(e.target.value)}
               placeholder={isQrChannel ? "https://… or QR data string" : "IBAN / account number"}
-              className={`w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 outline-none ${
+              className={`w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 outline-none ${
                 isQrChannel ? "text-[12px] font-mono" : "text-[13px]"
               }`}
             />
             {isQrChannel && (
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-[10px] text-muted mt-1">
                 Сохраняется как идентификатор QR-платежа. Можно вставить URL страницы оплаты
                 или payload QR-кода.
               </p>
@@ -362,7 +362,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
         )}
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
             {t("acc_opening") || "Opening balance (optional)"}
           </label>
           <input
@@ -372,21 +372,21 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
             }
             placeholder="0"
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
           />
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
             {error}
           </div>
         )}
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
@@ -395,8 +395,8 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
             canSubmit
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {t("save") || "Save"}
@@ -408,14 +408,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
 
 function Toggle({ checked, onChange, label }) {
   return (
-    <label className="flex-1 flex items-center gap-2 cursor-pointer select-none bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 hover:border-slate-300 transition-colors">
+    <label className="flex-1 flex items-center gap-2 cursor-pointer select-none bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 hover:border-border transition-colors">
       <input
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="w-4 h-4 rounded-[4px] accent-slate-900"
       />
-      <span className="text-[12px] font-medium text-slate-700">{label}</span>
+      <span className="text-[12px] font-medium text-ink-soft">{label}</span>
     </label>
   );
 }

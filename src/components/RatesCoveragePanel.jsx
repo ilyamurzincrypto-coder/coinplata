@@ -77,12 +77,12 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <button
           onClick={onBack}
           type="button"
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
         >
           <ChevronLeft className="w-3 h-3" />
           {t("cov_back")}
         </button>
-        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+        <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
           {t("cov_title")}
         </div>
       </div>
@@ -119,7 +119,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {/* === Matrix === */}
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-[12px] font-bold uppercase tracking-wider text-slate-600">
+          <h4 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
             {t("cov_matrix")}
           </h4>
           <div className="flex items-center gap-2 text-[10px] font-semibold">
@@ -133,9 +133,9 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
       {/* === Actions row === */}
       {(coverage.missing.length > 0 || coverage.oneWay.length > 0) && (
-        <div className="flex items-center gap-2 flex-wrap bg-slate-50 border border-slate-200 rounded-[10px] px-4 py-3">
-          <div className="text-[12px] text-slate-700 flex-1">
-            <TrendingUp className="inline w-3.5 h-3.5 mr-1 text-slate-500" />
+        <div className="flex items-center gap-2 flex-wrap bg-surface-soft border border-border-soft rounded-[10px] px-4 py-3">
+          <div className="text-[12px] text-ink-soft flex-1">
+            <TrendingUp className="inline w-3.5 h-3.5 mr-1 text-muted" />
             {coverage.missing.length > 0 && (
               <>{t("cov_got_missing")} <strong>{coverage.missing.length}</strong> {t("cov_missing_pairs_word")}</>
             )}
@@ -148,14 +148,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <button
             onClick={handleExportMissing}
             disabled={coverage.missing.length === 0 && coverage.oneWay.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
           >
             <Download className="w-3 h-3" />
             {t("cov_export_missing")}
           </button>
           <button
             onClick={onOpenImport}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-white bg-slate-900 hover:bg-slate-800"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-white bg-ink hover:bg-ink"
           >
             {t("cov_import_xlsx")}
           </button>
@@ -166,15 +166,15 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {coverage.oneWay.length > 0 && (
         <section>
           <div className="flex items-center gap-1.5 mb-2">
-            <ArrowLeftRight className="w-3.5 h-3.5 text-amber-600" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-amber-700">
+            <ArrowLeftRight className="w-3.5 h-3.5 text-warning" />
+            <h4 className="text-[12px] font-bold uppercase tracking-wider text-warning">
               {t("cov_oneway_heading")} · {coverage.oneWay.length}
             </h4>
-            <span className="text-[11px] text-slate-500 font-normal normal-case tracking-normal">
+            <span className="text-[11px] text-muted font-normal normal-case tracking-normal">
               — {t("cov_oneway_hint")}
             </span>
           </div>
-          <div className="border border-amber-200 rounded-[10px] bg-amber-50/40 overflow-hidden">
+          <div className="border border-amber-200 rounded-[10px] bg-warning-soft/40 overflow-hidden">
             {coverage.oneWay.map(({ from, to, missingDirection }) => {
               const [mf, mt] = missingDirection.split("→");
               const existingRate = getRate(from, to);
@@ -185,18 +185,18 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                 >
                   <span className="inline-flex items-center gap-1 text-[12px]">
                     <span className="font-semibold">{from}</span>
-                    <span className="text-slate-400">→</span>
+                    <span className="text-muted-soft">→</span>
                     <span className="font-semibold">{to}</span>
-                    <span className="text-[11px] text-slate-500 tabular-nums">
+                    <span className="text-[11px] text-muted tabular-nums">
                       {existingRate ? existingRate : ""}
                     </span>
                   </span>
-                  <span className="text-amber-700 text-[11px] font-semibold">
+                  <span className="text-warning text-[11px] font-semibold">
                     {t("cov_missing_word")} {missingDirection}
                   </span>
                   <button
                     onClick={() => onQuickAdd?.(mf, mt)}
-                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-900 text-white hover:bg-slate-800"
+                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-ink text-white hover:bg-ink"
                   >
                     <Plus className="w-3 h-3" />
                     {missingDirection}
@@ -212,12 +212,12 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {coverage.missing.length > 0 && (
         <section>
           <div className="flex items-center gap-1.5 mb-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-rose-700">
+            <AlertTriangle className="w-3.5 h-3.5 text-danger" />
+            <h4 className="text-[12px] font-bold uppercase tracking-wider text-danger">
               {t("cov_missing_heading")} · {coverage.missing.length}
             </h4>
           </div>
-          <div className="border border-rose-200 rounded-[10px] bg-rose-50/30 overflow-hidden">
+          <div className="border border-rose-200 rounded-[10px] bg-danger-soft/30 overflow-hidden">
             {coverage.missing.map(({ from, to }) => (
               <div
                 key={`${from}-${to}`}
@@ -225,14 +225,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
               >
                 <span className="text-[12px]">
                   <span className="font-semibold">{from}</span>
-                  <span className="text-slate-400 mx-1">↔</span>
+                  <span className="text-muted-soft mx-1">↔</span>
                   <span className="font-semibold">{to}</span>
                 </span>
-                <span className="text-[10px] text-slate-500 italic">{t("cov_missing_hint")}</span>
+                <span className="text-[10px] text-muted italic">{t("cov_missing_hint")}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <button
                     onClick={() => onQuickAdd?.(from, to)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-slate-900 text-white hover:bg-slate-800"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-ink text-white hover:bg-ink"
                     title={`Add ${from} → ${to}`}
                   >
                     <Plus className="w-3 h-3" />
@@ -240,7 +240,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   </button>
                   <button
                     onClick={() => onQuickAdd?.(to, from)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-white text-slate-700 border border-slate-200 hover:border-slate-300"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-white text-ink-soft border border-border-soft hover:border-border"
                     title={`Add ${to} → ${from}`}
                   >
                     <Plus className="w-3 h-3" />
@@ -248,7 +248,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   </button>
                   <button
                     onClick={() => handleDismiss(from, to)}
-                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                    className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-soft hover:text-ink hover:bg-surface-sunk"
                     title={t("cov_hide")}
                   >
                     <EyeOff className="w-3 h-3" />
@@ -262,9 +262,9 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
       {/* === Isolated currencies === */}
       {coverage.isolated.length > 0 && (
-        <section className="rounded-[10px] border border-rose-300 bg-rose-50 px-4 py-3">
+        <section className="rounded-[10px] border border-danger/40 bg-danger-soft px-4 py-3">
           <div className="flex items-center gap-1.5 mb-1">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-700" />
+            <AlertTriangle className="w-3.5 h-3.5 text-danger" />
             <h4 className="text-[12px] font-bold uppercase tracking-wider text-rose-800">
               {t("cov_isolated_heading")} · {coverage.isolated.length}
             </h4>
@@ -280,19 +280,19 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <section>
           <button
             onClick={() => setShowDismissed((v) => !v)}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-900"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted hover:text-ink"
           >
             {showDismissed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             {showDismissed ? t("cov_hide") : t("cov_show")} {t("cov_dismissed_word")} ({coverage.dismissed.length})
           </button>
           {showDismissed && (
-            <div className="mt-2 border border-slate-200 rounded-[10px] bg-slate-50/60 overflow-hidden">
+            <div className="mt-2 border border-border-soft rounded-[10px] bg-surface-soft/60 overflow-hidden">
               {coverage.dismissed.map(({ from, to }) => (
                 <div
                   key={`${from}-${to}`}
-                  className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 last:border-0"
+                  className="flex items-center gap-2 px-3 py-2 border-b border-border-soft last:border-0"
                 >
-                  <span className="text-[11px] text-slate-600">
+                  <span className="text-[11px] text-ink-soft">
                     {from} ↔ {to}
                   </span>
                   <button
@@ -300,7 +300,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                       handleUndismiss(from, to);
                       handleUndismiss(to, from);
                     }}
-                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-white border border-transparent hover:border-slate-200"
+                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
                   >
                     <Eye className="w-3 h-3" />
                     {t("cov_restore")}
@@ -313,7 +313,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                     clearDismissed();
                     setDismissedTick((t) => t + 1);
                   }}
-                  className="text-[10px] font-semibold text-rose-600 hover:text-rose-800"
+                  className="text-[10px] font-semibold text-danger hover:text-rose-800"
                 >
                   {t("cov_clear_dismissed")}
                 </button>
@@ -327,10 +327,10 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {coverage.missing.length === 0 &&
         coverage.oneWay.length === 0 &&
         coverage.isolated.length === 0 && (
-          <div className="rounded-[12px] border border-emerald-200 bg-emerald-50 p-5 text-center">
-            <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+          <div className="rounded-[12px] border border-emerald-200 bg-success-soft p-5 text-center">
+            <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
             <div className="text-[14px] font-bold text-emerald-900">{t("cov_full_title")}</div>
-            <div className="text-[12px] text-emerald-700 mt-1">
+            <div className="text-[12px] text-success mt-1">
               {t("cov_full_sub")}
             </div>
           </div>
@@ -343,10 +343,10 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
 function SummaryStat({ label, value, sub, tone, big }) {
   const colors = {
-    emerald: "text-emerald-700 bg-emerald-50 border-emerald-200",
-    amber: "text-amber-700 bg-amber-50 border-amber-200",
-    rose: "text-rose-700 bg-rose-50 border-rose-200",
-    slate: "text-slate-700 bg-slate-50 border-slate-200",
+    emerald: "text-success bg-success-soft border-emerald-200",
+    amber: "text-warning bg-warning-soft border-amber-200",
+    rose: "text-danger bg-danger-soft border-rose-200",
+    slate: "text-ink-soft bg-surface-soft border-border-soft",
   };
   return (
     <div className={`rounded-[12px] border px-4 py-3 ${colors[tone] || colors.slate}`}>
@@ -363,10 +363,10 @@ function LegendPill({ tone, label }) {
   const bg = {
     emerald: "bg-emerald-400",
     rose: "bg-rose-400",
-    slate: "bg-slate-300",
+    slate: "bg-surface-sunk",
   }[tone];
   return (
-    <span className="inline-flex items-center gap-1 text-slate-500 uppercase tracking-wider">
+    <span className="inline-flex items-center gap-1 text-muted uppercase tracking-wider">
       <span className={`w-2 h-2 rounded-sm ${bg}`} />
       {label}
     </span>
@@ -383,29 +383,29 @@ function CoverageMatrix({ coverage, onQuickAdd }) {
       case "missing":
         return `${base} bg-rose-300 text-rose-900 hover:bg-rose-400 cursor-pointer`;
       case "dismissed":
-        return `${base} bg-slate-200 text-slate-500`;
+        return `${base} bg-surface-sunk text-muted`;
       case "self":
-        return `${base} bg-slate-100 text-slate-300`;
+        return `${base} bg-surface-sunk text-muted-soft`;
       default:
-        return `${base} bg-slate-100 text-slate-400`;
+        return `${base} bg-surface-sunk text-muted-soft`;
     }
   };
 
   return (
-    <div className="border border-slate-200 rounded-[10px] bg-white p-3 overflow-auto">
+    <div className="border border-border-soft rounded-[10px] bg-white p-3 overflow-auto">
       <div className="inline-grid gap-0.5 min-w-full"
         style={{ gridTemplateColumns: `minmax(44px, auto) repeat(${currencies.length}, minmax(32px, 1fr))` }}>
         {/* header row */}
         <div />
         {currencies.map((c) => (
-          <div key={`h-${c}`} className="text-[9px] font-bold text-slate-600 text-center py-1 truncate">
+          <div key={`h-${c}`} className="text-[9px] font-bold text-ink-soft text-center py-1 truncate">
             {c}
           </div>
         ))}
         {/* body */}
         {currencies.map((from) => (
           <React.Fragment key={`row-${from}`}>
-            <div className="text-[9px] font-bold text-slate-600 pr-2 py-1 flex items-center justify-end">
+            <div className="text-[9px] font-bold text-ink-soft pr-2 py-1 flex items-center justify-end">
               {from}
             </div>
             {currencies.map((to) => {

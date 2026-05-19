@@ -78,16 +78,16 @@ export default function AccountingCodesTab() {
 
   return (
     <div>
-      <div className="px-5 py-4 border-b border-slate-100">
+      <div className="px-5 py-4 border-b border-border-soft">
         <h2 className="text-[16px] font-semibold tracking-tight">План счетов</h2>
-        <p className="text-[12px] text-slate-500 mt-0.5">
+        <p className="text-[12px] text-muted mt-0.5">
           Бухгалтерские коды (например 2008, 386). Префиксят имя в проводках
           Дт/Кт. Поле опциональное — пусто = код не показывается.
         </p>
       </div>
 
-      <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2 flex-wrap">
-        <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] gap-0.5">
+      <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
+        <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] gap-0.5">
           {SCOPES.map((s) => {
             const Icon = s.icon;
             const isActive = scope === s.id;
@@ -96,7 +96,7 @@ export default function AccountingCodesTab() {
                 key={s.id}
                 onClick={() => setScope(s.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold transition-colors ${
-                  isActive ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+                  isActive ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
                 }`}
               >
                 <Icon className="w-3 h-3" />
@@ -106,20 +106,20 @@ export default function AccountingCodesTab() {
           })}
         </div>
         <div className="ml-auto relative w-[220px]">
-          <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2" />
+          <Search className="w-3 h-3 text-muted-soft absolute left-2 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по имени или коду"
-            className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-slate-50 border border-slate-200 rounded-[8px] outline-none focus:bg-white focus:border-slate-300"
+            className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
           />
         </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full text-[12.5px]">
-          <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-500 tracking-wider uppercase">
+          <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
             <tr>
               <th className="px-5 py-2 text-left w-32">Код</th>
               <th className="px-3 py-2 text-left">Название</th>
@@ -129,7 +129,7 @@ export default function AccountingCodesTab() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-5 py-12 text-center text-[13px] text-slate-400">
+                <td colSpan={3} className="px-5 py-12 text-center text-[13px] text-muted-soft">
                   Нет записей
                 </td>
               </tr>
@@ -170,7 +170,7 @@ function CodeRow({ row }) {
   };
 
   return (
-    <tr className="border-b border-slate-100 hover:bg-slate-50">
+    <tr className="border-b border-border-soft hover:bg-surface-soft">
       <td className="px-5 py-2">
         <input
           type="text"
@@ -180,11 +180,11 @@ function CodeRow({ row }) {
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder="—"
-          className="w-24 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-2 py-1 text-[12.5px] tabular-nums font-semibold outline-none transition-colors"
+          className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-2 py-1 text-[12.5px] tabular-nums font-semibold outline-none transition-colors"
         />
       </td>
-      <td className="px-3 py-2 text-slate-900 font-semibold">{row.name}</td>
-      <td className="px-5 py-2 text-slate-500">{row.subtitle}</td>
+      <td className="px-3 py-2 text-ink font-semibold">{row.name}</td>
+      <td className="px-5 py-2 text-muted">{row.subtitle}</td>
     </tr>
   );
 }

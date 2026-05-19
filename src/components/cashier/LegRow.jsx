@@ -103,7 +103,7 @@ const LegRow = forwardRef(function LegRow(
       ref={setCellRef ? (el) => setCellRef(rowIndex, 4, el) : undefined}
       onKeyDown={(e) => onCellKeyDown?.(e, rowIndex, 4)}
       aria-label="Источник средств"
-      className="bg-transparent border-0 outline-none text-[12px] text-slate-600 focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full"
+      className="bg-transparent border-0 outline-none text-[12px] text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full"
     >
       {SOURCE_OPTIONS_IN.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -118,7 +118,7 @@ const LegRow = forwardRef(function LegRow(
       aria-label="Назначение"
       title={deferredErr?.message}
       className={
-        "bg-transparent border-0 outline-none text-[12px] text-slate-600 focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full" +
+        "bg-transparent border-0 outline-none text-[12px] text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full" +
         (deferredErr ? " ring-2 ring-rose-400" : "")
       }
     >
@@ -138,14 +138,14 @@ const LegRow = forwardRef(function LegRow(
   const amountBorderClass = amountErr
     ? "ring-2 ring-rose-400 border-rose-400 rounded-[var(--radius-cell)]"
     : (inOverdraft || outShortage)
-    ? "ring-1 ring-rose-300 bg-rose-50/40 rounded-[var(--radius-cell)]"
+    ? "ring-1 ring-rose-300 bg-danger-soft/40 rounded-[var(--radius-cell)]"
     : "";
 
   return (
     <div
       data-leg-id={leg.id}
       data-leg-side={leg.side}
-      className="border-b border-slate-100 hover:bg-slate-50/40"
+      className="border-b border-border-soft hover:bg-surface-soft/40"
     >
       <div
         className="grid items-center px-3"
@@ -207,7 +207,7 @@ const LegRow = forwardRef(function LegRow(
               <SpreadIndicator currentRate={leg.rate} marketRate={marketRate} />
             </>
           ) : (
-            <span className="text-[12px] text-slate-300 px-2">—</span>
+            <span className="text-[12px] text-muted-soft px-2">—</span>
           )}
         </div>
 
@@ -230,7 +230,7 @@ const LegRow = forwardRef(function LegRow(
               onKeyDown={(e) => onCellKeyDown?.(e, rowIndex, 5)}
             />
           ) : (
-            <span className="text-[12px] text-slate-400 px-2">
+            <span className="text-[12px] text-muted-soft px-2">
               {isIn ? "— клиент с баланса —" : "— клиенту на баланс —"}
             </span>
           )}
@@ -243,7 +243,7 @@ const LegRow = forwardRef(function LegRow(
               type="button"
               onClick={() => onRemove(leg.id)}
               title="Удалить"
-              className="text-slate-300 hover:text-rose-600 p-1"
+              className="text-muted-soft hover:text-danger p-1"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -275,7 +275,7 @@ const LegRow = forwardRef(function LegRow(
               />
             )}
             {inOverdraft && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-rose-600 font-semibold">
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-danger font-semibold">
                 <AlertCircle className="w-3 h-3" />
                 overdraft {inOverdraftAmount?.toFixed(2)} {leg.currency}
               </span>
@@ -297,7 +297,7 @@ const LegRow = forwardRef(function LegRow(
               />
             )}
             {outShortage && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-rose-600 font-semibold">
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-danger font-semibold">
                 <AlertCircle className="w-3 h-3" />
                 нехватка {outShortageAmount?.toFixed(2)} {leg.currency}
               </span>

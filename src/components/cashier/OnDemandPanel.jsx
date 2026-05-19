@@ -49,7 +49,7 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] text-slate-400 uppercase tracking-wider mr-1">
+        <span className="text-[11px] text-muted-soft uppercase tracking-wider mr-1">
           {t("conditions_ondemand_add")}
         </span>
         {FIELDS.map((f) => {
@@ -67,7 +67,7 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
               <span className="inline-flex items-center gap-1">
                 <Icon className="w-3 h-3" />
                 {t(`conditions_${f.label}`)}
-                {filled && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-indigo-500" />}
+                {filled && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-accent-bg0" />}
               </span>
             </ChipPill>
           );
@@ -80,7 +80,7 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
         const value = onDemand[f.key] || "";
         return (
           <div key={f.key} className="flex items-start gap-2 ml-1">
-            <span className="text-[11px] text-slate-500 uppercase tracking-wider mt-2 w-24 shrink-0">
+            <span className="text-[11px] text-muted uppercase tracking-wider mt-2 w-24 shrink-0">
               {t(`conditions_${f.label}`)}:
             </span>
             {f.type === "textarea" ? (
@@ -88,14 +88,14 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
                 value={value}
                 onChange={(e) => setOnDemand(f.key, e.target.value || null)}
                 rows={2}
-                className="flex-1 bg-white border border-slate-200 focus:border-slate-400 rounded-[var(--radius-cell)] px-2 py-1 text-[12px] outline-none resize-none"
+                className="flex-1 bg-white border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-[12px] outline-none resize-none"
               />
             ) : (
               <input
                 type={f.type}
                 value={value}
                 onChange={(e) => setOnDemand(f.key, e.target.value || null)}
-                className="flex-1 bg-white border border-slate-200 focus:border-slate-400 rounded-[var(--radius-cell)] px-2 py-1.5 text-[12px] font-mono outline-none"
+                className="flex-1 bg-white border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1.5 text-[12px] font-mono outline-none"
                 placeholder={f.key === "tx_hash" ? "0x..." : ""}
               />
             )}
@@ -103,7 +103,7 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
               type="button"
               onClick={() => handleClear(f.key)}
               title="Clear"
-              className="p-1 mt-0.5 text-slate-400 hover:text-slate-700"
+              className="p-1 mt-0.5 text-muted-soft hover:text-ink-soft"
             >
               <X className="w-3.5 h-3.5" />
             </button>

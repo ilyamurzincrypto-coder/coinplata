@@ -483,56 +483,56 @@ export default function CashierPage({
             {formMounted ? (
               <button
                 onClick={openCreate}
-                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-slate-900 shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-ink shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div className="relative w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
+                  <div className="relative w-11 h-11 rounded-full bg-success-soft0 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
                     <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
                   </div>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-600 mb-0.5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-success mb-0.5">
                       С клиентом
                     </div>
                     <div className="text-[16px] font-bold tracking-tight">
                       {t("cta_resume_exchange_title")}
                     </div>
-                    <div className="text-[12px] text-slate-500">
+                    <div className="text-[12px] text-muted">
                       {t("cta_resume_exchange_hint")}
                     </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                <ArrowUpRight className="w-4 h-4 text-success group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
               </button>
             ) : (
               <button
                 onClick={openCreate}
-                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-slate-900 text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-slate-800 active:scale-[0.995] transition-all duration-200"
+                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-ink text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-ink active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
+                  <div className="w-11 h-11 rounded-full bg-success-soft0 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
                     <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-400 mb-0.5">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-success mb-0.5">
                       С клиентом
                     </div>
                     <div className="text-[16px] font-bold tracking-tight">
                       {t("cta_new_exchange_title")}
                     </div>
-                    <div className="text-[12px] text-slate-300">
+                    <div className="text-[12px] text-muted-soft">
                       {t("cta_new_exchange_hint")}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-slate-400">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-muted-soft">
                     {t("cta_press_key")}
-                    <kbd className="px-1.5 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-slate-200 tracking-wider">
+                    <kbd className="px-1.5 py-0.5 rounded-md bg-ink border border-ink text-white/80 tracking-wider">
                       N
                     </kbd>
                   </span>
-                  <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  <ArrowUpRight className="w-4 h-4 text-muted-soft group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                 </div>
               </button>
             )}
@@ -540,18 +540,18 @@ export default function CashierPage({
               <button
                 onClick={() => setTransferModalOpen(true)}
                 title="Создать перемещение — перевод между нашими счетами (касса → банк, офис → офис, кросс-валютный с курсом)"
-                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-400 transition-colors shrink-0"
+                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-accent hover:bg-accent-bg hover:border-indigo-400 transition-colors shrink-0"
               >
                 <ArrowRightLeft className="w-5 h-5 mb-1" strokeWidth={2.5} />
                 <span className="text-[11px] font-bold tracking-tight">Перемещение</span>
-                <span className="text-[9px] text-indigo-500 font-semibold mt-0.5">между счетами</span>
+                <span className="text-[9px] text-accent font-semibold mt-0.5">между счетами</span>
               </button>
               {onOpenHelp && (
                 <button
                   type="button"
                   onClick={() => onOpenHelp({ sectionId: "cashier" })}
                   title="Справка по Кассе — горячие клавиши, формы, частые сценарии"
-                  className="self-start flex items-center justify-center w-9 h-9 mt-1 rounded-full text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+                  className="self-start flex items-center justify-center w-9 h-9 mt-1 rounded-full text-muted-soft hover:text-success hover:bg-success-soft transition-colors shrink-0"
                 >
                   <HelpCircle className="w-5 h-5" strokeWidth={2.5} />
                 </button>
@@ -597,17 +597,17 @@ export default function CashierPage({
 
           {/* RIGHT: header + ExchangeForm */}
           <section>
-            <div className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
-              <header className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+            <div className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
+              <header className="px-5 py-3.5 border-b border-border-soft flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500 text-white shrink-0">
+                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success-soft0 text-white shrink-0">
                     <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[14px] font-bold text-slate-900 tracking-tight">
+                    <div className="text-[14px] font-bold text-ink tracking-tight">
                       {t("cta_new_exchange_title")}
                     </div>
-                    <div className="text-[11px] text-slate-500 truncate">
+                    <div className="text-[11px] text-muted truncate">
                       {t("drawer_minimize_hint")}
                     </div>
                   </div>
@@ -616,7 +616,7 @@ export default function CashierPage({
                   <button
                     onClick={minimizeCreate}
                     title={`${t("btn_minimize")} (Esc)`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
                   >
                     <Minus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_minimize")}</span>
@@ -624,7 +624,7 @@ export default function CashierPage({
                   <button
                     onClick={closeCreate}
                     title={t("btn_close_discard")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_close")}</span>
@@ -634,7 +634,7 @@ export default function CashierPage({
 
               <div className="p-5">
                 {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
-                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-indigo-50 border border-indigo-200 rounded-[10px] px-3 py-2">
+                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-accent-bg border border-indigo-200 rounded-[10px] px-3 py-2">
                     <span aria-hidden>🎓</span>
                     <span>
                       Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.

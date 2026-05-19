@@ -11,18 +11,18 @@ export default function TransactionDetail({ node, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
       <div className="bg-white rounded-[14px] max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
-        <header className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+        <header className="px-5 py-3 border-b border-border-soft flex items-center justify-between">
           <div>
             <h3 className="text-[15px] font-bold">{tx.kind} {tx.sourceRefId ? `#${tx.sourceRefId}` : ""}</h3>
-            <p className="text-[11px] text-slate-400">{new Date(tx.effectiveDate).toISOString().slice(0, 16).replace("T", " ")} · {tx.id}</p>
+            <p className="text-[11px] text-muted-soft">{new Date(tx.effectiveDate).toISOString().slice(0, 16).replace("T", " ")} · {tx.id}</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-surface-sunk"><X className="w-4 h-4" /></button>
         </header>
         <div className="p-1">
-          {tx.description && <p className="px-5 py-2 text-[12.5px] text-slate-600">{tx.description}</p>}
+          {tx.description && <p className="px-5 py-2 text-[12.5px] text-ink-soft">{tx.description}</p>}
           <TransactionEntries entries={entries} />
           {tx.metadata && Object.keys(tx.metadata).length > 0 && (
-            <pre className="mx-5 my-2 p-2 bg-slate-50 rounded text-[11px] text-slate-500 overflow-auto">{JSON.stringify(tx.metadata, null, 2)}</pre>
+            <pre className="mx-5 my-2 p-2 bg-surface-soft rounded text-[11px] text-muted overflow-auto">{JSON.stringify(tx.metadata, null, 2)}</pre>
           )}
         </div>
       </div>

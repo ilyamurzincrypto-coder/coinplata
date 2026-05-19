@@ -130,13 +130,13 @@ export default function PartnersTab() {
       : "";
 
   return (
-    <div className="divide-y divide-slate-100">
+    <div className="divide-y divide-border-soft">
       <section>
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Handshake className="w-4 h-4 text-slate-500" />
+            <Handshake className="w-4 h-4 text-muted" />
             <h3 className="text-[15px] font-semibold tracking-tight">Партнёры (OTC)</h3>
-            <span className="text-[11px] text-slate-400 ml-1">{partners.length}</span>
+            <span className="text-[11px] text-muted-soft ml-1">{partners.length}</span>
           </div>
           <button
             onClick={() => setShowAdd(true)}
@@ -148,30 +148,30 @@ export default function PartnersTab() {
         </div>
 
         <div className="p-4">
-          <div className="mb-3 flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-[8px] px-2.5 py-2">
-            <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <div className="mb-3 flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-2">
+            <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по имени, telegram, телефону, заметке…"
-              className="flex-1 bg-transparent outline-none text-[12.5px] text-slate-900 placeholder:text-slate-400 min-w-0"
+              className="flex-1 bg-transparent outline-none text-[12.5px] text-ink placeholder:text-muted-soft min-w-0"
             />
             {query && (
-              <button onClick={() => setQuery("")} className="p-0.5 rounded hover:bg-slate-200 text-slate-500">
+              <button onClick={() => setQuery("")} className="p-0.5 rounded hover:bg-surface-sunk text-muted">
                 <X className="w-3 h-3" />
               </button>
             )}
           </div>
 
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-[12.5px] text-slate-400 italic">
+            <div className="py-10 text-center text-[12.5px] text-muted-soft italic">
               {partners.length === 0
                 ? "Нет партнёров. Добавьте первого, чтобы он появился в OTC-форме."
                 : "Ничего не найдено."}
             </div>
           ) : (
-            <div className="divide-y divide-slate-100 bg-slate-50/40 rounded-[10px] border border-slate-200 overflow-hidden">
+            <div className="divide-y divide-border-soft bg-surface-soft/40 rounded-[10px] border border-border-soft overflow-hidden">
               {filtered.map((p) => {
                 const accs = accountsByPartner(p.id);
                 const activeAccs = accs.filter((a) => a.active);
@@ -183,33 +183,33 @@ export default function PartnersTab() {
                       <button
                         type="button"
                         onClick={() => toggleExpanded(p.id)}
-                        className="w-6 h-6 rounded-full hover:bg-slate-200/70 flex items-center justify-center text-slate-500"
+                        className="w-6 h-6 rounded-full hover:bg-surface-sunk/70 flex items-center justify-center text-muted"
                         title={isOpen ? "Свернуть счета" : "Показать счета"}
                       >
                         {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-indigo-700 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-accent shrink-0">
                         {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold text-slate-900 inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-[13px] font-semibold text-ink inline-flex items-center gap-2 flex-wrap">
                           {p.name}
                           {!p.active && (
-                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+                            <span className="text-[9px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                               deactivated
                             </span>
                           )}
                           <span
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 rounded-full px-1.5 py-0.5"
+                            className="inline-flex items-center gap-1 text-[10px] font-bold text-muted bg-surface-sunk rounded-full px-1.5 py-0.5"
                             title={`${activeAccs.length} active accounts`}
                           >
                             <Wallet className="w-2.5 h-2.5" />
                             {activeAccs.length}
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-[11px] text-muted inline-flex items-center gap-2 flex-wrap">
                           {p.telegram && (
-                            <span className="inline-flex items-center gap-0.5 text-sky-600">
+                            <span className="inline-flex items-center gap-0.5 text-info">
                               <Send className="w-2.5 h-2.5" />
                               {p.telegram}
                             </span>
@@ -227,7 +227,7 @@ export default function PartnersTab() {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => setAccountModalState({ mode: "add", partnerId: p.id })}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200"
                             title="Добавить счёт партнёру"
                           >
                             <Plus className="w-3 h-3" />
@@ -235,7 +235,7 @@ export default function PartnersTab() {
                           </button>
                           <button
                             onClick={() => setEditingId(p.id)}
-                            className="p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                            className="p-1.5 rounded-md text-muted hover:text-ink hover:bg-surface-sunk"
                             title="Редактировать партнёра"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -243,7 +243,7 @@ export default function PartnersTab() {
                           {p.active && (
                             <button
                               onClick={() => handleDelete(p.id, p.name)}
-                              className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                              className="p-1.5 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft"
                               title="Деактивировать"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -255,9 +255,9 @@ export default function PartnersTab() {
 
                     {/* Expanded — accounts list */}
                     {isOpen && (
-                      <div className="px-3 pb-3 pt-1 bg-white border-t border-slate-100">
+                      <div className="px-3 pb-3 pt-1 bg-white border-t border-border-soft">
                         {accs.length === 0 ? (
-                          <div className="text-[11.5px] text-slate-400 italic py-2 text-center">
+                          <div className="text-[11.5px] text-muted-soft italic py-2 text-center">
                             Нет счетов. Добавьте первый — нажми кнопку «Счёт» справа.
                           </div>
                         ) : (
@@ -270,29 +270,29 @@ export default function PartnersTab() {
                                   key={a.id}
                                   className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-[10px] border ${
                                     a.active
-                                      ? "bg-slate-50/60 border-slate-200"
-                                      : "bg-slate-100/60 border-slate-200 opacity-60"
+                                      ? "bg-surface-soft/60 border-border-soft"
+                                      : "bg-surface-sunk/60 border-border-soft opacity-60"
                                   }`}
                                 >
                                   <div className="flex items-center gap-2">
-                                    <div className="w-7 h-7 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
+                                    <div className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-muted shrink-0">
                                       <Icon className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-[12px] font-semibold text-slate-900 truncate">
+                                      <div className="text-[12px] font-semibold text-ink truncate">
                                         {a.name}
                                         {!a.active && (
-                                          <span className="ml-1.5 text-[8.5px] font-bold text-slate-500 bg-slate-200 px-1 py-0.5 rounded uppercase">
+                                          <span className="ml-1.5 text-[8.5px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                                             off
                                           </span>
                                         )}
                                       </div>
-                                      <div className="text-[10px] text-slate-500 tabular-nums">
+                                      <div className="text-[10px] text-muted tabular-nums">
                                         {curSymbol(a.currency)}
                                         {fmt(bal, a.currency)}{" "}
                                         <span className="opacity-60">{a.currency}</span>
                                         {a.networkId && (
-                                          <span className="ml-1 text-slate-400">· {a.networkId}</span>
+                                          <span className="ml-1 text-muted-soft">· {a.networkId}</span>
                                         )}
                                       </div>
                                     </div>
@@ -303,7 +303,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "inflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
                                       title="Контрагент внёс — фиксируем только partner-side"
                                     >
                                       <ArrowDownLeft className="w-3 h-3" />
@@ -313,7 +313,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "outflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
                                       title="Контрагент забрал у нас — указываем с какой кассы"
                                     >
                                       <ArrowUpRight className="w-3 h-3" />
@@ -322,7 +322,7 @@ export default function PartnersTab() {
                                     <div className="ml-auto flex items-center gap-0.5">
                                     <button
                                       onClick={() => setHistoryAccount({ ...a, partnerName: p.name })}
-                                      className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                      className="p-1 rounded text-muted hover:text-ink hover:bg-surface-sunk"
                                       title="История движений"
                                     >
                                       <HistoryIcon className="w-3 h-3" />
@@ -335,7 +335,7 @@ export default function PartnersTab() {
                                             partnerId: p.id,
                                             accountId: a.id,
                                           })}
-                                          className="p-1 rounded text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+                                          className="p-1 rounded text-muted hover:text-ink hover:bg-surface-sunk"
                                           title="Редактировать"
                                         >
                                           <Edit2 className="w-3 h-3" />
@@ -343,7 +343,7 @@ export default function PartnersTab() {
                                         {a.active && (
                                           <button
                                             onClick={() => handleAccountDelete(a)}
-                                            className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                            className="p-1 rounded text-muted-soft hover:text-danger hover:bg-danger-soft"
                                             title="Деактивировать"
                                           >
                                             <Trash2 className="w-3 h-3" />
@@ -436,7 +436,7 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
     <Modal open={open} onClose={onClose} title={title} width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Имя / Название
           </label>
           <input
@@ -444,12 +444,12 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Telegram
             </label>
             <input
@@ -457,11 +457,11 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
               placeholder="@username"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Телефон
             </label>
             <input
@@ -469,12 +469,12 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+7..."
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 tracking-wide uppercase">
+          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Заметка
           </label>
           <input
@@ -482,19 +482,19 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия..."
-            className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
       </div>
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
+        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!name.trim()}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
-            name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           Сохранить
@@ -531,25 +531,25 @@ function PartnerDealsSection({ partnerId, partnerName }) {
   };
 
   return (
-    <div className="mt-2 pt-2 border-t border-slate-100">
+    <div className="mt-2 pt-2 border-t border-border-soft">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-soft hover:text-ink transition-colors"
       >
-        <span className={`text-slate-400 text-[10px] transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+        <span className={`text-muted-soft text-[10px] transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
         Сделки с этим контрагентом
         {loaded && (
-          <span className="text-[10px] text-slate-400 tabular-nums">({deals.length})</span>
+          <span className="text-[10px] text-muted-soft tabular-nums">({deals.length})</span>
         )}
       </button>
 
       {open && (
-        <div className="mt-2 rounded-[10px] border border-slate-200 bg-slate-50/60 p-2">
+        <div className="mt-2 rounded-[10px] border border-border-soft bg-surface-soft/60 p-2">
           {loading ? (
-            <div className="text-[12px] text-slate-400 text-center py-3">Загрузка…</div>
+            <div className="text-[12px] text-muted-soft text-center py-3">Загрузка…</div>
           ) : deals.length === 0 ? (
-            <div className="text-[12px] text-slate-400 text-center py-3">
+            <div className="text-[12px] text-muted-soft text-center py-3">
               Сделок с {partnerName} ещё не было
             </div>
           ) : (
@@ -560,28 +560,28 @@ function PartnerDealsSection({ partnerId, partnerName }) {
                 return (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-slate-200 px-2.5 py-1.5 text-[11.5px]"
+                    className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="text-slate-400 tabular-nums whitespace-nowrap text-[10px]">
+                      <span className="text-muted-soft tabular-nums whitespace-nowrap text-[10px]">
                         {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                       </span>
                       {isOtc && (
-                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-indigo-50 text-indigo-700 ring-indigo-200">
+                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-accent-bg text-accent ring-indigo-200">
                           {d.kind === "broker" ? "BROKER" : "OTC"}
                         </span>
                       )}
-                      <span className="text-slate-600 truncate">
+                      <span className="text-ink-soft truncate">
                         {d.counterparty || "—"}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <div className="text-right tabular-nums">
-                        <div className="font-semibold text-slate-900">
+                        <div className="font-semibold text-ink">
                           {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                         </div>
                         {d.profit !== 0 && (
-                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-success" : "text-danger"}`}>
                             {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
                           </div>
                         )}

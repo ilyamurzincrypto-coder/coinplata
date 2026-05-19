@@ -66,9 +66,9 @@ export default function CurrencyTextInput({
       className={
         `w-full bg-transparent border-0 outline-none ` +
         `text-[14px] tabular-nums ${align === "right" ? "text-right" : "text-left"} ` +
-        `placeholder:text-slate-300 ` +
-        `focus:bg-white focus:ring-1 focus:ring-slate-300 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
-        `disabled:text-slate-400 ${className}`
+        `placeholder:text-muted-soft ` +
+        `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
+        `disabled:text-muted-soft ${className}`
       }
     />
   );

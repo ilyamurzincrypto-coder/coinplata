@@ -73,22 +73,22 @@ export default function CancelDealModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
       aria-describedby={descId}
     >
       <div className="bg-white rounded-[var(--radius-section)] shadow-xl max-w-md w-full mx-4 flex flex-col">
-        <header className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-          <h2 id={titleId} className="text-[15px] font-bold text-slate-900">
+        <header className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
+          <h2 id={titleId} className="text-[15px] font-bold text-ink">
             {t("cancel_modal_title")}
           </h2>
           <button
             type="button"
             onClick={busy ? undefined : onClose}
             disabled={busy}
-            className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-50"
+            className="p-1 text-muted-soft hover:text-ink-soft disabled:opacity-50"
             aria-label="Close"
           >
             <X className="w-4 h-4" />
@@ -97,33 +97,33 @@ export default function CancelDealModal({
 
         <div className="px-4 py-3 space-y-3" id={descId}>
           {workflow && (
-            <div className="text-[12px] bg-slate-50 border border-slate-200 rounded-[var(--radius-cell)] px-2.5 py-1.5">
-              <span className="text-slate-500">Deal </span>
-              <span className="font-mono text-slate-700">
+            <div className="text-[12px] bg-surface-soft border border-border-soft rounded-[var(--radius-cell)] px-2.5 py-1.5">
+              <span className="text-muted">Deal </span>
+              <span className="font-mono text-ink-soft">
                 {String(workflow.ledger_tx_id || workflow.deal_id || "").slice(0, 8)}…
               </span>
               {workflow.counterparty_name && (
                 <>
-                  <span className="text-slate-400 mx-1">·</span>
-                  <span className="text-slate-700">{workflow.counterparty_name}</span>
+                  <span className="text-muted-soft mx-1">·</span>
+                  <span className="text-ink-soft">{workflow.counterparty_name}</span>
                 </>
               )}
               {workflow.status && (
                 <>
-                  <span className="text-slate-400 mx-1">·</span>
-                  <span className="text-slate-600">{workflow.status}</span>
+                  <span className="text-muted-soft mx-1">·</span>
+                  <span className="text-ink-soft">{workflow.status}</span>
                 </>
               )}
             </div>
           )}
 
-          <div className="flex items-start gap-2 px-2.5 py-2 bg-amber-50 border border-amber-200 rounded-[var(--radius-cell)]">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 px-2.5 py-2 bg-warning-soft border border-amber-200 rounded-[var(--radius-cell)]">
+            <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
             <p className="text-[12px] text-amber-900">{t("cancel_modal_warning")}</p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
               {t("cancel_modal_reason_label")}
             </label>
             <textarea
@@ -133,26 +133,26 @@ export default function CancelDealModal({
               placeholder={t("cancel_modal_reason_placeholder")}
               rows={3}
               minLength={MIN_REASON}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[var(--radius-cell)] px-2.5 py-2 text-[13px] outline-none resize-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2.5 py-2 text-[13px] outline-none resize-none"
             />
-            <div className={`text-[10px] mt-1 ${valid ? "text-emerald-600" : "text-slate-400"}`}>
+            <div className={`text-[10px] mt-1 ${valid ? "text-success" : "text-muted-soft"}`}>
               {t("cancel_modal_reason_min_chars").replace("{{n}}", String(reason.trim().length))}
             </div>
           </div>
 
           {errorMsg && (
-            <div className="text-[12px] text-rose-700 bg-rose-50 border border-rose-200 rounded-[var(--radius-cell)] px-2.5 py-1.5">
+            <div className="text-[12px] text-danger bg-danger-soft border border-rose-200 rounded-[var(--radius-cell)] px-2.5 py-1.5">
               {errorMsg}
             </div>
           )}
         </div>
 
-        <footer className="px-4 py-3 border-t border-slate-100 flex items-center justify-end gap-2">
+        <footer className="px-4 py-3 border-t border-border-soft flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12.5px] font-semibold disabled:opacity-50"
+            className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-[12.5px] font-semibold disabled:opacity-50"
           >
             {t("cancel_modal_back_button")}
           </button>
@@ -160,7 +160,7 @@ export default function CancelDealModal({
             type="button"
             onClick={handleSubmit}
             disabled={!valid || busy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-rose-600 hover:bg-rose-700 text-white text-[12.5px] font-bold disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-rose-600 hover:bg-rose-700 text-white text-[12.5px] font-bold disabled:bg-surface-sunk disabled:text-muted-soft disabled:cursor-not-allowed"
           >
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {t("cancel_modal_submit_button")}

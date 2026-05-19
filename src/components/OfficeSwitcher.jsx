@@ -51,13 +51,13 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
         onClick={() => setOpen((v) => !v)}
         className={`group w-full flex items-center gap-2 px-3 py-1.5 rounded-[10px] border transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
           open
-            ? "bg-slate-900 border-slate-900 text-white shadow-[0_6px_20px_-8px_rgba(15,23,42,0.45)]"
-            : "bg-white border-slate-200 text-slate-900 hover:border-slate-300 hover:shadow-sm"
+            ? "bg-ink border-ink text-white shadow-[0_6px_20px_-8px_rgba(15,23,42,0.45)]"
+            : "bg-white border-border-soft text-ink hover:border-border hover:shadow-sm"
         }`}
       >
         <Building2
           className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-            open ? "text-emerald-400" : "text-slate-400"
+            open ? "text-success" : "text-muted-soft"
           }`}
         />
         <span className="text-[13px] font-semibold truncate flex-1 text-left">
@@ -65,7 +65,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
-            open ? "rotate-180 text-white" : "text-slate-400"
+            open ? "rotate-180 text-white" : "text-muted-soft"
           }`}
         />
       </button>
@@ -81,14 +81,14 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
         style={{ zIndex: 50 }}
       >
         <div
-          className="bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)] p-1 max-h-[340px] overflow-y-auto"
+          className="bg-ink/95 backdrop-blur-xl border border-slate-800 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)] p-1 max-h-[340px] overflow-y-auto"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 16px 40px -12px rgba(0,0,0,0.6)",
           }}
         >
           {(offices || []).length === 0 ? (
-            <div className="px-3 py-2 text-[12px] text-slate-500 italic">
+            <div className="px-3 py-2 text-[12px] text-muted italic">
               No offices
             </div>
           ) : (
@@ -101,17 +101,17 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
                   onClick={() => handlePick(off.id)}
                   className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-[8px] text-[12.5px] text-left transition-colors duration-150 ${
                     active
-                      ? "bg-white text-slate-900 font-semibold"
-                      : "text-slate-200 hover:bg-slate-800/80"
+                      ? "bg-white text-ink font-semibold"
+                      : "text-white/80 hover:bg-ink/80"
                   }`}
                 >
                   <Building2
                     className={`w-3 h-3 shrink-0 ${
-                      active ? "text-emerald-600" : "text-slate-500"
+                      active ? "text-success" : "text-muted"
                     }`}
                   />
                   <span className="flex-1 truncate">{off.name}</span>
-                  {active && <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                  {active && <Check className="w-3.5 h-3.5 text-success shrink-0" />}
                 </button>
               );
             })

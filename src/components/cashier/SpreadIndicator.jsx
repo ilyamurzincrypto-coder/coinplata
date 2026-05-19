@@ -17,7 +17,7 @@ export default function SpreadIndicator({
   if (!Number.isFinite(cur) || !Number.isFinite(m) || cur <= 0 || m <= 0) return null;
   if (cur === m) {
     return (
-      <span className="inline-flex items-center text-[10px] text-slate-400" title={`mid: ${m}`}>
+      <span className="inline-flex items-center text-[10px] text-muted-soft" title={`mid: ${m}`}>
         <Minus className="w-3 h-3" /> mid
       </span>
     );
@@ -27,10 +27,10 @@ export default function SpreadIndicator({
   // Above mid (наша продажа > market) → profitable → зелёный.
   // Below mid (наша продажа < market) → less profitable → amber/red.
   const tone = Math.abs(pct) > SPREAD_WARN_PERCENT
-    ? "text-rose-600"
+    ? "text-danger"
     : above
-      ? "text-emerald-600"
-      : "text-amber-600";
+      ? "text-success"
+      : "text-warning";
   const Icon = above ? TrendingUp : TrendingDown;
   const sign = above ? "+" : "";
   const title =

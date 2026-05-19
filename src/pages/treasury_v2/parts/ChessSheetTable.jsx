@@ -18,10 +18,10 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
   const fmt = ch.isNative ? ((v) => `${fmtNum(v)} ${ch.currency}`) : ((v) => formatBase(v, baseCurrency));
 
   const selector = (
-    <label className="flex items-center gap-1.5 text-[11px] text-slate-500">
+    <label className="flex items-center gap-1.5 text-[11px] text-muted">
       {t("trv2_to_chess_currency") || "Валюта"}:
       <select value={cur} onChange={(e) => setCur(e.target.value)}
-        className="bg-slate-50 border border-slate-200 rounded-[6px] px-1.5 py-0.5 text-[11px] outline-none">
+        className="bg-surface-soft border border-border-soft rounded-[6px] px-1.5 py-0.5 text-[11px] outline-none">
         <option value="">{t("trv2_to_chess_currency_base") || "Базовая"} ({baseCurrency})</option>
         {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -32,7 +32,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
     return (
       <div className="space-y-2">
         <div className="flex justify-end">{selector}</div>
-        <div className="bg-white rounded-[14px] border border-slate-200/70 px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_to_empty_chess")}</div>
+        <div className="bg-white rounded-[14px] border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_chess")}</div>
       </div>
     );
   }
@@ -45,38 +45,38 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
   return (
     <div className="space-y-2">
       <div className="flex justify-end">{selector}</div>
-      <div className="bg-white rounded-[14px] border border-slate-200/70 overflow-auto">
+      <div className="bg-white rounded-[14px] border border-border-soft overflow-auto">
         <table className="text-[11px] border-collapse">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-slate-100 px-2 py-1.5 border border-slate-200 text-slate-400 text-[10px] uppercase">Дт ╲ Кт</th>
+              <th className="sticky left-0 z-10 bg-surface-sunk px-2 py-1.5 border border-border-soft text-muted-soft text-[10px] uppercase">Дт ╲ Кт</th>
               {cols.map((c) => (
-                <th key={c.accountId} title={c.name} className="bg-slate-100 px-2 py-1.5 border border-slate-200 font-mono text-[10px] text-slate-600 whitespace-nowrap">{c.code}</th>
+                <th key={c.accountId} title={c.name} className="bg-surface-sunk px-2 py-1.5 border border-border-soft font-mono text-[10px] text-ink-soft whitespace-nowrap">{c.code}</th>
               ))}
-              <th className="bg-slate-100 px-2 py-1.5 border border-slate-200 text-[10px] text-slate-500 whitespace-nowrap">{t("trv2_to_chess_row_total")}</th>
+              <th className="bg-surface-sunk px-2 py-1.5 border border-border-soft text-[10px] text-muted whitespace-nowrap">{t("trv2_to_chess_row_total")}</th>
             </tr>
           </thead>
           <tbody>
             {rowsAccts.map((r) => (
               <tr key={r.accountId}>
-                <th title={r.name} className="sticky left-0 z-10 bg-slate-50 px-2 py-1.5 border border-slate-200 font-mono text-[10px] text-slate-600 text-left whitespace-nowrap">{r.code}</th>
+                <th title={r.name} className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft font-mono text-[10px] text-ink-soft text-left whitespace-nowrap">{r.code}</th>
                 {cols.map((c) => (
-                  <td key={c.accountId} className="px-2 py-1.5 border border-slate-100 text-right tabular-nums">{cell(r.accountId, c.accountId)}</td>
+                  <td key={c.accountId} className="px-2 py-1.5 border border-border-soft text-right tabular-nums">{cell(r.accountId, c.accountId)}</td>
                 ))}
-                <td className="px-2 py-1.5 border border-slate-200 text-right tabular-nums font-medium bg-slate-50">{fmt(ch.rowTotals.get(r.accountId) || 0)}</td>
+                <td className="px-2 py-1.5 border border-border-soft text-right tabular-nums font-medium bg-surface-soft">{fmt(ch.rowTotals.get(r.accountId) || 0)}</td>
               </tr>
             ))}
             <tr>
-              <th className="sticky left-0 z-10 bg-slate-50 px-2 py-1.5 border border-slate-200 text-[10px] text-slate-500 text-left whitespace-nowrap">{t("trv2_to_chess_col_total")}</th>
+              <th className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft text-[10px] text-muted text-left whitespace-nowrap">{t("trv2_to_chess_col_total")}</th>
               {cols.map((c) => (
-                <td key={c.accountId} className="px-2 py-1.5 border border-slate-200 text-right tabular-nums font-medium bg-slate-50">{fmt(ch.colTotals.get(c.accountId) || 0)}</td>
+                <td key={c.accountId} className="px-2 py-1.5 border border-border-soft text-right tabular-nums font-medium bg-surface-soft">{fmt(ch.colTotals.get(c.accountId) || 0)}</td>
               ))}
-              <td className="px-2 py-1.5 border border-slate-300 text-right tabular-nums font-bold bg-slate-900 text-white">{fmt(ch.grandTotal)}</td>
+              <td className="px-2 py-1.5 border border-border text-right tabular-nums font-bold bg-ink text-white">{fmt(ch.grandTotal)}</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-slate-400">{t("trv2_to_chess_note").replace("{cur}", ch.currency)}</p>
+      <p className="text-[11px] text-muted-soft">{t("trv2_to_chess_note").replace("{cur}", ch.currency)}</p>
       {ch.isNative && (
         <p className="text-[11px] text-amber-600">{t("trv2_to_chess_native_note") || "Для кросс-валютных сделок суммы по столбцам могут не сходиться — недостающая нога в другой валюте."}</p>
       )}

@@ -24,12 +24,12 @@ export const KIND_LABELS = {
 };
 
 export const TONE_CLS = {
-  slate:   "bg-slate-50 text-slate-700 ring-slate-200",
-  emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  indigo:  "bg-indigo-50 text-indigo-700 ring-indigo-200",
-  amber:   "bg-amber-50 text-amber-800 ring-amber-200",
-  violet:  "bg-violet-50 text-violet-700 ring-violet-200",
-  rose:    "bg-rose-50 text-rose-700 ring-rose-200",
+  slate:   "bg-surface-soft text-ink-soft ring-border-soft",
+  emerald: "bg-success-soft text-success ring-emerald-200",
+  indigo:  "bg-accent-bg text-accent ring-indigo-200",
+  amber:   "bg-warning-soft text-amber-800 ring-amber-200",
+  violet:  "bg-accent-bg text-accent ring-violet-200",
+  rose:    "bg-danger-soft text-danger ring-rose-200",
 };
 
 // Side-status (pending/partial/completed) на основе planned vs actual.
@@ -43,9 +43,9 @@ export function computeSideStatus(planned, actual) {
 }
 
 export const SIDE_STATUS_CLS = {
-  completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  partial:   "bg-violet-50 text-violet-700 ring-violet-200",
-  pending:   "bg-amber-50 text-amber-700 ring-amber-200",
+  completed: "bg-success-soft text-success ring-emerald-200",
+  partial:   "bg-accent-bg text-accent ring-violet-200",
+  pending:   "bg-warning-soft text-warning ring-amber-200",
 };
 
 export const SIDE_STATUS_LABEL = {

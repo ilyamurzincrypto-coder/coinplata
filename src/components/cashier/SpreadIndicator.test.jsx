@@ -32,7 +32,7 @@ describe("SpreadIndicator color logic", () => {
       <SpreadIndicator currentRate={30.15} marketRate={30} />
     );
     const span = container.querySelector("span");
-    expect(span.className).toContain("text-emerald-600");
+    expect(span.className).toContain("text-success");
     expect(span.textContent).toMatch(/\+0\.5%/);
   });
 
@@ -41,7 +41,7 @@ describe("SpreadIndicator color logic", () => {
       <SpreadIndicator currentRate={29.55} marketRate={30} />
     );
     const span = container.querySelector("span");
-    expect(span.className).toContain("text-amber-600");
+    expect(span.className).toContain("text-warning");
     expect(span.textContent).toMatch(/-1\.5%/);
   });
 
@@ -50,7 +50,7 @@ describe("SpreadIndicator color logic", () => {
       <SpreadIndicator currentRate={31.8} marketRate={30} />
     );
     const span = container.querySelector("span");
-    expect(span.className).toContain("text-rose-600");
+    expect(span.className).toContain("text-danger");
     expect(span.textContent).toMatch(/\+6\.0%/);
   });
 
@@ -59,7 +59,7 @@ describe("SpreadIndicator color logic", () => {
       <SpreadIndicator currentRate={27.6} marketRate={30} />
     );
     const span = container.querySelector("span");
-    expect(span.className).toContain("text-rose-600");
+    expect(span.className).toContain("text-danger");
     expect(span.textContent).toMatch(/-8\.0%/);
   });
 

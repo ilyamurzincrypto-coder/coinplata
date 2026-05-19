@@ -6,16 +6,16 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 
 const STYLES = {
   in: {
-    bg: "bg-emerald-50",
+    bg: "bg-success-soft",
     border: "border-emerald-200",
-    text: "text-emerald-700",
+    text: "text-success",
     Icon: ArrowDownLeft,
     label: "IN",
   },
   out: {
-    bg: "bg-rose-50",
+    bg: "bg-danger-soft",
     border: "border-rose-200",
-    text: "text-rose-700",
+    text: "text-danger",
     Icon: ArrowUpRight,
     label: "OUT",
   },

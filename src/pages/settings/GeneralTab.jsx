@@ -15,7 +15,7 @@ import { useTranslation } from "../../i18n/translations.jsx";
 
 function SectionHeader({ icon, title, right }) {
   return (
-    <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+    <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between">
       <div className="flex items-center gap-2">
         {icon}
         <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
@@ -95,17 +95,17 @@ export default function GeneralTab() {
   };
 
   return (
-    <div className="divide-y divide-slate-100">
+    <div className="divide-y divide-border-soft">
       <section>
         <SectionHeader
-          icon={<SettingsIcon className="w-4 h-4 text-slate-500" />}
+          icon={<SettingsIcon className="w-4 h-4 text-muted" />}
           title={t("system_settings")}
         />
         <div className="p-5 space-y-4">
           <div>
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-              <label className="flex items-center gap-1.5 text-[13px] text-slate-700 font-medium">
-                <Coins className="w-3.5 h-3.5 text-slate-500" />
+              <label className="flex items-center gap-1.5 text-[13px] text-ink-soft font-medium">
+                <Coins className="w-3.5 h-3.5 text-muted" />
                 {t("base_currency_label")}
               </label>
               <SegmentedControl
@@ -115,7 +115,7 @@ export default function GeneralTab() {
                 size="sm"
               />
             </div>
-            <p className="text-[11px] text-slate-500 mb-2">
+            <p className="text-[11px] text-muted mb-2">
               {t("base_currency_hint")}
             </p>
             {/* Курс выбранной base на сегодня — чтобы админ видел по
@@ -123,9 +123,9 @@ export default function GeneralTab() {
                 нужно — поменять курс можно через DailyRatesModal /
                 Edit rates. */}
             {baseCur !== "USD" && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-emerald-50/50 border border-emerald-200 text-[12px]">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span className="text-slate-600">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-success-soft/50 border border-emerald-200 text-[12px]">
+                <TrendingUp className="w-3.5 h-3.5 text-success shrink-0" />
+                <span className="text-ink-soft">
                   Курс на сегодня:{" "}
                 </span>
                 <span className="font-bold tabular-nums text-emerald-800">
@@ -134,20 +134,20 @@ export default function GeneralTab() {
                 </span>
                 {Number.isFinite(usdToBase) && (
                   <>
-                    <span className="text-slate-300">·</span>
-                    <span className="font-bold tabular-nums text-slate-700">
+                    <span className="text-muted-soft">·</span>
+                    <span className="font-bold tabular-nums text-ink-soft">
                       1 USD = {usdToBase.toFixed(4)} {baseCur}
                     </span>
                   </>
                 )}
-                <span className="text-[10px] text-slate-400 ml-1">
+                <span className="text-[10px] text-muted-soft ml-1">
                   изменить → Касса → Quick / Edit rates
                 </span>
               </div>
             )}
           </div>
 
-          <div className="h-px bg-slate-100" />
+          <div className="h-px bg-surface-sunk" />
 
           {/* Биржевой курс USD↔EUR для пересчёта на дашборде. Используется
               только для display-конвертации между базовыми валютами; не
@@ -155,19 +155,19 @@ export default function GeneralTab() {
               если задано только одно поле. */}
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <ArrowLeftRight className="w-3.5 h-3.5 text-slate-500" />
-              <label className="text-[13px] text-slate-700 font-medium">
+              <ArrowLeftRight className="w-3.5 h-3.5 text-muted" />
+              <label className="text-[13px] text-ink-soft font-medium">
                 Биржевой курс (для дашборда)
               </label>
             </div>
-            <p className="text-[11px] text-slate-500 mb-2">
+            <p className="text-[11px] text-muted mb-2">
               Используется при переключении USD/EUR на главной странице
               (Balances). Не влияет на курсы обмена офиса. Если задан
               только один — обратный вычисляется автоматически (1/курс).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
                   1 USD → EUR
                 </label>
                 <input
@@ -179,11 +179,11 @@ export default function GeneralTab() {
                     setFxUsdEur(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="0.92"
-                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
                   1 EUR → USD
                 </label>
                 <input
@@ -195,7 +195,7 @@ export default function GeneralTab() {
                     setFxEurUsd(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="1.087"
-                  className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function GeneralTab() {
               <div className="mt-2 flex justify-end">
                 <button
                   onClick={saveFx}
-                  className="px-3 py-1.5 rounded-[8px] bg-slate-900 text-white text-[12px] font-semibold hover:bg-slate-800 transition-colors"
+                  className="px-3 py-1.5 rounded-[8px] bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
                 >
                   Сохранить fx-курсы
                 </button>
@@ -211,10 +211,10 @@ export default function GeneralTab() {
             )}
           </div>
 
-          <div className="h-px bg-slate-100" />
+          <div className="h-px bg-surface-sunk" />
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <label className="text-[13px] text-slate-700 font-medium">
+            <label className="text-[13px] text-ink-soft font-medium">
               {t("referral_pct_label")}
             </label>
             <input
@@ -225,7 +225,7 @@ export default function GeneralTab() {
               onChange={(e) =>
                 setRefPct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
               }
-              className="w-40 bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-slate-500"
+              className="w-40 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
             />
           </div>
 
@@ -233,18 +233,18 @@ export default function GeneralTab() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={save}
-                className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
               >
                 {t("save")}
               </button>
             </div>
           )}
 
-          <div className="mt-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2 flex items-start gap-2">
-            <Info className="w-3 h-3 mt-0.5 text-slate-400 shrink-0" />
+          <div className="mt-2 text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+            <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
             <span>
               Minimum fee and fee % are now configured{" "}
-              <span className="font-semibold text-slate-700">per office</span> — see
+              <span className="font-semibold text-ink-soft">per office</span> — see
               Settings → Offices.
             </span>
           </div>

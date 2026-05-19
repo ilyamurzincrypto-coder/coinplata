@@ -1663,27 +1663,27 @@ export default function ExchangeForm({
 
   return (
     <div
-      className={`relative bg-white border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
+      className={`relative bg-white border border-border-soft/80 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_40px_-12px_rgba(15,23,42,0.10)] overflow-hidden transition-all ${
         flash ? "ring-4 ring-emerald-400/50" : ""
       }`}
     >
       {/* Sticky title strip — table-style header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-slate-200/70 px-4 py-2 flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-20 bg-white border-b border-border-soft px-4 py-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-[14px] font-bold tracking-tight text-slate-900 whitespace-nowrap">
+          <h2 className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
             {isEdit ? t("edit_transaction") : t("new_exchange")}
           </h2>
-          <span className="text-slate-300 text-[10px]">·</span>
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 min-w-0">
+          <span className="text-muted-soft text-[10px]">·</span>
+          <div className="flex items-center gap-1.5 text-[11px] text-muted min-w-0">
             <span className="font-medium whitespace-nowrap">{officeName(currentOffice)}</span>
             {!isEdit && (
               <>
-                <span className="text-slate-300">·</span>
+                <span className="text-muted-soft">·</span>
                 {canPickManager && managerCandidates.length > 1 ? (
                   <select
                     value={selectedManagerId}
                     onChange={(e) => setSelectedManagerId(e.target.value)}
-                    className="bg-white border border-slate-200 hover:border-slate-300 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-slate-900/10 cursor-pointer"
+                    className="bg-white border border-border-soft hover:border-border rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer"
                     title={t("xf_create_deal_as")}
                   >
                     {managerCandidates.map((m) => (
@@ -1701,14 +1701,14 @@ export default function ExchangeForm({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-slate-500 bg-white border border-slate-200/80 rounded px-1.5 py-0.5">
+          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-muted bg-white border border-border-soft/80 rounded px-1.5 py-0.5">
             ⌘ K
           </kbd>
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="inline-flex items-center justify-center w-6 h-6 rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-soft hover:text-ink hover:bg-surface-sunk transition-colors"
               aria-label={t("cancel")}
             >
               <X className="w-3.5 h-3.5" />
@@ -1720,11 +1720,11 @@ export default function ExchangeForm({
       {/* COUNTERPARTY — flat horizontal bar. Все «клиенты», без toggle
           Партнёр (партнёры теперь — обычные клиенты со своими we_owe /
           they_owe obligations). */}
-      <div className="px-4 py-2 border-b border-slate-200/70 flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase whitespace-nowrap">
+      <div className="px-4 py-2 border-b border-border-soft flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-bold tracking-[0.12em] text-muted uppercase whitespace-nowrap">
           {t("xf_client")}
         </span>
-        <span className="text-[9px] font-bold text-rose-600 uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-rose-50 whitespace-nowrap">
+        <span className="text-[9px] font-bold text-danger uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-danger-soft whitespace-nowrap">
           {t("xf_required")}
         </span>
         <div className="flex-1 min-w-[200px]">
@@ -1759,44 +1759,44 @@ export default function ExchangeForm({
           inline <tr>. OUT-leg ранее использовал sub-component OutputRow
           с rounded card-wrapper — теперь весь OUT-блок встроен прямо
           в tbody, единый визуальный язык с IN-row (без card). */}
-      <div className="border-b border-slate-200/70">
+      <div className="border-b border-border-soft">
         {/* Валюта в каждой строке (IN / extra-IN / OUT) — выпадающий список
             всех валют из справочника (ui/Select), а не text-input: чтобы
             оператор сразу видел все доступные валюты, а не догадывался. */}
-        <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-slate-200/70 [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-slate-100 [&_td:last-child]:border-r-0">
+        <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-border-soft [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-border-soft [&_td:last-child]:border-r-0">
           <colgroup>
             <col className="w-[110px]" />
             <col />
             <col className="w-[120px]" />
             <col className="w-[42px]" />
           </colgroup>
-          <thead className="sticky top-[37px] z-10 bg-white border-b border-slate-200/70">
+          <thead className="sticky top-[37px] z-10 bg-white border-b border-border-soft">
             <tr>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_col_side")}
               </th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_col_amount")}
               </th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_currency")}
               </th>
-              <th className="px-3 py-2 text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap" aria-label={t("xf_col_actions")} />
+              <th className="px-3 py-2 text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap" aria-label={t("xf_col_actions")} />
             </tr>
           </thead>
           <tbody>
             {/* IN row — primary. Скрываем при !inEnabled. */}
             {inEnabled && (
-              <tr className="border-b border-slate-200/70 hover:bg-slate-50/80 transition-colors">
+              <tr className="border-b border-border-soft hover:bg-surface-soft/80 transition-colors">
                 <td className="px-3 py-2 align-top whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                     <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                     {t("xf_in")}
                   </span>
                 </td>
                 <td className="px-3 py-1.5 align-top">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-[14px] font-semibold leading-none">{curSymbol(curIn)}</span>
+                    <span className="text-muted-soft text-[14px] font-semibold leading-none">{curSymbol(curIn)}</span>
                     <input
                       ref={amtInRef}
                       type="text"
@@ -1805,9 +1805,9 @@ export default function ExchangeForm({
                       onChange={(e) => setAmtIn(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
                       onKeyDown={handleKbdIn}
                       placeholder="0"
-                      className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
+                      className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
                     />
-                    <span className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">
+                    <span className="text-[10px] text-muted-soft tabular-nums whitespace-nowrap">
                       bal {curSymbol(curIn)}{fmt(officeCurrencyBalance(curIn), curIn)}
                     </span>
                   </div>
@@ -1821,7 +1821,7 @@ export default function ExchangeForm({
                         currentOfficeId={currentOffice}
                       />
                       {availableAccounts.length === 0 && (
-                        <div className="mt-1 text-[10.5px] text-amber-700">
+                        <div className="mt-1 text-[10.5px] text-warning">
                           {t("no_account_for_currency").replace("{cur}", curIn)}
                         </div>
                       )}
@@ -1848,16 +1848,16 @@ export default function ExchangeForm({
                 (a) => a.active && !a.legacyOnly && a.currency === xiCur
               );
               return (
-                <tr key={xi.id} className="border-b border-slate-200/70 even:bg-slate-50/60 hover:bg-slate-50/80 transition-colors">
+                <tr key={xi.id} className="border-b border-border-soft even:bg-surface-soft/60 hover:bg-surface-soft/80 transition-colors">
                   <td className="px-3 py-2 align-top whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                       <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                       {t("xf_in_extra")}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 align-top">
                     <div className="flex items-center gap-2">
-                      <span className="text-slate-400 text-[14px] font-semibold leading-none">{curSymbol(xiCur)}</span>
+                      <span className="text-muted-soft text-[14px] font-semibold leading-none">{curSymbol(xiCur)}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -1868,7 +1868,7 @@ export default function ExchangeForm({
                           })
                         }
                         placeholder="0"
-                        className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[15px] font-bold tracking-tight min-w-0 leading-none"
+                        className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[15px] font-bold tracking-tight min-w-0 leading-none"
                       />
                     </div>
                     <div className="mt-1.5">
@@ -1894,7 +1894,7 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={() => removeExtraInput(xi.id)}
-                      className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="p-1 rounded text-muted-soft hover:text-danger hover:bg-danger-soft transition-colors"
                       title={t("xf_remove_this_in")}
                     >
                       <X className="w-3.5 h-3.5" />
@@ -1909,7 +1909,7 @@ export default function ExchangeForm({
                 strip ВНИЗУ под таблицей вместе с OUT-кнопками — юзер
                 просил перенести их к секции приёма. */}
             {inEnabled && (
-              <tr className="border-b border-slate-200/70 bg-slate-50/30">
+              <tr className="border-b border-border-soft bg-surface-soft/30">
                 <td className="px-3 py-1.5"></td>
                 <td colSpan={3} className="px-3 py-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -1917,7 +1917,7 @@ export default function ExchangeForm({
                       <button
                         type="button"
                         onClick={addExtraInput}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-white border border-emerald-200 hover:bg-emerald-50 rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-white border border-emerald-200 hover:bg-success-soft rounded-md px-2 py-1 transition-colors"
                         title={t("xf_add_in_tip")}
                       >
                         <Plus className="w-3 h-3" />
@@ -1929,7 +1929,7 @@ export default function ExchangeForm({
                         type="button"
                         onClick={removeIn}
                         title={t("remove_in_tip")}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-rose-200 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                       >
                         <X className="w-3 h-3" />
                         {t("remove_in")}
@@ -1942,10 +1942,10 @@ export default function ExchangeForm({
 
             {/* IN disabled ghost row */}
             {!inEnabled && !isEdit && (
-              <tr className="border-b border-slate-200/70">
+              <tr className="border-b border-border-soft">
                 <td colSpan={4} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-[11.5px] text-slate-500">
+                    <div className="flex items-center gap-2 text-[11.5px] text-muted">
                       <ArrowDown className="w-3.5 h-3.5 opacity-50" />
                       <span className="font-semibold">
                         {t("in_disabled_label")}
@@ -1954,7 +1954,7 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={addIn}
-                      className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 rounded-full px-2.5 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success hover:text-emerald-900 hover:bg-success-soft rounded-full px-2.5 py-1 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                       {t("add_in")}
@@ -1966,15 +1966,15 @@ export default function ExchangeForm({
 
             {/* Remaining indicator — однострочный summary между IN и OUT блоками */}
             {amtIn && outputs.some((o) => o.amount) && (
-              <tr className="border-b border-slate-200/70">
+              <tr className="border-b border-border-soft">
                 <td colSpan={4} className="px-3 py-1.5">
                   <div
                     className={`flex items-center justify-between px-2 py-1 rounded text-[11.5px] tabular-nums transition-colors ${
                       exceedsInput
-                        ? "bg-rose-50 text-rose-800"
+                        ? "bg-danger-soft text-rose-800"
                         : Math.abs(remainingIn) < EPS
-                        ? "bg-emerald-50 text-emerald-800"
-                        : "bg-slate-50 text-slate-700"
+                        ? "bg-success-soft text-emerald-800"
+                        : "bg-surface-soft text-ink-soft"
                     }`}
                   >
                     <span className="font-semibold">
@@ -2044,10 +2044,10 @@ export default function ExchangeForm({
                 <React.Fragment key={o.id}>
                   <tr
                     data-output-row
-                    className="border-b border-slate-200/70 hover:bg-slate-50/40 transition-colors"
+                    className="border-b border-border-soft hover:bg-surface-soft/40 transition-colors"
                   >
                     <td className="px-3 py-2 align-top whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-accent bg-accent-bg border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                         <ArrowUp className="w-2.5 h-2.5" strokeWidth={3} />
                         {t("xf_out")} {outputs.length > 1 ? `#${idx + 1}` : ""}
                       </span>
@@ -2060,8 +2060,8 @@ export default function ExchangeForm({
                         <label
                           className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.08em] transition-colors ${
                             o.applyFee !== false
-                              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
+                              ? "border-emerald-300 bg-success-soft text-emerald-800"
+                              : "border-border-soft bg-surface-soft text-muted hover:border-border"
                           }`}
                           title={t("xf_apply_office_fee_tip")}
                         >
@@ -2071,14 +2071,14 @@ export default function ExchangeForm({
                             onChange={(e) =>
                               updateOutput(o.id, { applyFee: e.target.checked })
                             }
-                            className="w-3 h-3 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
+                            className="w-3 h-3 rounded border-border text-success focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
                           />
                           {t("xf_fee")}
                         </label>
                       </div>
                       {/* Amount row — same style as IN amount */}
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-400 text-[14px] font-semibold leading-none">
+                        <span className="text-muted-soft text-[14px] font-semibold leading-none">
                           {curSymbol(o.currency)}
                         </span>
                         <input
@@ -2096,11 +2096,11 @@ export default function ExchangeForm({
                           }
                           onKeyDown={(e) => handleKbdOut(e, isLast)}
                           placeholder="0"
-                          className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
+                          className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
                         />
                         <span
                           className={`text-[10px] tabular-nums whitespace-nowrap ${
-                            insufficient ? "text-amber-700" : "text-slate-400"
+                            insufficient ? "text-warning" : "text-muted-soft"
                           }`}
                           title={t("available")}
                         >
@@ -2124,7 +2124,7 @@ export default function ExchangeForm({
                             placeholder={t("xf_from_partner_account")}
                           />
                         ) : outAccs.length === 0 ? (
-                          <div className="text-[10.5px] text-amber-700">
+                          <div className="text-[10.5px] text-warning">
                             {t("no_accounts_currency")} {o.currency}
                           </div>
                         ) : (
@@ -2143,10 +2143,10 @@ export default function ExchangeForm({
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                         <div
                           className={`inline-flex items-center rounded-md border bg-white transition-colors px-2 py-0.5 ${
-                            o.manualRate ? "border-amber-300" : "border-slate-200"
+                            o.manualRate ? "border-amber-300" : "border-border-soft"
                           }`}
                         >
-                          <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] mr-1.5">
+                          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-1.5">
                             {t("rate")}
                           </span>
                           <input
@@ -2165,10 +2165,10 @@ export default function ExchangeForm({
                               })
                             }
                             placeholder="0.00"
-                            className="w-[80px] bg-transparent outline-none text-[12px] font-bold text-slate-900 placeholder:text-slate-300 tabular-nums"
+                            className="w-[80px] bg-transparent outline-none text-[12px] font-bold text-ink placeholder:text-muted-soft tabular-nums"
                           />
                           {o.manualRate && (
-                            <span className="ml-1 text-[8.5px] font-bold text-amber-700 tracking-wider uppercase">
+                            <span className="ml-1 text-[8.5px] font-bold text-warning tracking-wider uppercase">
                               {t("xf_manual_badge")}
                             </span>
                           )}
@@ -2208,7 +2208,7 @@ export default function ExchangeForm({
                           <button
                             type="button"
                             onClick={handleUseRemaining}
-                            className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
+                            className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
                             title={t("xf_convert_remaining_tip")}
                           >
                             <Zap className="w-3 h-3" />
@@ -2227,13 +2227,13 @@ export default function ExchangeForm({
                               updateOutput(o.id, { address: e.target.value.trim() })
                             }
                             placeholder={t("xf_crypto_address_placeholder")}
-                            className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-md px-2 py-1 text-[11px] font-mono text-slate-700 outline-none transition-colors placeholder:text-slate-400"
+                            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-md px-2 py-1 text-[11px] font-mono text-ink-soft outline-none transition-colors placeholder:text-muted-soft"
                           />
                         </div>
                       )}
                       {/* Partner mode hint */}
                       {o.outKind === "partner" && (
-                        <p className="mt-1 text-[10px] text-indigo-700/80">
+                        <p className="mt-1 text-[10px] text-accent/80">
                           💸 {t("xf_partner_pays_self_pre")}
                           <strong> we_owe</strong> {t("xf_partner_pays_self_mid")}{" "}
                           {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
@@ -2262,7 +2262,7 @@ export default function ExchangeForm({
                         <button
                           type="button"
                           onClick={() => removeOutput(o.id)}
-                          className="p-1 rounded text-slate-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          className="p-1 rounded text-muted-soft hover:text-danger hover:bg-danger-soft transition-colors"
                           aria-label={t("remove")}
                         >
                           <X className="w-3.5 h-3.5" />
@@ -2272,14 +2272,14 @@ export default function ExchangeForm({
                   </tr>
                   {/* Payee row — под OUT-leg где впервые account чужого офиса. */}
                   {needsPayee && idx === firstInterOfficeIdx && (
-                    <tr className="border-b border-slate-200/70 bg-indigo-50/40">
+                    <tr className="border-b border-border-soft bg-accent-bg/40">
                       <td colSpan={4} className="px-3 py-2">
-                        <label className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 mb-1 tracking-[0.12em] uppercase">
+                        <label className="flex items-center gap-1.5 text-[10px] font-bold text-accent mb-1 tracking-[0.12em] uppercase">
                           <UserPlus className="w-3 h-3" />
                           {t("xf_payee_label").replace("{office}", findOffice(payeeOfficeId)?.name || t("xf_other_office"))}
                         </label>
                         {payeeCandidates.length === 0 ? (
-                          <div className="text-[11.5px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1.5">
+                          <div className="text-[11.5px] text-amber-800 bg-warning-soft border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
                             {t("xf_no_managers_in_office")}
                           </div>
@@ -2287,7 +2287,7 @@ export default function ExchangeForm({
                           <select
                             value={payeeUserId}
                             onChange={(e) => setPayeeUserId(e.target.value)}
-                            className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded px-2 py-1 text-[12px] font-semibold text-slate-900 outline-none cursor-pointer"
+                            className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded px-2 py-1 text-[12px] font-semibold text-ink outline-none cursor-pointer"
                           >
                             {payeeCandidates.map((c) => (
                               <option key={c.id} value={c.id}>
@@ -2307,14 +2307,14 @@ export default function ExchangeForm({
 
             {/* OUT action row — «Добавить выдачу» / «Удалить выдачу» сразу
                 под OUT-rows, в едином ритме с IN action row выше. */}
-            <tr className="border-b border-slate-200/70 bg-slate-50/30">
+            <tr className="border-b border-border-soft bg-surface-soft/30">
               <td className="px-3 py-1.5"></td>
               <td colSpan={3} className="px-3 py-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={addOutput}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-md px-2 py-1 transition-colors"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-white border border-indigo-200 hover:bg-accent-bg rounded-md px-2 py-1 transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                     {t("add_output")}
@@ -2324,7 +2324,7 @@ export default function ExchangeForm({
                       type="button"
                       onClick={removeAllOutputs}
                       title={t("remove_output_tip")}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-white border border-rose-200 hover:bg-rose-50 rounded-md px-2 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-rose-200 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                     >
                       <X className="w-3 h-3" />
                       {t("remove_output")}
@@ -2337,29 +2337,29 @@ export default function ExchangeForm({
             {/* Summary row — курс / комиссия / итог. Однострочный между OUT
                 rows и actions footer. Скрыт пока нет введённых значений. */}
             {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
-              <tr className="border-b border-slate-200/70 bg-slate-50/60">
+              <tr className="border-b border-border-soft bg-surface-soft/60">
                 <td colSpan={4} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-3 flex-wrap text-[12px]">
                     <div className="inline-flex items-center gap-2 flex-wrap">
                       {outputs.length === 1 ? (
                         <span className="inline-flex items-baseline gap-1.5">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
+                          <span className="text-[10px] font-bold text-muted uppercase tracking-[0.1em]">
                             {t("summary_rate")}
                           </span>
-                          <span className="text-[12.5px] font-semibold tabular-nums text-slate-800">
+                          <span className="text-[12.5px] font-semibold tabular-nums text-ink">
                             {parseFloat(outputs[0].rate).toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-[0.1em]">
                           {t("xf_spread_margin")}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.08em]">
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-[0.08em]">
                           {t("xf_fee")}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums text-amber-700">
+                        <span className="inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums text-warning">
                           ${fmt(effectiveFee)}
                           {minFeeApplied && (
                             <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
@@ -2367,7 +2367,7 @@ export default function ExchangeForm({
                             </span>
                           )}
                           {!applyMinFee && (
-                            <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1 py-0.5 rounded">
+                            <span className="text-[9px] font-bold bg-surface-sunk text-ink-soft px-1 py-0.5 rounded">
                               {t("xf_no_min")}
                             </span>
                           )}
@@ -2375,10 +2375,10 @@ export default function ExchangeForm({
                       </span>
                     </div>
                     <div className="inline-flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <span className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">
                         {t("summary_you_receive")}
                       </span>
-                      <span className="text-[14px] font-bold tabular-nums text-slate-900">
+                      <span className="text-[14px] font-bold tabular-nums text-ink">
                         {outputs
                           .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
                           .join(" + ")}
@@ -2386,7 +2386,7 @@ export default function ExchangeForm({
                     </div>
                   </div>
                   {outputs.length === 1 && parseFloat(outputs[0].rate) > 0 && (
-                    <div className="text-[10px] text-slate-400 tabular-nums text-right font-mono mt-0.5">
+                    <div className="text-[10px] text-muted-soft tabular-nums text-right font-mono mt-0.5">
                       {fmt(parseFloat(amtIn), curIn)} × {parseFloat(outputs[0].rate).toFixed(6)}
                       {!applyMinFee || effectiveFee === 0 ? null : (
                         <>
@@ -2406,7 +2406,7 @@ export default function ExchangeForm({
         {/* Action strip снаружи таблицы — теперь только Reverse rates.
             «Ещё приём / Удалить приём» переехали в IN action row внутри
             таблицы; «Добавить выдачу / Удалить выдачу» — в OUT action row. */}
-        <div className="px-4 py-2 border-t border-slate-200/70 flex items-center gap-2 flex-wrap bg-slate-50/30">
+        <div className="px-4 py-2 border-t border-border-soft flex items-center gap-2 flex-wrap bg-surface-soft/30">
           {(() => {
             const disabled = !amtIn || !outputs[0]?.amount || outputs.length > 1;
             const title =
@@ -2423,8 +2423,8 @@ export default function ExchangeForm({
                 title={title}
                 className={`ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-semibold border transition-colors ${
                   disabled
-                    ? "bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed"
-                    : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                    ? "bg-surface-soft border-border-soft text-muted-soft cursor-not-allowed"
+                    : "bg-white border-border-soft text-ink-soft hover:bg-surface-sunk"
                 }`}
               >
                 <ArrowUpDown className="w-3 h-3" />
@@ -2441,8 +2441,8 @@ export default function ExchangeForm({
           conditionsOpen state остаётся для backward-compat draft, но
           визуально не используется — strip всегда раскрыт.
           ════════════════════════════════════════════════════════════════ */}
-      <div className="px-4 py-2 border-t border-slate-200/70 bg-slate-50/30 flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase whitespace-nowrap">
+      <div className="px-4 py-2 border-t border-border-soft bg-surface-soft/30 flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
           {t("xf_conditions")}
         </span>
 
@@ -2504,8 +2504,8 @@ export default function ExchangeForm({
         />
 
         {/* Compact inline inputs */}
-        <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_brokerage")}</span>
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_brokerage")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2516,12 +2516,12 @@ export default function ExchangeForm({
               )
             }
             placeholder="0"
-            className="w-[64px] bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
+            className="w-[64px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
             title={t("xf_brokerage_tip")}
           />
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_own_fee")}</span>
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_own_fee")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2534,71 +2534,71 @@ export default function ExchangeForm({
             placeholder={t("xf_auto")}
             className={`w-[72px] border rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none ${
               customFeeUsdInput
-                ? "bg-amber-50 border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
-                : "bg-white border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10"
+                ? "bg-warning-soft border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
+                : "bg-white border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20"
             }`}
             title={t("xf_custom_fee_tip")}
           />
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_backdate")}</span>
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_backdate")}</span>
           <input
             type="datetime-local"
             value={backdateAt}
             onChange={(e) => setBackdateAt(e.target.value)}
-            className="bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
+            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
             title={t("xf_backdate_tip")}
           />
           {backdateAt && (
             <button
               type="button"
               onClick={() => setBackdateAt("")}
-              className="text-slate-400 hover:text-slate-700"
+              className="text-muted-soft hover:text-ink-soft"
               title={t("ef_clear")}
             >
               <X className="w-3 h-3" />
             </button>
           )}
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_planned")}</span>
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_planned")}</span>
           <input
             type="datetime-local"
             value={plannedLocal}
             onChange={(e) => setPlannedLocal(e.target.value)}
-            className="bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
+            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
             title={t("ef_expected_completion")}
           />
           {plannedLocal && (
             <button
               type="button"
               onClick={() => setPlannedLocal("")}
-              className="text-slate-400 hover:text-slate-700"
+              className="text-muted-soft hover:text-ink-soft"
               title={t("ef_clear_planned_date")}
             >
               <X className="w-3 h-3" />
             </button>
           )}
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-slate-600 flex-1 min-w-[160px]">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("comment")}</span>
+        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft flex-1 min-w-[160px]">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("comment")}</span>
           <input
             type="text"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder={t("comment_placeholder")}
-            className="flex-1 min-w-0 bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[12px] outline-none placeholder:text-slate-300"
+            className="flex-1 min-w-0 bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[12px] outline-none placeholder:text-muted-soft"
           />
         </label>
         {isCryptoCode(curIn) && (
-          <label className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-slate-500 whitespace-nowrap">{t("xf_tx_hash")}</span>
+          <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_tx_hash")}</span>
             <input
               type="text"
               value={inTxHash}
               onChange={(e) => setInTxHash(e.target.value.trim())}
               placeholder={t("ef_tx_hash_placeholder")}
-              className="w-[160px] bg-white border border-slate-200 focus:border-slate-400 focus:ring-1 focus:ring-slate-900/10 rounded px-1.5 py-0.5 text-[11px] font-mono outline-none placeholder:text-slate-300"
+              className="w-[160px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[11px] font-mono outline-none placeholder:text-muted-soft"
               title={t("ef_tx_hash_hint")}
             />
           </label>
@@ -2608,8 +2608,8 @@ export default function ExchangeForm({
       {/* Partial pay-now per output — отдельная строка, появляется только
           когда partialMode=on. Раньше была вложена в Conditions accordion. */}
       {partialMode && outputs.length > 0 && (
-        <div className="px-4 py-2 border-t border-slate-200/70 bg-violet-50/30">
-          <div className="text-[10px] font-bold text-violet-700 uppercase tracking-[0.12em] mb-1.5">
+        <div className="px-4 py-2 border-t border-border-soft bg-accent-bg/30">
+          <div className="text-[10px] font-bold text-accent uppercase tracking-[0.12em] mb-1.5">
             {t("xf_partial_title")}
           </div>
           <div className="space-y-1.5">
@@ -2619,13 +2619,13 @@ export default function ExchangeForm({
               const remaining = Math.max(0, planned - now);
               return (
                 <div key={o.id} className="flex items-center gap-2 text-[12px]">
-                  <span className="text-[10px] font-bold text-slate-400 tabular-nums w-6">
+                  <span className="text-[10px] font-bold text-muted-soft tabular-nums w-6">
                     #{idx + 1}
                   </span>
-                  <span className="text-slate-600 min-w-[60px]">
+                  <span className="text-ink-soft min-w-[60px]">
                     {o.currency}
                   </span>
-                  <span className="text-slate-400">{t("xf_pay_now")}</span>
+                  <span className="text-muted-soft">{t("xf_pay_now")}</span>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -2646,17 +2646,17 @@ export default function ExchangeForm({
                           [o.id]: String(planned),
                         }))
                       }
-                      className="px-1.5 py-0.5 rounded text-[10px] font-bold text-violet-700 bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
+                      className="px-1.5 py-0.5 rounded text-[10px] font-bold text-accent bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
                       title={t("xf_insert_remainder_tip").replace("{amount}", `${fmt(remaining, o.currency)} ${o.currency}`)}
                     >
                       {t("xf_pay_all")}
                     </button>
                   )}
-                  <span className="text-[10px] text-slate-400 whitespace-nowrap tabular-nums">
+                  <span className="text-[10px] text-muted-soft whitespace-nowrap tabular-nums">
                     / {fmt(planned, o.currency)}
                   </span>
                   {remaining > 0 && (
-                    <span className="text-[10px] font-bold text-violet-700 tabular-nums whitespace-nowrap">
+                    <span className="text-[10px] font-bold text-accent tabular-nums whitespace-nowrap">
                       {t("xf_owe")} {fmt(remaining, o.currency)}
                     </span>
                   )}
@@ -2669,7 +2669,7 @@ export default function ExchangeForm({
 
       {/* Wallet hint — отдельной строкой, если есть результат */}
       {isCryptoCode(curIn) && inTxHash.trim() && inWalletCheck && (
-        <div className="px-4 py-1.5 border-t border-slate-200/70">
+        <div className="px-4 py-1.5 border-t border-border-soft">
           <WalletHint
             status={inWalletCheck.status}
             address={inWalletCheck.resolved?.from_address}
@@ -2684,11 +2684,11 @@ export default function ExchangeForm({
           с кнопкой «Создать сделку» был фиксированной высоты и не
           зависел от количества/длины предупреждений. */}
       {(canSubmit ? (accountWarnings.length > 0 || (amtIn && outputs[0]?.amount)) : true) && (
-        <div className="px-4 py-1.5 border-t border-slate-200/70 bg-slate-50/50 flex items-center gap-1.5 flex-wrap text-[11px]">
+        <div className="px-4 py-1.5 border-t border-border-soft bg-surface-soft/50 flex items-center gap-1.5 flex-wrap text-[11px]">
           {amtIn && outputs[0]?.amount && (
-            <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-slate-700">
+            <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-ink-soft">
               <span>{fmt(parseFloat(amtIn), curIn)} {curIn}</span>
-              <ArrowRight className="w-3 h-3 text-slate-400" />
+              <ArrowRight className="w-3 h-3 text-muted-soft" />
               <span>
                 {outputs
                   .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
@@ -2706,8 +2706,8 @@ export default function ExchangeForm({
             </span>
           )}
           {!canSubmit && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-500 bg-white border border-slate-200/70 rounded px-2 py-0.5">
-              <AlertCircle className="w-3 h-3 text-slate-400" />
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-white border border-border-soft rounded px-2 py-0.5">
+              <AlertCircle className="w-3 h-3 text-muted-soft" />
               {!hasClient
                 ? t("xf_select_client")
                 : !hasAllAmounts
@@ -2727,7 +2727,7 @@ export default function ExchangeForm({
           )}
           {accountWarnings.length > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 rounded px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-danger-soft border border-rose-200 rounded px-2 py-0.5"
               title={accountWarnings.map((w) => w.label).join("\n")}
             >
               <AlertCircle className="w-3 h-3" />
@@ -2739,12 +2739,12 @@ export default function ExchangeForm({
 
       {/* Sticky footer — только Cancel + Submit. Фиксированная высота,
           warnings выведены в отдельную полосу выше. */}
-      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-slate-200/70 px-4 py-2.5 z-20">
+      <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t border-border-soft px-4 py-2.5 z-20">
         <div className="flex items-center justify-end gap-2">
             {isEdit && (
               <button
                 onClick={onCancel}
-                className="px-3 py-2 rounded-[10px] bg-white border border-slate-200 text-slate-700 text-[13px] font-semibold hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                className="px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft hover:border-border transition-colors"
               >
                 {t("cancel")}
               </button>
@@ -2781,11 +2781,11 @@ export default function ExchangeForm({
 // ----------------------------------------
 function PillToggle({ active, onChange, label, title, tone = "slate" }) {
   const tones = {
-    sky: active ? "bg-sky-500 text-white border-sky-500" : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50",
-    amber: active ? "bg-amber-500 text-white border-amber-500" : "bg-white text-amber-700 border-amber-200 hover:bg-amber-50",
-    violet: active ? "bg-violet-500 text-white border-violet-500" : "bg-white text-violet-700 border-violet-200 hover:bg-violet-50",
-    indigo: active ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50",
-    slate: active ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50",
+    sky: active ? "bg-info-soft0 text-white border-sky-500" : "bg-white text-info border-sky-200 hover:bg-info-soft",
+    amber: active ? "bg-warning-soft0 text-white border-amber-500" : "bg-white text-warning border-amber-200 hover:bg-warning-soft",
+    violet: active ? "bg-accent-bg0 text-white border-violet-500" : "bg-white text-accent border-violet-200 hover:bg-accent-bg",
+    indigo: active ? "bg-accent-bg0 text-white border-indigo-500" : "bg-white text-accent border-indigo-200 hover:bg-accent-bg",
+    slate: active ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft",
   };
   return (
     <button
@@ -2834,11 +2834,11 @@ function SubmitCTA({
         disabled={disabled}
         className={`group flex-1 flex items-center justify-center gap-2.5 py-3.5 rounded-l-[12px] text-[15px] font-bold tracking-tight transition-all ${
           !disabled
-            ? "bg-slate-900 text-white hover:bg-slate-800 shadow-[0_10px_28px_-8px_rgba(15,23,42,0.45)] active:scale-[0.995]"
-            : "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
+            ? "bg-ink text-white hover:bg-ink shadow-[0_10px_28px_-8px_rgba(15,23,42,0.45)] active:scale-[0.995]"
+            : "bg-surface-sunk text-muted-soft cursor-not-allowed border border-border-soft"
         }`}
       >
-        <Zap className={`w-4 h-4 ${!disabled ? "text-emerald-400" : "opacity-40"}`} />
+        <Zap className={`w-4 h-4 ${!disabled ? "text-success" : "opacity-40"}`} />
         <span>
           {submitting
             ? isEdit
@@ -2858,8 +2858,8 @@ function SubmitCTA({
           aria-label={t("xf_more_options")}
           className={`px-3 py-3.5 rounded-r-[12px] border-l border-black/10 transition-all ${
             !disabled
-              ? "bg-slate-900 text-white hover:bg-slate-800"
-              : "bg-slate-100 text-slate-400 cursor-not-allowed border-y border-r border-slate-200"
+              ? "bg-ink text-white hover:bg-ink"
+              : "bg-surface-sunk text-muted-soft cursor-not-allowed border-y border-r border-border-soft"
           }`}
         >
           <ChevronUp
@@ -2870,9 +2870,9 @@ function SubmitCTA({
 
       {/* Dropdown menu */}
       {open && !isEdit && (
-        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-slate-200 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
+        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-border-soft rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
           <MenuItem
-            icon={<Zap className="w-3.5 h-3.5 text-emerald-500" />}
+            icon={<Zap className="w-3.5 h-3.5 text-success" />}
             label={t("xf_create_deal")}
             sub={t("xf_create_deal_sub")}
             onClick={() => {
@@ -2881,9 +2881,9 @@ function SubmitCTA({
             }}
             disabled={disabled}
           />
-          <div className="h-px bg-slate-100" />
+          <div className="h-px bg-surface-sunk" />
           <MenuItem
-            icon={<Clock className="w-3.5 h-3.5 text-amber-500" />}
+            icon={<Clock className="w-3.5 h-3.5 text-warning" />}
             label={t("xf_create_pending")}
             sub={t("xf_create_pending_sub")}
             onClick={() => {
@@ -2893,7 +2893,7 @@ function SubmitCTA({
             disabled={disabled}
           />
           <MenuItem
-            icon={<span className="inline-block text-[12px] font-bold text-violet-600">½</span>}
+            icon={<span className="inline-block text-[12px] font-bold text-accent">½</span>}
             label={t("xf_create_partial")}
             sub={t("xf_create_partial_sub")}
             onClick={() => {
@@ -2921,14 +2921,14 @@ function MenuItem({ icon, label, sub, onClick, disabled }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-slate-50 text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full flex items-start gap-2.5 px-3.5 py-2.5 hover:bg-surface-soft text-left transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
-      <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 shrink-0 mt-0.5">
+      <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-surface-sunk shrink-0 mt-0.5">
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-slate-900">{label}</div>
-        <div className="text-[10px] text-slate-500">{sub}</div>
+        <div className="text-[13px] font-semibold text-ink">{label}</div>
+        <div className="text-[10px] text-muted">{sub}</div>
       </div>
     </button>
   );
@@ -2939,17 +2939,17 @@ function MenuItem({ icon, label, sub, onClick, disabled }) {
 // ----------------------------------------
 function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) {
   const tones = {
-    sky: { on: "bg-sky-500", ring: "ring-sky-200", text: "text-sky-700", iconBg: "bg-sky-100 text-sky-700" },
-    amber: { on: "bg-amber-500", ring: "ring-amber-200", text: "text-amber-700", iconBg: "bg-amber-100 text-amber-700" },
-    violet: { on: "bg-violet-500", ring: "ring-violet-200", text: "text-violet-700", iconBg: "bg-violet-100 text-violet-700" },
-    indigo: { on: "bg-indigo-500", ring: "ring-indigo-200", text: "text-indigo-700", iconBg: "bg-indigo-100 text-indigo-700" },
-    slate: { on: "bg-slate-700", ring: "ring-slate-200", text: "text-slate-700", iconBg: "bg-slate-100 text-slate-600" },
+    sky: { on: "bg-info-soft0", ring: "ring-sky-200", text: "text-info", iconBg: "bg-sky-100 text-info" },
+    amber: { on: "bg-warning-soft0", ring: "ring-amber-200", text: "text-warning", iconBg: "bg-amber-100 text-warning" },
+    violet: { on: "bg-accent-bg0", ring: "ring-violet-200", text: "text-accent", iconBg: "bg-violet-100 text-accent" },
+    indigo: { on: "bg-accent-bg0", ring: "ring-indigo-200", text: "text-accent", iconBg: "bg-indigo-100 text-accent" },
+    slate: { on: "bg-ink", ring: "ring-border-soft", text: "text-ink-soft", iconBg: "bg-surface-sunk text-ink-soft" },
   };
   const c = tones[tone] || tones.slate;
   return (
     <label
       className={`flex items-center gap-3 cursor-pointer select-none rounded-[10px] px-3 py-2 transition-all ${
-        active ? `bg-slate-50 ring-1 ${c.ring}` : "bg-slate-50/40 hover:bg-slate-50"
+        active ? `bg-surface-soft ring-1 ${c.ring}` : "bg-surface-soft/40 hover:bg-surface-soft"
       }`}
     >
       <div
@@ -2958,10 +2958,10 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`text-[13px] font-semibold tracking-tight ${active ? c.text : "text-slate-700"}`}>
+        <div className={`text-[13px] font-semibold tracking-tight ${active ? c.text : "text-ink-soft"}`}>
           {label}
         </div>
-        {sub && <div className="text-[10px] text-slate-400 truncate">{sub}</div>}
+        {sub && <div className="text-[10px] text-muted-soft truncate">{sub}</div>}
       </div>
       {suffix && (
         <span className={`text-[10px] font-bold tabular-nums ${c.text}`}>{suffix}</span>
@@ -2975,7 +2975,7 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
           onChange(!active);
         }}
         className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${
-          active ? c.on : "bg-slate-300"
+          active ? c.on : "bg-surface-sunk"
         }`}
       >
         <span
@@ -3022,28 +3022,28 @@ function RateSourceDropdown({ output, sources, onPick }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-ink-soft bg-white border border-border-soft hover:bg-surface-soft hover:border-border transition-colors"
         title={t("xf_rate_source")}
       >
         <span className="tabular-nums whitespace-nowrap">{buttonLabel}</span>
         <ChevronDown
-          className={`w-3 h-3 text-slate-400 transition-transform ${
+          className={`w-3 h-3 text-muted-soft transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 left-0 min-w-[180px] bg-white border border-slate-200 rounded-md shadow-lg shadow-slate-900/10 py-1 max-h-60 overflow-auto">
+        <div className="absolute z-30 mt-1 left-0 min-w-[180px] bg-white border border-border-soft rounded-md shadow-lg shadow-soft py-1 max-h-60 overflow-auto">
           {sources.map((src) => {
             const isActive = active && active.key === src.key;
             const tone =
               src.kind === "global"
-                ? "text-slate-600"
+                ? "text-ink-soft"
                 : src.kind === "current_office"
-                ? "text-indigo-700"
+                ? "text-accent"
                 : src.hasOverride
-                ? "text-sky-700"
-                : "text-slate-500";
+                ? "text-info"
+                : "text-muted";
             return (
               <button
                 key={src.key}
@@ -3052,12 +3052,12 @@ function RateSourceDropdown({ output, sources, onPick }) {
                   onPick(src);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-2.5 py-1 text-[11.5px] flex items-center justify-between gap-2 hover:bg-slate-50 ${
-                  isActive ? "bg-slate-50 font-bold" : ""
+                className={`w-full text-left px-2.5 py-1 text-[11.5px] flex items-center justify-between gap-2 hover:bg-surface-soft ${
+                  isActive ? "bg-surface-soft font-bold" : ""
                 }`}
               >
                 <span className={`font-semibold ${tone}`}>{src.label}</span>
-                <span className="tabular-nums text-slate-700 font-semibold">
+                <span className="tabular-nums text-ink-soft font-semibold">
                   {Number(src.rate).toFixed(4)}
                 </span>
               </button>
@@ -3361,17 +3361,17 @@ function OutputRow({
       className={`rounded-[16px] border p-3.5 transition-colors ${
         o.otcDealId
           ? "bg-gradient-to-br from-emerald-50/50 to-white border-emerald-300/80"
-          : "bg-gradient-to-br from-slate-50/40 to-white border-slate-200/80"
+          : "bg-gradient-to-br from-surface-soft/40 to-white border-border-soft/80"
       }`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 rounded-md px-1.5 py-0.5">
+          <span className="text-[10px] font-bold text-muted bg-white border border-border-soft rounded-md px-1.5 py-0.5">
             #{index + 1}
           </span>
           {o.otcDealId && (
             <span
-              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
+              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-success bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
               title={t("xf_otc_from_deal_tip").replace("{n}", String(o.otcDealId))}
             >
               <ArrowLeftRight className="w-2.5 h-2.5" />
@@ -3382,7 +3382,7 @@ function OutputRow({
         {canRemove && (
           <button
             onClick={onRemove}
-            className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+            className="p-1 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft transition-colors"
             aria-label={t("remove")}
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -3394,15 +3394,15 @@ function OutputRow({
           Размер унифицирован с IN-полем (text-[24px], py-3). */}
       <div
         className={`flex items-center gap-2 bg-white rounded-[14px] border transition-all px-3 py-2 ${
-          o.amount ? "border-slate-400" : "border-slate-200 hover:border-slate-300"
+          o.amount ? "border-accent/40" : "border-border-soft hover:border-border"
         }`}
       >
         {/* Per-output toggle "Комиссия" — СЛЕВА внутри amount block. */}
         <label
           className={`inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-1 rounded-[8px] border self-center transition-colors ${
             o.applyFee !== false
-              ? "border-emerald-400 bg-emerald-50 text-emerald-800"
-              : "border-slate-200 bg-slate-50 text-slate-500 hover:border-slate-300"
+              ? "border-emerald-400 bg-success-soft text-emerald-800"
+              : "border-border-soft bg-surface-soft text-muted hover:border-border"
           }`}
           title={t("xf_apply_office_fee_tip")}
         >
@@ -3410,13 +3410,13 @@ function OutputRow({
             type="checkbox"
             checked={o.applyFee !== false}
             onChange={(e) => onUpdate({ applyFee: e.target.checked })}
-            className="w-3.5 h-3.5 rounded border-slate-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
+            className="w-3.5 h-3.5 rounded border-border text-success focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
           />
           <span className="text-[10px] font-bold uppercase tracking-[0.08em] leading-none">
             {t("xf_fee")}
           </span>
         </label>
-        <span className="text-slate-400 text-[20px] font-semibold leading-none">{curSymbol(o.currency)}</span>
+        <span className="text-muted-soft text-[20px] font-semibold leading-none">{curSymbol(o.currency)}</span>
         <input
           type="text"
           inputMode="decimal"
@@ -3430,7 +3430,7 @@ function OutputRow({
           }
           onKeyDown={(e) => onAmountKeyDown?.(e, isLast)}
           placeholder="0"
-          className="flex-1 bg-transparent outline-none text-slate-900 placeholder:text-slate-300 tabular-nums text-[24px] font-bold tracking-tight min-w-0 leading-none"
+          className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[24px] font-bold tracking-tight min-w-0 leading-none"
         />
         <select
           value={o.currency}
@@ -3448,7 +3448,7 @@ function OutputRow({
             }
             onUpdate(patch);
           }}
-          className="shrink-0 bg-white border border-slate-200 hover:border-slate-300 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-2 py-1.5 text-[13px] font-bold tabular-nums text-slate-900 outline-none cursor-pointer"
+          className="shrink-0 bg-white border border-border-soft hover:border-border focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-2 py-1.5 text-[13px] font-bold tabular-nums text-ink outline-none cursor-pointer"
           aria-label={t("xf_currency")}
         >
           {CURRENCIES.map((c) => (
@@ -3469,7 +3469,7 @@ function OutputRow({
          Активный chip подсвечен; клик = onUpdate({rate, manualRate:false}). */}
       {(Number.isFinite(officeRate) || Number.isFinite(globalRate)) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] uppercase">
+          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] uppercase">
             {t("xf_rate_source")}
           </span>
 
@@ -3488,8 +3488,8 @@ function OutputRow({
               }
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
                 !o.manualRate && o.rateSource === "global"
-                  ? "bg-slate-700 text-white border-slate-700"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  ? "bg-ink text-white border-ink"
+                  : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft"
               }`}
               title={t("xf_use_global_rate")}
             >
@@ -3514,8 +3514,8 @@ function OutputRow({
                 !o.manualRate && (!o.rateSource || o.rateSource === "auto")
                   ? "bg-indigo-600 text-white border-indigo-600"
                   : currentOfficeChip.hasOverride
-                  ? "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  ? "bg-white text-accent border-indigo-200 hover:bg-accent-bg"
+                  : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft"
               }`}
               title={
                 currentOfficeChip.hasOverride
@@ -3534,10 +3534,10 @@ function OutputRow({
             const baseCls = row.hasOverride
               ? active
                 ? "bg-sky-600 text-white border-sky-600"
-                : "bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+                : "bg-white text-info border-sky-200 hover:bg-info-soft"
               : active
-              ? "bg-slate-600 text-white border-slate-600"
-              : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50";
+              ? "bg-ink text-white border-ink"
+              : "bg-white text-muted border-border-soft hover:bg-surface-soft";
             return (
               <button
                 key={row.id}
@@ -3573,10 +3573,10 @@ function OutputRow({
       <div className="mt-2 flex items-center gap-2">
         <div
           className={`flex-1 flex items-center rounded-[10px] border transition-all px-3 py-1.5 bg-white ${
-            o.manualRate ? "border-amber-300" : "border-slate-300"
+            o.manualRate ? "border-amber-300" : "border-border"
           }`}
         >
-          <span className="text-[9px] font-bold text-slate-400 tracking-[0.15em] mr-2">{t("rate")}</span>
+          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-2">{t("rate")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -3591,11 +3591,11 @@ function OutputRow({
               })
             }
             placeholder="0.00"
-            className="flex-1 bg-transparent outline-none text-[13px] font-bold text-slate-900 placeholder:text-slate-300 tabular-nums min-w-0"
+            className="flex-1 bg-transparent outline-none text-[13px] font-bold text-ink placeholder:text-muted-soft tabular-nums min-w-0"
           />
           {o.manualRate && (
             <span
-              className="ml-1.5 text-[9px] font-bold text-amber-700 tracking-wider uppercase"
+              className="ml-1.5 text-[9px] font-bold text-warning tracking-wider uppercase"
               title={t("xf_manual_rate_tip")}
             >
               {t("xf_manual_badge")}
@@ -3610,8 +3610,8 @@ function OutputRow({
           Кнопка «Инвертировать» одним кликом ставит 1/actualRate —
           обычно это и есть правильное значение. */}
       {rateLooksWrong && Number.isFinite(expectedRateViaUsd) && (
-        <div className="mt-1.5 px-2.5 py-1.5 rounded-[8px] bg-amber-50 border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
-          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-amber-600" />
+        <div className="mt-1.5 px-2.5 py-1.5 rounded-[8px] bg-warning-soft border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
+          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-warning" />
           <div className="flex-1 min-w-0">
             <div>
               {t("xf_rate_suspicious_pre")}{" "}
@@ -3649,7 +3649,7 @@ function OutputRow({
                   touched: false,
                 });
               }}
-              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
+              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning-soft0 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
             >
               {t("xf_invert_rate").replace("{n}", (1 / actualRate).toFixed(4))}
             </button>
@@ -3660,18 +3660,18 @@ function OutputRow({
       {/* Account selector — наш счёт ИЛИ счёт партнёра. Phase 5 OTC. */}
       <div className="mt-2">
         <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-          <div className="text-[9px] font-bold text-slate-500 tracking-[0.15em] uppercase">
+          <div className="text-[9px] font-bold text-muted tracking-[0.15em] uppercase">
             {t("deposit_from")}
           </div>
           {/* Segmented control: наш / партнёрский */}
-          <div className="inline-flex bg-slate-100 p-0.5 rounded-full">
+          <div className="inline-flex bg-surface-sunk p-0.5 rounded-full">
             <button
               type="button"
               onClick={() => onUpdate({ outKind: "ours", partnerAccountId: null })}
               className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
                 (o.outKind || "ours") === "ours"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white text-ink shadow-sm"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {t("xf_ours")}
@@ -3681,8 +3681,8 @@ function OutputRow({
               onClick={() => onUpdate({ outKind: "partner", accountId: null })}
               className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
                 o.outKind === "partner"
-                  ? "bg-white text-indigo-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white text-accent shadow-sm"
+                  : "text-muted hover:text-ink"
               }`}
             >
               {t("xf_partner_label")}
@@ -3698,13 +3698,13 @@ function OutputRow({
               partnerId={partnerHintId}
               placeholder={t("xf_from_partner_account")}
             />
-            <p className="mt-1 text-[10px] text-indigo-700/80">
+            <p className="mt-1 text-[10px] text-accent/80">
               💸 {t("xf_partner_pays_self_pre")}
               <strong> we_owe</strong> {t("xf_partner_pays_self_mid")} {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
             </p>
           </>
         ) : outAccounts.length === 0 ? (
-          <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5 inline-flex items-center gap-1">
+          <div className="text-[11px] text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1.5 inline-flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {t("no_accounts_currency")} {o.currency}
           </div>
@@ -3722,7 +3722,7 @@ function OutputRow({
       {/* Recipient address — только для crypto */}
       {isCrypto && (
         <div className="mt-2">
-          <div className="text-[9px] font-bold text-slate-500 tracking-[0.15em] uppercase mb-1">
+          <div className="text-[9px] font-bold text-muted tracking-[0.15em] uppercase mb-1">
             {t("xf_recipient_address")}
           </div>
           <input
@@ -3730,7 +3730,7 @@ function OutputRow({
             value={o.address || ""}
             onChange={(e) => onUpdate({ address: e.target.value.trim() })}
             placeholder={t("xf_crypto_address_placeholder")}
-            className="w-full bg-white border border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2 text-[12px] font-mono text-slate-700 tracking-tight outline-none transition-colors placeholder:text-slate-400"
+            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[12px] font-mono text-ink-soft tracking-tight outline-none transition-colors placeholder:text-muted-soft"
           />
           {walletCheck && (
             <WalletHint
@@ -3749,7 +3749,7 @@ function OutputRow({
         {availableInCurrency !== undefined ? (
           <div
             className={`inline-flex items-center gap-1 text-[10px] font-medium tabular-nums flex-wrap ${
-              insufficient ? "text-amber-700" : "text-slate-500"
+              insufficient ? "text-warning" : "text-muted"
             }`}
           >
             {insufficient && <AlertCircle className="w-3 h-3" />}
@@ -3764,12 +3764,12 @@ function OutputRow({
                 informational, всегда видно, помогает планировать до ввода суммы. */}
             {otherOfficesInline.length > 0 && (
               <>
-                <span className="text-slate-300 mx-0.5">·</span>
-                <span className="text-slate-400 inline-flex items-center gap-1 flex-wrap">
+                <span className="text-muted-soft mx-0.5">·</span>
+                <span className="text-muted-soft inline-flex items-center gap-1 flex-wrap">
                   {otherOfficesInline.map((off) => (
                     <span
                       key={off.id}
-                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600"
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-surface-sunk text-ink-soft"
                       title={`${off.name} — ${t("available")}`}
                     >
                       <span className="font-semibold">{off.name}</span>:{" "}
@@ -3791,7 +3791,7 @@ function OutputRow({
           <button
             type="button"
             onClick={handleUseRemaining}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-[8px] px-2 py-1 transition-colors"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-[8px] px-2 py-1 transition-colors"
             title={t("xf_convert_remaining_tip")}
           >
             <Zap className="w-3 h-3" />
@@ -3803,7 +3803,7 @@ function OutputRow({
 
       {/* Suggest other offices when insufficient in current */}
       {insufficient && otherOfficesWithBalance.length > 0 && (
-        <div className="mt-2 px-3 py-2 rounded-[10px] bg-sky-50 border border-sky-200 text-[11px]">
+        <div className="mt-2 px-3 py-2 rounded-[10px] bg-info-soft border border-sky-200 text-[11px]">
           <div className="font-bold text-sky-900 mb-1">
             {t("insufficient_suggest_body").replace("{cur}", o.currency)}
           </div>
@@ -3837,7 +3837,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   const { t } = useTranslation();
   if (status === "invalid_hash") {
     return (
-      <div className="mt-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-warning bg-warning-soft border border-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         {t("xf_wallet_invalid_hash")}
       </div>
@@ -3845,7 +3845,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   if (status === "unknown_network") {
     return (
-      <div className="mt-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+      <div className="mt-1.5 text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-2 py-1">
         {t("xf_wallet_unknown_network")}
       </div>
     );
@@ -3853,7 +3853,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   if (status === "conflict") {
     const other = counterparties?.find((c) => c.id === conflict?.clientId);
     return (
-      <div className="mt-1.5 text-[11px] text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-rose-800 bg-danger-soft border border-rose-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         <span>
           {t("xf_wallet_conflict")}
@@ -3864,7 +3864,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   if (status === "known") {
     return (
-      <div className="mt-1.5 text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-success bg-success-soft border border-emerald-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <Check className="w-3 h-3" />
         {t("xf_wallet_known")} · {network}
       </div>
@@ -3872,7 +3872,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   // new
   return (
-    <div className="mt-1.5 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+    <div className="mt-1.5 text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-2 py-1">
       {t("xf_wallet_new")} · {network} — {t("xf_wallet_new_suffix")}
     </div>
   );

@@ -47,7 +47,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   }, [currentOffice, scopedOffices, onOfficeChange]);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-slate-200/70">
+    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-border-soft">
       <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-4">
         {/* Logo — coinpoint mark, без текстовой подписи */}
         <div className="flex items-center shrink-0">
@@ -67,8 +67,8 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
               onClick={() => onPageChange(p.id)}
               className={`px-2.5 py-1.5 rounded-[8px] text-[13px] transition-colors ${
                 page === p.id
-                  ? "bg-slate-100 text-slate-900 font-semibold"
-                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                  ? "bg-surface-sunk text-ink font-semibold"
+                  : "text-muted hover:text-ink hover:bg-surface-soft"
               }`}
             >
               {t(p.key)}
@@ -80,8 +80,8 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
         {page === "cashier" && (
           <div className="hidden md:flex items-center gap-2 shrink-0">
             {isScopedManager ? (
-              <div className="inline-flex items-center gap-1.5 bg-white border border-slate-200 rounded-[10px] px-3 py-1.5 text-[13px] font-semibold text-slate-700">
-                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              <div className="inline-flex items-center gap-1.5 bg-white border border-border-soft rounded-[10px] px-3 py-1.5 text-[13px] font-semibold text-ink-soft">
+                <Building2 className="w-3.5 h-3.5 text-muted-soft" />
                 {scopedOffices[0]?.name || "—"}
               </div>
             ) : (
@@ -107,7 +107,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
               value={lang}
               onChange={setLang}
               options={["EN", "RU", "TR"]}
-              icon={<Globe className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />}
+              icon={<Globe className="w-3.5 h-3.5 text-muted-soft flex-shrink-0" />}
               compact
             />
           </div>
@@ -124,8 +124,8 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
             onClick={() => onPageChange(p.id)}
             className={`px-3 py-1 rounded-[8px] text-[12px] whitespace-nowrap transition-colors ${
               page === p.id
-                ? "bg-slate-100 text-slate-900 font-medium"
-                : "text-slate-500 hover:text-slate-900"
+                ? "bg-surface-sunk text-ink font-medium"
+                : "text-muted hover:text-ink"
             }`}
           >
             {t(p.key)}

@@ -229,13 +229,13 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
       <section className="relative">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700">
+            <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-success">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
-            <h2 className="text-[13px] font-bold text-slate-900 tracking-tight">
+            <h2 className="text-[13px] font-bold text-ink tracking-tight">
               {t("rates") || "Rates"}
             </h2>
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+            <span className="inline-flex items-center gap-1 text-[11px] text-muted-soft">
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
               updated {timeAgo(lastUpdated, nowMs)} ago
             </span>
@@ -244,7 +244,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             <div className="inline-flex items-center gap-2">
               <button
                 onClick={() => setQuickOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-amber-500/10 text-amber-700 border border-amber-300 text-[12px] font-bold hover:bg-amber-500/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-warning-soft0/10 text-warning border border-amber-300 text-[12px] font-bold hover:bg-warning-soft0/20 transition-colors"
                 title="Быстрое обновление курсов (ежедневное)"
               >
                 <Zap className="w-3 h-3" />
@@ -253,9 +253,9 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               {onOpenRates && (
                 <button
                   onClick={onOpenRates}
-                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-slate-900 text-white text-[12px] font-bold hover:bg-slate-800 active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
+                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-ink text-white text-[12px] font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
                 >
-                  <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
+                  <div className="w-6 h-6 rounded-full bg-success-soft0 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
                     <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
                   </div>
                   <span>{t("edit_rates") || "Редактировать курсы"}</span>
@@ -268,7 +268,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
 
         <div
           ref={wrapperRef}
-          className="bg-white rounded-[16px] border border-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
+          className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)]"
         >
           {/* Grid из displayPairs — favorites (или top-5 популярных) в
               свёрнутом режиме, все пары при Show all. На xl — 5 колонок.
@@ -299,25 +299,25 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   onClick={() => handleToggle(idx)}
                   className={`text-left px-3.5 py-3 rounded-[12px] transition-all outline-none border ${
                     isActive
-                      ? "bg-slate-900 border-slate-900 text-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]"
-                      : "bg-slate-50 hover:bg-white border-transparent hover:border-slate-200 hover:shadow-[0_2px_8px_-4px_rgba(15,23,42,0.08)]"
+                      ? "bg-ink border-ink text-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]"
+                      : "bg-surface-soft hover:bg-white border-transparent hover:border-border-soft hover:shadow-[0_2px_8px_-4px_rgba(15,23,42,0.08)]"
                   }`}
                 >
                   <div
                     className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center justify-between w-full ${
-                      isActive ? "text-slate-300" : "text-slate-500"
+                      isActive ? "text-muted-soft" : "text-muted"
                     }`}
                   >
                     <span className="inline-flex items-center gap-1">
                       <span>{a}</span>
-                      <span className={isActive ? "text-slate-500" : "text-slate-400"}>⇄</span>
+                      <span className={isActive ? "text-muted" : "text-muted-soft"}>⇄</span>
                       <span>{b}</span>
                       {(hasOverride(a, b) || hasOverride(b, a)) && (
                         <span
                           className={`ml-0.5 text-[8px] font-bold px-1 rounded tracking-wider ${
                             isActive
-                              ? "bg-indigo-500/30 text-indigo-200"
-                              : "bg-indigo-100 text-indigo-700"
+                              ? "bg-accent-bg0/30 text-indigo-200"
+                              : "bg-indigo-100 text-accent"
                           }`}
                           title="Per-office override: rate различается от global"
                         >
@@ -330,8 +330,8 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                         <span
                           className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
                             isActive
-                              ? "bg-slate-700 text-emerald-300"
-                              : "bg-emerald-50 text-emerald-700"
+                              ? "bg-ink text-emerald-300"
+                              : "bg-success-soft text-success"
                           }`}
                         >
                           {spreadPct.toFixed(2)}%
@@ -349,10 +349,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                           favoriteKeys.has(`${a}_${b}`)
                             ? isActive
                               ? "text-amber-300"
-                              : "text-amber-500"
+                              : "text-warning"
                             : isActive
-                            ? "text-slate-600 hover:text-slate-300"
-                            : "text-slate-300 hover:text-slate-500"
+                            ? "text-ink-soft hover:text-muted-soft"
+                            : "text-muted-soft hover:text-muted"
                         }`}
                         title={
                           favoriteKeys.has(`${a}_${b}`)
@@ -376,14 +376,14 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   <div className="flex items-baseline gap-2.5 mb-1">
                     <span
                       className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
-                        isActive ? "text-slate-400" : "text-slate-500"
+                        isActive ? "text-muted-soft" : "text-muted"
                       }`}
                     >
                       {a} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {b}
                     </span>
                     <span
                       className={`text-[18px] font-black tabular-nums tracking-tight leading-none ${
-                        isActive ? "text-white" : "text-slate-900"
+                        isActive ? "text-white" : "text-ink"
                       }`}
                     >
                       {formatRate(sell)}
@@ -394,14 +394,14 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   <div className="flex items-baseline gap-2.5">
                     <span
                       className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
-                        isActive ? "text-slate-400" : "text-slate-500"
+                        isActive ? "text-muted-soft" : "text-muted"
                       }`}
                     >
                       {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
                     </span>
                     <span
                       className={`text-[14px] font-black tabular-nums tracking-tight leading-none ${
-                        isActive ? "text-slate-200" : "text-slate-600"
+                        isActive ? "text-white/80" : "text-ink-soft"
                       }`}
                     >
                       {formatRate(buy)}
@@ -422,12 +422,12 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             }`}
           >
             {expandedBase && crossPairs.length > 0 && (
-              <div className="border-t border-slate-100 px-4 py-3 max-h-[320px] overflow-y-auto">
+              <div className="border-t border-border-soft px-4 py-3 max-h-[320px] overflow-y-auto">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-[10px] font-bold text-slate-500 tracking-[0.12em] uppercase">
+                  <div className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase">
                     All {expandedBase} pairs
                   </div>
-                  <div className="text-[10px] text-slate-400 tabular-nums">
+                  <div className="text-[10px] text-muted-soft tabular-nums">
                     {crossPairs.length} {crossPairs.length === 1 ? "pair" : "pairs"}
                   </div>
                 </div>
@@ -435,12 +435,12 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   {crossPairs.map(({ to: t2, rate: r2 }) => (
                     <div
                       key={t2}
-                      className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-[8px] hover:bg-slate-50 transition-colors"
+                      className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-[8px] hover:bg-surface-soft transition-colors"
                     >
-                      <span className="text-[12px] font-semibold text-slate-500 tracking-wide w-10 shrink-0">
+                      <span className="text-[12px] font-semibold text-muted tracking-wide w-10 shrink-0">
                         {t2}
                       </span>
-                      <span className="text-[14px] font-bold tabular-nums text-slate-900">
+                      <span className="text-[14px] font-bold tabular-nums text-ink">
                         {formatRate(r2)}
                       </span>
                     </div>
@@ -454,11 +454,11 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               или уже раскрыто. При hidden>0 — кнопка "+N more". В режиме
               showAll — "Hide extra". */}
           {(hiddenCount > 0 || showAll) && (
-            <div className="border-t border-slate-100 px-2 py-1.5 flex items-center justify-center">
+            <div className="border-t border-border-soft px-2 py-1.5 flex items-center justify-center">
               <button
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
               >
                 <ChevronDown
                   className={`w-3 h-3 transition-transform ${showAll ? "rotate-180" : ""}`}
@@ -530,13 +530,13 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
         />
       )}
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
-        <div className="inline-flex items-center gap-1.5 text-[11px] text-slate-500">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-between">
+        <div className="inline-flex items-center gap-1.5 text-[11px] text-muted">
           <RefreshCw className="w-3 h-3" /> Auto-saved
         </div>
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-slate-900 text-white text-[13px] font-semibold hover:bg-slate-800 transition-colors"
+          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
         >
           {t("save")}
         </button>
@@ -675,7 +675,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
       )}
 
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+        <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
           {currencies.length} currencies · {channels.length} channels · {existingPairs.length} pairs
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -705,7 +705,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-[13px] text-slate-400 italic py-8 text-center">
+        <div className="text-[13px] text-muted-soft italic py-8 text-center">
           No pairs yet. Add a currency, then channels, then a pair.
         </div>
       ) : (
@@ -713,12 +713,12 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
           {groups.map((g) => (
             <div key={g.from}>
               <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-700 tracking-wider">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-sunk border border-border-soft text-[11px] font-bold text-ink-soft tracking-wider">
                   {g.from}
                 </span>
-                <span className="text-[10px] text-slate-400 tabular-nums">{g.pairs.length}</span>
+                <span className="text-[10px] text-muted-soft tabular-nums">{g.pairs.length}</span>
               </div>
-              <div className="border border-slate-200/70 rounded-[10px] overflow-hidden divide-y divide-slate-100">
+              <div className="border border-border-soft rounded-[10px] overflow-hidden divide-y divide-border-soft">
                 {g.pairs.map(({ from, to, key }) => (
                   <RateRow
                     key={key}
@@ -745,8 +745,8 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
   const base =
     "inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold transition-colors border";
   const cls = primary
-    ? "bg-slate-900 text-white border-slate-900 hover:bg-slate-800"
-    : "text-slate-700 hover:text-slate-900 border-slate-200 hover:bg-slate-50";
+    ? "bg-ink text-white border-ink hover:bg-ink"
+    : "text-ink-soft hover:text-ink border-border-soft hover:bg-surface-soft";
   return (
     <button onClick={onClick} className={`${base} ${cls}`}>
       <Icon className="w-3 h-3" />
@@ -759,11 +759,11 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
 function CoverageSummaryBanner({ summary, onOpen, t }) {
   const allGood = !summary.hasIssues;
   const toneCls = allGood
-    ? "bg-emerald-50 border-emerald-200"
+    ? "bg-success-soft border-emerald-200"
     : summary.isolated > 0
-    ? "bg-rose-50 border-rose-200"
-    : "bg-amber-50 border-amber-200";
-  const iconCls = allGood ? "text-emerald-600" : summary.isolated > 0 ? "text-rose-600" : "text-amber-600";
+    ? "bg-danger-soft border-rose-200"
+    : "bg-warning-soft border-amber-200";
+  const iconCls = allGood ? "text-success" : summary.isolated > 0 ? "text-danger" : "text-warning";
   const Icon = allGood ? CheckCircle2 : AlertTriangle;
 
   return (
@@ -774,36 +774,36 @@ function CoverageSummaryBanner({ summary, onOpen, t }) {
     >
       <Icon className={`w-4 h-4 ${iconCls} shrink-0`} />
       <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-bold text-slate-900">
+        <div className="text-[12px] font-bold text-ink">
           {allGood ? t("cov_banner_full") : `${summary.pct}% ${t("cov_coverage")}`}
-          <span className="ml-2 text-[11px] font-normal text-slate-600">
+          <span className="ml-2 text-[11px] font-normal text-ink-soft">
             · {summary.existing}/{summary.total} {t("cov_dirs")}
           </span>
         </div>
         {!allGood && (
-          <div className="text-[11px] text-slate-600 mt-0.5 truncate">
+          <div className="text-[11px] text-ink-soft mt-0.5 truncate">
             {summary.missing > 0 && (
               <span>
-                <strong className="text-rose-700">{summary.missing}</strong> {t("cov_missing").toLowerCase()}
+                <strong className="text-danger">{summary.missing}</strong> {t("cov_missing").toLowerCase()}
               </span>
             )}
             {summary.missing > 0 && summary.oneWay > 0 && <span> · </span>}
             {summary.oneWay > 0 && (
               <span>
-                <strong className="text-amber-700">{summary.oneWay}</strong> {t("cov_one_way").toLowerCase()}
+                <strong className="text-warning">{summary.oneWay}</strong> {t("cov_one_way").toLowerCase()}
               </span>
             )}
             {(summary.missing > 0 || summary.oneWay > 0) && summary.isolated > 0 && <span> · </span>}
             {summary.isolated > 0 && (
               <span>
-                <strong className="text-rose-700">{summary.isolated}</strong> {t("cov_isolated").toLowerCase()}
+                <strong className="text-danger">{summary.isolated}</strong> {t("cov_isolated").toLowerCase()}
               </span>
             )}
-            <span className="text-slate-500"> — {t("cov_click_details")}</span>
+            <span className="text-muted"> — {t("cov_click_details")}</span>
           </div>
         )}
       </div>
-      <ArrowRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      <ArrowRight className="w-3.5 h-3.5 text-muted-soft shrink-0" />
     </button>
   );
 }
@@ -863,10 +863,10 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
     : "no mid rate available";
 
   return (
-    <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-slate-50 transition-colors">
+    <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-surface-soft transition-colors">
       <span className="inline-flex items-center gap-1.5 min-w-[90px]">
-        <span className="text-[12px] font-semibold text-slate-600 tracking-wide">
-          {from} <span className="text-slate-400">→</span> {to}
+        <span className="text-[12px] font-semibold text-ink-soft tracking-wide">
+          {from} <span className="text-muted-soft">→</span> {to}
         </span>
         {pair?.updatedAt && <FreshnessChip updatedAt={pair.updatedAt} />}
       </span>
@@ -877,11 +877,11 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
         onChange={handleRateChange}
         placeholder="base rate"
         title={midTitle}
-        className="flex-1 min-w-0 bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-slate-900 tabular-nums outline-none transition-colors"
+        className="flex-1 min-w-0 bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-ink tabular-nums outline-none transition-colors"
       />
       {hasPairData && pair.rate != null && Math.abs(pair.rate - pair.baseRate) > 1e-8 && (
         <span
-          className="text-[10px] text-emerald-700 font-semibold tabular-nums px-1.5 py-0.5 rounded bg-emerald-50"
+          className="text-[10px] text-success font-semibold tabular-nums px-1.5 py-0.5 rounded bg-success-soft"
           title="Effective rate after spread"
         >
           = {pair.rate.toFixed(pair.rate >= 10 ? 2 : 4)}
@@ -901,9 +901,9 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
           disabled={spreadDisabled}
           placeholder={spreadDisabled ? "—" : "spread"}
           title={midTitle}
-          className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[8px] pl-3 pr-5 py-1.5 text-[13px] font-semibold text-slate-700 tabular-nums outline-none transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+          className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] pl-3 pr-5 py-1.5 text-[13px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 pointer-events-none">
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft pointer-events-none">
           %
         </span>
       </div>
@@ -913,8 +913,8 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
           onBlur={() => setConfirm(false)}
           className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md transition-all ${
             confirm
-              ? "bg-rose-500 text-white opacity-100"
-              : "text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+              ? "bg-danger-soft0 text-white opacity-100"
+              : "text-muted-soft hover:text-danger hover:bg-danger-soft"
           }`}
           title={confirm ? "Confirm delete" : "Delete pair"}
         >
@@ -931,12 +931,12 @@ function SubPanelHeader({ onBack, title }) {
     <div className="flex items-center gap-2 mb-4">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft border border-border-soft transition-colors"
       >
         <ChevronLeft className="w-3 h-3" />
         Back
       </button>
-      <div className="text-[13px] font-semibold text-slate-900">{title}</div>
+      <div className="text-[13px] font-semibold text-ink">{title}</div>
     </div>
   );
 }
@@ -1008,11 +1008,11 @@ function AddCurrencyPanel({ onBack }) {
               placeholder="USDC"
               autoFocus
               maxLength={6}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
             />
           </Field>
           <Field label={t("currency_type")}>
-            <div className="inline-flex bg-slate-100 p-0.5 rounded-[10px] w-full">
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full">
               <SegBtn active={type === "fiat"} onClick={() => setType("fiat")}>
                 {t("currency_type_fiat")}
               </SegBtn>
@@ -1031,7 +1031,7 @@ function AddCurrencyPanel({ onBack }) {
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
           <Field label={t("currency_name")}>
@@ -1040,24 +1040,24 @@ function AddCurrencyPanel({ onBack }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
         </div>
 
         {type === "fiat" ? (
-          <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
-            Channels <span className="font-semibold text-slate-700">cash</span> and{" "}
-            <span className="font-semibold text-slate-700">bank</span> will be created automatically.
+          <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+            Channels <span className="font-semibold text-ink-soft">cash</span> and{" "}
+            <span className="font-semibold text-ink-soft">bank</span> will be created automatically.
           </div>
         ) : (
-          <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-3 py-2">
+          <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
             Add network channels (TRC20, ERC20, …) after creating the currency.
           </div>
         )}
 
         {error && (
-          <div className="text-[12px] font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -1065,7 +1065,7 @@ function AddCurrencyPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
@@ -1074,8 +1074,8 @@ function AddCurrencyPanel({ onBack }) {
             disabled={!canSubmit}
             className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
               canSubmit
-                ? "bg-slate-900 text-white hover:bg-slate-800"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-ink text-white hover:bg-ink"
+                : "bg-surface-sunk text-muted-soft cursor-not-allowed"
             }`}
           >
             {t("currency_add")}
@@ -1160,7 +1160,7 @@ function AddChannelPanel({ onBack }) {
 
       <div className="space-y-4 max-w-md">
         <Field label="Currency">
-          <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap w-full">
+          <div className="inline-flex bg-surface-sunk p-1 rounded-[10px] gap-0.5 flex-wrap w-full">
             {currencies.map((c) => (
               <button
                 key={c.code}
@@ -1168,12 +1168,12 @@ function AddChannelPanel({ onBack }) {
                 onClick={() => setCurrencyCode(c.code)}
                 className={`px-3 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
                   currencyCode === c.code
-                    ? "bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900"
+                    ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
+                    : "text-muted hover:text-ink"
                 }`}
               >
                 {c.code}
-                <span className="ml-1 text-[9px] font-semibold text-slate-400">
+                <span className="ml-1 text-[9px] font-semibold text-muted-soft">
                   {c.type === "crypto" ? "crypto" : "fiat"}
                 </span>
               </button>
@@ -1209,7 +1209,7 @@ function AddChannelPanel({ onBack }) {
                     className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
                       network === n
                         ? "bg-indigo-600 text-white border-indigo-600"
-                        : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                        : "bg-white text-ink-soft border-border-soft hover:border-border"
                     }`}
                   >
                     {n}
@@ -1220,8 +1220,8 @@ function AddChannelPanel({ onBack }) {
                   onClick={() => setNetwork("__custom")}
                   className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
                     network === "__custom"
-                      ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+                      ? "bg-ink text-white border-ink"
+                      : "bg-white text-ink-soft border-border-soft hover:border-border"
                   }`}
                 >
                   Custom…
@@ -1233,7 +1233,7 @@ function AddChannelPanel({ onBack }) {
                   value={networkCustom}
                   onChange={(e) => setNetworkCustom(e.target.value.toUpperCase())}
                   placeholder="POLYGON"
-                  className="mt-2 w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
+                  className="mt-2 w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
                 />
               )}
             </Field>
@@ -1243,14 +1243,14 @@ function AddChannelPanel({ onBack }) {
                 value={gasFee}
                 onChange={(e) => setGasFee(e.target.value.replace(/[^\d.]/g, ""))}
                 placeholder="1.0"
-                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
               />
             </Field>
           </>
         )}
 
         {duplicate && (
-          <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-3 py-2">
             This channel already exists on {currencyCode}.
           </div>
         )}
@@ -1258,7 +1258,7 @@ function AddChannelPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
@@ -1267,8 +1267,8 @@ function AddChannelPanel({ onBack }) {
             disabled={!canSubmit}
             className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
               canSubmit
-                ? "bg-slate-900 text-white hover:bg-slate-800"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-ink text-white hover:bg-ink"
+                : "bg-surface-sunk text-muted-soft cursor-not-allowed"
             }`}
           >
             {t("channel_add")}
@@ -1421,7 +1421,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
               onChange={handleRateChange}
               placeholder="0.00"
               title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
-              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] px-3 py-2.5 text-[16px] font-bold text-slate-900 tabular-nums outline-none transition-colors"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[16px] font-bold text-ink tabular-nums outline-none transition-colors"
             />
           </Field>
           <Field label="Spread %">
@@ -1439,19 +1439,19 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
                 disabled={mid == null}
                 placeholder={mid == null ? "—" : "0.00"}
                 title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
-                className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10 rounded-[10px] pl-3 pr-6 py-2.5 text-[14px] font-semibold text-slate-700 tabular-nums outline-none transition-colors disabled:text-slate-300 disabled:cursor-not-allowed"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] pl-3 pr-6 py-2.5 text-[14px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-muted-soft pointer-events-none">
                 %
               </span>
             </div>
           </Field>
         </div>
-        <p className="text-[11px] text-slate-500 -mt-2">
+        <p className="text-[11px] text-muted -mt-2">
           1 {fromCurrency} ={" "}
-          <span className="font-bold text-slate-700 tabular-nums">{rate || "?"}</span> {toCurrency}
+          <span className="font-bold text-ink-soft tabular-nums">{rate || "?"}</span> {toCurrency}
           {mid != null && (
-            <span className="text-slate-400">
+            <span className="text-muted-soft">
               {" · "}mid <span className="tabular-nums">{mid.toFixed(4)}</span>
             </span>
           )}
@@ -1476,7 +1476,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors"
+            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
@@ -1485,8 +1485,8 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
             disabled={!canSubmit}
             className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
               canSubmit
-                ? "bg-slate-900 text-white hover:bg-slate-800"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-ink text-white hover:bg-ink"
+                : "bg-surface-sunk text-muted-soft cursor-not-allowed"
             }`}
           >
             {t("add_pair")}
@@ -1503,7 +1503,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-slate-500 mb-1.5 uppercase tracking-wide">
+      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
         {label}
       </label>
       {children}
@@ -1517,7 +1517,7 @@ function SegBtn({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
-        active ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+        active ? "bg-white text-ink shadow-sm" : "text-muted"
       }`}
     >
       {children}
@@ -1527,7 +1527,7 @@ function SegBtn({ active, onClick, children }) {
 
 function Warn({ children }) {
   return (
-    <div className="text-[12px] font-medium text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+    <div className="text-[12px] font-medium text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-3 py-2">
       {children}
     </div>
   );
@@ -1535,7 +1535,7 @@ function Warn({ children }) {
 
 function CurrencyPicker({ value, onChange, currencies }) {
   return (
-    <div className="inline-flex bg-slate-100 p-1 rounded-[10px] gap-0.5 flex-wrap w-full mb-2">
+    <div className="inline-flex bg-surface-sunk p-1 rounded-[10px] gap-0.5 flex-wrap w-full mb-2">
       {currencies.map((c) => (
         <button
           key={c.code}
@@ -1543,8 +1543,8 @@ function CurrencyPicker({ value, onChange, currencies }) {
           onClick={() => onChange(c.code)}
           className={`px-2.5 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
             value === c.code
-              ? "bg-white text-slate-900 ring-1 ring-slate-200 shadow-sm"
-              : "text-slate-500 hover:text-slate-900"
+              ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
+              : "text-muted hover:text-ink"
           }`}
         >
           {c.code}
@@ -1557,7 +1557,7 @@ function CurrencyPicker({ value, onChange, currencies }) {
 function ChannelPicker({ channels, value, onChange }) {
   if (channels.length === 0) {
     return (
-      <div className="text-[11px] text-slate-400 italic px-2 py-1">no channels</div>
+      <div className="text-[11px] text-muted-soft italic px-2 py-1">no channels</div>
     );
   }
   return (
@@ -1569,8 +1569,8 @@ function ChannelPicker({ channels, value, onChange }) {
           onClick={() => onChange(ch.id)}
           className={`px-2 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
             value === ch.id
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+              ? "bg-ink text-white border-ink"
+              : "bg-white text-ink-soft border-border-soft hover:border-border"
           }`}
           title={ch.id}
         >

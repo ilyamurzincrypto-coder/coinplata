@@ -24,8 +24,8 @@ import { useNow } from "../hooks/useNow.js";
 const SOURCES = {
   binance: {
     label: "Binance",
-    tone: "bg-amber-50 text-amber-700 ring-amber-200",
-    accent: "text-amber-700",
+    tone: "bg-warning-soft text-warning ring-amber-200",
+    accent: "text-warning",
     origin: "api.binance.com · Spot bookTicker",
     description:
       "Крупнейшая в мире криптобиржа по суточному обороту (~$25–50 млрд). " +
@@ -35,8 +35,8 @@ const SOURCES = {
   },
   harem: {
     label: "Harem (улица TR)",
-    tone: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    accent: "text-emerald-700",
+    tone: "bg-success-soft text-success ring-emerald-200",
+    accent: "text-success",
     origin: "finans.truncgil.com · уличный курс TR",
     note: "≈ 0.05% от Harem Döviz",
     description:
@@ -48,8 +48,8 @@ const SOURCES = {
   },
   tcmb: {
     label: "TCMB",
-    tone: "bg-sky-50 text-sky-700 ring-sky-200",
-    accent: "text-sky-700",
+    tone: "bg-info-soft text-info ring-sky-200",
+    accent: "text-info",
     origin: "tcmb.gov.tr · resmi kurlar XML",
     description:
       "Türkiye Cumhuriyet Merkez Bankası — Центральный банк Турции. " +
@@ -60,8 +60,8 @@ const SOURCES = {
   },
   cbr: {
     label: "ЦБ РФ",
-    tone: "bg-rose-50 text-rose-700 ring-rose-200",
-    accent: "text-rose-700",
+    tone: "bg-danger-soft text-danger ring-rose-200",
+    accent: "text-danger",
     origin: "cbr-xml-daily.ru · daily JSON",
     description:
       "Центральный банк России — официальный курс на следующий банковский день. " +
@@ -71,8 +71,8 @@ const SOURCES = {
   },
   ecb: {
     label: "ЕЦБ",
-    tone: "bg-violet-50 text-violet-700 ring-violet-200",
-    accent: "text-violet-700",
+    tone: "bg-accent-bg text-accent ring-violet-200",
+    accent: "text-accent",
     origin: "frankfurter.dev · ECB derived",
     description:
       "European Central Bank — Европейский центральный банк. Reference rates " +
@@ -114,7 +114,7 @@ function InfoTooltip({ children, side = "bottom", maxWidth = 280 }) {
       className={`pointer-events-none absolute ${sideCls} z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
       style={{ maxWidth }}
     >
-      <span className="block bg-slate-900 text-white text-[11px] leading-snug rounded-lg px-2.5 py-2 shadow-xl whitespace-normal">
+      <span className="block bg-ink text-white text-[11px] leading-snug rounded-lg px-2.5 py-2 shadow-xl whitespace-normal">
         {children}
       </span>
     </span>
@@ -267,16 +267,16 @@ export default function ExternalRatesWidget({ compact = false }) {
   });
 
   return (
-    <section className="bg-white rounded-[14px] border border-slate-200/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+    <section className="bg-white rounded-[14px] border border-border-soft/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
       {/* Шапка кликабельная — сворачивает / разворачивает блок. Кнопки
           обновления и chevron справа; клик в любую часть шапки toggle'ит. */}
       <header
         onClick={() => setCollapsed((v) => !v)}
-        className="px-4 py-3 border-b border-slate-100 bg-gradient-to-b from-slate-50/40 to-transparent cursor-pointer select-none hover:bg-slate-50/60 transition-colors"
+        className="px-4 py-3 border-b border-border-soft bg-gradient-to-b from-surface-soft/40 to-transparent cursor-pointer select-none hover:bg-surface-soft/60 transition-colors"
       >
         <div className="flex items-center gap-2">
-          <Globe className="w-4 h-4 text-slate-500 shrink-0" />
-          <h2 className="text-[14px] font-bold text-slate-900 tracking-tight truncate flex-1">
+          <Globe className="w-4 h-4 text-muted shrink-0" />
+          <h2 className="text-[14px] font-bold text-ink tracking-tight truncate flex-1">
             Внешние котировки
           </h2>
           {!collapsed && (
@@ -285,8 +285,8 @@ export default function ExternalRatesWidget({ compact = false }) {
                 onClick={(e) => { e.stopPropagation(); setSettingsOpen((v) => !v); }}
                 className={`p-1 rounded transition-colors shrink-0 ${
                   settingsOpen
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-400 hover:text-slate-900 hover:bg-slate-100"
+                    ? "bg-ink text-white"
+                    : "text-muted-soft hover:text-ink hover:bg-surface-sunk"
                 }`}
                 title="Настроить какие пары показывать"
               >
@@ -294,7 +294,7 @@ export default function ExternalRatesWidget({ compact = false }) {
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); reload(); }}
-                className="p-1 rounded text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0"
+                className="p-1 rounded text-muted-soft hover:text-ink hover:bg-surface-sunk transition-colors shrink-0"
                 title="Обновить вручную"
               >
                 <RefreshCcw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -302,10 +302,10 @@ export default function ExternalRatesWidget({ compact = false }) {
             </>
           )}
           {collapsed
-            ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
-            : <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />}
+            ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" />
+            : <ChevronUp className="w-4 h-4 text-muted-soft shrink-0" />}
         </div>
-        <div className="text-[11px] text-slate-500 mt-1">
+        <div className="text-[11px] text-muted mt-1">
           {collapsed
             ? `${bySource.size || 0} источников · ${rows.length} пар · клик чтобы раскрыть`
             : `Авто-обновление ${REFRESH_INTERVAL}`}
@@ -313,15 +313,15 @@ export default function ExternalRatesWidget({ compact = false }) {
       </header>
       {/* Settings panel — список всех (source, pair) с галочками. */}
       {!collapsed && settingsOpen && (
-        <div className="px-3 py-2 border-b border-slate-100 bg-slate-50/40 max-h-[240px] overflow-y-auto">
-          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+        <div className="px-3 py-2 border-b border-border-soft bg-surface-soft/40 max-h-[240px] overflow-y-auto">
+          <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
             Какие курсы показывать
           </div>
           {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
             const meta = SOURCES[source];
             return (
               <div key={`s_${source}`} className="mb-2 last:mb-0">
-                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${meta?.accent || "text-slate-700"}`}>
+                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${meta?.accent || "text-ink-soft"}`}>
                   {meta?.label || source}
                 </div>
                 {bySource.get(source).map((r) => {
@@ -336,9 +336,9 @@ export default function ExternalRatesWidget({ compact = false }) {
                         type="checkbox"
                         checked={visible}
                         onChange={() => toggleHidden(key)}
-                        className="w-3.5 h-3.5 rounded border-slate-300 text-slate-900 focus:ring-2 focus:ring-slate-900/20 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-border text-ink focus:ring-2 focus:ring-accent/30 cursor-pointer"
                       />
-                      <span className="text-[11.5px] text-slate-700 font-semibold tabular-nums">
+                      <span className="text-[11.5px] text-ink-soft font-semibold tabular-nums">
                         {formatPair(r.pair)}
                       </span>
                     </label>
@@ -350,13 +350,13 @@ export default function ExternalRatesWidget({ compact = false }) {
         </div>
       )}
       {!collapsed && (rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12px] text-slate-400">
+        <div className="px-4 py-6 text-center text-[12px] text-muted-soft">
           {loading ? "Загрузка…" : "Нет данных. Cron подтянет в течение 5 минут."}
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+        <div className="divide-y divide-border-soft max-h-[60vh] overflow-y-auto">
           {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
-            const meta = SOURCES[source] || { label: source, tone: "bg-slate-100 text-slate-700 ring-slate-200", origin: "" };
+            const meta = SOURCES[source] || { label: source, tone: "bg-surface-sunk text-ink-soft ring-border-soft", origin: "" };
             const allSourceRows = bySource.get(source);
             const sourceRows = allSourceRows.filter((r) => !hidden.has(`${r.source}:${r.pair}`));
             if (sourceRows.length === 0) return null;
@@ -372,13 +372,13 @@ export default function ExternalRatesWidget({ compact = false }) {
                     {meta.label}
                     <Info className="w-3 h-3 ml-1 opacity-60" />
                   </span>
-                  <span className="text-[11px] text-slate-500 tabular-nums">
+                  <span className="text-[11px] text-muted tabular-nums">
                     {timeAgo(fetchedAt, nowMs)} назад
                   </span>
                 </div>
                 <div className="space-y-0.5">
                   <div
-                    className="text-[10.5px] text-slate-400 truncate"
+                    className="text-[10.5px] text-muted-soft truncate"
                     title={meta.origin}
                   >
                     {meta.origin}
@@ -396,7 +396,7 @@ export default function ExternalRatesWidget({ compact = false }) {
 
                 {/* Bank-board: одна строка на пару, у каждой свой спред
                     и обе цены (КУПИМ ниже mid, ПРОДАДИМ выше). */}
-                <div className="divide-y divide-slate-100 -mx-1">
+                <div className="divide-y divide-border-soft -mx-1">
                   {sourceRows.map((r) => {
                     const mid = Number.isFinite(r.mid)
                       ? r.mid
@@ -460,7 +460,7 @@ function PerPairRow({
 }) {
   return (
     <div className="flex items-center gap-2 px-1 py-1.5">
-      <span className="text-[13.5px] font-bold tracking-wide w-[64px] shrink-0 text-slate-700">
+      <span className="text-[13.5px] font-bold tracking-wide w-[64px] shrink-0 text-ink-soft">
         {formatPair(pair)}
       </span>
       <div className="relative shrink-0 inline-flex items-center gap-0.5">
@@ -477,7 +477,7 @@ function PerPairRow({
             onSpreadChange(next);
           }}
           title="Перевернуть знак спреда (плюс ↔ минус)"
-          className="w-5 h-[22px] rounded text-[11px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors"
+          className="w-5 h-[22px] rounded text-[11px] font-bold text-muted bg-surface-sunk hover:bg-surface-sunk transition-colors"
         >
           ±
         </button>
@@ -493,13 +493,13 @@ function PerPairRow({
             title="Спред % — на сколько разводим купим/продадим относительно mid. Может быть отрицательным (тогда КУПИМ выше mid а ПРОДАДИМ ниже)."
             className={`w-[58px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
               hasSpread
-                ? "bg-emerald-50 border-emerald-200 focus:border-emerald-400"
-                : "bg-slate-50 border-slate-200 focus:border-slate-400"
+                ? "bg-success-soft border-emerald-200 focus:border-emerald-400"
+                : "bg-surface-soft border-border-soft focus:border-accent"
             }`}
           />
           <span
             className={`absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
-              hasSpread ? "text-emerald-600" : "text-slate-400"
+              hasSpread ? "text-success" : "text-muted-soft"
             }`}
           >
             %
@@ -527,20 +527,20 @@ function PerPairRow({
 function BuySellCell({ label, value, tone, copied, onCopy }) {
   const toneCls =
     tone === "rose"
-      ? "text-rose-700"
+      ? "text-danger"
       : tone === "emerald"
-      ? "text-emerald-700"
-      : "text-slate-900";
+      ? "text-success"
+      : "text-ink";
   return (
     <button
       type="button"
       onClick={onCopy}
       title={`${label} ${fmtRate(value)} — клик копирует`}
       className={`flex-1 min-w-0 text-right leading-tight px-1 py-0.5 rounded transition-colors ${
-        copied ? "bg-emerald-50 ring-1 ring-emerald-200" : "hover:bg-slate-50"
+        copied ? "bg-success-soft ring-1 ring-emerald-200" : "hover:bg-surface-soft"
       }`}
     >
-      <span className="block text-[8.5px] font-bold text-slate-400 uppercase tracking-wider">
+      <span className="block text-[8.5px] font-bold text-muted-soft uppercase tracking-wider">
         {label}
       </span>
       <span

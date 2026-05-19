@@ -427,12 +427,12 @@ export default function RatesPage({ onBack }) {
   if (!canEdit) {
     return (
       <main className="max-w-[1400px] mx-auto px-6 py-10 text-center">
-        <div className="bg-white rounded-[14px] border border-slate-200 p-8 max-w-md mx-auto">
-          <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto mb-3" />
-          <div className="text-[15px] font-bold text-slate-900 mb-1">
+        <div className="bg-white rounded-[14px] border border-border-soft p-8 max-w-md mx-auto">
+          <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-3" />
+          <div className="text-[15px] font-bold text-ink mb-1">
             {t("rates_page_no_access") || "No access"}
           </div>
-          <div className="text-[12px] text-slate-600">
+          <div className="text-[12px] text-ink-soft">
             {t("rates_page_admin_only") || "Only admins and owners can edit rates."}
           </div>
         </div>
@@ -449,21 +449,21 @@ export default function RatesPage({ onBack }) {
             {onBack && view === "list" && (
               <button
                 onClick={onBack}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
                 title={t("rates_back_dashboard") || "Back to dashboard"}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 {t("rates_back_dashboard") || "Dashboard"}
               </button>
             )}
-            <div className="w-9 h-9 rounded-[10px] bg-slate-900 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <div className="w-9 h-9 rounded-[10px] bg-ink flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-success" />
             </div>
             <div>
               <h1 className="text-[22px] font-bold tracking-tight">
                 {t("rates_page_title") || "Rates"}
               </h1>
-              <p className="text-[12px] text-slate-500">
+              <p className="text-[12px] text-muted">
                 {t("rates_page_subtitle") ||
                   "Manage rates, pairs, and currencies. Shared across all offices."}
               </p>
@@ -475,8 +475,8 @@ export default function RatesPage({ onBack }) {
                 onClick={() => setView("coverage")}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold border ${
                   coverageSummary.hasIssues
-                    ? "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
-                    : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    ? "bg-warning-soft text-amber-800 border-amber-200 hover:bg-amber-100"
+                    : "bg-success-soft text-success border-emerald-200 hover:bg-emerald-100"
                 }`}
               >
                 {coverageSummary.hasIssues ? (
@@ -489,14 +489,14 @@ export default function RatesPage({ onBack }) {
               <button
                 onClick={handleExportCSV}
                 disabled={existingPairs.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
                 {t("export_csv")}
               </button>
               <button
                 onClick={handleOpenImport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-white bg-slate-900 hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-white bg-ink hover:bg-ink"
               >
                 <Upload className="w-3.5 h-3.5" />
                 {t("cov_import_xlsx") || "Import xlsx"}
@@ -506,7 +506,7 @@ export default function RatesPage({ onBack }) {
           {view !== "list" && (
             <button
               onClick={backToList}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               {t("rates_back") || "Back to list"}
@@ -524,13 +524,13 @@ export default function RatesPage({ onBack }) {
 
         {/* Office tabs (visible only in list view) */}
         {view === "list" && (
-          <div className="bg-white border border-slate-200 rounded-[12px] p-1 flex items-center gap-0.5 overflow-x-auto">
+          <div className="bg-white border border-border-soft rounded-[12px] p-1 flex items-center gap-0.5 overflow-x-auto">
             <button
               onClick={() => setActiveOffice("all")}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold whitespace-nowrap transition-colors ${
                 activeOffice === "all"
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? "bg-ink text-white"
+                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
               }`}
             >
               <TrendingUp className="w-3 h-3" />
@@ -542,8 +542,8 @@ export default function RatesPage({ onBack }) {
                 onClick={() => setActiveOffice(o.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold whitespace-nowrap transition-colors ${
                   activeOffice === o.id
-                    ? "bg-slate-900 text-white"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    ? "bg-ink text-white"
+                    : "text-ink-soft hover:bg-surface-soft hover:text-ink"
                 }`}
               >
                 <Building2 className="w-3 h-3" />
@@ -555,7 +555,7 @@ export default function RatesPage({ onBack }) {
 
         {/* Sub-view: Coverage */}
         {view === "coverage" && (
-          <div className="bg-white rounded-[14px] border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
             <RatesCoveragePanel
               onBack={backToList}
               onQuickAdd={(from, to) => gotoAddPair(from, to)}
@@ -569,14 +569,14 @@ export default function RatesPage({ onBack }) {
           <>
             {/* Scope notice — редактирование override для конкретного офиса */}
             {activeOffice !== "all" && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-[10px] px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
+              <div className="bg-accent-bg border border-indigo-200 rounded-[10px] px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
                 <Building2 className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold">
                     {t("rates_office_override_title") ||
                       "Редактирование курсов для этого офиса"}
                   </div>
-                  <div className="text-indigo-700 mt-0.5">
+                  <div className="text-accent mt-0.5">
                     {t("rates_office_override_body") ||
                       "Изменение курса создаёт override только для этого офиса — global остаётся как есть. Пары с override подсвечены индиго. Кнопка ↺ рядом — вернуть на global."}
                   </div>
@@ -585,33 +585,33 @@ export default function RatesPage({ onBack }) {
             )}
 
             {/* Counts + action buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-slate-200 rounded-[12px] px-4 py-3">
-              <div className="text-[12px] text-slate-600 tabular-nums">
-                <span className="font-bold text-slate-900">{currencies.length}</span>{" "}
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-border-soft rounded-[12px] px-4 py-3">
+              <div className="text-[12px] text-ink-soft tabular-nums">
+                <span className="font-bold text-ink">{currencies.length}</span>{" "}
                 {t("rates_currencies_count") || "currencies"} ·{" "}
-                <span className="font-bold text-slate-900">{channels.length}</span>{" "}
+                <span className="font-bold text-ink">{channels.length}</span>{" "}
                 {t("rates_channels_count") || "channels"} ·{" "}
-                <span className="font-bold text-slate-900">{existingPairs.length}</span>{" "}
+                <span className="font-bold text-ink">{existingPairs.length}</span>{" "}
                 {t("rates_pairs_count") || "pairs"}
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setView("addCurrency")}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
                 >
                   <Coins className="w-3 h-3" />
                   {t("currency_add") || "Add currency"}
                 </button>
                 <button
                   onClick={() => setView("addChannel")}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 hover:bg-slate-50"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
                 >
                   <NetworkIcon className="w-3 h-3" />
                   {t("channel_add") || "Add channel"}
                 </button>
                 <button
                   onClick={() => gotoAddPair()}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold bg-slate-900 text-white hover:bg-slate-800"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold bg-ink text-white hover:bg-ink"
                 >
                   <Plus className="w-3 h-3" />
                   {t("add_pair") || "Add pair"}
@@ -639,13 +639,13 @@ export default function RatesPage({ onBack }) {
                 .filter(Boolean);
               if (favRows.length === 0) return null;
               return (
-                <section className="bg-amber-50/40 rounded-[14px] border border-amber-200 overflow-hidden">
+                <section className="bg-warning-soft/40 rounded-[14px] border border-amber-200 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-500 fill-amber-400" />
+                    <Star className="w-4 h-4 text-warning fill-amber-400" />
                     <span className="text-[13px] font-bold text-amber-900">
                       Избранное
                     </span>
-                    <span className="text-[10px] text-amber-700/70 uppercase tracking-wider">
+                    <span className="text-[10px] text-warning/70 uppercase tracking-wider">
                       {favRows.length} · быстрое редактирование
                     </span>
                   </div>
@@ -687,7 +687,7 @@ export default function RatesPage({ onBack }) {
 
             {/* Groups (pairs table by FROM currency) */}
             {groups.length === 0 ? (
-              <div className="bg-white rounded-[14px] border border-slate-200 p-10 text-center text-[13px] text-slate-400">
+              <div className="bg-white rounded-[14px] border border-border-soft p-10 text-center text-[13px] text-muted-soft">
                 {t("rates_no_pairs") ||
                   "No pairs yet. Add a currency, then channels, then a pair."}
               </div>
@@ -696,15 +696,15 @@ export default function RatesPage({ onBack }) {
                 {groups.map((g) => (
                   <section
                     key={g.from}
-                    className="bg-white rounded-[14px] border border-slate-200 overflow-hidden"
+                    className="bg-white rounded-[14px] border border-border-soft overflow-hidden"
                   >
-                    <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/40 flex items-center gap-2">
-                      <span className="text-[13px] font-bold text-slate-900">{g.from}</span>
-                      <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+                    <div className="px-4 py-2.5 border-b border-border-soft bg-surface-soft/40 flex items-center gap-2">
+                      <span className="text-[13px] font-bold text-ink">{g.from}</span>
+                      <span className="text-[10px] text-muted uppercase tracking-wider">
                         {g.pairs.length} {t("rates_pairs_count") || "pairs"}
                       </span>
                     </div>
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y divide-border-soft">
                       {g.pairs.map((p) => {
                         const isOfficeTab = activeOffice !== "all";
                         const override = isOfficeTab
@@ -747,8 +747,8 @@ export default function RatesPage({ onBack }) {
         {/* Sub-views: addPair / addCurrency / addChannel — используем ту же логику
             что в RatesBar, но оборачиваем в card вместо модалки */}
         {view === "addPair" && (
-          <div className="bg-white rounded-[14px] border border-slate-200 p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4">
+          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("add_pair") || "Add pair"}
             </div>
             <AddPairForm
@@ -760,8 +760,8 @@ export default function RatesPage({ onBack }) {
         )}
 
         {view === "addCurrency" && (
-          <div className="bg-white rounded-[14px] border border-slate-200 p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4">
+          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("currency_add") || "Add currency"}
             </div>
             <AddCurrencyForm onDone={backToList} />
@@ -769,8 +769,8 @@ export default function RatesPage({ onBack }) {
         )}
 
         {view === "addChannel" && (
-          <div className="bg-white rounded-[14px] border border-slate-200 p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-4">
+          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("channel_add") || "Add channel"}
             </div>
             <AddChannelForm onDone={backToList} />
@@ -810,8 +810,8 @@ function BulkSpreadControl({ onApply }) {
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-[12px] px-4 py-3 flex items-center gap-3 flex-wrap">
-      <span className="text-[12px] font-semibold text-slate-700">
+    <div className="bg-white border border-border-soft rounded-[12px] px-4 py-3 flex items-center gap-3 flex-wrap">
+      <span className="text-[12px] font-semibold text-ink-soft">
         {t("rates_bulk_spread_label") || "Spread on all pairs"}
       </span>
       <div className="relative">
@@ -822,9 +822,9 @@ function BulkSpreadControl({ onApply }) {
           onChange={(e) => setVal(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."))}
           onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
           placeholder="0.5"
-          className="w-[90px] bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+          className="w-[90px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">%</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft">%</span>
       </div>
       <button
         type="button"
@@ -832,8 +832,8 @@ function BulkSpreadControl({ onApply }) {
         disabled={!canApply}
         className={`inline-flex items-center px-3 py-1.5 rounded-[10px] text-[12px] font-semibold ${
           canApply
-            ? "bg-slate-900 text-white hover:bg-slate-800"
-            : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            ? "bg-ink text-white hover:bg-ink"
+            : "bg-surface-sunk text-muted-soft cursor-not-allowed"
         }`}
       >
         {busy ? "…" : (t("rates_bulk_spread_apply") || "Apply to all")}
@@ -910,8 +910,8 @@ function PairRow({
 
   return (
     <div
-      className={`px-4 py-3 hover:bg-slate-50/40 ${
-        hasOverride && isOfficeTab ? "bg-indigo-50/30" : ""
+      className={`px-4 py-3 hover:bg-surface-soft/40 ${
+        hasOverride && isOfficeTab ? "bg-accent-bg/30" : ""
       }`}
     >
       <div className="flex items-center gap-3 flex-wrap">
@@ -923,23 +923,23 @@ function PairRow({
               onClick={onToggleFavorite}
               className={`shrink-0 transition-colors ${
                 isFavorite
-                  ? "text-amber-500 hover:text-amber-600"
-                  : "text-slate-300 hover:text-amber-500"
+                  ? "text-warning hover:text-warning"
+                  : "text-muted-soft hover:text-warning"
               }`}
               title={isFavorite ? "Убрать из избранного" : "В избранное"}
             >
               <Star className={`w-3.5 h-3.5 ${isFavorite ? "fill-amber-400" : ""}`} />
             </button>
           )}
-          <span className="text-[13px] font-bold text-slate-900 tabular-nums">{from}</span>
-          <span className="text-slate-400">→</span>
-          <span className="text-[13px] font-bold text-slate-900 tabular-nums">{to}</span>
+          <span className="text-[13px] font-bold text-ink tabular-nums">{from}</span>
+          <span className="text-muted-soft">→</span>
+          <span className="text-[13px] font-bold text-ink tabular-nums">{to}</span>
           {/* Status pill: показываем для офис-таба, чтобы было ясно — это
               офисный или общий курс. Без pill юзер раньше путался какая из
               двух соседних кнопок что-то с офисом, а какая — с глобал. */}
           {isOfficeTab && hasOverride && (
             <span
-              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-indigo-700 bg-indigo-100 uppercase tracking-wider"
+              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-accent bg-indigo-100 uppercase tracking-wider"
               title={t("rates_override_tip") || "У этого офиса свой курс поверх глобального"}
             >
               OFC
@@ -947,7 +947,7 @@ function PairRow({
           )}
           {isOfficeTab && !hasOverride && (
             <span
-              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-slate-500 bg-slate-100 uppercase tracking-wider"
+              className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold text-muted bg-surface-sunk uppercase tracking-wider"
               title={t("rates_status_global_tip") || "Этот офис использует общий глобальный курс"}
             >
               {t("rates_status_global") || "ГЛОБАЛ"}
@@ -961,10 +961,10 @@ function PairRow({
             className="flex flex-col items-start"
             title={t("rates_global_tip") || "Общий курс для всех офисов"}
           >
-            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider">
               {t("rates_global_label") || "Global"}
             </span>
-            <span className="text-[12px] font-semibold text-slate-600 tabular-nums">
+            <span className="text-[12px] font-semibold text-ink-soft tabular-nums">
               {globalValue != null ? Number(globalValue).toFixed(4) : "—"}
             </span>
           </div>
@@ -981,7 +981,7 @@ function PairRow({
           <button
             type="button"
             onClick={onApplyGlobal}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200"
             title={t("rates_customize_for_office_tip") || "Создать собственный курс офиса. Стартовое значение — глобальный курс, потом можно изменить базу и спред."}
           >
             <Pencil className="w-3 h-3" strokeWidth={2.5} />
@@ -992,7 +992,7 @@ function PairRow({
           <button
             type="button"
             onClick={onResetOverride}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border border-slate-200"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-semibold text-ink-soft hover:text-ink bg-surface-sunk hover:bg-surface-sunk border border-border-soft"
             title={t("rates_remove_override_tip") || "Убрать офисный курс. Этот офис снова будет использовать общий глобальный курс."}
           >
             <RotateCcw className="w-3 h-3" strokeWidth={2.5} />
@@ -1002,7 +1002,7 @@ function PairRow({
 
         {/* Base rate input */}
         <div className="flex flex-col items-start">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider">
             {isOfficeTab ? (t("rates_office_base") || "Office base") : (t("rates_base_rate") || "Base rate")}
           </span>
           <div className="flex items-center gap-1">
@@ -1016,10 +1016,10 @@ function PairRow({
               }}
               onBlur={commitBase}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className={`w-[120px] bg-slate-50 border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
+              className={`w-[120px] bg-surface-soft border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
                 hasOverride && isOfficeTab
                   ? "border-indigo-300 focus:border-indigo-500"
-                  : "border-slate-200 focus:border-slate-400"
+                  : "border-border-soft focus:border-accent"
               }`}
             />
             {/* Force re-sync обратной пары = 1/этой. Только в global ("all")
@@ -1031,7 +1031,7 @@ function PairRow({
               <button
                 type="button"
                 onClick={() => onUpdate({ baseRate: Number(effectiveBase), syncReverse: true })}
-                className="shrink-0 p-1 rounded-[6px] text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="shrink-0 p-1 rounded-[6px] text-muted-soft hover:text-ink-soft hover:bg-surface-sunk"
                 title={t("rates_sync_reverse_tip") || "Пересчитать обратную пару = 1/этой"}
               >
                 <ArrowLeftRight className="w-3 h-3" strokeWidth={2.5} />
@@ -1042,7 +1042,7 @@ function PairRow({
 
         {/* Spread input — редактируется на КАЖДОЙ паре (не на блок). */}
         <div className="flex flex-col items-start">
-          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+          <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider">
             {t("rates_spread") || "Spread %"}
           </span>
           <div className="relative">
@@ -1056,25 +1056,25 @@ function PairRow({
               }}
               onBlur={commitSpread}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className="w-[80px] bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+              className="w-[80px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">%</span>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft">%</span>
           </div>
         </div>
 
         {/* Effective rate (computed) + inverse direction hint */}
         <div className="flex flex-col items-start">
           <span
-            className="text-[9px] font-bold text-slate-400 uppercase tracking-wider cursor-help"
+            className="text-[9px] font-bold text-muted-soft uppercase tracking-wider cursor-help"
             title={t("rates_effective_tip") || "Итоговый курс который применяется в сделках = Base × (1 + Spread/100)"}
           >
             {t("rates_effective") || "Effective"} ⓘ
           </span>
-          <span className="text-[14px] font-bold text-slate-900 tabular-nums">
+          <span className="text-[14px] font-bold text-ink tabular-nums">
             {effectiveRate != null ? Number(effectiveRate).toFixed(4) : "—"}
           </span>
           {effectiveRate != null && Number(effectiveRate) > 0 && (
-            <span className="text-[10px] text-slate-400 tabular-nums whitespace-nowrap">
+            <span className="text-[10px] text-muted-soft tabular-nums whitespace-nowrap">
               {(t("rates_inverse_hint") || "↔ 1 {to} = {rate} {from}")
                 .replace("{to}", to)
                 .replace("{rate}", formatInverseRate(1 / Number(effectiveRate)))
@@ -1098,10 +1098,10 @@ function PairRow({
           } catch {}
           return (
             <div className="flex flex-col items-start" title={abs}>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+              <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider">
                 {t("rates_updated") || "Обновлён"}
               </span>
-              <span className="text-[11.5px] text-slate-500 tabular-nums whitespace-nowrap">
+              <span className="text-[11.5px] text-muted tabular-nums whitespace-nowrap">
                 {rel || "—"}
               </span>
             </div>
@@ -1112,7 +1112,7 @@ function PairRow({
           {canDelete && (
             <button
               onClick={onDelete}
-              className="text-[14px] text-rose-500 hover:text-rose-700 font-semibold"
+              className="text-[14px] text-danger hover:text-danger font-semibold"
               title={t("delete") || "Delete"}
             >
               ×
@@ -1177,13 +1177,13 @@ function AddPairForm({ initFrom, initTo, onDone }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("from") || "From"}
         </label>
         <select
           value={fromCurrency}
           onChange={(e) => setFromCurrency(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code}>{c.code}</option>
@@ -1191,13 +1191,13 @@ function AddPairForm({ initFrom, initTo, onDone }) {
         </select>
       </div>
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("to") || "To"}
         </label>
         <select
           value={toCurrency}
           onChange={(e) => setToCurrency(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code} disabled={c.code === fromCurrency}>
@@ -1207,7 +1207,7 @@ function AddPairForm({ initFrom, initTo, onDone }) {
         </select>
       </div>
       <div className="md:col-span-2">
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("rate") || "Rate"}
         </label>
         <input
@@ -1216,25 +1216,25 @@ function AddPairForm({ initFrom, initTo, onDone }) {
           value={rate}
           onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
           placeholder={`1 ${fromCurrency} in ${toCurrency}`}
-          className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-slate-400 rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
+          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
         />
       </div>
 
       {sameCurrency && (
-        <div className="md:col-span-2 text-[11px] text-amber-700">
+        <div className="md:col-span-2 text-[11px] text-warning">
           {t("rates_same_currency") || "From and to are the same currency"}
         </div>
       )}
       {duplicate && (
-        <div className="md:col-span-2 text-[11px] text-amber-700">
+        <div className="md:col-span-2 text-[11px] text-warning">
           {t("rates_duplicate") || "Pair already exists"}
         </div>
       )}
 
-      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
         <button
           onClick={onDone}
-          className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200"
+          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           {t("cancel")}
         </button>
@@ -1242,7 +1242,7 @@ function AddPairForm({ initFrom, initTo, onDone }) {
           onClick={handleSubmit}
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {t("save") || "Save"}
@@ -1286,7 +1286,7 @@ function AddCurrencyForm({ onDone }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("currency_code") || "Code"}
         </label>
         <input
@@ -1294,21 +1294,21 @@ function AddCurrencyForm({ onDone }) {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="USD"
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
         />
       </div>
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("cat_type") || "Type"}
         </label>
-        <div className="inline-flex bg-slate-100 p-0.5 rounded-[8px] w-full">
+        <div className="inline-flex bg-surface-sunk p-0.5 rounded-[8px] w-full">
           {["fiat", "crypto"].map((tp) => (
             <button
               key={tp}
               type="button"
               onClick={() => setType(tp)}
               className={`flex-1 px-3 py-1.5 text-[12px] font-semibold rounded-[6px] ${
-                type === tp ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
               }`}
             >
               {tp}
@@ -1317,7 +1317,7 @@ function AddCurrencyForm({ onDone }) {
         </div>
       </div>
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("currency_name") || "Name"}
         </label>
         <input
@@ -1325,11 +1325,11 @@ function AddCurrencyForm({ onDone }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="US Dollar"
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
         />
       </div>
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("currency_symbol") || "Symbol"}
         </label>
         <input
@@ -1337,16 +1337,16 @@ function AddCurrencyForm({ onDone }) {
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           placeholder="$"
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
         />
       </div>
-      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200">{t("cancel")}</button>
+      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
+        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {t("save") || "Save"}
@@ -1391,13 +1391,13 @@ function AddChannelForm({ onDone }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("currency") || "Currency"}
         </label>
         <select
           value={currencyCode}
           onChange={(e) => setCurrencyCode(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code}>{c.code}</option>
@@ -1406,13 +1406,13 @@ function AddChannelForm({ onDone }) {
       </div>
       {!isCrypto && (
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
             {t("channel_kind") || "Kind"}
           </label>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
           >
             <option value="cash">Cash</option>
             <option value="bank">Bank</option>
@@ -1423,13 +1423,13 @@ function AddChannelForm({ onDone }) {
       )}
       {isCrypto && (
         <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
             {t("network") || "Network"}
           </label>
           <select
             value={network}
             onChange={(e) => setNetwork(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-[8px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
           >
             <option value="">—</option>
             <option value="TRC20">TRC20</option>
@@ -1438,13 +1438,13 @@ function AddChannelForm({ onDone }) {
           </select>
         </div>
       )}
-      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200">{t("cancel")}</button>
+      <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
+        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
           className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
-            canSubmit ? "bg-slate-900 text-white hover:bg-slate-800" : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
           {t("save") || "Save"}

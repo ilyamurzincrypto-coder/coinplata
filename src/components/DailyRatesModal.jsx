@@ -209,11 +209,11 @@ export default function DailyRatesModal({ open, onClose }) {
       width="2xl"
     >
       <div className="p-5">
-        <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
-          <Zap className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />
+        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
+          <Zap className="w-3 h-3 text-warning mt-0.5 shrink-0" />
           <span>
-            <strong className="text-emerald-700">Sell</strong> — продажа{" "}
-            (1 X → Y), <strong className="text-sky-700">Buy</strong> —{" "}
+            <strong className="text-success">Sell</strong> — продажа{" "}
+            (1 X → Y), <strong className="text-info">Buy</strong> —{" "}
             покупка (1 Y → X). Если Buy пустой — синхронизируется
             автоматически (1/Sell со спредом). Если задан — сохранится
             как независимый override. Пустые инпуты не трогаем.
@@ -222,26 +222,26 @@ export default function DailyRatesModal({ open, onClose }) {
 
         {/* Поиск — более тёмный контейнер slate-200, визуально отделён
             от обычных row-контейнеров (slate-50/60). */}
-        <div className="mb-3 flex items-center gap-2 bg-slate-200/70 border border-slate-300 rounded-[10px] px-3 py-2">
-          <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+        <div className="mb-3 flex items-center gap-2 bg-surface-sunk/70 border border-border rounded-[10px] px-3 py-2">
+          <Search className="w-3.5 h-3.5 text-muted shrink-0" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по валюте (USD, TRY, USDT → TRY…)"
-            className="flex-1 min-w-0 bg-transparent outline-none text-[12.5px] text-slate-900 placeholder:text-slate-500"
+            className="flex-1 min-w-0 bg-transparent outline-none text-[12.5px] text-ink placeholder:text-muted"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="p-0.5 rounded hover:bg-slate-300 text-slate-600 hover:text-slate-900 transition-colors shrink-0"
+              className="p-0.5 rounded hover:bg-surface-sunk text-ink-soft hover:text-ink transition-colors shrink-0"
               title="Очистить поиск"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           )}
-          <span className="text-[10px] text-slate-500 tabular-nums shrink-0 pl-1 border-l border-slate-300">
+          <span className="text-[10px] text-muted tabular-nums shrink-0 pl-1 border-l border-border">
             {visibleRows.length} / {rows.length}
           </span>
         </div>
@@ -298,19 +298,19 @@ export default function DailyRatesModal({ open, onClose }) {
                 key={key}
                 className={`flex flex-col gap-1.5 p-2 rounded-[10px] border transition-colors ${
                   looksInverted
-                    ? "bg-amber-50/80 border-amber-400"
+                    ? "bg-warning-soft/80 border-amber-400"
                     : anyChanged
-                    ? "bg-emerald-50/40 border-emerald-300"
-                    : "bg-slate-50/60 border-slate-200"
+                    ? "bg-success-soft/40 border-emerald-300"
+                    : "bg-surface-soft/60 border-border-soft"
                 }`}
               >
                 {/* Заголовок пары + время последнего изменения */}
                 <div className="flex items-center justify-between text-[10px]">
-                  <span className="font-semibold text-slate-700 tracking-tight">
-                    {from} <span className="text-slate-400">↔</span> {to}
+                  <span className="font-semibold text-ink-soft tracking-tight">
+                    {from} <span className="text-muted-soft">↔</span> {to}
                   </span>
                   {updatedLabel && (
-                    <span className="text-slate-400 tabular-nums">
+                    <span className="text-muted-soft tabular-nums">
                       изм. {updatedLabel}
                     </span>
                   )}
@@ -322,22 +322,22 @@ export default function DailyRatesModal({ open, onClose }) {
                   <div
                     className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
                       sellChanged
-                        ? "bg-emerald-50 border-emerald-300"
-                        : "bg-white border-slate-200"
+                        ? "bg-success-soft border-emerald-300"
+                        : "bg-white border-border-soft"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-emerald-700 uppercase tracking-wider">
+                      <span className="text-[9px] font-bold text-success uppercase tracking-wider">
                         Sell
                       </span>
-                      <span className="text-[9px] text-slate-400 tabular-nums">
+                      <span className="text-[9px] text-muted-soft tabular-nums">
                         {formatRate(currentSell)}
                       </span>
                     </div>
-                    <div className="text-[9px] text-slate-500">
-                      1 <span className="font-semibold text-slate-700">{from}</span>
+                    <div className="text-[9px] text-muted">
+                      1 <span className="font-semibold text-ink-soft">{from}</span>
                       {" → "}
-                      <span className="font-semibold text-slate-700">{to}</span>
+                      <span className="font-semibold text-ink-soft">{to}</span>
                     </div>
                     <input
                       type="text"
@@ -350,7 +350,7 @@ export default function DailyRatesModal({ open, onClose }) {
                           ? "border-amber-500 focus:ring-2 focus:ring-amber-500/30"
                           : sellChanged
                           ? "border-emerald-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
-                          : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                          : "border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20"
                       }`}
                     />
                   </div>
@@ -359,22 +359,22 @@ export default function DailyRatesModal({ open, onClose }) {
                   <div
                     className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
                       buyChanged
-                        ? "bg-sky-50 border-sky-300"
-                        : "bg-white border-slate-200"
+                        ? "bg-info-soft border-sky-300"
+                        : "bg-white border-border-soft"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-bold text-sky-700 uppercase tracking-wider">
+                      <span className="text-[9px] font-bold text-info uppercase tracking-wider">
                         Buy
                       </span>
-                      <span className="text-[9px] text-slate-400 tabular-nums">
+                      <span className="text-[9px] text-muted-soft tabular-nums">
                         {formatRate(currentBuy)}
                       </span>
                     </div>
-                    <div className="text-[9px] text-slate-500">
-                      1 <span className="font-semibold text-slate-700">{to}</span>
+                    <div className="text-[9px] text-muted">
+                      1 <span className="font-semibold text-ink-soft">{to}</span>
                       {" → "}
-                      <span className="font-semibold text-slate-700">{from}</span>
+                      <span className="font-semibold text-ink-soft">{from}</span>
                     </div>
                     <input
                       type="text"
@@ -385,7 +385,7 @@ export default function DailyRatesModal({ open, onClose }) {
                       className={`w-full min-w-0 bg-white border rounded-[6px] px-2 py-1 text-[12.5px] font-semibold tabular-nums outline-none transition-colors ${
                         buyChanged
                           ? "border-sky-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
-                          : "border-slate-200 focus:border-slate-400 focus:ring-2 focus:ring-slate-900/10"
+                          : "border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20"
                       }`}
                     />
                   </div>
@@ -394,27 +394,27 @@ export default function DailyRatesModal({ open, onClose }) {
                 {/* Подсказка: если buy пустой и sell изменён — auto-sync,
                     если buy введён — будет explicit override. */}
                 {(sellChanged || buyChanged) && (
-                  <div className="flex items-center justify-between text-[9px] text-slate-500 tabular-nums">
+                  <div className="flex items-center justify-between text-[9px] text-muted tabular-nums">
                     {!buyChanged && autoBuy != null && (
                       <span>
-                        <span className="text-slate-400">↩ buy auto =</span>{" "}
-                        <span className="font-semibold text-slate-700">
+                        <span className="text-muted-soft">↩ buy auto =</span>{" "}
+                        <span className="font-semibold text-ink-soft">
                           {formatRate(autoBuy)}
                         </span>
                         {spreadPct > 0 && (
-                          <span className="text-amber-700 font-semibold">
+                          <span className="text-warning font-semibold">
                             {" "}spread {spreadPct}%
                           </span>
                         )}
                       </span>
                     )}
                     {buyChanged && (
-                      <span className="text-sky-700 font-semibold">
+                      <span className="text-info font-semibold">
                         ✓ buy override
                       </span>
                     )}
                     {sellChanged && (
-                      <span className="text-emerald-700 font-semibold">
+                      <span className="text-success font-semibold">
                         ✓ sell {formatRate(sellNum)}
                       </span>
                     )}
@@ -433,28 +433,28 @@ export default function DailyRatesModal({ open, onClose }) {
             );
           })}
           {visibleRows.length === 0 && (
-            <div className="col-span-full py-6 text-center text-[12px] text-slate-400 italic">
+            <div className="col-span-full py-6 text-center text-[12px] text-muted-soft italic">
               Ничего не найдено по «{query}»
             </div>
           )}
         </div>
       </div>
 
-      <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between">
-        <div className="text-[12px] text-slate-600">
+      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-between">
+        <div className="text-[12px] text-ink-soft">
           {changes.length > 0 ? (
             <span>
-              <span className="font-bold text-emerald-700 tabular-nums">{changes.length}</span> изменений к сохранению
+              <span className="font-bold text-success tabular-nums">{changes.length}</span> изменений к сохранению
             </span>
           ) : (
-            <span className="text-slate-400">Нет изменений</span>
+            <span className="text-muted-soft">Нет изменений</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={onClose}
             disabled={busy}
-            className="px-4 py-2 rounded-[10px] bg-slate-100 text-slate-700 text-[13px] font-semibold hover:bg-slate-200 transition-colors disabled:opacity-60"
+            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
           >
             {t("cancel") || "Отмена"}
           </button>
@@ -463,8 +463,8 @@ export default function DailyRatesModal({ open, onClose }) {
             disabled={changes.length === 0 || busy}
             className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
               changes.length > 0 && !busy
-                ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                ? "bg-success-soft0 text-white hover:bg-emerald-600"
+                : "bg-surface-sunk text-muted-soft cursor-not-allowed"
             }`}
           >
             {busy ? "Сохранение…" : `Сохранить ${changes.length || ""}`}

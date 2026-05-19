@@ -142,8 +142,8 @@ export default function RatesConfirmationBanner({ currentOffice }) {
 function BannerShell({ tone, icon: Icon, children }) {
   const toneClass =
     tone === "rose"
-      ? "bg-rose-50 border-rose-200 text-rose-800"
-      : "bg-amber-50 border-amber-200 text-amber-800";
+      ? "bg-danger-soft border-rose-200 text-rose-800"
+      : "bg-warning-soft border-amber-200 text-amber-800";
   return (
     <div className={`border-b ${toneClass} sticky top-0 z-20`}>
       <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
@@ -189,7 +189,7 @@ function ConfirmButton({ tone, onClick, label, disabled = false }) {
 }
 
 function ManagerHint({ tone }) {
-  const cls = tone === "rose" ? "text-rose-700" : "text-amber-700";
+  const cls = tone === "rose" ? "text-danger" : "text-warning";
   return (
     <span className={`ml-auto text-[11px] font-medium italic ${cls}`}>
       Coordinate with management
