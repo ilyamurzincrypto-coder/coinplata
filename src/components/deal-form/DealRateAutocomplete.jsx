@@ -155,37 +155,50 @@ export default function DealRateAutocomplete({
         className={inputClassName}
         {...inputProps}
       />
-      {open && suggestions.length > 0 && (
-        <div className={`absolute top-full left-0 mt-2 rounded-card border shadow-soft-deep z-50 overflow-hidden min-w-[280px] ${
+      {open && (
+        <div className={`absolute top-full left-0 mt-2 rounded-card border shadow-soft-deep z-50 overflow-hidden min-w-[300px] ${
           dark ? "bg-surface text-ink border-border" : "bg-surface border-border"
         }`}>
-          <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider font-bold text-muted-soft">
-            Курсы по офисам
-          </div>
-          {suggestions.map((s, i) => {
-            const tone = ageTone(freshnessOf(s.updatedAt).ageMs);
-            return (
-              <button
-                key={s.key}
-                type="button"
-                onMouseEnter={() => setHi(i)}
-                onClick={() => pick(s)}
-                className={`w-full grid grid-cols-[80px_1fr_auto] items-center gap-2.5 px-3 py-2 text-left transition-colors ${
-                  i === hi ? "bg-surface-soft" : "hover:bg-surface-soft"
-                }`}
-              >
-                <span className="font-mono tabular text-body-sm font-bold text-ink">
-                  {formatRate(s.display.rate)}
-                </span>
-                <span className="text-caption text-ink-soft truncate">
-                  {s.officeName}
-                </span>
-                <span className={`inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold ${tone.cls}`}>
-                  {tone.label}
-                </span>
-              </button>
-            );
-          })}
+          {suggestions.length > 0 ? (
+            <>
+              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider font-bold text-muted-soft">
+                Курсы из офисов
+              </div>
+              {suggestions.map((s, i) => {
+                const tone = ageTone(freshnessOf(s.updatedAt).ageMs);
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onMouseEnter={() => setHi(i)}
+                    onClick={() => pick(s)}
+                    className={`w-full grid grid-cols-[80px_1fr_auto] items-center gap-2.5 px-3 py-2 text-left transition-colors ${
+                      i === hi ? "bg-surface-soft" : "hover:bg-surface-soft"
+                    }`}
+                  >
+                    <span className="font-mono tabular text-body-sm font-bold text-ink">
+                      {formatRate(s.display.rate)}
+                    </span>
+                    <span className="text-caption text-ink-soft truncate">
+                      {s.officeName}
+                    </span>
+                    <span className={`inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold ${tone.cls}`}>
+                      {tone.label}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="px-3 py-1.5 bg-surface-soft text-tiny text-muted flex items-center gap-3 border-t border-border-soft">
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↑↓</kbd> выбрать</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↵</kbd> применить</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">Esc</kbd> закрыть</span>
+              </div>
+            </>
+          ) : (
+            <div className="px-3 py-4 text-center text-caption text-muted">
+              Нет курсов для пары {from} → {to}
+            </div>
+          )}
         </div>
       )}
     </div>

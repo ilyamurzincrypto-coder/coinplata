@@ -15,6 +15,7 @@ export default function DealRateBlock({
   toCcy,
   sourceLabel,      // например "Terra City" или "Global"
   ageLabel,         // "6m" / "2h"
+  manualMode,      // true → курс введён вручную (без выбора из источника)
   marginUsd,        // number — маржа в USD (опц.)
   spreadPct,        // number — % спред (опц.)
   onReverse,        // swap from/to
@@ -57,6 +58,11 @@ export default function DealRateBlock({
           <div className="mt-0.5 text-[10px] text-rose-300 inline-flex items-center gap-1.5 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             {warning}
+          </div>
+        ) : manualMode ? (
+          <div className="mt-0.5 text-[10px] text-white/60 inline-flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
+            <span>Курс введён вручную</span>
           </div>
         ) : sourceLabel ? (
           <div className="mt-0.5 text-[10px] text-white/50 inline-flex items-center gap-1.5">

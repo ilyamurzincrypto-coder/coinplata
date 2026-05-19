@@ -676,15 +676,19 @@ export default function NewDealForm({
       {/* Чёрная rate-капсула — управляет primary.rate */}
       <DealRateBlock
         rate={primary?.rate || ""}
-        onRateChange={(v) => patchOutput(0, { rate: v, manualRate: true })}
+        onRateChange={(v) => {
+          patchOutput(0, { rate: v, manualRate: true });
+          setRateSourceOffice(null); // ручной ввод сбрасывает source
+        }}
         onSelectSuggestion={(s) => {
           setRateSourceOffice(s.key);
-          patchOutput(0, { rate: formatRate(s.display.rate), manualRate: true });
+          patchOutput(0, { rate: formatRate(s.display.rate), manualRate: false });
         }}
         fromCcy={curIn}
         toCcy={primary?.currency || "TRY"}
         sourceLabel={sourceLabel}
         ageLabel={ageLabel}
+        manualMode={primary?.manualRate && !rateSourceOffice}
         marginUsd={marginInfo.marginUsd}
         spreadPct={marginInfo.spreadPct}
         onReverse={reverseRate}
