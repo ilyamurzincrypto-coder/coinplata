@@ -13,6 +13,7 @@ import React, { useState } from "react";
 import { ChevronRight, ChevronDown, Star } from "lucide-react";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import Avatar from "../../../components/ui/Avatar.jsx";
+import InlineNameEdit from "../../../components/ui/InlineNameEdit.jsx";
 
 function fmtCompact(value) {
   const v = Math.abs(Number(value) || 0);
@@ -21,7 +22,7 @@ function fmtCompact(value) {
   return `${Math.round(v)}`;
 }
 
-export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false }) {
+export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false, onRename, canEdit = false }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isCredit = cp.totalInBase > 0;     // мы должны контрагенту
   const isDebit  = cp.totalInBase < 0;     // контрагент должен нам
@@ -31,10 +32,17 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
   return (
     <div className="border-t border-border-soft first:border-t-0">
       {/* Level 1 — counterparty header */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
-        className="w-full grid grid-cols-[16px_32px_1fr_auto] items-center gap-3 px-4 py-2.5 hover:bg-surface-soft transition-colors text-left bg-surface-soft/40"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+        className="w-full grid grid-cols-[16px_32px_1fr_auto] items-center gap-3 px-4 py-2.5 hover:bg-surface-soft transition-colors text-left bg-surface-soft/40 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         {expanded
           ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
@@ -42,7 +50,17 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
         <Avatar name={cp.name} size={28} />
         <div className="min-w-0 flex flex-col gap-0.5">
           <div className="flex items-center gap-2 truncate">
-            <span className="text-body-sm font-semibold text-ink truncate">{cp.name}</span>
+            {canEdit && onRename ? (
+              <InlineNameEdit
+                value={cp.name}
+                onSave={(next) => onRename(cp, next)}
+                className="text-body-sm font-semibold text-ink truncate min-w-0"
+                inputClassName="text-body-sm font-semibold"
+                placeholder={cp.kind === "client" ? "имя клиента" : "имя партнёра"}
+              />
+            ) : (
+              <span className="text-body-sm font-semibold text-ink truncate">{cp.name}</span>
+            )}
             {cp.isReferral && (
               <span className="inline-flex items-center gap-0.5 text-tiny text-warning font-semibold shrink-0">
                 <Star className="w-2.5 h-2.5 fill-current" strokeWidth={0} />
@@ -67,7 +85,7 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
             {cp.byCurrency.length} {cp.byCurrency.length === 1 ? "валюта" : "валют"}
           </span>
         </div>
-      </button>
+      </div>
 
       {/* Level 2 — currencies */}
       {expanded && cp.byCurrency.map((cur) => (

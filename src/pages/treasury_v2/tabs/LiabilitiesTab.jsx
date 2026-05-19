@@ -10,10 +10,13 @@
 // Состояние режима persist через localStorage "coinplata:liabilities-grouping".
 // Фильтр client / partner / all только в counterparty-режиме.
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Plus } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
+import { usePartners } from "../../../store/partners.jsx";
+import { updateClientRow } from "../../../lib/supabaseWrite.js";
+import { emitToast } from "../../../lib/toast.jsx";
 import {
   groupByClass,
   liabilitiesByCounterparty,
@@ -29,7 +32,24 @@ const CP_FILTER_KEY = "coinplata:liabilities-cp-filter";
 export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
   const { t } = useTranslation();
   const can = useCan();
+  const { updatePartner } = usePartners();
   const [addOpen, setAddOpen] = useState(false);
+
+  // Inline rename контрагента из карточки (Treasury → Пассивы → По контрагентам).
+  // Для clients пишем nickname (видимое имя в Кассе), для partners — name.
+  const renameCounterparty = useCallback(async (cp, newName) => {
+    try {
+      if (cp.kind === "client") {
+        await updateClientRow(cp.id, { nickname: newName });
+      } else {
+        await updatePartner(cp.id, { name: newName });
+      }
+      emitToast("success", "Имя обновлено");
+    } catch (err) {
+      emitToast("error", err?.message || "Не удалось переименовать");
+      throw err;
+    }
+  }, [updatePartner]);
 
   const [grouping, setGrouping] = useState(() => {
     try {
@@ -133,6 +153,8 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                 cp={cp}
                 formatBase={formatBase}
                 baseCurrency={baseCurrency}
+                canEdit={can("accounting", "edit")}
+                onRename={renameCounterparty}
               />
             ))}
           </div>
