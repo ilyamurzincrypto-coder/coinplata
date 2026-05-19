@@ -1,32 +1,15 @@
 // src/components/deal-form/NewDealForm.jsx
 //
-// Корневой компонент новой формы сделки — Phase 1 минимальный каркас:
-//   • Простой counterparty input (без autocomplete пока)
-//   • Один IN-leg + один OUT-leg (без multi-leg)
-//   • Чёрная rate-капсула с inline-edit
-//   • Bottom summary + Cancel + Submit (чёрная с glow-em)
+// Корневой компонент новой формы сделки. Phase 3b — multi-leg OUT.
 //
-// БИЗНЕС-ЛОГИКА:
-//   • Submit формирует payload в shape совместимый с ExchangeForm
-//     ({ amtIn, curIn, outputs[], counterparty, ... }) и пробрасывает
-//     через тот же `onSubmit` (CashierPage → createDeal)
-//   • Курс берётся через useRates.getRate с office override
-//   • OUT.amount автоматически считается из IN.amount × rate
-//     (если оператор не правит OUT вручную)
+// State: IN — одна нога (curIn/amtIn/accountIdIn — single, как у
+// ExchangeForm). OUT — массив `outputs[]` (каждая нога со своим rate,
+// account, amount). Primary output (idx=0) использует общую чёрную
+// rate-капсулу; вложенные (idx>=1) имеют свой inline rate input.
 //
-// Что НЕ покрыто в Phase 1:
-//   • Multi-leg (несколько IN или OUT)
-//   • Balance hints под суммами
-//   • Client autocomplete с dropdown
-//   • Rate autocomplete с офисами
-//   • Timing selector (4 карточки)
-//   • Options pills (Реферал / Без мин. / Отложенная)
-//   • Advanced panel
-//   • Deferred legs → operations.deal_workflow
-//   • Crypto-address resolution и wallet conflict warning
-//   • Auto-fee, applyMinFee, partial mode
-//
-// → Эти куски в Phase 2-4.
+// Submit: outputs[] фильтрованы по amount>0 && rate>0 → передаём
+// существующему createDeal(payload), shape остаётся прежний (как у
+// ExchangeForm), adapter дальше пере собирает в v2 inLegs/outLegs.
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useRates } from "../../store/rates.jsx";
@@ -36,6 +19,7 @@ import { useOffices } from "../../store/offices.jsx";
 import { multiplyAmount } from "../../utils/money.js";
 import DealHeader from "./DealHeader.jsx";
 import DealLeg from "./DealLeg.jsx";
+import DealLegNested from "./DealLegNested.jsx";
 import DealRateBlock from "./DealRateBlock.jsx";
 import DealSummary from "./DealSummary.jsx";
 import DealTimingSelector from "./DealTimingSelector.jsx";
@@ -43,6 +27,44 @@ import DealOptions from "./DealOptions.jsx";
 import DealAdvanced from "./DealAdvanced.jsx";
 import { displayRate, formatRate } from "../../lib/rates.js";
 import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
+
+// ── Helpers ────────────────────────────────────────────────────────────
+const newOutputId = () => `out_${Math.random().toString(36).slice(2, 8)}`;
+const emptyOutput = (currency = "TRY") => ({
+  id: newOutputId(),
+  currency,
+  amount: "",
+  rate: "",
+  manualRate: false,
+  amountTouched: false,
+  accountId: "",
+});
+
+function outputsFromInitial(initial) {
+  if (Array.isArray(initial?.outputs) && initial.outputs.length > 0) {
+    return initial.outputs.map((o) => ({
+      id: o.id || newOutputId(),
+      currency: o.currency,
+      amount: o.amount != null ? String(o.amount) : "",
+      rate: o.rate != null ? String(o.rate) : "",
+      manualRate: !!o.manualRate,
+      amountTouched: false,
+      accountId: o.accountId || "",
+    }));
+  }
+  if (initial?.curOut) {
+    return [{
+      id: newOutputId(),
+      currency: initial.curOut,
+      amount: initial.amtOut != null ? String(initial.amtOut) : "",
+      rate: initial.rate != null ? String(initial.rate) : "",
+      manualRate: false,
+      amountTouched: false,
+      accountId: initial.accountIdOut || "",
+    }];
+  }
+  return [emptyOutput("TRY")];
+}
 
 export default function NewDealForm({
   currentOffice,
@@ -52,7 +74,7 @@ export default function NewDealForm({
   submitting = false,
 }) {
   const { getRate: getRateRaw, pairs: ratePairs, channels: rateChannels } = useRates();
-  const { accounts, balanceOf } = useAccounts();
+  const { accounts } = useAccounts();
   const { codes: CURRENCIES, dict: currencyDict } = useCurrencies();
   const { findOffice } = useOffices();
 
@@ -61,41 +83,43 @@ export default function NewDealForm({
     [getRateRaw, currentOffice]
   );
 
-  // ── State (минимальное подмножество ExchangeForm для Phase 1) ────────
+  // ── IN state (single leg) ────────────────────────────────────────────
   const [curIn, setCurIn] = useState(initialData?.curIn || "USDT");
   const [amtIn, setAmtIn] = useState(
     initialData?.amtIn != null ? String(initialData.amtIn) : ""
   );
-  const [curOut, setCurOut] = useState(initialData?.curOut || "TRY");
-  const [amtOut, setAmtOut] = useState(
-    initialData?.amtOut != null ? String(initialData.amtOut) : ""
-  );
-  const [rate, setRate] = useState(
-    initialData?.rate != null ? String(initialData.rate) : ""
-  );
-  const [rateTouched, setRateTouched] = useState(false);
-  const [amtOutTouched, setAmtOutTouched] = useState(false);
   const [accountIdIn, setAccountIdIn] = useState(initialData?.accountIdIn || "");
-  const [accountIdOut, setAccountIdOut] = useState(initialData?.accountIdOut || "");
+
+  // ── OUT state (multi-leg) ────────────────────────────────────────────
+  const [outputs, setOutputs] = useState(() => outputsFromInitial(initialData));
+  const primary = outputs[0];
+
+  const patchOutput = useCallback((idx, patch) => {
+    setOutputs((prev) => prev.map((o, i) => (i === idx ? { ...o, ...patch } : o)));
+  }, []);
+  const addOutput = useCallback(() => {
+    // Default currency для новой ноги — что не была в первой
+    setOutputs((prev) => {
+      const used = new Set(prev.map((o) => o.currency));
+      const candidates = ["TRY", "EUR", "RUB", "USD", "USDT"];
+      const next = candidates.find((c) => !used.has(c)) || "EUR";
+      return [...prev, emptyOutput(next)];
+    });
+  }, []);
+  const removeOutput = useCallback((idx) => {
+    setOutputs((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
+  }, []);
+
+  // ── Counterparty + others ───────────────────────────────────────────
   const [counterparty, setCounterparty] = useState(initialData?.counterparty || "");
-  // rateSourceOffice — выбранный office из autocomplete dropdown.
-  //   null = текущий office (default), "__global__" = Global без override,
-  //   officeId = override другого офиса.
   const [rateSourceOffice, setRateSourceOffice] = useState(null);
 
-  // Timing — производный state. Маппится в submit payload как
-  //   now           → deferredIn=false, deferredOut=false, partialMode=false
-  //   client_later  → deferredIn=true
-  //   us_later      → deferredOut=true
-  //   partial       → partialMode=true
   const [timing, setTiming] = useState(() => {
     if (initialData?.partialMode) return "partial";
     if (initialData?.deferredIn) return "client_later";
     if (initialData?.deferredOut) return "us_later";
     return "now";
   });
-
-  // Options + advanced
   const [referral, setReferral] = useState(!!initialData?.referral);
   const [referralAuto, setReferralAuto] = useState(false);
   const [applyMinFee, setApplyMinFee] = useState(
@@ -112,64 +136,80 @@ export default function NewDealForm({
   const [plannedLocal, setPlannedLocal] = useState(initialData?.plannedLocal || "");
   const [backdateAt, setBackdateAt] = useState(initialData?.backdateAt || "");
 
-  // ── Auto-fill rate из useRates когда юзер не правил его руками ────────
+  // ── Auto-fill rate для каждой ноги (если не вручную, rate пустой) ────
   useEffect(() => {
-    if (rateTouched) return;
-    if (!curIn || !curOut || curIn === curOut) return;
-    const r = getRate(curIn, curOut);
-    if (Number.isFinite(r) && r > 0) {
-      // Применяем displayRate чтобы оператор видел читаемое значение
-      const d = displayRate(r, curIn, curOut);
-      if (d.rate != null) setRate(formatRate(d.rate));
-    }
-  }, [curIn, curOut, getRate, rateTouched]);
+    outputs.forEach((o, i) => {
+      if (o.manualRate) return;
+      if (o.rate) return;
+      if (!curIn || !o.currency || curIn === o.currency) return;
+      const r = getRate(curIn, o.currency);
+      if (Number.isFinite(r) && r > 0) {
+        const d = displayRate(r, curIn, o.currency);
+        if (d.rate != null) {
+          patchOutput(i, { rate: formatRate(d.rate) });
+        }
+      }
+    });
+  }, [curIn, outputs, getRate, patchOutput]);
 
-  // ── Auto-calc amtOut = amtIn × rate когда не правили вручную ──────────
+  // ── Auto-calc primary amount = amtIn × primary.rate (если не правили) ─
   useEffect(() => {
-    if (amtOutTouched) return;
+    if (!primary || primary.amountTouched) return;
     const amt = parseFloat(amtIn);
-    const rt = parseFloat(rate);
-    if (!Number.isFinite(amt) || !Number.isFinite(rt) || amt <= 0 || rt <= 0) {
-      return;
-    }
+    const rt = parseFloat(primary.rate);
+    if (!Number.isFinite(amt) || !Number.isFinite(rt) || amt <= 0 || rt <= 0) return;
     try {
-      const out = multiplyAmount(amt, rt, currencyDict[curOut]?.scale ?? 2);
-      setAmtOut(String(out));
+      const out = multiplyAmount(amt, rt, currencyDict[primary.currency]?.scale ?? 2);
+      const next = String(out);
+      if (next !== primary.amount) {
+        patchOutput(0, { amount: next });
+      }
     } catch {
-      // молча — если minor-units math упал
+      // молча
     }
-  }, [amtIn, rate, amtOutTouched, curOut, currencyDict]);
+  }, [amtIn, primary, currencyDict, patchOutput]);
 
-  // ── Reset accountIdIn/Out при смене валюты (счёт должен быть в той же ccy) ──
+  // ── Reset accountIdIn при смене curIn (ccy mismatch) ────────────────
   useEffect(() => {
     if (!accountIdIn) return;
     const acc = accounts.find((a) => a.id === accountIdIn);
     if (acc && acc.currency !== curIn) setAccountIdIn("");
   }, [curIn, accountIdIn, accounts]);
-  useEffect(() => {
-    if (!accountIdOut) return;
-    const acc = accounts.find((a) => a.id === accountIdOut);
-    if (acc && acc.currency !== curOut) setAccountIdOut("");
-  }, [curOut, accountIdOut, accounts]);
 
-  // ── Account options (только активные счета текущего офиса) ────────────
+  // ── Reset accountId per-output при смене currency ────────────────────
+  useEffect(() => {
+    outputs.forEach((o, i) => {
+      if (!o.accountId) return;
+      const acc = accounts.find((a) => a.id === o.accountId);
+      if (acc && acc.currency !== o.currency) {
+        patchOutput(i, { accountId: "" });
+      }
+    });
+  }, [outputs, accounts, patchOutput]);
+
+  // ── Account options ──────────────────────────────────────────────────
   const accountOptions = useMemo(
     () => accounts.filter((a) => a.officeId === currentOffice && a.active !== false),
     [accounts, currentOffice]
   );
 
-  // ── Reverse rate handler — swap from/to + flip rate value ─────────────
+  // ── Reverse rate (swap IN ↔ primary OUT) ────────────────────────────
   const reverseRate = useCallback(() => {
-    setCurIn((prev) => {
-      setCurOut(prev);
-      return curOut;
+    const newCurIn = primary.currency;
+    const newCurOut = curIn;
+    const newAmtIn = primary.amount;
+    setCurIn(newCurIn);
+    setAmtIn(newAmtIn);
+    patchOutput(0, {
+      currency: newCurOut,
+      amount: amtIn,
+      rate: "",
+      manualRate: false,
+      amountTouched: false,
     });
-    setAmtIn((prev) => { setAmtOut(prev); return amtOut; });
-    // rate сам пересчитается auto-effect (rateTouched=false после reset)
-    setRateTouched(false);
-  }, [curOut, amtOut]);
+  }, [primary, curIn, amtIn, patchOutput]);
 
-  // ── Source label для rate-капсулы ─────────────────────────────────────
+  // ── Rate source label + age (на основе primary leg) ────────────────────
   const sourceLabel = useMemo(() => {
     if (rateSourceOffice === "__global__") return "Global";
     const oid = rateSourceOffice || currentOffice;
@@ -178,13 +218,12 @@ export default function NewDealForm({
     return o?.name || "Office";
   }, [rateSourceOffice, currentOffice, findOffice]);
 
-  // ── Age label — для текущего источника курса ──────────────────────────
   const ageLabel = useMemo(() => {
-    if (!ratePairs || !rateChannels) return null;
+    if (!primary || !ratePairs || !rateChannels) return null;
     const matches = ratePairs.filter((p) => {
       const fc = rateChannels.find((c) => c.id === p.fromChannelId)?.currencyCode;
       const tc = rateChannels.find((c) => c.id === p.toChannelId)?.currencyCode;
-      return p.isDefault && ((fc === curIn && tc === curOut) || (fc === curOut && tc === curIn));
+      return p.isDefault && ((fc === curIn && tc === primary.currency) || (fc === primary.currency && tc === curIn));
     });
     let latest = null;
     matches.forEach((m) => {
@@ -194,68 +233,73 @@ export default function NewDealForm({
     });
     if (!latest) return null;
     return shortAge(freshnessOf(new Date(latest)).ageMs);
-  }, [ratePairs, rateChannels, curIn, curOut]);
+  }, [ratePairs, rateChannels, curIn, primary]);
 
-  // ── Summary line ──────────────────────────────────────────────────────
+  // ── Summary line ─────────────────────────────────────────────────────
   const summary = useMemo(() => {
-    if (!amtIn || !amtOut || !rate) return "";
-    return `${amtIn} ${curIn} × ${rate} = ${amtOut} ${curOut}`;
-  }, [amtIn, curIn, amtOut, curOut, rate]);
+    if (!amtIn || !primary?.amount || !primary?.rate) return "";
+    const parts = outputs
+      .filter((o) => parseFloat(o.amount) > 0)
+      .map((o) => `${o.amount} ${o.currency}`)
+      .join(" + ");
+    return `${amtIn} ${curIn} → ${parts || "—"}`;
+  }, [amtIn, curIn, outputs, primary]);
 
-  // ── Margin (упрощённая: разница actual vs market в base USD) ──────────
+  // ── Margin (упрощённо — только по primary leg) ────────────────────────
   const marginInfo = useMemo(() => {
+    if (!primary) return { marginUsd: null, spreadPct: null };
     const amt = parseFloat(amtIn);
-    const userRate = parseFloat(rate);
-    const market = getRate(curIn, curOut);
+    const userRate = parseFloat(primary.rate);
+    const market = getRate(curIn, primary.currency);
     if (![amt, userRate, market].every((v) => Number.isFinite(v) && v > 0)) {
       return { marginUsd: null, spreadPct: null };
     }
     const spreadPct = (userRate - market) / market;
-    // Простое приближение margin в curIn (через спред), затем в USD
     const marginInIn = amt * spreadPct;
     const toUsd = curIn === "USD" ? 1 : getRate(curIn, "USD");
     const marginUsd = Number.isFinite(toUsd) ? marginInIn * toUsd : marginInIn;
     return { marginUsd, spreadPct };
-  }, [amtIn, rate, curIn, curOut, getRate]);
+  }, [amtIn, primary, curIn, getRate]);
 
-  // ── Submit ─────────────────────────────────────────────────────────────
+  // ── Submit validation ─────────────────────────────────────────────────
   const canSubmit = useMemo(() => {
-    return (
-      counterparty.trim().length > 0 &&
-      Number.isFinite(parseFloat(amtIn)) && parseFloat(amtIn) > 0 &&
-      Number.isFinite(parseFloat(amtOut)) && parseFloat(amtOut) > 0 &&
-      Number.isFinite(parseFloat(rate)) && parseFloat(rate) > 0 &&
-      curIn !== curOut
+    if (!counterparty.trim()) return false;
+    if (!Number.isFinite(parseFloat(amtIn)) || parseFloat(amtIn) <= 0) return false;
+    const validOuts = outputs.filter(
+      (o) => Number.isFinite(parseFloat(o.amount)) && parseFloat(o.amount) > 0 &&
+             Number.isFinite(parseFloat(o.rate)) && parseFloat(o.rate) > 0 &&
+             o.currency && o.currency !== curIn
     );
-  }, [counterparty, amtIn, amtOut, rate, curIn, curOut]);
+    return validOuts.length > 0;
+  }, [counterparty, amtIn, outputs, curIn]);
 
+  // ── Submit handler ────────────────────────────────────────────────────
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
-    // Payload в shape совместимом с ExchangeForm.onSubmit.
-    // CashierPage.handleFormSubmit → createDeal(payload) → ledger.create_deal_v2.
+    const validOuts = outputs.filter(
+      (o) => Number.isFinite(parseFloat(o.amount)) && parseFloat(o.amount) > 0 &&
+             Number.isFinite(parseFloat(o.rate)) && parseFloat(o.rate) > 0
+    );
     const payload = {
       amtIn: parseFloat(amtIn),
       curIn,
-      outputs: [
-        {
-          id: "out_0",
-          currency: curOut,
-          amount: parseFloat(amtOut),
-          rate: parseFloat(rate),
-          manualRate: rateTouched,
-          accountId: accountIdOut || "",
-          address: "",
-          applyFee: false,
-          outKind: "ours",
-          partnerAccountId: null,
-        },
-      ],
+      outputs: validOuts.map((o, i) => ({
+        id: `out_${i}`,
+        currency: o.currency,
+        amount: parseFloat(o.amount),
+        rate: parseFloat(o.rate),
+        manualRate: o.manualRate,
+        accountId: o.accountId || "",
+        address: "",
+        applyFee: false,
+        outKind: "ours",
+        partnerAccountId: null,
+      })),
       counterparty: counterparty.trim(),
       accountId: accountIdIn || "",
       referral,
       comment,
       inTxHash,
-      // Timing → ExchangeForm-совместимые булевы:
       deferredIn: timing === "client_later",
       deferredOut: timing === "us_later",
       partialMode: timing === "partial",
@@ -263,20 +307,18 @@ export default function NewDealForm({
       plannedLocal,
       backdateAt,
       applyMinFee,
-      // Advanced numerics:
       commissionUsd: commissionUsd ? parseFloat(commissionUsd) : undefined,
       customFeeUsd: customFeeUsd ? parseFloat(customFeeUsd) : undefined,
     };
     onSubmit(payload);
   }, [
-    canSubmit, amtIn, curIn, curOut, amtOut, rate, rateTouched,
-    accountIdIn, accountIdOut, counterparty, timing,
+    canSubmit, amtIn, curIn, outputs, accountIdIn, counterparty, timing,
     referral, applyMinFee, comment, inTxHash,
     commissionUsd, customFeeUsd, plannedLocal, backdateAt,
     onSubmit,
   ]);
 
-  // ── Hotkey ⌘↵ — submit ────────────────────────────────────────────────
+  // ── Hotkeys: ⌘↵ submit, Esc cancel ─────────────────────────────────────
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && canSubmit && !submitting) {
@@ -290,13 +332,13 @@ export default function NewDealForm({
     return () => window.removeEventListener("keydown", onKey);
   }, [canSubmit, submitting, handleSubmit, onCancel]);
 
+  // ─────────────────────────────────────────────────────────────────────
   return (
     <div className="bg-surface rounded-card overflow-hidden">
       <DealHeader
         counterparty={counterparty}
         onCounterpartyChange={(v) => {
           setCounterparty(v);
-          // Если юзер очистил или поменял имя — авто-реферал сбрасываем
           if (referralAuto) {
             setReferral(false);
             setReferralAuto(false);
@@ -311,6 +353,7 @@ export default function NewDealForm({
         onClose={onCancel}
       />
 
+      {/* IN — одна нога */}
       <DealLeg
         number="1"
         label="Клиент даёт"
@@ -325,15 +368,16 @@ export default function NewDealForm({
         onAccountChange={setAccountIdIn}
       />
 
+      {/* Чёрная rate-капсула — управляет primary.rate */}
       <DealRateBlock
-        rate={rate}
-        onRateChange={(v) => { setRate(v); setRateTouched(true); }}
+        rate={primary?.rate || ""}
+        onRateChange={(v) => patchOutput(0, { rate: v, manualRate: true })}
         onSelectSuggestion={(s) => {
-          setRateTouched(true);
           setRateSourceOffice(s.key);
+          patchOutput(0, { rate: formatRate(s.display.rate), manualRate: true });
         }}
         fromCcy={curIn}
-        toCcy={curOut}
+        toCcy={primary?.currency || "TRY"}
         sourceLabel={sourceLabel}
         ageLabel={ageLabel}
         marginUsd={marginInfo.marginUsd}
@@ -341,24 +385,53 @@ export default function NewDealForm({
         onReverse={reverseRate}
       />
 
+      {/* Primary OUT — большой блок */}
       <DealLeg
         number="2"
         label="Мы отдаём"
         direction="out"
-        amount={amtOut}
-        onAmountChange={(v) => { setAmtOut(v); setAmtOutTouched(true); }}
-        currency={curOut}
+        amount={primary?.amount || ""}
+        onAmountChange={(v) => patchOutput(0, { amount: v, amountTouched: true })}
+        currency={primary?.currency || "TRY"}
         currencyOptions={CURRENCIES}
-        onCurrencyChange={setCurOut}
-        accountId={accountIdOut}
+        onCurrencyChange={(v) =>
+          patchOutput(0, { currency: v, rate: "", manualRate: false, amountTouched: false })
+        }
+        accountId={primary?.accountId || ""}
         accountOptions={accountOptions}
-        onAccountChange={setAccountIdOut}
+        onAccountChange={(v) => patchOutput(0, { accountId: v })}
+        onAddLeg={addOutput}
+        addLegLabel="Ещё выдача"
       />
 
-      <DealTimingSelector
-        value={timing}
-        onChange={setTiming}
-      />
+      {/* Nested OUT (от 2-й и далее) */}
+      {outputs.length > 1 && (
+        <div className="px-7 pb-5 space-y-2.5">
+          {outputs.slice(1).map((o, idx) => (
+            <DealLegNested
+              key={o.id}
+              legNumber={`Выдача №${idx + 2}`}
+              direction="out"
+              fromCcy={curIn}
+              amount={o.amount}
+              onAmountChange={(v) => patchOutput(idx + 1, { amount: v, amountTouched: true })}
+              rate={o.rate}
+              onRateChange={(v) => patchOutput(idx + 1, { rate: v, manualRate: true })}
+              currency={o.currency}
+              currencyOptions={CURRENCIES}
+              onCurrencyChange={(v) =>
+                patchOutput(idx + 1, { currency: v, rate: "", manualRate: false, amountTouched: false })
+              }
+              accountId={o.accountId}
+              accountOptions={accountOptions}
+              onAccountChange={(v) => patchOutput(idx + 1, { accountId: v })}
+              onRemove={() => removeOutput(idx + 1)}
+            />
+          ))}
+        </div>
+      )}
+
+      <DealTimingSelector value={timing} onChange={setTiming} />
 
       <DealOptions
         referral={referral}
