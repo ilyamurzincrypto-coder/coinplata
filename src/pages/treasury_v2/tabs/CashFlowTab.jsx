@@ -81,12 +81,12 @@ function operatingSubgroup(kind, nonCashLegs) {
 // Tailwind JIT не выдёргивает динамические классы — храним статичные
 // в одной структуре.
 const OPERATING_SUBGROUP_META = {
-  customer_receipts: { label: "Поступления от клиентов (сделки, доходы)", icon: ArrowDownRight, iconCls: "text-emerald-500" },
-  payments:          { label: "Платежи и расходы",                          icon: ArrowUpRight,   iconCls: "text-rose-500" },
-  working_capital:   { label: "Изменения в обязательствах перед клиентами", icon: ArrowUpDown,    iconCls: "text-indigo-500" },
-  reversals:         { label: "Сторно операций",                            icon: Minus,          iconCls: "text-slate-400" },
-  adjustments:       { label: "Прочие корректировки",                       icon: Minus,          iconCls: "text-slate-400" },
-  other:             { label: "Прочее",                                     icon: Minus,          iconCls: "text-slate-400" },
+  customer_receipts: { label: "Поступления от клиентов (сделки, доходы)", icon: ArrowDownRight, iconCls: "text-success" },
+  payments:          { label: "Платежи и расходы",                          icon: ArrowUpRight,   iconCls: "text-danger" },
+  working_capital:   { label: "Изменения в обязательствах перед клиентами", icon: ArrowUpDown,    iconCls: "text-accent" },
+  reversals:         { label: "Сторно операций",                            icon: Minus,          iconCls: "text-muted-soft" },
+  adjustments:       { label: "Прочие корректировки",                       icon: Minus,          iconCls: "text-muted-soft" },
+  other:             { label: "Прочее",                                     icon: Minus,          iconCls: "text-muted-soft" },
 };
 
 function categorizeTx(kind, nonCashLegs, sumCashBase) {
@@ -449,7 +449,7 @@ function InfoTip({ text, className = "" }) {
   return (
     <span
       title={text}
-      className={`inline-flex items-center text-slate-300 hover:text-slate-500 cursor-help ${className}`}
+      className={`inline-flex items-center text-muted-soft hover:text-muted cursor-help ${className}`}
     >
       <Info className="w-3 h-3" />
     </span>
@@ -470,7 +470,7 @@ function Sparkline({ days, baseCurrency }) {
           <div
             key={d.dateKey}
             title={`${d.dateKey}: ${d.netBase >= 0 ? "+" : "−"}${Math.abs(d.netBase).toLocaleString(undefined, { maximumFractionDigits: 2 })} ${baseCurrency}`}
-            className={`flex-1 min-w-[3px] rounded-t-[1px] ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
+            className={`flex-1 min-w-[3px] rounded-t-[1px] ${positive ? "bg-success" : "bg-danger"}`}
             style={{ height: `${heightPct}%` }}
           />
         );
@@ -480,7 +480,7 @@ function Sparkline({ days, baseCurrency }) {
 }
 
 function Card({ children, className = "" }) {
-  return <div className={`bg-white rounded-[14px] border border-slate-200/70 p-4 ${className}`}>{children}</div>;
+  return <div className={`bg-surface rounded-card border border-border-soft p-4 ${className}`}>{children}</div>;
 }
 
 const SECTION_META = {
@@ -488,19 +488,19 @@ const SECTION_META = {
     label: "Операционная деятельность",
     hint: "Сделки, доходы, расходы, изменения в обязательствах.",
     icon: ArrowUpDown,
-    iconWrapCls: "bg-emerald-50 text-emerald-600",
+    iconWrapCls: "bg-success-soft text-success",
   },
   investing: {
     label: "Инвестиционная деятельность",
     hint: "Долгосрочные активы — оборудование, ПО, инвестиции.",
     icon: Briefcase,
-    iconWrapCls: "bg-indigo-50 text-indigo-600",
+    iconWrapCls: "bg-accent-bg text-accent",
   },
   financing: {
     label: "Финансовая деятельность",
     hint: "Пополнения собственника, изъятия, открывающие остатки.",
     icon: Banknote,
-    iconWrapCls: "bg-amber-50 text-amber-600",
+    iconWrapCls: "bg-warning-soft text-warning",
   },
 };
 
@@ -511,10 +511,10 @@ function PrevDelta({ current, previous, baseCurrency }) {
   const pct = Math.abs(previous) > 0.01 ? (delta / Math.abs(previous)) * 100 : null;
   const positive = delta > 0;
   const Icon = positive ? ArrowUpRight : (delta < 0 ? ArrowDownRight : Minus);
-  const toneCls = positive ? "text-emerald-600" : (delta < 0 ? "text-rose-600" : "text-slate-500");
+  const toneCls = positive ? "text-success" : (delta < 0 ? "text-danger" : "text-muted");
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-[10.5px] font-bold tabular-nums ${toneCls}`}
+      className={`inline-flex items-center gap-0.5 text-tiny font-bold font-mono tabular ${toneCls}`}
       title={`Δ vs предыдущий период: ${fmtSignedBase(delta, baseCurrency)}`}
     >
       <Icon className="w-3 h-3" strokeWidth={2.5} />
@@ -525,49 +525,49 @@ function PrevDelta({ current, previous, baseCurrency }) {
 
 function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, toggle, perOffice, findOffice, daily }) {
   const open = expanded.has(id);
-  const netToneCls = data.netBase < 0 ? "text-rose-600" : data.netBase > 0 ? "text-emerald-600" : "text-slate-600";
+  const netToneCls = data.netBase < 0 ? "text-danger" : data.netBase > 0 ? "text-success" : "text-ink-soft";
   const Icon = meta.icon || Minus;
   return (
-    <div className="border-t border-slate-100 first:border-t-0">
+    <div className="border-t border-border-soft first:border-t-0">
       <div
         onClick={() => toggle(id)}
-        className="px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50"
+        className="px-3 py-3 flex items-center gap-3 cursor-pointer hover:bg-surface-soft"
       >
-        {open ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+        {open ? <ChevronDown className="w-4 h-4 text-muted-soft" /> : <ChevronRight className="w-4 h-4 text-muted-soft" />}
         <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${meta.iconWrapCls}`}>
           <Icon className="w-3.5 h-3.5" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">{meta.label}</div>
-          <div className="text-[11px] text-slate-400">{meta.hint}</div>
+          <div className="text-body-sm font-bold text-ink uppercase tracking-wide">{meta.label}</div>
+          <div className="text-tiny text-muted-soft">{meta.hint}</div>
         </div>
         <div className="text-right shrink-0">
-          <div className={`text-[16px] font-bold tabular-nums inline-flex items-baseline gap-1.5 ${netToneCls}`}>
+          <div className={`text-[16px] font-bold font-mono tabular inline-flex items-baseline gap-1.5 ${netToneCls}`}>
             {fmtSignedBase(data.netBase, baseCurrency)}
             {prevNet != null && <PrevDelta current={data.netBase} previous={prevNet} baseCurrency={baseCurrency} />}
           </div>
           {(data.inflowBase > 0 || data.outflowBase > 0) && (
-            <div className="text-[10.5px] text-slate-400 tabular-nums">
-              <span className="text-emerald-600">+{fmtBaseAmount(data.inflowBase, baseCurrency)}</span>
+            <div className="text-tiny text-muted-soft font-mono tabular">
+              <span className="text-success">+{fmtBaseAmount(data.inflowBase, baseCurrency)}</span>
               <span className="mx-1">·</span>
-              <span className="text-rose-600">−{fmtBaseAmount(data.outflowBase, baseCurrency)}</span>
+              <span className="text-danger">−{fmtBaseAmount(data.outflowBase, baseCurrency)}</span>
             </div>
           )}
         </div>
       </div>
       {open && (
-        <div className="px-4 py-2 bg-slate-50/30 space-y-2">
+        <div className="px-4 py-2 bg-surface-soft/30 space-y-2">
           {/* Operating sparkline — ежедневная активность за период */}
           {id === "operating" && daily && daily.length > 1 && (
-            <div className="bg-white border border-slate-100 rounded-[10px] px-3 py-2 flex items-center gap-3">
-              <div className="flex items-center gap-1 text-[10px] text-slate-500 uppercase font-bold tracking-wider shrink-0">
+            <div className="bg-surface border border-border-soft rounded-card px-3 py-2 flex items-center gap-3">
+              <div className="flex items-center gap-1 text-tiny text-muted uppercase font-bold tracking-wider shrink-0">
                 <Activity className="w-3 h-3" />
                 Дневная активность
               </div>
               <div className="flex-1 min-w-0">
                 <Sparkline days={daily} baseCurrency={baseCurrency} />
               </div>
-              <div className="text-[10px] text-slate-400 shrink-0">
+              <div className="text-tiny text-muted-soft shrink-0">
                 {daily.length} {daily.length === 1 ? "день" : daily.length < 5 ? "дня" : "дней"}
               </div>
             </div>
@@ -581,28 +581,28 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                   const sgMeta = OPERATING_SUBGROUP_META[sg] || OPERATING_SUBGROUP_META.other;
                   const SgIcon = sgMeta.icon;
                   return (
-                    <div key={sg} className="flex items-center gap-2 px-1 py-1.5 text-[12px]">
+                    <div key={sg} className="flex items-center gap-2 px-1 py-1.5 text-caption">
                       <SgIcon className={`w-3 h-3 shrink-0 ${sgMeta.iconCls}`} strokeWidth={2.5} />
-                      <span className="text-slate-700 flex-1">{sgMeta.label}</span>
-                      <span className={`text-right tabular-nums font-semibold ${net < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      <span className="text-ink-soft flex-1">{sgMeta.label}</span>
+                      <span className={`text-right font-mono tabular font-semibold ${net < 0 ? "text-danger" : "text-success"}`}>
                         {fmtSignedBase(net, baseCurrency)}
                       </span>
                     </div>
                   );
                 })}
-              <div className="border-t border-slate-200 my-1" />
+              <div className="border-t border-border-soft my-1" />
             </div>
           )}
           {/* Per-office breakdown — только в Operating и только в режиме «все офисы» */}
           {id === "operating" && perOffice && perOffice.length > 0 && (
-            <details className="text-[11.5px]">
-              <summary className="cursor-pointer text-slate-500 hover:text-slate-800 py-1 inline-flex items-center gap-1">
+            <details className="text-caption">
+              <summary className="cursor-pointer text-muted hover:text-ink py-1 inline-flex items-center gap-1">
                 <Building2 className="w-3 h-3" />
                 по офисам ({perOffice.length})
               </summary>
               <table className="w-full mt-1">
                 <thead>
-                  <tr className="text-[10px] text-slate-400 uppercase tracking-wider">
+                  <tr className="text-tiny text-muted-soft uppercase tracking-wider">
                     <th className="text-left py-1 font-bold">Офис</th>
                     <th className="text-right py-1 font-bold">Транзакций</th>
                     <th className="text-right py-1 font-bold">Нетто (base)</th>
@@ -614,10 +614,10 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                       ? (findOffice?.(o.officeId)?.name || o.officeId.slice(0, 8))
                       : "Без офиса";
                     return (
-                      <tr key={o.officeId || "__none__"} className="border-t border-slate-100">
-                        <td className="py-1 text-slate-700">{name}</td>
-                        <td className="py-1 text-right tabular-nums text-slate-500">{o.txCount}</td>
-                        <td className={`py-1 text-right tabular-nums font-semibold ${o.netBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                      <tr key={o.officeId || "__none__"} className="border-t border-border-soft">
+                        <td className="py-1 text-ink-soft">{name}</td>
+                        <td className="py-1 text-right font-mono tabular text-muted">{o.txCount}</td>
+                        <td className={`py-1 text-right font-mono tabular font-semibold ${o.netBase < 0 ? "text-danger" : "text-success"}`}>
                           {fmtSignedBase(o.netBase, baseCurrency)}
                         </td>
                       </tr>
@@ -628,22 +628,22 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
             </details>
           )}
           {data.byKind.size === 0 ? (
-            <div className="text-[12px] text-slate-400 py-1">Движений в этой секции нет за период.</div>
+            <div className="text-caption text-muted-soft py-1">Движений в этой секции нет за период.</div>
           ) : (
-            <details className="text-[11.5px]">
-              <summary className="cursor-pointer text-slate-500 hover:text-slate-800 py-1">детально по типу транзакции</summary>
+            <details className="text-caption">
+              <summary className="cursor-pointer text-muted hover:text-ink py-1">детально по типу транзакции</summary>
               <table className="w-full mt-1">
                 <thead>
-                  <tr className="text-[10px] text-slate-400 uppercase tracking-wider">
+                  <tr className="text-tiny text-muted-soft uppercase tracking-wider">
                     <th className="text-left py-1 font-bold">Тип</th>
                     <th className="text-right py-1 font-bold">Нетто (в base)</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[...data.byKind.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([kind, net]) => (
-                    <tr key={kind} className="border-t border-slate-100">
-                      <td className="py-1 text-slate-700">{kindLabel(kind, t)}</td>
-                      <td className={`py-1 text-right tabular-nums ${net < 0 ? "text-rose-600" : "text-emerald-600"}`}>{fmtSignedBase(net, baseCurrency)}</td>
+                    <tr key={kind} className="border-t border-border-soft">
+                      <td className="py-1 text-ink-soft">{kindLabel(kind, t)}</td>
+                      <td className={`py-1 text-right font-mono tabular ${net < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(net, baseCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -651,11 +651,11 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
             </details>
           )}
           {data.byCurrency.size > 0 && (
-            <details className="text-[11.5px]">
-              <summary className="cursor-pointer text-slate-500 hover:text-slate-800 py-1">по валютам</summary>
+            <details className="text-caption">
+              <summary className="cursor-pointer text-muted hover:text-ink py-1">по валютам</summary>
               <table className="w-full mt-1">
                 <thead>
-                  <tr className="text-[10px] text-slate-400 uppercase tracking-wider">
+                  <tr className="text-tiny text-muted-soft uppercase tracking-wider">
                     <th className="text-left py-1 font-bold">Вал.</th>
                     <th className="text-right py-1 font-bold">Поступило</th>
                     <th className="text-right py-1 font-bold">Выбыло</th>
@@ -665,12 +665,12 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                 </thead>
                 <tbody>
                   {[...data.byCurrency.values()].sort((a, b) => Math.abs(b.netBase) - Math.abs(a.netBase)).map((c) => (
-                    <tr key={c.currency} className="border-t border-slate-100">
-                      <td className="py-1 font-semibold text-slate-700">{c.currency}</td>
-                      <td className="py-1 text-right tabular-nums text-emerald-700">+{fmtCur(c.inflow, c.currency)}</td>
-                      <td className="py-1 text-right tabular-nums text-rose-700">−{fmtCur(c.outflow, c.currency)}</td>
-                      <td className={`py-1 text-right tabular-nums ${c.net < 0 ? "text-rose-600" : "text-slate-700"}`}>{fmtSignedCur(c.net, c.currency)}</td>
-                      <td className="py-1 text-right tabular-nums text-slate-500">{fmtSignedBase(c.netBase, baseCurrency)}</td>
+                    <tr key={c.currency} className="border-t border-border-soft">
+                      <td className="py-1 font-semibold text-ink-soft">{c.currency}</td>
+                      <td className="py-1 text-right font-mono tabular text-success">+{fmtCur(c.inflow, c.currency)}</td>
+                      <td className="py-1 text-right font-mono tabular text-danger">−{fmtCur(c.outflow, c.currency)}</td>
+                      <td className={`py-1 text-right font-mono tabular ${c.net < 0 ? "text-danger" : "text-ink-soft"}`}>{fmtSignedCur(c.net, c.currency)}</td>
+                      <td className="py-1 text-right font-mono tabular text-muted">{fmtSignedBase(c.netBase, baseCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -755,14 +755,14 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex flex-wrap items-center gap-3">
+      <div className="bg-surface border border-border-soft rounded-card p-3 flex flex-wrap items-center gap-3">
         <PeriodPicker value={period} onChange={setPeriod} />
-        <span className="text-[11px] text-slate-400">Стандарт: IAS 7 · 3 секции · сравнение с прошлым периодом</span>
+        <span className="text-tiny text-muted-soft">Стандарт: IAS 7 · 3 секции · сравнение с прошлым периодом</span>
         <button
           type="button"
           onClick={() => doCsvExport(cf, prevCf, pairs, baseCurrency, periodLabel)}
           disabled={!cf.hasMovement}
-          className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[12px] font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 disabled:opacity-40"
+          className="ml-auto inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button text-caption font-medium bg-surface-sunk text-ink-soft hover:bg-surface-sunk disabled:opacity-40"
         >
           <Download className="w-3.5 h-3.5" strokeWidth={2.5} />
           CSV
@@ -773,7 +773,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
       {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
       {!cf.hasMovement ? (
-        <Card className="text-center text-[12.5px] text-slate-400 py-8">
+        <Card className="text-center text-caption text-muted-soft py-8">
           {t("trv2_cf_empty")}
         </Card>
       ) : (
@@ -801,49 +801,49 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
             baseCurrency={baseCurrency} t={t} expanded={expanded} toggle={toggle}
           />
           {/* Sticky-итог внизу — даже если все секции свёрнуты */}
-          <div className="border-t-2 border-slate-200 bg-gradient-to-b from-slate-50/50 to-white px-4 py-3">
-            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+          <div className="border-t-2 border-border-soft bg-gradient-to-b from-surface-soft/50 to-surface px-4 py-3">
+            <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-caption">
+              <span className="text-tiny font-bold uppercase tracking-wide text-muted">
                 Чистое изменение денежных средств
               </span>
-              <span className={`text-[20px] font-bold tabular-nums ml-auto ${cf.totalNetBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+              <span className={`text-h2 font-bold font-mono tabular ml-auto ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>
                 {fmtSignedBase(cf.totalNetBase, baseCurrency)}
               </span>
               <PrevDelta current={cf.totalNetBase} previous={prevCf.totalNetBase} baseCurrency={baseCurrency} />
             </div>
-            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[12.5px]">
-              <div className="rounded-[10px] bg-slate-50 px-3 py-2">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide">На начало периода</div>
-                <div className="text-[15px] font-bold tabular-nums text-slate-900">{fmtBaseAmount(cf.openingBase, baseCurrency)}</div>
+            <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-caption">
+              <div className="rounded-card bg-surface-soft px-3 py-2">
+                <div className="text-tiny text-muted uppercase tracking-wide">На начало периода</div>
+                <div className="text-body font-bold font-mono tabular text-ink">{fmtBaseAmount(cf.openingBase, baseCurrency)}</div>
               </div>
-              <div className={`rounded-[10px] px-3 py-2 ${cf.totalNetBase < 0 ? "bg-rose-50" : "bg-emerald-50"}`}>
-                <div className={`text-[10px] uppercase tracking-wide ${cf.totalNetBase < 0 ? "text-rose-700" : "text-emerald-700"}`}>Изменение</div>
-                <div className={`text-[15px] font-bold tabular-nums ${cf.totalNetBase < 0 ? "text-rose-700" : "text-emerald-700"}`}>{fmtSignedBase(cf.totalNetBase, baseCurrency)}</div>
+              <div className={`rounded-card px-3 py-2 ${cf.totalNetBase < 0 ? "bg-danger-soft" : "bg-success-soft"}`}>
+                <div className={`text-tiny uppercase tracking-wide ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>Изменение</div>
+                <div className={`text-body font-bold font-mono tabular ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(cf.totalNetBase, baseCurrency)}</div>
               </div>
-              <div className="rounded-[10px] bg-slate-100 px-3 py-2">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide">На конец периода</div>
-                <div className="text-[15px] font-bold tabular-nums text-slate-900">{fmtBaseAmount(cf.closingBase, baseCurrency)}</div>
+              <div className="rounded-card bg-surface-sunk px-3 py-2">
+                <div className="text-tiny text-muted uppercase tracking-wide">На конец периода</div>
+                <div className="text-body font-bold font-mono tabular text-ink">{fmtBaseAmount(cf.closingBase, baseCurrency)}</div>
               </div>
             </div>
             {/* Прогноз на конец периода: если период не закрыт, и темп ясен */}
             {forecast.applicable && (
-              <div className="mt-3 rounded-[10px] border border-indigo-100 bg-indigo-50/40 px-3 py-2 text-[12px] text-indigo-900 flex items-center gap-2 flex-wrap">
-                <TrendingUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" strokeWidth={2.5} />
-                <span className="font-bold uppercase text-[10px] tracking-wider">Прогноз</span>
+              <div className="mt-3 rounded-card border border-indigo-100 bg-accent-bg/40 px-3 py-2 text-caption text-indigo-900 flex items-center gap-2 flex-wrap">
+                <TrendingUp className="w-3.5 h-3.5 text-accent shrink-0" strokeWidth={2.5} />
+                <span className="font-bold uppercase text-tiny tracking-wider">Прогноз</span>
                 <span>
                   День {forecast.daysElapsed} из {forecast.daysTotal} — при текущем темпе{" "}
-                  <span className="font-semibold tabular-nums" title={`Дневной пейс: ${fmtSignedBase(forecast.pace, baseCurrency)}`}>
+                  <span className="font-semibold font-mono tabular" title={`Дневной пейс: ${fmtSignedBase(forecast.pace, baseCurrency)}`}>
                     {fmtSignedBase(forecast.pace, baseCurrency)}/день
                   </span>
                   {" "}к концу периода будет{" "}
-                  <span className={`font-bold tabular-nums ${forecast.projectedNet < 0 ? "text-rose-700" : "text-emerald-700"}`}>
+                  <span className={`font-bold font-mono tabular ${forecast.projectedNet < 0 ? "text-danger" : "text-success"}`}>
                     {fmtSignedBase(forecast.projectedNet, baseCurrency)}
                   </span>
                 </span>
               </div>
             )}
             {cf.internalTxCount > 0 && (
-              <div className="mt-2 text-[10.5px] text-slate-400">
+              <div className="mt-2 text-tiny text-muted-soft">
                 Внутренние переводы между нашими счетами ({cf.internalTxCount} шт., netto 0) — исключены из отчёта.
               </div>
             )}
@@ -871,11 +871,11 @@ function MetricsCard({ cf, cov, baseCurrency }) {
   const covIcon = covOk ? ShieldCheck : ShieldAlert;
   const CovIcon = covIcon;
   return (
-    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+    <div className="bg-surface rounded-card border border-border-soft p-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Metric
           icon={TrendingUp}
-          iconWrapCls="bg-emerald-50 text-emerald-600"
+          iconWrapCls="bg-success-soft text-success"
           label="Сделок"
           value={deals.count.toLocaleString("ru-RU")}
           sub={deals.count > 0 ? `avg ${fmtBaseAmount(deals.avgDealSize, baseCurrency)}` : "—"}
@@ -883,7 +883,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
         />
         <Metric
           icon={ArrowDownRight}
-          iconWrapCls="bg-emerald-50 text-emerald-600"
+          iconWrapCls="bg-success-soft text-success"
           label="Оборот"
           value={fmtBaseAmount(deals.turnoverBase, baseCurrency)}
           sub="клиентские поступления (gross)"
@@ -891,7 +891,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
         />
         <Metric
           icon={ArrowUpDown}
-          iconWrapCls={deals.marginBase >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"}
+          iconWrapCls={deals.marginBase >= 0 ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}
           label="Маржа"
           value={fmtSignedBase(deals.marginBase, baseCurrency)}
           sub={deals.marginPct != null ? `${deals.marginPct >= 0 ? "+" : ""}${deals.marginPct.toFixed(2)}%` : "—"}
@@ -900,7 +900,7 @@ function MetricsCard({ cf, cov, baseCurrency }) {
         />
         <Metric
           icon={covIcon}
-          iconWrapCls={covOk ? "bg-emerald-50 text-emerald-600" : covWarn ? "bg-amber-50 text-amber-600" : "bg-rose-50 text-rose-600"}
+          iconWrapCls={covOk ? "bg-success-soft text-success" : covWarn ? "bg-warning-soft text-warning" : "bg-danger-soft text-danger"}
           label="Coverage"
           value={cov.ratio != null ? `${cov.ratio.toFixed(2)}×` : "—"}
           sub={
@@ -918,22 +918,22 @@ function MetricsCard({ cf, cov, baseCurrency }) {
 
 function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate", tip }) {
   const valueToneCls =
-    tone === "emerald" ? "text-emerald-700"
-    : tone === "rose" ? "text-rose-700"
-    : tone === "amber" ? "text-amber-700"
-    : "text-slate-900";
+    tone === "emerald" ? "text-success"
+    : tone === "rose" ? "text-danger"
+    : tone === "amber" ? "text-warning"
+    : "text-ink";
   return (
     <div className="flex items-start gap-2.5">
       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconWrapCls}`}>
         <Icon className="w-4 h-4" strokeWidth={2.5} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="text-[10px] text-slate-500 uppercase tracking-wide font-bold inline-flex items-center gap-1">
+        <div className="text-tiny text-muted uppercase tracking-wide font-bold inline-flex items-center gap-1">
           {label}
           {tip && <InfoTip text={tip} />}
         </div>
-        <div className={`text-[18px] font-bold tabular-nums leading-tight ${valueToneCls}`}>{value}</div>
-        <div className="text-[10.5px] text-slate-400 tabular-nums truncate" title={sub}>{sub}</div>
+        <div className={`text-[18px] font-bold font-mono tabular leading-tight ${valueToneCls}`}>{value}</div>
+        <div className="text-tiny text-muted-soft font-mono tabular truncate" title={sub}>{sub}</div>
       </div>
     </div>
   );
@@ -950,15 +950,15 @@ function AlertsBanner({ alerts }) {
         const critical = a.severity === "critical";
         const Icon = critical ? AlertOctagon : AlertTriangle;
         const wrap = critical
-          ? "bg-rose-50 border-rose-200 text-rose-900"
-          : "bg-amber-50 border-amber-200 text-amber-900";
-        const iconCls = critical ? "text-rose-600" : "text-amber-600";
+          ? "bg-danger-soft border-danger/20 text-danger"
+          : "bg-warning-soft border-warning/20 text-warning";
+        const iconCls = critical ? "text-danger" : "text-warning";
         return (
-          <div key={i} className={`rounded-[12px] border px-4 py-3 flex items-start gap-3 ${wrap}`}>
+          <div key={i} className={`rounded-card border px-4 py-3 flex items-start gap-3 ${wrap}`}>
             <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${iconCls}`} strokeWidth={2.5} />
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-bold">{a.title}</div>
-              <div className="text-[11.5px] opacity-80 mt-0.5 leading-snug">{a.detail}</div>
+              <div className="text-body-sm font-bold">{a.title}</div>
+              <div className="text-caption opacity-80 mt-0.5 leading-snug">{a.detail}</div>
             </div>
           </div>
         );
@@ -978,19 +978,19 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
   const totalTurnover = pairs.reduce((s, p) => s + p.turnoverBase, 0);
   const maxMargin = Math.max(0.01, ...top.map((p) => Math.abs(p.marginBase)));
   return (
-    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+    <div className="bg-surface rounded-card border border-border-soft p-4">
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <Zap className="w-4 h-4 text-amber-500" />
-        <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
+        <Zap className="w-4 h-4 text-warning" />
+        <h3 className="text-body-sm font-bold text-ink uppercase tracking-wide">
           Топ валютных пар по марже
         </h3>
         <InfoTip text="Сколько маржи принесла каждая пара (что отдали → что получили). Маржа считается из revenue/expense ног сделки. Помогает понять какие пары пушить и где задирать спред. Клик по паре — топ-5 её сделок." />
-        <span className="text-[11px] text-slate-400 ml-auto">
+        <span className="text-tiny text-muted-soft ml-auto">
           Маржа Σ {fmtSignedBase(totalMargin, baseCurrency)} · оборот {fmtBaseAmount(totalTurnover, baseCurrency)}
         </span>
       </div>
       {top.length === 0 ? (
-        <div className="text-[12px] text-slate-400 py-2">Сделок за период нет.</div>
+        <div className="text-caption text-muted-soft py-2">Сделок за период нет.</div>
       ) : (
         <div className="space-y-1">
           {top.map((p) => {
@@ -1002,52 +1002,52 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
               <React.Fragment key={p.pair}>
                 <div
                   onClick={() => setExpandedPair(isOpen ? null : p.pair)}
-                  className="flex items-center gap-2 text-[12.5px] cursor-pointer hover:bg-slate-50 rounded-[6px] -mx-1 px-1 py-0.5"
+                  className="flex items-center gap-2 text-caption cursor-pointer hover:bg-surface-soft rounded-badge -mx-1 px-1 py-0.5"
                 >
                   {isOpen
-                    ? <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
-                    : <ChevronRight className="w-3 h-3 text-slate-400 shrink-0" />}
-                  <span className="inline-flex items-center gap-1 font-bold text-slate-700 w-24 shrink-0">
+                    ? <ChevronDown className="w-3 h-3 text-muted-soft shrink-0" />
+                    : <ChevronRight className="w-3 h-3 text-muted-soft shrink-0" />}
+                  <span className="inline-flex items-center gap-1 font-bold text-ink-soft w-24 shrink-0">
                     {p.fromCur}
-                    <ArrowRight className="w-2.5 h-2.5 text-slate-400" />
+                    <ArrowRight className="w-2.5 h-2.5 text-muted-soft" />
                     {p.toCur}
                   </span>
-                  <span className="text-slate-400 text-[11px] tabular-nums w-10 shrink-0">{p.count}×</span>
-                  <span className="text-slate-500 text-[11px] tabular-nums w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
+                  <span className="text-muted-soft text-tiny font-mono tabular w-10 shrink-0">{p.count}×</span>
+                  <span className="text-muted text-tiny font-mono tabular w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
                     {fmtBaseAmount(p.turnoverBase, baseCurrency)}
                   </span>
-                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                  <div className="flex-1 h-2 bg-surface-sunk rounded-full overflow-hidden min-w-[60px]">
                     <div
-                      className={`h-full ${positive ? "bg-emerald-400" : "bg-rose-400"}`}
+                      className={`h-full ${positive ? "bg-success" : "bg-danger"}`}
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
-                  <span className={`text-right tabular-nums font-semibold w-24 shrink-0 ${positive ? "text-emerald-700" : "text-rose-700"}`}>
+                  <span className={`text-right font-mono tabular font-semibold w-24 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
                     {fmtSignedBase(p.marginBase, baseCurrency)}
                   </span>
                   {marginPct != null && (
-                    <span className={`text-right tabular-nums text-[10.5px] w-12 shrink-0 ${positive ? "text-emerald-600" : "text-rose-600"}`}>
+                    <span className={`text-right font-mono tabular text-tiny w-12 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
                       {positive ? "+" : ""}{marginPct.toFixed(2)}%
                     </span>
                   )}
                 </div>
                 {isOpen && p.txs.length > 0 && (
-                  <div className="pl-6 pr-1 pb-1 pt-0.5 bg-slate-50/40 rounded-b-[6px] -mx-1 mb-1">
-                    <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold py-1">
+                  <div className="pl-6 pr-1 pb-1 pt-0.5 bg-surface-soft/40 rounded-b-[6px] -mx-1 mb-1">
+                    <div className="text-[9px] uppercase tracking-wider text-muted-soft font-bold py-1">
                       Топ-{p.txs.length} сделок этой пары по марже
                     </div>
-                    <table className="w-full text-[11.5px]">
+                    <table className="w-full text-caption">
                       <tbody>
                         {p.txs.map((tx) => (
-                          <tr key={tx.txId} className="border-t border-slate-100">
-                            <td className="py-1 text-slate-500 tabular-nums w-20">{tx.effectiveDate.slice(0, 10)}</td>
-                            <td className="py-1 text-slate-700">
-                              <span className="tabular-nums">{tx.outBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.outCur}</span>
-                              <ArrowRight className="w-2.5 h-2.5 mx-1 inline text-slate-400" />
-                              <span className="tabular-nums">{tx.inBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.inCur}</span>
-                              <span className="text-slate-400 text-[10px] ml-1">(в base)</span>
+                          <tr key={tx.txId} className="border-t border-border-soft">
+                            <td className="py-1 text-muted font-mono tabular w-20">{tx.effectiveDate.slice(0, 10)}</td>
+                            <td className="py-1 text-ink-soft">
+                              <span className="font-mono tabular">{tx.outBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.outCur}</span>
+                              <ArrowRight className="w-2.5 h-2.5 mx-1 inline text-muted-soft" />
+                              <span className="font-mono tabular">{tx.inBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.inCur}</span>
+                              <span className="text-muted-soft text-tiny ml-1">(в base)</span>
                             </td>
-                            <td className={`py-1 text-right tabular-nums font-semibold ${tx.marginBase < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                            <td className={`py-1 text-right font-mono tabular font-semibold ${tx.marginBase < 0 ? "text-danger" : "text-success"}`}>
                               {fmtSignedBase(tx.marginBase, baseCurrency)}
                             </td>
                           </tr>
@@ -1062,7 +1062,7 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
         </div>
       )}
       {pairs.length > 8 && (
-        <div className="mt-2 text-[10.5px] text-slate-400">
+        <div className="mt-2 text-tiny text-muted-soft">
           Показаны топ-8 из {pairs.length} пар. Полный список — в CSV экспорте.
         </div>
       )}
@@ -1076,38 +1076,38 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
 function FxExposureCard({ fx, baseCurrency }) {
   if (!fx.byCurrency.length) return null;
   return (
-    <div className="bg-white rounded-[14px] border border-slate-200/70 p-4">
+    <div className="bg-surface rounded-card border border-border-soft p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Globe className="w-4 h-4 text-slate-500" />
-        <h3 className="text-[13px] font-bold text-slate-900 uppercase tracking-wide">
+        <Globe className="w-4 h-4 text-muted" />
+        <h3 className="text-body-sm font-bold text-ink uppercase tracking-wide">
           Валютная позиция на конец периода
         </h3>
         <InfoTip text="Нетто-баланс по каждой валюте в cash equivalents (cash + bank + crypto). Если в одной валюте сильный перевес (>50%) — валютный риск: падение этой валюты ощутимо ударит по капиталу. Для обменника норма — разные валюты пропорционально объёмам сделок." />
-        <span className="text-[11px] text-slate-400 ml-auto">
+        <span className="text-tiny text-muted-soft ml-auto">
           Σ ≈ {fmtBaseAmount(fx.totalBase, baseCurrency)}
         </span>
       </div>
       <div className="space-y-1">
         {fx.byCurrency.map((b) => (
-          <div key={b.currency} className="flex items-center gap-3 text-[12.5px]">
-            <span className="font-bold text-slate-700 w-12 shrink-0">{b.currency}</span>
-            <span className="tabular-nums text-slate-800 w-32 shrink-0">{fmtSignedCur(b.native, b.currency)}</span>
-            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden min-w-[80px]">
+          <div key={b.currency} className="flex items-center gap-3 text-caption">
+            <span className="font-bold text-ink-soft w-12 shrink-0">{b.currency}</span>
+            <span className="font-mono tabular text-ink w-32 shrink-0">{fmtSignedCur(b.native, b.currency)}</span>
+            <div className="flex-1 h-1.5 bg-surface-sunk rounded-full overflow-hidden min-w-[80px]">
               <div
-                className={`h-full ${b.inBase >= 0 ? "bg-emerald-400" : "bg-rose-400"}`}
+                className={`h-full ${b.inBase >= 0 ? "bg-success" : "bg-danger"}`}
                 style={{ width: `${Math.min(100, Math.abs(b.sharePct))}%` }}
               />
             </div>
-            <span className="text-slate-500 text-[11px] tabular-nums w-12 text-right shrink-0">
+            <span className="text-muted text-tiny font-mono tabular w-12 text-right shrink-0">
               {b.sharePct.toFixed(0)}%
             </span>
-            <span className="text-slate-500 text-[11.5px] tabular-nums w-24 text-right shrink-0">
+            <span className="text-muted text-caption font-mono tabular w-24 text-right shrink-0">
               ≈ {fmtSignedBase(b.inBase, baseCurrency)}
             </span>
           </div>
         ))}
       </div>
-      <div className="mt-3 pt-2 border-t border-slate-100 text-[10.5px] text-slate-400 leading-snug">
+      <div className="mt-3 pt-2 border-t border-border-soft text-tiny text-muted-soft leading-snug">
         Если в одной валюте сильный перевес (например 70% в USDT) — валютный риск:
         падение этой валюты ощутимо ударит по капиталу.
       </div>
