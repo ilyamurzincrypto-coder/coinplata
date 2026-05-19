@@ -42,3 +42,18 @@ export function formatRate(value) {
   if (value >= 1) return value.toFixed(4);
   return value.toFixed(6);
 }
+
+/**
+ * Форматирование курса с обрезкой trailing-нулей (для inputs после reverse).
+ * Тот же набор precision-buckets, но 32.5 не превращается в "32.5000".
+ *   1/32.5  → "0.030769"  (а не "0.030769230769230770")
+ *   1/0.030769 ≈ 32.500024 → "32.50"
+ *   32.5    → "32.5"      (без хвоста ".0000")
+ *   1.167   → "1.167"
+ */
+export function formatRateCompact(value) {
+  const formatted = formatRate(value);
+  if (formatted === "—") return formatted;
+  // обрезаем trailing нули и опциональную точку
+  return formatted.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
+}

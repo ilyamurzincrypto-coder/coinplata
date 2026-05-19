@@ -37,6 +37,9 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
   const [currency, setCurrency] = useState("USD");
   // direction: 'we_owe' = мы должны (Кт liab, amount<0) | 'they_owe' = они должны (Дт liab, amount>0)
   const [direction, setDirection] = useState("we_owe");
+  // adjustmentKind: 'opening' — стартовый остаток (балансирующий = Opening Equity);
+  // 'reconciliation' — сверка/корректировка задним числом (балансирующий = Retained Earnings).
+  const [adjustmentKind, setAdjustmentKind] = useState("opening");
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -86,17 +89,18 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
         amount: signed,
         currencyCode: currency,
         reason: reason.trim(),
-        adjustmentKind: "opening",
+        adjustmentKind,
         clientId: kind === "client" ? counterpartyId : null,
         partnerId: kind === "partner" ? counterpartyId : null,
       });
       bumpDataVersion();
-      emitToast("success", "Обязательство создано");
+      emitToast("success", adjustmentKind === "opening" ? "Опенинг записан" : "Корректировка записана");
       onClose();
       // reset
       setCounterpartyId("");
       setAmount("");
       setReason("");
+      setAdjustmentKind("opening");
     } catch (err) {
       emitToast("error", err?.message || "Не удалось создать обязательство");
     } finally {
@@ -237,6 +241,41 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
             </div>
           </div>
 
+          {/* Adjustment kind */}
+          <div>
+            <span className="block text-micro text-muted uppercase mb-1.5">Тип</span>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setAdjustmentKind("opening")}
+                className={`p-2.5 rounded-card text-left border-[1.5px] transition-all ${
+                  adjustmentKind === "opening"
+                    ? "bg-surface border-ink shadow-soft"
+                    : "bg-surface-soft border-transparent hover:bg-surface-sunk"
+                }`}
+              >
+                <div className="text-caption font-semibold text-ink">Опенинг</div>
+                <div className="text-tiny text-muted leading-tight mt-0.5">
+                  стартовый остаток против Opening Equity
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdjustmentKind("reconciliation")}
+                className={`p-2.5 rounded-card text-left border-[1.5px] transition-all ${
+                  adjustmentKind === "reconciliation"
+                    ? "bg-surface border-ink shadow-soft"
+                    : "bg-surface-soft border-transparent hover:bg-surface-sunk"
+                }`}
+              >
+                <div className="text-caption font-semibold text-ink">Сверка</div>
+                <div className="text-tiny text-muted leading-tight mt-0.5">
+                  корректировка против Retained Earnings
+                </div>
+              </button>
+            </div>
+          </div>
+
           {/* Reason */}
           <label className="block">
             <span className="block text-micro text-muted uppercase mb-1">Причина *</span>
@@ -245,7 +284,7 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
               onChange={(e) => setReason(e.target.value)}
               disabled={submitting}
               rows={2}
-              placeholder="например: опенинг, сверка по итогам месяца"
+              placeholder={adjustmentKind === "opening" ? "например: опенинг на 2026-01-01" : "например: сверка по итогам месяца"}
               className="w-full px-2 py-1.5 rounded-input bg-surface-sunk text-ink text-caption border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all resize-none"
             />
           </label>

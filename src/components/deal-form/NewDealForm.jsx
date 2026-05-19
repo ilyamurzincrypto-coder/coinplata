@@ -26,7 +26,7 @@ import DealSummary from "./DealSummary.jsx";
 import DealTimingSelector from "./DealTimingSelector.jsx";
 import DealOptions from "./DealOptions.jsx";
 import DealAdvanced from "./DealAdvanced.jsx";
-import { displayRate, formatRate } from "../../lib/rates.js";
+import { displayRate, formatRate, formatRateCompact } from "../../lib/rates.js";
 import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
 
 // ── Helpers ────────────────────────────────────────────────────────────
@@ -422,7 +422,12 @@ export default function NewDealForm({
     const newCurOut = curIn;
     const newAmtIn = primary.amount;
     const oldRate = parseFloat(primary.rate);
-    const newRateStr = Number.isFinite(oldRate) && oldRate > 0 ? String(1 / oldRate) : "";
+    // Короткое представление 1/x с обрезкой trailing-нулей. Precision
+    // двойного reverse'а 1/(1/x)≈x сохраняется в пределах ~6 знаков —
+    // достаточно для практики (курсы валют редко требуют больше).
+    const newRateStr = Number.isFinite(oldRate) && oldRate > 0
+      ? formatRateCompact(1 / oldRate)
+      : "";
     setCurIn(newCurIn);
     setAmtIn(newAmtIn);
     patchOutput(0, {
