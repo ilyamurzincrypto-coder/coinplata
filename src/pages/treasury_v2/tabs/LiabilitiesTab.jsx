@@ -149,6 +149,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
               formatBase={formatBase}
               baseCurrency={baseCurrency}
               canEdit={can("accounting", "edit")}
+              accounts={ctx?.accounts || []}
               onRename={renameCounterparty}
               onArchive={archiveCounterparty}
               onDelete={deleteCounterparty}

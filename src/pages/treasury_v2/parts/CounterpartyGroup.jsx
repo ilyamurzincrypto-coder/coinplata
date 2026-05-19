@@ -9,12 +9,15 @@
 //   balance < 0 → контрагент должен нам → text-danger «−» (overdraft)
 // (то же что в LegRow.clientBalanceInCurrency в legacy v2 DealForm)
 
-import React, { useState } from "react";
-import { ChevronRight, ChevronDown, Star } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ChevronRight, ChevronDown, Star, Check, X as XIcon, Pencil } from "lucide-react";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import Avatar from "../../../components/ui/Avatar.jsx";
 import InlineNameEdit from "../../../components/ui/InlineNameEdit.jsx";
 import CounterpartyActionsMenu from "../../../components/ui/CounterpartyActionsMenu.jsx";
+import { setAccountBalance, SetBalanceError } from "../../../lib/treasury/setAccountBalance.js";
+import { bumpDataVersion } from "../../../lib/dataVersion.jsx";
+import { emitToast } from "../../../lib/toast.jsx";
 
 function fmtCompact(value) {
   const v = Math.abs(Number(value) || 0);
@@ -23,7 +26,7 @@ function fmtCompact(value) {
   return `${Math.round(v)}`;
 }
 
-export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false, onRename, onArchive, onDelete, canEdit = false }) {
+export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaultExpanded = false, onRename, onArchive, onDelete, canEdit = false, accounts = [] }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const isCredit = cp.totalInBase > 0;     // мы должны контрагенту
   const isDebit  = cp.totalInBase < 0;     // контрагент должен нам
@@ -104,26 +107,44 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
           cur={cur}
           formatBase={formatBase}
           baseCurrency={baseCurrency}
+          cp={cp}
+          canEdit={canEdit}
+          accounts={accounts}
         />
       ))}
     </div>
   );
 }
 
-function CurrencyRow({ cur, formatBase, baseCurrency }) {
+function CurrencyRow({ cur, formatBase, baseCurrency, cp, canEdit, accounts }) {
   const [expanded, setExpanded] = useState(false);
   const isCredit = cur.balance > 0;
   const isDebit  = cur.balance < 0;
   const toneCls = isDebit ? "text-danger" : isCredit ? "text-success" : "text-ink";
   const signStr = isDebit ? "−" : isCredit ? "+" : "";
   const isBase = cur.currency === baseCurrency;
+  // Primary target для inline-edit: первый source_account (обычно
+  // customer_liab или partner_liab). Если несколько subtype'ов — правка
+  // ляжет на этот primary, остальные ноги не трогаем.
+  const primarySource = cur.sourceAccounts?.[0] || null;
+  const primaryAcc = primarySource
+    ? (accounts || []).find((a) => a.id === primarySource.accountId)
+    : null;
+  const canEditBalance = canEdit && !!primaryAcc;
 
   return (
     <div>
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
-        className="w-full grid grid-cols-[16px_1fr_auto] items-center gap-2 pl-12 pr-4 py-2 hover:bg-surface-soft transition-colors text-left border-t border-border-soft"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
+        className="w-full grid grid-cols-[16px_1fr_auto] items-center gap-2 pl-12 pr-4 py-2 hover:bg-surface-soft transition-colors text-left border-t border-border-soft cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
       >
         {expanded
           ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
@@ -131,17 +152,31 @@ function CurrencyRow({ cur, formatBase, baseCurrency }) {
         <span className="text-caption font-semibold text-ink-soft tracking-wider">
           {cur.currency}
         </span>
-        <div className="text-right shrink-0 flex items-baseline gap-2 whitespace-nowrap">
-          <span className={`text-body-sm font-mono tabular font-semibold ${toneCls}`}>
-            {signStr}{curSymbol(cur.currency)}{fmt(Math.abs(cur.balance), cur.currency)}
-          </span>
+        <div className="text-right shrink-0 flex items-baseline gap-2 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+          {canEditBalance ? (
+            <CurrencyBalanceEditor
+              currency={cur.currency}
+              currentBalance={cur.balance}
+              displayMul={1}
+              toneCls={toneCls}
+              signStr={signStr}
+              primaryAcc={primaryAcc}
+              accounts={accounts}
+              clientId={cp?.kind === "client" ? cp.id : null}
+              partnerId={cp?.kind === "partner" ? cp.id : null}
+            />
+          ) : (
+            <span className={`text-body-sm font-mono tabular font-semibold ${toneCls}`}>
+              {signStr}{curSymbol(cur.currency)}{fmt(Math.abs(cur.balance), cur.currency)}
+            </span>
+          )}
           {!isBase && formatBase && (
             <span className="text-tiny text-muted-soft font-mono tabular">
               (≈ {formatBase(Math.abs(cur.balanceInBase), baseCurrency)})
             </span>
           )}
         </div>
-      </button>
+      </div>
 
       {/* Level 3 — source ledger accounts */}
       {expanded && cur.sourceAccounts.map((acc, i) => (
@@ -159,6 +194,165 @@ function CurrencyRow({ cur, formatBase, baseCurrency }) {
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Inline-edit балансa клиента/партнёра в конкретной валюте.
+// На submit: setAccountBalance() → ledger.create_manual_entry с парой
+// Dr/Cr против Opening Equity {currency}. Правка ложится на primary
+// source-account (первый в cur.sourceAccounts[]); прочие subtype-ноги
+// (если есть) не трогаются.
+function CurrencyBalanceEditor({
+  currency,
+  currentBalance,
+  displayMul,
+  toneCls,
+  signStr,
+  primaryAcc,
+  accounts,
+  clientId,
+  partnerId,
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const displayed = Math.abs(currentBalance);
+
+  const startEdit = () => {
+    setDraft(displayed.toFixed(2));
+    setReason("");
+    setEditing(true);
+  };
+  const cancel = () => {
+    setEditing(false);
+    setDraft("");
+    setReason("");
+  };
+
+  async function commit(e) {
+    e?.stopPropagation();
+    const parsed = parseFloat(String(draft).replace(",", "."));
+    if (!Number.isFinite(parsed)) {
+      emitToast("error", "Введи число");
+      return;
+    }
+    if (!reason.trim()) {
+      emitToast("error", "Заполни причину (обязательно)");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      // currentBalance уже в displayMul-нормали, как displayed signed
+      // (для liability cur.balance может быть отрицательным — overdraft).
+      // setAccountBalance берёт newDisplayed и сам считает internalDelta.
+      const oldSigned = currentBalance;
+      const newSigned = parsed * (currentBalance < 0 ? -1 : 1);
+      const res = await setAccountBalance({
+        target: {
+          code: primaryAcc.code,
+          currency: primaryAcc.currency,
+          type: primaryAcc.type,
+          subtype: primaryAcc.subtype,
+        },
+        oldDisplayed: oldSigned,
+        newDisplayed: newSigned,
+        displayMul,
+        accounts,
+        clientId,
+        partnerId,
+        reason: reason.trim(),
+      });
+      bumpDataVersion();
+      if (res?.noop) emitToast("info", "Без изменений");
+      else emitToast("success", `Остаток обновлён · ${currency}`);
+      setEditing(false);
+      setDraft("");
+      setReason("");
+    } catch (err) {
+      const msg = err instanceof SetBalanceError ? err.message : err?.message || "Не удалось обновить";
+      emitToast("error", msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); startEdit(); }}
+        title="Редактировать остаток"
+        className={`group/balance inline-flex items-center gap-1 cursor-pointer rounded-badge px-1.5 py-0.5 -mx-1 hover:bg-surface-soft transition-colors ${toneCls}`}
+      >
+        <span className="text-body-sm font-mono tabular font-semibold whitespace-nowrap">
+          {signStr}{curSymbol(currency)}{fmt(displayed, currency)}
+        </span>
+        <Pencil className="w-3 h-3 text-muted-soft opacity-0 group-hover/balance:opacity-100 transition-opacity shrink-0" strokeWidth={2.2} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="inline-flex flex-col items-end gap-1" onClick={(e) => e.stopPropagation()}>
+      <div className="inline-flex items-center gap-1">
+        <span className="text-tiny text-muted-soft font-mono">{currency}</span>
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter" && !e.shiftKey) commit(e);
+            else if (e.key === "Escape") cancel();
+          }}
+          disabled={submitting}
+          className="w-32 h-7 px-2 text-right rounded-input bg-surface text-ink text-caption font-mono tabular font-semibold border-0 ring-1 ring-inset ring-accent focus:outline-none transition-all"
+        />
+        <button
+          type="button"
+          onClick={commit}
+          disabled={submitting}
+          className="p-0.5 rounded-badge text-success hover:bg-success-soft transition-colors disabled:opacity-40"
+          title="Сохранить"
+        >
+          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+        </button>
+        <button
+          type="button"
+          onClick={cancel}
+          disabled={submitting}
+          className="p-0.5 rounded-badge text-muted hover:bg-surface-soft transition-colors disabled:opacity-40"
+          title="Отмена (Esc)"
+        >
+          <XIcon className="w-3.5 h-3.5" strokeWidth={2} />
+        </button>
+      </div>
+      <input
+        type="text"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === "Enter") commit(e);
+          else if (e.key === "Escape") cancel();
+        }}
+        disabled={submitting}
+        placeholder="причина *"
+        className="w-full h-6 px-1.5 text-right rounded-input bg-surface-sunk text-ink text-tiny border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+      />
     </div>
   );
 }
