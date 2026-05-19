@@ -34,11 +34,11 @@ export default function DealLeg({
   const { dict: currencyDict } = useCurrencies();
   const isCrypto = currencyDict[currency]?.type === "crypto";
   return (
-    <div className="px-7 py-5 border-b border-border-soft">
+    <div className="px-6 pt-4 pb-5 border-b border-border-soft">
       {/* Header блока */}
-      <div className="flex items-center justify-between mb-3.5">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-ink text-white text-[11px] font-bold font-mono tabular">
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-ink text-white text-[10px] font-bold font-mono tabular">
             {number}
           </span>
           <span className="text-micro text-muted uppercase">{label}</span>
@@ -55,15 +55,15 @@ export default function DealLeg({
         )}
       </div>
 
-      {/* Big amount + ccy-pill */}
-      <div className="flex items-center gap-3 mb-3">
+      {/* Big amount + ccy-pill — компактные размеры (Шаг компактизация) */}
+      <div className="flex items-center gap-2.5 mb-2.5">
         <input
           type="text"
           inputMode="decimal"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
           placeholder="0"
-          className="flex-1 min-w-0 text-[44px] leading-none font-mono tabular font-bold text-ink placeholder:text-muted-soft bg-transparent outline-none border-0"
+          className="flex-1 min-w-0 text-[32px] leading-none tracking-[-0.02em] font-mono tabular font-bold text-ink placeholder:text-muted-soft bg-transparent outline-none border-0"
         />
         <CcyPill
           ccy={currency}
@@ -108,12 +108,12 @@ export default function DealLeg({
   );
 }
 
-// ── Currency pill (компактный select-style с круглой иконкой) ─────────
+// ── Currency pill — h-10, иконка 20px, текст 14px (Шаг компактизация) ─
 function CcyPill({ ccy, options, onChange }) {
   return (
-    <label className="inline-flex items-center gap-2 h-10 px-3 rounded-pill bg-surface-soft hover:bg-surface-sunk cursor-pointer transition-colors shrink-0 relative">
+    <label className="inline-flex items-center gap-1.5 h-10 pl-2 pr-3 rounded-pill bg-surface-soft hover:bg-surface-sunk cursor-pointer transition-colors shrink-0 relative">
       <CurrencyIcon ccy={ccy} size="sm" />
-      <span className="font-mono font-bold text-body text-ink">{ccy}</span>
+      <span className="font-mono font-bold text-[14px] text-ink">{ccy}</span>
       <ChevronDown className="w-3 h-3 text-muted" strokeWidth={2.2} />
       <select
         value={ccy}

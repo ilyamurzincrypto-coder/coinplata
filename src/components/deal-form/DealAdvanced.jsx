@@ -52,7 +52,7 @@ export default function DealAdvanced({
     backdateAt;
 
   return (
-    <div className="px-7 py-3 border-b border-border-soft">
+    <div className="px-6 py-2.5 border-b border-border-soft">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

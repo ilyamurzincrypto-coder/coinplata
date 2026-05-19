@@ -55,15 +55,15 @@ export default function DealLegNested({
         </button>
       </div>
 
-      {/* Amount + ccy-pill + inline rate */}
-      <div className="flex items-center gap-2 mb-2.5">
+      {/* Amount + ccy-pill + inline rate — компактные */}
+      <div className="flex items-center gap-2 mb-2">
         <input
           type="text"
           inputMode="decimal"
           value={amount}
           onChange={(e) => onAmountChange(e.target.value)}
           placeholder="0"
-          className="flex-1 min-w-0 text-[28px] leading-none font-mono tabular font-bold text-ink placeholder:text-muted-soft bg-transparent outline-none border-0"
+          className="flex-1 min-w-0 text-[24px] leading-none tracking-[-0.02em] font-mono tabular font-bold text-ink placeholder:text-muted-soft bg-transparent outline-none border-0"
         />
         <CcyPillCompact
           ccy={currency}

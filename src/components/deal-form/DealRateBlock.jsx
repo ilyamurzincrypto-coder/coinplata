@@ -20,13 +20,19 @@ export default function DealRateBlock({
   onReverse,        // swap from/to
   warning,          // string | null — текст предупреждения (например «одинаковые валюты»)
 }) {
+  // Если валюты совпали — rate-капсулу не рендерим вообще (курс 1
+  // не имеет смысла как «обмен», и warning из NewDealForm уже
+  // покрывает UX. После auto-flip primary этот случай не должен
+  // возникать, но safeguard на случай ручного rollback'а.)
+  if (fromCcy && toCcy && fromCcy === toCcy) return null;
+
   const hasMargin = Number.isFinite(marginUsd) && marginUsd !== 0;
   const marginPositive = (marginUsd || 0) >= 0;
   return (
-    <div className="mx-7 my-4 bg-surface-dark text-white rounded-card-lg px-5 py-4 flex items-center gap-4">
+    <div className="mx-6 my-3 bg-surface-dark text-white rounded-card-lg px-4 py-3 flex items-center gap-3">
       {/* Иконка */}
-      <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0">
-        <ArrowLeftRight className="w-4 h-4 text-white" strokeWidth={2.2} />
+      <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+        <ArrowLeftRight className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
       </div>
 
       {/* Курс + источник */}
@@ -41,19 +47,19 @@ export default function DealRateBlock({
             onSelect={onSelectSuggestion}
             from={fromCcy}
             to={toCcy}
-            inputClassName="bg-transparent text-white font-mono tabular text-h2 font-bold border-b border-transparent focus:border-white/40 outline-none transition-colors w-32 min-w-0 placeholder:text-white/30"
+            inputClassName="bg-transparent text-white font-mono tabular text-[20px] font-bold border-b border-transparent focus:border-white/40 outline-none transition-colors w-28 min-w-0 placeholder:text-white/30"
           />
-          <span className="text-body-sm text-white/60 font-mono">
+          <span className="text-[11px] text-white/60 font-mono">
             {fromCcy} → {toCcy}
           </span>
         </div>
         {warning ? (
-          <div className="mt-1 text-tiny text-rose-300 inline-flex items-center gap-1.5 font-semibold">
+          <div className="mt-0.5 text-[10px] text-rose-300 inline-flex items-center gap-1.5 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             {warning}
           </div>
         ) : sourceLabel ? (
-          <div className="mt-1 text-tiny text-white/50 inline-flex items-center gap-1.5">
+          <div className="mt-0.5 text-[10px] text-white/50 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot" style={{ boxShadow: "0 0 6px rgba(16,185,129,0.6)" }} />
             <span>Источник: {sourceLabel}{ageLabel ? ` · ${ageLabel}` : ""}</span>
           </div>

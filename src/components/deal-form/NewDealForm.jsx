@@ -30,6 +30,20 @@ import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 const DRAFT_KEY = "coinplata.newDealFormDraft";
+const LAST_IN_KEY = "coinplata:last-in-ccy";
+const LAST_OUT_KEY = "coinplata:last-out-ccy";
+
+function readLast(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    if (v && typeof v === "string" && v.length <= 8) return v;
+  } catch {}
+  return fallback;
+}
+function writeLast(key, value) {
+  try { localStorage.setItem(key, value); } catch {}
+}
+
 const newOutputId = () => `out_${Math.random().toString(36).slice(2, 8)}`;
 const emptyOutput = (currency = "TRY") => ({
   id: newOutputId(),
@@ -125,14 +139,25 @@ export default function NewDealForm({
   const seed = initialData || draft;
 
   // ── IN state (single leg) ────────────────────────────────────────────
-  const [curIn, setCurIn] = useState(seed?.curIn || "USDT");
+  // Дефолтная IN-валюта: USDT (самая частая «клиент даёт»). Сохраняется
+  // в localStorage после успешного submit. При отсутствии seed читаем
+  // last-in-ccy чтобы кассир продолжал работать с привычной валютой.
+  const [curIn, setCurIn] = useState(seed?.curIn || readLast(LAST_IN_KEY, "USDT"));
   const [amtIn, setAmtIn] = useState(
     seed?.amtIn != null ? String(seed.amtIn) : ""
   );
   const [accountIdIn, setAccountIdIn] = useState(seed?.accountIdIn || "");
 
   // ── OUT state (multi-leg) ────────────────────────────────────────────
-  const [outputs, setOutputs] = useState(() => outputsFromInitial(seed));
+  const [outputs, setOutputs] = useState(() => {
+    const fromSeed = outputsFromInitial(seed);
+    // Если seed пустой (нет outputs / нет curOut) — берём last-out-ccy
+    if (!seed?.outputs && !seed?.curOut) {
+      const lastOut = readLast(LAST_OUT_KEY, "TRY");
+      fromSeed[0].currency = lastOut;
+    }
+    return fromSeed;
+  });
   const primary = outputs[0];
 
   const patchOutput = useCallback((idx, patch) => {
@@ -419,6 +444,9 @@ export default function NewDealForm({
     onSubmit(payload);
     clearDraft();
     setDraftSavedAt(null);
+    // Запоминаем валюты для следующей сделки
+    writeLast(LAST_IN_KEY, curIn);
+    if (validOuts[0]?.currency) writeLast(LAST_OUT_KEY, validOuts[0].currency);
   }, [
     canSubmit, amtIn, curIn, outputs, accountIdIn, counterparty, timing,
     referral, applyMinFee, comment, inTxHash,
@@ -530,7 +558,7 @@ export default function NewDealForm({
 
       {/* Nested OUT (от 2-й и далее) */}
       {outputs.length > 1 && (
-        <div className="px-7 pb-5 space-y-2.5">
+        <div className="px-6 pb-4 space-y-2">
           {outputs.slice(1).map((o, idx) => (
             <DealLegNested
               key={o.id}

@@ -49,7 +49,7 @@ export default function DealOptions({
   onDeferredOutChange,
 }) {
   return (
-    <div className="px-7 py-4 border-b border-border-soft">
+    <div className="px-6 py-3 border-b border-border-soft">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-micro text-muted uppercase mr-1">Опции</span>
         <OptionPill

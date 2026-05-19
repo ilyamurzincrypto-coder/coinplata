@@ -17,7 +17,7 @@ export default function DealHeader({
   onMinimize,
 }) {
   return (
-    <div className="px-7 pt-5 pb-4 border-b border-border-soft flex items-center justify-between gap-3">
+    <div className="px-6 pt-4 pb-3 border-b border-border-soft flex items-center justify-between gap-3">
       {selectedClient ? (
         <DealClientChip client={selectedClient} onClear={onClearClient} />
       ) : (

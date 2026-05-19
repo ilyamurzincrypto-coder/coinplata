@@ -17,7 +17,7 @@ export default function DealSummary({
 }) {
   const hasMargin = Number.isFinite(marginUsd);
   return (
-    <div className="m-7 p-5 bg-surface-soft rounded-card-lg">
+    <div className="m-6 p-4 bg-surface-soft rounded-card-lg">
       {/* Summary line */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="min-w-0 flex-1">
