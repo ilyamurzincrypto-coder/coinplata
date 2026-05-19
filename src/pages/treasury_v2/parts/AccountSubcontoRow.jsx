@@ -29,7 +29,7 @@ export default function AccountSubcontoRow({ ctx, accountId, dim, formatBase, ba
           : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />}
         <span className="text-micro text-muted-soft uppercase w-12">{kind}</span>
         <span className="flex-1 text-caption text-ink-soft truncate">{name}</span>
-        <span className="text-caption font-mono tabular text-muted w-32 text-right">
+        <span className="text-caption font-mono tabular text-muted w-32 text-right whitespace-nowrap">
           {parent ? (
             <InlineBalanceEditor
               account={{
@@ -49,7 +49,7 @@ export default function AccountSubcontoRow({ ctx, accountId, dim, formatBase, ba
             (Number(dim.balance) * displayMul).toLocaleString(undefined, { maximumFractionDigits: 2 })
           )}
         </span>
-        <span className="text-caption font-mono tabular font-semibold text-ink w-28 text-right">{formatBase(dim.balanceInBase * displayMul, baseCurrency)}</span>
+        <span className="text-caption font-mono tabular font-semibold text-ink w-28 text-right whitespace-nowrap">{formatBase(dim.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && <AccountInlineEntries ctx={ctx} accountId={accountId} dim={filter} onOpenTx={onOpenTx} />}
     </>

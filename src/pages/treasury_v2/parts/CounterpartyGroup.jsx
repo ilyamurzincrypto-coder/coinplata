@@ -60,7 +60,7 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
           )}
         </div>
         <div className="text-right shrink-0 flex flex-col items-end leading-tight">
-          <span className={`text-body-sm font-mono tabular font-bold ${toneCls}`}>
+          <span className={`text-body-sm font-mono tabular font-bold whitespace-nowrap ${toneCls}`}>
             {signStr}{formatBase ? formatBase(Math.abs(cp.totalInBase), baseCurrency) : `$${fmtCompact(cp.totalInBase)}`}
           </span>
           <span className="text-tiny text-muted-soft">
@@ -103,7 +103,7 @@ function CurrencyRow({ cur, formatBase, baseCurrency }) {
         <span className="text-caption font-semibold text-ink-soft tracking-wider">
           {cur.currency}
         </span>
-        <div className="text-right shrink-0 flex items-baseline gap-2">
+        <div className="text-right shrink-0 flex items-baseline gap-2 whitespace-nowrap">
           <span className={`text-body-sm font-mono tabular font-semibold ${toneCls}`}>
             {signStr}{curSymbol(cur.currency)}{fmt(Math.abs(cur.balance), cur.currency)}
           </span>
@@ -126,7 +126,7 @@ function CurrencyRow({ cur, formatBase, baseCurrency }) {
             <span className="text-muted-soft">·</span>
             <span className="truncate">{acc.name}</span>
           </div>
-          <span className={`text-tiny font-mono tabular ${acc.balance < 0 ? "text-danger" : "text-success"}`}>
+          <span className={`text-tiny font-mono tabular whitespace-nowrap ${acc.balance < 0 ? "text-danger" : "text-success"}`}>
             {acc.balance < 0 ? "−" : "+"}{curSymbol(cur.currency)}{fmt(Math.abs(acc.balance), cur.currency)}
           </span>
         </div>

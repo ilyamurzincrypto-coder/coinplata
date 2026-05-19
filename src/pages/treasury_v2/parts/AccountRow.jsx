@@ -30,7 +30,7 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
           : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
         <span className="font-mono text-tiny text-muted-soft w-12">{account.code}</span>
         <span className="flex-1 text-body-sm font-medium text-ink truncate">{account.name}</span>
-        <span className="text-body-sm font-mono tabular text-ink-soft w-32 text-right">
+        <span className="text-body-sm font-mono tabular text-ink-soft w-32 text-right whitespace-nowrap">
           {/* Если у юзера нет accounting:edit и счёт — субконто-агрегат
               (dims != null), редактор всё равно деградирует в read-only;
               для dimensioned счетов inline-edit на родителе блокируем
@@ -49,7 +49,7 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
             />
           )}
         </span>
-        <span className="text-body-sm font-mono tabular font-semibold text-ink w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
+        <span className="text-body-sm font-mono tabular font-semibold text-ink w-28 text-right whitespace-nowrap">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && (dims
         ? (

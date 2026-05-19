@@ -225,7 +225,7 @@ export default function InlineBalanceEditor({
   }
 
   const ro = (
-    <span className="font-mono tabular">
+    <span className="font-mono tabular whitespace-nowrap">
       {fmtNum(displayed)}
       {suffix ? <span className="text-muted-soft"> {suffix}</span> : null}
     </span>
