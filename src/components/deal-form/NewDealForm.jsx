@@ -45,6 +45,7 @@ function writeLast(key, value) {
 }
 
 const newOutputId = () => `out_${Math.random().toString(36).slice(2, 8)}`;
+const newInputId = () => `in_${Math.random().toString(36).slice(2, 8)}`;
 const emptyOutput = (currency = "TRY") => ({
   id: newOutputId(),
   currency,
@@ -54,6 +55,12 @@ const emptyOutput = (currency = "TRY") => ({
   amountTouched: false,
   accountId: "",
   address: "",
+});
+const emptyInput = (currency = "USDT") => ({
+  id: newInputId(),
+  currency,
+  amount: "",
+  accountId: "",
 });
 
 function outputsFromInitial(initial) {
@@ -138,15 +145,79 @@ export default function NewDealForm({
   const draft = useMemo(() => (initialData ? null : loadDraft()), [initialData]);
   const seed = initialData || draft;
 
-  // ── IN state (single leg) ────────────────────────────────────────────
-  // Дефолтная IN-валюта: USDT (самая частая «клиент даёт»). Сохраняется
-  // в localStorage после успешного submit. При отсутствии seed читаем
-  // last-in-ccy чтобы кассир продолжал работать с привычной валютой.
-  const [curIn, setCurIn] = useState(seed?.curIn || readLast(LAST_IN_KEY, "USDT"));
-  const [amtIn, setAmtIn] = useState(
-    seed?.amtIn != null ? String(seed.amtIn) : ""
-  );
-  const [accountIdIn, setAccountIdIn] = useState(seed?.accountIdIn || "");
+  // ── IN state (multi-leg) ─────────────────────────────────────────────
+  // Массив inputs[]: первая = primary (большой блок), остальные = nested.
+  // inputs.length === 0 → withdrawal (без приёма): adapter автоматически
+  // routes в withdrawal RPC.
+  const [inputs, setInputs] = useState(() => {
+    if (Array.isArray(seed?.inPayments) && seed.inPayments.length > 0) {
+      return seed.inPayments.map((p) => ({
+        id: newInputId(),
+        currency: (p.currency || "USDT").toUpperCase(),
+        amount: p.amount != null ? String(p.amount) : "",
+        accountId: p.accountId || "",
+      }));
+    }
+    if (seed?.curIn || seed?.amtIn != null || seed?.accountIdIn) {
+      return [{
+        id: newInputId(),
+        currency: (seed.curIn || "USDT").toUpperCase(),
+        amount: seed?.amtIn != null ? String(seed.amtIn) : "",
+        accountId: seed.accountIdIn || "",
+      }];
+    }
+    return [emptyInput(readLast(LAST_IN_KEY, "USDT"))];
+  });
+  const primaryIn = inputs[0];
+
+  const patchInput = useCallback((idx, patch) => {
+    setInputs((prev) => prev.map((i, j) => (j === idx ? { ...i, ...patch } : i)));
+  }, []);
+  const addInput = useCallback(() => {
+    setInputs((prev) => {
+      const used = new Set(prev.map((i) => i.currency));
+      const candidates = ["USDT", "USD", "EUR", "TRY", "RUB"];
+      const next = candidates.find((c) => !used.has(c)) || "USD";
+      return [...prev, emptyInput(next)];
+    });
+  }, []);
+  const removeInput = useCallback((idx) => {
+    setInputs((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+  const restoreFirstInput = useCallback(() => {
+    setInputs((prev) =>
+      prev.length === 0
+        ? [emptyInput(readLast(LAST_IN_KEY, "USDT"))]
+        : prev
+    );
+  }, []);
+
+  // Computed aliases — большая часть существующей логики writted для
+  // single-IN; вместо рефактора каждой строки делаем computed proxy
+  // через primaryIn. Если inputs.length === 0 → withdrawal mode, эти
+  // алиасы дают safe fallbacks.
+  const curIn = primaryIn?.currency || "";
+  const amtIn = primaryIn?.amount || "";
+  const accountIdIn = primaryIn?.accountId || "";
+  const setCurIn = useCallback((v) => {
+    if (inputs.length === 0) {
+      // create new primary on demand
+      setInputs([{ id: newInputId(), currency: v, amount: "", accountId: "" }]);
+    } else {
+      patchInput(0, { currency: v });
+    }
+  }, [inputs.length, patchInput]);
+  const setAmtIn = useCallback((v) => {
+    if (inputs.length === 0) {
+      setInputs([{ id: newInputId(), currency: "USDT", amount: v, accountId: "" }]);
+    } else {
+      patchInput(0, { amount: v });
+    }
+  }, [inputs.length, patchInput]);
+  const setAccountIdIn = useCallback((v) => {
+    if (inputs.length === 0) return;
+    patchInput(0, { accountId: v });
+  }, [inputs.length, patchInput]);
 
   // ── OUT state (multi-leg) ────────────────────────────────────────────
   const [outputs, setOutputs] = useState(() => {
@@ -214,14 +285,20 @@ export default function NewDealForm({
     const handle = setTimeout(() => {
       // Не сохраняем пустой draft (когда юзер ничего ещё не вводил)
       const hasAny =
-        counterparty.trim() || amtIn || outputs.some((o) => o.amount || o.rate);
+        counterparty.trim() ||
+        inputs.some((i) => i.amount) ||
+        outputs.some((o) => o.amount || o.rate);
       if (!hasAny) {
         clearDraft();
         setDraftSavedAt(null);
         return;
       }
       saveDraft({
-        curIn, amtIn, accountIdIn,
+        inPayments: inputs.map((i) => ({
+          currency: i.currency,
+          amount: i.amount,
+          accountId: i.accountId,
+        })),
         outputs,
         counterparty,
         timing, referral, applyMinFee,
@@ -233,7 +310,7 @@ export default function NewDealForm({
     }, 600);
     return () => clearTimeout(handle);
   }, [
-    curIn, amtIn, accountIdIn, outputs, counterparty,
+    inputs, outputs, counterparty,
     timing, referral, applyMinFee, comment, inTxHash,
     commissionUsd, customFeeUsd, plannedLocal, backdateAt,
   ]);
@@ -279,12 +356,16 @@ export default function NewDealForm({
     }
   }, [amtIn, primary, currencyDict, patchOutput]);
 
-  // ── Reset accountIdIn при смене curIn (ccy mismatch) ────────────────
+  // ── Reset accountId для каждой IN-ноги при смене её currency ──────────
   useEffect(() => {
-    if (!accountIdIn) return;
-    const acc = accounts.find((a) => a.id === accountIdIn);
-    if (acc && acc.currency !== curIn) setAccountIdIn("");
-  }, [curIn, accountIdIn, accounts]);
+    inputs.forEach((leg, idx) => {
+      if (!leg.accountId) return;
+      const acc = accounts.find((a) => a.id === leg.accountId);
+      if (acc && acc.currency !== leg.currency) {
+        patchInput(idx, { accountId: "" });
+      }
+    });
+  }, [inputs, accounts, patchInput]);
 
   // ── Если IN-валюта совпала с primary OUT — авто-flip primary на
   //    первую отличающуюся валюту. Юзер не должен видеть TRY→TRY.
@@ -393,16 +474,27 @@ export default function NewDealForm({
   const sameCurrencyWarning = primary && curIn === primary.currency;
 
   // ── Submit validation ─────────────────────────────────────────────────
+  // Сделка валидна если:
+  //   • есть контрагент
+  //   • хотя бы один OUT валидный
+  //   • если есть IN-ноги — все валидные (amount > 0); если 0 IN-ног —
+  //     это withdrawal (adapter роутит автоматически).
   const canSubmit = useMemo(() => {
     if (!counterparty.trim()) return false;
-    if (!Number.isFinite(parseFloat(amtIn)) || parseFloat(amtIn) <= 0) return false;
+    if (inputs.length > 0) {
+      const validIns = inputs.filter(
+        (i) => Number.isFinite(parseFloat(i.amount)) && parseFloat(i.amount) > 0 && i.currency
+      );
+      if (validIns.length === 0) return false;
+    }
+    const inCcySet = new Set(inputs.map((i) => i.currency));
     const validOuts = outputs.filter(
       (o) => Number.isFinite(parseFloat(o.amount)) && parseFloat(o.amount) > 0 &&
              Number.isFinite(parseFloat(o.rate)) && parseFloat(o.rate) > 0 &&
-             o.currency && o.currency !== curIn
+             o.currency && !inCcySet.has(o.currency)
     );
     return validOuts.length > 0;
-  }, [counterparty, amtIn, outputs, curIn]);
+  }, [counterparty, inputs, outputs]);
 
   // ── Submit handler ────────────────────────────────────────────────────
   const handleSubmit = useCallback(() => {
@@ -411,9 +503,22 @@ export default function NewDealForm({
       (o) => Number.isFinite(parseFloat(o.amount)) && parseFloat(o.amount) > 0 &&
              Number.isFinite(parseFloat(o.rate)) && parseFloat(o.rate) > 0
     );
+    const validIns = inputs.filter(
+      (i) => Number.isFinite(parseFloat(i.amount)) && parseFloat(i.amount) > 0 && i.currency
+    );
+    // legacy single-IN поля заполняем primary IN-ногой (для adapter
+    // fallback). inPayments[] передаём всегда — adapter возьмёт массив
+    // если len>0, иначе fallback. Если validIns пустой → inPayments не
+    // передаём и amtIn=0/curIn="" → adapter роутит в withdrawal.
+    const primaryInLeg = validIns[0];
     const payload = {
-      amtIn: parseFloat(amtIn),
-      curIn,
+      amtIn: primaryInLeg ? parseFloat(primaryInLeg.amount) : 0,
+      curIn: primaryInLeg?.currency || "",
+      inPayments: validIns.length > 1 ? validIns.map((i) => ({
+        currency: i.currency,
+        amount: parseFloat(i.amount),
+        accountId: i.accountId,
+      })) : undefined,
       outputs: validOuts.map((o, i) => ({
         id: `out_${i}`,
         currency: o.currency,
@@ -421,13 +526,13 @@ export default function NewDealForm({
         rate: parseFloat(o.rate),
         manualRate: o.manualRate,
         accountId: o.accountId || "",
-        address: "",
+        address: o.address || "",
         applyFee: false,
         outKind: "ours",
         partnerAccountId: null,
       })),
       counterparty: counterparty.trim(),
-      accountId: accountIdIn || "",
+      accountId: primaryInLeg?.accountId || "",
       referral,
       comment,
       inTxHash,
@@ -502,20 +607,71 @@ export default function NewDealForm({
         onClose={onCancel}
       />
 
-      {/* IN — одна нога */}
-      <DealLeg
-        number="1"
-        label="Клиент даёт"
-        direction="in"
-        amount={amtIn}
-        onAmountChange={setAmtIn}
-        currency={curIn}
-        currencyOptions={CURRENCIES}
-        onCurrencyChange={setCurIn}
-        accountId={accountIdIn}
-        accountOptions={accountOptions}
-        onAccountChange={setAccountIdIn}
-      />
+      {/* IN — multi-leg. Если inputs[] пуст — placeholder для withdrawal. */}
+      {inputs.length === 0 ? (
+        <div className="px-6 py-5 border-b border-border-soft">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-sunk text-muted text-[10px] font-bold font-mono">
+                1
+              </span>
+              <span className="text-micro text-muted uppercase">Без приёма (выдача)</span>
+            </div>
+            <button
+              type="button"
+              onClick={restoreFirstInput}
+              className="text-caption text-accent hover:text-accent-hover font-semibold"
+              title="Добавить ногу приёма"
+            >
+              + Добавить приём
+            </button>
+          </div>
+          <div className="text-body-sm text-muted">
+            Эта сделка отдаст клиенту средства без встречного приёма (withdrawal).
+            Будет создана через withdrawal RPC.
+          </div>
+        </div>
+      ) : (
+        <DealLeg
+          number="1"
+          label="Клиент даёт"
+          direction="in"
+          amount={primaryIn.amount}
+          onAmountChange={(v) => patchInput(0, { amount: v })}
+          currency={primaryIn.currency}
+          currencyOptions={CURRENCIES}
+          onCurrencyChange={(v) => patchInput(0, { currency: v, accountId: "" })}
+          accountId={primaryIn.accountId}
+          accountOptions={accountOptions}
+          onAccountChange={(v) => patchInput(0, { accountId: v })}
+          onAddLeg={addInput}
+          addLegLabel="Ещё внесение"
+          onRemoveLeg={() => removeInput(0)}
+        />
+      )}
+
+      {/* Nested IN (от 2-й и далее) */}
+      {inputs.length > 1 && (
+        <div className="px-6 pb-4 space-y-2">
+          {inputs.slice(1).map((leg, idx) => (
+            <DealLegNested
+              key={leg.id}
+              legNumber={`Внесение №${idx + 2}`}
+              direction="in"
+              showRate={false}
+              amount={leg.amount}
+              onAmountChange={(v) => patchInput(idx + 1, { amount: v })}
+              currency={leg.currency}
+              currencyOptions={CURRENCIES}
+              onCurrencyChange={(v) => patchInput(idx + 1, { currency: v, accountId: "" })}
+              accountId={leg.accountId}
+              accountOptions={accountOptions}
+              onAccountChange={(v) => patchInput(idx + 1, { accountId: v })}
+              onRemove={() => removeInput(idx + 1)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Чёрная rate-капсула — управляет primary.rate */}
       <DealRateBlock

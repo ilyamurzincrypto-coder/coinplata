@@ -21,10 +21,10 @@ import { useCurrencies } from "../../store/currencies.jsx";
 export default function DealLegNested({
   legNumber,        // display, "Выдача №2" / "Внесение №2"
   direction,        // "in" | "out"
-  fromCcy,          // base ccy для inline rate (curIn)
+  fromCcy,          // base ccy для inline rate (curIn) — только для OUT
   amount,
   onAmountChange,
-  rate,
+  rate,             // только для OUT
   onRateChange,
   currency,
   currencyOptions,
@@ -35,6 +35,7 @@ export default function DealLegNested({
   address,
   onAddressChange,
   onRemove,
+  showRate = true,  // false → не рендерить inline rate input (для IN-ноги)
 }) {
   const { dict: currencyDict } = useCurrencies();
   const isCrypto = currencyDict[currency]?.type === "crypto";
@@ -72,20 +73,22 @@ export default function DealLegNested({
         />
       </div>
 
-      {/* Rate row: «× rate» inline */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <span className="text-tiny text-muted font-semibold">
-          {fromCcy} ×
-        </span>
-        <input
-          type="text"
-          inputMode="decimal"
-          value={rate}
-          onChange={(e) => onRateChange(e.target.value)}
-          placeholder="0.0000"
-          className="flex-1 min-w-0 h-7 px-2 rounded-input bg-surface text-ink font-mono tabular text-body-sm font-bold placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
-        />
-      </div>
+      {/* Rate row: «× rate» inline — только для OUT-ноги */}
+      {showRate && (
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="text-tiny text-muted font-semibold">
+            {fromCcy} ×
+          </span>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={rate}
+            onChange={(e) => onRateChange(e.target.value)}
+            placeholder="0.0000"
+            className="flex-1 min-w-0 h-7 px-2 rounded-input bg-surface text-ink font-mono tabular text-body-sm font-bold placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
+          />
+        </div>
+      )}
 
       {/* Account + balance hint */}
       <div className="flex items-center justify-between gap-2 flex-wrap">

@@ -9,7 +9,7 @@
 //   • Account-pill ниже + (TODO Phase 2: balance hint)
 
 import React from "react";
-import { ChevronDown, Link as LinkIcon } from "lucide-react";
+import { ChevronDown, Link as LinkIcon, X } from "lucide-react";
 import CurrencyIcon from "../ui/CurrencyIcon.jsx";
 import BalanceHint from "./BalanceHint.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
@@ -28,8 +28,9 @@ export default function DealLeg({
   onAccountChange,
   address,          // crypto address (только для crypto-валют)
   onAddressChange,
-  onAddLeg,         // Phase 1: только prop, реально не рендерим multi-leg
+  onAddLeg,
   addLegLabel = "Ещё",
+  onRemoveLeg,      // если задано — рендерим ✕ возле header (удаление primary ноги)
 }) {
   const { dict: currencyDict } = useCurrencies();
   const isCrypto = currencyDict[currency]?.type === "crypto";
@@ -43,16 +44,28 @@ export default function DealLeg({
           </span>
           <span className="text-micro text-muted uppercase">{label}</span>
         </div>
-        {onAddLeg && (
-          <button
-            type="button"
-            onClick={onAddLeg}
-            className="text-caption text-accent hover:text-accent-hover font-semibold"
-            title="Добавить ещё одну ногу"
-          >
-            + {addLegLabel}
-          </button>
-        )}
+        <div className="flex items-center gap-1">
+          {onAddLeg && (
+            <button
+              type="button"
+              onClick={onAddLeg}
+              className="text-caption text-accent hover:text-accent-hover font-semibold"
+              title="Добавить ещё одну ногу"
+            >
+              + {addLegLabel}
+            </button>
+          )}
+          {onRemoveLeg && (
+            <button
+              type="button"
+              onClick={onRemoveLeg}
+              title="Убрать эту ногу"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+            >
+              <X className="w-3 h-3" strokeWidth={2.2} />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Big amount + ccy-pill — компактные размеры (Шаг компактизация) */}
