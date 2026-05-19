@@ -13,16 +13,19 @@
 // Логика не тронута: expanded Set + ключи, permission checks, drill-down.
 
 import React, { useMemo, useState } from "react";
-import { ChevronRight, ChevronDown, Plus, Building2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Building2, Download } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { assetsByOfficeCurrency } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
+import { exportCSV } from "../../../utils/csv.js";
 import AccountInlineEntries from "../parts/AccountInlineEntries.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
+
+const NONZERO_KEY = "coinplata:assets-nonzero";
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -35,6 +38,29 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
   const tree = useMemo(() => assetsByOfficeCurrency(ctx), [ctx]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [nonZeroOnly, setNonZeroOnly] = useState(() => {
+    try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
+  });
+  const setNonZeroPersist = (v) => {
+    setNonZeroOnly(v);
+    try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {}
+  };
+
+  const filteredTree = useMemo(() => {
+    if (!nonZeroOnly) return tree;
+    const isNonZero = (n) => Math.abs(Number(n) || 0) > 0.005;
+    return tree
+      .map((office) => ({
+        ...office,
+        currencies: office.currencies
+          .map((cur) => ({
+            ...cur,
+            accounts: cur.accounts.filter((a) => isNonZero(a.balance)),
+          }))
+          .filter((cur) => isNonZero(cur.total) && cur.accounts.length > 0),
+      }))
+      .filter((office) => isNonZero(office.totalInBase) && office.currencies.length > 0);
+  }, [tree, nonZeroOnly]);
   const toggle = (key) =>
     setExpanded((prev) => {
       const next = new Set(prev);
@@ -43,7 +69,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
       return next;
     });
 
-  const grandTotal = tree.reduce((s, o) => s + o.totalInBase, 0);
+  const grandTotal = filteredTree.reduce((s, o) => s + o.totalInBase, 0);
 
   return (
     <div className="space-y-3">
@@ -52,25 +78,49 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         <div className="text-h2 text-ink flex items-center gap-2">
           {t("trv2_tab_assets")}
           <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
-            {tree.length}
+            {filteredTree.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
             ≈ {formatBase(grandTotal, baseCurrency)}
           </span>
         </div>
-        {can("accounting", "edit") && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
+            onClick={() => setNonZeroPersist(!nonZeroOnly)}
+            className={`h-9 px-3 rounded-button text-body-sm font-semibold transition-all whitespace-nowrap ${
+              nonZeroOnly
+                ? "bg-ink text-white"
+                : "bg-surface-sunk text-ink-soft hover:bg-surface-soft"
+            }`}
+            title="Скрыть нулевые балансы"
           >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            {t("trv2_chart_add_btn")}
+            Ненулевые
           </button>
-        )}
+          <button
+            type="button"
+            onClick={() => doExportAssets(filteredTree, baseCurrency, findOffice, t)}
+            disabled={filteredTree.length === 0}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
+            title="Экспорт всех видимых активов в CSV"
+          >
+            <Download className="w-3.5 h-3.5" strokeWidth={2.5} />
+            CSV
+          </button>
+          {can("accounting", "edit") && (
+            <button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              {t("trv2_chart_add_btn")}
+            </button>
+          )}
+        </div>
       </div>
 
-      {tree.length === 0 ? (
+      {filteredTree.length === 0 ? (
         <div className="bg-surface rounded-card p-card">
           <div className="py-10 text-center">
             <div className="inline-flex w-11 h-11 rounded-full bg-surface-sunk text-muted-soft items-center justify-center mb-3">
@@ -81,7 +131,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         </div>
       ) : (
         <div className="bg-surface rounded-card overflow-hidden">
-          {tree.map((office) => {
+          {filteredTree.map((office) => {
             const officeKey = `office:${office.officeId || "none"}`;
             const officeOpen = expanded.has(officeKey);
             const officeName = office.officeId
@@ -190,4 +240,37 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
       )}
     </div>
   );
+}
+
+// Один row на каждый leaf account (office × currency × account). Балансы
+// в native + base. Polezno бухгалтеру для сверки.
+function doExportAssets(tree, baseCurrency, findOffice, t) {
+  const rows = [];
+  for (const office of tree) {
+    const officeName = office.officeId
+      ? (findOffice(office.officeId)?.name || office.officeId)
+      : t("trv2_assets_no_office");
+    for (const cur of office.currencies) {
+      for (const a of cur.accounts) {
+        rows.push({
+          office: officeName,
+          accountCode: a.code,
+          accountName: a.name,
+          currency: cur.currency,
+          balance: a.balance,
+          balanceInBase: a.balanceInBase,
+        });
+      }
+    }
+  }
+  const cols = [
+    { key: "office", label: "office" },
+    { key: "accountCode", label: "account_code" },
+    { key: "accountName", label: "account_name" },
+    { key: "currency", label: "currency" },
+    { key: "balance", label: "balance_native" },
+    { key: "balanceInBase", label: `balance_${baseCurrency.toLowerCase()}` },
+  ];
+  const stamp = new Date().toISOString().slice(0, 10);
+  exportCSV({ filename: `assets_${stamp}.csv`, columns: cols, rows });
 }
