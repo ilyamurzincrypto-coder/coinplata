@@ -136,19 +136,19 @@ export default function PostingTab({ ctx, onDone }) {
     <div className="space-y-4">
       <h2 className="text-[16px] font-bold">{t("trv2_pm_title")}</h2>
 
-      <div className="bg-white border border-border-soft rounded-[12px] p-4 space-y-4">
+      <div className="bg-white border border-border-soft rounded-card p-4 space-y-4">
         {/* header: date + default currency + template */}
         <div className="flex flex-wrap items-center gap-5">
           <label className="flex items-center gap-2 text-[12.5px]">
             <span className="text-muted">{t("trv2_pm_effective_date")}</span>
             <input type="date" value={dateStr} min={minDateInputValue()} max={todayInputValue()}
               onChange={(e) => setDateStr(e.target.value)}
-              className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5 outline-none" />
+              className="bg-surface-soft border border-border-soft rounded-button px-2 py-1.5 outline-none" />
           </label>
           <label className="flex items-center gap-2 text-[12.5px]">
             <span className="text-muted">{t("trv2_pm_currency")}</span>
             <select value={defaultCur} onChange={(e) => changeDefaultCurrency(e.target.value)}
-              className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5 outline-none">
+              className="bg-surface-soft border border-border-soft rounded-button px-2 py-1.5 outline-none">
               {[...new Set([defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
@@ -192,7 +192,7 @@ export default function PostingTab({ ctx, onDone }) {
               <tr key={l.id} className="border-t border-border-soft align-top">
                 <td className="px-2 py-1.5">
                   <select value={l.currency || defaultCur} onChange={(e) => setLineCurrency(l.id, e.target.value)}
-                    className={`w-full bg-surface-soft border rounded-[8px] px-1.5 py-1 text-[12px] outline-none ${curErr ? "border-danger/40" : "border-border-soft"}`}>
+                    className={`w-full bg-surface-soft border rounded-button px-1.5 py-1 text-[12px] outline-none ${curErr ? "border-danger/40" : "border-border-soft"}`}>
                     {[...new Set([l.currency || defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                   {curErr && <div className="text-[10px] text-danger mt-0.5">{curErr.message}</div>}
@@ -219,12 +219,12 @@ export default function PostingTab({ ctx, onDone }) {
                 <td className="px-2 py-1.5 text-right">
                   <input inputMode="decimal" value={l.side === "dr" ? l.amount : ""}
                     onChange={(e) => setAmount(l.id, "dr", e.target.value)}
-                    className={`w-28 text-right bg-surface-soft border rounded-[8px] px-2 py-1 outline-none ${l.side === "dr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
+                    className={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "dr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
                 </td>
                 <td className="px-2 py-1.5 text-right">
                   <input inputMode="decimal" value={l.side === "cr" ? l.amount : ""}
                     onChange={(e) => setAmount(l.id, "cr", e.target.value)}
-                    className={`w-28 text-right bg-surface-soft border rounded-[8px] px-2 py-1 outline-none ${l.side === "cr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
+                    className={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "cr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
                 </td>
                 <td className="px-2 py-1.5 text-center">
                   <button type="button" title={t("trv2_pm_remove_line")} disabled={lines.length <= 2}
@@ -241,7 +241,7 @@ export default function PostingTab({ ctx, onDone }) {
         <button type="button" onClick={addLine} className="text-[12px] text-indigo-600 hover:underline">{t("trv2_pm_add_line")}</button>
 
         {/* balance indicator */}
-        <div className={`rounded-[10px] px-3 py-2 text-[12.5px] font-medium ${balanced ? "bg-success-soft text-emerald-800" : "bg-warning-soft text-amber-800"}`}>
+        <div className={`rounded-card px-3 py-2 text-[12.5px] font-medium ${balanced ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}>
           {multi
             ? `${t("trv2_pm_balance_base")}: ${fmtNum(dr)} / ${fmtNum(cr)} ${balCur} (Δ ${fmtNum(delta)})`
             : t("trv2_pm_balance").replace("{dr}", fmtNum(dr)).replace("{cr}", fmtNum(cr)).replace("{delta}", fmtNum(delta))}
@@ -252,15 +252,15 @@ export default function PostingTab({ ctx, onDone }) {
         <div className="space-y-2">
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2}
             placeholder={t("trv2_pm_reason_ph")}
-            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-2 text-[12.5px] outline-none" />
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-2 text-[12.5px] outline-none" />
           <input value={description} onChange={(e) => setDescription(e.target.value)}
             placeholder={t("trv2_pm_description")}
-            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-1.5 text-[12.5px] outline-none" />
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-1.5 text-[12.5px] outline-none" />
         </div>
 
         {/* preview */}
         {previewEntries.length >= 2 && (
-          <div className="border border-border-soft rounded-[10px]">
+          <div className="border border-border-soft rounded-card">
             <div className="px-3 py-1.5 text-[11px] uppercase tracking-wider text-muted-soft border-b border-border-soft">{t("trv2_pm_preview")}</div>
             <TransactionEntries entries={previewEntries} />
           </div>
@@ -268,7 +268,7 @@ export default function PostingTab({ ctx, onDone }) {
 
         <div className="flex items-center gap-3">
           <button type="button" disabled={!validation.ok || submitting} onClick={submit}
-            className="px-4 py-2 rounded-[10px] text-[13px] font-semibold bg-ink text-white disabled:opacity-40 disabled:cursor-not-allowed">
+            className="px-4 py-2 rounded-card text-[13px] font-semibold bg-ink text-white disabled:opacity-40 disabled:cursor-not-allowed">
             {t("trv2_pm_post")}
           </button>
         </div>

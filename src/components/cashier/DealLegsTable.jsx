@@ -140,7 +140,7 @@ export default function DealLegsTable({
         <button
           type="button"
           onClick={() => onAddLeg("in")}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-success-soft hover:bg-emerald-100 border border-emerald-200 text-success text-[11px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-success-soft hover:bg-emerald-100 border border-success/20 text-success text-[11px] font-bold uppercase tracking-wider"
         >
           <Plus className="w-3 h-3" />
           <ArrowDownLeft className="w-3 h-3" />
@@ -149,7 +149,7 @@ export default function DealLegsTable({
         <button
           type="button"
           onClick={() => onAddLeg("out")}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-danger-soft hover:bg-rose-100 border border-rose-200 text-danger text-[11px] font-bold uppercase tracking-wider"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] bg-danger-soft hover:bg-rose-100 border border-danger/20 text-danger text-[11px] font-bold uppercase tracking-wider"
         >
           <Plus className="w-3 h-3" />
           <ArrowUpRight className="w-3 h-3" />

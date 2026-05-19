@@ -209,7 +209,7 @@ export default function DailyRatesModal({ open, onClose }) {
       width="2xl"
     >
       <div className="p-5">
-        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 mb-3 inline-flex items-start gap-1.5">
+        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-card px-3 py-2 mb-3 inline-flex items-start gap-1.5">
           <Zap className="w-3 h-3 text-warning mt-0.5 shrink-0" />
           <span>
             <strong className="text-success">Sell</strong> — продажа{" "}
@@ -222,7 +222,7 @@ export default function DailyRatesModal({ open, onClose }) {
 
         {/* Поиск — более тёмный контейнер slate-200, визуально отделён
             от обычных row-контейнеров (slate-50/60). */}
-        <div className="mb-3 flex items-center gap-2 bg-surface-sunk/70 border border-border rounded-[10px] px-3 py-2">
+        <div className="mb-3 flex items-center gap-2 bg-surface-sunk/70 border border-border rounded-card px-3 py-2">
           <Search className="w-3.5 h-3.5 text-muted shrink-0" />
           <input
             type="text"
@@ -296,7 +296,7 @@ export default function DailyRatesModal({ open, onClose }) {
             return (
               <div
                 key={key}
-                className={`flex flex-col gap-1.5 p-2 rounded-[10px] border transition-colors ${
+                className={`flex flex-col gap-1.5 p-2 rounded-card border transition-colors ${
                   looksInverted
                     ? "bg-warning-soft/80 border-amber-400"
                     : anyChanged
@@ -320,7 +320,7 @@ export default function DailyRatesModal({ open, onClose }) {
                 <div className="grid grid-cols-2 gap-1.5">
                   {/* SELL — master direction (from → to) */}
                   <div
-                    className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
+                    className={`flex flex-col gap-1 p-1.5 rounded-button border transition-colors ${
                       sellChanged
                         ? "bg-success-soft border-emerald-300"
                         : "bg-white border-border-soft"
@@ -357,7 +357,7 @@ export default function DailyRatesModal({ open, onClose }) {
 
                   {/* BUY — reverse direction (to → from) */}
                   <div
-                    className={`flex flex-col gap-1 p-1.5 rounded-[8px] border transition-colors ${
+                    className={`flex flex-col gap-1 p-1.5 rounded-button border transition-colors ${
                       buyChanged
                         ? "bg-info-soft border-sky-300"
                         : "bg-white border-border-soft"
@@ -423,7 +423,7 @@ export default function DailyRatesModal({ open, onClose }) {
 
                 {/* Sanity warning по sell */}
                 {looksInverted && (
-                  <div className="text-[10px] text-amber-800 font-medium">
+                  <div className="text-[10px] text-warning font-medium">
                     ⚠ 1 {from} = {formatRate(sellNum)} {to}? Похоже на
                     обратный курс. Возможно правильно вписать{" "}
                     {formatRate(1 / sellNum)} в Sell.
@@ -454,14 +454,14 @@ export default function DailyRatesModal({ open, onClose }) {
           <button
             onClick={onClose}
             disabled={busy}
-            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
           >
             {t("cancel") || "Отмена"}
           </button>
           <button
             onClick={handleSubmit}
             disabled={changes.length === 0 || busy}
-            className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+            className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
               changes.length > 0 && !busy
                 ? "bg-success-soft0 text-white hover:bg-emerald-600"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"

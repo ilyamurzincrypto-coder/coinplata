@@ -192,7 +192,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             </div>
           )}
           {from && (
-            <div className="mt-2 relative flex items-baseline gap-2 bg-danger-soft/60 rounded-[12px] border-2 border-rose-200 px-4 py-3">
+            <div className="mt-2 relative flex items-baseline gap-2 bg-danger-soft/60 rounded-card border-2 border-danger/20 px-4 py-3">
               <span className="text-danger text-[18px] font-semibold">
                 {curSymbol(from.currency)}
               </span>
@@ -238,7 +238,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             placeholder="Выбрать счёт зачисления"
           />
           {to && (
-            <div className="mt-2 relative flex items-baseline gap-2 bg-success-soft/60 rounded-[12px] border-2 border-emerald-200 px-4 py-3">
+            <div className="mt-2 relative flex items-baseline gap-2 bg-success-soft/60 rounded-card border-2 border-success/20 px-4 py-3">
               <span className="text-success text-[18px] font-semibold">
                 {curSymbol(to.currency)}
               </span>
@@ -261,7 +261,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
 
         {/* Эффективный курс (computed, read-only) */}
         {from && to && fromAmt > 0 && toAmt > 0 && from.currency !== to.currency && (
-          <div className="bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 flex items-center justify-between">
+          <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2 flex items-center justify-between">
             <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
               Эффективный курс
             </span>
@@ -281,7 +281,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
           />
           <p className="text-[10.5px] text-muted mt-1">
             Сделка задним числом — useful для дозаписи прошедших OTC обменов.
@@ -298,7 +298,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
           />
         </div>
       </div>
@@ -307,14 +307,14 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Отмена
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit && !busy
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

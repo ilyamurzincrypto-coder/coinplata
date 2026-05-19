@@ -713,7 +713,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   };
 
   return (
-    <section className="bg-white rounded-[14px] border border-border-soft shadow-sm shadow-slate-900/[0.02] overflow-hidden">
+    <section className="bg-white rounded-card-lg border border-border-soft shadow-sm shadow-slate-900/[0.02] overflow-hidden">
       {/* Header */}
       <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -729,7 +729,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search_placeholder")}
-            className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
+            className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
           />
         </div>
       </div>
@@ -782,7 +782,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             icon={<span className="text-[10px] font-bold text-muted-soft tracking-wider">MGR</span>}
           />
         </div>
-        <div className="inline-flex items-center gap-1 bg-white border border-border-soft rounded-[8px] px-2 py-1">
+        <div className="inline-flex items-center gap-1 bg-white border border-border-soft rounded-button px-2 py-1">
           <span className="text-[9px] font-bold text-muted-soft tracking-wider uppercase">Amt</span>
           <input
             type="text"
@@ -813,7 +813,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         </div>
         {/* Custom date range — приоритетнее пресета. Если задано хотя
             бы одно поле, пресет filterDate игнорируется. */}
-        <div className={`inline-flex items-center gap-1 bg-white border rounded-[8px] px-2 py-1 ${customFrom || customTo ? "border-accent/40" : "border-border-soft"}`}>
+        <div className={`inline-flex items-center gap-1 bg-white border rounded-button px-2 py-1 ${customFrom || customTo ? "border-accent/40" : "border-border-soft"}`}>
           <Calendar className="w-3 h-3 text-muted-soft" />
           <input
             type="date"
@@ -844,7 +844,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft transition-colors"
+            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft transition-colors"
           >
             <X className="w-3 h-3" /> {t("clear")}
           </button>
@@ -1111,7 +1111,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         if (offs.size <= 1) return null;
                         return (
                           <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-warning-soft text-amber-800 ring-1 ring-amber-200"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200"
                             title="Transaction spans more than one office"
                           >
                             <ArrowLeftRight className="w-2.5 h-2.5" />
@@ -1408,7 +1408,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.payeeUserId && !tx.payedOutAt && (
                         <span
-                          className="inline-flex items-center gap-1 text-[9px] font-bold text-warning bg-warning-soft border border-amber-200 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          className="inline-flex items-center gap-1 text-[9px] font-bold text-warning bg-warning-soft border border-warning/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
                           title="Ожидает выдачи назначенным менеджером"
                         >
                           <Clock className="w-2.5 h-2.5" />
@@ -1416,7 +1416,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.payedOutAt && (
                         <span
-                          className="inline-flex items-center gap-1 text-[9px] font-bold text-success bg-success-soft border border-emerald-200 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          className="inline-flex items-center gap-1 text-[9px] font-bold text-success bg-success-soft border border-success/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
                           title={`Выдано ${new Date(tx.payedOutAt).toLocaleString()}`}
                         >
                           <CheckCircle2 className="w-2.5 h-2.5" />
@@ -1819,7 +1819,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
   return (
     <Modal open={!!data} onClose={onCancel} title="Record outgoing transfer" width="md">
       <div className="p-5 space-y-3">
-        <div className="bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 text-[12px]">
+        <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2 text-[12px]">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-muted">
               <span className="text-[10px] font-bold uppercase tracking-wider mr-1">Deal</span>
@@ -1846,7 +1846,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
                 key={n}
                 type="button"
                 onClick={() => setNetwork(n)}
-                className={`px-3 py-1.5 text-[12px] font-semibold rounded-[8px] border transition-colors ${
+                className={`px-3 py-1.5 text-[12px] font-semibold rounded-button border transition-colors ${
                   network === n
                     ? "bg-ink text-white border-ink"
                     : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1868,7 +1868,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
             onChange={(e) => setTxHash(e.target.value.trim())}
             autoFocus
             placeholder="0x… or 64-hex"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[12px] font-mono outline-none"
           />
           <p className="text-[10px] text-muted mt-1">
             After saving, status moves to <span className="font-semibold">Sent</span>.
@@ -1878,7 +1878,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -1886,13 +1886,13 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 rounded-[10px] bg-sky-600 text-white text-[13px] font-semibold hover:bg-sky-700 transition-colors inline-flex items-center gap-1.5"
+          className="px-4 py-2 rounded-card bg-sky-600 text-white text-[13px] font-semibold hover:bg-sky-700 transition-colors inline-flex items-center gap-1.5"
         >
           <Send className="w-3 h-3" />
           Mark as sent
@@ -1914,7 +1914,7 @@ function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
           {tx.amtIn}) will roll back all its fund movements.
         </p>
         {isConfirmedCrypto && (
-          <div className="text-[12px] font-medium text-rose-800 bg-danger-soft border border-rose-200 rounded-md px-3 py-2 inline-flex items-start gap-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2 inline-flex items-start gap-2">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
               This deal was auto-confirmed on-chain (tx{" "}
@@ -1933,15 +1933,15 @@ function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
         <button
           onClick={onCancel}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           disabled={busy}
-          className={`px-4 py-2 rounded-[10px] text-white text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
-            busy ? "bg-rose-400 cursor-not-allowed" : "bg-rose-600 hover:bg-rose-700"
+          className={`px-4 py-2 rounded-card text-white text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+            busy ? "bg-rose-400 cursor-not-allowed" : "bg-danger hover:bg-rose-700"
           }`}
         >
           <Trash2 className="w-3 h-3" />

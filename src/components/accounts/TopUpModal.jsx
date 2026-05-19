@@ -103,7 +103,7 @@ export default function TopUpModal({ account, onClose }) {
   return (
     <Modal open={!!account} onClose={onClose} title={t("topup_title")} subtitle={account.name} width="md">
       <div className="p-5 space-y-4">
-        <div className="bg-surface-soft rounded-[10px] border border-border-soft px-4 py-3">
+        <div className="bg-surface-soft rounded-card border border-border-soft px-4 py-3">
           <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-1">
             {t("current_balance")}
           </div>
@@ -119,7 +119,7 @@ export default function TopUpModal({ account, onClose }) {
             {t("topup_amount")}
           </label>
           <div
-            className={`relative flex items-baseline gap-2 bg-surface-soft rounded-[12px] border-2 transition-all px-4 py-3 ${
+            className={`relative flex items-baseline gap-2 bg-surface-soft rounded-card border-2 transition-all px-4 py-3 ${
               amount ? "border-emerald-400" : "border-border-soft"
             }`}
           >
@@ -141,7 +141,7 @@ export default function TopUpModal({ account, onClose }) {
           <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Source
           </label>
-          <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full gap-0.5 flex-wrap">
+          <div className="inline-flex bg-surface-sunk p-0.5 rounded-card w-full gap-0.5 flex-wrap">
             {[
               { id: "opening", label: "Opening" },
               { id: "external", label: "External" },
@@ -152,7 +152,7 @@ export default function TopUpModal({ account, onClose }) {
                 key={o.id}
                 type="button"
                 onClick={() => setSource(o.id)}
-                className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
+                className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
                   source === o.id ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink"
                 }`}
               >
@@ -171,7 +171,7 @@ export default function TopUpModal({ account, onClose }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none transition-colors"
           />
         </div>
       </div>
@@ -179,14 +179,14 @@ export default function TopUpModal({ account, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit && !busy
               ? "bg-success-soft0 text-white hover:bg-emerald-600"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

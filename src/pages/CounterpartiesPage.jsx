@@ -49,7 +49,7 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
       </div>
 
       {/* Tab strip — общий паттерн с TreasuryShell */}
-      <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+      <div className="bg-white border border-border-soft rounded-card p-1 flex gap-0.5 overflow-x-auto">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = active === tab.id;
@@ -57,7 +57,7 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
             <button
               key={tab.id}
               onClick={() => setActive(tab.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-[13px] font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"

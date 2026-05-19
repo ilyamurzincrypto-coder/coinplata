@@ -74,7 +74,7 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
             </div>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-[8px] hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
+              className="p-1.5 rounded-button hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
               aria-label="Close"
             >
               <X className="w-4 h-4" />

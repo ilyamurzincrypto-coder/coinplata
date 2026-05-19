@@ -73,14 +73,14 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
   }
 
   if (allRows.length === 0) {
-    return <div className="bg-white rounded-[14px] border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_osv")}</div>;
+    return <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_osv")}</div>;
   }
 
-  const chip = (ok) => ok ? "bg-success-soft text-emerald-800" : "bg-danger-soft text-rose-800";
+  const chip = (ok) => ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger";
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 min-w-[220px] max-w-[320px] flex-1">
+        <div className="flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-button px-2 py-1 min-w-[220px] max-w-[320px] flex-1">
           <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
           <input
             value={q}
@@ -92,12 +92,12 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
         </div>
         {nq && <span className="text-[11px] text-muted-soft">{t("trv2_to_filter_count")} {visibleCount} / {allRows.length}</span>}
         <div className="flex-1" />
-        <button onClick={doExport} className="text-[12px] px-2.5 py-1 rounded-[8px] bg-surface-sunk text-ink-soft hover:bg-surface-sunk">{t("trv2_to_export_csv")}</button>
+        <button onClick={doExport} className="text-[12px] px-2.5 py-1 rounded-button bg-surface-sunk text-ink-soft hover:bg-surface-sunk">{t("trv2_to_export_csv")}</button>
       </div>
       {nq && visibleClasses.length === 0 ? (
-        <div className="bg-white rounded-[14px] border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_filter_no_match")}</div>
+        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_filter_no_match")}</div>
       ) : (
-      <div className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <div className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="bg-surface-soft text-muted-soft text-[10px] uppercase tracking-wider">

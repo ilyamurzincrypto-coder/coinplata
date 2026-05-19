@@ -80,7 +80,7 @@ export default function NotificationsBell({ onNavigate }) {
     <div ref={rootRef} className="relative">
       <button
         onClick={handleOpen}
-        className="relative inline-flex items-center justify-center w-8 h-8 rounded-[10px] text-ink-soft hover:text-ink hover:bg-surface-sunk transition-colors"
+        className="relative inline-flex items-center justify-center w-8 h-8 rounded-card text-ink-soft hover:text-ink hover:bg-surface-sunk transition-colors"
         title={t("notif_title")}
       >
         <Bell className="w-4 h-4" />
@@ -92,7 +92,7 @@ export default function NotificationsBell({ onNavigate }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[360px] bg-white rounded-[12px] border border-border-soft shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] z-50 overflow-hidden">
+        <div className="absolute right-0 mt-2 w-[360px] bg-white rounded-card border border-border-soft shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
             <div className="text-[13px] font-bold text-ink">
               {t("notif_title")}

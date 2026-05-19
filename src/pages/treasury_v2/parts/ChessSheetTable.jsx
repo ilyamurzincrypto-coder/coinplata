@@ -32,7 +32,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
     return (
       <div className="space-y-2">
         <div className="flex justify-end">{selector}</div>
-        <div className="bg-white rounded-[14px] border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_chess")}</div>
+        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_chess")}</div>
       </div>
     );
   }
@@ -45,7 +45,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
   return (
     <div className="space-y-2">
       <div className="flex justify-end">{selector}</div>
-      <div className="bg-white rounded-[14px] border border-border-soft overflow-auto">
+      <div className="bg-white rounded-card-lg border border-border-soft overflow-auto">
         <table className="text-[11px] border-collapse">
           <thead>
             <tr>

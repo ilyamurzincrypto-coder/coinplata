@@ -301,22 +301,22 @@ export default function DealForm({
       />
 
       {draftPrompt && (
-        <div className="px-4 py-2.5 bg-warning-soft border-b border-amber-200 flex items-center justify-between gap-3">
-          <span className="text-[12px] text-amber-900">
+        <div className="px-4 py-2.5 bg-warning-soft border-b border-warning/20 flex items-center justify-between gap-3">
+          <span className="text-[12px] text-warning">
             Найден сохранённый черновик ({draftPrompt.legs.length} ноги). Восстановить?
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={acceptDraft}
-              className="px-2.5 py-1 rounded-[var(--radius-cell)] bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold uppercase tracking-wider"
+              className="px-2.5 py-1 rounded-[var(--radius-cell)] bg-warning hover:bg-warning text-white text-[11px] font-bold uppercase tracking-wider"
             >
               Восстановить
             </button>
             <button
               type="button"
               onClick={dismissDraft}
-              className="px-2.5 py-1 rounded-[var(--radius-cell)] bg-white border border-amber-300 hover:bg-amber-100 text-amber-800 text-[11px] font-semibold"
+              className="px-2.5 py-1 rounded-[var(--radius-cell)] bg-white border border-warning/30 hover:bg-amber-100 text-warning text-[11px] font-semibold"
             >
               Удалить
             </button>

@@ -167,7 +167,7 @@ function Highlight({ text, query }) {
   return (
     <>
       {text.slice(0, idx)}
-      <mark className="bg-amber-100 text-amber-900 rounded-[3px] px-0.5">{text.slice(idx, idx + q.length)}</mark>
+      <mark className="bg-amber-100 text-warning rounded-[3px] px-0.5">{text.slice(idx, idx + q.length)}</mark>
       {text.slice(idx + q.length)}
     </>
   );
@@ -176,13 +176,13 @@ function Highlight({ text, query }) {
 // ─── Components ────────────────────────────────────────────────────────
 function TryButton({ label, icon, onClick, variant = "indigo" }) {
   const cls = variant === "emerald"
-    ? "text-success bg-success-soft hover:bg-emerald-100 border-emerald-200"
+    ? "text-success bg-success-soft hover:bg-emerald-100 border-success/20"
     : "text-accent bg-accent-bg hover:bg-indigo-100 border-indigo-200";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[11.5px] font-semibold border transition-colors ${cls}`}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[11.5px] font-semibold border transition-colors ${cls}`}
     >
       {icon || <Play className="w-3 h-3" />}
       {label}
@@ -217,7 +217,7 @@ function GlossaryGrid({ items, query }) {
       {items.map((entry, i) => {
         const { term, definition } = parseGlossaryEntry(entry);
         return (
-          <div key={i} className="rounded-[10px] bg-surface-soft/60 border border-border-soft px-3 py-2">
+          <div key={i} className="rounded-card bg-surface-soft/60 border border-border-soft px-3 py-2">
             <div className="text-[12.5px] font-bold text-ink">
               <Highlight text={term} query={query} />
             </div>
@@ -235,7 +235,7 @@ function GlossaryGrid({ items, query }) {
 
 function JournalMini({ lines }) {
   return (
-    <table className="w-full mt-2 text-[11.5px] bg-surface-soft/70 rounded-[8px] overflow-hidden">
+    <table className="w-full mt-2 text-[11.5px] bg-surface-soft/70 rounded-button overflow-hidden">
       <tbody>
         {lines.map((l, i) => {
           const dr = l.dir === "dr";
@@ -256,7 +256,7 @@ function ExampleCard({ ex, query }) {
   const { onTryDeal } = React.useContext(InfoActionsCtx);
   const dealSeed = ex.try?.dealSeed;
   return (
-    <div className="rounded-[10px] border border-border-soft/80 bg-white px-3 py-2.5">
+    <div className="rounded-card border border-border-soft/80 bg-white px-3 py-2.5">
       <div className="text-[12.5px] font-semibold text-ink inline-flex items-center gap-1.5">
         <Lightbulb className="w-3.5 h-3.5 text-warning" />
         <Highlight text={ex.title} query={query} />
@@ -289,7 +289,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
   );
   if (visible.length <= 1) return null;
   return (
-    <div className="inline-flex gap-1 bg-surface-sunk rounded-[10px] p-0.5">
+    <div className="inline-flex gap-1 bg-surface-sunk rounded-card p-0.5">
       {visible.map((t) => {
         const Icon = t.icon;
         const isActive = active === t.id;
@@ -298,7 +298,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[11.5px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button text-[11.5px] font-semibold transition-colors ${
               isActive ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink-soft"
             }`}
           >
@@ -313,7 +313,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
 
 function SubCard({ sub, query }) {
   return (
-    <div className="rounded-[10px] border border-border-soft bg-surface-soft/50 px-3 py-2">
+    <div className="rounded-card border border-border-soft bg-surface-soft/50 px-3 py-2">
       <div className="text-[12.5px] font-bold text-ink"><Highlight text={sub.title} query={query} /></div>
       {sub.what && <div className="text-[12px] text-muted italic mt-0.5"><Highlight text={sub.what} query={query} /></div>}
       {sub.related && <div className="text-[12px] text-muted mt-0.5"><span className="font-medium text-ink-soft">Связано: </span><Highlight text={sub.related} query={query} /></div>}
@@ -367,7 +367,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
     <section
       ref={sectionRef}
       id={`info-section-${section.id}`}
-      className="info-card bg-white rounded-[14px] border border-border-soft overflow-hidden scroll-mt-20"
+      className="info-card bg-white rounded-card-lg border border-border-soft overflow-hidden scroll-mt-20"
     >
       {/* Accent stripe сверху */}
       <div className={`h-1 ${meta.accentBg}`} />
@@ -375,7 +375,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
         className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-surface-soft"
         onClick={() => setOpen((v) => !v)}
       >
-        <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 ${meta.accentSoft} ${meta.accentText}`}>
+        <div className={`w-9 h-9 rounded-card flex items-center justify-center shrink-0 ${meta.accentSoft} ${meta.accentText}`}>
           <Icon className="w-4 h-4" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
@@ -394,7 +394,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
         <div className="px-4 pb-4 pt-1 space-y-3">
           {/* TL;DR + try-button + tabs */}
           {meta.tldr && (
-            <div className={`rounded-[10px] px-3 py-2 ring-1 ${meta.accentSoft} ${meta.accentRing}`}>
+            <div className={`rounded-card px-3 py-2 ring-1 ${meta.accentSoft} ${meta.accentRing}`}>
               <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${meta.accentText}`}>TL;DR</div>
               <div className="text-[12.5px] text-ink-soft">{meta.tldr}</div>
             </div>
@@ -469,7 +469,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
   return (
     <section className="bg-gradient-to-br from-violet-50 via-indigo-50 to-emerald-50 rounded-[18px] border border-border-soft p-5 sm:p-6 shadow-[0_1px_3px_rgba(15,23,42,0.04),0_4px_16px_rgba(15,23,42,0.06)]">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-[12px] bg-white flex items-center justify-center shadow-sm shrink-0">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-card bg-white flex items-center justify-center shadow-sm shrink-0">
           <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-warning" strokeWidth={2.5} />
         </div>
         <div className="flex-1 min-w-0">
@@ -492,7 +492,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск по справке…  (Cmd / Ctrl + K)"
-          className="w-full bg-white border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-[12px] pl-10 pr-10 py-2.5 text-[14px] outline-none transition-all"
+          className="w-full bg-white border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-card pl-10 pr-10 py-2.5 text-[14px] outline-none transition-all"
         />
         {query && (
           <button
@@ -524,7 +524,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           <button
             type="button"
             onClick={onPrint}
-            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-[8px] text-[11.5px] font-medium bg-white border border-border-soft text-ink-soft hover:bg-surface-soft print:hidden"
+            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-button text-[11.5px] font-medium bg-white border border-border-soft text-ink-soft hover:bg-surface-soft print:hidden"
             title="Раскрыть все секции и открыть диалог печати"
           >
             <Printer className="w-3 h-3" strokeWidth={2.5} />
@@ -545,7 +545,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
               key={i}
               type="button"
               onClick={() => onJumpTo && onJumpTo(u.sectionId)}
-              className="text-left bg-white rounded-[10px] border border-border-soft hover:border-border hover:shadow-sm transition-all px-3 py-2"
+              className="text-left bg-white rounded-card border border-border-soft hover:border-border hover:shadow-sm transition-all px-3 py-2"
             >
               <div className="text-[10px] text-muted-soft tabular-nums">{u.date}</div>
               <div className="text-[12px] font-semibold text-ink mt-0.5">{u.title}</div>
@@ -562,7 +562,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
 function TocSidebar({ sections, readSet, activeId, onClickItem }) {
   return (
     <aside className="lg:sticky lg:top-4 lg:self-start">
-      <div className="bg-white rounded-[14px] border border-border-soft p-3">
+      <div className="bg-white rounded-card-lg border border-border-soft p-3">
         <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 px-2">
           Содержание
         </div>
@@ -577,7 +577,7 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
                 key={s.id}
                 type="button"
                 onClick={() => onClickItem(s.id)}
-                className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-[8px] text-[12.5px] text-left transition-colors ${
+                className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-button text-[12.5px] text-left transition-colors ${
                   isActive ? `${meta.accentSoft} ${meta.accentText} font-semibold` : "text-ink-soft hover:bg-surface-soft"
                 }`}
               >
@@ -729,7 +729,7 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null, initialT
 
           <div className="min-w-0 space-y-3">
             {filtered.length === 0 ? (
-              <div className="bg-white rounded-[14px] border border-border-soft p-10 text-center">
+              <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center">
                 <Search className="w-8 h-8 text-muted-soft mx-auto mb-2" />
                 <div className="text-[13px] font-medium text-ink-soft">Ничего не найдено по запросу «{query}»</div>
                 <button

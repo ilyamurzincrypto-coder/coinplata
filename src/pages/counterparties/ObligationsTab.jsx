@@ -194,7 +194,7 @@ export default function ObligationsTab() {
       </div>
 
       {/* Filter bar — 6-direction flow chips */}
-      <div className="bg-white border border-border-soft rounded-[12px] p-3 space-y-2">
+      <div className="bg-white border border-border-soft rounded-card p-3 space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 text-muted-soft">
             <Filter className="w-3.5 h-3.5" />
@@ -256,13 +256,13 @@ export default function ObligationsTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("oblig_search_ph")}
-              className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
+              className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border"
             />
           </div>
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {t("export_csv")}
           </button>
@@ -270,7 +270,7 @@ export default function ObligationsTab() {
       </div>
 
       {/* Table */}
-      <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
@@ -336,7 +336,7 @@ export default function ObligationsTab() {
                             disabled={busyId === o.id}
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-white ${
                               isWeOwe
-                                ? "bg-danger-soft0 hover:bg-rose-600"
+                                ? "bg-danger-soft0 hover:bg-danger"
                                 : "bg-success-soft0 hover:bg-emerald-600"
                             } disabled:opacity-50`}
                           >
@@ -384,12 +384,12 @@ export default function ObligationsTab() {
 
 function SummaryCard({ label, value, tone, icon, emphasize }) {
   const toneBg = {
-    emerald: "bg-success-soft/70 border-emerald-200 text-success",
-    rose: "bg-danger-soft/70 border-rose-200 text-danger",
+    emerald: "bg-success-soft/70 border-success/20 text-success",
+    rose: "bg-danger-soft/70 border-danger/20 text-danger",
   }[tone];
   return (
     <div
-      className={`rounded-[14px] p-4 border ${toneBg} ${
+      className={`rounded-card-lg p-4 border ${toneBg} ${
         emphasize ? "ring-2 ring-ink/5" : ""
       }`}
     >
@@ -404,20 +404,20 @@ function SummaryCard({ label, value, tone, icon, emphasize }) {
 
 function FlowChip({ active, onClick, count = 0, tone = "slate", children }) {
   const toneActive = {
-    rose:    "bg-rose-600 text-white border-rose-600",
+    rose:    "bg-danger text-white border-rose-600",
     emerald: "bg-emerald-600 text-white border-emerald-600",
     slate:   "bg-ink text-white border-ink",
   }[tone];
   const toneIdle = {
-    rose:    "bg-white text-danger border-rose-200 hover:border-danger/40 hover:bg-danger-soft",
-    emerald: "bg-white text-success border-emerald-200 hover:border-emerald-300 hover:bg-success-soft",
+    rose:    "bg-white text-danger border-danger/20 hover:border-danger/40 hover:bg-danger-soft",
+    emerald: "bg-white text-success border-success/20 hover:border-emerald-300 hover:bg-success-soft",
     slate:   "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft",
   }[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border text-[11.5px] font-semibold transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button border text-[11.5px] font-semibold transition-colors ${
         active ? toneActive : toneIdle
       }`}
     >
@@ -525,14 +525,14 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             {mode === "settle" ? t("oblig_pay_from_account") : t("oblig_receive_to_account")}
           </label>
           {candidateAccounts.length === 0 ? (
-            <div className="text-[12px] text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+            <div className="text-[12px] text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
               {t("oblig_no_accounts").replace("{cur}", obligation.currency)}
             </div>
           ) : (
             <select
               value={accountId}
               onChange={(e) => setAccountId(e.target.value)}
-              className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
+              className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border"
             >
               <option value="">{t("oblig_select_account")}</option>
               {candidateAccounts.map((a) => (
@@ -553,7 +553,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             step="any"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border tabular-nums"
+            className="w-full px-3 py-2 text-[13px] bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border tabular-nums"
           />
           <div className="flex items-center justify-between text-[11px] text-muted mt-1">
             <span>{t("oblig_remaining_hint")} {fmt(remaining, obligation.currency)}</span>
@@ -574,7 +574,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+            className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
           >
             {t("cancel")}
           </button>
@@ -582,8 +582,8 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || invalidAmount || !accountId || insufficient}
-            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-white ${
-              mode === "settle" ? "bg-danger-soft0 hover:bg-rose-600" : "bg-success-soft0 hover:bg-emerald-600"
+            className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-white ${
+              mode === "settle" ? "bg-danger-soft0 hover:bg-danger" : "bg-success-soft0 hover:bg-emerald-600"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <CheckCircle2 className="w-3 h-3" />

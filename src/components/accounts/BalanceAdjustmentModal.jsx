@@ -119,7 +119,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
     >
       <div className="p-5 space-y-4">
         {/* Current balance */}
-        <div className="rounded-[12px] border border-border-soft bg-surface-soft p-3.5">
+        <div className="rounded-card border border-border-soft bg-surface-soft p-3.5">
           <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
             <Scale className="w-3.5 h-3.5" />
             Текущий баланс
@@ -135,7 +135,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
           <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
             Новый баланс
           </label>
-          <div className="relative flex items-baseline gap-2 bg-white rounded-[12px] border-2 border-border focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20 px-4 py-3">
+          <div className="relative flex items-baseline gap-2 bg-white rounded-card border-2 border-border focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20 px-4 py-3">
             <span className="text-muted text-[18px] font-semibold">{sym}</span>
             <input
               type="text"
@@ -156,10 +156,10 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
         {/* Diff preview */}
         {validNewBalance && !noChange && (
           <div
-            className={`rounded-[10px] border p-3 flex items-center gap-2 ${
+            className={`rounded-card border p-3 flex items-center gap-2 ${
               isPositive
-                ? "border-emerald-200 bg-success-soft text-emerald-800"
-                : "border-rose-200 bg-danger-soft text-rose-800"
+                ? "border-success/20 bg-success-soft text-success"
+                : "border-danger/20 bg-danger-soft text-danger"
             }`}
           >
             <Calculator className="w-4 h-4 shrink-0" />
@@ -174,7 +174,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
           </div>
         )}
         {validNewBalance && noChange && (
-          <div className="rounded-[10px] border border-amber-200 bg-warning-soft text-amber-800 p-3 flex items-center gap-2 text-[12px]">
+          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-[12px]">
             <AlertCircle className="w-4 h-4 shrink-0" />
             Новый баланс равен текущему — корректировать нечего.
           </div>
@@ -193,7 +193,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
             }}
             rows={2}
             placeholder="Например: инвентаризация на 29.04.26, разница из-за ручного завоза налички"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none resize-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none resize-none"
           />
           <div className="text-[10.5px] text-muted mt-1">
             Обязательно — попадёт в audit trail и историю.
@@ -202,7 +202,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
 
         {/* Confirmation warning */}
         {confirmStep && (
-          <div className="rounded-[10px] border-2 border-amber-300 bg-warning-soft p-3 text-[12px] text-amber-900">
+          <div className="rounded-card border-2 border-warning/30 bg-warning-soft p-3 text-[12px] text-warning">
             <div className="flex items-center gap-1.5 font-bold mb-1">
               <AlertCircle className="w-4 h-4" />
               Подтвердите корректировку
@@ -224,7 +224,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
           {showHistory ? "Скрыть историю" : "История корректировок"}
         </button>
         {showHistory && (
-          <div className="rounded-[10px] border border-border-soft bg-white max-h-48 overflow-auto">
+          <div className="rounded-card border border-border-soft bg-white max-h-48 overflow-auto">
             {historyLoading ? (
               <div className="p-4 text-center text-[12px] text-muted-soft">Загрузка…</div>
             ) : history.length === 0 ? (
@@ -281,17 +281,17 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Отмена
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit
               ? confirmStep
-                ? "bg-amber-600 text-white hover:bg-amber-700"
+                ? "bg-warning text-white hover:bg-warning"
                 : "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}

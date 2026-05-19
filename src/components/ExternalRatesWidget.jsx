@@ -267,7 +267,7 @@ export default function ExternalRatesWidget({ compact = false }) {
   });
 
   return (
-    <section className="bg-white rounded-[14px] border border-border-soft/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+    <section className="bg-white rounded-card-lg border border-border-soft/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
       {/* Шапка кликабельная — сворачивает / разворачивает блок. Кнопки
           обновления и chevron справа; клик в любую часть шапки toggle'ит. */}
       <header
@@ -493,7 +493,7 @@ function PerPairRow({
             title="Спред % — на сколько разводим купим/продадим относительно mid. Может быть отрицательным (тогда КУПИМ выше mid а ПРОДАДИМ ниже)."
             className={`w-[58px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
               hasSpread
-                ? "bg-success-soft border-emerald-200 focus:border-emerald-400"
+                ? "bg-success-soft border-success/20 focus:border-emerald-400"
                 : "bg-surface-soft border-border-soft focus:border-accent"
             }`}
           />

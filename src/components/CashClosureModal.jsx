@@ -313,7 +313,7 @@ function OfficeBanner({ office, currentUser, closureDate, variant = "input" }) {
   const officeNm = office?.name || "—";
   const managerNm = currentUser?.full_name || currentUser?.email || "—";
   return (
-    <div className="rounded-[12px] border-2 border-indigo-300 bg-accent-bg px-4 py-3">
+    <div className="rounded-card border-2 border-indigo-300 bg-accent-bg px-4 py-3">
       <div className="text-[10px] font-bold uppercase tracking-wider text-accent mb-0.5">
         🔒 {variant === "summary" ? "Закрываем кассу" : "Закрытие кассы"}
       </div>
@@ -373,7 +373,7 @@ function InputStep({
             type="date"
             value={closureDate}
             onChange={(e) => setClosureDate(e.target.value)}
-            className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] outline-none"
+            className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2 text-[13px] outline-none"
           />
         </div>
 
@@ -401,7 +401,7 @@ function InputStep({
         <button
           type="button"
           onClick={onAddCurrency}
-          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-[10px] border-2 border-dashed border-border text-ink-soft text-[12.5px] font-semibold hover:border-accent/40 hover:bg-surface-soft transition-colors"
+          className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-card border-2 border-dashed border-border text-ink-soft text-[12.5px] font-semibold hover:border-accent/40 hover:bg-surface-soft transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
           Добавить валюту
@@ -418,13 +418,13 @@ function InputStep({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Например: смена Мурата"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2 text-[13px] outline-none"
           />
         </div>
 
         {/* Soft warnings */}
         {allFilled && allZero && (
-          <div className="rounded-[10px] border border-amber-200 bg-warning-soft p-3 text-[12px] text-amber-900 flex items-center gap-2">
+          <div className="rounded-card border border-warning/20 bg-warning-soft p-3 text-[12px] text-warning flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             Все нули — точно всё пусто?
           </div>
@@ -436,7 +436,7 @@ function InputStep({
           ref={continueRef}
           onClick={onContinue}
           disabled={!allFilled}
-          className={`px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-colors inline-flex items-center gap-1.5 ${
+          className={`px-5 py-2.5 rounded-card text-[13px] font-bold transition-colors inline-flex items-center gap-1.5 ${
             allFilled
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -455,8 +455,8 @@ function CurrencyInputRow({ row, value, onChange, onCopySystem, onKeyDown, input
   const sym = curSymbol(row.currency);
   const showDeviation = row.hasInput && row.deviation;
   return (
-    <div className={`rounded-[12px] border-2 p-3 transition-colors ${
-      showDeviation ? "border-amber-200 bg-warning-soft/40" : "border-border-soft bg-white focus-within:border-accent/40"
+    <div className={`rounded-card border-2 p-3 transition-colors ${
+      showDeviation ? "border-warning/20 bg-warning-soft/40" : "border-border-soft bg-white focus-within:border-accent/40"
     }`}>
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
@@ -520,7 +520,7 @@ function SummaryStep({
           variant="summary"
         />
         {comment && (
-          <div className="rounded-[10px] bg-surface-soft border border-border-soft px-3 py-2 text-[12px] text-ink-soft italic">
+          <div className="rounded-card bg-surface-soft border border-border-soft px-3 py-2 text-[12px] text-ink-soft italic">
             «{comment}»
           </div>
         )}
@@ -534,11 +534,11 @@ function SummaryStep({
             return (
               <div
                 key={r.currency}
-                className={`rounded-[12px] border-2 p-3 ${
+                className={`rounded-card border-2 p-3 ${
                   r.deviation
                     ? noteOk
-                      ? "border-amber-200 bg-warning-soft/40"
-                      : "border-amber-300 bg-warning-soft"
+                      ? "border-warning/20 bg-warning-soft/40"
+                      : "border-warning/30 bg-warning-soft"
                     : "border-border-soft bg-white"
                 }`}
               >
@@ -563,7 +563,7 @@ function SummaryStep({
                 </div>
                 {r.deviation && (
                   <div className="mt-2">
-                    <label className="block text-[10.5px] font-bold text-amber-800 mb-1">
+                    <label className="block text-[10.5px] font-bold text-warning mb-1">
                       Разница больше обычного — опиши, что произошло
                     </label>
                     <input
@@ -571,7 +571,7 @@ function SummaryStep({
                       value={note}
                       onChange={(e) => setNoteMap((m) => ({ ...m, [r.currency]: e.target.value }))}
                       placeholder="Например: клиент забрал ещё 100 USD без сделки"
-                      className="w-full bg-white border border-amber-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-300/30 rounded-[8px] px-2.5 py-1.5 text-[12px] outline-none"
+                      className="w-full bg-white border border-warning/30 focus:border-amber-500 focus:ring-2 focus:ring-amber-300/30 rounded-button px-2.5 py-1.5 text-[12px] outline-none"
                     />
                   </div>
                 )}
@@ -581,7 +581,7 @@ function SummaryStep({
         </div>
 
         {hasDeviationWithoutComment && (
-          <div className="rounded-[10px] bg-warning-soft border border-amber-200 px-3 py-2 text-[11.5px] text-amber-900">
+          <div className="rounded-card bg-warning-soft border border-warning/20 px-3 py-2 text-[11.5px] text-warning">
             Прежде чем закрыть — заполни комментарии к расхождениям выше.
           </div>
         )}
@@ -591,7 +591,7 @@ function SummaryStep({
         <button
           onClick={onBack}
           disabled={busy}
-          className="inline-flex items-center gap-1 px-3 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk disabled:opacity-60"
+          className="inline-flex items-center gap-1 px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk disabled:opacity-60"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
           Назад
@@ -676,7 +676,7 @@ function HoldToConfirmButton({ onConfirm, disabled, busy, label }) {
       onTouchStart={start}
       onTouchEnd={stop}
       onTouchCancel={stop}
-      className={`relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-[10px] text-[13px] font-bold transition-colors min-w-[180px] select-none ${
+      className={`relative overflow-hidden inline-flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-card text-[13px] font-bold transition-colors min-w-[180px] select-none ${
         disabled || busy
           ? "bg-surface-sunk text-muted-soft cursor-not-allowed"
           : "bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800"
@@ -728,7 +728,7 @@ function SuccessStep({ createdId, createdAt, onUndo, onClose }) {
       {canUndo ? (
         <button
           onClick={onUndo}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-[10px] border-2 border-border-soft text-ink-soft text-[12.5px] font-bold hover:border-accent/40 hover:bg-surface-soft transition-colors tabular-nums"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-card border-2 border-border-soft text-ink-soft text-[12.5px] font-bold hover:border-accent/40 hover:bg-surface-soft transition-colors tabular-nums"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           Отменить ({mm}:{ss})
@@ -741,7 +741,7 @@ function SuccessStep({ createdId, createdAt, onUndo, onClose }) {
 
       <button
         onClick={onClose}
-        className="px-4 py-2 rounded-[10px] bg-ink text-white text-[12.5px] font-semibold hover:bg-ink"
+        className="px-4 py-2 rounded-card bg-ink text-white text-[12.5px] font-semibold hover:bg-ink"
       >
         Готово
       </button>

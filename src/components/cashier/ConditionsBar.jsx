@@ -171,7 +171,7 @@ export default function ConditionsBar({
               <button
                 type="button"
                 onClick={confirmNoCommission}
-                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-rose-600 hover:bg-rose-700 text-white text-[12px] font-bold uppercase tracking-wider"
+                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-[12px] font-bold uppercase tracking-wider"
               >
                 {t("conditions_confirm")}
               </button>

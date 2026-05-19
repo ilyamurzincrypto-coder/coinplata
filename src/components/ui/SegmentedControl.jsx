@@ -11,7 +11,7 @@ export default function SegmentedControl({ options, value, onChange, size = "md"
   const btnSize =
     size === "sm" ? "px-3 py-1.5 text-[12.5px]" : "px-4 py-2 text-[13.5px]";
   return (
-    <div className={`inline-flex bg-surface-sunk rounded-[12px] relative ${padding}`}>
+    <div className={`inline-flex bg-surface-sunk rounded-card relative ${padding}`}>
       {options.map((opt) => {
         const id = opt.id ?? opt;
         const label = opt.name ?? opt;
@@ -21,7 +21,7 @@ export default function SegmentedControl({ options, value, onChange, size = "md"
             key={id}
             type="button"
             onClick={() => onChange(id)}
-            className={`relative z-10 ${btnSize} font-semibold rounded-[10px] transition-all duration-200 ${
+            className={`relative z-10 ${btnSize} font-semibold rounded-card transition-all duration-200 ${
               isActive
                 ? "bg-white text-ink ring-2 ring-emerald-400 shadow-[0_4px_14px_-4px_rgba(16,185,129,0.35)]"
                 : "text-muted hover:text-ink"

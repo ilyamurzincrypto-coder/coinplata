@@ -58,7 +58,7 @@ export default function RateCell({
           type="button"
           onClick={handleResetMarket}
           title={`Сбросить на market: ${marketRate}`}
-          className="absolute right-0 -translate-y-1/2 top-1/2 mr-0.5 p-0.5 text-warning hover:text-amber-800"
+          className="absolute right-0 -translate-y-1/2 top-1/2 mr-0.5 p-0.5 text-warning hover:text-warning"
         >
           <Edit2 className="w-3 h-3" />
         </button>

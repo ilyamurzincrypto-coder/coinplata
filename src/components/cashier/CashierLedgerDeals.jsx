@@ -36,14 +36,14 @@ export default function CashierLedgerDeals({ officeFilter }) {
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-border-soft rounded-[12px] p-3 flex flex-wrap items-center gap-4">
+      <div className="bg-white border border-border-soft rounded-card p-3 flex flex-wrap items-center gap-4">
         <span className="text-[13px] font-semibold text-ink-soft">{t("cashier_deals_title")}</span>
         <PeriodPicker value={period} onChange={setP} />
       </div>
       {truncated && (
-        <div className="rounded-[10px] px-3 py-2 text-[12px] bg-warning-soft text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
+        <div className="rounded-card px-3 py-2 text-[12px] bg-warning-soft text-warning border border-warning/20">{t("trv2_window_partial")}</div>
       )}
-      <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
         {tree.length === 0 ? (
           <div className="px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_journal_no_tx")}</div>
         ) : (

@@ -222,7 +222,7 @@ export default function RatesImportModal({ open, onClose }) {
               if (f) handleFile(f);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative cursor-pointer rounded-[14px] border-2 border-dashed p-8 text-center transition-colors ${
+            className={`relative cursor-pointer rounded-card-lg border-2 border-dashed p-8 text-center transition-colors ${
               dragOver ? "border-ink bg-surface-soft" : "border-border hover:border-accent/40 bg-surface-soft/60"
             }`}
           >
@@ -243,7 +243,7 @@ export default function RatesImportModal({ open, onClose }) {
           </div>
 
           {parseError && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-danger-soft border border-rose-200 text-[12px] text-danger">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-danger-soft border border-danger/20 text-[12px] text-danger">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <div>{parseError}</div>
             </div>
@@ -252,13 +252,13 @@ export default function RatesImportModal({ open, onClose }) {
           <button
             onClick={handleTemplateDownload}
             type="button"
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-card bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
           >
             <Download className="w-3.5 h-3.5" />
             {t("rimport_download_template")}
           </button>
 
-          <details className="group bg-surface-soft/60 border border-border-soft rounded-[10px] px-4 py-3">
+          <details className="group bg-surface-soft/60 border border-border-soft rounded-card px-4 py-3">
             <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-semibold text-ink-soft hover:text-ink">
               <Info className="w-3.5 h-3.5 text-muted-soft" />
               {t("rimport_format_guide")}
@@ -291,14 +291,14 @@ export default function RatesImportModal({ open, onClose }) {
           <SummaryBar summary={parsed.summary} fileName={file?.name} t={t} />
 
           {parsed.sheetCount > 1 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[10px] bg-warning-soft border border-amber-200 text-[12px] text-amber-800">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-[12px] text-warning">
               <Info className="w-3.5 h-3.5" />
               {t("rimport_many_sheets").replace("{n}", parsed.sheetCount)}
             </div>
           )}
 
           {parsed.duplicates.length > 0 && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-warning-soft border border-amber-200 text-[12px] text-amber-800">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-[12px] text-warning">
               <Info className="w-3.5 h-3.5 mt-0.5" />
               <div>
                 {t("rimport_duplicates_hint")}{" "}
@@ -307,7 +307,7 @@ export default function RatesImportModal({ open, onClose }) {
             </div>
           )}
 
-          <div className="border border-border-soft rounded-[10px] overflow-hidden">
+          <div className="border border-border-soft rounded-card overflow-hidden">
             <div className="max-h-[340px] overflow-auto">
               <table className="w-full text-[12px]">
                 <thead className="sticky top-0 bg-surface-soft border-b border-border-soft">
@@ -345,7 +345,7 @@ export default function RatesImportModal({ open, onClose }) {
           </div>
 
           {parsed.errors.length > 0 && (
-            <details className="border border-rose-200 rounded-[10px] overflow-hidden bg-danger-soft/40">
+            <details className="border border-danger/20 rounded-card overflow-hidden bg-danger-soft/40">
               <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-danger hover:bg-danger-soft">
                 <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
                 {parsed.errors.length} {t("rimport_errors_caption")}
@@ -375,7 +375,7 @@ export default function RatesImportModal({ open, onClose }) {
               onClick={() => {
                 reset();
               }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_upload_another")}
@@ -384,7 +384,7 @@ export default function RatesImportModal({ open, onClose }) {
               type="button"
               onClick={() => setStep(3)}
               disabled={parsed.valid.filter((v) => v.status !== "unchanged").length === 0}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t("rimport_continue")}
               <ChevronRight className="w-3 h-3" />
@@ -396,12 +396,12 @@ export default function RatesImportModal({ open, onClose }) {
       {/* Step 3 — Confirm */}
       {step === 3 && parsed && (
         <div className="p-5 space-y-4">
-          <div className="bg-warning-soft border border-amber-200 rounded-[10px] px-4 py-3 space-y-1">
-            <div className="flex items-center gap-2 text-[13px] font-bold text-amber-900">
+          <div className="bg-warning-soft border border-warning/20 rounded-card px-4 py-3 space-y-1">
+            <div className="flex items-center gap-2 text-[13px] font-bold text-warning">
               <AlertTriangle className="w-4 h-4" />
               {t("rimport_about_to_overwrite")}
             </div>
-            <div className="text-[12px] text-amber-800">
+            <div className="text-[12px] text-warning">
               {t("rimport_summary_line")
                 .replace("{upd}", parsed.summary.updated)
                 .replace("{add}", parsed.summary.added)
@@ -429,7 +429,7 @@ export default function RatesImportModal({ open, onClose }) {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_back")}
@@ -438,7 +438,7 @@ export default function RatesImportModal({ open, onClose }) {
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+                className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
               >
                 {t("rimport_cancel")}
               </button>
@@ -446,7 +446,7 @@ export default function RatesImportModal({ open, onClose }) {
                 type="button"
                 onClick={handleApply}
                 disabled={!acknowledged || submitting}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                 {submitting ? t("rimport_applying") : t("rimport_apply")}
@@ -461,7 +461,7 @@ export default function RatesImportModal({ open, onClose }) {
 
 function SummaryBar({ summary, fileName, t }) {
   return (
-    <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-[10px] px-4 py-3">
+    <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-card px-4 py-3">
       <FileSpreadsheet className="w-4 h-4 text-muted" />
       <span className="text-[12px] font-semibold text-ink truncate max-w-[200px]" title={fileName}>
         {fileName || "upload.xlsx"}

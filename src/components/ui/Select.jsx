@@ -46,7 +46,7 @@ export default function Select({
         type="button"
         onClick={() => setOpen((o) => !o)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
-        className={`w-full flex items-center justify-between gap-2 bg-white border border-border-soft hover:border-border rounded-[10px] transition-colors ${
+        className={`w-full flex items-center justify-between gap-2 bg-white border border-border-soft hover:border-border rounded-card transition-colors ${
           compact ? "px-2.5 py-1.5 text-[13px]" : "px-3 py-2.5 text-[14px]"
         } text-ink focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent`}
       >
@@ -57,7 +57,7 @@ export default function Select({
         <ChevronDown className={`w-3.5 h-3.5 text-muted-soft transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 w-full bg-white border border-border-soft rounded-[10px] shadow-lg shadow-soft py-1 max-h-60 overflow-auto">
+        <div className="absolute z-30 mt-1 w-full bg-white border border-border-soft rounded-card shadow-lg shadow-soft py-1 max-h-60 overflow-auto">
           {normalizedOptions.map((opt) => {
             const isSelected = opt.value === value;
             return (

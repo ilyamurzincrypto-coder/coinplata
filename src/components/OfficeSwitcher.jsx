@@ -49,7 +49,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`group w-full flex items-center gap-2 px-3 py-1.5 rounded-[10px] border transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+        className={`group w-full flex items-center gap-2 px-3 py-1.5 rounded-card border transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
           open
             ? "bg-ink border-ink text-white shadow-[0_6px_20px_-8px_rgba(15,23,42,0.45)]"
             : "bg-white border-border-soft text-ink hover:border-border hover:shadow-sm"
@@ -81,7 +81,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
         style={{ zIndex: 50 }}
       >
         <div
-          className="bg-ink/95 backdrop-blur-xl border border-slate-800 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)] p-1 max-h-[340px] overflow-y-auto"
+          className="bg-ink/95 backdrop-blur-xl border border-slate-800 rounded-card shadow-[0_16px_40px_-12px_rgba(0,0,0,0.6)] p-1 max-h-[340px] overflow-y-auto"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 16px 40px -12px rgba(0,0,0,0.6)",
@@ -99,7 +99,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
                   key={off.id}
                   type="button"
                   onClick={() => handlePick(off.id)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-[8px] text-[12.5px] text-left transition-colors duration-150 ${
+                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-button text-[12.5px] text-left transition-colors duration-150 ${
                     active
                       ? "bg-white text-ink font-semibold"
                       : "text-white/80 hover:bg-ink/80"

@@ -96,7 +96,7 @@ export default function DateRangePicker({ value, onChange }) {
       {currentPreset === "custom" && (
         <button
           onClick={() => setOpen((o) => !o)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[12px] font-medium text-ink-soft bg-white border border-border-soft hover:border-border transition-colors"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button text-[12px] font-medium text-ink-soft bg-white border border-border-soft hover:border-border transition-colors"
         >
           <Calendar className="w-3 h-3 text-muted-soft" />
           {value?.from || "…"} — {value?.to || "…"}
@@ -105,7 +105,7 @@ export default function DateRangePicker({ value, onChange }) {
       )}
 
       {open && (
-        <div className="absolute top-full right-0 mt-1 z-40 bg-white border border-border-soft rounded-[12px] shadow-xl shadow-soft p-4 w-72">
+        <div className="absolute top-full right-0 mt-1 z-40 bg-white border border-border-soft rounded-card shadow-xl shadow-soft p-4 w-72">
           <div className="space-y-3">
             <div>
               <label className="block text-[11px] font-semibold text-muted mb-1 uppercase tracking-wider">
@@ -115,7 +115,7 @@ export default function DateRangePicker({ value, onChange }) {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] outline-none transition-colors"
               />
             </div>
             <div>
@@ -126,12 +126,12 @@ export default function DateRangePicker({ value, onChange }) {
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] outline-none transition-colors"
               />
             </div>
             <button
               onClick={applyCustom}
-              className="w-full px-3 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+              className="w-full px-3 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
             >
               {t("dr_apply")}
             </button>

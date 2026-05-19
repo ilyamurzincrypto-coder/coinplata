@@ -38,7 +38,7 @@ export default function DealTemplatesBar({ onApply, currentFrom, currentTo }) {
               key={`${tpl.from}_${tpl.to}`}
               type="button"
               onClick={() => onApply?.(tpl)}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold transition-colors border ${
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-button text-[11px] font-semibold transition-colors border ${
                 active
                   ? "bg-ink text-white border-ink"
                   : "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft"

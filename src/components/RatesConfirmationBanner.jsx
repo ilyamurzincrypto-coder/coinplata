@@ -142,8 +142,8 @@ export default function RatesConfirmationBanner({ currentOffice }) {
 function BannerShell({ tone, icon: Icon, children }) {
   const toneClass =
     tone === "rose"
-      ? "bg-danger-soft border-rose-200 text-rose-800"
-      : "bg-warning-soft border-amber-200 text-amber-800";
+      ? "bg-danger-soft border-danger/20 text-danger"
+      : "bg-warning-soft border-warning/20 text-warning";
   return (
     <div className={`border-b ${toneClass} sticky top-0 z-20`}>
       <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
@@ -159,8 +159,8 @@ function BannerShell({ tone, icon: Icon, children }) {
 function OfficeChip({ office, tone }) {
   const cls =
     tone === "rose"
-      ? "bg-rose-100 text-rose-800 border-rose-200"
-      : "bg-amber-100 text-amber-800 border-amber-200";
+      ? "bg-rose-100 text-danger border-danger/20"
+      : "bg-amber-100 text-warning border-warning/20";
   return (
     <span
       className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold border ${cls}`}
@@ -174,13 +174,13 @@ function OfficeChip({ office, tone }) {
 function ConfirmButton({ tone, onClick, label, disabled = false }) {
   const cls =
     tone === "rose"
-      ? "bg-rose-600 hover:bg-rose-700"
-      : "bg-amber-600 hover:bg-amber-700";
+      ? "bg-danger hover:bg-rose-700"
+      : "bg-warning hover:bg-warning";
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
+      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       <CheckCircle2 className="w-3 h-3" />
       {label}

@@ -7,14 +7,14 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 const STYLES = {
   in: {
     bg: "bg-success-soft",
-    border: "border-emerald-200",
+    border: "border-success/20",
     text: "text-success",
     Icon: ArrowDownLeft,
     label: "IN",
   },
   out: {
     bg: "bg-danger-soft",
-    border: "border-rose-200",
+    border: "border-danger/20",
     text: "text-danger",
     Icon: ArrowUpRight,
     label: "OUT",

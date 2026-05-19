@@ -47,7 +47,7 @@ export default function InfoHint({ children, label, size = "sm", placement = "to
       </button>
       {open && (
         <span
-          className={`absolute ${popClass} z-50 w-[280px] px-3 py-2 rounded-[10px] bg-ink text-white text-[12px] leading-relaxed shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] pointer-events-none`}
+          className={`absolute ${popClass} z-50 w-[280px] px-3 py-2 rounded-card bg-ink text-white text-[12px] leading-relaxed shadow-[0_12px_32px_-8px_rgba(15,23,42,0.35)] pointer-events-none`}
         >
           {label && (
             <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-soft mb-1">

@@ -427,7 +427,7 @@ export default function RatesPage({ onBack }) {
   if (!canEdit) {
     return (
       <main className="max-w-[1400px] mx-auto px-6 py-10 text-center">
-        <div className="bg-white rounded-[14px] border border-border-soft p-8 max-w-md mx-auto">
+        <div className="bg-white rounded-card-lg border border-border-soft p-8 max-w-md mx-auto">
           <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-3" />
           <div className="text-[15px] font-bold text-ink mb-1">
             {t("rates_page_no_access") || "No access"}
@@ -449,14 +449,14 @@ export default function RatesPage({ onBack }) {
             {onBack && view === "list" && (
               <button
                 onClick={onBack}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-card text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
                 title={t("rates_back_dashboard") || "Back to dashboard"}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 {t("rates_back_dashboard") || "Dashboard"}
               </button>
             )}
-            <div className="w-9 h-9 rounded-[10px] bg-ink flex items-center justify-center">
+            <div className="w-9 h-9 rounded-card bg-ink flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-success" />
             </div>
             <div>
@@ -473,10 +473,10 @@ export default function RatesPage({ onBack }) {
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setView("coverage")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold border ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-[12px] font-semibold border ${
                   coverageSummary.hasIssues
-                    ? "bg-warning-soft text-amber-800 border-amber-200 hover:bg-amber-100"
-                    : "bg-success-soft text-success border-emerald-200 hover:bg-emerald-100"
+                    ? "bg-warning-soft text-warning border-warning/20 hover:bg-amber-100"
+                    : "bg-success-soft text-success border-success/20 hover:bg-emerald-100"
                 }`}
               >
                 {coverageSummary.hasIssues ? (
@@ -489,14 +489,14 @@ export default function RatesPage({ onBack }) {
               <button
                 onClick={handleExportCSV}
                 disabled={existingPairs.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
                 {t("export_csv")}
               </button>
               <button
                 onClick={handleOpenImport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-white bg-ink hover:bg-ink"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-[12px] font-semibold text-white bg-ink hover:bg-ink"
               >
                 <Upload className="w-3.5 h-3.5" />
                 {t("cov_import_xlsx") || "Import xlsx"}
@@ -506,7 +506,7 @@ export default function RatesPage({ onBack }) {
           {view !== "list" && (
             <button
               onClick={backToList}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               {t("rates_back") || "Back to list"}
@@ -524,10 +524,10 @@ export default function RatesPage({ onBack }) {
 
         {/* Office tabs (visible only in list view) */}
         {view === "list" && (
-          <div className="bg-white border border-border-soft rounded-[12px] p-1 flex items-center gap-0.5 overflow-x-auto">
+          <div className="bg-white border border-border-soft rounded-card p-1 flex items-center gap-0.5 overflow-x-auto">
             <button
               onClick={() => setActiveOffice("all")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12px] font-semibold whitespace-nowrap transition-colors ${
                 activeOffice === "all"
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -540,7 +540,7 @@ export default function RatesPage({ onBack }) {
               <button
                 key={o.id}
                 onClick={() => setActiveOffice(o.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold whitespace-nowrap transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12px] font-semibold whitespace-nowrap transition-colors ${
                   activeOffice === o.id
                     ? "bg-ink text-white"
                     : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -555,7 +555,7 @@ export default function RatesPage({ onBack }) {
 
         {/* Sub-view: Coverage */}
         {view === "coverage" && (
-          <div className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+          <div className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
             <RatesCoveragePanel
               onBack={backToList}
               onQuickAdd={(from, to) => gotoAddPair(from, to)}
@@ -569,7 +569,7 @@ export default function RatesPage({ onBack }) {
           <>
             {/* Scope notice — редактирование override для конкретного офиса */}
             {activeOffice !== "all" && (
-              <div className="bg-accent-bg border border-indigo-200 rounded-[10px] px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
+              <div className="bg-accent-bg border border-indigo-200 rounded-card px-4 py-3 text-[12px] text-indigo-800 flex items-start gap-2">
                 <Building2 className="w-4 h-4 shrink-0 mt-0.5" />
                 <div>
                   <div className="font-bold">
@@ -585,7 +585,7 @@ export default function RatesPage({ onBack }) {
             )}
 
             {/* Counts + action buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-border-soft rounded-[12px] px-4 py-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-border-soft rounded-card px-4 py-3">
               <div className="text-[12px] text-ink-soft tabular-nums">
                 <span className="font-bold text-ink">{currencies.length}</span>{" "}
                 {t("rates_currencies_count") || "currencies"} ·{" "}
@@ -597,21 +597,21 @@ export default function RatesPage({ onBack }) {
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setView("addCurrency")}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
                 >
                   <Coins className="w-3 h-3" />
                   {t("currency_add") || "Add currency"}
                 </button>
                 <button
                   onClick={() => setView("addChannel")}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:bg-surface-soft"
                 >
                   <NetworkIcon className="w-3 h-3" />
                   {t("channel_add") || "Add channel"}
                 </button>
                 <button
                   onClick={() => gotoAddPair()}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold bg-ink text-white hover:bg-ink"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold bg-ink text-white hover:bg-ink"
                 >
                   <Plus className="w-3 h-3" />
                   {t("add_pair") || "Add pair"}
@@ -639,10 +639,10 @@ export default function RatesPage({ onBack }) {
                 .filter(Boolean);
               if (favRows.length === 0) return null;
               return (
-                <section className="bg-warning-soft/40 rounded-[14px] border border-amber-200 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-amber-200 bg-amber-100/40 flex items-center gap-2">
+                <section className="bg-warning-soft/40 rounded-card-lg border border-warning/20 overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-warning/20 bg-amber-100/40 flex items-center gap-2">
                     <Star className="w-4 h-4 text-warning fill-amber-400" />
-                    <span className="text-[13px] font-bold text-amber-900">
+                    <span className="text-[13px] font-bold text-warning">
                       Избранное
                     </span>
                     <span className="text-[10px] text-warning/70 uppercase tracking-wider">
@@ -687,7 +687,7 @@ export default function RatesPage({ onBack }) {
 
             {/* Groups (pairs table by FROM currency) */}
             {groups.length === 0 ? (
-              <div className="bg-white rounded-[14px] border border-border-soft p-10 text-center text-[13px] text-muted-soft">
+              <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center text-[13px] text-muted-soft">
                 {t("rates_no_pairs") ||
                   "No pairs yet. Add a currency, then channels, then a pair."}
               </div>
@@ -696,7 +696,7 @@ export default function RatesPage({ onBack }) {
                 {groups.map((g) => (
                   <section
                     key={g.from}
-                    className="bg-white rounded-[14px] border border-border-soft overflow-hidden"
+                    className="bg-white rounded-card-lg border border-border-soft overflow-hidden"
                   >
                     <div className="px-4 py-2.5 border-b border-border-soft bg-surface-soft/40 flex items-center gap-2">
                       <span className="text-[13px] font-bold text-ink">{g.from}</span>
@@ -747,7 +747,7 @@ export default function RatesPage({ onBack }) {
         {/* Sub-views: addPair / addCurrency / addChannel — используем ту же логику
             что в RatesBar, но оборачиваем в card вместо модалки */}
         {view === "addPair" && (
-          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+          <div className="bg-white rounded-card-lg border border-border-soft p-5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("add_pair") || "Add pair"}
             </div>
@@ -760,7 +760,7 @@ export default function RatesPage({ onBack }) {
         )}
 
         {view === "addCurrency" && (
-          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+          <div className="bg-white rounded-card-lg border border-border-soft p-5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("currency_add") || "Add currency"}
             </div>
@@ -769,7 +769,7 @@ export default function RatesPage({ onBack }) {
         )}
 
         {view === "addChannel" && (
-          <div className="bg-white rounded-[14px] border border-border-soft p-5">
+          <div className="bg-white rounded-card-lg border border-border-soft p-5">
             <div className="text-[11px] font-bold uppercase tracking-wider text-muted mb-4">
               {t("channel_add") || "Add channel"}
             </div>
@@ -810,7 +810,7 @@ function BulkSpreadControl({ onApply }) {
   };
 
   return (
-    <div className="bg-white border border-border-soft rounded-[12px] px-4 py-3 flex items-center gap-3 flex-wrap">
+    <div className="bg-white border border-border-soft rounded-card px-4 py-3 flex items-center gap-3 flex-wrap">
       <span className="text-[12px] font-semibold text-ink-soft">
         {t("rates_bulk_spread_label") || "Spread on all pairs"}
       </span>
@@ -822,7 +822,7 @@ function BulkSpreadControl({ onApply }) {
           onChange={(e) => setVal(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."))}
           onKeyDown={(e) => { if (e.key === "Enter") apply(); }}
           placeholder="0.5"
-          className="w-[90px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+          className="w-[90px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-button pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft">%</span>
       </div>
@@ -830,7 +830,7 @@ function BulkSpreadControl({ onApply }) {
         type="button"
         onClick={apply}
         disabled={!canApply}
-        className={`inline-flex items-center px-3 py-1.5 rounded-[10px] text-[12px] font-semibold ${
+        className={`inline-flex items-center px-3 py-1.5 rounded-card text-[12px] font-semibold ${
           canApply
             ? "bg-ink text-white hover:bg-ink"
             : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1016,7 +1016,7 @@ function PairRow({
               }}
               onBlur={commitBase}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className={`w-[120px] bg-surface-soft border rounded-[8px] px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
+              className={`w-[120px] bg-surface-soft border rounded-button px-2.5 py-1 text-[13px] tabular-nums outline-none focus:bg-white ${
                 hasOverride && isOfficeTab
                   ? "border-indigo-300 focus:border-indigo-500"
                   : "border-border-soft focus:border-accent"
@@ -1056,7 +1056,7 @@ function PairRow({
               }}
               onBlur={commitSpread}
               onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className="w-[80px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-[8px] pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
+              className="w-[80px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-button pl-2.5 pr-5 py-1 text-[13px] tabular-nums outline-none"
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft">%</span>
           </div>
@@ -1183,7 +1183,7 @@ function AddPairForm({ initFrom, initTo, onDone }) {
         <select
           value={fromCurrency}
           onChange={(e) => setFromCurrency(e.target.value)}
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code}>{c.code}</option>
@@ -1197,7 +1197,7 @@ function AddPairForm({ initFrom, initTo, onDone }) {
         <select
           value={toCurrency}
           onChange={(e) => setToCurrency(e.target.value)}
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code} disabled={c.code === fromCurrency}>
@@ -1216,7 +1216,7 @@ function AddPairForm({ initFrom, initTo, onDone }) {
           value={rate}
           onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))}
           placeholder={`1 ${fromCurrency} in ${toCurrency}`}
-          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
+          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-button px-3 py-2 text-[14px] tabular-nums outline-none"
         />
       </div>
 
@@ -1234,14 +1234,14 @@ function AddPairForm({ initFrom, initTo, onDone }) {
       <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
         <button
           onClick={onDone}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
@@ -1294,14 +1294,14 @@ function AddCurrencyForm({ onDone }) {
           value={code}
           onChange={(e) => setCode(e.target.value.toUpperCase())}
           placeholder="USD"
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[14px] tabular-nums outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[14px] tabular-nums outline-none"
         />
       </div>
       <div>
         <label className="block text-[10px] font-bold uppercase tracking-wider text-muted mb-1">
           {t("cat_type") || "Type"}
         </label>
-        <div className="inline-flex bg-surface-sunk p-0.5 rounded-[8px] w-full">
+        <div className="inline-flex bg-surface-sunk p-0.5 rounded-button w-full">
           {["fiat", "crypto"].map((tp) => (
             <button
               key={tp}
@@ -1325,7 +1325,7 @@ function AddCurrencyForm({ onDone }) {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="US Dollar"
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
         />
       </div>
       <div>
@@ -1337,15 +1337,15 @@ function AddCurrencyForm({ onDone }) {
           value={symbol}
           onChange={(e) => setSymbol(e.target.value)}
           placeholder="$"
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
         />
       </div>
       <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
-        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
+        <button onClick={onDone} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
@@ -1397,7 +1397,7 @@ function AddChannelForm({ onDone }) {
         <select
           value={currencyCode}
           onChange={(e) => setCurrencyCode(e.target.value)}
-          className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+          className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
         >
           {currencies.map((c) => (
             <option key={c.code} value={c.code}>{c.code}</option>
@@ -1412,7 +1412,7 @@ function AddChannelForm({ onDone }) {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
           >
             <option value="cash">Cash</option>
             <option value="bank">Bank</option>
@@ -1429,7 +1429,7 @@ function AddChannelForm({ onDone }) {
           <select
             value={network}
             onChange={(e) => setNetwork(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-3 py-2 text-[13px] outline-none"
           >
             <option value="">—</option>
             <option value="TRC20">TRC20</option>
@@ -1439,11 +1439,11 @@ function AddChannelForm({ onDone }) {
         </div>
       )}
       <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2 border-t border-border-soft">
-        <button onClick={onDone} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
+        <button onClick={onDone} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">{t("cancel")}</button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

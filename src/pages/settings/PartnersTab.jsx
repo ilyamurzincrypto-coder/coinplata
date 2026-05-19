@@ -140,7 +140,7 @@ export default function PartnersTab() {
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Добавить партнёра
@@ -148,7 +148,7 @@ export default function PartnersTab() {
         </div>
 
         <div className="p-4">
-          <div className="mb-3 flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2.5 py-2">
+          <div className="mb-3 flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-button px-2.5 py-2">
             <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
             <input
               type="text"
@@ -171,7 +171,7 @@ export default function PartnersTab() {
                 : "Ничего не найдено."}
             </div>
           ) : (
-            <div className="divide-y divide-border-soft bg-surface-soft/40 rounded-[10px] border border-border-soft overflow-hidden">
+            <div className="divide-y divide-border-soft bg-surface-soft/40 rounded-card border border-border-soft overflow-hidden">
               {filtered.map((p) => {
                 const accs = accountsByPartner(p.id);
                 const activeAccs = accs.filter((a) => a.active);
@@ -268,7 +268,7 @@ export default function PartnersTab() {
                               return (
                                 <div
                                   key={a.id}
-                                  className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-[10px] border ${
+                                  className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-card border ${
                                     a.active
                                       ? "bg-surface-soft/60 border-border-soft"
                                       : "bg-surface-sunk/60 border-border-soft opacity-60"
@@ -303,7 +303,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "inflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-[11px] font-bold"
                                       title="Контрагент внёс — фиксируем только partner-side"
                                     >
                                       <ArrowDownLeft className="w-3 h-3" />
@@ -313,7 +313,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "outflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-[11px] font-bold"
                                       title="Контрагент забрал у нас — указываем с какой кассы"
                                     >
                                       <ArrowUpRight className="w-3 h-3" />
@@ -444,7 +444,7 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -457,7 +457,7 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
               placeholder="@username"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
           <div>
@@ -469,7 +469,7 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+7..."
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
         </div>
@@ -482,18 +482,18 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
             name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
@@ -545,7 +545,7 @@ function PartnerDealsSection({ partnerId, partnerName }) {
       </button>
 
       {open && (
-        <div className="mt-2 rounded-[10px] border border-border-soft bg-surface-soft/60 p-2">
+        <div className="mt-2 rounded-card border border-border-soft bg-surface-soft/60 p-2">
           {loading ? (
             <div className="text-[12px] text-muted-soft text-center py-3">Загрузка…</div>
           ) : deals.length === 0 ? (
@@ -560,7 +560,7 @@ function PartnerDealsSection({ partnerId, partnerName }) {
                 return (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
+                    className="flex items-center justify-between gap-2 rounded-button bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <span className="text-muted-soft tabular-nums whitespace-nowrap text-[10px]">

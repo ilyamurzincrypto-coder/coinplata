@@ -122,7 +122,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
           </div>
         </header>
 
-        <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 items-center overflow-x-auto">
+        <div className="bg-white border border-border-soft rounded-card p-1 flex gap-0.5 items-center overflow-x-auto">
           {TABS.map((tab, idx) => {
             const isActive = activeTab === tab.id;
             // Тонкий вертикальный разделитель ПЕРЕД табом, открывающим
@@ -135,7 +135,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
                 )}
                 <button
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-[13px] font-medium whitespace-nowrap transition-colors ${
                     isActive ? "bg-ink text-white" : "text-ink-soft hover:bg-surface-soft hover:text-ink"
                   }`}
                 >

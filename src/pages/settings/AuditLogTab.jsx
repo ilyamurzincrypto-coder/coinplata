@@ -24,7 +24,7 @@ const ACTION_STYLES = {
   create: "bg-success-soft text-success",
   update: "bg-info-soft text-info",
   delete: "bg-danger-soft text-danger",
-  deactivate: "bg-warning-soft text-amber-800",
+  deactivate: "bg-warning-soft text-warning",
   reactivate: "bg-accent-bg text-accent",
 };
 
@@ -132,7 +132,7 @@ export default function AuditLogTab() {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-3 h-3" />
             {t("export_csv")}
@@ -144,7 +144,7 @@ export default function AuditLogTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
-              className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
+              className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
             />
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function AuditLogTab() {
         {hasActive && (
           <button
             onClick={clearFilters}
-            className="ml-auto px-2 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
+            className="ml-auto px-2 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
           >
             {t("clear")}
           </button>

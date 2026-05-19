@@ -247,7 +247,7 @@ export default function ListTab() {
       </div>
 
       {/* Filters bar */}
-      <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+      <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
         <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <TypeChip
@@ -286,10 +286,10 @@ export default function ListTab() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("cp_search_ph")}
-                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[13px] outline-none w-64 transition-colors placeholder:text-muted-soft"
+                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-64 transition-colors placeholder:text-muted-soft"
               />
             </div>
-            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[8px] gap-0.5">
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-button gap-0.5">
               {[
                 { id: "active", label: t("client_filter_active") },
                 {
@@ -314,7 +314,7 @@ export default function ListTab() {
             </div>
             <button
               onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
               title="Добавить нового клиента"
             >
               <Users className="w-3 h-3" />
@@ -322,7 +322,7 @@ export default function ListTab() {
             </button>
             <button
               onClick={() => setAddPartnerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
               title="Добавить нового партнёра (контрагента для OTC сделок)"
             >
               <Handshake className="w-3 h-3" />
@@ -589,14 +589,14 @@ function TypeChip({ active, onClick, count, icon, tone = "slate", children }) {
   }[tone];
   const toneIdle = {
     slate: "bg-white text-ink-soft border-border-soft hover:border-border hover:bg-surface-soft",
-    emerald: "bg-white text-success border-emerald-200 hover:border-emerald-300 hover:bg-success-soft",
+    emerald: "bg-white text-success border-success/20 hover:border-emerald-300 hover:bg-success-soft",
     indigo: "bg-white text-accent border-indigo-200 hover:border-indigo-300 hover:bg-accent-bg",
   }[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] border text-[12px] font-semibold transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card border text-[12px] font-semibold transition-colors ${
         active ? toneActive : toneIdle
       }`}
     >

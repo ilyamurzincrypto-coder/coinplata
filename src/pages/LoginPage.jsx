@@ -234,7 +234,7 @@ export default function LoginPage() {
 
           {/* Notice: Supabase not configured */}
           {!isSupabaseConfigured && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-warning-soft0/10 border border-amber-500/25 text-amber-300 text-[12px]">
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning-soft0/10 border border-amber-500/25 text-amber-300 text-[12px]">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
                 Backend not connected yet — this is a UI preview. Inputs are for
@@ -303,13 +303,13 @@ export default function LoginPage() {
             {(error || info) && (
               <div className="mt-4">
                 {error && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
                 {info && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
                     <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{info}</span>
                   </div>
@@ -321,7 +321,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || recoveryLoading}
-              className={`mt-5 w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
+              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
                 loading || recoveryLoading
                   ? "bg-success-soft0/60 text-ink/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
@@ -421,7 +421,7 @@ export default function LoginPage() {
 function Field({ icon, label, htmlFor, children, className = "", rightSlot }) {
   return (
     <div
-      className={`group relative bg-slate-950/60 border border-slate-800 rounded-[12px] px-3 pt-1.5 pb-1 transition-colors focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 ${className}`}
+      className={`group relative bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 transition-colors focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 ${className}`}
     >
       <label
         htmlFor={htmlFor}

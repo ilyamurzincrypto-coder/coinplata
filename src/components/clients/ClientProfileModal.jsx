@@ -178,7 +178,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
           <select
             value={client.referrerId || ""}
             onChange={(e) => updateCounterparty(client.id, { referrerId: e.target.value || null })}
-            className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[12px] font-medium outline-none focus:bg-white focus:border-accent max-w-[260px]"
+            className="bg-surface-soft border border-border-soft rounded-button px-2 py-1 text-[12px] font-medium outline-none focus:bg-white focus:border-accent max-w-[260px]"
           >
             <option value="">— нет —</option>
             {referrerOptions.map((c) => (
@@ -197,7 +197,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
 
         {/* Привёл клиентов (если этот — реферер) */}
         {referredBy.length > 0 && (
-          <div className="border border-indigo-100 bg-accent-bg/40 rounded-[10px] p-3">
+          <div className="border border-indigo-100 bg-accent-bg/40 rounded-card p-3">
             <div className="flex items-center gap-1.5 mb-2">
               <Users className="w-3 h-3 text-accent" />
               <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
@@ -234,7 +234,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
 
         {/* Obligations — показываем только если есть открытые */}
         {clientObligations.length > 0 && (
-          <div className="border border-amber-200 bg-warning-soft/50 rounded-[10px] p-3">
+          <div className="border border-warning/20 bg-warning-soft/50 rounded-card p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
                 Open obligations · {clientObligations.length}
@@ -298,7 +298,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               Monthly activity
             </h3>
           </div>
-          <div className="flex items-end gap-1 h-16 bg-surface-soft border border-border-soft rounded-[10px] px-2 py-2">
+          <div className="flex items-end gap-1 h-16 bg-surface-soft border border-border-soft rounded-card px-2 py-2">
             {monthly.map((m) => {
               const empty = m.volume === 0;
               const h = empty ? 2 : Math.max(4, (m.volume / maxMonthlyVol) * 52);
@@ -348,7 +348,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
           ) : (
             <div className="space-y-2">
               {walletGroups.map((g) => (
-                <div key={g.network} className="bg-surface-soft/60 border border-border-soft rounded-[10px] p-2.5">
+                <div key={g.network} className="bg-surface-soft/60 border border-border-soft rounded-card p-2.5">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <NetworkIcon className="w-3 h-3 text-accent" />
                     <span className="text-[11px] font-bold tracking-wider text-ink-soft">{g.network}</span>
@@ -416,7 +416,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
                   });
                 }}
                 disabled={filteredTxs.length === 0}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Export client history to CSV"
               >
                 Export
@@ -424,7 +424,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
+                className="bg-surface-soft border border-border-soft rounded-button px-2 py-1 text-[11px] font-medium outline-none"
               >
                 <option value="all">All statuses</option>
                 <option value="completed">Completed</option>
@@ -435,7 +435,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
               <select
                 value={curFilter}
                 onChange={(e) => setCurFilter(e.target.value)}
-                className="bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1 text-[11px] font-medium outline-none"
+                className="bg-surface-soft border border-border-soft rounded-button px-2 py-1 text-[11px] font-medium outline-none"
               >
                 <option value="all">All currencies</option>
                 {uniqueCurrencies.map((c) => (
@@ -447,7 +447,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
           {filteredTxs.length === 0 ? (
             <div className="text-[12px] text-muted-soft italic py-4 text-center">No transactions match filter</div>
           ) : (
-            <div className="border border-border-soft rounded-[10px] overflow-hidden divide-y divide-border-soft">
+            <div className="border border-border-soft rounded-card overflow-hidden divide-y divide-border-soft">
               {filteredTxs.map((tx) => (
                 <div key={tx.id} className="flex items-center gap-3 px-3 py-2 text-[12px] hover:bg-surface-soft">
                   <span className="text-muted-soft tabular-nums">{tx.date} {tx.time}</span>
@@ -466,7 +466,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors">Close</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors">Close</button>
       </div>
     </Modal>
   );
@@ -478,7 +478,7 @@ function StatCard({ label, value, tone, small }) {
     : tone === "rose" ? "text-danger bg-danger-soft border-rose-100"
     : "text-ink bg-surface-soft/60 border-border-soft";
   return (
-    <div className={`rounded-[8px] border p-2 ${toneCls}`}>
+    <div className={`rounded-button border p-2 ${toneCls}`}>
       <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{label}</div>
       <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
         {value}
@@ -492,7 +492,7 @@ function TagBtn({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+      className={`px-2.5 py-1 rounded-button text-[11px] font-semibold border transition-colors ${
         active ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
       }`}
     >

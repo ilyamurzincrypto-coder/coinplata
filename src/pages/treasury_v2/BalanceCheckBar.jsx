@@ -7,7 +7,7 @@ export default function BalanceCheckBar({ totals, formatBase, baseCurrency }) {
   const { t } = useTranslation();
   const ok = totals.identityCheck.ok;
   const Icon = ok ? CheckCircle2 : AlertTriangle;
-  const cls = ok ? "bg-success-soft border-emerald-200 text-emerald-900" : "bg-danger-soft border-rose-200 text-rose-900";
+  const cls = ok ? "bg-success-soft border-success/20 text-success" : "bg-danger-soft border-danger/20 text-danger";
   return (
     <div className={`sticky bottom-0 px-5 py-2.5 border-t text-[12.5px] font-medium flex items-center gap-3 ${cls}`}>
       <Icon className={`w-4 h-4 shrink-0 ${ok ? "text-success" : "text-danger"}`} />

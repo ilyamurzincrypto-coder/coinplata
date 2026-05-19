@@ -27,7 +27,7 @@ export const TONE_CLS = {
   slate:   "bg-surface-soft text-ink-soft ring-border-soft",
   emerald: "bg-success-soft text-success ring-emerald-200",
   indigo:  "bg-accent-bg text-accent ring-indigo-200",
-  amber:   "bg-warning-soft text-amber-800 ring-amber-200",
+  amber:   "bg-warning-soft text-warning ring-amber-200",
   violet:  "bg-accent-bg text-accent ring-violet-200",
   rose:    "bg-danger-soft text-danger ring-rose-200",
 };

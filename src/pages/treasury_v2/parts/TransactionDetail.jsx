@@ -10,7 +10,7 @@ export default function TransactionDetail({ node, onClose }) {
   const { tx, entries } = node;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
-      <div className="bg-white rounded-[14px] max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-card-lg max-w-2xl w-full max-h-[80vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
         <header className="px-5 py-3 border-b border-border-soft flex items-center justify-between">
           <div>
             <h3 className="text-[15px] font-bold">{tx.kind} {tx.sourceRefId ? `#${tx.sourceRefId}` : ""}</h3>

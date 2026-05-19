@@ -117,7 +117,7 @@ export default function AccountSelect({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`w-full bg-surface-soft border rounded-[10px] px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
+        className={`w-full bg-surface-soft border rounded-card px-3 py-2.5 text-left flex items-center gap-2 transition-colors ${
           open
             ? "border-accent/40 bg-white ring-2 ring-accent/20"
             : "border-border-soft hover:border-border"
@@ -130,7 +130,7 @@ export default function AccountSelect({
               <div className="text-[13px] font-semibold text-ink truncate flex items-center gap-1.5">
                 {selected.name}
                 {isInteroffice && (
-                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-warning-soft text-amber-800 ring-1 ring-amber-200">
+                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200">
                     <ArrowLeftRight className="w-2 h-2" />
                     {t("acsel_interoffice_badge")}
                   </span>
@@ -170,7 +170,7 @@ export default function AccountSelect({
 
       {/* Interoffice hint below trigger */}
       {isInteroffice && !open && (
-        <div className="mt-1 text-[10px] font-medium text-amber-800 bg-warning-soft/80 border border-amber-200 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+        <div className="mt-1 text-[10px] font-medium text-warning bg-warning-soft/80 border border-warning/20 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
           <ArrowLeftRight className="w-2.5 h-2.5" />
           {t("acsel_interoffice_hint").replace("{office}", officeName(selected.officeId))}
         </div>
@@ -179,7 +179,7 @@ export default function AccountSelect({
       {/* Dropdown */}
       {/** renders further down */}
       {open && (
-        <div className="absolute z-40 top-full left-0 right-0 mt-1 bg-white border border-border-soft rounded-[12px] shadow-xl shadow-soft overflow-hidden">
+        <div className="absolute z-40 top-full left-0 right-0 mt-1 bg-white border border-border-soft rounded-card shadow-xl shadow-soft overflow-hidden">
           {/* Search */}
           <div className="p-2 border-b border-border-soft relative">
             <Search className="w-3.5 h-3.5 text-muted-soft absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -189,7 +189,7 @@ export default function AccountSelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("acsel_search_placeholder")}
-              className="w-full pl-7 pr-2 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-[8px] text-[12px] outline-none placeholder:text-muted-soft"
+              className="w-full pl-7 pr-2 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[12px] outline-none placeholder:text-muted-soft"
             />
           </div>
 

@@ -80,7 +80,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
     <div ref={rootRef} className="relative">
       <div className="flex items-stretch gap-1.5">
         <div
-          className={`flex-1 flex items-center bg-white border rounded-[8px] transition-colors ${
+          className={`flex-1 flex items-center bg-white border rounded-button transition-colors ${
             open ? "border-indigo-400 ring-2 ring-indigo-500/20" : "border-border-soft hover:border-border"
           }`}
         >
@@ -114,7 +114,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1 px-2 rounded-[8px] bg-indigo-600 text-white text-[10.5px] font-bold hover:bg-indigo-700 transition-colors shrink-0"
+          className="inline-flex items-center gap-1 px-2 rounded-button bg-indigo-600 text-white text-[10.5px] font-bold hover:bg-indigo-700 transition-colors shrink-0"
           title="Добавить нового партнёра"
         >
           <UserPlus className="w-3 h-3" />
@@ -123,7 +123,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
       </div>
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-[10px] shadow-xl shadow-soft py-1 max-h-64 overflow-auto">
+        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-card shadow-xl shadow-soft py-1 max-h-64 overflow-auto">
           {activePartners.length === 0 && (
             <div className="px-3 py-4 text-center">
               <div className="text-[12px] font-semibold text-ink-soft mb-1.5">
@@ -237,7 +237,7 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Иван Петров / Crypto OTC LLC"
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
@@ -249,7 +249,7 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={telegram}
             onChange={(e) => setTelegram(e.target.value)}
             placeholder="@username"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
@@ -261,7 +261,7 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+7..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
@@ -273,21 +273,21 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
             name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

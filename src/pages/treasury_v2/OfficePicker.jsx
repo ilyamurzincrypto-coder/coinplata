@@ -12,7 +12,7 @@ export default function OfficePicker({ value, onChange }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-2.5 py-1.5 text-[13px] outline-none"
+        className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2.5 py-1.5 text-[13px] outline-none"
       >
         <option value="all">{t("trv2_office_all")}</option>
         {(activeOffices || []).map((o) => (

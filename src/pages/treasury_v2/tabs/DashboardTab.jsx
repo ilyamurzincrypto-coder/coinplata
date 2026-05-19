@@ -31,7 +31,7 @@ const fmtCur = (amount, currency) => `${curSymbol(currency)}${fmt(amount, curren
 const fmtSignedCur = (amount, currency) => `${amount < 0 ? "−" : ""}${fmtCur(Math.abs(amount), currency)}`;
 
 function Card({ className = "", children }) {
-  return <div className={`bg-white rounded-[14px] border border-border-soft p-4 ${className}`}>{children}</div>;
+  return <div className={`bg-white rounded-card-lg border border-border-soft p-4 ${className}`}>{children}</div>;
 }
 
 // ── Funds tree ─────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
     <div>
       <div
         onClick={() => toggle(id)}
-        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-surface-soft rounded-[8px] -mx-1"
+        className="flex items-center gap-2 px-3 py-2.5 cursor-pointer hover:bg-surface-soft rounded-button -mx-1"
       >
         {open ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-soft shrink-0" />}
         <div className="flex-1 min-w-0">
@@ -250,7 +250,7 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
           displayMul={-1}
         />
       </div>
-      <div className="mt-3 pt-3 border-t border-border-soft rounded-[10px] bg-surface-soft px-3 py-2.5 space-y-1.5">
+      <div className="mt-3 pt-3 border-t border-border-soft rounded-card bg-surface-soft px-3 py-2.5 space-y-1.5">
         <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
           <span className="text-[11px] font-bold uppercase tracking-wide text-muted">{t("trv2_dash_totals")}</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-ink">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
@@ -401,7 +401,7 @@ function IdentityCard({ ctx, officeFilter, baseCurrency }) {
   return (
     <Card>
       <h3 className="text-[13px] font-bold text-ink mb-2">{t("trv2_dash_capital")}</h3>
-      <div className={`text-[12px] font-medium px-2.5 py-1.5 rounded-[8px] inline-block ${ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
+      <div className={`text-[12px] font-medium px-2.5 py-1.5 rounded-button inline-block ${ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
         {ok ? t("trv2_dash_identity_ok") : t("trv2_dash_identity_off").replace("{delta}", fmtBaseAmount(totals.identityCheck.delta, baseCurrency))}
       </div>
       <div className="mt-3 space-y-1 text-[12px]">

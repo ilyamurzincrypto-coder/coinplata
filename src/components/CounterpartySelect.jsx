@@ -13,7 +13,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { CLIENT_TAGS } from "../store/data.js";
 
 const TAG_STYLE = {
-  VIP: "bg-warning-soft text-amber-800 ring-amber-200",
+  VIP: "bg-warning-soft text-warning ring-amber-200",
   Regular: "bg-surface-sunk text-ink-soft ring-border-soft",
   New: "bg-info-soft text-info ring-sky-200",
   Risky: "bg-danger-soft text-danger ring-rose-200",
@@ -97,12 +97,12 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
 
   return (
     <div ref={rootRef} className="relative">
-      {/* Размер выровнен с IN/OUT amount-полями: rounded-[14px], py-3,
-          text-[14px]. Раньше был text-[13px] py-2 rounded-[10px] — поле
+      {/* Размер выровнен с IN/OUT amount-полями: rounded-card-lg, py-3,
+          text-[14px]. Раньше был text-[13px] py-2 rounded-card — поле
           клиента визуально «худее» соседних полей сделки. */}
       <div className="flex items-stretch gap-1.5">
         <div
-          className={`flex-1 flex items-center bg-surface-soft border rounded-[14px] transition-colors ${
+          className={`flex-1 flex items-center bg-surface-soft border rounded-card-lg transition-colors ${
             open ? "border-accent/40 ring-2 ring-accent/20 bg-white" : "border-border-soft hover:border-border"
           }`}
         >
@@ -127,7 +127,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1 px-3 rounded-[14px] bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-3 rounded-card-lg bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
           title={t("add_new") || "Add client"}
         >
           <UserPlus className="w-3.5 h-3.5" />
@@ -136,7 +136,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
       </div>
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-[10px] shadow-xl shadow-soft py-1 max-h-72 overflow-auto">
+        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-card shadow-xl shadow-soft py-1 max-h-72 overflow-auto">
           {/* Quick picks (Cash + recent) — наверху dropdown'а. Отдельная
               секция с лейблом "Быстрый выбор", показывается только когда
               нет search-query (чтобы не мешать обычному поиску). */}
@@ -155,7 +155,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
                       setQuery(qp.value);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-2 py-1.5 rounded-[8px] hover:bg-surface-soft flex items-center gap-2 group ${
+                    className={`w-full text-left px-2 py-1.5 rounded-button hover:bg-surface-soft flex items-center gap-2 group ${
                       value === qp.value ? "bg-surface-soft" : ""
                     }`}
                   >
@@ -211,7 +211,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               <button
                 type="button"
                 onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
               >
                 <UserPlus className="w-3 h-3" />
                 Add "{debouncedQuery}"
@@ -254,7 +254,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               <button
                 type="button"
                 onClick={() => setShowAdd(true)}
-                className="w-full text-left px-2 py-2 rounded-[8px] hover:bg-surface-soft flex items-center gap-2 text-ink-soft"
+                className="w-full text-left px-2 py-2 rounded-button hover:bg-surface-soft flex items-center gap-2 text-ink-soft"
               >
                 <div className="w-7 h-7 rounded-full bg-ink flex items-center justify-center">
                   <Plus className="w-3.5 h-3.5 text-white" />
@@ -318,7 +318,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Murat Yildiz"
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
         <div>
@@ -330,7 +330,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             value={telegram}
             onChange={(e) => setTelegram(e.target.value)}
             placeholder="@username"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
         <div>
@@ -341,7 +341,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             <button
               type="button"
               onClick={() => setTag("")}
-              className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+              className={`px-2.5 py-1 rounded-button text-[11px] font-semibold border transition-colors ${
                 !tag ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
               }`}
             >
@@ -352,7 +352,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
                 key={tg}
                 type="button"
                 onClick={() => setTag(tg)}
-                className={`px-2.5 py-1 rounded-[8px] text-[11px] font-semibold border transition-colors ${
+                className={`px-2.5 py-1 rounded-button text-[11px] font-semibold border transition-colors ${
                   tag === tg ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
                 }`}
               >
@@ -370,21 +370,21 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="OTC desk, prefers SEPA…"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             name.trim() ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

@@ -1789,7 +1789,7 @@ export default function ExchangeForm({
             {inEnabled && (
               <tr className="border-b border-border-soft hover:bg-surface-soft/80 transition-colors">
                 <td className="px-3 py-2 align-top whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                     <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                     {t("xf_in")}
                   </span>
@@ -1850,7 +1850,7 @@ export default function ExchangeForm({
               return (
                 <tr key={xi.id} className="border-b border-border-soft even:bg-surface-soft/60 hover:bg-surface-soft/80 transition-colors">
                   <td className="px-3 py-2 align-top whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-emerald-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                       <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                       {t("xf_in_extra")}
                     </span>
@@ -1917,7 +1917,7 @@ export default function ExchangeForm({
                       <button
                         type="button"
                         onClick={addExtraInput}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-white border border-emerald-200 hover:bg-success-soft rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-white border border-success/20 hover:bg-success-soft rounded-md px-2 py-1 transition-colors"
                         title={t("xf_add_in_tip")}
                       >
                         <Plus className="w-3 h-3" />
@@ -1929,7 +1929,7 @@ export default function ExchangeForm({
                         type="button"
                         onClick={removeIn}
                         title={t("remove_in_tip")}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-rose-200 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                       >
                         <X className="w-3 h-3" />
                         {t("remove_in")}
@@ -1954,7 +1954,7 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={addIn}
-                      className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success hover:text-emerald-900 hover:bg-success-soft rounded-full px-2.5 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success hover:text-success hover:bg-success-soft rounded-full px-2.5 py-1 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                       {t("add_in")}
@@ -1971,9 +1971,9 @@ export default function ExchangeForm({
                   <div
                     className={`flex items-center justify-between px-2 py-1 rounded text-[11.5px] tabular-nums transition-colors ${
                       exceedsInput
-                        ? "bg-danger-soft text-rose-800"
+                        ? "bg-danger-soft text-danger"
                         : Math.abs(remainingIn) < EPS
-                        ? "bg-success-soft text-emerald-800"
+                        ? "bg-success-soft text-success"
                         : "bg-surface-soft text-ink-soft"
                     }`}
                   >
@@ -2060,7 +2060,7 @@ export default function ExchangeForm({
                         <label
                           className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.08em] transition-colors ${
                             o.applyFee !== false
-                              ? "border-emerald-300 bg-success-soft text-emerald-800"
+                              ? "border-emerald-300 bg-success-soft text-success"
                               : "border-border-soft bg-surface-soft text-muted hover:border-border"
                           }`}
                           title={t("xf_apply_office_fee_tip")}
@@ -2143,7 +2143,7 @@ export default function ExchangeForm({
                       <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                         <div
                           className={`inline-flex items-center rounded-md border bg-white transition-colors px-2 py-0.5 ${
-                            o.manualRate ? "border-amber-300" : "border-border-soft"
+                            o.manualRate ? "border-warning/30" : "border-border-soft"
                           }`}
                         >
                           <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-1.5">
@@ -2279,7 +2279,7 @@ export default function ExchangeForm({
                           {t("xf_payee_label").replace("{office}", findOffice(payeeOfficeId)?.name || t("xf_other_office"))}
                         </label>
                         {payeeCandidates.length === 0 ? (
-                          <div className="text-[11.5px] text-amber-800 bg-warning-soft border border-amber-200 rounded px-2 py-1 inline-flex items-center gap-1.5">
+                          <div className="text-[11.5px] text-warning bg-warning-soft border border-warning/20 rounded px-2 py-1 inline-flex items-center gap-1.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
                             {t("xf_no_managers_in_office")}
                           </div>
@@ -2324,7 +2324,7 @@ export default function ExchangeForm({
                       type="button"
                       onClick={removeAllOutputs}
                       title={t("remove_output_tip")}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-rose-200 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                     >
                       <X className="w-3 h-3" />
                       {t("remove_output")}
@@ -2362,7 +2362,7 @@ export default function ExchangeForm({
                         <span className="inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums text-warning">
                           ${fmt(effectiveFee)}
                           {minFeeApplied && (
-                            <span className="text-[9px] font-bold bg-amber-100 text-amber-800 px-1 py-0.5 rounded">
+                            <span className="text-[9px] font-bold bg-amber-100 text-warning px-1 py-0.5 rounded">
                               {t("summary_min_label")}
                             </span>
                           )}
@@ -2534,7 +2534,7 @@ export default function ExchangeForm({
             placeholder={t("xf_auto")}
             className={`w-[72px] border rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none ${
               customFeeUsdInput
-                ? "bg-warning-soft border-amber-300 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
+                ? "bg-warning-soft border-warning/30 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
                 : "bg-white border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20"
             }`}
             title={t("xf_custom_fee_tip")}
@@ -2697,7 +2697,7 @@ export default function ExchangeForm({
               {liveProfit !== 0 && (
                 <span
                   className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[11px] tabular-nums ${
-                    liveProfit >= 0 ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800"
+                    liveProfit >= 0 ? "bg-emerald-100 text-success" : "bg-rose-100 text-danger"
                   }`}
                 >
                   {liveProfit >= 0 ? "+" : ""}${fmt(liveProfit)}
@@ -2727,7 +2727,7 @@ export default function ExchangeForm({
           )}
           {accountWarnings.length > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-danger-soft border border-rose-200 rounded px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-danger-soft border border-danger/20 rounded px-2 py-0.5"
               title={accountWarnings.map((w) => w.label).join("\n")}
             >
               <AlertCircle className="w-3 h-3" />
@@ -2744,7 +2744,7 @@ export default function ExchangeForm({
             {isEdit && (
               <button
                 onClick={onCancel}
-                className="px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft hover:border-border transition-colors"
+                className="px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft hover:border-border transition-colors"
               >
                 {t("cancel")}
               </button>
@@ -2782,7 +2782,7 @@ export default function ExchangeForm({
 function PillToggle({ active, onChange, label, title, tone = "slate" }) {
   const tones = {
     sky: active ? "bg-info-soft0 text-white border-sky-500" : "bg-white text-info border-sky-200 hover:bg-info-soft",
-    amber: active ? "bg-warning-soft0 text-white border-amber-500" : "bg-white text-warning border-amber-200 hover:bg-warning-soft",
+    amber: active ? "bg-warning-soft0 text-white border-amber-500" : "bg-white text-warning border-warning/20 hover:bg-warning-soft",
     violet: active ? "bg-accent-bg0 text-white border-violet-500" : "bg-white text-accent border-violet-200 hover:bg-accent-bg",
     indigo: active ? "bg-accent-bg0 text-white border-indigo-500" : "bg-white text-accent border-indigo-200 hover:bg-accent-bg",
     slate: active ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft",
@@ -2870,7 +2870,7 @@ function SubmitCTA({
 
       {/* Dropdown menu */}
       {open && !isEdit && (
-        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-border-soft rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
+        <div className="absolute bottom-full right-0 mb-2 w-64 bg-white border border-border-soft rounded-card shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[cIn_120ms_ease-out] z-20">
           <MenuItem
             icon={<Zap className="w-3.5 h-3.5 text-success" />}
             label={t("xf_create_deal")}
@@ -2948,7 +2948,7 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
   const c = tones[tone] || tones.slate;
   return (
     <label
-      className={`flex items-center gap-3 cursor-pointer select-none rounded-[10px] px-3 py-2 transition-all ${
+      className={`flex items-center gap-3 cursor-pointer select-none rounded-card px-3 py-2 transition-all ${
         active ? `bg-surface-soft ring-1 ${c.ring}` : "bg-surface-soft/40 hover:bg-surface-soft"
       }`}
     >
@@ -3393,15 +3393,15 @@ function OutputRow({
       {/* Поле суммы OUT: input + dropdown валюты справа.
           Размер унифицирован с IN-полем (text-[24px], py-3). */}
       <div
-        className={`flex items-center gap-2 bg-white rounded-[14px] border transition-all px-3 py-2 ${
+        className={`flex items-center gap-2 bg-white rounded-card-lg border transition-all px-3 py-2 ${
           o.amount ? "border-accent/40" : "border-border-soft hover:border-border"
         }`}
       >
         {/* Per-output toggle "Комиссия" — СЛЕВА внутри amount block. */}
         <label
-          className={`inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-1 rounded-[8px] border self-center transition-colors ${
+          className={`inline-flex items-center gap-1.5 cursor-pointer select-none group px-2 py-1 rounded-button border self-center transition-colors ${
             o.applyFee !== false
-              ? "border-emerald-400 bg-success-soft text-emerald-800"
+              ? "border-emerald-400 bg-success-soft text-success"
               : "border-border-soft bg-surface-soft text-muted hover:border-border"
           }`}
           title={t("xf_apply_office_fee_tip")}
@@ -3448,7 +3448,7 @@ function OutputRow({
             }
             onUpdate(patch);
           }}
-          className="shrink-0 bg-white border border-border-soft hover:border-border focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-2 py-1.5 text-[13px] font-bold tabular-nums text-ink outline-none cursor-pointer"
+          className="shrink-0 bg-white border border-border-soft hover:border-border focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1.5 text-[13px] font-bold tabular-nums text-ink outline-none cursor-pointer"
           aria-label={t("xf_currency")}
         >
           {CURRENCIES.map((c) => (
@@ -3572,8 +3572,8 @@ function OutputRow({
           Auto/Manual toggle — лишнее действие. */}
       <div className="mt-2 flex items-center gap-2">
         <div
-          className={`flex-1 flex items-center rounded-[10px] border transition-all px-3 py-1.5 bg-white ${
-            o.manualRate ? "border-amber-300" : "border-border"
+          className={`flex-1 flex items-center rounded-card border transition-all px-3 py-1.5 bg-white ${
+            o.manualRate ? "border-warning/30" : "border-border"
           }`}
         >
           <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-2">{t("rate")}</span>
@@ -3610,7 +3610,7 @@ function OutputRow({
           Кнопка «Инвертировать» одним кликом ставит 1/actualRate —
           обычно это и есть правильное значение. */}
       {rateLooksWrong && Number.isFinite(expectedRateViaUsd) && (
-        <div className="mt-1.5 px-2.5 py-1.5 rounded-[8px] bg-warning-soft border border-amber-300 text-[11px] text-amber-900 flex items-start gap-1.5">
+        <div className="mt-1.5 px-2.5 py-1.5 rounded-button bg-warning-soft border border-warning/30 text-[11px] text-warning flex items-start gap-1.5">
           <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-warning" />
           <div className="flex-1 min-w-0">
             <div>
@@ -3649,7 +3649,7 @@ function OutputRow({
                   touched: false,
                 });
               }}
-              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning-soft0 text-white text-[10.5px] font-bold hover:bg-amber-600 transition-colors"
+              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning-soft0 text-white text-[10.5px] font-bold hover:bg-warning transition-colors"
             >
               {t("xf_invert_rate").replace("{n}", (1 / actualRate).toFixed(4))}
             </button>
@@ -3730,7 +3730,7 @@ function OutputRow({
             value={o.address || ""}
             onChange={(e) => onUpdate({ address: e.target.value.trim() })}
             placeholder={t("xf_crypto_address_placeholder")}
-            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[12px] font-mono text-ink-soft tracking-tight outline-none transition-colors placeholder:text-muted-soft"
+            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[12px] font-mono text-ink-soft tracking-tight outline-none transition-colors placeholder:text-muted-soft"
           />
           {walletCheck && (
             <WalletHint
@@ -3791,7 +3791,7 @@ function OutputRow({
           <button
             type="button"
             onClick={handleUseRemaining}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-[8px] px-2 py-1 transition-colors"
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-button px-2 py-1 transition-colors"
             title={t("xf_convert_remaining_tip")}
           >
             <Zap className="w-3 h-3" />
@@ -3803,7 +3803,7 @@ function OutputRow({
 
       {/* Suggest other offices when insufficient in current */}
       {insufficient && otherOfficesWithBalance.length > 0 && (
-        <div className="mt-2 px-3 py-2 rounded-[10px] bg-info-soft border border-sky-200 text-[11px]">
+        <div className="mt-2 px-3 py-2 rounded-card bg-info-soft border border-sky-200 text-[11px]">
           <div className="font-bold text-sky-900 mb-1">
             {t("insufficient_suggest_body").replace("{cur}", o.currency)}
           </div>
@@ -3837,7 +3837,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   const { t } = useTranslation();
   if (status === "invalid_hash") {
     return (
-      <div className="mt-1.5 text-[11px] text-warning bg-warning-soft border border-amber-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         {t("xf_wallet_invalid_hash")}
       </div>
@@ -3853,7 +3853,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   if (status === "conflict") {
     const other = counterparties?.find((c) => c.id === conflict?.clientId);
     return (
-      <div className="mt-1.5 text-[11px] text-rose-800 bg-danger-soft border border-rose-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-danger bg-danger-soft border border-danger/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         <span>
           {t("xf_wallet_conflict")}
@@ -3864,7 +3864,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   if (status === "known") {
     return (
-      <div className="mt-1.5 text-[11px] text-success bg-success-soft border border-emerald-200 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-[11px] text-success bg-success-soft border border-success/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <Check className="w-3 h-3" />
         {t("xf_wallet_known")} · {network}
       </div>

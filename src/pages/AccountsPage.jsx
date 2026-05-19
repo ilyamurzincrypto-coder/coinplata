@@ -336,7 +336,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <div className="flex items-center gap-2 flex-wrap">
           <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
           <span
-            className="inline-flex items-center px-2.5 py-1.5 rounded-[10px] bg-surface-soft ring-1 ring-border-soft"
+            className="inline-flex items-center px-2.5 py-1.5 rounded-card bg-surface-soft ring-1 ring-border-soft"
             title="Сегодня / вчера по всем офисам"
           >
             <DeltaPair
@@ -357,7 +357,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
               setTransferFrom(null);
               setTransferOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             {t("acc_transfer") || "Перевод"}
@@ -367,7 +367,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
               setOtcFromAccount(null);
               setOtcOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-[10px] bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_2px_8px_rgba(79,70,229,0.25)]"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-card bg-indigo-600 text-white text-[13px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_2px_8px_rgba(79,70,229,0.25)]"
             title="OTC сделка — обмен между счетами / с контрагентом, можно задним числом"
           >
             <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -378,7 +378,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
             onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold transition-colors"
             title={t("acc_import_tip") || "Import accounts from CSV"}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -387,7 +387,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
           <button
             onClick={handleExportAccounts}
             disabled={accounts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-[12.5px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             title={t("acc_export_tip") || "Export accounts to CSV"}
           >
             <Download className="w-3.5 h-3.5" />
@@ -397,7 +397,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border border-border-soft rounded-[12px] p-1 flex gap-0.5 overflow-x-auto">
+      <div className="bg-white border border-border-soft rounded-card p-1 flex gap-0.5 overflow-x-auto">
         {[
           { id: "operations", label: "Операции" },
           { id: "otc", label: "История OTC" },
@@ -409,7 +409,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[13px] font-medium whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[13px] font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -429,7 +429,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
         return (
           <section
             key={office.id}
-            className="bg-white rounded-[12px] border border-border-soft overflow-hidden"
+            className="bg-white rounded-card border border-border-soft overflow-hidden"
           >
             {/* Office strip — Excel-style grid */}
             <div
@@ -526,7 +526,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
                     onClick={() =>
                       setAddAccountFor({ officeId: office.id, officeName: office.name })
                     }
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                     Add first account
@@ -640,7 +640,7 @@ function CompactTotals({ total, reserved, sym }) {
   const available = total - reserved;
   const hasReserved = reserved > 0;
   return (
-    <div className="bg-white border border-border-soft rounded-[10px] px-3 py-1.5 flex items-center gap-3 tabular-nums text-[12px]">
+    <div className="bg-white border border-border-soft rounded-card px-3 py-1.5 flex items-center gap-3 tabular-nums text-[12px]">
       <span>
         <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider mr-1">Total</span>
         <span className="font-bold text-ink">
@@ -703,7 +703,7 @@ function CurrencyRow({
             }`}
           />
           <div
-            className={`w-9 h-9 rounded-[8px] flex items-center justify-center text-[14px] font-bold shrink-0 ${
+            className={`w-9 h-9 rounded-button flex items-center justify-center text-[14px] font-bold shrink-0 ${
               isCrypto ? "bg-accent-bg text-accent" : "bg-surface-sunk text-ink-soft"
             }`}
           >
@@ -757,7 +757,7 @@ function CurrencyRow({
           <div className="flex items-center gap-1.5 mb-3">
             <button
               onClick={() => onAddAccount({ currency: currency.code })}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               Add account
@@ -765,7 +765,7 @@ function CurrencyRow({
             {channelBlocks.length > 0 && channelBlocks[0].accounts[0] && (
               <button
                 onClick={() => onTransfer(channelBlocks[0].accounts[0])}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12.5px] font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:shadow-sm transition-all"
                 title={`Transfer from a ${currency.code} account`}
               >
                 <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -775,7 +775,7 @@ function CurrencyRow({
           </div>
 
           {channelBlocks.length === 0 ? (
-            <div className="text-[12px] text-muted-soft italic py-2 text-center bg-white border border-dashed border-border-soft rounded-[8px]">
+            <div className="text-[12px] text-muted-soft italic py-2 text-center bg-white border border-dashed border-border-soft rounded-button">
               No accounts
             </div>
           ) : (
@@ -827,7 +827,7 @@ function ChannelBlock({
   const label = channelShortLabel(channel);
   const isNetwork = channel.kind === "network";
   return (
-    <div className="bg-white border border-border-soft rounded-[10px] p-3">
+    <div className="bg-white border border-border-soft rounded-card p-3">
       <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           {isNetwork ? (
@@ -852,7 +852,7 @@ function ChannelBlock({
           onClick={() =>
             onAddAccount({ currency: currency.code, channelId: channel.id })
           }
-          className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft rounded-[8px] px-2 py-1 transition-colors"
+          className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft rounded-button px-2 py-1 transition-colors"
         >
           <Plus className="w-3 h-3" />
           Add
@@ -890,7 +890,7 @@ function AccountCard({ account: a, balanceOf, reservedOf, availableOf, onTopUp, 
   const available = availableOf(a.id);
   const hasReserved = reserved > 0.0001;
   return (
-    <div className="bg-white border border-border-soft rounded-[10px] px-3 py-2.5 hover:border-border hover:shadow-sm transition-all">
+    <div className="bg-white border border-border-soft rounded-card px-3 py-2.5 hover:border-border hover:shadow-sm transition-all">
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="min-w-0 flex-1">
           <div className="text-[14px] font-semibold text-ink leading-tight truncate">
@@ -1008,7 +1008,7 @@ function OtcHistoryPanel({ transactions, accountsById }) {
 
   if (otcDeals.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+      <section className="bg-white rounded-card-lg border border-border-soft p-8 text-center">
         <ArrowLeftRightIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
         <div className="text-[13px] text-muted">Нет OTC сделок</div>
       </section>
@@ -1016,7 +1016,7 @@ function OtcHistoryPanel({ transactions, accountsById }) {
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+    <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border-soft flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ArrowLeftRightIcon className="w-3.5 h-3.5 text-accent" />
@@ -1114,7 +1114,7 @@ function TransfersPanel({ transfers, accountsById }) {
 
   if (sorted.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+      <section className="bg-white rounded-card-lg border border-border-soft p-8 text-center">
         <WalletIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
         <div className="text-[13px] text-muted">Нет перемещений</div>
       </section>
@@ -1122,7 +1122,7 @@ function TransfersPanel({ transfers, accountsById }) {
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+    <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border-soft flex items-center gap-2">
         <ArrowLeftRightIcon className="w-3.5 h-3.5 text-info" />
         <h2 className="text-[13px] font-semibold tracking-tight">Перемещения</h2>
@@ -1196,7 +1196,7 @@ function LedgerPanel({ movements, accountsById }) {
 
   if (sorted.length === 0) {
     return (
-      <section className="bg-white rounded-[14px] border border-border-soft p-8 text-center">
+      <section className="bg-white rounded-card-lg border border-border-soft p-8 text-center">
         <HistoryIcon className="w-8 h-8 mx-auto text-muted-soft mb-2" />
         <div className="text-[13px] text-muted">Нет операций</div>
       </section>
@@ -1204,7 +1204,7 @@ function LedgerPanel({ movements, accountsById }) {
   }
 
   return (
-    <section className="bg-white rounded-[14px] border border-border-soft overflow-hidden">
+    <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border-soft flex items-center gap-2">
         <HistoryIcon className="w-3.5 h-3.5 text-muted" />
         <h2 className="text-[13px] font-semibold tracking-tight">Журнал</h2>

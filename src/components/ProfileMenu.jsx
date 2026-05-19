@@ -183,7 +183,7 @@ export default function ProfileMenu() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 pl-2 py-1 pr-2 rounded-[10px] hover:bg-surface-soft transition-colors"
+        className="flex items-center gap-2 pl-2 py-1 pr-2 rounded-card hover:bg-surface-soft transition-colors"
       >
         {avatarUrl ? (
           <img
@@ -211,7 +211,7 @@ export default function ProfileMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-white border border-border-soft rounded-[12px] shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[fadeIn_120ms_ease-out]">
+        <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-white border border-border-soft rounded-card shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[fadeIn_120ms_ease-out]">
           <div className="px-4 py-3 border-b border-border-soft">
             <div className="text-[13px] font-semibold text-ink">{currentUser.name}</div>
             <div className="text-[11px] text-muted flex items-center gap-1">
@@ -440,7 +440,7 @@ function ChangePasswordModal({ open, onClose }) {
             value={oldPass}
             onChange={(e) => setOldPass(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
@@ -451,7 +451,7 @@ function ChangePasswordModal({ open, onClose }) {
             type="password"
             value={newPass}
             onChange={(e) => setNewPass(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div>
@@ -462,16 +462,16 @@ function ChangePasswordModal({ open, onClose }) {
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-[12px] font-medium text-success bg-success-soft border border-emerald-200 rounded-md px-3 py-2 inline-flex items-center gap-1">
+          <div className="text-[12px] font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2 inline-flex items-center gap-1">
             <Check className="w-3.5 h-3.5" />
             Password changed
           </div>
@@ -480,14 +480,14 @@ function ChangePasswordModal({ open, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!oldPass || !newPass || !confirm || success || submitting}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             oldPass && newPass && confirm && !success && !submitting
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

@@ -124,7 +124,7 @@ export default function PartnerAccountSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-[10px] border transition-colors ${
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-card border transition-colors ${
           selectedAcc
             ? "bg-white border-indigo-300 hover:border-indigo-400"
             : "bg-surface-soft border-border-soft hover:border-border"
@@ -160,10 +160,10 @@ export default function PartnerAccountSelect({
       </button>
 
       {open && (
-        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-[12px] shadow-xl shadow-soft max-h-72 overflow-auto">
+        <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-card shadow-xl shadow-soft max-h-72 overflow-auto">
           {/* Search */}
           <div className="p-2 border-b border-border-soft">
-            <div className="flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5">
+            <div className="flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-button px-2 py-1.5">
               <Search className="w-3 h-3 text-muted-soft shrink-0" />
               <input
                 type="text"
@@ -199,7 +199,7 @@ export default function PartnerAccountSelect({
                 <button
                   type="button"
                   onClick={() => setAddAccOpen(true)}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-violet-600 text-white text-[12px] font-semibold hover:bg-violet-700 transition-colors shadow-[0_4px_14px_-4px_rgba(139,92,246,0.5)]"
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-violet-600 text-white text-[12px] font-semibold hover:bg-violet-700 transition-colors shadow-[0_4px_14px_-4px_rgba(139,92,246,0.5)]"
                 >
                   <Plus className="w-3 h-3" />
                   Создать счёт {currency ? `· ${currency}` : ""}
@@ -259,7 +259,7 @@ export default function PartnerAccountSelect({
               <button
                 type="button"
                 onClick={() => setAddAccOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[8px] bg-accent-bg text-accent text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-button bg-accent-bg text-accent text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
               >
                 <Plus className="w-3 h-3" />
                 Добавить ещё счёт {currency ? `· ${currency}` : ""}

@@ -28,7 +28,7 @@ export default function PermissionsTab() {
       </div>
 
       {!isAdmin && (
-        <div className="m-5 p-3 bg-warning-soft border border-amber-200 rounded-[10px] text-[12px] text-amber-900">
+        <div className="m-5 p-3 bg-warning-soft border border-warning/20 rounded-card text-[12px] text-warning">
           Viewing as non-admin — changes are disabled.
         </div>
       )}
@@ -146,7 +146,7 @@ export default function PermissionsTab() {
 
 function LevelCell({ level, onChange, disabled }) {
   return (
-    <div className="inline-flex bg-surface-sunk p-0.5 rounded-[8px] gap-0.5">
+    <div className="inline-flex bg-surface-sunk p-0.5 rounded-button gap-0.5">
       {LEVELS.map((lv) => {
         const isActive = level === lv;
         return (

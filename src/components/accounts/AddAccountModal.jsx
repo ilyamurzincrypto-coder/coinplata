@@ -199,7 +199,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none"
+              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none"
             >
               {currencies.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -216,7 +216,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
               disabled={currencyChannels.length === 0}
-              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none disabled:opacity-60"
+              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none disabled:opacity-60"
             >
               {currencyChannels.length === 0 && <option>— no channels —</option>}
               {currencyChannels.map((c) => (
@@ -240,7 +240,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             другом офисе (кнопка Clone — копирует channel/name/address/bankRef,
             office и opening balance не трогает). */}
         {existingSameCurrency.length > 0 && (
-          <div className="border border-border-soft rounded-[10px] bg-surface-soft/60 overflow-hidden">
+          <div className="border border-border-soft rounded-card bg-surface-soft/60 overflow-hidden">
             <div className="px-3 py-1.5 border-b border-border-soft bg-surface-sunk/60 flex items-center justify-between">
               <span className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase">
                 {currency} · {existingSameCurrency.length} existing
@@ -302,7 +302,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             onChange={(e) => setName(e.target.value)}
             placeholder={isCryptoChannel ? "TRC20 Main" : "Cash · Safe A"}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
@@ -317,7 +317,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={selectedChannel?.network === "ERC20" ? "0x…" : "T…"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[12px] font-mono outline-none"
               />
               <p className="text-[10px] text-muted mt-1">
                 Used by polling to auto-detect incoming transactions.
@@ -348,7 +348,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               value={bankRef}
               onChange={(e) => setBankRef(e.target.value)}
               placeholder={isQrChannel ? "https://… or QR data string" : "IBAN / account number"}
-              className={`w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 outline-none ${
+              className={`w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 outline-none ${
                 isQrChannel ? "text-[12px] font-mono" : "text-[13px]"
               }`}
             />
@@ -372,12 +372,12 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
             }
             placeholder="0"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
           />
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -386,14 +386,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -408,7 +408,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
 
 function Toggle({ checked, onChange, label }) {
   return (
-    <label className="flex-1 flex items-center gap-2 cursor-pointer select-none bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2 hover:border-border transition-colors">
+    <label className="flex-1 flex items-center gap-2 cursor-pointer select-none bg-surface-soft border border-border-soft rounded-card px-3 py-2 hover:border-border transition-colors">
       <input
         type="checkbox"
         checked={checked}

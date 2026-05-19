@@ -93,7 +93,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
     >
       <div className="p-5 space-y-3">
         {/* Header summary */}
-        <div className="rounded-[12px] border border-border-soft bg-surface-soft/60 p-3 grid grid-cols-3 gap-2 text-center">
+        <div className="rounded-card border border-border-soft bg-surface-soft/60 p-3 grid grid-cols-3 gap-2 text-center">
           <Stat label="Открытие" value={`${curSymbol(account.currency)}${fmt(account.openingBalance || 0, account.currency)}`} tone="slate" />
           <Stat label="Движений" value={String(movements.length)} tone="slate" />
           <Stat
@@ -123,7 +123,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
         </div>
 
         {showRelated && (
-          <div className="rounded-[10px] border border-border-soft bg-surface-soft/50 p-3">
+          <div className="rounded-card border border-border-soft bg-surface-soft/50 p-3">
             {loadingRelated ? (
               <div className="text-[12px] text-muted-soft text-center py-4">Загрузка…</div>
             ) : relatedDeals.length === 0 ? (
@@ -136,7 +136,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
                   return (
                     <div
                       key={d.id}
-                      className="flex items-center justify-between gap-2 rounded-[8px] bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
+                      className="flex items-center justify-between gap-2 rounded-button bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <span className="text-muted-soft tabular-nums whitespace-nowrap text-[10px]">
@@ -176,7 +176,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
         )}
 
         {/* Table */}
-        <div className="rounded-[12px] border border-border-soft bg-white overflow-hidden">
+        <div className="rounded-card border border-border-soft bg-white overflow-hidden">
           {loading && (
             <div className="px-5 py-12 text-center text-[13px] text-muted-soft">Загрузка…</div>
           )}
@@ -270,7 +270,7 @@ export default function PartnerAccountHistoryModal({ open, account, onClose }) {
       <div className="px-5 py-3.5 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           Закрыть
         </button>

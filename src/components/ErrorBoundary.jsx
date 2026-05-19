@@ -88,7 +88,7 @@ export default class ErrorBoundary extends React.Component {
       const stack = this.state.errorInfo?.componentStack || err.stack || "";
       return (
         <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center px-6 py-12">
-          <div className="max-w-xl w-full bg-white rounded-[14px] border border-rose-200 shadow-sm overflow-hidden">
+          <div className="max-w-xl w-full bg-white rounded-card-lg border border-danger/20 shadow-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-rose-100 bg-danger-soft/50">
               <div className="text-[11px] font-bold tracking-wider uppercase text-danger">
                 {ebText("eb_badge", "Something went wrong")}
@@ -126,19 +126,19 @@ export default class ErrorBoundary extends React.Component {
             <div className="px-6 py-4 border-t border-border-soft flex items-center justify-end gap-2">
               <button
                 onClick={this.reset}
-                className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+                className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
               >
                 {ebText("eb_try_again", "Try again")}
               </button>
               <button
                 onClick={this.goHome}
-                className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border"
+                className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border"
               >
                 {ebText("eb_back_home", "Back home")}
               </button>
               <button
                 onClick={this.reload}
-                className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-white bg-ink hover:bg-ink"
+                className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-white bg-ink hover:bg-ink"
               >
                 {ebText("eb_reload", "Reload app")}
               </button>

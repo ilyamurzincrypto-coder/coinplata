@@ -31,9 +31,9 @@ const STATUS_FILTERS = [
 ];
 
 const STATUS_STYLE = {
-  pending: { icon: Clock, bg: "bg-warning-soft", text: "text-warning", border: "border-amber-200", label: "Pending" },
-  confirmed: { icon: CheckCircle2, bg: "bg-success-soft", text: "text-success", border: "border-emerald-200", label: "Подтверждено" },
-  rejected: { icon: XCircle, bg: "bg-danger-soft", text: "text-danger", border: "border-rose-200", label: "Отклонено" },
+  pending: { icon: Clock, bg: "bg-warning-soft", text: "text-warning", border: "border-warning/20", label: "Pending" },
+  confirmed: { icon: CheckCircle2, bg: "bg-success-soft", text: "text-success", border: "border-success/20", label: "Подтверждено" },
+  rejected: { icon: XCircle, bg: "bg-danger-soft", text: "text-danger", border: "border-danger/20", label: "Отклонено" },
   cancelled: { icon: Ban, bg: "bg-surface-sunk", text: "text-ink-soft", border: "border-border-soft", label: "Отменено" },
 };
 
@@ -171,7 +171,7 @@ export default function TransferHistoryModal({ open, onClose }) {
                 key={f.id}
                 type="button"
                 onClick={() => setStatusFilter(f.id)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11px] font-bold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[11px] font-bold transition-colors ${
                   active
                     ? "bg-ink text-white"
                     : "bg-surface-sunk text-ink-soft hover:bg-surface-sunk"
@@ -188,7 +188,7 @@ export default function TransferHistoryModal({ open, onClose }) {
               </button>
             );
           })}
-          <div className="flex-1 min-w-[180px] flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-[8px] px-2 py-1.5">
+          <div className="flex-1 min-w-[180px] flex items-center gap-1.5 bg-surface-soft border border-border-soft rounded-button px-2 py-1.5">
             <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" />
             <input
               type="text"
@@ -211,7 +211,7 @@ export default function TransferHistoryModal({ open, onClose }) {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[11px] font-semibold bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border disabled:opacity-50 transition-colors"
             title="Export CSV"
           >
             <Download className="w-3 h-3" />
@@ -220,7 +220,7 @@ export default function TransferHistoryModal({ open, onClose }) {
         </div>
 
         {/* Список */}
-        <div className="bg-surface-soft/40 border border-border-soft rounded-[10px] overflow-hidden max-h-[60vh] overflow-y-auto">
+        <div className="bg-surface-soft/40 border border-border-soft rounded-card overflow-hidden max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="py-10 text-center text-[12px] text-muted-soft italic">
               Ничего не найдено

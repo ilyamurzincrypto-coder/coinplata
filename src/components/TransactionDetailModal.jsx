@@ -186,7 +186,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         {/* Counterparty */}
         {(tx.counterparty || tx.counterpartyId) && (
-          <div className="bg-white border border-border-soft rounded-[12px] px-4 py-3">
+          <div className="bg-white border border-border-soft rounded-card px-4 py-3">
             <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
               Counterparty
             </div>
@@ -209,7 +209,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
           <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
             Incoming
           </div>
-          <div className="bg-gradient-to-br from-slate-50 to-white border border-border-soft rounded-[12px] px-4 py-3.5">
+          <div className="bg-gradient-to-br from-slate-50 to-white border border-border-soft rounded-card px-4 py-3.5">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div>
                 <div className="flex items-baseline gap-2">
@@ -283,7 +283,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
               return (
                 <div
                   key={idx}
-                  className="bg-white border border-border-soft rounded-[12px] px-4 py-3"
+                  className="bg-white border border-border-soft rounded-card px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
@@ -377,11 +377,11 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                 return (
                   <div
                     key={ob.id}
-                    className={`bg-white border rounded-[10px] px-3 py-2 ${
+                    className={`bg-white border rounded-card px-3 py-2 ${
                       ob.status === "open"
                         ? isTheyOwe
                           ? "border-sky-200 bg-info-soft/30"
-                          : "border-amber-200 bg-warning-soft/30"
+                          : "border-warning/20 bg-warning-soft/30"
                         : "border-border-soft opacity-60"
                     }`}
                   >
@@ -389,7 +389,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                       <div className="flex items-center gap-2 text-[12px]">
                         <span
                           className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                            isTheyOwe ? "bg-sky-100 text-info" : "bg-amber-100 text-amber-800"
+                            isTheyOwe ? "bg-sky-100 text-info" : "bg-amber-100 text-warning"
                           }`}
                         >
                           {isTheyOwe ? "They owe" : "We owe"}
@@ -438,7 +438,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         {/* Comment */}
         {tx.comment && (
-          <div className="bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2">
+          <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2">
             <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
               <FileText className="w-3 h-3" />
               Comment
@@ -477,7 +477,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         {/* Deleted footer */}
         {tx.deletedAt && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-danger-soft border border-rose-200 text-rose-800 text-[12px]">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft border border-danger/20 text-danger text-[12px]">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
               Deleted at {formatDateTime(tx.deletedAt)}
@@ -490,7 +490,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
+          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
         >
           <X className="w-3 h-3" />
           {t("btn_close")}

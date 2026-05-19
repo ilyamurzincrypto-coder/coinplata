@@ -77,7 +77,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <button
           onClick={onBack}
           type="button"
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
         >
           <ChevronLeft className="w-3 h-3" />
           {t("cov_back")}
@@ -133,7 +133,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
       {/* === Actions row === */}
       {(coverage.missing.length > 0 || coverage.oneWay.length > 0) && (
-        <div className="flex items-center gap-2 flex-wrap bg-surface-soft border border-border-soft rounded-[10px] px-4 py-3">
+        <div className="flex items-center gap-2 flex-wrap bg-surface-soft border border-border-soft rounded-card px-4 py-3">
           <div className="text-[12px] text-ink-soft flex-1">
             <TrendingUp className="inline w-3.5 h-3.5 mr-1 text-muted" />
             {coverage.missing.length > 0 && (
@@ -148,14 +148,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <button
             onClick={handleExportMissing}
             disabled={coverage.missing.length === 0 && coverage.oneWay.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
           >
             <Download className="w-3 h-3" />
             {t("cov_export_missing")}
           </button>
           <button
             onClick={onOpenImport}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-white bg-ink hover:bg-ink"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-white bg-ink hover:bg-ink"
           >
             {t("cov_import_xlsx")}
           </button>
@@ -174,7 +174,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
               — {t("cov_oneway_hint")}
             </span>
           </div>
-          <div className="border border-amber-200 rounded-[10px] bg-warning-soft/40 overflow-hidden">
+          <div className="border border-warning/20 rounded-card bg-warning-soft/40 overflow-hidden">
             {coverage.oneWay.map(({ from, to, missingDirection }) => {
               const [mf, mt] = missingDirection.split("→");
               const existingRate = getRate(from, to);
@@ -217,7 +217,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
               {t("cov_missing_heading")} · {coverage.missing.length}
             </h4>
           </div>
-          <div className="border border-rose-200 rounded-[10px] bg-danger-soft/30 overflow-hidden">
+          <div className="border border-danger/20 rounded-card bg-danger-soft/30 overflow-hidden">
             {coverage.missing.map(({ from, to }) => (
               <div
                 key={`${from}-${to}`}
@@ -262,14 +262,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
       {/* === Isolated currencies === */}
       {coverage.isolated.length > 0 && (
-        <section className="rounded-[10px] border border-danger/40 bg-danger-soft px-4 py-3">
+        <section className="rounded-card border border-danger/40 bg-danger-soft px-4 py-3">
           <div className="flex items-center gap-1.5 mb-1">
             <AlertTriangle className="w-3.5 h-3.5 text-danger" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-rose-800">
+            <h4 className="text-[12px] font-bold uppercase tracking-wider text-danger">
               {t("cov_isolated_heading")} · {coverage.isolated.length}
             </h4>
           </div>
-          <div className="text-[12px] text-rose-800">
+          <div className="text-[12px] text-danger">
             <strong>{coverage.isolated.join(", ")}</strong> {t("cov_isolated_msg")}
           </div>
         </section>
@@ -286,7 +286,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
             {showDismissed ? t("cov_hide") : t("cov_show")} {t("cov_dismissed_word")} ({coverage.dismissed.length})
           </button>
           {showDismissed && (
-            <div className="mt-2 border border-border-soft rounded-[10px] bg-surface-soft/60 overflow-hidden">
+            <div className="mt-2 border border-border-soft rounded-card bg-surface-soft/60 overflow-hidden">
               {coverage.dismissed.map(({ from, to }) => (
                 <div
                   key={`${from}-${to}`}
@@ -313,7 +313,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                     clearDismissed();
                     setDismissedTick((t) => t + 1);
                   }}
-                  className="text-[10px] font-semibold text-danger hover:text-rose-800"
+                  className="text-[10px] font-semibold text-danger hover:text-danger"
                 >
                   {t("cov_clear_dismissed")}
                 </button>
@@ -327,9 +327,9 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {coverage.missing.length === 0 &&
         coverage.oneWay.length === 0 &&
         coverage.isolated.length === 0 && (
-          <div className="rounded-[12px] border border-emerald-200 bg-success-soft p-5 text-center">
+          <div className="rounded-card border border-success/20 bg-success-soft p-5 text-center">
             <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-            <div className="text-[14px] font-bold text-emerald-900">{t("cov_full_title")}</div>
+            <div className="text-[14px] font-bold text-success">{t("cov_full_title")}</div>
             <div className="text-[12px] text-success mt-1">
               {t("cov_full_sub")}
             </div>
@@ -343,13 +343,13 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
 
 function SummaryStat({ label, value, sub, tone, big }) {
   const colors = {
-    emerald: "text-success bg-success-soft border-emerald-200",
-    amber: "text-warning bg-warning-soft border-amber-200",
-    rose: "text-danger bg-danger-soft border-rose-200",
+    emerald: "text-success bg-success-soft border-success/20",
+    amber: "text-warning bg-warning-soft border-warning/20",
+    rose: "text-danger bg-danger-soft border-danger/20",
     slate: "text-ink-soft bg-surface-soft border-border-soft",
   };
   return (
-    <div className={`rounded-[12px] border px-4 py-3 ${colors[tone] || colors.slate}`}>
+    <div className={`rounded-card border px-4 py-3 ${colors[tone] || colors.slate}`}>
       <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</div>
       <div className={`${big ? "text-[24px]" : "text-[18px]"} font-bold tabular-nums tracking-tight mt-1`}>
         {value}
@@ -381,7 +381,7 @@ function CoverageMatrix({ coverage, onQuickAdd }) {
       case "existing":
         return `${base} bg-emerald-400 text-white`;
       case "missing":
-        return `${base} bg-rose-300 text-rose-900 hover:bg-rose-400 cursor-pointer`;
+        return `${base} bg-rose-300 text-danger hover:bg-rose-400 cursor-pointer`;
       case "dismissed":
         return `${base} bg-surface-sunk text-muted`;
       case "self":
@@ -392,7 +392,7 @@ function CoverageMatrix({ coverage, onQuickAdd }) {
   };
 
   return (
-    <div className="border border-border-soft rounded-[10px] bg-white p-3 overflow-auto">
+    <div className="border border-border-soft rounded-card bg-white p-3 overflow-auto">
       <div className="inline-grid gap-0.5 min-w-full"
         style={{ gridTemplateColumns: `minmax(44px, auto) repeat(${currencies.length}, minmax(32px, 1fr))` }}>
         {/* header row */}

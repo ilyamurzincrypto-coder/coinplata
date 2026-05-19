@@ -58,7 +58,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder="Sheriff Exchange"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </Field>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -68,7 +68,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
               placeholder="@username"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
           <Field label="Телефон (опционально)">
@@ -77,7 +77,7 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+7..."
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
         </div>
@@ -87,10 +87,10 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия…"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </Field>
-        <p className="text-[11.5px] text-muted bg-surface-soft border border-border-soft rounded-[8px] px-3 py-2">
+        <p className="text-[11.5px] text-muted bg-surface-soft border border-border-soft rounded-button px-3 py-2">
           Чтобы добавить счета партнёру (валюты, сети, кошельки) — Настройки →
           Партнёры → раскрыть → «Счёт».
         </p>
@@ -99,14 +99,14 @@ export default function AddPartnerModal({ open, onClose, onSuccess }) {
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={busy || !name.trim()}
-          className="px-4 py-2 rounded-[10px] text-[13px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+          className="px-4 py-2 rounded-card text-[13px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
         >
           {busy ? "Добавляю…" : "Добавить партнёра"}
         </button>

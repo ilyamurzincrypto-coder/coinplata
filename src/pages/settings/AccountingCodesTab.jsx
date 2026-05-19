@@ -87,7 +87,7 @@ export default function AccountingCodesTab() {
       </div>
 
       <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
-        <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] gap-0.5">
+        <div className="inline-flex bg-surface-sunk p-0.5 rounded-card gap-0.5">
           {SCOPES.map((s) => {
             const Icon = s.icon;
             const isActive = scope === s.id;
@@ -95,7 +95,7 @@ export default function AccountingCodesTab() {
               <button
                 key={s.id}
                 onClick={() => setScope(s.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12px] font-semibold transition-colors ${
                   isActive ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
                 }`}
               >
@@ -112,7 +112,7 @@ export default function AccountingCodesTab() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по имени или коду"
-            className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-[8px] outline-none focus:bg-white focus:border-border"
+            className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border"
           />
         </div>
       </div>
@@ -180,7 +180,7 @@ function CodeRow({ row }) {
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder="—"
-          className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-2 py-1 text-[12.5px] tabular-nums font-semibold outline-none transition-colors"
+          className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1 text-[12.5px] tabular-nums font-semibold outline-none transition-colors"
         />
       </td>
       <td className="px-3 py-2 text-ink font-semibold">{row.name}</td>

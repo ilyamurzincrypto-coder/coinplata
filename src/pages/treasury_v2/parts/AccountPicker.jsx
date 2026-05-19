@@ -39,7 +39,7 @@ export default function AccountPicker({ accounts, currency, value, onChange }) {
         />
       </div>
       {showSystemHint && (
-        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-warning-soft text-amber-700 border border-amber-200 whitespace-nowrap">
+        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-warning-soft text-amber-700 border border-warning/20 whitespace-nowrap">
           {t("trv2_pm_system_account_hint")}
         </span>
       )}

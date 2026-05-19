@@ -250,7 +250,7 @@ function OfficeFormModal({ open, office, onClose }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Istanbul Main"
               autoFocus
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
           <div>
@@ -262,7 +262,7 @@ function OfficeFormModal({ open, office, onClose }) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Istanbul"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
         </div>
@@ -274,7 +274,7 @@ function OfficeFormModal({ open, office, onClose }) {
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>{tz}</option>
@@ -294,7 +294,7 @@ function OfficeFormModal({ open, office, onClose }) {
                   key={d.n}
                   type="button"
                   onClick={() => toggleDay(d.n)}
-                  className={`px-3 py-1.5 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-1.5 rounded-button text-[12px] font-semibold border transition-colors ${
                     active
                       ? "bg-ink text-white border-ink"
                       : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -319,7 +319,7 @@ function OfficeFormModal({ open, office, onClose }) {
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
             />
           </div>
           <div>
@@ -330,7 +330,7 @@ function OfficeFormModal({ open, office, onClose }) {
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
             />
           </div>
         </div>
@@ -402,13 +402,13 @@ function OfficeFormModal({ open, office, onClose }) {
                 type="date"
                 value={newHoliday}
                 onChange={(e) => setNewHoliday(e.target.value)}
-                className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[8px] px-2.5 py-1.5 text-[12px] tabular-nums outline-none"
+                className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-button px-2.5 py-1.5 text-[12px] tabular-nums outline-none"
               />
               <button
                 type="button"
                 onClick={addHoliday}
                 disabled={!newHoliday}
-                className="px-3 py-1.5 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + {t("office_holiday_add")}
               </button>
@@ -418,13 +418,13 @@ function OfficeFormModal({ open, office, onClose }) {
                 {holidays.map((d) => (
                   <span
                     key={d}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-soft border border-rose-200 text-[11px] font-medium text-danger tabular-nums"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-soft border border-danger/20 text-[11px] font-medium text-danger tabular-nums"
                   >
                     {d}
                     <button
                       type="button"
                       onClick={() => removeHoliday(d)}
-                      className="text-danger hover:text-rose-900"
+                      className="text-danger hover:text-danger"
                     >
                       ×
                     </button>
@@ -454,7 +454,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 type="datetime-local"
                 value={tempClosedUntil}
                 onChange={(e) => setTempClosedUntil(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[13px] tabular-nums outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] tabular-nums outline-none"
               />
             </div>
             <div>
@@ -466,7 +466,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 value={tempClosedReason}
                 onChange={(e) => setTempClosedReason(e.target.value)}
                 placeholder={t("office_temp_reason_ph")}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[13px] outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] outline-none"
               />
             </div>
             {tempClosedUntil && (
@@ -503,7 +503,7 @@ function OfficeFormModal({ open, office, onClose }) {
                     setMinFee(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="10"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] pl-7 pr-3 py-2.5 text-[14px] tabular-nums outline-none"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-7 pr-3 py-2.5 text-[14px] tabular-nums outline-none"
                 />
               </div>
             </div>
@@ -520,7 +520,7 @@ function OfficeFormModal({ open, office, onClose }) {
                     setFeePct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="0"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] pl-3 pr-7 py-2.5 text-[14px] tabular-nums outline-none"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-3 pr-7 py-2.5 text-[14px] tabular-nums outline-none"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft text-[13px]">%</span>
               </div>
@@ -534,14 +534,14 @@ function OfficeFormModal({ open, office, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -675,7 +675,7 @@ export default function OfficesTab() {
         {isAdmin && (
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("office_add")}
@@ -805,7 +805,7 @@ export default function OfficesTab() {
                         {isClosed ? (
                           <button
                             onClick={() => handleReopen(o)}
-                            className="p-1.5 rounded-md text-success hover:text-emerald-800 hover:bg-success-soft transition-colors"
+                            className="p-1.5 rounded-md text-success hover:text-success hover:bg-success-soft transition-colors"
                             title={t("office_reopen")}
                           >
                             <RotateCcw className="w-3.5 h-3.5" />

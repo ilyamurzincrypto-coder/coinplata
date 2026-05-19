@@ -393,7 +393,7 @@ export default function DealDetailPanel({
             {detail.legs.map((l, i) => {
               const st = sideStatus(l.amount, l.actualAmount);
               return (
-                <div key={l.id} className="rounded-[8px] border border-border-soft bg-white p-2.5">
+                <div key={l.id} className="rounded-button border border-border-soft bg-white p-2.5">
                   <div className="flex items-baseline justify-between mb-1 gap-2">
                     <div className="text-[10.5px] font-bold text-muted tracking-wider uppercase">
                       Leg {i + 1}
@@ -421,7 +421,7 @@ export default function DealDetailPanel({
 
       {/* ─── Бухгалтерские проводки (Дт / Кт / Сумма) ─────────────────── */}
       {entries.length > 0 && (
-        <div className="mt-2 rounded-[10px] border border-border-soft bg-white overflow-hidden">
+        <div className="mt-2 rounded-card border border-border-soft bg-white overflow-hidden">
           <div className="px-3 py-2 border-b border-border-soft bg-surface-soft/40 flex items-center justify-between">
             <div className="text-[10.5px] font-bold text-muted uppercase tracking-wider">
               Проводка
@@ -510,7 +510,7 @@ function TimelineStep({ index, tone, title, icon: Icon, last, children }) {
         <div className="text-[10.5px] font-bold text-muted-soft uppercase tracking-wider mb-1">
           Step {index} · {title}
         </div>
-        <div className="rounded-[10px] border border-border-soft bg-white p-3">
+        <div className="rounded-card border border-border-soft bg-white p-3">
           {children}
         </div>
       </div>

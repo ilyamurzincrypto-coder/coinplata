@@ -244,7 +244,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             <div className="inline-flex items-center gap-2">
               <button
                 onClick={() => setQuickOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-[10px] bg-warning-soft0/10 text-warning border border-amber-300 text-[12px] font-bold hover:bg-warning-soft0/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-warning-soft0/10 text-warning border border-warning/30 text-[12px] font-bold hover:bg-warning-soft0/20 transition-colors"
                 title="Быстрое обновление курсов (ежедневное)"
               >
                 <Zap className="w-3 h-3" />
@@ -253,7 +253,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               {onOpenRates && (
                 <button
                   onClick={onOpenRates}
-                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-[12px] bg-ink text-white text-[12px] font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
+                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-card bg-ink text-white text-[12px] font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
                 >
                   <div className="w-6 h-6 rounded-full bg-success-soft0 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
                     <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
@@ -297,7 +297,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   key={`${a}-${b}`}
                   type="button"
                   onClick={() => handleToggle(idx)}
-                  className={`text-left px-3.5 py-3 rounded-[12px] transition-all outline-none border ${
+                  className={`text-left px-3.5 py-3 rounded-card transition-all outline-none border ${
                     isActive
                       ? "bg-ink border-ink text-white shadow-[0_6px_16px_-6px_rgba(15,23,42,0.35)]"
                       : "bg-surface-soft hover:bg-white border-transparent hover:border-border-soft hover:shadow-[0_2px_8px_-4px_rgba(15,23,42,0.08)]"
@@ -435,7 +435,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   {crossPairs.map(({ to: t2, rate: r2 }) => (
                     <div
                       key={t2}
-                      className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-[8px] hover:bg-surface-soft transition-colors"
+                      className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-button hover:bg-surface-soft transition-colors"
                     >
                       <span className="text-[12px] font-semibold text-muted tracking-wide w-10 shrink-0">
                         {t2}
@@ -458,7 +458,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               <button
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[8px] text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
               >
                 <ChevronDown
                   className={`w-3 h-3 transition-transform ${showAll ? "rotate-180" : ""}`}
@@ -536,7 +536,7 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
         </div>
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
         >
           {t("save")}
         </button>
@@ -718,7 +718,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
                 </span>
                 <span className="text-[10px] text-muted-soft tabular-nums">{g.pairs.length}</span>
               </div>
-              <div className="border border-border-soft rounded-[10px] overflow-hidden divide-y divide-border-soft">
+              <div className="border border-border-soft rounded-card overflow-hidden divide-y divide-border-soft">
                 {g.pairs.map(({ from, to, key }) => (
                   <RateRow
                     key={key}
@@ -743,7 +743,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
 
 function HeaderButton({ icon: Icon, children, onClick, primary }) {
   const base =
-    "inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] text-[12px] font-semibold transition-colors border";
+    "inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold transition-colors border";
   const cls = primary
     ? "bg-ink text-white border-ink hover:bg-ink"
     : "text-ink-soft hover:text-ink border-border-soft hover:bg-surface-soft";
@@ -759,10 +759,10 @@ function HeaderButton({ icon: Icon, children, onClick, primary }) {
 function CoverageSummaryBanner({ summary, onOpen, t }) {
   const allGood = !summary.hasIssues;
   const toneCls = allGood
-    ? "bg-success-soft border-emerald-200"
+    ? "bg-success-soft border-success/20"
     : summary.isolated > 0
-    ? "bg-danger-soft border-rose-200"
-    : "bg-warning-soft border-amber-200";
+    ? "bg-danger-soft border-danger/20"
+    : "bg-warning-soft border-warning/20";
   const iconCls = allGood ? "text-success" : summary.isolated > 0 ? "text-danger" : "text-warning";
   const Icon = allGood ? CheckCircle2 : AlertTriangle;
 
@@ -770,7 +770,7 @@ function CoverageSummaryBanner({ summary, onOpen, t }) {
     <button
       type="button"
       onClick={onOpen}
-      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[10px] border ${toneCls} mb-3 text-left hover:shadow-sm transition-shadow`}
+      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-card border ${toneCls} mb-3 text-left hover:shadow-sm transition-shadow`}
     >
       <Icon className={`w-4 h-4 ${iconCls} shrink-0`} />
       <div className="flex-1 min-w-0">
@@ -877,7 +877,7 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
         onChange={handleRateChange}
         placeholder="base rate"
         title={midTitle}
-        className="flex-1 min-w-0 bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] px-3 py-1.5 text-[14px] font-semibold text-ink tabular-nums outline-none transition-colors"
+        className="flex-1 min-w-0 bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-3 py-1.5 text-[14px] font-semibold text-ink tabular-nums outline-none transition-colors"
       />
       {hasPairData && pair.rate != null && Math.abs(pair.rate - pair.baseRate) > 1e-8 && (
         <span
@@ -901,7 +901,7 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
           disabled={spreadDisabled}
           placeholder={spreadDisabled ? "—" : "spread"}
           title={midTitle}
-          className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[8px] pl-3 pr-5 py-1.5 text-[13px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
+          className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button pl-3 pr-5 py-1.5 text-[13px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
         />
         <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft pointer-events-none">
           %
@@ -931,7 +931,7 @@ function SubPanelHeader({ onBack, title }) {
     <div className="flex items-center gap-2 mb-4">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft border border-border-soft transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft border border-border-soft transition-colors"
       >
         <ChevronLeft className="w-3 h-3" />
         Back
@@ -1008,11 +1008,11 @@ function AddCurrencyPanel({ onBack }) {
               placeholder="USDC"
               autoFocus
               maxLength={6}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
             />
           </Field>
           <Field label={t("currency_type")}>
-            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full">
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-card w-full">
               <SegBtn active={type === "fiat"} onClick={() => setType("fiat")}>
                 {t("currency_type_fiat")}
               </SegBtn>
@@ -1031,7 +1031,7 @@ function AddCurrencyPanel({ onBack }) {
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
           <Field label={t("currency_name")}>
@@ -1040,7 +1040,7 @@ function AddCurrencyPanel({ onBack }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </Field>
         </div>
@@ -1057,7 +1057,7 @@ function AddCurrencyPanel({ onBack }) {
         )}
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -1065,14 +1065,14 @@ function AddCurrencyPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1160,13 +1160,13 @@ function AddChannelPanel({ onBack }) {
 
       <div className="space-y-4 max-w-md">
         <Field label="Currency">
-          <div className="inline-flex bg-surface-sunk p-1 rounded-[10px] gap-0.5 flex-wrap w-full">
+          <div className="inline-flex bg-surface-sunk p-1 rounded-card gap-0.5 flex-wrap w-full">
             {currencies.map((c) => (
               <button
                 key={c.code}
                 type="button"
                 onClick={() => setCurrencyCode(c.code)}
-                className={`px-3 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
+                className={`px-3 py-1.5 text-[12px] font-bold rounded-button transition-all ${
                   currencyCode === c.code
                     ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
                     : "text-muted hover:text-ink"
@@ -1206,7 +1206,7 @@ function AddChannelPanel({ onBack }) {
                     key={n}
                     type="button"
                     onClick={() => setNetwork(n)}
-                    className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                    className={`px-3 py-2 rounded-button text-[12px] font-semibold border transition-colors ${
                       network === n
                         ? "bg-indigo-600 text-white border-indigo-600"
                         : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1218,7 +1218,7 @@ function AddChannelPanel({ onBack }) {
                 <button
                   type="button"
                   onClick={() => setNetwork("__custom")}
-                  className={`px-3 py-2 rounded-[8px] text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-button text-[12px] font-semibold border transition-colors ${
                     network === "__custom"
                       ? "bg-ink text-white border-ink"
                       : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1233,7 +1233,7 @@ function AddChannelPanel({ onBack }) {
                   value={networkCustom}
                   onChange={(e) => setNetworkCustom(e.target.value.toUpperCase())}
                   placeholder="POLYGON"
-                  className="mt-2 w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
+                  className="mt-2 w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
                 />
               )}
             </Field>
@@ -1243,14 +1243,14 @@ function AddChannelPanel({ onBack }) {
                 value={gasFee}
                 onChange={(e) => setGasFee(e.target.value.replace(/[^\d.]/g, ""))}
                 placeholder="1.0"
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
               />
             </Field>
           </>
         )}
 
         {duplicate && (
-          <div className="text-[12px] font-medium text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
             This channel already exists on {currencyCode}.
           </div>
         )}
@@ -1258,14 +1258,14 @@ function AddChannelPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1421,7 +1421,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
               onChange={handleRateChange}
               placeholder="0.00"
               title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[16px] font-bold text-ink tabular-nums outline-none transition-colors"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[16px] font-bold text-ink tabular-nums outline-none transition-colors"
             />
           </Field>
           <Field label="Spread %">
@@ -1439,7 +1439,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
                 disabled={mid == null}
                 placeholder={mid == null ? "—" : "0.00"}
                 title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] pl-3 pr-6 py-2.5 text-[14px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card pl-3 pr-6 py-2.5 text-[14px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
               />
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-muted-soft pointer-events-none">
                 %
@@ -1476,14 +1476,14 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1516,7 +1516,7 @@ function SegBtn({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
+      className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
         active ? "bg-white text-ink shadow-sm" : "text-muted"
       }`}
     >
@@ -1527,7 +1527,7 @@ function SegBtn({ active, onClick, children }) {
 
 function Warn({ children }) {
   return (
-    <div className="text-[12px] font-medium text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-3 py-2">
+    <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
       {children}
     </div>
   );
@@ -1535,13 +1535,13 @@ function Warn({ children }) {
 
 function CurrencyPicker({ value, onChange, currencies }) {
   return (
-    <div className="inline-flex bg-surface-sunk p-1 rounded-[10px] gap-0.5 flex-wrap w-full mb-2">
+    <div className="inline-flex bg-surface-sunk p-1 rounded-card gap-0.5 flex-wrap w-full mb-2">
       {currencies.map((c) => (
         <button
           key={c.code}
           type="button"
           onClick={() => onChange(c.code)}
-          className={`px-2.5 py-1.5 text-[12px] font-bold rounded-[8px] transition-all ${
+          className={`px-2.5 py-1.5 text-[12px] font-bold rounded-button transition-all ${
             value === c.code
               ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
               : "text-muted hover:text-ink"

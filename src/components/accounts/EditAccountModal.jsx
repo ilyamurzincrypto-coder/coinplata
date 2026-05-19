@@ -83,7 +83,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
@@ -98,7 +98,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={networkId === "ERC20" || networkId === "BEP20" ? "0x…" : "T…"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[12px] font-mono outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[12px] font-mono outline-none"
               />
             </div>
             <div>
@@ -108,7 +108,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
               <select
                 value={networkId}
                 onChange={(e) => setNetworkId(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[13px] font-semibold outline-none"
+                className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] font-semibold outline-none"
               >
                 <option value="">—</option>
                 {NETWORKS.map((n) => (
@@ -119,7 +119,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
           </>
         )}
 
-        <label className="flex items-center gap-2 cursor-pointer select-none bg-surface-soft border border-border-soft rounded-[10px] px-3 py-2.5 hover:border-border transition-colors">
+        <label className="flex items-center gap-2 cursor-pointer select-none bg-surface-soft border border-border-soft rounded-card px-3 py-2.5 hover:border-border transition-colors">
           <input
             type="checkbox"
             checked={active}
@@ -132,7 +132,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
         </label>
 
         {!active && (
-          <div className="rounded-[10px] border border-amber-200 bg-warning-soft text-amber-800 p-3 flex items-center gap-2 text-[12px]">
+          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-[12px]">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {t("acc_edit_inactive_hint")}
           </div>
@@ -143,14 +143,14 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

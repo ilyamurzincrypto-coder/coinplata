@@ -616,7 +616,7 @@ export default function CashierPage({
                   <button
                     onClick={minimizeCreate}
                     title={`${t("btn_minimize")} (Esc)`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-[12px] font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
                   >
                     <Minus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_minimize")}</span>
@@ -624,7 +624,7 @@ export default function CashierPage({
                   <button
                     onClick={closeCreate}
                     title={t("btn_close_discard")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-[12px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_close")}</span>
@@ -634,7 +634,7 @@ export default function CashierPage({
 
               <div className="p-5">
                 {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
-                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-accent-bg border border-indigo-200 rounded-[10px] px-3 py-2">
+                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
                     <span aria-hidden>🎓</span>
                     <span>
                       Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.

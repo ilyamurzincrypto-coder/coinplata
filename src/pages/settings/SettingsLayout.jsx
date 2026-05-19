@@ -58,7 +58,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5 items-start">
         {/* Sidebar */}
-        <nav className="bg-white border border-border-soft rounded-[12px] p-1.5 md:sticky md:top-[76px]">
+        <nav className="bg-white border border-border-soft rounded-card p-1.5 md:sticky md:top-[76px]">
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = active === tab.id;
@@ -66,7 +66,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
               <button
                 key={tab.id}
                 onClick={() => setActive(tab.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-[8px] text-[13px] text-left transition-colors ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-button text-[13px] text-left transition-colors ${
                   isActive
                     ? "bg-surface-sunk text-ink font-semibold"
                     : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -80,7 +80,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
         </nav>
 
         {/* Content */}
-        <div className="bg-white border border-border-soft rounded-[14px] overflow-hidden">
+        <div className="bg-white border border-border-soft rounded-card-lg overflow-hidden">
           <ActiveComponent />
         </div>
       </div>

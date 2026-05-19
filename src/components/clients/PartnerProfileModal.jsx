@@ -133,7 +133,7 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
 
         {/* Obligations card — рендерим только если есть открытые */}
         {partnerObligations.length > 0 && (
-          <div className="border border-amber-200 bg-warning-soft/50 rounded-[10px] p-3">
+          <div className="border border-warning/20 bg-warning-soft/50 rounded-card p-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft flex items-center gap-1.5">
                 <Scale className="w-3 h-3" />
@@ -208,7 +208,7 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
             </span>
           </div>
           {allAccounts.length === 0 ? (
-            <div className="text-[12px] text-muted-soft italic py-3 text-center bg-surface-soft border border-border-soft rounded-[10px]">
+            <div className="text-[12px] text-muted-soft italic py-3 text-center bg-surface-soft border border-border-soft rounded-card">
               {t("pp_no_accounts")}
             </div>
           ) : (
@@ -232,7 +232,7 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
         >
           {t("close")}
         </button>
@@ -259,7 +259,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
   const Icon = TYPE_ICONS[account.type] || Wallet;
   return (
     <div
-      className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-[10px] border ${
+      className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-card border ${
         account.active
           ? "bg-surface-soft/60 border-border-soft"
           : "bg-surface-sunk/60 border-border-soft opacity-60"
@@ -299,7 +299,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
         <div className="flex items-center gap-1 flex-wrap">
           <button
             onClick={() => onSettlement("inflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-emerald-800 border border-emerald-200 hover:bg-emerald-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-[11px] font-bold"
             title={t("pp_inflow_tip")}
           >
             <ArrowDownLeft className="w-3 h-3" />
@@ -307,7 +307,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
           </button>
           <button
             onClick={() => onSettlement("outflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-rose-800 border border-rose-200 hover:bg-rose-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-[11px] font-bold"
             title={t("pp_outflow_tip")}
           >
             <ArrowUpRight className="w-3 h-3" />
@@ -325,7 +325,7 @@ function StatCard({ label, value, tone, small }) {
     : tone === "rose" ? "text-danger bg-danger-soft border-rose-100"
     : "text-ink bg-surface-soft/60 border-border-soft";
   return (
-    <div className={`rounded-[8px] border p-2 ${toneCls}`}>
+    <div className={`rounded-button border p-2 ${toneCls}`}>
       <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{label}</div>
       <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
         {value}

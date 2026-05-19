@@ -193,7 +193,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-[580px] bg-white rounded-[14px] border border-border-soft shadow-[0_20px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
+        className="w-full max-w-[580px] bg-white rounded-card-lg border border-border-soft shadow-[0_20px_60px_-12px_rgba(15,23,42,0.35)] overflow-hidden"
       >
         <div className="flex items-center gap-2 px-4 py-3 border-b border-border-soft">
           <Search className="w-4 h-4 text-muted-soft shrink-0" />
@@ -243,7 +243,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
                         }`}
                       >
                         <span
-                          className={`inline-flex items-center justify-center w-7 h-7 rounded-[8px] shrink-0 ${
+                          className={`inline-flex items-center justify-center w-7 h-7 rounded-button shrink-0 ${
                             active ? "bg-white/10" : "bg-surface-sunk"
                           }`}
                         >

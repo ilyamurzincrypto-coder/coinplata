@@ -117,7 +117,7 @@ export default function SetPasswordPage() {
 
       <div className="relative w-full max-w-[420px] animate-[cardIn_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
         <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.55)]">
+          <div className="w-9 h-9 rounded-card bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.55)]">
             <ArrowLeftRight className="w-4 h-4 text-ink" strokeWidth={2.5} />
           </div>
           <span className="text-[18px] font-bold tracking-tight text-white">
@@ -143,7 +143,7 @@ export default function SetPasswordPage() {
           </header>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="bg-slate-950/60 border border-slate-800 rounded-[12px] px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
+            <div className="bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
               <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> New password
               </label>
@@ -169,7 +169,7 @@ export default function SetPasswordPage() {
               </div>
             </div>
 
-            <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-[12px] px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
+            <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
               <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> Confirm password
               </label>
@@ -185,14 +185,14 @@ export default function SetPasswordPage() {
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px]">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-[10px] bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
                 <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Password saved. Loading your workspace…</span>
               </div>
@@ -201,7 +201,7 @@ export default function SetPasswordPage() {
             <button
               type="submit"
               disabled={saving || success || !password || !confirm}
-              className={`mt-5 w-full h-11 rounded-[12px] inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
+              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
                 saving || success || !password || !confirm
                   ? "bg-success-soft0/60 text-ink/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"

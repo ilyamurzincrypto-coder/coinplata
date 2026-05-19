@@ -227,7 +227,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
               Сколько отправляем
             </label>
             <div
-              className={`relative flex items-baseline gap-2 bg-danger-soft/40 rounded-[12px] border-2 transition-all px-4 py-3 ${
+              className={`relative flex items-baseline gap-2 bg-danger-soft/40 rounded-card border-2 transition-all px-4 py-3 ${
                 fromAmount ? (insufficient ? "border-amber-400" : "border-danger/40") : "border-border-soft"
               }`}
             >
@@ -282,7 +282,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
         </div>
 
         {sameAccount && (
-          <div className="text-[12px] font-medium text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-3 py-2 flex items-center gap-1.5">
+          <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5" />
             {t("transfer_same_account")}
           </div>
@@ -299,7 +299,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 </span>
               )}
             </label>
-            <div className="relative flex items-baseline gap-2 bg-success-soft/60 rounded-[12px] border-2 border-emerald-200 px-4 py-3">
+            <div className="relative flex items-baseline gap-2 bg-success-soft/60 rounded-card border-2 border-success/20 px-4 py-3">
               <span className="text-success text-[18px] font-semibold">{curSymbol(to.currency)}</span>
               <input
                 type="text"
@@ -323,13 +323,13 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             P2P logic (миграция 0052): transfer создаётся как pending,
             подтверждается выбранным менеджером. */}
         {isInterOffice && (
-          <div className="bg-accent-bg/60 border border-indigo-200 rounded-[12px] p-3">
+          <div className="bg-accent-bg/60 border border-indigo-200 rounded-card p-3">
             <label className="flex items-center gap-1.5 text-[11px] font-bold text-accent mb-1.5 tracking-wide uppercase">
               <Users className="w-3.5 h-3.5" />
               Ответственный за принятие · {officeName(to.officeId)}
             </label>
             {recipientCandidates.length === 0 ? (
-              <div className="text-[12px] text-amber-800 bg-warning-soft border border-amber-200 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+              <div className="text-[12px] text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1.5 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 Нет доступных менеджеров в офисе получателе. Назначь
                 кого-то на этот офис в настройках.
@@ -339,7 +339,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 <select
                   value={toManagerId}
                   onChange={(e) => setToManagerId(e.target.value)}
-                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-ink outline-none cursor-pointer"
+                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-button px-2.5 py-2 text-[13px] font-semibold text-ink outline-none cursor-pointer"
                 >
                   {recipientCandidates.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -368,7 +368,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none transition-colors"
           />
         </div>
       </div>
@@ -376,14 +376,14 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit && !busy
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

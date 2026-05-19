@@ -101,7 +101,7 @@ export default function DealDetail({ node, accById, counterpartyName }) {
 
   return (
     <div className="px-6 py-3">
-      <div className="rounded-[10px] bg-white border border-border-soft p-3 space-y-2.5">
+      <div className="rounded-card bg-white border border-border-soft p-3 space-y-2.5">
         <Section label={t("xf_in")} lines={inLines} />
         <Section label={t("xf_out")} lines={outLines} />
         {marginLines.length > 0 && (

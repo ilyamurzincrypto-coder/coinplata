@@ -323,7 +323,7 @@ export default function AccountsImportModal({ open, onClose }) {
               if (f) handleFile(f);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`cursor-pointer rounded-[14px] border-2 border-dashed p-8 text-center transition-colors ${
+            className={`cursor-pointer rounded-card-lg border-2 border-dashed p-8 text-center transition-colors ${
               dragOver ? "border-ink bg-surface-soft" : "border-border hover:border-accent/40 bg-surface-soft/60"
             }`}
           >
@@ -344,7 +344,7 @@ export default function AccountsImportModal({ open, onClose }) {
           </div>
 
           {parseError && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-[10px] bg-danger-soft border border-rose-200 text-[12px] text-danger">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-danger-soft border border-danger/20 text-[12px] text-danger">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <div>{parseError}</div>
             </div>
@@ -352,7 +352,7 @@ export default function AccountsImportModal({ open, onClose }) {
 
           <button
             onClick={handleTemplate}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-[10px] bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-card bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
           >
             <Download className="w-3.5 h-3.5" />
             {t("acc_import_template") || "Download template.csv"}
@@ -362,7 +362,7 @@ export default function AccountsImportModal({ open, onClose }) {
 
       {step === 2 && parsed && (
         <div className="p-5 space-y-4">
-          <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-[10px] px-4 py-3">
+          <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-card px-4 py-3">
             <Info className="w-4 h-4 text-muted" />
             <span className="text-[12px] font-semibold text-ink">{file?.name}</span>
             <div className="h-4 w-px bg-surface-sunk" />
@@ -372,7 +372,7 @@ export default function AccountsImportModal({ open, onClose }) {
           </div>
 
           {parsed.valid.length > 0 && (
-            <div className="border border-border-soft rounded-[10px] overflow-hidden">
+            <div className="border border-border-soft rounded-card overflow-hidden">
               <div className="max-h-[320px] overflow-auto">
                 <table className="w-full text-[12px]">
                   <thead className="sticky top-0 bg-surface-soft border-b border-border-soft">
@@ -407,7 +407,7 @@ export default function AccountsImportModal({ open, onClose }) {
           )}
 
           {parsed.errors.length > 0 && (
-            <details className="border border-rose-200 rounded-[10px] bg-danger-soft/40">
+            <details className="border border-danger/20 rounded-card bg-danger-soft/40">
               <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-danger hover:bg-danger-soft">
                 <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
                 {parsed.errors.length} errors — will be skipped
@@ -424,7 +424,7 @@ export default function AccountsImportModal({ open, onClose }) {
           )}
 
           <div className="flex items-center justify-between pt-2 border-t border-border-soft">
-            <button type="button" onClick={reset} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
+            <button type="button" onClick={reset} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_upload_another")}
             </button>
@@ -432,7 +432,7 @@ export default function AccountsImportModal({ open, onClose }) {
               type="button"
               onClick={() => setStep(3)}
               disabled={parsed.summary.newCount === 0}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t("rimport_continue")}
               <ChevronRight className="w-3 h-3" />
@@ -443,12 +443,12 @@ export default function AccountsImportModal({ open, onClose }) {
 
       {step === 3 && parsed && (
         <div className="p-5 space-y-4">
-          <div className="bg-warning-soft border border-amber-200 rounded-[10px] px-4 py-3 space-y-1">
-            <div className="flex items-center gap-2 text-[13px] font-bold text-amber-900">
+          <div className="bg-warning-soft border border-warning/20 rounded-card px-4 py-3 space-y-1">
+            <div className="flex items-center gap-2 text-[13px] font-bold text-warning">
               <AlertTriangle className="w-4 h-4" />
               {t("acc_import_about") || "You're about to create accounts"}
             </div>
-            <div className="text-[12px] text-amber-800">
+            <div className="text-[12px] text-warning">
               <strong>{parsed.summary.newCount}</strong> new accounts,{" "}
               <strong>{parsed.summary.duplicates}</strong> skipped as duplicate,{" "}
               <strong>{parsed.summary.errors}</strong> errors.
@@ -468,19 +468,19 @@ export default function AccountsImportModal({ open, onClose }) {
           </label>
 
           <div className="flex items-center justify-between pt-2 border-t border-border-soft">
-            <button type="button" onClick={() => setStep(2)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
+            <button type="button" onClick={() => setStep(2)} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_back")}
             </button>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-[8px] text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
+              <button type="button" onClick={handleClose} className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk">
                 {t("cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleApply}
                 disabled={!acknowledged || submitting}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[8px] text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                 {submitting ? t("rimport_applying") : t("acc_import_apply") || "Create accounts"}

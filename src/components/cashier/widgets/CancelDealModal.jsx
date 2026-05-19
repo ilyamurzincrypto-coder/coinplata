@@ -117,9 +117,9 @@ export default function CancelDealModal({
             </div>
           )}
 
-          <div className="flex items-start gap-2 px-2.5 py-2 bg-warning-soft border border-amber-200 rounded-[var(--radius-cell)]">
+          <div className="flex items-start gap-2 px-2.5 py-2 bg-warning-soft border border-warning/20 rounded-[var(--radius-cell)]">
             <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
-            <p className="text-[12px] text-amber-900">{t("cancel_modal_warning")}</p>
+            <p className="text-[12px] text-warning">{t("cancel_modal_warning")}</p>
           </div>
 
           <div>
@@ -141,7 +141,7 @@ export default function CancelDealModal({
           </div>
 
           {errorMsg && (
-            <div className="text-[12px] text-danger bg-danger-soft border border-rose-200 rounded-[var(--radius-cell)] px-2.5 py-1.5">
+            <div className="text-[12px] text-danger bg-danger-soft border border-danger/20 rounded-[var(--radius-cell)] px-2.5 py-1.5">
               {errorMsg}
             </div>
           )}
@@ -160,7 +160,7 @@ export default function CancelDealModal({
             type="button"
             onClick={handleSubmit}
             disabled={!valid || busy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-rose-600 hover:bg-rose-700 text-white text-[12.5px] font-bold disabled:bg-surface-sunk disabled:text-muted-soft disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-[12.5px] font-bold disabled:bg-surface-sunk disabled:text-muted-soft disabled:cursor-not-allowed"
           >
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {t("cancel_modal_submit_button")}

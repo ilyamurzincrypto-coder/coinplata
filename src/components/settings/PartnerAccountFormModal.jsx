@@ -99,7 +99,7 @@ export default function PartnerAccountFormModal({
             onChange={(e) => setName(e.target.value)}
             placeholder="USDT TRC20 / RUB Москва / EUR Sberbank…"
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
@@ -112,7 +112,7 @@ export default function PartnerAccountFormModal({
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
             >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
@@ -134,7 +134,7 @@ export default function PartnerAccountFormModal({
                     key={t.id}
                     type="button"
                     onClick={() => setType(t.id)}
-                    className={`flex flex-col items-center justify-center py-2 rounded-[8px] border-2 transition-colors ${
+                    className={`flex flex-col items-center justify-center py-2 rounded-button border-2 transition-colors ${
                       active
                         ? "bg-accent-bg border-indigo-400 text-indigo-900"
                         : "bg-white border-border-soft text-ink-soft hover:border-border"
@@ -158,7 +158,7 @@ export default function PartnerAccountFormModal({
             <select
               value={networkId}
               onChange={(e) => setNetworkId(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none cursor-pointer"
             >
               <option value="">— выберите сеть —</option>
               {CRYPTO_NETWORKS.map((n) => (
@@ -179,7 +179,7 @@ export default function PartnerAccountFormModal({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="0x... / T..."
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[12.5px] font-mono outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[12.5px] font-mono outline-none"
             />
           </div>
         )}
@@ -200,7 +200,7 @@ export default function PartnerAccountFormModal({
               )
             }
             placeholder="0 (можно отрицательный)"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] font-bold tabular-nums outline-none"
           />
           <p className="text-[10px] text-muted mt-1">
             Текущий остаток на счёте партнёра. Может быть отрицательным —
@@ -219,7 +219,7 @@ export default function PartnerAccountFormModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
 
@@ -236,7 +236,7 @@ export default function PartnerAccountFormModal({
             value={ledgerAccountCode}
             onChange={(e) => setLedgerAccountCode(e.target.value)}
             placeholder="2210"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-[10px] px-3 py-2.5 text-[14px] font-mono outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] font-mono outline-none"
           />
         </div>
       </div>
@@ -244,14 +244,14 @@ export default function PartnerAccountFormModal({
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft"
+          className="px-4 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft"
         >
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-bold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-bold transition-colors ${
             canSubmit
               ? "bg-indigo-600 text-white hover:bg-indigo-700"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

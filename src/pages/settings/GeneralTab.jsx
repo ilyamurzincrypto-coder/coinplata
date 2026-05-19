@@ -123,12 +123,12 @@ export default function GeneralTab() {
                 нужно — поменять курс можно через DailyRatesModal /
                 Edit rates. */}
             {baseCur !== "USD" && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] bg-success-soft/50 border border-emerald-200 text-[12px]">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-card bg-success-soft/50 border border-success/20 text-[12px]">
                 <TrendingUp className="w-3.5 h-3.5 text-success shrink-0" />
                 <span className="text-ink-soft">
                   Курс на сегодня:{" "}
                 </span>
-                <span className="font-bold tabular-nums text-emerald-800">
+                <span className="font-bold tabular-nums text-success">
                   1 {baseCur} ={" "}
                   {Number.isFinite(baseToUsd) ? baseToUsd.toFixed(4) : "—"} USD
                 </span>
@@ -179,7 +179,7 @@ export default function GeneralTab() {
                     setFxUsdEur(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="0.92"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
               <div>
@@ -195,7 +195,7 @@ export default function GeneralTab() {
                     setFxEurUsd(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="1.087"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function GeneralTab() {
               <div className="mt-2 flex justify-end">
                 <button
                   onClick={saveFx}
-                  className="px-3 py-1.5 rounded-[8px] bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+                  className="px-3 py-1.5 rounded-button bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
                 >
                   Сохранить fx-курсы
                 </button>
@@ -225,7 +225,7 @@ export default function GeneralTab() {
               onChange={(e) =>
                 setRefPct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
               }
-              className="w-40 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+              className="w-40 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
             />
           </div>
 
@@ -233,7 +233,7 @@ export default function GeneralTab() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={save}
-                className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+                className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
               >
                 {t("save")}
               </button>

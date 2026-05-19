@@ -159,7 +159,7 @@ export default function GroupedAccountSelect({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 bg-surface-soft border rounded-[10px] px-3 py-2.5 text-left transition-colors ${
+        className={`w-full flex items-center gap-2 bg-surface-soft border rounded-card px-3 py-2.5 text-left transition-colors ${
           open
             ? "border-accent/40 ring-2 ring-accent/20 bg-white"
             : "border-border-soft hover:border-border"
@@ -176,7 +176,7 @@ export default function GroupedAccountSelect({
       </button>
 
       {open && (
-        <div className="absolute z-40 left-0 right-0 mt-1 bg-white border border-border-soft rounded-[10px] shadow-xl shadow-soft overflow-hidden">
+        <div className="absolute z-40 left-0 right-0 mt-1 bg-white border border-border-soft rounded-card shadow-xl shadow-soft overflow-hidden">
           <div className="px-3 py-2 border-b border-border-soft flex items-center gap-2 bg-surface-soft">
             <Search className="w-3.5 h-3.5 text-muted-soft" />
             <input

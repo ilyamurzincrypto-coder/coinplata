@@ -51,7 +51,7 @@ export default function MasterDataTab() {
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[8px] text-[12px] font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[12px] font-semibold transition-colors ${
                 active
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -247,7 +247,7 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
   }, [items]);
 
   return (
-    <section className="border border-border-soft rounded-[12px] overflow-hidden">
+    <section className="border border-border-soft rounded-card overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border-soft flex items-center justify-between bg-surface-soft/40">
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ring-1 ${toneClass}`}>
@@ -257,7 +257,7 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
         </div>
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           {t("cat_add")}
@@ -394,14 +394,14 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder={t("cat_name_placeholder")}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
             <div
-              className={`inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full ${
+              className={`inline-flex bg-surface-sunk p-0.5 rounded-card w-full ${
                 typeLocked ? "opacity-60 cursor-not-allowed" : ""
               }`}
               title={typeLocked ? typeLockedReason : undefined}
@@ -420,7 +420,7 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
                       if (parent && parent.type !== tp) setParentId("");
                     }
                   }}
-                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
+                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
                     type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   } ${typeLocked && type !== tp ? "cursor-not-allowed" : ""}`}
                 >
@@ -440,7 +440,7 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
             <select
               value={group}
               onChange={(e) => setGroup(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
             >
               {CATEGORY_GROUPS.map((g) => (
                 <option key={g.id} value={g.id}>{g.label}</option>
@@ -457,7 +457,7 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
           <select
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
           >
             <option value="">— {t("cat_parent_none")} —</option>
             {possibleParents.map((p) => (
@@ -470,11 +470,11 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">{t("cancel")}</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">{t("cancel")}</button>
         <button
           onClick={() => onSave({ name: name.trim(), type, group, parentId: parentId || null })}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >{t("save")}</button>
@@ -573,19 +573,19 @@ function CurrenciesSection() {
         </div>
         <button
           onClick={() => setEditing({ kind: "new" })}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           Add currency
         </button>
       </div>
 
-      <section className="border border-border-soft rounded-[12px] overflow-hidden">
+      <section className="border border-border-soft rounded-card overflow-hidden">
         <div className="divide-y divide-border-soft">
           {currencies.map((c) => (
             <div key={c.code} className="px-4 py-2 flex items-center justify-between gap-2 group">
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-[10px] flex items-center justify-center text-[13px] font-bold ${
+                <div className={`w-9 h-9 rounded-card flex items-center justify-center text-[13px] font-bold ${
                   c.type === "crypto" ? "bg-accent-bg text-accent ring-1 ring-indigo-100" : "bg-surface-sunk text-ink-soft"
                 }`}>
                   {c.symbol || c.code[0]}
@@ -663,18 +663,18 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
               placeholder="USDC"
               maxLength={6}
               disabled={isEdit}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] font-bold tracking-wider uppercase outline-none disabled:opacity-60"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-bold tracking-wider uppercase outline-none disabled:opacity-60"
             />
           </div>
           <div>
             <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Type</label>
-            <div className="inline-flex bg-surface-sunk p-0.5 rounded-[10px] w-full">
+            <div className="inline-flex bg-surface-sunk p-0.5 rounded-card w-full">
               {["fiat", "crypto"].map((tp) => (
                 <button
                   key={tp}
                   type="button"
                   onClick={() => setType(tp)}
-                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-[8px] transition-all ${
+                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
                     type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   }`}
                 >
@@ -693,7 +693,7 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
           <div className="col-span-2">
@@ -703,7 +703,7 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
             />
           </div>
         </div>
@@ -715,16 +715,16 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
             max={8}
             value={decimals}
             onChange={(e) => setDecimals(parseInt(e.target.value, 10) || 0)}
-            className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-[10px] px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">Cancel</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">Cancel</button>
         <button
           onClick={() => onSave({ code: code.trim().toUpperCase(), type, symbol: symbol.trim(), name: name.trim() || code.trim().toUpperCase(), decimals })}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >Save</button>
@@ -757,7 +757,7 @@ function ChannelsSection() {
           <span className="font-semibold text-ink-soft">Dashboard → Edit rates</span> to keep a single source of truth.
         </div>
       </div>
-      <section className="border border-border-soft rounded-[12px] overflow-hidden divide-y divide-border-soft">
+      <section className="border border-border-soft rounded-card overflow-hidden divide-y divide-border-soft">
         {currencies.map((c) => {
           const chs = byCurrency.get(c.code) || [];
           if (chs.length === 0) return null;

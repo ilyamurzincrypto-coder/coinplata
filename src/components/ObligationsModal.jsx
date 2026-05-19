@@ -237,7 +237,7 @@ export default function ObligationsModal({ open, onClose }) {
     <>
       <Modal open={open} onClose={onClose} title="Open obligations" subtitle={`${openObligations.length} open`} width="2xl">
         {USE_NEW_LEDGER && (
-          <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-[10px] bg-warning-soft border border-amber-200 text-[12.5px] text-amber-900">
+          <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-[12.5px] text-warning">
             <span className="font-semibold">Settle / Receive / Cancel отключены в режиме v2 ledger.</span>{" "}
             Эти операции ещё не имеют v2-обёрток. Чтобы продолжить, попроси админа выключить{" "}
             <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
@@ -255,10 +255,10 @@ export default function ObligationsModal({ open, onClose }) {
                 {[...totalsByCurrency.entries()].map(([cur, amt]) => (
                   <div
                     key={cur}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-warning-soft border border-amber-200 text-[12px]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-warning-soft border border-warning/20 text-[12px]"
                   >
                     <Lock className="w-3 h-3 text-warning" />
-                    <span className="font-bold text-amber-900 tabular-nums">
+                    <span className="font-bold text-warning tabular-nums">
                       {curSymbol(cur)}{fmt(amt, cur)}
                     </span>
                     <span className="font-semibold text-warning">{cur}</span>
@@ -267,7 +267,7 @@ export default function ObligationsModal({ open, onClose }) {
               </div>
 
               {/* Список */}
-              <div className="border border-border-soft rounded-[10px] overflow-hidden divide-y divide-border-soft">
+              <div className="border border-border-soft rounded-card overflow-hidden divide-y divide-border-soft">
                 {openObligations.map((o) => (
                   <ObligationRow
                     key={o.id}
@@ -297,7 +297,7 @@ export default function ObligationsModal({ open, onClose }) {
         <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-[10px] bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
+            className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
           >
             <X className="w-3 h-3" />
             Close
@@ -351,7 +351,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
               isTheyOwe
                 ? "bg-sky-100 text-info"
-                : "bg-amber-100 text-amber-800"
+                : "bg-amber-100 text-warning"
             }`}
           >
             {isTheyOwe ? "They owe" : "We owe"}
@@ -414,7 +414,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
         <button
           onClick={onSettle}
           disabled={!canSettle}
-          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold transition-colors ${
+          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold transition-colors ${
             canSettle
               ? isTheyOwe
                 ? "bg-sky-600 text-white hover:bg-sky-700"
@@ -428,7 +428,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
         </button>
         <button
           onClick={onCancel}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-[8px] text-[11px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
           title="Cancel obligation (deal stays pending)"
         >
           <RotateCcw className="w-3 h-3" />
@@ -505,7 +505,7 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
   return (
     <Modal open={!!obligation} onClose={onClose} title={title} width="md">
       <div className="p-5 space-y-3">
-        <div className={`border rounded-[10px] px-3 py-2 text-[12px] ${
+        <div className={`border rounded-card px-3 py-2 text-[12px] ${
           isReceive
             ? "bg-info-soft border-sky-200"
             : "bg-surface-soft border-border-soft"
@@ -545,12 +545,12 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
               onChange={(e) =>
                 setAmountStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
               }
-              className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[10px] px-3 py-2 text-[14px] font-semibold tabular-nums outline-none"
+              className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[14px] font-semibold tabular-nums outline-none"
             />
             <button
               type="button"
               onClick={() => setAmountStr(String(remaining))}
-              className="px-2.5 py-2 rounded-[10px] text-[11px] font-semibold bg-surface-sunk text-ink-soft hover:bg-surface-sunk transition-colors"
+              className="px-2.5 py-2 rounded-card text-[11px] font-semibold bg-surface-sunk text-ink-soft hover:bg-surface-sunk transition-colors"
               title="Set to full remaining"
             >
               Full
@@ -573,7 +573,7 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
             Pay from account
           </label>
           {candidates.length === 0 ? (
-            <div className="text-[12px] text-warning bg-warning-soft border border-amber-200 rounded-md px-3 py-2">
+            <div className="text-[12px] text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
               No accounts with {obligation.currency} in this office. Top up or transfer first.
             </div>
           ) : (
@@ -587,7 +587,7 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
                     type="button"
                     onClick={() => setAccountId(c.id)}
                     disabled={!ok}
-                    className={`w-full text-left px-3 py-2 rounded-[10px] border flex items-center justify-between transition-colors ${
+                    className={`w-full text-left px-3 py-2 rounded-card border flex items-center justify-between transition-colors ${
                       active
                         ? "border-ink bg-ink text-white"
                         : ok
@@ -607,7 +607,7 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-rose-200 rounded-md px-3 py-2">
+          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -621,14 +621,14 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-[10px] bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-[10px] text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
             canSubmit && !busy
               ? isReceive
                 ? "bg-sky-600 text-white hover:bg-sky-700"

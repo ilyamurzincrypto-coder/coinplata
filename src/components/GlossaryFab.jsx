@@ -32,7 +32,7 @@ function Highlight({ text, query }) {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="bg-amber-100 text-amber-900 rounded-[3px] px-0.5">{text.slice(i, i + q.length)}</mark>
+      <mark className="bg-amber-100 text-warning rounded-[3px] px-0.5">{text.slice(i, i + q.length)}</mark>
       {text.slice(i + q.length)}
     </>
   );
@@ -126,7 +126,7 @@ export default function GlossaryFab({ onOpenInfo = null }) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Двойная запись, ledger, субконто…"
-                  className="w-full bg-surface-soft border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-[10px] pl-8 pr-3 py-2 text-[13px] outline-none transition-all"
+                  className="w-full bg-surface-soft border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-card pl-8 pr-3 py-2 text-[13px] outline-none transition-all"
                 />
               </div>
             </div>
@@ -140,7 +140,7 @@ export default function GlossaryFab({ onOpenInfo = null }) {
                 results.map((t, i) => (
                   <div
                     key={`${t.primary}_${i}`}
-                    className="rounded-[10px] border border-border-soft bg-surface-soft/60 px-3 py-2"
+                    className="rounded-card border border-border-soft bg-surface-soft/60 px-3 py-2"
                   >
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-[12.5px] font-bold text-ink">
