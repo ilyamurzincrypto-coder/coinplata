@@ -67,7 +67,7 @@ export default function OnDemandPanel({ onDemand, setOnDemand, legs = [] }) {
               <span className="inline-flex items-center gap-1">
                 <Icon className="w-3 h-3" />
                 {t(`conditions_${f.label}`)}
-                {filled && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-accent-bg0" />}
+                {filled && <span className="ml-0.5 w-1.5 h-1.5 rounded-full bg-accent" />}
               </span>
             </ChipPill>
           );

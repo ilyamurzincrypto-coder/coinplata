@@ -486,7 +486,7 @@ export default function CashierPage({
                 className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-ink shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div className="relative w-11 h-11 rounded-full bg-success-soft0 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
+                  <div className="relative w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
                     <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
                   </div>
@@ -510,7 +510,7 @@ export default function CashierPage({
                 className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-ink text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-ink active:scale-[0.995] transition-all duration-200"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-success-soft0 flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
+                  <div className="w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
                     <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
@@ -600,7 +600,7 @@ export default function CashierPage({
             <div className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
               <header className="px-5 py-3.5 border-b border-border-soft flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success-soft0 text-white shrink-0">
+                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success text-white shrink-0">
                     <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">

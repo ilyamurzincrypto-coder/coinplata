@@ -588,7 +588,7 @@ function LiveClock({ office }) {
     <div className="inline-flex items-center gap-2 text-[13px]">
       <span
         className={`inline-flex items-center justify-center w-1.5 h-1.5 rounded-full ${
-          state.open ? "bg-success-soft0" : "bg-danger-soft0"
+          state.open ? "bg-success" : "bg-danger"
         } ${state.open ? "animate-pulse" : ""}`}
         title={state.open ? "Open now" : `Closed (${state.reason || "—"})`}
       />

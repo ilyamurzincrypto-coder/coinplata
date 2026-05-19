@@ -73,9 +73,9 @@ export function tooltipFor(updatedAt) {
 }
 
 const TONE_BG = {
-  fresh:    "bg-success-soft0",
-  stale:    "bg-warning-soft0",
-  outdated: "bg-danger-soft0",
+  fresh:    "bg-success",
+  stale:    "bg-warning",
+  outdated: "bg-danger",
 };
 
 const TONE_TEXT = {

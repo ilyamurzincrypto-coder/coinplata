@@ -244,7 +244,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             <div className="inline-flex items-center gap-2">
               <button
                 onClick={() => setQuickOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-warning-soft0/10 text-warning border border-warning/30 text-[12px] font-bold hover:bg-warning-soft0/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-warning/10 text-warning border border-warning/30 text-[12px] font-bold hover:bg-warning/20 transition-colors"
                 title="Быстрое обновление курсов (ежедневное)"
               >
                 <Zap className="w-3 h-3" />
@@ -255,7 +255,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   onClick={onOpenRates}
                   className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-card bg-ink text-white text-[12px] font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
                 >
-                  <div className="w-6 h-6 rounded-full bg-success-soft0 flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
+                  <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
                     <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
                   </div>
                   <span>{t("edit_rates") || "Редактировать курсы"}</span>
@@ -316,7 +316,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                         <span
                           className={`ml-0.5 text-[8px] font-bold px-1 rounded tracking-wider ${
                             isActive
-                              ? "bg-accent-bg0/30 text-indigo-200"
+                              ? "bg-accent/30 text-indigo-200"
                               : "bg-indigo-100 text-accent"
                           }`}
                           title="Per-office override: rate различается от global"
@@ -913,7 +913,7 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
           onBlur={() => setConfirm(false)}
           className={`opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md transition-all ${
             confirm
-              ? "bg-danger-soft0 text-white opacity-100"
+              ? "bg-danger text-white opacity-100"
               : "text-muted-soft hover:text-danger hover:bg-danger-soft"
           }`}
           title={confirm ? "Confirm delete" : "Delete pair"}

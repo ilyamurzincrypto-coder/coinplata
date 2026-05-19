@@ -32,7 +32,7 @@ const InfoActionsCtx = React.createContext({ onNavigate: null, onTryDeal: null }
 const SECTION_META = {
   cashier: {
     icon: Wallet,
-    accentBg: "bg-success-soft0",
+    accentBg: "bg-success",
     accentSoft: "bg-success-soft",
     accentText: "text-success",
     accentRing: "ring-emerald-200",
@@ -40,7 +40,7 @@ const SECTION_META = {
   },
   capital: {
     icon: TrendingUp,
-    accentBg: "bg-warning-soft0",
+    accentBg: "bg-warning",
     accentSoft: "bg-warning-soft",
     accentText: "text-warning",
     accentRing: "ring-amber-200",
@@ -56,7 +56,7 @@ const SECTION_META = {
   },
   counterparties: {
     icon: Users,
-    accentBg: "bg-accent-bg0",
+    accentBg: "bg-accent",
     accentSoft: "bg-accent-bg",
     accentText: "text-accent",
     accentRing: "ring-indigo-200",
@@ -64,7 +64,7 @@ const SECTION_META = {
   },
   treasury: {
     icon: Building2,
-    accentBg: "bg-accent-bg0",
+    accentBg: "bg-accent",
     accentSoft: "bg-accent-bg",
     accentText: "text-accent",
     accentRing: "ring-violet-200",
@@ -72,7 +72,7 @@ const SECTION_META = {
   },
   settings: {
     icon: SettingsIcon,
-    accentBg: "bg-surface-soft0",
+    accentBg: "bg-surface-sunk",
     accentSoft: "bg-surface-sunk",
     accentText: "text-ink-soft",
     accentRing: "ring-border-soft",
@@ -80,7 +80,7 @@ const SECTION_META = {
   },
   audit: {
     icon: ShieldCheck,
-    accentBg: "bg-danger-soft0",
+    accentBg: "bg-danger",
     accentSoft: "bg-danger-soft",
     accentText: "text-danger",
     accentRing: "ring-rose-200",

@@ -336,8 +336,8 @@ export default function ObligationsTab() {
                             disabled={busyId === o.id}
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-white ${
                               isWeOwe
-                                ? "bg-danger-soft0 hover:bg-danger"
-                                : "bg-success-soft0 hover:bg-emerald-600"
+                                ? "bg-danger hover:bg-danger"
+                                : "bg-success hover:bg-emerald-600"
                             } disabled:opacity-50`}
                           >
                             <CheckCircle2 className="w-3 h-3" />
@@ -583,7 +583,7 @@ function SettleObligationModal({ obligation, mode, onClose }) {
             onClick={handleSubmit}
             disabled={submitting || invalidAmount || !accountId || insufficient}
             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-white ${
-              mode === "settle" ? "bg-danger-soft0 hover:bg-danger" : "bg-success-soft0 hover:bg-emerald-600"
+              mode === "settle" ? "bg-danger hover:bg-danger" : "bg-success hover:bg-emerald-600"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             <CheckCircle2 className="w-3 h-3" />

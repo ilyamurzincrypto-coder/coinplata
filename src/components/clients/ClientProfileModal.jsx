@@ -308,7 +308,7 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
                     className={`w-full rounded-sm transition-colors cursor-default ${
                       empty
                         ? "bg-surface-sunk"
-                        : "bg-indigo-400 hover:bg-accent-bg0"
+                        : "bg-indigo-400 hover:bg-accent"
                     }`}
                     style={{ height: `${h}px` }}
                     title={`${monthLabel(m.key)}: ${m.count} deals · ${sym}${fmt(m.volume, base)}`}

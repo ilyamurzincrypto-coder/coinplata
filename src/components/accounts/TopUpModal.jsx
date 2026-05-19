@@ -188,7 +188,7 @@ export default function TopUpModal({ account, onClose }) {
           disabled={!canSubmit || busy}
           className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
             canSubmit && !busy
-              ? "bg-success-soft0 text-white hover:bg-emerald-600"
+              ? "bg-success text-white hover:bg-emerald-600"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

@@ -2781,10 +2781,10 @@ export default function ExchangeForm({
 // ----------------------------------------
 function PillToggle({ active, onChange, label, title, tone = "slate" }) {
   const tones = {
-    sky: active ? "bg-info-soft0 text-white border-sky-500" : "bg-white text-info border-sky-200 hover:bg-info-soft",
-    amber: active ? "bg-warning-soft0 text-white border-amber-500" : "bg-white text-warning border-warning/20 hover:bg-warning-soft",
-    violet: active ? "bg-accent-bg0 text-white border-violet-500" : "bg-white text-accent border-violet-200 hover:bg-accent-bg",
-    indigo: active ? "bg-accent-bg0 text-white border-indigo-500" : "bg-white text-accent border-indigo-200 hover:bg-accent-bg",
+    sky: active ? "bg-info text-white border-sky-500" : "bg-white text-info border-sky-200 hover:bg-info-soft",
+    amber: active ? "bg-warning text-white border-amber-500" : "bg-white text-warning border-warning/20 hover:bg-warning-soft",
+    violet: active ? "bg-accent text-white border-violet-500" : "bg-white text-accent border-violet-200 hover:bg-accent-bg",
+    indigo: active ? "bg-accent text-white border-indigo-500" : "bg-white text-accent border-indigo-200 hover:bg-accent-bg",
     slate: active ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft",
   };
   return (
@@ -2939,10 +2939,10 @@ function MenuItem({ icon, label, sub, onClick, disabled }) {
 // ----------------------------------------
 function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) {
   const tones = {
-    sky: { on: "bg-info-soft0", ring: "ring-sky-200", text: "text-info", iconBg: "bg-sky-100 text-info" },
-    amber: { on: "bg-warning-soft0", ring: "ring-amber-200", text: "text-warning", iconBg: "bg-amber-100 text-warning" },
-    violet: { on: "bg-accent-bg0", ring: "ring-violet-200", text: "text-accent", iconBg: "bg-violet-100 text-accent" },
-    indigo: { on: "bg-accent-bg0", ring: "ring-indigo-200", text: "text-accent", iconBg: "bg-indigo-100 text-accent" },
+    sky: { on: "bg-info", ring: "ring-sky-200", text: "text-info", iconBg: "bg-sky-100 text-info" },
+    amber: { on: "bg-warning", ring: "ring-amber-200", text: "text-warning", iconBg: "bg-amber-100 text-warning" },
+    violet: { on: "bg-accent", ring: "ring-violet-200", text: "text-accent", iconBg: "bg-violet-100 text-accent" },
+    indigo: { on: "bg-accent", ring: "ring-indigo-200", text: "text-accent", iconBg: "bg-indigo-100 text-accent" },
     slate: { on: "bg-ink", ring: "ring-border-soft", text: "text-ink-soft", iconBg: "bg-surface-sunk text-ink-soft" },
   };
   const c = tones[tone] || tones.slate;
@@ -3649,7 +3649,7 @@ function OutputRow({
                   touched: false,
                 });
               }}
-              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning-soft0 text-white text-[10.5px] font-bold hover:bg-warning transition-colors"
+              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning text-white text-[10.5px] font-bold hover:bg-warning transition-colors"
             >
               {t("xf_invert_rate").replace("{n}", (1 / actualRate).toFixed(4))}
             </button>

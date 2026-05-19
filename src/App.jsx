@@ -197,7 +197,7 @@ function Root() {
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-ink font-sans">
       {!isSupabaseConfigured && (
-        <div className="bg-warning-soft0 text-ink text-[12px] font-semibold text-center px-4 py-2 border-b border-amber-600">
+        <div className="bg-warning text-ink text-[12px] font-semibold text-center px-4 py-2 border-b border-amber-600">
           {t("demo_banner")}
         </div>
       )}

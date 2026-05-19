@@ -185,14 +185,14 @@ export default function SetPasswordPage() {
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft0/10 border border-rose-500/25 text-rose-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-[12px]">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success-soft0/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
                 <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Password saved. Loading your workspace…</span>
               </div>
@@ -203,7 +203,7 @@ export default function SetPasswordPage() {
               disabled={saving || success || !password || !confirm}
               className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
                 saving || success || !password || !confirm
-                  ? "bg-success-soft0/60 text-ink/60 cursor-not-allowed"
+                  ? "bg-success/60 text-ink/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"
               }`}
             >

@@ -183,21 +183,21 @@ export default function CashClosureBadge({ currentOffice }) {
       sub: lastDate ? `${relativeDay(lastDate)} ${formatTime(lastDate)}` : "",
       icon: CheckCircle2,
       iconCls: "text-success",
-      dot: "bg-success-soft0",
+      dot: "bg-success",
     },
     open: {
       label: t("cc_badge_close"),
       sub: lastDate ? relativeDay(lastDate) : t("cc_never_closed"),
       icon: Lock,
       iconCls: "text-muted-soft",
-      dot: "bg-warning-soft0",
+      dot: "bg-warning",
     },
     overdue: {
       label: t("cc_badge_overdue"),
       sub: lastDate ? `${t("cc_overdue_sub")} · ${relativeDay(lastDate)}` : t("cc_never_closed"),
       icon: AlertTriangle,
       iconCls: "text-danger",
-      dot: "bg-danger-soft0 animate-pulse",
+      dot: "bg-danger animate-pulse",
     },
   }[state];
 
@@ -266,7 +266,7 @@ export default function CashClosureBadge({ currentOffice }) {
           <button
             type="button"
             onClick={proceedFromConfirm}
-            className="px-4 py-2 rounded-card bg-danger-soft0 text-white text-[13px] font-semibold hover:bg-danger transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
+            className="px-4 py-2 rounded-card bg-danger text-white text-[13px] font-semibold hover:bg-danger transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
           >
             {t("cc_confirm_close_anyway")}
           </button>

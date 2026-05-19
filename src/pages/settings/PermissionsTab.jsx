@@ -158,9 +158,9 @@ function LevelCell({ level, onChange, disabled }) {
             className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-[6px] transition-all disabled:cursor-not-allowed ${
               isActive
                 ? lv === "edit"
-                  ? "bg-success-soft0 text-white shadow-sm"
+                  ? "bg-success text-white shadow-sm"
                   : lv === "view"
-                  ? "bg-info-soft0 text-white shadow-sm"
+                  ? "bg-info text-white shadow-sm"
                   : "bg-muted text-white shadow-sm"
                 : "text-muted hover:text-ink"
             }`}

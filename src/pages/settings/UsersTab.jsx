@@ -67,9 +67,9 @@ function StatusBadge({ status }) {
       <span
         className={`w-1.5 h-1.5 rounded-full ${
           status === "active"
-            ? "bg-success-soft0"
+            ? "bg-success"
             : status === "invited"
-            ? "bg-info-soft0 animate-pulse"
+            ? "bg-info animate-pulse"
             : "bg-muted"
         }`}
       />
@@ -1021,7 +1021,7 @@ function InviteTokenModal({ data, onClose }) {
           <button
             onClick={copy}
             className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-card text-[13px] font-semibold transition-colors ${
-              copied ? "bg-success-soft0 text-white" : "bg-ink text-white hover:bg-ink"
+              copied ? "bg-success text-white" : "bg-ink text-white hover:bg-ink"
             }`}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

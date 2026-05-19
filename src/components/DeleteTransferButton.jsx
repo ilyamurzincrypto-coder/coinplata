@@ -58,7 +58,7 @@ export default function DeleteTransferButton({ transferId, onDeleted }) {
       }
       className={`p-1 rounded transition-colors ${
         confirm
-          ? "bg-danger-soft0 text-white hover:bg-danger"
+          ? "bg-danger text-white hover:bg-danger"
           : "text-muted-soft hover:text-danger hover:bg-danger-soft"
       } ${busy ? "opacity-60 cursor-wait" : ""}`}
     >

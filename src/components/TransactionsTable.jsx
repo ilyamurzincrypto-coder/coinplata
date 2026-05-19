@@ -1523,14 +1523,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
               </span>
               {countCompleted > 0 && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-success">
-                  <span className="w-1.5 h-1.5 rounded-full bg-success-soft0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-success" />
                   <span className="tabular-nums font-semibold">{countCompleted}</span>
                   <span className="text-success/70">completed</span>
                 </span>
               )}
               {countPending > 0 && (
                 <span className="inline-flex items-center gap-1 text-[11px] text-warning">
-                  <span className="w-1.5 h-1.5 rounded-full bg-warning-soft0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-warning" />
                   <span className="tabular-nums font-semibold">{countPending}</span>
                   <span className="text-warning/70">pending</span>
                 </span>

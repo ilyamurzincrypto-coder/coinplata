@@ -446,7 +446,7 @@ export default function RatesImportModal({ open, onClose }) {
                 type="button"
                 onClick={handleApply}
                 disabled={!acknowledged || submitting}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-success-soft0 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-success text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                 {submitting ? t("rimport_applying") : t("rimport_apply")}
