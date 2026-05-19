@@ -411,20 +411,27 @@ export default function NewDealForm({
   );
 
   // ── Reverse rate (swap IN ↔ primary OUT) ────────────────────────────
+  // Считаем новый курс как `1/old` в полном JS-precision (без round-trip
+  // через formatRate). Так пара последовательных reverse'ов возвращает
+  // ровно исходное значение: 1/(1/32.5) === 32.5 в IEEE 754. Поле
+  // manualRate=true, чтобы auto-fill не перетёр введённый юзером курс
+  // рыночным после смены направления.
   const reverseRate = useCallback(() => {
     const newCurIn = primary.currency;
     const newCurOut = curIn;
     const newAmtIn = primary.amount;
+    const oldRate = parseFloat(primary.rate);
+    const newRateStr = Number.isFinite(oldRate) && oldRate > 0 ? String(1 / oldRate) : "";
     setCurIn(newCurIn);
     setAmtIn(newAmtIn);
     patchOutput(0, {
       currency: newCurOut,
       amount: amtIn,
-      rate: "",
-      manualRate: false,
-      amountTouched: false,
+      rate: newRateStr,
+      manualRate: !!newRateStr,
+      amountTouched: !!amtIn,
     });
-  }, [primary, curIn, amtIn, patchOutput]);
+  }, [primary, curIn, amtIn, patchOutput, setCurIn, setAmtIn]);
 
   // ── Rate source label + age (на основе primary leg) ────────────────────
   const sourceLabel = useMemo(() => {
