@@ -9,9 +9,10 @@
 //   • Account-pill ниже + (TODO Phase 2: balance hint)
 
 import React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Link as LinkIcon } from "lucide-react";
 import CurrencyIcon from "../ui/CurrencyIcon.jsx";
 import BalanceHint from "./BalanceHint.jsx";
+import { useCurrencies } from "../../store/currencies.jsx";
 
 export default function DealLeg({
   number,           // "1" | "2" (просто display)
@@ -25,9 +26,13 @@ export default function DealLeg({
   accountId,
   accountOptions,   // [{ id, name, currency, ... }]
   onAccountChange,
+  address,          // crypto address (только для crypto-валют)
+  onAddressChange,
   onAddLeg,         // Phase 1: только prop, реально не рендерим multi-leg
   addLegLabel = "Ещё",
 }) {
+  const { dict: currencyDict } = useCurrencies();
+  const isCrypto = currencyDict[currency]?.type === "crypto";
   return (
     <div className="px-7 py-5 border-b border-border-soft">
       {/* Header блока */}
@@ -82,6 +87,23 @@ export default function DealLeg({
           currency={currency}
         />
       </div>
+
+      {/* Crypto address — только для crypto-валют, в OUT-направлении.
+          IN-крипто тоже может иметь tx hash, но это поле в Advanced. */}
+      {isCrypto && direction === "out" && onAddressChange && (
+        <div className="mt-3 flex items-center gap-2 h-10 px-3 rounded-input bg-surface-sunk ring-1 ring-inset ring-transparent focus-within:bg-surface focus-within:ring-accent focus-within:shadow-input-focus transition-all">
+          <LinkIcon className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={2.2} />
+          <input
+            type="text"
+            value={address || ""}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Адрес кошелька клиента (куда отправляем)"
+            spellCheck={false}
+            autoComplete="off"
+            className="flex-1 min-w-0 bg-transparent text-body-sm font-mono text-ink placeholder:text-muted-soft outline-none border-0"
+          />
+        </div>
+      )}
     </div>
   );
 }

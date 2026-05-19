@@ -29,6 +29,7 @@ import { displayRate, formatRate } from "../../lib/rates.js";
 import { shortAge, freshnessOf } from "../../utils/rateFreshness.jsx";
 
 // ── Helpers ────────────────────────────────────────────────────────────
+const DRAFT_KEY = "coinplata.newDealFormDraft";
 const newOutputId = () => `out_${Math.random().toString(36).slice(2, 8)}`;
 const emptyOutput = (currency = "TRY") => ({
   id: newOutputId(),
@@ -38,6 +39,7 @@ const emptyOutput = (currency = "TRY") => ({
   manualRate: false,
   amountTouched: false,
   accountId: "",
+  address: "",
 });
 
 function outputsFromInitial(initial) {
@@ -50,6 +52,7 @@ function outputsFromInitial(initial) {
       manualRate: !!o.manualRate,
       amountTouched: false,
       accountId: o.accountId || "",
+      address: o.address || "",
     }));
   }
   if (initial?.curOut) {
@@ -61,9 +64,43 @@ function outputsFromInitial(initial) {
       manualRate: false,
       amountTouched: false,
       accountId: initial.accountIdOut || "",
+      address: initial.address || "",
     }];
   }
   return [emptyOutput("TRY")];
+}
+
+// ── Draft autosave (sessionStorage) ────────────────────────────────────
+function loadDraft() {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function saveDraft(data) {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify({ ...data, savedAt: Date.now() }));
+  } catch {
+    // ignore quota / private-mode
+  }
+}
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(DRAFT_KEY);
+  } catch {}
+}
+function draftAgeText(savedAt) {
+  if (!savedAt) return null;
+  const ageSec = Math.floor((Date.now() - savedAt) / 1000);
+  if (ageSec < 5) return "только что";
+  if (ageSec < 60) return `${ageSec} сек назад`;
+  if (ageSec < 3600) return `${Math.floor(ageSec / 60)} мин назад`;
+  return `${Math.floor(ageSec / 3600)} ч назад`;
 }
 
 export default function NewDealForm({
@@ -83,15 +120,19 @@ export default function NewDealForm({
     [getRateRaw, currentOffice]
   );
 
+  // ── Draft (sessionStorage) — восстанавливаем если нет initialData ────
+  const draft = useMemo(() => (initialData ? null : loadDraft()), [initialData]);
+  const seed = initialData || draft;
+
   // ── IN state (single leg) ────────────────────────────────────────────
-  const [curIn, setCurIn] = useState(initialData?.curIn || "USDT");
+  const [curIn, setCurIn] = useState(seed?.curIn || "USDT");
   const [amtIn, setAmtIn] = useState(
-    initialData?.amtIn != null ? String(initialData.amtIn) : ""
+    seed?.amtIn != null ? String(seed.amtIn) : ""
   );
-  const [accountIdIn, setAccountIdIn] = useState(initialData?.accountIdIn || "");
+  const [accountIdIn, setAccountIdIn] = useState(seed?.accountIdIn || "");
 
   // ── OUT state (multi-leg) ────────────────────────────────────────────
-  const [outputs, setOutputs] = useState(() => outputsFromInitial(initialData));
+  const [outputs, setOutputs] = useState(() => outputsFromInitial(seed));
   const primary = outputs[0];
 
   const patchOutput = useCallback((idx, patch) => {
@@ -110,31 +151,75 @@ export default function NewDealForm({
     setOutputs((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
   }, []);
 
-  // ── Counterparty + others ───────────────────────────────────────────
-  const [counterparty, setCounterparty] = useState(initialData?.counterparty || "");
+  // ── Counterparty + chip state ────────────────────────────────────────
+  const [counterparty, setCounterparty] = useState(seed?.counterparty || "");
+  // selectedClient — объект клиента когда юзер выбрал из dropdown.
+  // null → autocomplete input в шапке; not null → chip с meta.
+  const [selectedClient, setSelectedClient] = useState(null);
   const [rateSourceOffice, setRateSourceOffice] = useState(null);
 
   const [timing, setTiming] = useState(() => {
-    if (initialData?.partialMode) return "partial";
-    if (initialData?.deferredIn) return "client_later";
-    if (initialData?.deferredOut) return "us_later";
+    if (seed?.partialMode) return "partial";
+    if (seed?.deferredIn) return "client_later";
+    if (seed?.deferredOut) return "us_later";
     return "now";
   });
-  const [referral, setReferral] = useState(!!initialData?.referral);
+  const [referral, setReferral] = useState(!!seed?.referral);
   const [referralAuto, setReferralAuto] = useState(false);
   const [applyMinFee, setApplyMinFee] = useState(
-    typeof initialData?.applyMinFee === "boolean" ? initialData.applyMinFee : true
+    typeof seed?.applyMinFee === "boolean" ? seed.applyMinFee : true
   );
-  const [comment, setComment] = useState(initialData?.comment || "");
-  const [inTxHash, setInTxHash] = useState(initialData?.inTxHash || "");
+  const [comment, setComment] = useState(seed?.comment || "");
+  const [inTxHash, setInTxHash] = useState(seed?.inTxHash || "");
   const [commissionUsd, setCommissionUsd] = useState(
-    initialData?.commissionUsd != null ? String(initialData.commissionUsd) : ""
+    seed?.commissionUsd != null ? String(seed.commissionUsd) : ""
   );
   const [customFeeUsd, setCustomFeeUsd] = useState(
-    initialData?.customFeeUsd != null ? String(initialData.customFeeUsd) : ""
+    seed?.customFeeUsd != null ? String(seed.customFeeUsd) : ""
   );
-  const [plannedLocal, setPlannedLocal] = useState(initialData?.plannedLocal || "");
-  const [backdateAt, setBackdateAt] = useState(initialData?.backdateAt || "");
+  const [plannedLocal, setPlannedLocal] = useState(seed?.plannedLocal || "");
+  const [backdateAt, setBackdateAt] = useState(seed?.backdateAt || "");
+  // Дата последнего сохранения draft (для подписи в Summary)
+  const [draftSavedAt, setDraftSavedAt] = useState(draft?.savedAt || null);
+
+  // ── Draft autosave (debounced 600ms) ─────────────────────────────────
+  // Сохраняем в sessionStorage чтобы переход между вкладками или случайное
+  // закрытие формы не потеряли заполненный контент.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      // Не сохраняем пустой draft (когда юзер ничего ещё не вводил)
+      const hasAny =
+        counterparty.trim() || amtIn || outputs.some((o) => o.amount || o.rate);
+      if (!hasAny) {
+        clearDraft();
+        setDraftSavedAt(null);
+        return;
+      }
+      saveDraft({
+        curIn, amtIn, accountIdIn,
+        outputs,
+        counterparty,
+        timing, referral, applyMinFee,
+        comment, inTxHash,
+        commissionUsd, customFeeUsd,
+        plannedLocal, backdateAt,
+      });
+      setDraftSavedAt(Date.now());
+    }, 600);
+    return () => clearTimeout(handle);
+  }, [
+    curIn, amtIn, accountIdIn, outputs, counterparty,
+    timing, referral, applyMinFee, comment, inTxHash,
+    commissionUsd, customFeeUsd, plannedLocal, backdateAt,
+  ]);
+
+  // ── Re-render для подписи «X секунд назад» каждые 5с ──────────────────
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!draftSavedAt) return undefined;
+    const id = setInterval(() => forceTick((t) => t + 1), 5000);
+    return () => clearInterval(id);
+  }, [draftSavedAt]);
 
   // ── Auto-fill rate для каждой ноги (если не вручную, rate пустой) ────
   useEffect(() => {
@@ -311,6 +396,8 @@ export default function NewDealForm({
       customFeeUsd: customFeeUsd ? parseFloat(customFeeUsd) : undefined,
     };
     onSubmit(payload);
+    clearDraft();
+    setDraftSavedAt(null);
   }, [
     canSubmit, amtIn, curIn, outputs, accountIdIn, counterparty, timing,
     referral, applyMinFee, comment, inTxHash,
@@ -339,15 +426,28 @@ export default function NewDealForm({
         counterparty={counterparty}
         onCounterpartyChange={(v) => {
           setCounterparty(v);
+          // Ручной ввод сбрасывает выбранного клиента и auto-referral
+          if (selectedClient) setSelectedClient(null);
           if (referralAuto) {
             setReferral(false);
             setReferralAuto(false);
           }
         }}
+        selectedClient={selectedClient}
         onSelectClient={(c) => {
+          setSelectedClient(c);
+          setCounterparty(c?.nickname || "");
           if (c?.tag && /referral|реферал/i.test(c.tag)) {
             setReferral(true);
             setReferralAuto(true);
+          }
+        }}
+        onClearClient={() => {
+          setSelectedClient(null);
+          setCounterparty("");
+          if (referralAuto) {
+            setReferral(false);
+            setReferralAuto(false);
           }
         }}
         onClose={onCancel}
@@ -400,6 +500,8 @@ export default function NewDealForm({
         accountId={primary?.accountId || ""}
         accountOptions={accountOptions}
         onAccountChange={(v) => patchOutput(0, { accountId: v })}
+        address={primary?.address || ""}
+        onAddressChange={(v) => patchOutput(0, { address: v })}
         onAddLeg={addOutput}
         addLegLabel="Ещё выдача"
       />
@@ -425,6 +527,8 @@ export default function NewDealForm({
               accountId={o.accountId}
               accountOptions={accountOptions}
               onAccountChange={(v) => patchOutput(idx + 1, { accountId: v })}
+              address={o.address || ""}
+              onAddressChange={(v) => patchOutput(idx + 1, { address: v })}
               onRemove={() => removeOutput(idx + 1)}
             />
           ))}
@@ -466,6 +570,7 @@ export default function NewDealForm({
         submitting={submitting}
         onCancel={onCancel}
         onSubmit={handleSubmit}
+        draftAgeText={draftAgeText(draftSavedAt)}
       />
     </div>
   );

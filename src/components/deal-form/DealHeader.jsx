@@ -1,26 +1,33 @@
 // src/components/deal-form/DealHeader.jsx
-// Top-bar новой формы сделки. Phase 2: client autocomplete с dropdown.
-// onSelectClient прокидывается наверх (для Phase 3 — auto-referral toggle).
+// Top-bar. Если выбран клиент (selectedClient !== null) — рендерим
+// DealClientChip с meta. Иначе — DealClientAutocomplete.
 
 import React from "react";
 import { Minus, X } from "lucide-react";
 import DealClientAutocomplete from "./DealClientAutocomplete.jsx";
+import DealClientChip from "./DealClientChip.jsx";
 
 export default function DealHeader({
   counterparty,
   onCounterpartyChange,
+  selectedClient,
   onSelectClient,
+  onClearClient,
   onClose,
   onMinimize,
 }) {
   return (
     <div className="px-7 pt-5 pb-4 border-b border-border-soft flex items-center justify-between gap-3">
-      <DealClientAutocomplete
-        value={counterparty}
-        onChange={onCounterpartyChange}
-        onSelectClient={onSelectClient}
-        autoFocus
-      />
+      {selectedClient ? (
+        <DealClientChip client={selectedClient} onClear={onClearClient} />
+      ) : (
+        <DealClientAutocomplete
+          value={counterparty}
+          onChange={onCounterpartyChange}
+          onSelectClient={onSelectClient}
+          autoFocus
+        />
+      )}
       <div className="flex items-center gap-1 shrink-0">
         {onMinimize && (
           <button

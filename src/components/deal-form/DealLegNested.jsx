@@ -13,9 +13,10 @@
 // использует общую чёрную капсулу выше).
 
 import React from "react";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Link as LinkIcon } from "lucide-react";
 import CurrencyIcon from "../ui/CurrencyIcon.jsx";
 import BalanceHint from "./BalanceHint.jsx";
+import { useCurrencies } from "../../store/currencies.jsx";
 
 export default function DealLegNested({
   legNumber,        // display, "Выдача №2" / "Внесение №2"
@@ -31,8 +32,12 @@ export default function DealLegNested({
   accountId,
   accountOptions,
   onAccountChange,
+  address,
+  onAddressChange,
   onRemove,
 }) {
+  const { dict: currencyDict } = useCurrencies();
+  const isCrypto = currencyDict[currency]?.type === "crypto";
   return (
     <div className="bg-surface-soft rounded-card-lg p-3.5 relative">
       {/* Header строка с номером и крестиком */}
@@ -97,6 +102,22 @@ export default function DealLegNested({
           currency={currency}
         />
       </div>
+
+      {/* Crypto address — только для crypto OUT */}
+      {isCrypto && direction === "out" && onAddressChange && (
+        <div className="mt-2.5 flex items-center gap-2 h-9 px-2.5 rounded-input bg-surface ring-1 ring-inset ring-border focus-within:ring-accent focus-within:shadow-input-focus transition-all">
+          <LinkIcon className="w-3 h-3 text-muted shrink-0" strokeWidth={2.2} />
+          <input
+            type="text"
+            value={address || ""}
+            onChange={(e) => onAddressChange(e.target.value)}
+            placeholder="Адрес кошелька клиента"
+            spellCheck={false}
+            autoComplete="off"
+            className="flex-1 min-w-0 bg-transparent text-caption font-mono text-ink placeholder:text-muted-soft outline-none border-0"
+          />
+        </div>
+      )}
     </div>
   );
 }

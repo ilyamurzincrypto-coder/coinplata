@@ -13,6 +13,7 @@ export default function DealSummary({
   submitting,
   onCancel,
   onSubmit,
+  draftAgeText,      // string | null — «2 сек назад» / null если нет draft
 }) {
   const hasMargin = Number.isFinite(marginUsd);
   return (
@@ -69,6 +70,14 @@ export default function DealSummary({
           )}
         </button>
       </div>
+
+      {/* Draft autosave подпись — внизу centred mono caption */}
+      {draftAgeText && (
+        <div className="mt-3 text-center text-tiny text-muted-soft font-mono inline-flex items-center justify-center gap-1.5 w-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-success/60" />
+          Черновик сохранён · {draftAgeText}
+        </div>
+      )}
     </div>
   );
 }
