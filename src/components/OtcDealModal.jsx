@@ -164,7 +164,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
       <div className="p-5 space-y-3">
         {/* Counterparty — селектор партнёров с поиском и созданием */}
         <div>
-          <label className="flex items-center gap-1.5 text-[11px] font-bold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="flex items-center gap-1.5 text-tiny font-bold text-muted mb-1.5 tracking-wide uppercase">
             <Users className="w-3.5 h-3.5" />
             Контрагент / Партнёр
           </label>
@@ -173,7 +173,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
 
         {/* From */}
         <div>
-          <label className="block text-[11px] font-bold text-danger mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-bold text-danger mb-1.5 tracking-wide uppercase">
             Отдаём
           </label>
           <GroupedAccountSelect
@@ -183,7 +183,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             placeholder="Выбрать счёт списания"
           />
           {from && (
-            <div className="mt-1.5 text-[11px] text-muted tabular-nums">
+            <div className="mt-1.5 text-tiny text-muted tabular-nums">
               {officeName(from.officeId)} · Баланс:{" "}
               <span className="font-bold text-ink-soft">
                 {curSymbol(from.currency)}
@@ -206,13 +206,13 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
                 placeholder="0"
                 className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[20px] font-bold tracking-tight min-w-0"
               />
-              <span className="text-danger text-[12px] font-bold tracking-wider">
+              <span className="text-danger text-caption font-bold tracking-wider">
                 {from.currency}
               </span>
             </div>
           )}
           {insufficient && (
-            <div className="mt-1.5 text-[11px] font-medium text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1 inline-flex items-center gap-1">
+            <div className="mt-1.5 text-tiny font-medium text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1 inline-flex items-center gap-1">
               <AlertCircle className="w-3 h-3" />
               Недостаточно средств на счёте
             </div>
@@ -228,7 +228,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
 
         {/* To */}
         <div>
-          <label className="block text-[11px] font-bold text-success mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-bold text-success mb-1.5 tracking-wide uppercase">
             Получаем
           </label>
           <GroupedAccountSelect
@@ -252,7 +252,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
                 placeholder="0"
                 className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[20px] font-bold tracking-tight min-w-0"
               />
-              <span className="text-success text-[12px] font-bold tracking-wider">
+              <span className="text-success text-caption font-bold tracking-wider">
                 {to.currency}
               </span>
             </div>
@@ -262,10 +262,10 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
         {/* Эффективный курс (computed, read-only) */}
         {from && to && fromAmt > 0 && toAmt > 0 && from.currency !== to.currency && (
           <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-muted uppercase tracking-wider">
+            <span className="text-tiny font-bold text-muted uppercase tracking-wider">
               Эффективный курс
             </span>
-            <span className="text-[12.5px] font-bold tabular-nums text-ink">
+            <span className="text-caption font-bold tabular-nums text-ink">
               1 {from.currency} = {computedRate.toFixed(6)} {to.currency}
             </span>
           </div>
@@ -273,7 +273,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
 
         {/* Backdate */}
         <div>
-          <label className="flex items-center gap-1.5 text-[11px] font-bold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="flex items-center gap-1.5 text-tiny font-bold text-muted mb-1.5 tracking-wide uppercase">
             <Calendar className="w-3.5 h-3.5" />
             Дата (опционально — оставь пусто для текущей)
           </label>
@@ -281,16 +281,16 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             type="datetime-local"
             value={occurredAt}
             onChange={(e) => setOccurredAt(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none"
           />
-          <p className="text-[10.5px] text-muted mt-1">
+          <p className="text-tiny text-muted mt-1">
             Сделка задним числом — useful для дозаписи прошедших OTC обменов.
           </p>
         </div>
 
         {/* Note */}
         <div>
-          <label className="block text-[11px] font-bold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-bold text-muted mb-1.5 tracking-wide uppercase">
             Заметка
           </label>
           <input
@@ -298,7 +298,7 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none"
           />
         </div>
       </div>
@@ -307,14 +307,14 @@ export default function OtcDealModal({ open, currentOffice, onClose, onCreated, 
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Отмена
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit && !busy
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

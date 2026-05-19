@@ -31,7 +31,7 @@ function OptionPill({ active, onClick, children, autoLabel = false, disabled = f
       </span>
       <span className="text-caption font-semibold">{children}</span>
       {autoLabel && (
-        <span className="text-[9px] uppercase tracking-wider font-bold text-success bg-accent-soft px-1 py-px rounded">
+        <span className="text-micro uppercase tracking-wider font-bold text-success bg-accent-soft px-1 py-px rounded">
           авто
         </span>
       )}

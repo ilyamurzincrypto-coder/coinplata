@@ -9,7 +9,7 @@ import React from "react";
 export default function SegmentedControl({ options, value, onChange, size = "md" }) {
   const padding = size === "sm" ? "p-1" : "p-1.5";
   const btnSize =
-    size === "sm" ? "px-3 py-1.5 text-[12.5px]" : "px-4 py-2 text-[13.5px]";
+    size === "sm" ? "px-3 py-1.5 text-caption" : "px-4 py-2 text-body-sm";
   return (
     <div className={`inline-flex bg-surface-sunk rounded-card relative ${padding}`}>
       {options.map((opt) => {

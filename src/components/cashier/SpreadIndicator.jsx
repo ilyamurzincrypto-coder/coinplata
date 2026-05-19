@@ -17,7 +17,7 @@ export default function SpreadIndicator({
   if (!Number.isFinite(cur) || !Number.isFinite(m) || cur <= 0 || m <= 0) return null;
   if (cur === m) {
     return (
-      <span className="inline-flex items-center text-[10px] text-muted-soft" title={`mid: ${m}`}>
+      <span className="inline-flex items-center text-tiny text-muted-soft" title={`mid: ${m}`}>
         <Minus className="w-3 h-3" /> mid
       </span>
     );
@@ -36,7 +36,7 @@ export default function SpreadIndicator({
   const title =
     `current: ${cur}, market: ${m}, spread ${sign}${pct.toFixed(2)}% from mid`;
   return (
-    <span className={`inline-flex items-center gap-0.5 text-[10px] tabular-nums ${tone}`} title={title}>
+    <span className={`inline-flex items-center gap-0.5 text-tiny tabular-nums ${tone}`} title={title}>
       <Icon className="w-3 h-3" />
       {sign}{pct.toFixed(1)}%
     </span>

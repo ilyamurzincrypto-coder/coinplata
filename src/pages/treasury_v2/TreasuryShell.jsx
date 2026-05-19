@@ -118,7 +118,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
           </div>
           <div className="flex items-center gap-4">
             <OfficePicker value={officeFilter} onChange={setOffice} />
-            <span className="text-[12px] text-muted-soft">{t("trv2_data_freshness").replace("{time}", freshTime)} · base: {baseCurrency}</span>
+            <span className="text-caption text-muted-soft">{t("trv2_data_freshness").replace("{time}", freshTime)} · base: {baseCurrency}</span>
           </div>
         </header>
 
@@ -135,7 +135,7 @@ export default function TreasuryShell({ onOpenHelp = null }) {
                 )}
                 <button
                   onClick={() => setActiveTab(tab.id)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-[13px] font-medium whitespace-nowrap transition-colors ${
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-body-sm font-medium whitespace-nowrap transition-colors ${
                     isActive ? "bg-ink text-white" : "text-ink-soft hover:bg-surface-soft hover:text-ink"
                   }`}
                 >

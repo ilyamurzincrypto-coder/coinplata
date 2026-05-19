@@ -117,14 +117,14 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
         </div>
 
         {!partner.active && (
-          <div className="text-[11px] font-bold text-muted bg-surface-sunk inline-flex items-center px-2 py-0.5 rounded uppercase tracking-wider">
+          <div className="text-tiny font-bold text-muted bg-surface-sunk inline-flex items-center px-2 py-0.5 rounded uppercase tracking-wider">
             {t("pp_deactivated")}
           </div>
         )}
 
         {partner.note && (
-          <div className="text-[12px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
-            <span className="font-semibold text-muted uppercase text-[10px] tracking-wider mr-1.5">
+          <div className="text-caption text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+            <span className="font-semibold text-muted uppercase text-tiny tracking-wider mr-1.5">
               {t("pp_note")}:
             </span>
             {partner.note}
@@ -135,11 +135,11 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
         {partnerObligations.length > 0 && (
           <div className="border border-warning/20 bg-warning-soft/50 rounded-card p-3">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft flex items-center gap-1.5">
+              <h3 className="text-caption font-bold uppercase tracking-wider text-ink-soft flex items-center gap-1.5">
                 <Scale className="w-3 h-3" />
                 {t("pp_open_obligations")} · {partnerObligations.length}
               </h3>
-              <div className="flex items-center gap-3 text-[11px] tabular-nums">
+              <div className="flex items-center gap-3 text-tiny tabular-nums">
                 {obligationTotals.theyOwe > 0 && (
                   <span className="font-semibold text-success">
                     {t("pp_they_owe_label")}: {sym}{fmt(obligationTotals.theyOwe, base)}
@@ -160,10 +160,10 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
                 return (
                   <div
                     key={o.id}
-                    className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-md text-[11px]"
+                    className="flex items-center gap-2 px-2 py-1.5 bg-white rounded-md text-tiny"
                   >
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                      className={`px-1.5 py-0.5 rounded text-micro font-bold uppercase tracking-wider ${
                         isWeOwe
                           ? "bg-rose-100 text-danger"
                           : "bg-emerald-100 text-success"
@@ -175,15 +175,15 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
                       {fmt(remaining, cur)} {cur}
                     </span>
                     {(o.paidAmount || 0) > 0 && (
-                      <span className="text-[10px] text-muted">
+                      <span className="text-tiny text-muted">
                         paid {fmt(o.paidAmount, cur)} / {fmt(o.amount, cur)}
                       </span>
                     )}
-                    <span className="text-muted-soft text-[10px] flex-1 min-w-0 truncate">
+                    <span className="text-muted-soft text-tiny flex-1 min-w-0 truncate">
                       {o.note || ""}
                     </span>
                     {o.dealId && (
-                      <span className="text-muted-soft text-[10px] tabular-nums">
+                      <span className="text-muted-soft text-tiny tabular-nums">
                         #{o.dealId}
                       </span>
                     )}
@@ -199,16 +199,16 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               <Wallet className="w-3.5 h-3.5 text-muted" />
-              <h3 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
+              <h3 className="text-caption font-bold uppercase tracking-wider text-ink-soft">
                 {t("pp_accounts_title")} · {allAccounts.length}
               </h3>
             </div>
-            <span className="text-[11px] text-muted-soft">
+            <span className="text-tiny text-muted-soft">
               {t("pp_crud_hint_inline")}
             </span>
           </div>
           {allAccounts.length === 0 ? (
-            <div className="text-[12px] text-muted-soft italic py-3 text-center bg-surface-soft border border-border-soft rounded-card">
+            <div className="text-caption text-muted-soft italic py-3 text-center bg-surface-soft border border-border-soft rounded-card">
               {t("pp_no_accounts")}
             </div>
           ) : (
@@ -232,7 +232,7 @@ export function PartnerProfileModal({ partnerId, onClose, base, sym, toBase }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+          className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
         >
           {t("close")}
         </button>
@@ -270,15 +270,15 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
           <Icon className="w-3.5 h-3.5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[12px] font-semibold text-ink truncate">
+          <div className="text-caption font-semibold text-ink truncate">
             {account.name}
             {!account.active && (
-              <span className="ml-1.5 text-[8.5px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
+              <span className="ml-1.5 text-micro font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                 off
               </span>
             )}
           </div>
-          <div className="text-[10px] text-muted tabular-nums">
+          <div className="text-tiny text-muted tabular-nums">
             {curSymbol(account.currency)}
             {fmt(balance, account.currency)}{" "}
             <span className="opacity-60">{account.currency}</span>
@@ -299,7 +299,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
         <div className="flex items-center gap-1 flex-wrap">
           <button
             onClick={() => onSettlement("inflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-tiny font-bold"
             title={t("pp_inflow_tip")}
           >
             <ArrowDownLeft className="w-3 h-3" />
@@ -307,7 +307,7 @@ function PartnerAccountRow({ account, balance, onSettlement, onHistory, t }) {
           </button>
           <button
             onClick={() => onSettlement("outflow")}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-[11px] font-bold"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-tiny font-bold"
             title={t("pp_outflow_tip")}
           >
             <ArrowUpRight className="w-3 h-3" />
@@ -326,8 +326,8 @@ function StatCard({ label, value, tone, small }) {
     : "text-ink bg-surface-soft/60 border-border-soft";
   return (
     <div className={`rounded-button border p-2 ${toneCls}`}>
-      <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{label}</div>
-      <div className={`${small ? "text-[11px]" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
+      <div className="text-micro font-bold text-muted uppercase tracking-wider">{label}</div>
+      <div className={`${small ? "text-tiny" : "text-[15px]"} font-bold tabular-nums leading-tight mt-0.5`}>
         {value}
       </div>
     </div>

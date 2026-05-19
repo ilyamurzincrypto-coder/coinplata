@@ -17,8 +17,8 @@ function AccountRow({ ctx, window: win, row, onOpenTx }) {
     <>
       <tr className="border-t border-border-soft hover:bg-surface-soft cursor-pointer" onClick={() => setOpen((v) => !v)}>
         <td className="px-2 py-1.5 w-6 text-muted-soft">{open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</td>
-        <td className="px-2 py-1.5 font-mono text-[11px] text-muted-soft w-14">{row.code}</td>
-        <td className="px-2 py-1.5 text-[12.5px] text-ink">{row.name}</td>
+        <td className="px-2 py-1.5 font-mono text-tiny text-muted-soft w-14">{row.code}</td>
+        <td className="px-2 py-1.5 text-caption text-ink">{row.name}</td>
         <td className="px-2 py-1.5 text-muted w-12">{row.currency}</td>
         <td className="px-2 py-1.5 text-right tabular-nums w-28">{num(row.opening)}</td>
         <td className="px-2 py-1.5 text-right tabular-nums w-28 text-success">{num(row.debitTurnover)}</td>
@@ -27,7 +27,7 @@ function AccountRow({ ctx, window: win, row, onOpenTx }) {
       </tr>
       {open && (row.dims
         ? (row.dims.length === 0
-            ? <tr><td colSpan={8} className="px-6 py-2 text-[11px] text-muted-soft">—</td></tr>
+            ? <tr><td colSpan={8} className="px-6 py-2 text-tiny text-muted-soft">—</td></tr>
             : row.dims.map((d, i) => (
                 <TrialBalanceSubcontoRow key={`${d.clientId || ""}-${d.partnerId || ""}-${i}`} ctx={ctx} accountId={row.accountId} dim={d} window={win} onOpenTx={onOpenTx} />
               )))
@@ -73,7 +73,7 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
   }
 
   if (allRows.length === 0) {
-    return <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_osv")}</div>;
+    return <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-caption text-muted-soft">{t("trv2_to_empty_osv")}</div>;
   }
 
   const chip = (ok) => ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger";
@@ -86,21 +86,21 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t("trv2_to_filter_ph")}
-            className="flex-1 min-w-0 bg-transparent text-[12px] outline-none"
+            className="flex-1 min-w-0 bg-transparent text-caption outline-none"
           />
-          {nq && <button onClick={() => setQ("")} className="shrink-0 text-muted-soft hover:text-ink-soft text-[12px]" title={t("trv2_to_filter_clear")}>×</button>}
+          {nq && <button onClick={() => setQ("")} className="shrink-0 text-muted-soft hover:text-ink-soft text-caption" title={t("trv2_to_filter_clear")}>×</button>}
         </div>
-        {nq && <span className="text-[11px] text-muted-soft">{t("trv2_to_filter_count")} {visibleCount} / {allRows.length}</span>}
+        {nq && <span className="text-tiny text-muted-soft">{t("trv2_to_filter_count")} {visibleCount} / {allRows.length}</span>}
         <div className="flex-1" />
-        <button onClick={doExport} className="text-[12px] px-2.5 py-1 rounded-button bg-surface-sunk text-ink-soft hover:bg-surface-sunk">{t("trv2_to_export_csv")}</button>
+        <button onClick={doExport} className="text-caption px-2.5 py-1 rounded-button bg-surface-sunk text-ink-soft hover:bg-surface-sunk">{t("trv2_to_export_csv")}</button>
       </div>
       {nq && visibleClasses.length === 0 ? (
-        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_filter_no_match")}</div>
+        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-caption text-muted-soft">{t("trv2_to_filter_no_match")}</div>
       ) : (
       <div className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
-        <table className="w-full text-[12px]">
+        <table className="w-full text-caption">
           <thead>
-            <tr className="bg-surface-soft text-muted-soft text-[10px] uppercase tracking-wider">
+            <tr className="bg-surface-soft text-muted-soft text-tiny uppercase tracking-wider">
               <th className="w-6" /><th className="text-left px-2 py-1.5">{t("trv2_to_col_account")}</th><th /><th className="text-left px-2 py-1.5">{t("trv2_to_col_currency")}</th>
               <th className="text-right px-2 py-1.5">{t("trv2_to_col_opening")}</th>
               <th className="text-right px-2 py-1.5">{t("trv2_to_col_debit")}</th>
@@ -112,11 +112,11 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
             {visibleClasses.map((cls) => (
               <React.Fragment key={cls.type}>
                 <tr className="bg-surface-sunk/70">
-                  <td className="px-2 py-1.5" colSpan={4}><span className="font-bold text-[12px] text-ink-soft">{t(cls.labelKey)}</span></td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-muted">{formatBase(cls.subtotalInBase.opening, baseCurrency)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-muted">{formatBase(cls.subtotalInBase.debitTurnover, baseCurrency)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-muted">{formatBase(cls.subtotalInBase.creditTurnover, baseCurrency)}</td>
-                  <td className="px-2 py-1.5 text-right tabular-nums text-[11px] text-muted">{formatBase(cls.subtotalInBase.closing, baseCurrency)}</td>
+                  <td className="px-2 py-1.5" colSpan={4}><span className="font-bold text-caption text-ink-soft">{t(cls.labelKey)}</span></td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-tiny text-muted">{formatBase(cls.subtotalInBase.opening, baseCurrency)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-tiny text-muted">{formatBase(cls.subtotalInBase.debitTurnover, baseCurrency)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-tiny text-muted">{formatBase(cls.subtotalInBase.creditTurnover, baseCurrency)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums text-tiny text-muted">{formatBase(cls.subtotalInBase.closing, baseCurrency)}</td>
                 </tr>
                 {cls._rows.map((row) => <AccountRow key={row.accountId} ctx={ctx} window={win} row={row} onOpenTx={onOpenTx} />)}
               </React.Fragment>
@@ -124,17 +124,17 @@ export default function TrialBalanceTable({ ctx, window: win, officeFilter, form
           </tbody>
           <tfoot>
             <tr className="bg-ink text-white">
-              <td className="px-2 py-2" colSpan={4}><span className="font-bold text-[12px]">{t("trv2_to_total")}</span></td>
-              <td className="px-2 py-2 text-right tabular-nums text-[12px]">{formatBase(tb.totalInBase.openingDr, baseCurrency)} / {formatBase(tb.totalInBase.openingCr, baseCurrency)}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-[12px]">{formatBase(tb.totalInBase.debitTurnover, baseCurrency)}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-[12px]">{formatBase(tb.totalInBase.creditTurnover, baseCurrency)}</td>
-              <td className="px-2 py-2 text-right tabular-nums text-[12px]">{formatBase(tb.totalInBase.closingDr, baseCurrency)} / {formatBase(tb.totalInBase.closingCr, baseCurrency)}</td>
+              <td className="px-2 py-2" colSpan={4}><span className="font-bold text-caption">{t("trv2_to_total")}</span></td>
+              <td className="px-2 py-2 text-right tabular-nums text-caption">{formatBase(tb.totalInBase.openingDr, baseCurrency)} / {formatBase(tb.totalInBase.openingCr, baseCurrency)}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-caption">{formatBase(tb.totalInBase.debitTurnover, baseCurrency)}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-caption">{formatBase(tb.totalInBase.creditTurnover, baseCurrency)}</td>
+              <td className="px-2 py-2 text-right tabular-nums text-caption">{formatBase(tb.totalInBase.closingDr, baseCurrency)} / {formatBase(tb.totalInBase.closingCr, baseCurrency)}</td>
             </tr>
           </tfoot>
         </table>
       </div>
       )}
-      <div className="flex flex-wrap gap-2 text-[11.5px]">
+      <div className="flex flex-wrap gap-2 text-caption">
         <span className={`px-2 py-1 rounded ${chip(tb.check.turnoverOk)}`}>{t("trv2_to_check_turnover")} {tb.check.turnoverOk ? "✓" : `(Δ ${formatBase(tb.check.turnoverDelta, baseCurrency)})`}</span>
         <span className={`px-2 py-1 rounded ${chip(tb.check.openingOk)}`}>{t("trv2_to_check_opening")} {tb.check.openingOk ? "✓" : `(Δ ${formatBase(tb.check.openingDelta, baseCurrency)})`}</span>
         <span className={`px-2 py-1 rounded ${chip(tb.check.closingOk)}`}>{t("trv2_to_check_closing")} {tb.check.closingOk ? "✓" : `(Δ ${formatBase(tb.check.closingDelta, baseCurrency)})`}</span>

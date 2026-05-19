@@ -84,7 +84,7 @@ export default function SearchableSelect({
         type="button"
         disabled={disabled}
         onClick={() => !disabled && setOpen((v) => !v)}
-        className={`flex items-center gap-1 min-w-0 w-full bg-surface-soft border rounded-button px-2 py-1 text-[12px] outline-none text-left
+        className={`flex items-center gap-1 min-w-0 w-full bg-surface-soft border rounded-button px-2 py-1 text-caption outline-none text-left
           ${error ? "border-danger/40" : "border-border-soft"} ${disabled ? "opacity-50 cursor-not-allowed" : "hover:bg-white"}`}
       >
         <span className={`flex-1 min-w-0 truncate ${selected ? "" : "text-muted-soft"}`}>
@@ -102,19 +102,19 @@ export default function SearchableSelect({
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={onEnter}
               placeholder="Поиск…"
-              className="flex-1 min-w-0 bg-transparent text-[12px] outline-none"
+              className="flex-1 min-w-0 bg-transparent text-caption outline-none"
             />
           </div>
           <ul className="max-h-56 overflow-y-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-2 py-1.5 text-[12px] text-muted-soft">{emptyText}</li>
+              <li className="px-2 py-1.5 text-caption text-muted-soft">{emptyText}</li>
             ) : (
               filtered.map((o) => (
                 <li key={o.id}>
                   <button
                     type="button"
                     onClick={() => pick(o.id)}
-                    className={`w-full text-left px-2 py-1.5 text-[12px] hover:bg-surface-soft ${o.id === value ? "font-semibold text-ink" : "text-ink-soft"}`}
+                    className={`w-full text-left px-2 py-1.5 text-caption hover:bg-surface-soft ${o.id === value ? "font-semibold text-ink" : "text-ink-soft"}`}
                   >
                     {o.name}
                   </button>

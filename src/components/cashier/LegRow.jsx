@@ -103,7 +103,7 @@ const LegRow = forwardRef(function LegRow(
       ref={setCellRef ? (el) => setCellRef(rowIndex, 4, el) : undefined}
       onKeyDown={(e) => onCellKeyDown?.(e, rowIndex, 4)}
       aria-label="Источник средств"
-      className="bg-transparent border-0 outline-none text-[12px] text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full"
+      className="bg-transparent border-0 outline-none text-caption text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full"
     >
       {SOURCE_OPTIONS_IN.map((o) => (
         <option key={o.value} value={o.value}>{o.label}</option>
@@ -118,7 +118,7 @@ const LegRow = forwardRef(function LegRow(
       aria-label="Назначение"
       title={deferredErr?.message}
       className={
-        "bg-transparent border-0 outline-none text-[12px] text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full" +
+        "bg-transparent border-0 outline-none text-caption text-ink-soft focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 cursor-pointer w-full" +
         (deferredErr ? " ring-2 ring-rose-400" : "")
       }
     >
@@ -207,7 +207,7 @@ const LegRow = forwardRef(function LegRow(
               <SpreadIndicator currentRate={leg.rate} marketRate={marketRate} />
             </>
           ) : (
-            <span className="text-[12px] text-muted-soft px-2">—</span>
+            <span className="text-caption text-muted-soft px-2">—</span>
           )}
         </div>
 
@@ -230,7 +230,7 @@ const LegRow = forwardRef(function LegRow(
               onKeyDown={(e) => onCellKeyDown?.(e, rowIndex, 5)}
             />
           ) : (
-            <span className="text-[12px] text-muted-soft px-2">
+            <span className="text-caption text-muted-soft px-2">
               {isIn ? "— клиент с баланса —" : "— клиенту на баланс —"}
             </span>
           )}
@@ -275,7 +275,7 @@ const LegRow = forwardRef(function LegRow(
               />
             )}
             {inOverdraft && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-danger font-semibold">
+              <span className="inline-flex items-center gap-0.5 text-tiny text-danger font-semibold">
                 <AlertCircle className="w-3 h-3" />
                 overdraft {inOverdraftAmount?.toFixed(2)} {leg.currency}
               </span>
@@ -297,7 +297,7 @@ const LegRow = forwardRef(function LegRow(
               />
             )}
             {outShortage && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] text-danger font-semibold">
+              <span className="inline-flex items-center gap-0.5 text-tiny text-danger font-semibold">
                 <AlertCircle className="w-3 h-3" />
                 нехватка {outShortageAmount?.toFixed(2)} {leg.currency}
               </span>

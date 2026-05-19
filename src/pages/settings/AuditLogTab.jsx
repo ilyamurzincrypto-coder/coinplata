@@ -124,7 +124,7 @@ export default function AuditLogTab() {
         <div className="flex items-center gap-2">
           <ScrollText className="w-4 h-4 text-muted" />
           <h3 className="text-[15px] font-semibold tracking-tight">{t("audit_title")}</h3>
-          <span className="text-[11px] text-muted-soft">
+          <span className="text-tiny text-muted-soft">
             · {t("audit_events_count").replace("{cur}", filtered.length).replace("{all}", log.length)}
           </span>
         </div>
@@ -132,7 +132,7 @@ export default function AuditLogTab() {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-3 h-3" />
             {t("export_csv")}
@@ -144,7 +144,7 @@ export default function AuditLogTab() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search…"
-              className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
+              className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-body-sm outline-none w-56 transition-colors placeholder:text-muted-soft"
             />
           </div>
         </div>
@@ -184,7 +184,7 @@ export default function AuditLogTab() {
         {hasActive && (
           <button
             onClick={clearFilters}
-            className="ml-auto px-2 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
+            className="ml-auto px-2 py-1 rounded-button text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
           >
             {t("clear")}
           </button>
@@ -192,9 +192,9 @@ export default function AuditLogTab() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-body-sm">
           <thead>
-            <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
+            <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
               <th className="px-5 py-2.5 font-bold">{t("audit_when")}</th>
               <th className="px-3 py-2.5 font-bold">{t("audit_who")}</th>
               <th className="px-3 py-2.5 font-bold">{t("audit_what")}</th>
@@ -211,14 +211,14 @@ export default function AuditLogTab() {
                 <tr key={e.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
                   <td className="px-5 py-3 whitespace-nowrap">
                     <div className="font-medium text-ink tabular-nums">{relativeTime(e.timestamp)}</div>
-                    <div className="text-[11px] text-muted-soft tabular-nums">
+                    <div className="text-tiny text-muted-soft tabular-nums">
                       {new Date(e.timestamp).toLocaleString()}
                     </div>
                   </td>
                   <td className="px-3 py-3 whitespace-nowrap font-semibold text-ink-soft">{e.userName}</td>
                   <td className="px-3 py-3">
                     <span
-                      className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-tiny font-semibold ${
                         ACTION_STYLES[e.action] || "bg-surface-sunk text-ink-soft"
                       }`}
                     >
@@ -228,7 +228,7 @@ export default function AuditLogTab() {
                   <td className="px-3 py-3 text-ink-soft">
                     {entityLabel}
                     {e.entityId && (
-                      <span className="ml-1 text-[10px] text-muted-soft font-mono">
+                      <span className="ml-1 text-tiny text-muted-soft font-mono">
                         #{String(e.entityId).slice(0, 8)}
                       </span>
                     )}
@@ -236,13 +236,13 @@ export default function AuditLogTab() {
                   <td className="px-3 py-3 text-ink-soft max-w-md truncate" title={e.summary}>
                     {e.summary}
                   </td>
-                  <td className="px-5 py-3 font-mono text-[11px] text-muted tabular-nums">{e.ip}</td>
+                  <td className="px-5 py-3 font-mono text-tiny text-muted tabular-nums">{e.ip}</td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-muted-soft">
+                <td colSpan={6} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   {log.length === 0 ? t("audit_empty") : t("oblig_no_match")}
                 </td>
               </tr>

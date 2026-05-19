@@ -66,7 +66,7 @@ export default function RatesPanel({
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="appearance-none bg-white border border-border-soft rounded-[var(--radius-cell)] pl-2 pr-6 py-0.5 text-[11px] font-semibold cursor-pointer outline-none focus:ring-1 focus:ring-accent/20"
+            className="appearance-none bg-white border border-border-soft rounded-[var(--radius-cell)] pl-2 pr-6 py-0.5 text-tiny font-semibold cursor-pointer outline-none focus:ring-1 focus:ring-accent/20"
           >
             <option value="local">{t("rates_filter_local")}</option>
             <option value="global">{t("rates_filter_global")}</option>
@@ -83,7 +83,7 @@ export default function RatesPanel({
           <RefreshCw className="w-3 h-3" />
         </button>
 
-        <span className="text-[10px] text-muted-soft tabular-nums">
+        <span className="text-tiny text-muted-soft tabular-nums">
           {minutesAgo === 0 ? "now" : t("rates_updated_ago").replace("{{n}}", String(minutesAgo))}
         </span>
       </div>
@@ -91,7 +91,7 @@ export default function RatesPanel({
       {/* Active leg hint */}
       {onPickRate && (
         <div
-          className="px-3 py-1.5 text-[10px] text-muted border-b border-border-soft bg-surface-soft/30"
+          className="px-3 py-1.5 text-tiny text-muted border-b border-border-soft bg-surface-soft/30"
         >
           {activeLegSummary || t("rates_no_active_leg")}
         </div>
@@ -127,7 +127,7 @@ function RatesGrid({ currencies, getRate, officeId, onPickRate }) {
   // Простая визуализация: text-table из base→quote rates.
   // Каждая row = base currency. Каждая column = quote currency.
   return (
-    <table className="w-full text-[11px] tabular-nums">
+    <table className="w-full text-tiny tabular-nums">
       <thead>
         <tr className="bg-surface-soft/40 text-muted-soft">
           <th className="text-left px-2 py-1 font-semibold uppercase tracking-wider"></th>

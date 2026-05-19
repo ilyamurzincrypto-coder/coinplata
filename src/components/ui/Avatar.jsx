@@ -32,7 +32,7 @@ function initialsOf(name) {
 
 export default function Avatar({ name, size = 32, className = "" }) {
   const grad = GRADIENTS[hashIdx(name || "")];
-  const textCls = size <= 24 ? "text-[9px]" : size <= 32 ? "text-[11px]" : "text-[13px]";
+  const textCls = size <= 24 ? "text-micro" : size <= 32 ? "text-tiny" : "text-body-sm";
   return (
     <div
       style={{ width: size, height: size }}

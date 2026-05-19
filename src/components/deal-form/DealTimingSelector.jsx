@@ -45,8 +45,8 @@ export default function DealTimingSelector({ value = "now", onChange }) {
               >
                 <Icon className="w-3 h-3" strokeWidth={2.2} />
               </div>
-              <div className="text-[12px] font-semibold text-ink leading-tight">{opt.title}</div>
-              <div className="text-[10px] text-muted mt-0.5 leading-tight">{opt.subtitle}</div>
+              <div className="text-caption font-semibold text-ink leading-tight">{opt.title}</div>
+              <div className="text-tiny text-muted mt-0.5 leading-tight">{opt.subtitle}</div>
             </button>
           );
         })}

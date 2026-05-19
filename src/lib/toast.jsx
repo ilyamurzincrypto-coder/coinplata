@@ -57,7 +57,7 @@ export function ToastProvider({ children }) {
         {items.map((t) => (
           <div
             key={t.id}
-            className={`px-4 py-2.5 rounded-lg text-[13px] shadow-lg pointer-events-auto min-w-[240px] max-w-[360px] ${
+            className={`px-4 py-2.5 rounded-lg text-body-sm shadow-lg pointer-events-auto min-w-[240px] max-w-[360px] ${
               t.kind === "error"
                 ? "bg-red-600 text-white"
                 : t.kind === "success"

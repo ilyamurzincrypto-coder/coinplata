@@ -44,8 +44,8 @@ export const CCY_SYMBOL = {
 
 const SIZE_MAP = {
   xs: { box: 11, text: "text-[7px]"  },
-  sm: { box: 18, text: "text-[9px]"  },
-  md: { box: 28, text: "text-[12px]" },
+  sm: { box: 18, text: "text-micro"  },
+  md: { box: 28, text: "text-caption" },
   lg: { box: 36, text: "text-sm"     },
   xl: { box: 44, text: "text-base"   },
 };

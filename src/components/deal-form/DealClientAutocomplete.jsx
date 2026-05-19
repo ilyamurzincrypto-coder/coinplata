@@ -333,7 +333,7 @@ export default function DealClientAutocomplete({
           ) : (
             <>
               {results.length > 0 && (
-                <div className="px-3.5 pt-2 pb-1 text-[10px] uppercase tracking-wider font-bold text-muted-soft">
+                <div className="px-3.5 pt-2 pb-1 text-tiny uppercase tracking-wider font-bold text-muted-soft">
                   {sectionTitle}
                 </div>
               )}
@@ -377,9 +377,9 @@ export default function DealClientAutocomplete({
               )}
               {/* Keyboard hints footer */}
               <div className="px-3.5 py-1.5 bg-surface-soft text-tiny text-muted flex items-center gap-3 border-t border-border-soft">
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↑↓</kbd> навигация</span>
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↵</kbd> выбрать</span>
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">Esc</kbd> закрыть</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">↑↓</kbd> навигация</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">↵</kbd> выбрать</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">Esc</kbd> закрыть</span>
               </div>
             </>
           )}
@@ -405,7 +405,7 @@ function ClientRow({ client, query, highlighted, balances = [], onMouseEnter, on
         highlighted ? "bg-surface-soft" : "hover:bg-surface-soft"
       }`}
     >
-      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradient(client.nickname || client.id)} text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5`}>
+      <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${avatarGradient(client.nickname || client.id)} text-white text-tiny font-bold flex items-center justify-center shrink-0 mt-0.5`}>
         {initialsOf(client.nickname || client.name)}
       </div>
       <div className="min-w-0 flex flex-col gap-0.5">
@@ -448,7 +448,7 @@ function ClientRow({ client, query, highlighted, balances = [], onMouseEnter, on
         {/* Line 3: balances из ledger.v_client_balances (через batch hook) */}
         {balances.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-            <span className="text-[10px] text-muted-soft uppercase tracking-wider font-semibold">баланс:</span>
+            <span className="text-tiny text-muted-soft uppercase tracking-wider font-semibold">баланс:</span>
             {balances.slice(0, 3).map((b) => (
               <span
                 key={b.currency}
@@ -474,7 +474,7 @@ function ClientRow({ client, query, highlighted, balances = [], onMouseEnter, on
           </span>
         )}
         {stats.lastAt && (
-          <span className="text-[10px] text-muted-soft">
+          <span className="text-tiny text-muted-soft">
             {relativeTimeRu(stats.lastAt)}
           </span>
         )}
@@ -507,7 +507,7 @@ function QuickCreateForm({
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="text-[10px] uppercase tracking-wider font-bold text-muted-soft">
+        <div className="text-tiny uppercase tracking-wider font-bold text-muted-soft">
           Новый клиент
         </div>
         <button
@@ -577,7 +577,7 @@ function QuickCreateForm({
 function Field({ label, children }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wider font-bold text-muted-soft">{label}</span>
+      <span className="text-tiny uppercase tracking-wider font-bold text-muted-soft">{label}</span>
       {children}
     </label>
   );

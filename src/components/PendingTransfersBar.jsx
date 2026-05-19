@@ -95,10 +95,10 @@ export default function PendingTransfersBar() {
     <section className="mb-4 bg-warning-soft/40 border border-warning/20 rounded-card-lg overflow-hidden">
       <div className="px-4 py-2.5 border-b border-warning/20 bg-amber-100/40 flex items-center gap-2">
         <Clock className="w-4 h-4 text-warning" />
-        <span className="text-[13px] font-bold text-warning">
+        <span className="text-body-sm font-bold text-warning">
           Перемещения · ожидают подтверждения
         </span>
-        <span className="text-[10px] text-warning/70 uppercase tracking-wider">
+        <span className="text-tiny text-warning/70 uppercase tracking-wider">
           {myPending.length} {canSeeAll ? "· все офисы" : "· мои"}
         </span>
       </div>
@@ -125,7 +125,7 @@ export default function PendingTransfersBar() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-bold text-ink inline-flex items-center gap-2 flex-wrap">
+                <div className="text-body-sm font-bold text-ink inline-flex items-center gap-2 flex-wrap">
                   <span className="tabular-nums">
                     {curSymbol(fromCur)}
                     {fmt(tr.fromAmount, fromCur)} {fromCur}
@@ -138,14 +138,14 @@ export default function PendingTransfersBar() {
                         {fmt(tr.toAmount, toCur)} {toCur}
                       </span>
                       {tr.rate && (
-                        <span className="text-[10px] text-muted">
+                        <span className="text-tiny text-muted">
                           @ {tr.rate}
                         </span>
                       )}
                     </>
                   )}
                 </div>
-                <div className="text-[11px] text-muted inline-flex items-center gap-1.5 flex-wrap">
+                <div className="text-tiny text-muted inline-flex items-center gap-1.5 flex-wrap">
                   <Building2 className="w-3 h-3" />
                   <span>
                     {fromAcc ? officeName(fromAcc.officeId) : "—"} →{" "}
@@ -171,7 +171,7 @@ export default function PendingTransfersBar() {
                     <button
                       onClick={() => run("confirm", tr)}
                       disabled={busyId === tr.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[11px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-tiny font-semibold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60 transition-colors"
                     >
                       <CheckCircle2 className="w-3 h-3" />
                       Подтвердить
@@ -179,7 +179,7 @@ export default function PendingTransfersBar() {
                     <button
                       onClick={() => run("reject", tr)}
                       disabled={busyId === tr.id}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[11px] font-semibold bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 disabled:opacity-60 transition-colors"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-tiny font-semibold bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 disabled:opacity-60 transition-colors"
                     >
                       <XCircle className="w-3 h-3" />
                       Отклонить
@@ -190,7 +190,7 @@ export default function PendingTransfersBar() {
                   <button
                     onClick={() => run("cancel", tr)}
                     disabled={busyId === tr.id}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[11px] font-semibold bg-surface-sunk text-ink-soft border border-border-soft hover:bg-surface-sunk disabled:opacity-60 transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-tiny font-semibold bg-surface-sunk text-ink-soft border border-border-soft hover:bg-surface-sunk disabled:opacity-60 transition-colors"
                   >
                     <Ban className="w-3 h-3" />
                     Отменить

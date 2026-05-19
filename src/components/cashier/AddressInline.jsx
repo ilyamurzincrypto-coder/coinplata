@@ -17,7 +17,7 @@ export default function AddressInline({
   const [open, setOpen] = useState(defaultExpanded);
 
   return (
-    <div className="text-[12px]">
+    <div className="text-caption">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -30,7 +30,7 @@ export default function AddressInline({
         )}
         <span>
           {address ? (
-            <span className="text-ink-soft font-mono text-[11px]">
+            <span className="text-ink-soft font-mono text-tiny">
               {address.slice(0, 8)}…{address.slice(-6)}{network ? ` · ${network}` : ""}
             </span>
           ) : (
@@ -46,12 +46,12 @@ export default function AddressInline({
             value={address || ""}
             onChange={(e) => onAddressChange(e.target.value)}
             placeholder="Адрес кошелька"
-            className="flex-1 bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-[12px] font-mono outline-none"
+            className="flex-1 bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-caption font-mono outline-none"
           />
           <select
             value={network || ""}
             onChange={(e) => onNetworkChange(e.target.value || null)}
-            className="bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-[12px] outline-none"
+            className="bg-surface-soft border border-border-soft focus:border-accent rounded-[var(--radius-cell)] px-2 py-1 text-caption outline-none"
           >
             <option value="">— сеть —</option>
             {NETWORKS.map((n) => (

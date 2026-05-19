@@ -72,7 +72,7 @@ export default function CounterpartyGroup({ cp, formatBase, baseCurrency, defaul
               </span>
             )}
             {cp.kind === "partner" && (
-              <span className="inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold bg-info-soft text-info uppercase tracking-wider shrink-0">
+              <span className="inline-flex items-center h-4 px-1.5 rounded font-mono text-micro font-bold bg-info-soft text-info uppercase tracking-wider shrink-0">
                 OTC
               </span>
             )}

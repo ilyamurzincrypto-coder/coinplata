@@ -43,7 +43,7 @@ export default function ChipPill({
       className={
         `inline-flex items-center gap-1 px-2.5 py-1 rounded-[var(--radius-cell)] ` +
         `border ${s.bg} ${s.border} ${s.text} ` +
-        `text-[12px] font-semibold transition-colors ` +
+        `text-caption font-semibold transition-colors ` +
         `disabled:cursor-not-allowed`
       }
     >

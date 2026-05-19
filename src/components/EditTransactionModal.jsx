@@ -149,7 +149,7 @@ export default function EditTransactionModal({ transaction, onClose }) {
       width="xl"
     >
       {USE_NEW_LEDGER && (
-        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-[12.5px] text-warning">
+        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-caption text-warning">
           <span className="font-semibold">Edit отключён в режиме v2 ledger.</span>{" "}
           v2 updateDeal ещё не реализован. Чтобы отредактировать сделку, попроси
           админа выключить <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>,

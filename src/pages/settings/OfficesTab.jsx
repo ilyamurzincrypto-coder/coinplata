@@ -241,7 +241,7 @@ function OfficeFormModal({ open, office, onClose }) {
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
               {t("office_name")}
             </label>
             <input
@@ -250,11 +250,11 @@ function OfficeFormModal({ open, office, onClose }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="Istanbul Main"
               autoFocus
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
               {t("office_city")}
             </label>
             <input
@@ -262,19 +262,19 @@ function OfficeFormModal({ open, office, onClose }) {
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Istanbul"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
             Timezone
           </label>
           <select
             value={timezone}
             onChange={(e) => setTimezone(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-semibold outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-semibold outline-none"
           >
             {TIMEZONES.map((tz) => (
               <option key={tz} value={tz}>{tz}</option>
@@ -283,7 +283,7 @@ function OfficeFormModal({ open, office, onClose }) {
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
             {t("office_working_days")}
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -294,7 +294,7 @@ function OfficeFormModal({ open, office, onClose }) {
                   key={d.n}
                   type="button"
                   onClick={() => toggleDay(d.n)}
-                  className={`px-3 py-1.5 rounded-button text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-1.5 rounded-button text-caption font-semibold border transition-colors ${
                     active
                       ? "bg-ink text-white border-ink"
                       : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -306,40 +306,40 @@ function OfficeFormModal({ open, office, onClose }) {
             })}
           </div>
           {workingDays.length === 0 && (
-            <p className="text-[11px] text-danger mt-1">Pick at least one day.</p>
+            <p className="text-tiny text-danger mt-1">Pick at least one day.</p>
           )}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
               {t("office_open_at")}
             </label>
             <input
               type="time"
               value={startTime}
               onChange={(e) => setStartTime(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
               {t("office_close_at")}
             </label>
             <input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
             />
           </div>
         </div>
 
         {/* Per-day hours override (expandable) */}
         <details className="border-t border-border-soft pt-4">
-          <summary className="cursor-pointer text-[11px] font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
+          <summary className="cursor-pointer text-tiny font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
             {t("office_per_day_title")}
-            <span className="ml-2 text-[10px] font-normal normal-case text-muted-soft">
+            <span className="ml-2 text-tiny font-normal normal-case text-muted-soft">
               {t("office_per_day_hint")}
             </span>
           </summary>
@@ -350,12 +350,12 @@ function OfficeFormModal({ open, office, onClose }) {
               const state =
                 override === undefined ? "same" : override === null ? "closed" : "custom";
               return (
-                <div key={d.n} className="flex items-center gap-2 text-[12px]">
+                <div key={d.n} className="flex items-center gap-2 text-caption">
                   <span className="w-10 text-ink-soft font-semibold">{d.short}</span>
                   <button
                     type="button"
                     onClick={() => toggleDayOverride(d.n)}
-                    className={`px-2 py-1 rounded-[6px] text-[10px] font-bold uppercase tracking-wider ${
+                    className={`px-2 py-1 rounded-[6px] text-tiny font-bold uppercase tracking-wider ${
                       state === "same"
                         ? "bg-surface-sunk text-ink-soft"
                         : state === "closed"
@@ -371,14 +371,14 @@ function OfficeFormModal({ open, office, onClose }) {
                         type="time"
                         value={override.start || ""}
                         onChange={(e) => setDayHours(d.n, "start", e.target.value)}
-                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-[12px] tabular-nums outline-none"
+                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-caption tabular-nums outline-none"
                       />
                       <span className="text-muted-soft">–</span>
                       <input
                         type="time"
                         value={override.end || ""}
                         onChange={(e) => setDayHours(d.n, "end", e.target.value)}
-                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-[12px] tabular-nums outline-none"
+                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-caption tabular-nums outline-none"
                       />
                     </>
                   )}
@@ -390,9 +390,9 @@ function OfficeFormModal({ open, office, onClose }) {
 
         {/* Holidays */}
         <details className="border-t border-border-soft pt-4">
-          <summary className="cursor-pointer text-[11px] font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
+          <summary className="cursor-pointer text-tiny font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
             {t("office_holidays")}
-            <span className="ml-2 text-[10px] font-normal normal-case text-muted-soft">
+            <span className="ml-2 text-tiny font-normal normal-case text-muted-soft">
               ({holidays.length})
             </span>
           </summary>
@@ -402,13 +402,13 @@ function OfficeFormModal({ open, office, onClose }) {
                 type="date"
                 value={newHoliday}
                 onChange={(e) => setNewHoliday(e.target.value)}
-                className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-button px-2.5 py-1.5 text-[12px] tabular-nums outline-none"
+                className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-button px-2.5 py-1.5 text-caption tabular-nums outline-none"
               />
               <button
                 type="button"
                 onClick={addHoliday}
                 disabled={!newHoliday}
-                className="px-3 py-1.5 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 rounded-button bg-ink text-white text-tiny font-semibold hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 + {t("office_holiday_add")}
               </button>
@@ -418,7 +418,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 {holidays.map((d) => (
                   <span
                     key={d}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-soft border border-danger/20 text-[11px] font-medium text-danger tabular-nums"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-soft border border-danger/20 text-tiny font-medium text-danger tabular-nums"
                   >
                     {d}
                     <button
@@ -437,28 +437,28 @@ function OfficeFormModal({ open, office, onClose }) {
 
         {/* Temporary closure */}
         <details className="border-t border-border-soft pt-4">
-          <summary className="cursor-pointer text-[11px] font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
+          <summary className="cursor-pointer text-tiny font-bold text-muted uppercase tracking-wider hover:text-ink select-none">
             {t("office_temp_closure")}
             {tempClosedUntil && (
-              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-danger text-[9px] font-bold tracking-wider uppercase">
+              <span className="ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-rose-100 text-danger text-micro font-bold tracking-wider uppercase">
                 {t("office_temp_active")}
               </span>
             )}
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-muted mb-1 uppercase tracking-wide">
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">
                 {t("office_temp_until")}
               </label>
               <input
                 type="datetime-local"
                 value={tempClosedUntil}
                 onChange={(e) => setTempClosedUntil(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] tabular-nums outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body-sm tabular-nums outline-none"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-muted mb-1 uppercase tracking-wide">
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">
                 {t("office_temp_reason")}
               </label>
               <input
@@ -466,7 +466,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 value={tempClosedReason}
                 onChange={(e) => setTempClosedReason(e.target.value)}
                 placeholder={t("office_temp_reason_ph")}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body-sm outline-none"
               />
             </div>
             {tempClosedUntil && (
@@ -474,7 +474,7 @@ function OfficeFormModal({ open, office, onClose }) {
                 <button
                   type="button"
                   onClick={() => { setTempClosedUntil(""); setTempClosedReason(""); }}
-                  className="text-[11px] font-semibold text-ink-soft hover:text-danger"
+                  className="text-tiny font-semibold text-ink-soft hover:text-danger"
                 >
                   {t("office_temp_reopen")}
                 </button>
@@ -485,16 +485,16 @@ function OfficeFormModal({ open, office, onClose }) {
 
         {/* Fees — per-office */}
         <div className="border-t border-border-soft pt-4">
-          <div className="text-[11px] font-bold text-muted uppercase tracking-wider mb-2">
+          <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2">
             {t("office_fees")}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-semibold text-muted mb-1 uppercase tracking-wide">
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">
                 {t("office_min_fee")}
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft text-[13px]">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft text-body-sm">$</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -503,12 +503,12 @@ function OfficeFormModal({ open, office, onClose }) {
                     setMinFee(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="10"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-7 pr-3 py-2.5 text-[14px] tabular-nums outline-none"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-7 pr-3 py-2.5 text-body tabular-nums outline-none"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-[10px] font-semibold text-muted mb-1 uppercase tracking-wide">
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">
                 {t("office_fee_percent")}
               </label>
               <div className="relative">
@@ -520,13 +520,13 @@ function OfficeFormModal({ open, office, onClose }) {
                     setFeePct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="0"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-3 pr-7 py-2.5 text-[14px] tabular-nums outline-none"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card pl-3 pr-7 py-2.5 text-body tabular-nums outline-none"
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft text-[13px]">%</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-soft text-body-sm">%</span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-muted mt-1.5">
+          <p className="text-tiny text-muted mt-1.5">
             {t("office_fees_hint")}
           </p>
         </div>
@@ -534,14 +534,14 @@ function OfficeFormModal({ open, office, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -564,7 +564,7 @@ function LiveClock({ office }) {
   }, []);
   const tz = office?.timezone;
   if (!tz) {
-    return <span className="text-[11px] text-muted-soft">—</span>;
+    return <span className="text-tiny text-muted-soft">—</span>;
   }
   let display = "";
   let offset = "";
@@ -581,11 +581,11 @@ function LiveClock({ office }) {
     const tzPart = parts.find((p) => p.type === "timeZoneName");
     offset = tzPart?.value || "";
   } catch {
-    return <span className="text-[11px] text-danger font-mono">invalid tz</span>;
+    return <span className="text-tiny text-danger font-mono">invalid tz</span>;
   }
   const state = getOfficeOpenState(office, now);
   return (
-    <div className="inline-flex items-center gap-2 text-[13px]">
+    <div className="inline-flex items-center gap-2 text-body-sm">
       <span
         className={`inline-flex items-center justify-center w-1.5 h-1.5 rounded-full ${
           state.open ? "bg-success" : "bg-danger"
@@ -593,7 +593,7 @@ function LiveClock({ office }) {
         title={state.open ? "Open now" : `Closed (${state.reason || "—"})`}
       />
       <span className="font-bold tabular-nums text-ink">{display}</span>
-      {offset && <span className="text-[10px] text-muted tabular-nums">{offset}</span>}
+      {offset && <span className="text-tiny text-muted tabular-nums">{offset}</span>}
     </div>
   );
 }
@@ -670,12 +670,12 @@ export default function OfficesTab() {
       <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-[16px] font-semibold tracking-tight">{t("offices_title")}</h2>
-          <p className="text-[12px] text-muted mt-0.5">{t("offices_subtitle")}</p>
+          <p className="text-caption text-muted mt-0.5">{t("offices_subtitle")}</p>
         </div>
         {isAdmin && (
           <button
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             {t("office_add")}
@@ -684,9 +684,9 @@ export default function OfficesTab() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-body-sm">
           <thead>
-            <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft bg-surface-soft/40">
+            <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft bg-surface-soft/40">
               {isAdmin && <th className="px-2 py-2.5 font-bold w-10"></th>}
               <th className="px-5 py-2.5 font-bold">{t("office_name")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_city")}</th>
@@ -750,7 +750,7 @@ export default function OfficesTab() {
                     <LiveClock office={o} />
                   </td>
                   <td className="px-3 py-3">
-                    <div className="inline-flex items-start gap-1.5 text-[11px]">
+                    <div className="inline-flex items-start gap-1.5 text-tiny">
                       <Clock className="w-3 h-3 text-muted-soft mt-0.5" />
                       <div>
                         <div className="text-ink-soft font-semibold tabular-nums">
@@ -763,7 +763,7 @@ export default function OfficesTab() {
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <div className="text-[11px] tabular-nums">
+                    <div className="text-tiny tabular-nums">
                       <span className="font-semibold text-ink-soft">
                         min ${Number(o.minFeeUsd ?? 10)}
                       </span>
@@ -776,7 +776,7 @@ export default function OfficesTab() {
                   </td>
                   <td className="px-3 py-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold ${
                         isClosed
                           ? "bg-surface-sunk text-muted"
                           : "bg-success-soft text-success"
@@ -789,7 +789,7 @@ export default function OfficesTab() {
                     {count > 0 ? (
                       <span className="font-semibold text-ink-soft">{count}</span>
                     ) : (
-                      <span className="text-muted-soft text-[11px]">{t("office_no_accounts")}</span>
+                      <span className="text-muted-soft text-tiny">{t("office_no_accounts")}</span>
                     )}
                   </td>
                   <td className="px-5 py-3">
@@ -827,7 +827,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 9 : 8} className="px-5 py-12 text-center text-[13px] text-muted-soft">
+                <td colSpan={isAdmin ? 9 : 8} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   No offices
                 </td>
               </tr>

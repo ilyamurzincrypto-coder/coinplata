@@ -83,7 +83,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
   const StatusBadge = () => {
     const base =
-      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold";
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-bold";
     if (tx.status === "pending")
       return (
         <span className={`${base} bg-warning-soft text-warning ring-1 ring-amber-200`}>
@@ -145,13 +145,13 @@ export default function TransactionDetailModal({ transaction, onClose }) {
           <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge />
             {tx.pinned && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent-bg text-accent ring-1 ring-indigo-200">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-bold bg-accent-bg text-accent ring-1 ring-indigo-200">
                 {t("badge_pinned")}
               </span>
             )}
             {tx.riskLevel && (
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
                 title={(tx.riskFlags || []).join(", ") || "no flags"}
               >
                 <Shield className="w-2.5 h-2.5" />
@@ -159,12 +159,12 @@ export default function TransactionDetailModal({ transaction, onClose }) {
               </span>
             )}
             {tx.referral && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-accent-bg text-accent">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-bold bg-accent-bg text-accent">
                 referral
               </span>
             )}
           </div>
-          <div className="flex items-center gap-4 text-[12px]">
+          <div className="flex items-center gap-4 text-caption">
             <div className="text-muted">
               Fee:{" "}
               <span className="font-bold text-ink tabular-nums">
@@ -187,16 +187,16 @@ export default function TransactionDetailModal({ transaction, onClose }) {
         {/* Counterparty */}
         {(tx.counterparty || tx.counterpartyId) && (
           <div className="bg-white border border-border-soft rounded-card px-4 py-3">
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
               Counterparty
             </div>
             <div className="flex items-center gap-2">
               <UserIcon className="w-3.5 h-3.5 text-muted-soft" />
-              <span className="text-[14px] font-semibold text-ink">
+              <span className="text-body font-semibold text-ink">
                 {tx.counterparty || "—"}
               </span>
               {tx.counterpartyId && (
-                <span className="text-[10px] text-muted-soft font-mono">
+                <span className="text-tiny text-muted-soft font-mono">
                   {String(tx.counterpartyId).slice(0, 8)}…
                 </span>
               )}
@@ -206,7 +206,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         {/* IN side */}
         <div>
-          <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">
+          <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2">
             Incoming
           </div>
           <div className="bg-gradient-to-br from-slate-50 to-white border border-border-soft rounded-card px-4 py-3.5">
@@ -216,11 +216,11 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                   <span className="text-[22px] font-bold tabular-nums text-ink">
                     {curSymbol(tx.curIn)}{fmt(tx.amtIn, tx.curIn)}
                   </span>
-                  <span className="text-[12px] font-semibold text-muted">
+                  <span className="text-caption font-semibold text-muted">
                     {tx.curIn}
                   </span>
                 </div>
-                <div className="text-[11px] text-muted mt-1 flex items-center gap-2 flex-wrap">
+                <div className="text-tiny text-muted mt-1 flex items-center gap-2 flex-wrap">
                   {inAccount && (
                     <span className="inline-flex items-center gap-1">
                       <Wallet className="w-2.5 h-2.5" />
@@ -235,17 +235,17 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+                <div className="text-tiny font-bold text-muted uppercase tracking-wider">
                   Status
                 </div>
                 <LegStatusPill state={inLegState} />
                 {tx.inPlannedAt && (
-                  <div className="text-[10px] text-muted-soft mt-1">
+                  <div className="text-tiny text-muted-soft mt-1">
                     planned: {formatDateTime(tx.inPlannedAt)}
                   </div>
                 )}
                 {tx.inCompletedAt && (
-                  <div className="text-[10px] text-success mt-0.5">
+                  <div className="text-tiny text-success mt-0.5">
                     completed: {formatDateTime(tx.inCompletedAt)}
                   </div>
                 )}
@@ -264,10 +264,10 @@ export default function TransactionDetailModal({ transaction, onClose }) {
         {/* Outputs */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider">
               Outgoing ({(tx.outputs || []).length})
             </div>
-            <div className="text-[10px] text-muted-soft">
+            <div className="text-tiny text-muted-soft">
               Rate{(tx.outputs || []).length > 1 ? "s" : ""} shown per-leg
             </div>
           </div>
@@ -288,21 +288,21 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       <div className="flex items-baseline gap-2">
-                        <span className="text-[10px] font-bold text-muted-soft tabular-nums">
+                        <span className="text-tiny font-bold text-muted-soft tabular-nums">
                           #{idx + 1}
                         </span>
                         <span className="text-[18px] font-bold tabular-nums text-ink">
                           {curSymbol(leg.currency)}{fmt(leg.amount, leg.currency)}
                         </span>
-                        <span className="text-[11px] font-semibold text-muted">
+                        <span className="text-tiny font-semibold text-muted">
                           {leg.currency}
                         </span>
-                        <span className="text-[10px] text-muted-soft">@</span>
-                        <span className="text-[12px] font-semibold text-ink-soft tabular-nums">
+                        <span className="text-tiny text-muted-soft">@</span>
+                        <span className="text-caption font-semibold text-ink-soft tabular-nums">
                           {leg.rate?.toLocaleString("en-US", { maximumFractionDigits: 6 })}
                         </span>
                       </div>
-                      <div className="text-[11px] text-muted mt-1 flex items-center gap-2 flex-wrap">
+                      <div className="text-tiny text-muted mt-1 flex items-center gap-2 flex-wrap">
                         {legAcc ? (
                           <span className="inline-flex items-center gap-1">
                             <Wallet className="w-2.5 h-2.5" />
@@ -325,13 +325,13 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                           </span>
                         )}
                         {leg.sendStatus && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-info-soft text-info ring-1 ring-sky-200">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-micro font-bold bg-info-soft text-info ring-1 ring-sky-200">
                             <Send className="w-2.5 h-2.5" />
                             {leg.sendStatus}
                           </span>
                         )}
                         {leg.isInternal && (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200">
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-micro font-bold bg-warning-soft text-warning ring-1 ring-amber-200">
                             interoffice
                           </span>
                         )}
@@ -340,17 +340,17 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                     <div className="text-right">
                       <LegStatusPill state={legState} />
                       {legState.status === "partial" && (
-                        <div className="text-[10px] text-accent font-semibold tabular-nums mt-0.5">
+                        <div className="text-tiny text-accent font-semibold tabular-nums mt-0.5">
                           {fmt(legState.actual, leg.currency)}/{fmt(legState.planned, leg.currency)}
                         </div>
                       )}
                       {leg.completedAt && (
-                        <div className="text-[10px] text-success mt-0.5">
+                        <div className="text-tiny text-success mt-0.5">
                           {formatShortDate(leg.completedAt)}
                         </div>
                       )}
                       {leg.sendTxHash && (
-                        <div className="text-[10px] text-muted-soft font-mono mt-0.5">
+                        <div className="text-tiny text-muted-soft font-mono mt-0.5">
                           {leg.sendTxHash.slice(0, 10)}…
                         </div>
                       )}
@@ -365,7 +365,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
         {/* Obligations */}
         {dealObligations.length > 0 && (
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
               <Lock className="w-3 h-3" />
               Obligations ({dealObligations.length})
             </div>
@@ -386,9 +386,9 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 text-[12px]">
+                      <div className="flex items-center gap-2 text-caption">
                         <span
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-micro font-bold uppercase tracking-wider ${
                             isTheyOwe ? "bg-sky-100 text-info" : "bg-amber-100 text-warning"
                           }`}
                         >
@@ -398,14 +398,14 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                           {curSymbol(ob.currency)}{fmt(remaining, ob.currency)}
                         </span>
                         {(ob.paidAmount || 0) > 0 && (
-                          <span className="text-[10px] text-muted-soft tabular-nums">
+                          <span className="text-tiny text-muted-soft tabular-nums">
                             / {fmt(ob.amount, ob.currency)}
                           </span>
                         )}
-                        <span className="text-[11px] text-muted">{ob.currency}</span>
+                        <span className="text-tiny text-muted">{ob.currency}</span>
                       </div>
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-micro font-bold uppercase ${
                           ob.status === "open"
                             ? "bg-success-soft text-success"
                             : ob.status === "cancelled"
@@ -425,7 +425,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
                       </div>
                     )}
                     {ob.note && (
-                      <div className="text-[10px] text-muted mt-1 italic">
+                      <div className="text-tiny text-muted mt-1 italic">
                         {ob.note}
                       </div>
                     )}
@@ -439,18 +439,18 @@ export default function TransactionDetailModal({ transaction, onClose }) {
         {/* Comment */}
         {tx.comment && (
           <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2">
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-1 flex items-center gap-1">
               <FileText className="w-3 h-3" />
               Comment
             </div>
-            <div className="text-[12px] text-ink-soft">{tx.comment}</div>
+            <div className="text-caption text-ink-soft">{tx.comment}</div>
           </div>
         )}
 
         {/* Audit trail */}
         {dealAudit.length > 0 && (
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2 flex items-center gap-1">
               <Info className="w-3 h-3" />
               History ({dealAudit.length})
             </div>
@@ -458,7 +458,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
               {dealAudit.map((e) => (
                 <div
                   key={e.id}
-                  className="text-[11px] px-3 py-1.5 rounded-md bg-surface-soft border border-border-soft"
+                  className="text-tiny px-3 py-1.5 rounded-md bg-surface-soft border border-border-soft"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-ink-soft">
@@ -477,7 +477,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
         {/* Deleted footer */}
         {tx.deletedAt && (
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft border border-danger/20 text-danger text-[12px]">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger-soft border border-danger/20 text-danger text-caption">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
               Deleted at {formatDateTime(tx.deletedAt)}
@@ -490,7 +490,7 @@ export default function TransactionDetailModal({ transaction, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
+          className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
         >
           <X className="w-3 h-3" />
           {t("btn_close")}
@@ -504,7 +504,7 @@ function LegStatusPill({ state }) {
   const style = legStatusStyle(state.status);
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold ${style.cls}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-bold ${style.cls}`}
     >
       {style.label}
     </span>

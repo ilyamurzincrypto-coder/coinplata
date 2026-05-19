@@ -114,7 +114,7 @@ function InfoTooltip({ children, side = "bottom", maxWidth = 280 }) {
       className={`pointer-events-none absolute ${sideCls} z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150`}
       style={{ maxWidth }}
     >
-      <span className="block bg-ink text-white text-[11px] leading-snug rounded-lg px-2.5 py-2 shadow-xl whitespace-normal">
+      <span className="block bg-ink text-white text-tiny leading-snug rounded-lg px-2.5 py-2 shadow-xl whitespace-normal">
         {children}
       </span>
     </span>
@@ -276,7 +276,7 @@ export default function ExternalRatesWidget({ compact = false }) {
       >
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-muted shrink-0" />
-          <h2 className="text-[14px] font-bold text-ink tracking-tight truncate flex-1">
+          <h2 className="text-body font-bold text-ink tracking-tight truncate flex-1">
             Внешние котировки
           </h2>
           {!collapsed && (
@@ -305,7 +305,7 @@ export default function ExternalRatesWidget({ compact = false }) {
             ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" />
             : <ChevronUp className="w-4 h-4 text-muted-soft shrink-0" />}
         </div>
-        <div className="text-[11px] text-muted mt-1">
+        <div className="text-tiny text-muted mt-1">
           {collapsed
             ? `${bySource.size || 0} источников · ${rows.length} пар · клик чтобы раскрыть`
             : `Авто-обновление ${REFRESH_INTERVAL}`}
@@ -314,14 +314,14 @@ export default function ExternalRatesWidget({ compact = false }) {
       {/* Settings panel — список всех (source, pair) с галочками. */}
       {!collapsed && settingsOpen && (
         <div className="px-3 py-2 border-b border-border-soft bg-surface-soft/40 max-h-[240px] overflow-y-auto">
-          <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
+          <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
             Какие курсы показывать
           </div>
           {SOURCE_ORDER.filter((s) => bySource.has(s)).map((source) => {
             const meta = SOURCES[source];
             return (
               <div key={`s_${source}`} className="mb-2 last:mb-0">
-                <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${meta?.accent || "text-ink-soft"}`}>
+                <div className={`text-tiny font-bold uppercase tracking-wider mb-1 ${meta?.accent || "text-ink-soft"}`}>
                   {meta?.label || source}
                 </div>
                 {bySource.get(source).map((r) => {
@@ -338,7 +338,7 @@ export default function ExternalRatesWidget({ compact = false }) {
                         onChange={() => toggleHidden(key)}
                         className="w-3.5 h-3.5 rounded border-border text-ink focus:ring-2 focus:ring-accent/30 cursor-pointer"
                       />
-                      <span className="text-[11.5px] text-ink-soft font-semibold tabular-nums">
+                      <span className="text-caption text-ink-soft font-semibold tabular-nums">
                         {formatPair(r.pair)}
                       </span>
                     </label>
@@ -350,7 +350,7 @@ export default function ExternalRatesWidget({ compact = false }) {
         </div>
       )}
       {!collapsed && (rows.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12px] text-muted-soft">
+        <div className="px-4 py-6 text-center text-caption text-muted-soft">
           {loading ? "Загрузка…" : "Нет данных. Cron подтянет в течение 5 минут."}
         </div>
       ) : (
@@ -366,26 +366,26 @@ export default function ExternalRatesWidget({ compact = false }) {
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Source-pill — hover показывает описание через title= */}
                   <span
-                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11.5px] font-bold uppercase tracking-wider ring-1 cursor-help ${meta.tone}`}
+                    className={`inline-flex items-center px-2 py-0.5 rounded-md text-caption font-bold uppercase tracking-wider ring-1 cursor-help ${meta.tone}`}
                     title={meta.description || meta.origin}
                   >
                     {meta.label}
                     <Info className="w-3 h-3 ml-1 opacity-60" />
                   </span>
-                  <span className="text-[11px] text-muted tabular-nums">
+                  <span className="text-tiny text-muted tabular-nums">
                     {timeAgo(fetchedAt, nowMs)} назад
                   </span>
                 </div>
                 <div className="space-y-0.5">
                   <div
-                    className="text-[10.5px] text-muted-soft truncate"
+                    className="text-tiny text-muted-soft truncate"
                     title={meta.origin}
                   >
                     {meta.origin}
                   </div>
                   {meta.note && (
                     <div
-                      className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${meta.tone}`}
+                      className={`inline-flex items-center gap-1 text-tiny font-bold px-1.5 py-0.5 rounded ${meta.tone}`}
                       title={meta.description}
                     >
                       <Info className="w-2.5 h-2.5" />
@@ -460,7 +460,7 @@ function PerPairRow({
 }) {
   return (
     <div className="flex items-center gap-2 px-1 py-1.5">
-      <span className="text-[13.5px] font-bold tracking-wide w-[64px] shrink-0 text-ink-soft">
+      <span className="text-body-sm font-bold tracking-wide w-[64px] shrink-0 text-ink-soft">
         {formatPair(pair)}
       </span>
       <div className="relative shrink-0 inline-flex items-center gap-0.5">
@@ -477,7 +477,7 @@ function PerPairRow({
             onSpreadChange(next);
           }}
           title="Перевернуть знак спреда (плюс ↔ минус)"
-          className="w-5 h-[22px] rounded text-[11px] font-bold text-muted bg-surface-sunk hover:bg-surface-sunk transition-colors"
+          className="w-5 h-[22px] rounded text-tiny font-bold text-muted bg-surface-sunk hover:bg-surface-sunk transition-colors"
         >
           ±
         </button>
@@ -491,14 +491,14 @@ function PerPairRow({
             onChange={(e) => onSpreadChange(e.target.value)}
             placeholder="0"
             title="Спред % — на сколько разводим купим/продадим относительно mid. Может быть отрицательным (тогда КУПИМ выше mid а ПРОДАДИМ ниже)."
-            className={`w-[58px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-[11px] tabular-nums outline-none text-right focus:bg-white ${
+            className={`w-[58px] border rounded-[6px] pl-1.5 pr-4 py-0.5 text-tiny tabular-nums outline-none text-right focus:bg-white ${
               hasSpread
                 ? "bg-success-soft border-success/20 focus:border-emerald-400"
                 : "bg-surface-soft border-border-soft focus:border-accent"
             }`}
           />
           <span
-            className={`absolute right-1 top-1/2 -translate-y-1/2 text-[10px] font-bold ${
+            className={`absolute right-1 top-1/2 -translate-y-1/2 text-tiny font-bold ${
               hasSpread ? "text-success" : "text-muted-soft"
             }`}
           >
@@ -540,11 +540,11 @@ function BuySellCell({ label, value, tone, copied, onCopy }) {
         copied ? "bg-success-soft ring-1 ring-emerald-200" : "hover:bg-surface-soft"
       }`}
     >
-      <span className="block text-[8.5px] font-bold text-muted-soft uppercase tracking-wider">
+      <span className="block text-micro font-bold text-muted-soft uppercase tracking-wider">
         {label}
       </span>
       <span
-        className={`block text-[14px] font-bold tabular-nums ${toneCls}`}
+        className={`block text-body font-bold tabular-nums ${toneCls}`}
       >
         {fmtRate(value)}
       </span>

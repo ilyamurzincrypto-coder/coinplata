@@ -60,7 +60,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
             open ? "text-success" : "text-muted-soft"
           }`}
         />
-        <span className="text-[13px] font-semibold truncate flex-1 text-left">
+        <span className="text-body-sm font-semibold truncate flex-1 text-left">
           {currentLabel}
         </span>
         <ChevronDown
@@ -88,7 +88,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
           }}
         >
           {(offices || []).length === 0 ? (
-            <div className="px-3 py-2 text-[12px] text-muted italic">
+            <div className="px-3 py-2 text-caption text-muted italic">
               No offices
             </div>
           ) : (
@@ -99,7 +99,7 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
                   key={off.id}
                   type="button"
                   onClick={() => handlePick(off.id)}
-                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-button text-[12.5px] text-left transition-colors duration-150 ${
+                  className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-button text-caption text-left transition-colors duration-150 ${
                     active
                       ? "bg-white text-ink font-semibold"
                       : "text-white/80 hover:bg-ink/80"

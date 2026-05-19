@@ -61,7 +61,7 @@ export default function LivePreview({
   const noCommission = (conditions.fees || []).includes("no_commission");
 
   return (
-    <div className="flex items-center gap-3 flex-wrap text-[12px]">
+    <div className="flex items-center gap-3 flex-wrap text-caption">
       {/* Direction */}
       <div className="inline-flex items-center gap-1.5 text-ink-soft font-semibold tabular-nums">
         <span className="text-success">{inSummary || "—"}</span>
@@ -72,7 +72,7 @@ export default function LivePreview({
       {/* Margin */}
       {marginInfo && !noCommission && (
         <div className="inline-flex items-center gap-1 text-ink-soft">
-          <span className="text-[10px] uppercase tracking-wider text-muted-soft">margin:</span>
+          <span className="text-tiny uppercase tracking-wider text-muted-soft">margin:</span>
           <span
             className={
               "tabular-nums font-semibold " +

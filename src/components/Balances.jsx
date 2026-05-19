@@ -204,7 +204,7 @@ function AssetRow({
       <div className="text-body-sm font-semibold text-ink flex items-center gap-2 min-w-0">
         <span className="truncate">{name}</span>
         {subtitle && (
-          <span className="text-[10px] font-bold font-mono text-muted tracking-wide uppercase shrink-0">
+          <span className="text-tiny font-bold font-mono text-muted tracking-wide uppercase shrink-0">
             {subtitle}
           </span>
         )}
@@ -278,13 +278,13 @@ function GroupCard({
         <span className="text-micro text-muted uppercase">{title}</span>
         {split && (
           <span
-            className="inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-[9px] font-bold tracking-wider uppercase"
+            className="inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-micro font-bold tracking-wider uppercase"
             title="Общий остаток по всем офисам"
           >
             All offices
           </span>
         )}
-        <span className="ml-auto text-[10px] font-semibold text-muted-soft font-mono tabular">
+        <span className="ml-auto text-tiny font-semibold text-muted-soft font-mono tabular">
           {rows.length}
         </span>
       </div>
@@ -436,7 +436,7 @@ function OfficeBlock({
             <h3 className="text-h3 text-ink">{office.name}</h3>
             <span className="text-caption text-muted">· {allAccs.length} accounts</span>
           </div>
-          <div className="flex items-center gap-2 text-[12px] tabular-nums">
+          <div className="flex items-center gap-2 text-caption tabular-nums">
             <MiniStat label="Total" value={totals.total} sym={curSymbol(base)} tone="slate" />
             {totals.hasReserved && (
               <MiniStat
@@ -536,7 +536,7 @@ function MiniStat({ label, value, sym, tone, icon: Icon }) {
   return (
     <div className={`inline-flex items-center gap-1.5 rounded-badge px-2 py-1 ${tones[tone] || tones.slate}`}>
       {Icon && <Icon className="w-3 h-3" strokeWidth={2} />}
-      <span className="text-[9px] font-bold uppercase tracking-wider opacity-75">{label}</span>
+      <span className="text-micro font-bold uppercase tracking-wider opacity-75">{label}</span>
       <span className="font-mono font-semibold tabular">
         {sym}
         {fmt(value)}

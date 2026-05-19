@@ -161,7 +161,7 @@ export default function DealRateAutocomplete({
         }`}>
           {suggestions.length > 0 ? (
             <>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider font-bold text-muted-soft">
+              <div className="px-3 pt-2 pb-1 text-tiny uppercase tracking-wider font-bold text-muted-soft">
                 Курсы из офисов
               </div>
               {suggestions.map((s, i) => {
@@ -182,16 +182,16 @@ export default function DealRateAutocomplete({
                     <span className="text-caption text-ink-soft truncate">
                       {s.officeName}
                     </span>
-                    <span className={`inline-flex items-center h-4 px-1.5 rounded font-mono text-[9px] font-bold ${tone.cls}`}>
+                    <span className={`inline-flex items-center h-4 px-1.5 rounded font-mono text-micro font-bold ${tone.cls}`}>
                       {tone.label}
                     </span>
                   </button>
                 );
               })}
               <div className="px-3 py-1.5 bg-surface-soft text-tiny text-muted flex items-center gap-3 border-t border-border-soft">
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↑↓</kbd> выбрать</span>
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">↵</kbd> применить</span>
-                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-[10px]">Esc</kbd> закрыть</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">↑↓</kbd> выбрать</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">↵</kbd> применить</span>
+                <span><kbd className="px-1 rounded bg-surface border border-border font-mono text-tiny">Esc</kbd> закрыть</span>
               </div>
             </>
           ) : (

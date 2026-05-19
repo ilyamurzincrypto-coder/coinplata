@@ -139,20 +139,20 @@ export default function PostingTab({ ctx, onDone }) {
       <div className="bg-white border border-border-soft rounded-card p-4 space-y-4">
         {/* header: date + default currency + template */}
         <div className="flex flex-wrap items-center gap-5">
-          <label className="flex items-center gap-2 text-[12.5px]">
+          <label className="flex items-center gap-2 text-caption">
             <span className="text-muted">{t("trv2_pm_effective_date")}</span>
             <input type="date" value={dateStr} min={minDateInputValue()} max={todayInputValue()}
               onChange={(e) => setDateStr(e.target.value)}
               className="bg-surface-soft border border-border-soft rounded-button px-2 py-1.5 outline-none" />
           </label>
-          <label className="flex items-center gap-2 text-[12.5px]">
+          <label className="flex items-center gap-2 text-caption">
             <span className="text-muted">{t("trv2_pm_currency")}</span>
             <select value={defaultCur} onChange={(e) => changeDefaultCurrency(e.target.value)}
               className="bg-surface-soft border border-border-soft rounded-button px-2 py-1.5 outline-none">
               {[...new Set([defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <div className="flex items-center gap-2 text-[12.5px] ml-auto min-w-[260px]">
+          <div className="flex items-center gap-2 text-caption ml-auto min-w-[260px]">
             <span className="text-muted shrink-0">{t("trv2_pm_template")}</span>
             <div className="flex-1 min-w-0">
               <SearchableSelect
@@ -167,9 +167,9 @@ export default function PostingTab({ ctx, onDone }) {
         </div>
 
         {/* lines table */}
-        <table className="w-full text-[12.5px]">
+        <table className="w-full text-caption">
           <thead>
-            <tr className="text-muted-soft text-[10px] uppercase tracking-wider">
+            <tr className="text-muted-soft text-tiny uppercase tracking-wider">
               <th className="text-left px-2 py-1 w-20">{t("trv2_pm_currency")}</th>
               <th className="text-left px-2 py-1">{t("trv2_pm_col_account")}</th>
               <th className="text-left px-2 py-1">{t("trv2_pm_col_counterparty")}</th>
@@ -192,15 +192,15 @@ export default function PostingTab({ ctx, onDone }) {
               <tr key={l.id} className="border-t border-border-soft align-top">
                 <td className="px-2 py-1.5">
                   <select value={l.currency || defaultCur} onChange={(e) => setLineCurrency(l.id, e.target.value)}
-                    className={`w-full bg-surface-soft border rounded-button px-1.5 py-1 text-[12px] outline-none ${curErr ? "border-danger/40" : "border-border-soft"}`}>
+                    className={`w-full bg-surface-soft border rounded-button px-1.5 py-1 text-caption outline-none ${curErr ? "border-danger/40" : "border-border-soft"}`}>
                     {[...new Set([l.currency || defaultCur, ...currencies])].map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
-                  {curErr && <div className="text-[10px] text-danger mt-0.5">{curErr.message}</div>}
+                  {curErr && <div className="text-tiny text-danger mt-0.5">{curErr.message}</div>}
                 </td>
                 <td className="px-2 py-1.5">
                   <AccountPicker accounts={accounts} currency={l.currency || defaultCur} value={l.accountCode}
                     onChange={(code) => patchLine(l.id, { accountCode: code, clientId: null, partnerId: null })} />
-                  {(lineErr(l.id, "account")) && <div className="text-[10px] text-danger mt-0.5">{lineErr(l.id, "account").message}</div>}
+                  {(lineErr(l.id, "account")) && <div className="text-tiny text-danger mt-0.5">{lineErr(l.id, "account").message}</div>}
                 </td>
                 <td className="px-2 py-1.5">
                   {(needsClient || needsPartner) && (
@@ -212,7 +212,7 @@ export default function PostingTab({ ctx, onDone }) {
                         error={!!cpErr}
                         onChange={(id) => patchLine(l.id, needsPartner ? { partnerId: id } : { clientId: id })}
                       />
-                      {cpErr && <div className="text-[10px] text-danger mt-0.5">{t("trv2_pm_err_counterparty")}</div>}
+                      {cpErr && <div className="text-tiny text-danger mt-0.5">{t("trv2_pm_err_counterparty")}</div>}
                     </>
                   )}
                 </td>
@@ -238,10 +238,10 @@ export default function PostingTab({ ctx, onDone }) {
             })}
           </tbody>
         </table>
-        <button type="button" onClick={addLine} className="text-[12px] text-indigo-600 hover:underline">{t("trv2_pm_add_line")}</button>
+        <button type="button" onClick={addLine} className="text-caption text-indigo-600 hover:underline">{t("trv2_pm_add_line")}</button>
 
         {/* balance indicator */}
-        <div className={`rounded-card px-3 py-2 text-[12.5px] font-medium ${balanced ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}>
+        <div className={`rounded-card px-3 py-2 text-caption font-medium ${balanced ? "bg-success-soft text-success" : "bg-warning-soft text-warning"}`}>
           {multi
             ? `${t("trv2_pm_balance_base")}: ${fmtNum(dr)} / ${fmtNum(cr)} ${balCur} (Δ ${fmtNum(delta)})`
             : t("trv2_pm_balance").replace("{dr}", fmtNum(dr)).replace("{cr}", fmtNum(cr)).replace("{delta}", fmtNum(delta))}
@@ -252,23 +252,23 @@ export default function PostingTab({ ctx, onDone }) {
         <div className="space-y-2">
           <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2}
             placeholder={t("trv2_pm_reason_ph")}
-            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-2 text-[12.5px] outline-none" />
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-2 text-caption outline-none" />
           <input value={description} onChange={(e) => setDescription(e.target.value)}
             placeholder={t("trv2_pm_description")}
-            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-1.5 text-[12.5px] outline-none" />
+            className="w-full bg-surface-soft border border-border-soft rounded-button px-2.5 py-1.5 text-caption outline-none" />
         </div>
 
         {/* preview */}
         {previewEntries.length >= 2 && (
           <div className="border border-border-soft rounded-card">
-            <div className="px-3 py-1.5 text-[11px] uppercase tracking-wider text-muted-soft border-b border-border-soft">{t("trv2_pm_preview")}</div>
+            <div className="px-3 py-1.5 text-tiny uppercase tracking-wider text-muted-soft border-b border-border-soft">{t("trv2_pm_preview")}</div>
             <TransactionEntries entries={previewEntries} />
           </div>
         )}
 
         <div className="flex items-center gap-3">
           <button type="button" disabled={!validation.ok || submitting} onClick={submit}
-            className="px-4 py-2 rounded-card text-[13px] font-semibold bg-ink text-white disabled:opacity-40 disabled:cursor-not-allowed">
+            className="px-4 py-2 rounded-card text-body-sm font-semibold bg-ink text-white disabled:opacity-40 disabled:cursor-not-allowed">
             {t("trv2_pm_post")}
           </button>
         </div>

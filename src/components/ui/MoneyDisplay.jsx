@@ -26,7 +26,7 @@ const SIZE = {
 };
 
 const CCY_SIZE = {
-  xs:  "text-[10px]",
+  xs:  "text-tiny",
   sm:  "text-caption",
   md:  "text-caption",
   lg:  "text-body-sm",

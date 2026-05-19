@@ -48,7 +48,7 @@ function StatusPill({ status }) {
   const cls = STATUS_PILL[status] || STATUS_PILL.pending;
   const Icon = status === "completed" ? CheckCircle2 : Clock;
   return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold ring-1 ${cls}`}>
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-micro font-bold ring-1 ${cls}`}>
       <Icon className="w-2.5 h-2.5" />
       {STATUS_LABEL[status]}
     </span>
@@ -98,10 +98,10 @@ export default function DealDetailPanel({
   }, [dealId]);
 
   if (loading) {
-    return <div className="text-[12px] text-muted-soft p-3">Загрузка деталей…</div>;
+    return <div className="text-caption text-muted-soft p-3">Загрузка деталей…</div>;
   }
   if (!detail) {
-    return <div className="text-[12px] text-muted-soft p-3">Не удалось загрузить детали.</div>;
+    return <div className="text-caption text-muted-soft p-3">Не удалось загрузить детали.</div>;
   }
 
   // План счетов: если у entity задан accounting_code — префиксим именем
@@ -237,7 +237,7 @@ export default function DealDetailPanel({
           {fmt(inPlanned, hint.currencyIn)} {hint.currencyIn}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-start">
-          <div className="space-y-0.5 text-[11.5px]">
+          <div className="space-y-0.5 text-caption">
             <FieldRow label="Received by" value={inReceivedBy} bold />
             {hint.inKind && (
               <FieldRow label="Type" value={IN_KIND[hint.inKind]?.label || hint.inKind} />
@@ -249,7 +249,7 @@ export default function DealDetailPanel({
         </div>
         {detail.inPayments.length > 1 && (
           <div className="mt-2 pt-2 border-t border-border-soft space-y-1">
-            <div className="text-[9.5px] font-bold text-muted-soft uppercase tracking-wider">
+            <div className="text-micro font-bold text-muted-soft uppercase tracking-wider">
               Payments ({detail.inPayments.length})
             </div>
             {detail.inPayments.map((p) => (
@@ -271,36 +271,36 @@ export default function DealDetailPanel({
         >
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <div className="text-[10px] font-bold text-muted-soft uppercase tracking-wider">Rate</div>
-              <div className="text-[13px] font-bold text-ink tabular-nums">
+              <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider">Rate</div>
+              <div className="text-body-sm font-bold text-ink tabular-nums">
                 1 {hint.currencyIn} = {Number(firstLeg.rate).toFixed(6)} {firstLeg.currency}
               </div>
             </div>
             <div>
-              <div className="text-[10px] font-bold text-muted-soft uppercase tracking-wider">Inverse</div>
-              <div className="text-[13px] font-bold text-ink-soft tabular-nums">
+              <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider">Inverse</div>
+              <div className="text-body-sm font-bold text-ink-soft tabular-nums">
                 1 {firstLeg.currency} = {firstLeg.rate > 0 ? (1 / Number(firstLeg.rate)).toFixed(6) : "—"} {hint.currencyIn}
               </div>
             </div>
             {hint.feeUsd != null && (
               <div>
-                <div className="text-[10px] font-bold text-muted-soft uppercase tracking-wider">Fee</div>
-                <div className="text-[13px] font-bold text-ink tabular-nums">
+                <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider">Fee</div>
+                <div className="text-body-sm font-bold text-ink tabular-nums">
                   ${fmt(hint.feeUsd, "USD")}
                 </div>
               </div>
             )}
             {hint.commissionUsd != null && hint.commissionUsd > 0 && (
               <div>
-                <div className="text-[10px] font-bold text-muted-soft uppercase tracking-wider">Commission</div>
-                <div className="text-[13px] font-bold text-ink tabular-nums">
+                <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider">Commission</div>
+                <div className="text-body-sm font-bold text-ink tabular-nums">
                   ${fmt(hint.commissionUsd, "USD")}
                 </div>
               </div>
             )}
             {hint.profit != null && (
               <div className="col-span-2 pt-1.5 border-t border-border-soft">
-                <div className="text-[10px] font-bold text-muted-soft uppercase tracking-wider">Profit</div>
+                <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider">Profit</div>
                 <div className={`text-[15px] font-bold tabular-nums ${hint.profit > 0 ? "text-success" : hint.profit < 0 ? "text-danger" : "text-ink-soft"}`}>
                   {hint.profit > 0 ? "+" : ""}${fmt(hint.profit, "USD")}
                 </div>
@@ -322,7 +322,7 @@ export default function DealDetailPanel({
           {fmt(totalOutPlanned, outCurrency)} {outCurrency}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2 items-start">
-          <div className="space-y-0.5 text-[11.5px]">
+          <div className="space-y-0.5 text-caption">
             {detail.legs.length === 1 ? (
               <FieldRow label="Sent by" value={outDestinationLabel(firstLeg, accLabel, partnerLabel)} bold />
             ) : (
@@ -361,16 +361,16 @@ export default function DealDetailPanel({
                   className={`flex items-center justify-between gap-2 ${isClosed ? "opacity-60" : ""}`}
                 >
                   <div className="min-w-0">
-                    <div className={`text-[12.5px] font-semibold truncate ${isWeOwe ? "text-danger" : "text-success"}`}>
+                    <div className={`text-caption font-semibold truncate ${isWeOwe ? "text-danger" : "text-success"}`}>
                       {isWeOwe ? "Мы должны" : "Должны нам"}
                       {o.counterpartyName ? <span className="text-muted font-normal"> · {o.counterpartyName}</span> : ""}
                     </div>
-                    <div className="text-[10px] text-muted mt-0.5">
+                    <div className="text-tiny text-muted mt-0.5">
                       paid {fmt(o.paidAmount, o.currency)} / {fmt(o.amount, o.currency)}
                       {isClosed && <span className="ml-1 text-success font-bold">✓ closed</span>}
                     </div>
                   </div>
-                  <div className="text-[13px] font-bold tabular-nums shrink-0">
+                  <div className="text-body-sm font-bold tabular-nums shrink-0">
                     {fmt(remaining, o.currency)} {o.currency}
                   </div>
                 </div>
@@ -395,20 +395,20 @@ export default function DealDetailPanel({
               return (
                 <div key={l.id} className="rounded-button border border-border-soft bg-white p-2.5">
                   <div className="flex items-baseline justify-between mb-1 gap-2">
-                    <div className="text-[10.5px] font-bold text-muted tracking-wider uppercase">
+                    <div className="text-tiny font-bold text-muted tracking-wider uppercase">
                       Leg {i + 1}
                     </div>
                     <StatusPill status={st} />
                   </div>
-                  <div className="text-[13px] font-bold text-ink tabular-nums mb-0.5">
+                  <div className="text-body-sm font-bold text-ink tabular-nums mb-0.5">
                     {fmt(l.amount, l.currency)} {l.currency}
-                    <span className="text-[10px] text-muted-soft font-normal ml-1.5">@ {l.rate}</span>
+                    <span className="text-tiny text-muted-soft font-normal ml-1.5">@ {l.rate}</span>
                   </div>
-                  <div className="text-[10.5px] text-muted">
+                  <div className="text-tiny text-muted">
                     → {outDestinationLabel(l, accLabel, partnerLabel)}
                   </div>
                   {st === "partial" && (
-                    <div className="text-[10px] text-accent font-bold tabular-nums mt-0.5">
+                    <div className="text-tiny text-accent font-bold tabular-nums mt-0.5">
                       Выдано: {fmt(l.actualAmount, l.currency)} / {fmt(l.amount, l.currency)}
                     </div>
                   )}
@@ -423,16 +423,16 @@ export default function DealDetailPanel({
       {entries.length > 0 && (
         <div className="mt-2 rounded-card border border-border-soft bg-white overflow-hidden">
           <div className="px-3 py-2 border-b border-border-soft bg-surface-soft/40 flex items-center justify-between">
-            <div className="text-[10.5px] font-bold text-muted uppercase tracking-wider">
+            <div className="text-tiny font-bold text-muted uppercase tracking-wider">
               Проводка
             </div>
-            <span className="text-[10px] text-muted-soft">
+            <span className="text-tiny text-muted-soft">
               {entries.length} {entries.length === 1 ? "операция" : "операций"}
             </span>
           </div>
-          <table className="w-full text-[12px]">
+          <table className="w-full text-caption">
             <thead>
-              <tr className="text-[9.5px] font-bold text-muted-soft tracking-wider uppercase border-b border-border-soft">
+              <tr className="text-micro font-bold text-muted-soft tracking-wider uppercase border-b border-border-soft">
                 <th className="px-3 py-1.5 text-left">Тип</th>
                 <th className="px-3 py-1.5 text-left">Дебет</th>
                 <th className="px-3 py-1.5 text-left">Кредит</th>
@@ -444,7 +444,7 @@ export default function DealDetailPanel({
                 <tr key={i} className="border-b border-border-soft last:border-0">
                   <td className="px-3 py-1.5">
                     <span
-                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-tiny font-bold uppercase ${
                         e.side === "in"
                           ? "bg-success-soft text-success"
                           : "bg-danger-soft text-danger"
@@ -461,7 +461,7 @@ export default function DealDetailPanel({
                   </td>
                   <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap">
                     <span className="font-bold text-ink">{fmt(e.amount, e.currency)}</span>
-                    <span className="text-[10px] text-muted-soft ml-1">{e.currency}</span>
+                    <span className="text-tiny text-muted-soft ml-1">{e.currency}</span>
                   </td>
                 </tr>
               ))}
@@ -497,7 +497,7 @@ function TimelineStep({ index, tone, title, icon: Icon, last, children }) {
       {/* Left column: number circle + connecting line */}
       <div className="flex flex-col items-center shrink-0">
         <div
-          className={`w-7 h-7 rounded-full ring-2 flex items-center justify-center text-[11px] font-bold ${TONE_RING[tone] || TONE_RING.slate}`}
+          className={`w-7 h-7 rounded-full ring-2 flex items-center justify-center text-tiny font-bold ${TONE_RING[tone] || TONE_RING.slate}`}
         >
           <Icon className="w-3.5 h-3.5" />
         </div>
@@ -507,7 +507,7 @@ function TimelineStep({ index, tone, title, icon: Icon, last, children }) {
       </div>
       {/* Right column: card */}
       <div className="flex-1 min-w-0 pb-4">
-        <div className="text-[10.5px] font-bold text-muted-soft uppercase tracking-wider mb-1">
+        <div className="text-tiny font-bold text-muted-soft uppercase tracking-wider mb-1">
           Step {index} · {title}
         </div>
         <div className="rounded-card border border-border-soft bg-white p-3">
@@ -521,8 +521,8 @@ function TimelineStep({ index, tone, title, icon: Icon, last, children }) {
 function FieldRow({ label, value, bold }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="text-[10px] font-bold text-muted-soft uppercase tracking-wider w-24 shrink-0">{label}</span>
-      <span className={`text-[12px] ${bold ? "font-bold text-ink" : "text-ink-soft"}`}>{value}</span>
+      <span className="text-tiny font-bold text-muted-soft uppercase tracking-wider w-24 shrink-0">{label}</span>
+      <span className={`text-caption ${bold ? "font-bold text-ink" : "text-ink-soft"}`}>{value}</span>
     </div>
   );
 }
@@ -538,7 +538,7 @@ function PaymentRow({ payment, accLabel, partnerLabel }) {
       ? partnerLabel(payment.partnerAccountId)
       : "—";
   return (
-    <div className="text-[10.5px] text-ink-soft flex items-center justify-between gap-2">
+    <div className="text-tiny text-ink-soft flex items-center justify-between gap-2">
       <span className="truncate">{dateStr} · {dest}</span>
       <span className="font-semibold tabular-nums shrink-0">
         {fmt(payment.amount, payment.currency)} {payment.currency}

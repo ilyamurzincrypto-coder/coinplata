@@ -137,10 +137,10 @@ export default function PartnerAccountSelect({
           <div className="text-left min-w-0 flex-1">
             {selectedAcc && selectedPartner ? (
               <>
-                <div className="text-[12px] font-bold text-ink truncate">
+                <div className="text-caption font-bold text-ink truncate">
                   {selectedPartner.name} · {selectedAcc.name}
                 </div>
-                <div className="text-[10px] text-muted tabular-nums">
+                <div className="text-tiny text-muted tabular-nums">
                   {curSymbol(selectedAcc.currency)}
                   {fmt(balanceOf(selectedAcc.id), selectedAcc.currency)}{" "}
                   <span className="opacity-60">{selectedAcc.currency}</span>
@@ -150,7 +150,7 @@ export default function PartnerAccountSelect({
                 </div>
               </>
             ) : (
-              <div className="text-[12px] text-muted-soft">
+              <div className="text-caption text-muted-soft">
                 {currency ? `${placeholder} · ${currency}` : placeholder}
               </div>
             )}
@@ -170,7 +170,7 @@ export default function PartnerAccountSelect({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Поиск партнёра / счёта"
-                className="flex-1 bg-transparent outline-none text-[12px] text-ink placeholder:text-muted-soft min-w-0"
+                className="flex-1 bg-transparent outline-none text-caption text-ink placeholder:text-muted-soft min-w-0"
                 autoFocus
               />
               {query && (
@@ -188,7 +188,7 @@ export default function PartnerAccountSelect({
           {grouped.length === 0 ? (
             <div className="px-4 py-6 text-center">
               <Wallet className="w-5 h-5 mx-auto text-muted-soft mb-1.5" />
-              <div className="text-[12px] text-muted font-medium">
+              <div className="text-caption text-muted font-medium">
                 {availableAccs.length === 0
                   ? partnerHint
                     ? `У ${partnerHint.name} нет счёта в ${currency || ""}`
@@ -199,13 +199,13 @@ export default function PartnerAccountSelect({
                 <button
                   type="button"
                   onClick={() => setAddAccOpen(true)}
-                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-violet-600 text-white text-[12px] font-semibold hover:bg-violet-700 transition-colors shadow-[0_4px_14px_-4px_rgba(139,92,246,0.5)]"
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-violet-600 text-white text-caption font-semibold hover:bg-violet-700 transition-colors shadow-[0_4px_14px_-4px_rgba(139,92,246,0.5)]"
                 >
                   <Plus className="w-3 h-3" />
                   Создать счёт {currency ? `· ${currency}` : ""}
                 </button>
               ) : (
-                <div className="text-[10.5px] text-muted-soft mt-1">
+                <div className="text-tiny text-muted-soft mt-1">
                   Создайте счёт в Settings → Партнёры → раскрой партнёра → +Счёт
                 </div>
               )}
@@ -214,7 +214,7 @@ export default function PartnerAccountSelect({
             <div className="py-1">
               {grouped.map((g) => (
                 <div key={g.partner.id}>
-                  <div className="px-3 py-1.5 text-[9.5px] font-bold text-muted-soft tracking-[0.12em] uppercase bg-surface-soft/60 border-y border-border-soft">
+                  <div className="px-3 py-1.5 text-micro font-bold text-muted-soft tracking-[0.12em] uppercase bg-surface-soft/60 border-y border-border-soft">
                     {g.partner.name}
                   </div>
                   {g.accounts.map((a) => {
@@ -233,13 +233,13 @@ export default function PartnerAccountSelect({
                           <Icon className="w-3 h-3" />
                         </div>
                         <div className="flex-1 min-w-0 text-left">
-                          <div className="text-[12px] font-semibold text-ink truncate">
+                          <div className="text-caption font-semibold text-ink truncate">
                             {a.name}
                             {a.networkId && (
-                              <span className="ml-1 text-[10px] text-muted-soft">· {a.networkId}</span>
+                              <span className="ml-1 text-tiny text-muted-soft">· {a.networkId}</span>
                             )}
                           </div>
-                          <div className="text-[10px] text-muted tabular-nums">
+                          <div className="text-tiny text-muted tabular-nums">
                             {curSymbol(a.currency)}
                             {fmt(balanceOf(a.id), a.currency)}{" "}
                             <span className="opacity-60">{a.currency}</span>
@@ -259,7 +259,7 @@ export default function PartnerAccountSelect({
               <button
                 type="button"
                 onClick={() => setAddAccOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-button bg-accent-bg text-accent text-[12px] font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-button bg-accent-bg text-accent text-caption font-semibold hover:bg-violet-100 transition-colors border border-violet-200"
               >
                 <Plus className="w-3 h-3" />
                 Добавить ещё счёт {currency ? `· ${currency}` : ""}

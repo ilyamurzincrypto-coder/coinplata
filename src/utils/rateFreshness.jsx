@@ -109,7 +109,7 @@ export function FreshnessDot({ updatedAt, showLabel = false, size = "sm" }) {
         className={`${dotSize} rounded-full ${TONE_BG[state]} ${state === "outdated" ? "animate-pulse" : ""}`}
       />
       {showLabel && (
-        <span className={`text-[10px] font-bold tabular-nums ${TONE_TEXT[state]}`}>
+        <span className={`text-tiny font-bold tabular-nums ${TONE_TEXT[state]}`}>
           {label}
         </span>
       )}
@@ -136,7 +136,7 @@ export function FreshnessChip({ updatedAt }) {
   }[state];
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-px rounded text-[9px] font-bold tabular-nums ring-1 ${cls}`}
+      className={`inline-flex items-center px-1.5 py-px rounded text-micro font-bold tabular-nums ring-1 ${cls}`}
       title={tooltipFor(updatedAt)}
     >
       {shortAge(ageMs)}
@@ -148,7 +148,7 @@ export function FreshnessChip({ updatedAt }) {
 export function FreshnessPill({ updatedAt, compact = false }) {
   const { state, label } = freshnessOf(updatedAt);
   return (
-    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 bg-white ${TONE_TEXT[state]} ${TONE_RING[state]}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-bold ring-1 bg-white ${TONE_TEXT[state]} ${TONE_RING[state]}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${TONE_BG[state]}`} />
       {compact ? label : `${STATE_LABELS[state]} · ${label}`}
     </span>

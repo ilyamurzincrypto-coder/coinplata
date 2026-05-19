@@ -12,9 +12,9 @@ export default function TransactionEntries({ entries }) {
   const balanced = singleCcy && Math.abs(drSum - crSum) < 0.01;
   return (
     <div className="px-6 py-2">
-      <table className="w-full text-[12px]">
+      <table className="w-full text-caption">
         <thead>
-          <tr className="text-muted-soft text-[10px] uppercase tracking-wider">
+          <tr className="text-muted-soft text-tiny uppercase tracking-wider">
             <th className="text-left px-2 py-1">{t("trv2_col_dr")}/{t("trv2_col_cr")}</th>
             <th className="text-left px-2 py-1">{t("trv2_col_account")}</th>
             <th className="text-right px-2 py-1">{t("trv2_col_amount")}</th>
@@ -32,7 +32,7 @@ export default function TransactionEntries({ entries }) {
           ))}
         </tbody>
       </table>
-      <div className={`text-[11px] mt-1 ${balanced ? "text-success" : "text-muted-soft"}`}>
+      <div className={`text-tiny mt-1 ${balanced ? "text-success" : "text-muted-soft"}`}>
         {singleCcy ? `Σ Dr ${balanced ? "=" : "≠"} Σ Cr ${balanced ? "✓" : ""}` : "multi-currency"}
       </div>
     </div>

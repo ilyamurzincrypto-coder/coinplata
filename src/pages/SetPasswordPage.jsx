@@ -136,7 +136,7 @@ export default function SetPasswordPage() {
             <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
               Set your password
             </h1>
-            <p className="text-[13px] text-muted-soft mt-1.5">
+            <p className="text-body-sm text-muted-soft mt-1.5">
               Welcome{currentUser?.name ? `, ${currentUser.name}` : ""}! Choose a
               password to finish activation.
             </p>
@@ -144,7 +144,7 @@ export default function SetPasswordPage() {
 
           <form onSubmit={handleSubmit} noValidate>
             <div className="bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
+              <label className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> New password
               </label>
               <div className="flex items-center gap-2">
@@ -156,7 +156,7 @@ export default function SetPasswordPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={saving || success}
                   placeholder="••••••••"
-                  className="flex-1 bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                  className="flex-1 bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -170,7 +170,7 @@ export default function SetPasswordPage() {
             </div>
 
             <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
-              <label className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase">
+              <label className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> Confirm password
               </label>
               <input
@@ -180,19 +180,19 @@ export default function SetPasswordPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 disabled={saving || success}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-caption">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
             {success && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-[12px]">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-caption">
                 <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Password saved. Loading your workspace…</span>
               </div>
@@ -201,7 +201,7 @@ export default function SetPasswordPage() {
             <button
               type="submit"
               disabled={saving || success || !password || !confirm}
-              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
+              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-body transition-all ${
                 saving || success || !password || !confirm
                   ? "bg-success/60 text-ink/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"
@@ -227,7 +227,7 @@ export default function SetPasswordPage() {
           </form>
         </div>
 
-        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-ink-soft">
+        <footer className="mt-8 flex flex-col items-center gap-1.5 text-tiny text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-muted" />
             Secure · Private · Internal system

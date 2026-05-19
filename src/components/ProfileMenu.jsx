@@ -193,12 +193,12 @@ export default function ProfileMenu() {
           />
         ) : (
           <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-[11px] font-semibold bg-gradient-to-br ${avatarGradient}`}
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-white text-tiny font-semibold bg-gradient-to-br ${avatarGradient}`}
           >
             {currentUser.initials}
           </div>
         )}
-        <div className="hidden sm:block text-[12px] leading-tight text-left">
+        <div className="hidden sm:block text-caption leading-tight text-left">
           <div className="font-medium text-ink">{currentUser.name}</div>
           <div className="text-muted flex items-center gap-1">
             {RoleIcon && <RoleIcon className="w-2.5 h-2.5 text-accent" />}
@@ -213,8 +213,8 @@ export default function ProfileMenu() {
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 w-64 bg-white border border-border-soft rounded-card shadow-[0_16px_40px_-12px_rgba(15,23,42,0.25)] overflow-hidden animate-[fadeIn_120ms_ease-out]">
           <div className="px-4 py-3 border-b border-border-soft">
-            <div className="text-[13px] font-semibold text-ink">{currentUser.name}</div>
-            <div className="text-[11px] text-muted flex items-center gap-1">
+            <div className="text-body-sm font-semibold text-ink">{currentUser.name}</div>
+            <div className="text-tiny text-muted flex items-center gap-1">
               {RoleIcon && <RoleIcon className="w-2.5 h-2.5 text-accent" />}
               {roleLabel} · status: {currentUser.status || "active"}
             </div>
@@ -273,7 +273,7 @@ export default function ProfileMenu() {
                     key={u.id}
                     disabled={isCurrent}
                     onClick={() => handleSwitch(u.id)}
-                    className={`w-full flex items-center gap-2 px-4 py-1.5 text-[12px] text-left transition-colors ${
+                    className={`w-full flex items-center gap-2 px-4 py-1.5 text-caption text-left transition-colors ${
                       isCurrent
                         ? "text-muted-soft cursor-not-allowed"
                         : locked
@@ -282,16 +282,16 @@ export default function ProfileMenu() {
                     }`}
                   >
                     <span className="font-semibold">{u.name}</span>
-                    <span className="text-[10px] text-muted-soft">· {ROLES[u.role]?.label || u.role}</span>
+                    <span className="text-tiny text-muted-soft">· {ROLES[u.role]?.label || u.role}</span>
                     {u.status !== "active" && (
-                      <span className="ml-auto text-[9px] uppercase font-bold text-muted-soft">{u.status}</span>
+                      <span className="ml-auto text-micro uppercase font-bold text-muted-soft">{u.status}</span>
                     )}
                     {isCurrent && <Check className="ml-auto w-3 h-3 text-success" />}
                   </button>
                 );
               })}
               {switchError && (
-                <div className="px-4 py-1.5 text-[11px] font-medium text-danger bg-danger-soft">
+                <div className="px-4 py-1.5 text-tiny font-medium text-danger bg-danger-soft">
                   {switchError}
                 </div>
               )}
@@ -332,7 +332,7 @@ function MenuItem({ icon, children, onClick, danger, disabled = false }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+      className={`w-full flex items-center gap-2.5 px-4 py-2 text-body-sm text-left transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
         danger ? "text-danger hover:bg-danger-soft" : "text-ink-soft hover:bg-surface-soft"
       }`}
     >
@@ -427,12 +427,12 @@ function ChangePasswordModal({ open, onClose }) {
     <Modal open={open} onClose={onClose} title="Change password" subtitle={currentUser.name} width="md">
       <div className="p-5 space-y-3">
         {!isSupabaseConfigured && (
-          <div className="text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+          <div className="text-tiny text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
             Demo accounts are seeded with password <span className="font-mono font-semibold">demo</span>.
           </div>
         )}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Current password
           </label>
           <input
@@ -440,38 +440,38 @@ function ChangePasswordModal({ open, onClose }) {
             value={oldPass}
             onChange={(e) => setOldPass(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             New password
           </label>
           <input
             type="password"
             value={newPass}
             onChange={(e) => setNewPass(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Confirm new password
           </label>
           <input
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-[12px] font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2 inline-flex items-center gap-1">
+          <div className="text-caption font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2 inline-flex items-center gap-1">
             <Check className="w-3.5 h-3.5" />
             Password changed
           </div>
@@ -480,14 +480,14 @@ function ChangePasswordModal({ open, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!oldPass || !newPass || !confirm || success || submitting}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             oldPass && newPass && confirm && !success && !submitting
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

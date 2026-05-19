@@ -18,7 +18,7 @@ export default function CurrencyTabs({ value, onChange, accent = "slate", curren
           key={c}
           type="button"
           onClick={() => onChange(c)}
-          className={`px-3.5 py-1.5 text-[13px] font-bold tracking-wide rounded-[9px] transition-all ${
+          className={`px-3.5 py-1.5 text-body-sm font-bold tracking-wide rounded-[9px] transition-all ${
             value === c ? activeCls : "text-muted hover:text-ink"
           }`}
         >

@@ -64,7 +64,7 @@ export default function Button({
       {IconRight && <IconRight size={iconSz} strokeWidth={2.2} />}
       {hotkey && (
         <kbd
-          className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 ml-1 bg-white/20 border border-white/20 rounded text-[10px] font-mono font-semibold"
+          className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 ml-1 bg-white/20 border border-white/20 rounded text-tiny font-mono font-semibold"
           aria-hidden
         >
           {hotkey}

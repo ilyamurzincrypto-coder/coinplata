@@ -232,10 +232,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-success">
               <TrendingUp className="w-3.5 h-3.5" />
             </div>
-            <h2 className="text-[13px] font-bold text-ink tracking-tight">
+            <h2 className="text-body-sm font-bold text-ink tracking-tight">
               {t("rates") || "Rates"}
             </h2>
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted-soft">
+            <span className="inline-flex items-center gap-1 text-tiny text-muted-soft">
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
               updated {timeAgo(lastUpdated, nowMs)} ago
             </span>
@@ -244,7 +244,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             <div className="inline-flex items-center gap-2">
               <button
                 onClick={() => setQuickOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-warning/10 text-warning border border-warning/30 text-[12px] font-bold hover:bg-warning/20 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-warning/10 text-warning border border-warning/30 text-caption font-bold hover:bg-warning/20 transition-colors"
                 title="Быстрое обновление курсов (ежедневное)"
               >
                 <Zap className="w-3 h-3" />
@@ -253,7 +253,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               {onOpenRates && (
                 <button
                   onClick={onOpenRates}
-                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-card bg-ink text-white text-[12px] font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
+                  className="group inline-flex items-center gap-2 pl-3 pr-4 py-2 rounded-card bg-ink text-white text-caption font-bold hover:bg-ink active:scale-[0.98] shadow-[0_4px_12px_-2px_rgba(15,23,42,0.25)] transition-all"
                 >
                   <div className="w-6 h-6 rounded-full bg-success flex items-center justify-center group-hover:bg-emerald-400 transition-colors">
                     <Pencil className="w-3 h-3 text-white" strokeWidth={2.5} />
@@ -304,7 +304,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   }`}
                 >
                   <div
-                    className={`text-[10px] font-bold tracking-[0.12em] mb-2 inline-flex items-center justify-between w-full ${
+                    className={`text-tiny font-bold tracking-[0.12em] mb-2 inline-flex items-center justify-between w-full ${
                       isActive ? "text-muted-soft" : "text-muted"
                     }`}
                   >
@@ -328,7 +328,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                     <span className="inline-flex items-center gap-1">
                       {Math.abs(spreadPct) >= 0.05 && (
                         <span
-                          className={`text-[9px] font-bold tabular-nums px-1 py-0.5 rounded ${
+                          className={`text-micro font-bold tabular-nums px-1 py-0.5 rounded ${
                             isActive
                               ? "bg-ink text-emerald-300"
                               : "bg-success-soft text-success"
@@ -375,7 +375,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                       выравнивались. */}
                   <div className="flex items-baseline gap-2.5 mb-1">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
+                      className={`text-tiny font-semibold inline-flex items-center w-[58px] shrink-0 ${
                         isActive ? "text-muted-soft" : "text-muted"
                       }`}
                     >
@@ -393,14 +393,14 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                   {/* BUY — клиент отдаёт B, получает A. Тот же юнит (B per A). */}
                   <div className="flex items-baseline gap-2.5">
                     <span
-                      className={`text-[10px] font-semibold inline-flex items-center w-[58px] shrink-0 ${
+                      className={`text-tiny font-semibold inline-flex items-center w-[58px] shrink-0 ${
                         isActive ? "text-muted-soft" : "text-muted"
                       }`}
                     >
                       {b} <ArrowRight className="w-2.5 h-2.5 mx-0.5" /> {a}
                     </span>
                     <span
-                      className={`text-[14px] font-black tabular-nums tracking-tight leading-none ${
+                      className={`text-body font-black tabular-nums tracking-tight leading-none ${
                         isActive ? "text-white/80" : "text-ink-soft"
                       }`}
                     >
@@ -424,10 +424,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
             {expandedBase && crossPairs.length > 0 && (
               <div className="border-t border-border-soft px-4 py-3 max-h-[320px] overflow-y-auto">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase">
+                  <div className="text-tiny font-bold text-muted tracking-[0.12em] uppercase">
                     All {expandedBase} pairs
                   </div>
-                  <div className="text-[10px] text-muted-soft tabular-nums">
+                  <div className="text-tiny text-muted-soft tabular-nums">
                     {crossPairs.length} {crossPairs.length === 1 ? "pair" : "pairs"}
                   </div>
                 </div>
@@ -437,10 +437,10 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
                       key={t2}
                       className="flex items-baseline gap-2 px-2.5 py-1.5 rounded-button hover:bg-surface-soft transition-colors"
                     >
-                      <span className="text-[12px] font-semibold text-muted tracking-wide w-10 shrink-0">
+                      <span className="text-caption font-semibold text-muted tracking-wide w-10 shrink-0">
                         {t2}
                       </span>
-                      <span className="text-[14px] font-bold tabular-nums text-ink">
+                      <span className="text-body font-bold tabular-nums text-ink">
                         {formatRate(r2)}
                       </span>
                     </div>
@@ -458,7 +458,7 @@ export default function RatesBar({ onOpenRates, currentOffice }) {
               <button
                 type="button"
                 onClick={() => setShowAll((v) => !v)}
-                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-button text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft transition-colors"
               >
                 <ChevronDown
                   className={`w-3 h-3 transition-transform ${showAll ? "rotate-180" : ""}`}
@@ -531,12 +531,12 @@ function RatesEditModal({ open, onClose, canDelete, onImport }) {
       )}
 
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-between">
-        <div className="inline-flex items-center gap-1.5 text-[11px] text-muted">
+        <div className="inline-flex items-center gap-1.5 text-tiny text-muted">
           <RefreshCw className="w-3 h-3" /> Auto-saved
         </div>
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+          className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
         >
           {t("save")}
         </button>
@@ -675,7 +675,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
       )}
 
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="text-[11px] font-semibold text-muted uppercase tracking-wider">
+        <div className="text-tiny font-semibold text-muted uppercase tracking-wider">
           {currencies.length} currencies · {channels.length} channels · {existingPairs.length} pairs
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -705,7 +705,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
       </div>
 
       {groups.length === 0 ? (
-        <div className="text-[13px] text-muted-soft italic py-8 text-center">
+        <div className="text-body-sm text-muted-soft italic py-8 text-center">
           No pairs yet. Add a currency, then channels, then a pair.
         </div>
       ) : (
@@ -713,10 +713,10 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
           {groups.map((g) => (
             <div key={g.from}>
               <div className="mb-2 flex items-center gap-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-sunk border border-border-soft text-[11px] font-bold text-ink-soft tracking-wider">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-surface-sunk border border-border-soft text-tiny font-bold text-ink-soft tracking-wider">
                   {g.from}
                 </span>
-                <span className="text-[10px] text-muted-soft tabular-nums">{g.pairs.length}</span>
+                <span className="text-tiny text-muted-soft tabular-nums">{g.pairs.length}</span>
               </div>
               <div className="border border-border-soft rounded-card overflow-hidden divide-y divide-border-soft">
                 {g.pairs.map(({ from, to, key }) => (
@@ -743,7 +743,7 @@ function ListPanel({ canDelete, onGoto, onImport, onOpenCoverage }) {
 
 function HeaderButton({ icon: Icon, children, onClick, primary }) {
   const base =
-    "inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold transition-colors border";
+    "inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-caption font-semibold transition-colors border";
   const cls = primary
     ? "bg-ink text-white border-ink hover:bg-ink"
     : "text-ink-soft hover:text-ink border-border-soft hover:bg-surface-soft";
@@ -774,14 +774,14 @@ function CoverageSummaryBanner({ summary, onOpen, t }) {
     >
       <Icon className={`w-4 h-4 ${iconCls} shrink-0`} />
       <div className="flex-1 min-w-0">
-        <div className="text-[12px] font-bold text-ink">
+        <div className="text-caption font-bold text-ink">
           {allGood ? t("cov_banner_full") : `${summary.pct}% ${t("cov_coverage")}`}
-          <span className="ml-2 text-[11px] font-normal text-ink-soft">
+          <span className="ml-2 text-tiny font-normal text-ink-soft">
             · {summary.existing}/{summary.total} {t("cov_dirs")}
           </span>
         </div>
         {!allGood && (
-          <div className="text-[11px] text-ink-soft mt-0.5 truncate">
+          <div className="text-tiny text-ink-soft mt-0.5 truncate">
             {summary.missing > 0 && (
               <span>
                 <strong className="text-danger">{summary.missing}</strong> {t("cov_missing").toLowerCase()}
@@ -865,7 +865,7 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
   return (
     <div className="group flex items-center gap-2 px-3 py-2 bg-white hover:bg-surface-soft transition-colors">
       <span className="inline-flex items-center gap-1.5 min-w-[90px]">
-        <span className="text-[12px] font-semibold text-ink-soft tracking-wide">
+        <span className="text-caption font-semibold text-ink-soft tracking-wide">
           {from} <span className="text-muted-soft">→</span> {to}
         </span>
         {pair?.updatedAt && <FreshnessChip updatedAt={pair.updatedAt} />}
@@ -877,11 +877,11 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
         onChange={handleRateChange}
         placeholder="base rate"
         title={midTitle}
-        className="flex-1 min-w-0 bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-3 py-1.5 text-[14px] font-semibold text-ink tabular-nums outline-none transition-colors"
+        className="flex-1 min-w-0 bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-3 py-1.5 text-body font-semibold text-ink tabular-nums outline-none transition-colors"
       />
       {hasPairData && pair.rate != null && Math.abs(pair.rate - pair.baseRate) > 1e-8 && (
         <span
-          className="text-[10px] text-success font-semibold tabular-nums px-1.5 py-0.5 rounded bg-success-soft"
+          className="text-tiny text-success font-semibold tabular-nums px-1.5 py-0.5 rounded bg-success-soft"
           title="Effective rate after spread"
         >
           = {pair.rate.toFixed(pair.rate >= 10 ? 2 : 4)}
@@ -901,9 +901,9 @@ function RateRow({ from, to, value, pair, getRate, onChange, onChangeSpread, onD
           disabled={spreadDisabled}
           placeholder={spreadDisabled ? "—" : "spread"}
           title={midTitle}
-          className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button pl-3 pr-5 py-1.5 text-[13px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
+          className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button pl-3 pr-5 py-1.5 text-body-sm font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-muted-soft pointer-events-none">
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-tiny text-muted-soft pointer-events-none">
           %
         </span>
       </div>
@@ -931,12 +931,12 @@ function SubPanelHeader({ onBack, title }) {
     <div className="flex items-center gap-2 mb-4">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1 px-2 py-1 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft border border-border-soft transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-soft border border-border-soft transition-colors"
       >
         <ChevronLeft className="w-3 h-3" />
         Back
       </button>
-      <div className="text-[13px] font-semibold text-ink">{title}</div>
+      <div className="text-body-sm font-semibold text-ink">{title}</div>
     </div>
   );
 }
@@ -1008,7 +1008,7 @@ function AddCurrencyPanel({ onBack }) {
               placeholder="USDC"
               autoFocus
               maxLength={6}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-bold outline-none tracking-wider"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-bold outline-none tracking-wider"
             />
           </Field>
           <Field label={t("currency_type")}>
@@ -1031,7 +1031,7 @@ function AddCurrencyPanel({ onBack }) {
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
             />
           </Field>
           <Field label={t("currency_name")}>
@@ -1040,24 +1040,24 @@ function AddCurrencyPanel({ onBack }) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
             />
           </Field>
         </div>
 
         {type === "fiat" ? (
-          <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+          <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
             Channels <span className="font-semibold text-ink-soft">cash</span> and{" "}
             <span className="font-semibold text-ink-soft">bank</span> will be created automatically.
           </div>
         ) : (
-          <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+          <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
             Add network channels (TRC20, ERC20, …) after creating the currency.
           </div>
         )}
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -1065,14 +1065,14 @@ function AddCurrencyPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1166,14 +1166,14 @@ function AddChannelPanel({ onBack }) {
                 key={c.code}
                 type="button"
                 onClick={() => setCurrencyCode(c.code)}
-                className={`px-3 py-1.5 text-[12px] font-bold rounded-button transition-all ${
+                className={`px-3 py-1.5 text-caption font-bold rounded-button transition-all ${
                   currencyCode === c.code
                     ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
                     : "text-muted hover:text-ink"
                 }`}
               >
                 {c.code}
-                <span className="ml-1 text-[9px] font-semibold text-muted-soft">
+                <span className="ml-1 text-micro font-semibold text-muted-soft">
                   {c.type === "crypto" ? "crypto" : "fiat"}
                 </span>
               </button>
@@ -1206,7 +1206,7 @@ function AddChannelPanel({ onBack }) {
                     key={n}
                     type="button"
                     onClick={() => setNetwork(n)}
-                    className={`px-3 py-2 rounded-button text-[12px] font-semibold border transition-colors ${
+                    className={`px-3 py-2 rounded-button text-caption font-semibold border transition-colors ${
                       network === n
                         ? "bg-indigo-600 text-white border-indigo-600"
                         : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1218,7 +1218,7 @@ function AddChannelPanel({ onBack }) {
                 <button
                   type="button"
                   onClick={() => setNetwork("__custom")}
-                  className={`px-3 py-2 rounded-button text-[12px] font-semibold border transition-colors ${
+                  className={`px-3 py-2 rounded-button text-caption font-semibold border transition-colors ${
                     network === "__custom"
                       ? "bg-ink text-white border-ink"
                       : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1233,7 +1233,7 @@ function AddChannelPanel({ onBack }) {
                   value={networkCustom}
                   onChange={(e) => setNetworkCustom(e.target.value.toUpperCase())}
                   placeholder="POLYGON"
-                  className="mt-2 w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2 text-[13px] font-semibold uppercase tracking-wider outline-none"
+                  className="mt-2 w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2 text-body-sm font-semibold uppercase tracking-wider outline-none"
                 />
               )}
             </Field>
@@ -1243,14 +1243,14 @@ function AddChannelPanel({ onBack }) {
                 value={gasFee}
                 onChange={(e) => setGasFee(e.target.value.replace(/[^\d.]/g, ""))}
                 placeholder="1.0"
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
               />
             </Field>
           </>
         )}
 
         {duplicate && (
-          <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
             This channel already exists on {currencyCode}.
           </div>
         )}
@@ -1258,14 +1258,14 @@ function AddChannelPanel({ onBack }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1439,15 +1439,15 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
                 disabled={mid == null}
                 placeholder={mid == null ? "—" : "0.00"}
                 title={mid != null ? `mid ${mid.toFixed(6)}` : "no mid rate"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card pl-3 pr-6 py-2.5 text-[14px] font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card pl-3 pr-6 py-2.5 text-body font-semibold text-ink-soft tabular-nums outline-none transition-colors disabled:text-muted-soft disabled:cursor-not-allowed"
               />
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[12px] text-muted-soft pointer-events-none">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-caption text-muted-soft pointer-events-none">
                 %
               </span>
             </div>
           </Field>
         </div>
-        <p className="text-[11px] text-muted -mt-2">
+        <p className="text-tiny text-muted -mt-2">
           1 {fromCurrency} ={" "}
           <span className="font-bold text-ink-soft tabular-nums">{rate || "?"}</span> {toCurrency}
           {mid != null && (
@@ -1476,14 +1476,14 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
         <div className="flex items-center gap-2 pt-2">
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+            className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
           >
             {t("cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className={`flex-1 px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+            className={`flex-1 px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
               canSubmit
                 ? "bg-ink text-white hover:bg-ink"
                 : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1503,7 +1503,7 @@ function AddPairPanel({ onBack, initFrom, initTo }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[11px] font-semibold text-muted mb-1.5 uppercase tracking-wide">
+      <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
         {label}
       </label>
       {children}
@@ -1516,7 +1516,7 @@ function SegBtn({ active, onClick, children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
+      className={`flex-1 px-3 py-2 text-caption font-semibold rounded-button transition-all ${
         active ? "bg-white text-ink shadow-sm" : "text-muted"
       }`}
     >
@@ -1527,7 +1527,7 @@ function SegBtn({ active, onClick, children }) {
 
 function Warn({ children }) {
   return (
-    <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
+    <div className="text-caption font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
       {children}
     </div>
   );
@@ -1541,7 +1541,7 @@ function CurrencyPicker({ value, onChange, currencies }) {
           key={c.code}
           type="button"
           onClick={() => onChange(c.code)}
-          className={`px-2.5 py-1.5 text-[12px] font-bold rounded-button transition-all ${
+          className={`px-2.5 py-1.5 text-caption font-bold rounded-button transition-all ${
             value === c.code
               ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
               : "text-muted hover:text-ink"
@@ -1557,7 +1557,7 @@ function CurrencyPicker({ value, onChange, currencies }) {
 function ChannelPicker({ channels, value, onChange }) {
   if (channels.length === 0) {
     return (
-      <div className="text-[11px] text-muted-soft italic px-2 py-1">no channels</div>
+      <div className="text-tiny text-muted-soft italic px-2 py-1">no channels</div>
     );
   }
   return (
@@ -1567,7 +1567,7 @@ function ChannelPicker({ channels, value, onChange }) {
           key={ch.id}
           type="button"
           onClick={() => onChange(ch.id)}
-          className={`px-2 py-1 text-[11px] font-semibold rounded-md border transition-colors ${
+          className={`px-2 py-1 text-tiny font-semibold rounded-md border transition-colors ${
             value === ch.id
               ? "bg-ink text-white border-ink"
               : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1576,7 +1576,7 @@ function ChannelPicker({ channels, value, onChange }) {
         >
           {channelLabel(ch)}
           {ch.gasFee != null && (
-            <span className="ml-1 text-[9px] opacity-70 tabular-nums">gas {ch.gasFee}</span>
+            <span className="ml-1 text-micro opacity-70 tabular-nums">gas {ch.gasFee}</span>
           )}
         </button>
       ))}

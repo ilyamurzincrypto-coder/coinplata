@@ -200,7 +200,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       <div className="p-5 space-y-3">
         {/* From account */}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Откуда (счёт-источник)
           </label>
           <GroupedAccountSelect
@@ -210,7 +210,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             placeholder={t("select_account")}
           />
           {from && (
-            <div className="mt-1.5 text-[11px] text-muted tabular-nums">
+            <div className="mt-1.5 text-tiny text-muted tabular-nums">
               {officeName(from.officeId)} · {t("current_balance")}:{" "}
               <span className="font-bold text-ink-soft">
                 {curSymbol(from.currency)}
@@ -223,7 +223,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
         {/* Сколько отправляем (OUT) */}
         {from && (
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Сколько отправляем
             </label>
             <div
@@ -240,10 +240,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 placeholder="0"
                 className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[22px] font-bold tracking-tight min-w-0"
               />
-              <span className="text-danger text-[12px] font-bold tracking-wider">{from.currency}</span>
+              <span className="text-danger text-caption font-bold tracking-wider">{from.currency}</span>
             </div>
             {insufficient && (
-              <div className="mt-1.5 text-[11px] font-medium text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1 inline-flex items-center gap-1">
+              <div className="mt-1.5 text-tiny font-medium text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1 inline-flex items-center gap-1">
                 <AlertCircle className="w-3 h-3" />
                 {t("transfer_insufficient")}
               </div>
@@ -257,7 +257,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             <ArrowDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.5} />
           </div>
           {crossCurrency && derivedRate && (
-            <span className="text-[10.5px] text-muted tabular-nums" title="Фактический курс перевода = принимаем / отправляем">
+            <span className="text-tiny text-muted tabular-nums" title="Фактический курс перевода = принимаем / отправляем">
               1 {from.currency} = {derivedRate.toFixed(derivedRate >= 10 ? 2 : 4)} {to.currency}
             </span>
           )}
@@ -265,7 +265,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
 
         {/* To account */}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Куда (счёт-получатель)
           </label>
           <GroupedAccountSelect
@@ -275,14 +275,14 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             placeholder={t("select_account")}
           />
           {to && (
-            <div className="mt-1.5 text-[11px] text-muted tabular-nums">
+            <div className="mt-1.5 text-tiny text-muted tabular-nums">
               {officeName(to.officeId)}
             </div>
           )}
         </div>
 
         {sameAccount && (
-          <div className="text-[12px] font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2 flex items-center gap-1.5">
+          <div className="text-caption font-medium text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5" />
             {t("transfer_same_account")}
           </div>
@@ -291,10 +291,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
         {/* Сколько принимаем (IN) */}
         {to && (
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Сколько принимаем
               {sameCurrency && (
-                <span className="ml-2 text-[10px] text-muted-soft normal-case tracking-normal font-normal">
+                <span className="ml-2 text-tiny text-muted-soft normal-case tracking-normal font-normal">
                   · одна валюта — синхронится с «отправляем»
                 </span>
               )}
@@ -309,10 +309,10 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 placeholder="0"
                 className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[22px] font-bold tracking-tight min-w-0"
               />
-              <span className="text-success text-[12px] font-bold tracking-wider">{to.currency}</span>
+              <span className="text-success text-caption font-bold tracking-wider">{to.currency}</span>
             </div>
             {crossCurrency && (
-              <p className="text-[10.5px] text-muted mt-1">
+              <p className="text-tiny text-muted mt-1">
                 Кросс-валютный перевод. Введи обе суммы вручную — это и есть курс по факту.
               </p>
             )}
@@ -324,12 +324,12 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             подтверждается выбранным менеджером. */}
         {isInterOffice && (
           <div className="bg-accent-bg/60 border border-indigo-200 rounded-card p-3">
-            <label className="flex items-center gap-1.5 text-[11px] font-bold text-accent mb-1.5 tracking-wide uppercase">
+            <label className="flex items-center gap-1.5 text-tiny font-bold text-accent mb-1.5 tracking-wide uppercase">
               <Users className="w-3.5 h-3.5" />
               Ответственный за принятие · {officeName(to.officeId)}
             </label>
             {recipientCandidates.length === 0 ? (
-              <div className="text-[12px] text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1.5 flex items-center gap-1.5">
+              <div className="text-caption text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1.5 flex items-center gap-1.5">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 Нет доступных менеджеров в офисе получателе. Назначь
                 кого-то на этот офис в настройках.
@@ -339,7 +339,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                 <select
                   value={toManagerId}
                   onChange={(e) => setToManagerId(e.target.value)}
-                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-button px-2.5 py-2 text-[13px] font-semibold text-ink outline-none cursor-pointer"
+                  className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-button px-2.5 py-2 text-body-sm font-semibold text-ink outline-none cursor-pointer"
                 >
                   {recipientCandidates.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -348,7 +348,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
                     </option>
                   ))}
                 </select>
-                <p className="text-[10.5px] text-accent/80 mt-1.5">
+                <p className="text-tiny text-accent/80 mt-1.5">
                   Перевод отправится со статусом <strong>pending</strong>.
                   Получатель увидит уведомление и подтвердит — только
                   после этого деньги зачисляются.
@@ -360,7 +360,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
 
         {/* Note */}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Комментарий (необязательно)
           </label>
           <input
@@ -368,7 +368,7 @@ export default function TransferModal({ open, fromAccount, onClose }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="—"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none transition-colors"
           />
         </div>
       </div>
@@ -376,14 +376,14 @@ export default function TransferModal({ open, fromAccount, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit && !busy
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

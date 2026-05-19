@@ -647,7 +647,7 @@ export default function NewDealForm({
         <div className="px-6 py-5 border-b border-border-soft">
           <div className="flex items-center justify-between mb-2.5">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-sunk text-muted text-[10px] font-bold font-mono">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-surface-sunk text-muted text-tiny font-bold font-mono">
                 1
               </span>
               <span className="text-micro text-muted uppercase">Без приёма (выдача)</span>

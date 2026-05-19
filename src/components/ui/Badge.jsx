@@ -33,7 +33,7 @@ export default function Badge({
     return (
       <span
         {...rest}
-        className={`inline-flex items-center h-4 px-1.5 rounded bg-surface-soft text-muted text-[10px] font-bold font-mono tracking-wide ${className}`.trim()}
+        className={`inline-flex items-center h-4 px-1.5 rounded bg-surface-soft text-muted text-tiny font-bold font-mono tracking-wide ${className}`.trim()}
       >
         {children}
       </span>
@@ -44,7 +44,7 @@ export default function Badge({
     return (
       <span
         {...rest}
-        className={`inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-[9px] font-bold tracking-wider uppercase ${className}`.trim()}
+        className={`inline-flex items-center h-4 px-1.5 rounded bg-accent-bg text-success text-micro font-bold tracking-wider uppercase ${className}`.trim()}
       >
         {children}
       </span>

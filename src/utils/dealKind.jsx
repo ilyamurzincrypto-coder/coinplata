@@ -82,7 +82,7 @@ export function KindPill({ type, kind, compact = false }) {
   }
   return (
     <span
-      className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9.5px] font-bold ring-1 ${TONE_CLS[tone] || TONE_CLS.slate}`}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-micro font-bold ring-1 ${TONE_CLS[tone] || TONE_CLS.slate}`}
       title={
         type === "in"  ? IN_KIND_LABELS[kind]?.full :
         type === "out" ? OUT_KIND_LABELS[kind]?.full :

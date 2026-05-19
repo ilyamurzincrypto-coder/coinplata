@@ -85,7 +85,7 @@ export default function NotificationsBell({ onNavigate }) {
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-[9px] font-bold tabular-nums">
+          <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-danger text-white text-micro font-bold tabular-nums">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
@@ -94,10 +94,10 @@ export default function NotificationsBell({ onNavigate }) {
       {open && (
         <div className="absolute right-0 mt-2 w-[360px] bg-white rounded-card border border-border-soft shadow-[0_12px_32px_-12px_rgba(15,23,42,0.25)] z-50 overflow-hidden">
           <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between">
-            <div className="text-[13px] font-bold text-ink">
+            <div className="text-body-sm font-bold text-ink">
               {t("notif_title")}
               {unreadCount > 0 && (
-                <span className="ml-1.5 text-[11px] font-semibold text-danger">
+                <span className="ml-1.5 text-tiny font-semibold text-danger">
                   {unreadCount} {t("notif_unread")}
                 </span>
               )}
@@ -106,7 +106,7 @@ export default function NotificationsBell({ onNavigate }) {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllRead}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
                   title={t("notif_mark_read")}
                 >
                   <Check className="w-3 h-3" />
@@ -116,7 +116,7 @@ export default function NotificationsBell({ onNavigate }) {
               {notifications.length > 0 && (
                 <button
                   onClick={clearAll}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-muted hover:text-danger hover:bg-danger-soft"
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-muted hover:text-danger hover:bg-danger-soft"
                   title={t("clear")}
                 >
                   <Trash2 className="w-3 h-3" />
@@ -135,8 +135,8 @@ export default function NotificationsBell({ onNavigate }) {
             {notifications.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <Bell className="w-8 h-8 text-white/80 mx-auto mb-2" />
-                <div className="text-[13px] text-muted font-semibold">{t("notif_empty_title")}</div>
-                <div className="text-[11px] text-muted-soft mt-1">
+                <div className="text-body-sm text-muted font-semibold">{t("notif_empty_title")}</div>
+                <div className="text-tiny text-muted-soft mt-1">
                   {t("notif_empty_hint")}
                 </div>
               </div>
@@ -160,15 +160,15 @@ export default function NotificationsBell({ onNavigate }) {
                     </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-bold text-ink truncate">
+                        <span className="text-caption font-bold text-ink truncate">
                           {n.title}
                         </span>
                         {isUnread && (
                           <span className="w-1.5 h-1.5 rounded-full bg-info shrink-0" />
                         )}
                       </div>
-                      <div className="text-[11px] text-ink-soft truncate mt-0.5">{n.body}</div>
-                      <div className="text-[10px] text-muted-soft mt-0.5 tabular-nums">
+                      <div className="text-tiny text-ink-soft truncate mt-0.5">{n.body}</div>
+                      <div className="text-tiny text-muted-soft mt-0.5 tabular-nums">
                         {timeAgo(n.createdAt, nowMs)} {t("notif_ago")}
                       </div>
                     </div>

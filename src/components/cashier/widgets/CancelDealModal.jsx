@@ -97,7 +97,7 @@ export default function CancelDealModal({
 
         <div className="px-4 py-3 space-y-3" id={descId}>
           {workflow && (
-            <div className="text-[12px] bg-surface-soft border border-border-soft rounded-[var(--radius-cell)] px-2.5 py-1.5">
+            <div className="text-caption bg-surface-soft border border-border-soft rounded-[var(--radius-cell)] px-2.5 py-1.5">
               <span className="text-muted">Deal </span>
               <span className="font-mono text-ink-soft">
                 {String(workflow.ledger_tx_id || workflow.deal_id || "").slice(0, 8)}…
@@ -119,11 +119,11 @@ export default function CancelDealModal({
 
           <div className="flex items-start gap-2 px-2.5 py-2 bg-warning-soft border border-warning/20 rounded-[var(--radius-cell)]">
             <AlertTriangle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
-            <p className="text-[12px] text-warning">{t("cancel_modal_warning")}</p>
+            <p className="text-caption text-warning">{t("cancel_modal_warning")}</p>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
+            <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
               {t("cancel_modal_reason_label")}
             </label>
             <textarea
@@ -133,15 +133,15 @@ export default function CancelDealModal({
               placeholder={t("cancel_modal_reason_placeholder")}
               rows={3}
               minLength={MIN_REASON}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2.5 py-2 text-[13px] outline-none resize-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2.5 py-2 text-body-sm outline-none resize-none"
             />
-            <div className={`text-[10px] mt-1 ${valid ? "text-success" : "text-muted-soft"}`}>
+            <div className={`text-tiny mt-1 ${valid ? "text-success" : "text-muted-soft"}`}>
               {t("cancel_modal_reason_min_chars").replace("{{n}}", String(reason.trim().length))}
             </div>
           </div>
 
           {errorMsg && (
-            <div className="text-[12px] text-danger bg-danger-soft border border-danger/20 rounded-[var(--radius-cell)] px-2.5 py-1.5">
+            <div className="text-caption text-danger bg-danger-soft border border-danger/20 rounded-[var(--radius-cell)] px-2.5 py-1.5">
               {errorMsg}
             </div>
           )}
@@ -152,7 +152,7 @@ export default function CancelDealModal({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-[12.5px] font-semibold disabled:opacity-50"
+            className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-caption font-semibold disabled:opacity-50"
           >
             {t("cancel_modal_back_button")}
           </button>
@@ -160,7 +160,7 @@ export default function CancelDealModal({
             type="button"
             onClick={handleSubmit}
             disabled={!valid || busy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-[12.5px] font-bold disabled:bg-surface-sunk disabled:text-muted-soft disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-caption font-bold disabled:bg-surface-sunk disabled:text-muted-soft disabled:cursor-not-allowed"
           >
             {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
             {t("cancel_modal_submit_button")}

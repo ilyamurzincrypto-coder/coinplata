@@ -182,7 +182,7 @@ function TryButton({ label, icon, onClick, variant = "indigo" }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[11.5px] font-semibold border transition-colors ${cls}`}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-caption font-semibold border transition-colors ${cls}`}
     >
       {icon || <Play className="w-3 h-3" />}
       {label}
@@ -193,7 +193,7 @@ function TryButton({ label, icon, onClick, variant = "indigo" }) {
 function Bullets({ items, ordered, query }) {
   const Tag = ordered ? "ol" : "ul";
   return (
-    <Tag className={`mt-1.5 space-y-1 text-[12.5px] text-ink-soft ${ordered ? "list-decimal" : "list-disc"} pl-5`}>
+    <Tag className={`mt-1.5 space-y-1 text-caption text-ink-soft ${ordered ? "list-decimal" : "list-disc"} pl-5`}>
       {items.map((b, i) => <li key={i}><Highlight text={b} query={query} /></li>)}
     </Tag>
   );
@@ -218,11 +218,11 @@ function GlossaryGrid({ items, query }) {
         const { term, definition } = parseGlossaryEntry(entry);
         return (
           <div key={i} className="rounded-card bg-surface-soft/60 border border-border-soft px-3 py-2">
-            <div className="text-[12.5px] font-bold text-ink">
+            <div className="text-caption font-bold text-ink">
               <Highlight text={term} query={query} />
             </div>
             {definition && (
-              <div className="text-[11.5px] text-ink-soft mt-0.5 leading-snug">
+              <div className="text-caption text-ink-soft mt-0.5 leading-snug">
                 <Highlight text={definition} query={query} />
               </div>
             )}
@@ -235,7 +235,7 @@ function GlossaryGrid({ items, query }) {
 
 function JournalMini({ lines }) {
   return (
-    <table className="w-full mt-2 text-[11.5px] bg-surface-soft/70 rounded-button overflow-hidden">
+    <table className="w-full mt-2 text-caption bg-surface-soft/70 rounded-button overflow-hidden">
       <tbody>
         {lines.map((l, i) => {
           const dr = l.dir === "dr";
@@ -257,14 +257,14 @@ function ExampleCard({ ex, query }) {
   const dealSeed = ex.try?.dealSeed;
   return (
     <div className="rounded-card border border-border-soft/80 bg-white px-3 py-2.5">
-      <div className="text-[12.5px] font-semibold text-ink inline-flex items-center gap-1.5">
+      <div className="text-caption font-semibold text-ink inline-flex items-center gap-1.5">
         <Lightbulb className="w-3.5 h-3.5 text-warning" />
         <Highlight text={ex.title} query={query} />
       </div>
-      {ex.intro && <div className="text-[12px] text-muted mt-0.5"><Highlight text={ex.intro} query={query} /></div>}
+      {ex.intro && <div className="text-caption text-muted mt-0.5"><Highlight text={ex.intro} query={query} /></div>}
       {Array.isArray(ex.steps) && ex.steps.length > 0 && <Bullets items={ex.steps} ordered query={query} />}
       {Array.isArray(ex.journal) && ex.journal.length > 0 && <JournalMini lines={ex.journal} />}
-      {ex.note && <div className="text-[12px] text-muted italic mt-2"><Highlight text={ex.note} query={query} /></div>}
+      {ex.note && <div className="text-caption text-muted italic mt-2"><Highlight text={ex.note} query={query} /></div>}
       {dealSeed && onTryDeal && (
         <div className="mt-2">
           <TryButton label={ex.try?.label || "Попробовать в форме"} onClick={() => onTryDeal(dealSeed)} variant="emerald" />
@@ -298,7 +298,7 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
             key={t.id}
             type="button"
             onClick={() => onChange(t.id)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button text-[11.5px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-button text-caption font-semibold transition-colors ${
               isActive ? "bg-white text-ink shadow-sm" : "text-muted hover:text-ink-soft"
             }`}
           >
@@ -314,13 +314,13 @@ function SectionTabs({ active, onChange, hasHow, hasExamples }) {
 function SubCard({ sub, query }) {
   return (
     <div className="rounded-card border border-border-soft bg-surface-soft/50 px-3 py-2">
-      <div className="text-[12.5px] font-bold text-ink"><Highlight text={sub.title} query={query} /></div>
-      {sub.what && <div className="text-[12px] text-muted italic mt-0.5"><Highlight text={sub.what} query={query} /></div>}
-      {sub.related && <div className="text-[12px] text-muted mt-0.5"><span className="font-medium text-ink-soft">Связано: </span><Highlight text={sub.related} query={query} /></div>}
+      <div className="text-caption font-bold text-ink"><Highlight text={sub.title} query={query} /></div>
+      {sub.what && <div className="text-caption text-muted italic mt-0.5"><Highlight text={sub.what} query={query} /></div>}
+      {sub.related && <div className="text-caption text-muted mt-0.5"><span className="font-medium text-ink-soft">Связано: </span><Highlight text={sub.related} query={query} /></div>}
       {Array.isArray(sub.can) && sub.can.length > 0 && <Bullets items={sub.can} query={query} />}
       {Array.isArray(sub.how) && sub.how.length > 0 && (
         <div className="mt-2">
-          <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
+          <div className="text-tiny font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
           <Bullets items={sub.how} ordered query={query} />
         </div>
       )}
@@ -384,7 +384,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
             {isRead && <CheckCircle2 className="w-3.5 h-3.5 text-success" strokeWidth={2.5} />}
           </h2>
           {meta.tldr && !open && (
-            <p className="text-[11.5px] text-muted mt-0.5 line-clamp-1">{meta.tldr}</p>
+            <p className="text-caption text-muted mt-0.5 line-clamp-1">{meta.tldr}</p>
           )}
         </div>
         {open ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-soft shrink-0" />}
@@ -395,8 +395,8 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {/* TL;DR + try-button + tabs */}
           {meta.tldr && (
             <div className={`rounded-card px-3 py-2 ring-1 ${meta.accentSoft} ${meta.accentRing}`}>
-              <div className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${meta.accentText}`}>TL;DR</div>
-              <div className="text-[12.5px] text-ink-soft">{meta.tldr}</div>
+              <div className={`text-tiny font-bold uppercase tracking-wider mb-0.5 ${meta.accentText}`}>TL;DR</div>
+              <div className="text-caption text-ink-soft">{meta.tldr}</div>
             </div>
           )}
           <div className="flex items-center gap-2 flex-wrap">
@@ -413,11 +413,11 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {/* Tabs content. При активном поиске показываем ВСЁ. */}
           {(activeTab === "tldr" || query) && (
             <div className="space-y-2">
-              <p className="text-[12.5px] text-muted italic"><Highlight text={section.what} query={query} /></p>
-              <p className="text-[12.5px] text-ink-soft"><span className="font-medium text-ink-soft">С чем связано: </span><Highlight text={section.related} query={query} /></p>
+              <p className="text-caption text-muted italic"><Highlight text={section.what} query={query} /></p>
+              <p className="text-caption text-ink-soft"><span className="font-medium text-ink-soft">С чем связано: </span><Highlight text={section.related} query={query} /></p>
               {Array.isArray(section.can) && section.can.length > 0 && (
                 <>
-                  <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">
+                  <div className="text-tiny font-bold text-ink-soft uppercase tracking-wider">
                     {section.id === "glossary" ? "Термины" : "Что умеет"}
                   </div>
                   {section.id === "glossary"
@@ -430,7 +430,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
 
           {(activeTab === "how" || query) && hasHow && (
             <div>
-              <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
+              <div className="text-tiny font-bold text-ink-soft uppercase tracking-wider">Как работает</div>
               <Bullets items={section.how} ordered query={query} />
             </div>
           )}
@@ -444,7 +444,7 @@ function SectionCard({ section, defaultOpen, query, isRead, markRead, sectionRef
           {/* Подразделы — всегда видны если есть */}
           {hasSub && (
             <div className="space-y-2 pt-1">
-              <div className="text-[11px] font-bold text-ink-soft uppercase tracking-wider">Подразделы</div>
+              <div className="text-tiny font-bold text-ink-soft uppercase tracking-wider">Подразделы</div>
               {section.sub.map((ss) => <SubCard key={ss.id || ss.title} sub={ss} query={query} />)}
             </div>
           )}
@@ -476,7 +476,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           <h1 className="text-[20px] sm:text-[24px] font-bold tracking-tight text-ink">
             {greeting}! Это справочник по сервису.
           </h1>
-          <p className="text-[12.5px] sm:text-[13px] text-ink-soft mt-1">
+          <p className="text-caption sm:text-body-sm text-ink-soft mt-1">
             Здесь все фичи кассы, казначейства и настроек простым языком. Разворачивай разделы,
             щёлкай «Попробовать» — попадёшь сразу на нужный экран. Поиск моментальный по всему тексту.
           </p>
@@ -492,7 +492,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Поиск по справке…  (Cmd / Ctrl + K)"
-          className="w-full bg-white border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-card pl-10 pr-10 py-2.5 text-[14px] outline-none transition-all"
+          className="w-full bg-white border border-border-soft focus:border-accent focus:ring-4 focus:ring-accent/10 rounded-card pl-10 pr-10 py-2.5 text-body outline-none transition-all"
         />
         {query && (
           <button
@@ -507,7 +507,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
       </div>
 
       {/* Stats strip */}
-      <div className="mt-4 flex items-center gap-4 flex-wrap text-[11.5px] text-ink-soft">
+      <div className="mt-4 flex items-center gap-4 flex-wrap text-caption text-ink-soft">
         <span className="inline-flex items-center gap-1.5">
           <BookOpen className="w-3.5 h-3.5 text-muted-soft" />
           <span className="font-bold text-ink">{totalCount}</span> разделов
@@ -524,7 +524,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
           <button
             type="button"
             onClick={onPrint}
-            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-button text-[11.5px] font-medium bg-white border border-border-soft text-ink-soft hover:bg-surface-soft print:hidden"
+            className="ml-auto inline-flex items-center gap-1.5 px-2 py-1 rounded-button text-caption font-medium bg-white border border-border-soft text-ink-soft hover:bg-surface-soft print:hidden"
             title="Раскрыть все секции и открыть диалог печати"
           >
             <Printer className="w-3 h-3" strokeWidth={2.5} />
@@ -535,7 +535,7 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
 
       {/* What's new (скрывается при печати) */}
       <div className="mt-4 info-hero-extras">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-1.5 inline-flex items-center gap-1">
+        <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-1.5 inline-flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-warning" />
           Что нового
         </div>
@@ -547,9 +547,9 @@ function HeroSection({ query, setQuery, searchRef, readCount, totalCount, onJump
               onClick={() => onJumpTo && onJumpTo(u.sectionId)}
               className="text-left bg-white rounded-card border border-border-soft hover:border-border hover:shadow-sm transition-all px-3 py-2"
             >
-              <div className="text-[10px] text-muted-soft tabular-nums">{u.date}</div>
-              <div className="text-[12px] font-semibold text-ink mt-0.5">{u.title}</div>
-              <div className="text-[11px] text-muted mt-1 line-clamp-2">{u.summary}</div>
+              <div className="text-tiny text-muted-soft tabular-nums">{u.date}</div>
+              <div className="text-caption font-semibold text-ink mt-0.5">{u.title}</div>
+              <div className="text-tiny text-muted mt-1 line-clamp-2">{u.summary}</div>
             </button>
           ))}
         </div>
@@ -563,7 +563,7 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
   return (
     <aside className="lg:sticky lg:top-4 lg:self-start">
       <div className="bg-white rounded-card-lg border border-border-soft p-3">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2 px-2">
+        <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-2 px-2">
           Содержание
         </div>
         <nav className="space-y-0.5">
@@ -577,7 +577,7 @@ function TocSidebar({ sections, readSet, activeId, onClickItem }) {
                 key={s.id}
                 type="button"
                 onClick={() => onClickItem(s.id)}
-                className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-button text-[12.5px] text-left transition-colors ${
+                className={`w-full inline-flex items-center gap-2 px-2 py-1.5 rounded-button text-caption text-left transition-colors ${
                   isActive ? `${meta.accentSoft} ${meta.accentText} font-semibold` : "text-ink-soft hover:bg-surface-soft"
                 }`}
               >
@@ -731,11 +731,11 @@ export default function InfoPage({ onNavigate = null, onTryDeal = null, initialT
             {filtered.length === 0 ? (
               <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center">
                 <Search className="w-8 h-8 text-muted-soft mx-auto mb-2" />
-                <div className="text-[13px] font-medium text-ink-soft">Ничего не найдено по запросу «{query}»</div>
+                <div className="text-body-sm font-medium text-ink-soft">Ничего не найдено по запросу «{query}»</div>
                 <button
                   type="button"
                   onClick={() => setQuery("")}
-                  className="mt-3 text-[12px] text-accent hover:text-accent underline"
+                  className="mt-3 text-caption text-accent hover:text-accent underline"
                 >
                   Очистить поиск
                 </button>

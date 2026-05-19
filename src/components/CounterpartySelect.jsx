@@ -22,7 +22,7 @@ const TAG_STYLE = {
 export function ClientTag({ tag, size = "sm" }) {
   if (!tag) return null;
   const cls = TAG_STYLE[tag] || TAG_STYLE.Regular;
-  const sizeCls = size === "xs" ? "text-[9px] px-1 py-0" : "text-[10px] px-1.5 py-0.5";
+  const sizeCls = size === "xs" ? "text-micro px-1 py-0" : "text-tiny px-1.5 py-0.5";
   return (
     <span className={`inline-flex items-center rounded font-bold tracking-wider uppercase ring-1 ${cls} ${sizeCls}`}>
       {tag}
@@ -98,7 +98,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
   return (
     <div ref={rootRef} className="relative">
       {/* Размер выровнен с IN/OUT amount-полями: rounded-card-lg, py-3,
-          text-[14px]. Раньше был text-[13px] py-2 rounded-card — поле
+          text-body. Раньше был text-body-sm py-2 rounded-card — поле
           клиента визуально «худее» соседних полей сделки. */}
       <div className="flex items-stretch gap-1.5">
         <div
@@ -117,17 +117,17 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               onChange(e.target.value);
             }}
             placeholder={t("search_counterparty") || "Search client by name or @telegram"}
-            className="flex-1 bg-transparent outline-none text-[14px] px-2.5 py-3 placeholder:text-muted-soft leading-none"
+            className="flex-1 bg-transparent outline-none text-body px-2.5 py-3 placeholder:text-muted-soft leading-none"
           />
           {selected?.tag && !open && <div className="mr-2"><ClientTag tag={selected.tag} size="xs" /></div>}
           {selected?.telegram && !open && (
-            <span className="text-[11.5px] text-muted mr-2 truncate max-w-[80px]">{selected.telegram}</span>
+            <span className="text-caption text-muted mr-2 truncate max-w-[80px]">{selected.telegram}</span>
           )}
         </div>
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1 px-3 rounded-card-lg bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-3 rounded-card-lg bg-ink text-white text-caption font-semibold hover:bg-ink transition-colors"
           title={t("add_new") || "Add client"}
         >
           <UserPlus className="w-3.5 h-3.5" />
@@ -142,7 +142,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               нет search-query (чтобы не мешать обычному поиску). */}
           {!hasQuery && quickPicks.length > 0 && (
             <>
-              <div className="px-3 pt-1.5 pb-1 text-[9px] font-bold text-muted-soft tracking-[0.15em] uppercase">
+              <div className="px-3 pt-1.5 pb-1 text-micro font-bold text-muted-soft tracking-[0.15em] uppercase">
                 Быстрый выбор
               </div>
               <div className="px-1">
@@ -160,7 +160,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
                     }`}
                   >
                     <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-tiny font-bold shrink-0 ${
                         qp.kind === "cash"
                           ? "bg-emerald-100 text-success"
                           : "bg-surface-sunk text-ink-soft"
@@ -168,16 +168,16 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
                     >
                       {qp.icon || (qp.label || "?").charAt(0).toUpperCase()}
                     </div>
-                    <span className="flex-1 text-[12.5px] font-semibold text-ink truncate">
+                    <span className="flex-1 text-caption font-semibold text-ink truncate">
                       {qp.label}
                     </span>
                     {qp.kind === "cash" && (
-                      <span className="text-[9px] font-bold text-success uppercase tracking-wider">
+                      <span className="text-micro font-bold text-success uppercase tracking-wider">
                         Cash
                       </span>
                     )}
                     {qp.kind === "recent" && (
-                      <span className="text-[9px] font-bold text-muted-soft uppercase tracking-wider">
+                      <span className="text-micro font-bold text-muted-soft uppercase tracking-wider">
                         Recent
                       </span>
                     )}
@@ -191,27 +191,27 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
             </>
           )}
           {!hasQuery && quickPicks.length === 0 && (
-            <div className="px-3 py-6 text-center text-[12px] text-muted-soft">
+            <div className="px-3 py-6 text-center text-caption text-muted-soft">
               Start typing to search clients
             </div>
           )}
           {!hasQuery && quickPicks.length > 0 && (
-            <div className="px-3 py-2 text-center text-[11px] text-muted-soft">
+            <div className="px-3 py-2 text-center text-tiny text-muted-soft">
               Или начните вводить имя для поиска
             </div>
           )}
           {noMatches && (
             <div className="px-3 py-6 text-center">
-              <div className="text-[13px] font-semibold text-ink-soft mb-1">
+              <div className="text-body-sm font-semibold text-ink-soft mb-1">
                 Client not found
               </div>
-              <div className="text-[11px] text-muted mb-3">
+              <div className="text-tiny text-muted mb-3">
                 No client matches "{debouncedQuery}"
               </div>
               <button
                 type="button"
                 onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button bg-ink text-white text-caption font-semibold hover:bg-ink transition-colors"
               >
                 <UserPlus className="w-3 h-3" />
                 Add "{debouncedQuery}"
@@ -225,15 +225,15 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
               onClick={() => pick(cp)}
               className="w-full text-left px-3 py-2 hover:bg-surface-soft flex items-center gap-2 group"
             >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-surface-sunk to-surface-sunk flex items-center justify-center text-[10px] font-bold text-ink-soft flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-surface-sunk to-surface-sunk flex items-center justify-center text-tiny font-bold text-ink-soft flex-shrink-0">
                 {(cp.name || cp.nickname).split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-ink truncate flex items-center gap-1.5">
+                <div className="text-body-sm font-medium text-ink truncate flex items-center gap-1.5">
                   <span className="truncate">{cp.name || cp.nickname}</span>
                   <ClientTag tag={cp.tag} size="xs" />
                 </div>
-                <div className="text-[11px] text-muted flex items-center gap-2">
+                <div className="text-tiny text-muted flex items-center gap-2">
                   {cp.nickname !== cp.name && cp.name && (
                     <span className="truncate">{cp.nickname}</span>
                   )}
@@ -259,7 +259,7 @@ export default function CounterpartySelect({ value, onChange, quickPicks = [] })
                 <div className="w-7 h-7 rounded-full bg-ink flex items-center justify-center">
                   <Plus className="w-3.5 h-3.5 text-white" />
                 </div>
-                <span className="text-[13px] font-semibold">{t("add_new") || "Add client"}</span>
+                <span className="text-body-sm font-semibold">{t("add_new") || "Add client"}</span>
               </button>
             </div>
           )}
@@ -309,7 +309,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
     <Modal open={open} onClose={onClose} title={t("new_counterparty") || "Add client"} width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             <UserIcon className="w-3 h-3 inline mr-1" /> {t("name_label") || "Name"}
           </label>
           <input
@@ -318,11 +318,11 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Murat Yildiz"
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             <Send className="w-3 h-3 inline mr-1" /> {t("telegram_label") || "Telegram"}
           </label>
           <input
@@ -330,18 +330,18 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             value={telegram}
             onChange={(e) => setTelegram(e.target.value)}
             placeholder="@username"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Tag
           </label>
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               onClick={() => setTag("")}
-              className={`px-2.5 py-1 rounded-button text-[11px] font-semibold border transition-colors ${
+              className={`px-2.5 py-1 rounded-button text-tiny font-semibold border transition-colors ${
                 !tag ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
               }`}
             >
@@ -352,7 +352,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
                 key={tg}
                 type="button"
                 onClick={() => setTag(tg)}
-                className={`px-2.5 py-1 rounded-button text-[11px] font-semibold border transition-colors ${
+                className={`px-2.5 py-1 rounded-button text-tiny font-semibold border transition-colors ${
                   tag === tg ? "bg-ink text-white border-ink" : "bg-white text-ink-soft border-border-soft hover:border-border"
                 }`}
               >
@@ -362,7 +362,7 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
           </div>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Note (optional)
           </label>
           <input
@@ -370,21 +370,21 @@ function AddCounterpartyModal({ open, onClose, onSubmit, initialName }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="OTC desk, prefers SEPA…"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none transition-colors"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             name.trim() ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

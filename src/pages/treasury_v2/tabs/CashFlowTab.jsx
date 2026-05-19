@@ -1033,7 +1033,7 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
                 </div>
                 {isOpen && p.txs.length > 0 && (
                   <div className="pl-6 pr-1 pb-1 pt-0.5 bg-surface-soft/40 rounded-b-[6px] -mx-1 mb-1">
-                    <div className="text-[9px] uppercase tracking-wider text-muted-soft font-bold py-1">
+                    <div className="text-micro uppercase tracking-wider text-muted-soft font-bold py-1">
                       Топ-{p.txs.length} сделок этой пары по марже
                     </div>
                     <table className="w-full text-caption">

@@ -62,7 +62,7 @@ function AgePill({ updatedAt }) {
   const { ageMs } = freshnessOf(updatedAt);
   if (!Number.isFinite(ageMs)) {
     return (
-      <span className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-[9px] font-bold bg-surface-sunk text-muted">
+      <span className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold bg-surface-sunk text-muted">
         —
       </span>
     );
@@ -78,7 +78,7 @@ function AgePill({ updatedAt }) {
     : `${Math.round(days)}d`;
   return (
     <span
-      className={`inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-[9px] font-bold ${tone}`}
+      className={`inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold ${tone}`}
       title={tooltipFor(updatedAt)}
     >
       {label}
@@ -97,7 +97,7 @@ function QuoteSide({ from, to, rawRate, ringColorClass }) {
       <span className="inline-flex items-center gap-0.5 shrink-0">
         <CurrencyIcon ccy={d.from} pair={d.to} size="xs" ringColorClass={ringColorClass} />
       </span>
-      <span className="font-mono tabular text-[13px] font-bold text-ink tracking-tight shrink-0">
+      <span className="font-mono tabular text-body-sm font-bold text-ink tracking-tight shrink-0">
         {formatRate(d.rate)}
       </span>
     </div>
@@ -108,7 +108,7 @@ function QuoteSide({ from, to, rawRate, ringColorClass }) {
 function GroupSeparator({ label }) {
   return (
     <div className="px-3 pt-3 pb-1.5 flex items-center gap-2">
-      <span className="text-[10px] font-bold tracking-wider text-muted-soft uppercase whitespace-nowrap shrink-0">
+      <span className="text-tiny font-bold tracking-wider text-muted-soft uppercase whitespace-nowrap shrink-0">
         {label}
       </span>
       <span className="flex-1 h-px bg-border-soft" />
@@ -315,13 +315,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             <Star className="w-3 h-3" strokeWidth={2} fill={fav ? "currentColor" : "none"} />
           </button>
           <CurrencyIcon ccy={a} pair={b} size="sm" ringColorClass={ringColorClass} />
-          <span className="font-mono font-bold text-[11px] text-ink tracking-tight">
+          <span className="font-mono font-bold text-tiny text-ink tracking-tight">
             {a}<span className="text-muted-soft mx-0.5">·</span>{b}
           </span>
           <span className="flex-1" />
           {pairHasOverride && (
             <span
-              className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-[9px] font-bold bg-surface-sunk text-muted tracking-wide"
+              className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold bg-surface-sunk text-muted tracking-wide"
               title="Office override активен"
             >
               OFC
@@ -360,7 +360,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
             </h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted font-mono tabular">
+            <span className="inline-flex items-center gap-1 text-tiny text-muted font-mono tabular">
               <span
                 className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot"
                 style={{ boxShadow: "0 0 6px rgba(16,185,129,0.6)" }}
@@ -372,7 +372,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               <button
                 type="button"
                 onClick={onOpenRates}
-                className="inline-flex items-center gap-1 h-6 px-2 rounded-[7px] bg-surface border border-border text-ink text-[11px] font-medium hover:bg-surface-soft transition-colors"
+                className="inline-flex items-center gap-1 h-6 px-2 rounded-[7px] bg-surface border border-border text-ink text-tiny font-medium hover:bg-surface-soft transition-colors"
                 title={t("edit_rates") || "Редактировать курсы"}
               >
                 <Pencil className="w-2.5 h-2.5 text-muted" strokeWidth={2.2} />
@@ -388,7 +388,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         <button
           type="button"
           onClick={() => setSelectedTab(GLOBAL_TAB)}
-          className={`h-6 px-2 rounded-pill text-[10px] font-medium font-mono tracking-wider transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
+          className={`h-6 px-2 rounded-pill text-tiny font-medium font-mono tracking-wider transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
             selectedTab === GLOBAL_TAB
               ? "bg-surface text-ink shadow-seg"
               : "text-muted hover:text-ink"
@@ -404,7 +404,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               key={off.id}
               type="button"
               onClick={() => setSelectedTab(off.id)}
-              className={`h-6 px-2 rounded-pill text-[10px] font-medium tracking-wide transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
+              className={`h-6 px-2 rounded-pill text-tiny font-medium tracking-wide transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
                 isSel
                   ? "bg-surface text-ink shadow-seg"
                   : "text-muted hover:text-ink"
@@ -489,7 +489,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-muted hover:text-ink hover:bg-surface-soft text-[11px] font-semibold transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-muted hover:text-ink hover:bg-surface-soft text-tiny font-semibold transition-colors"
           >
             {expanded ? (
               <>

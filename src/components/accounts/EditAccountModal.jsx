@@ -75,7 +75,7 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
     >
       <div className="p-5 space-y-4">
         <div>
-          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+          <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
             {t("acc_edit_name")}
           </label>
           <input
@@ -83,14 +83,14 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
 
         {crypto && (
           <>
             <div>
-              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+              <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
                 {t("acc_edit_address")}
               </label>
               <input
@@ -98,17 +98,17 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={networkId === "ERC20" || networkId === "BEP20" ? "0x…" : "T…"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[12px] font-mono outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-caption font-mono outline-none"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+              <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
                 {t("acc_edit_network")}
               </label>
               <select
                 value={networkId}
                 onChange={(e) => setNetworkId(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[13px] font-semibold outline-none"
+                className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body-sm font-semibold outline-none"
               >
                 <option value="">—</option>
                 {NETWORKS.map((n) => (
@@ -126,13 +126,13 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
             onChange={(e) => setActive(e.target.checked)}
             className="w-4 h-4 rounded-[4px] accent-slate-900"
           />
-          <span className="text-[13px] font-medium text-ink-soft">
+          <span className="text-body-sm font-medium text-ink-soft">
             {active ? t("acc_edit_active") : t("acc_edit_inactive")}
           </span>
         </label>
 
         {!active && (
-          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-[12px]">
+          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-caption">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {t("acc_edit_inactive_hint")}
           </div>
@@ -143,14 +143,14 @@ export default function EditAccountModal({ open, account, onClose, onSaved }) {
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

@@ -19,7 +19,7 @@ function Field({ label, hint, children }) {
         {label}
       </span>
       {children}
-      {hint && <span className="text-[10px] text-muted-soft">{hint}</span>}
+      {hint && <span className="text-tiny text-muted-soft">{hint}</span>}
     </label>
   );
 }
@@ -62,7 +62,7 @@ export default function DealAdvanced({
           <Settings className="w-3.5 h-3.5" strokeWidth={2} />
           <span className="text-caption font-semibold">Дополнительные параметры</span>
           {hasAnyValue && !open && (
-            <span className="text-[9px] uppercase tracking-wider font-bold text-success bg-accent-soft px-1.5 py-px rounded">
+            <span className="text-micro uppercase tracking-wider font-bold text-success bg-accent-soft px-1.5 py-px rounded">
               заполнено
             </span>
           )}

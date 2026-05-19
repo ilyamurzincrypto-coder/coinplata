@@ -147,7 +147,7 @@ function BannerShell({ tone, icon: Icon, children }) {
   return (
     <div className={`border-b ${toneClass} sticky top-0 z-20`}>
       <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-[12px] font-medium">
+        <div className="flex items-center gap-2 text-caption font-medium">
           <Icon className="w-3.5 h-3.5 shrink-0" />
           {children}
         </div>
@@ -163,7 +163,7 @@ function OfficeChip({ office, tone }) {
       : "bg-amber-100 text-warning border-warning/20";
   return (
     <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold border ${cls}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold border ${cls}`}
     >
       <Building2 className="w-2.5 h-2.5" />
       {office.name}
@@ -180,7 +180,7 @@ function ConfirmButton({ tone, onClick, label, disabled = false }) {
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-[12px] font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
+      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-caption font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
     >
       <CheckCircle2 className="w-3 h-3" />
       {label}
@@ -191,7 +191,7 @@ function ConfirmButton({ tone, onClick, label, disabled = false }) {
 function ManagerHint({ tone }) {
   const cls = tone === "rose" ? "text-danger" : "text-warning";
   return (
-    <span className={`ml-auto text-[11px] font-medium italic ${cls}`}>
+    <span className={`ml-auto text-tiny font-medium italic ${cls}`}>
       Coordinate with management
     </span>
   );

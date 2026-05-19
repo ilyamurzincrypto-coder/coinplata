@@ -157,21 +157,21 @@ export default function ConditionsBar({
           width="sm"
         >
           <div className="px-5 py-4 space-y-4">
-            <p className="text-[13px] text-ink-soft">
+            <p className="text-body-sm text-ink-soft">
               {t("conditions_no_commission_confirm_body")}
             </p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setPendingNoCommission(false)}
-                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-[12px] font-semibold"
+                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-surface-sunk hover:bg-surface-sunk text-ink-soft text-caption font-semibold"
               >
                 {t("conditions_cancel")}
               </button>
               <button
                 type="button"
                 onClick={confirmNoCommission}
-                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-[12px] font-bold uppercase tracking-wider"
+                className="px-3 py-1.5 rounded-[var(--radius-cell)] bg-danger hover:bg-rose-700 text-white text-caption font-bold uppercase tracking-wider"
               >
                 {t("conditions_confirm")}
               </button>
@@ -186,7 +186,7 @@ export default function ConditionsBar({
 function Row({ label, children }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[11px] text-muted-soft uppercase tracking-wider w-20 shrink-0">
+      <span className="text-tiny text-muted-soft uppercase tracking-wider w-20 shrink-0">
         {label}:
       </span>
       <div className="flex flex-wrap items-center gap-1.5">{children}</div>

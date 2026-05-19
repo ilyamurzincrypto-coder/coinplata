@@ -95,7 +95,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
               onChange(e.target.value);
             }}
             placeholder={placeholder || "Имя партнёра / @telegram / телефон"}
-            className="flex-1 bg-transparent outline-none text-[12.5px] px-2 py-1.5 placeholder:text-muted-soft"
+            className="flex-1 bg-transparent outline-none text-caption px-2 py-1.5 placeholder:text-muted-soft"
           />
           {query && (
             <button
@@ -114,7 +114,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1 px-2 rounded-button bg-indigo-600 text-white text-[10.5px] font-bold hover:bg-indigo-700 transition-colors shrink-0"
+          className="inline-flex items-center gap-1 px-2 rounded-button bg-indigo-600 text-white text-tiny font-bold hover:bg-indigo-700 transition-colors shrink-0"
           title="Добавить нового партнёра"
         >
           <UserPlus className="w-3 h-3" />
@@ -126,16 +126,16 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
         <div className="absolute z-40 mt-1 w-full bg-white border border-border-soft rounded-card shadow-xl shadow-soft py-1 max-h-64 overflow-auto">
           {activePartners.length === 0 && (
             <div className="px-3 py-4 text-center">
-              <div className="text-[12px] font-semibold text-ink-soft mb-1.5">
+              <div className="text-caption font-semibold text-ink-soft mb-1.5">
                 Нет партнёров
               </div>
-              <div className="text-[10.5px] text-muted mb-2">
+              <div className="text-tiny text-muted mb-2">
                 Создайте первого, чтобы он появился в списке.
               </div>
               <button
                 type="button"
                 onClick={() => setShowAdd(true)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700"
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] bg-indigo-600 text-white text-tiny font-semibold hover:bg-indigo-700"
               >
                 <UserPlus className="w-3 h-3" />
                 Добавить партнёра
@@ -149,14 +149,14 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
               onClick={() => pick(p)}
               className="w-full text-left px-2.5 py-1.5 hover:bg-surface-soft flex items-center gap-2"
             >
-              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-accent shrink-0">
+              <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center text-tiny font-bold text-accent shrink-0">
                 {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[12.5px] font-semibold text-ink truncate">
+                <div className="text-caption font-semibold text-ink truncate">
                   {p.name}
                 </div>
-                <div className="text-[10px] text-muted flex items-center gap-1.5">
+                <div className="text-tiny text-muted flex items-center gap-1.5">
                   {p.telegram && (
                     <span className="inline-flex items-center gap-0.5 text-info">
                       <Send className="w-2.5 h-2.5" />
@@ -179,7 +179,7 @@ export default function PartnerSelect({ value, onChange, placeholder }) {
                 <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center shrink-0">
                   <Plus className="w-3 h-3 text-white" />
                 </div>
-                <span className="text-[12px] font-semibold">
+                <span className="text-caption font-semibold">
                   Создать «{debouncedQuery.trim()}»
                 </span>
               </button>
@@ -228,7 +228,7 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
     <Modal open={open} onClose={onClose} title="Новый партнёр" width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Имя / Название
           </label>
           <input
@@ -237,11 +237,11 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             onChange={(e) => setName(e.target.value)}
             placeholder="Иван Петров / Crypto OTC LLC"
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             <Send className="w-3 h-3 inline mr-1" /> Telegram
           </label>
           <input
@@ -249,11 +249,11 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={telegram}
             onChange={(e) => setTelegram(e.target.value)}
             placeholder="@username"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Телефон
           </label>
           <input
@@ -261,11 +261,11 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="+7..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Заметка
           </label>
           <input
@@ -273,21 +273,21 @@ function AddPartnerModal({ open, onClose, onSubmit, initialName }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold ${
             name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >

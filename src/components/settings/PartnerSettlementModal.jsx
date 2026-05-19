@@ -123,7 +123,7 @@ export default function PartnerSettlementModal({
   return (
     <Modal open={!!open} onClose={handleClose} title={title} subtitle={subtitle} width="md">
       {USE_NEW_LEDGER && (
-        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-[12.5px] text-warning">
+        <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-caption text-warning">
           <span className="font-semibold">Partner-движения отключены в режиме v2 ledger.</span>{" "}
           v2 recordPartnerInflow/Outflow ещё не реализованы. Попроси админа выключить{" "}
           <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
@@ -132,17 +132,17 @@ export default function PartnerSettlementModal({
       <div className="p-5 space-y-3">
         <div className={`flex items-center gap-2 px-3 py-2 rounded-card bg-${accent}-50 border border-${accent}-200`}>
           <Icon className={`w-4 h-4 text-${accent}-700`} />
-          <span className={`text-[12px] font-semibold text-${accent}-800`}>
+          <span className={`text-caption font-semibold text-${accent}-800`}>
             {partnerAccount?.name} · {ccy}
           </span>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
+          <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
             Сумма
           </label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft text-[12px] font-bold">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-soft text-caption font-bold">
               {curSymbol(ccy)}
             </span>
             <input
@@ -152,25 +152,25 @@ export default function PartnerSettlementModal({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
               autoFocus
-              className="w-full pl-8 pr-3 py-2.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card text-[14px] tabular-nums outline-none"
+              className="w-full pl-8 pr-3 py-2.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card text-body tabular-nums outline-none"
             />
           </div>
         </div>
 
         {!isInflow && (
           <div>
-            <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
+            <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
               С какой кассы выдаём ({ccy})
             </label>
             {eligibleAccounts.length === 0 ? (
-              <div className="text-[12px] text-danger bg-danger-soft border border-danger/20 rounded-button px-3 py-2">
+              <div className="text-caption text-danger bg-danger-soft border border-danger/20 rounded-button px-3 py-2">
                 Нет активных счетов в {ccy}. Создай счёт в нужной валюте.
               </div>
             ) : (
               <select
                 value={fromAccountId}
                 onChange={(e) => setFromAccountId(e.target.value)}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none"
               >
                 <option value="">— выбери счёт —</option>
                 {eligibleAccounts.map((a) => (
@@ -184,7 +184,7 @@ export default function PartnerSettlementModal({
         )}
 
         <div>
-          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
+          <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
             Комментарий (опционально)
           </label>
           <input
@@ -192,7 +192,7 @@ export default function PartnerSettlementModal({
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder={isInflow ? "Коротко зачем" : "Например: вернул долг кешем"}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none"
           />
         </div>
       </div>
@@ -201,7 +201,7 @@ export default function PartnerSettlementModal({
         <button
           onClick={handleClose}
           disabled={busy}
-          className="px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-[12.5px] font-semibold hover:bg-surface-sunk"
+          className="px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-caption font-semibold hover:bg-surface-sunk"
         >
           Отмена
         </button>
@@ -209,7 +209,7 @@ export default function PartnerSettlementModal({
           onClick={submit}
           disabled={busy || USE_NEW_LEDGER || (!isInflow && eligibleAccounts.length === 0)}
           title={USE_NEW_LEDGER ? "Отключено в режиме v2 ledger" : undefined}
-          className={`px-4 py-2 rounded-card text-white text-[12.5px] font-bold ${accentCls} disabled:opacity-60`}
+          className={`px-4 py-2 rounded-card text-white text-caption font-bold ${accentCls} disabled:opacity-60`}
         >
           {busy ? "Записываю…" : isInflow ? "Записать пополнение" : "Записать выдачу"}
         </button>

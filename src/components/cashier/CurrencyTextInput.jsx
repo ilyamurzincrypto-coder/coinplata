@@ -65,7 +65,7 @@ export default function CurrencyTextInput({
       disabled={disabled}
       className={
         `w-full bg-transparent border-0 outline-none ` +
-        `text-[14px] tabular-nums ${align === "right" ? "text-right" : "text-left"} ` +
+        `text-body tabular-nums ${align === "right" ? "text-right" : "text-left"} ` +
         `placeholder:text-muted-soft ` +
         `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
         `disabled:text-muted-soft ${className}`

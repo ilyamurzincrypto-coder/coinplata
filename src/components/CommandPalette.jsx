@@ -205,14 +205,14 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
             placeholder={t("palette_search_ph")}
             className="flex-1 bg-transparent outline-none text-[15px] text-ink placeholder:text-muted-soft"
           />
-          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-surface-sunk text-muted text-[10px] font-bold tracking-wider">
+          <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded bg-surface-sunk text-muted text-tiny font-bold tracking-wider">
             ESC
           </kbd>
         </div>
 
         <div className="max-h-[50vh] overflow-auto py-1">
           {items.length === 0 ? (
-            <div className="px-5 py-8 text-center text-muted-soft text-[13px]">
+            <div className="px-5 py-8 text-center text-muted-soft text-body-sm">
               {t("palette_no_match")} “{query}”
             </div>
           ) : (
@@ -221,7 +221,7 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
               const baseIdx = items.slice(0, gi).reduce((s, x) => s + x.items.length, 0);
               return (
                 <div key={g.group}>
-                  <div className="px-4 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-soft">
+                  <div className="px-4 pt-2 pb-1 text-tiny font-bold uppercase tracking-wider text-muted-soft">
                     {g.group}
                   </div>
                   {g.items.map((it, ii) => {
@@ -254,10 +254,10 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
                           )}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[13px] font-semibold truncate">{it.label}</div>
+                          <div className="text-body-sm font-semibold truncate">{it.label}</div>
                           {it.sub && (
                             <div
-                              className={`text-[11px] truncate ${
+                              className={`text-tiny truncate ${
                                 active ? "text-white/70" : "text-muted"
                               }`}
                             >
@@ -275,19 +275,19 @@ export default function CommandPalette({ onNavigate, onOpenClient, onOpenDeal })
           )}
         </div>
 
-        <div className="px-4 py-2 border-t border-border-soft flex items-center justify-between text-[11px] text-muted">
+        <div className="px-4 py-2 border-t border-border-soft flex items-center justify-between text-tiny text-muted">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">↑↓</kbd>
+              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-micro font-bold">↑↓</kbd>
               {t("palette_hint_navigate")}
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">↵</kbd>
+              <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-micro font-bold">↵</kbd>
               {t("palette_hint_select")}
             </span>
           </div>
           <div className="text-muted-soft">
-            <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-[9px] font-bold">⌘K</kbd> · {t("palette_hint_toggle")}
+            <kbd className="px-1 py-0.5 rounded bg-surface-sunk text-ink-soft text-micro font-bold">⌘K</kbd> · {t("palette_hint_toggle")}
           </div>
         </div>
       </div>

@@ -234,16 +234,16 @@ export default function RatesImportModal({ open, onClose }) {
               onChange={(e) => handleFile(e.target.files?.[0])}
             />
             <Upload className="w-8 h-8 text-muted-soft mx-auto mb-2" />
-            <div className="text-[14px] font-semibold text-ink">
+            <div className="text-body font-semibold text-ink">
               {t("rimport_drop_here")}
             </div>
-            <div className="text-[11px] text-muted mt-1">
+            <div className="text-tiny text-muted mt-1">
               {t("rimport_size_hint")}
             </div>
           </div>
 
           {parseError && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-danger-soft border border-danger/20 text-[12px] text-danger">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-danger-soft border border-danger/20 text-caption text-danger">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
               <div>{parseError}</div>
             </div>
@@ -252,18 +252,18 @@ export default function RatesImportModal({ open, onClose }) {
           <button
             onClick={handleTemplateDownload}
             type="button"
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-card bg-white border border-border-soft hover:border-border text-[12px] font-semibold text-ink-soft hover:text-ink"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-card bg-white border border-border-soft hover:border-border text-caption font-semibold text-ink-soft hover:text-ink"
           >
             <Download className="w-3.5 h-3.5" />
             {t("rimport_download_template")}
           </button>
 
           <details className="group bg-surface-soft/60 border border-border-soft rounded-card px-4 py-3">
-            <summary className="flex items-center gap-2 cursor-pointer text-[12px] font-semibold text-ink-soft hover:text-ink">
+            <summary className="flex items-center gap-2 cursor-pointer text-caption font-semibold text-ink-soft hover:text-ink">
               <Info className="w-3.5 h-3.5 text-muted-soft" />
               {t("rimport_format_guide")}
             </summary>
-            <div className="mt-3 space-y-2 text-[12px] text-ink-soft">
+            <div className="mt-3 space-y-2 text-caption text-ink-soft">
               <p>
                 {renderBoldPrefix(t("rimport_format_row1"))}{" "}
                 <code className="px-1 py-0.5 bg-white border border-border-soft rounded">From</code>,{" "}
@@ -273,7 +273,7 @@ export default function RatesImportModal({ open, onClose }) {
               <p>{renderBoldPrefix(t("rimport_format_row"))}</p>
               <p>{renderBoldPrefix(t("rimport_format_codes"))}</p>
               <p>{renderBoldPrefix(t("rimport_format_rate"))}</p>
-              <div className="mt-3 border border-border-soft bg-white rounded-md p-3 text-[11px] font-mono">
+              <div className="mt-3 border border-border-soft bg-white rounded-md p-3 text-tiny font-mono">
                 <div className="text-muted mb-1">{t("rimport_format_example")}</div>
                 <div>From,To,Rate</div>
                 <div>USD,TRY,44.9247</div>
@@ -291,14 +291,14 @@ export default function RatesImportModal({ open, onClose }) {
           <SummaryBar summary={parsed.summary} fileName={file?.name} t={t} />
 
           {parsed.sheetCount > 1 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-[12px] text-warning">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-caption text-warning">
               <Info className="w-3.5 h-3.5" />
               {t("rimport_many_sheets").replace("{n}", parsed.sheetCount)}
             </div>
           )}
 
           {parsed.duplicates.length > 0 && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-[12px] text-warning">
+            <div className="flex items-start gap-2 px-3 py-2 rounded-card bg-warning-soft border border-warning/20 text-caption text-warning">
               <Info className="w-3.5 h-3.5 mt-0.5" />
               <div>
                 {t("rimport_duplicates_hint")}{" "}
@@ -309,9 +309,9 @@ export default function RatesImportModal({ open, onClose }) {
 
           <div className="border border-border-soft rounded-card overflow-hidden">
             <div className="max-h-[340px] overflow-auto">
-              <table className="w-full text-[12px]">
+              <table className="w-full text-caption">
                 <thead className="sticky top-0 bg-surface-soft border-b border-border-soft">
-                  <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase">
+                  <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase">
                     <th className="px-3 py-2">{t("rimport_col_pair")}</th>
                     <th className="px-3 py-2 text-right">{t("rimport_col_old")}</th>
                     <th className="px-3 py-2 text-right">{t("rimport_col_new")}</th>
@@ -346,12 +346,12 @@ export default function RatesImportModal({ open, onClose }) {
 
           {parsed.errors.length > 0 && (
             <details className="border border-danger/20 rounded-card overflow-hidden bg-danger-soft/40">
-              <summary className="cursor-pointer px-3 py-2 text-[12px] font-bold text-danger hover:bg-danger-soft">
+              <summary className="cursor-pointer px-3 py-2 text-caption font-bold text-danger hover:bg-danger-soft">
                 <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
                 {parsed.errors.length} {t("rimport_errors_caption")}
               </summary>
               <div className="max-h-[200px] overflow-auto">
-                <table className="w-full text-[11px]">
+                <table className="w-full text-tiny">
                   <tbody>
                     {parsed.errors.map((err, i) => (
                       <tr key={i} className="border-t border-rose-100">
@@ -375,7 +375,7 @@ export default function RatesImportModal({ open, onClose }) {
               onClick={() => {
                 reset();
               }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_upload_another")}
@@ -384,7 +384,7 @@ export default function RatesImportModal({ open, onClose }) {
               type="button"
               onClick={() => setStep(3)}
               disabled={parsed.valid.filter((v) => v.status !== "unchanged").length === 0}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {t("rimport_continue")}
               <ChevronRight className="w-3 h-3" />
@@ -397,18 +397,18 @@ export default function RatesImportModal({ open, onClose }) {
       {step === 3 && parsed && (
         <div className="p-5 space-y-4">
           <div className="bg-warning-soft border border-warning/20 rounded-card px-4 py-3 space-y-1">
-            <div className="flex items-center gap-2 text-[13px] font-bold text-warning">
+            <div className="flex items-center gap-2 text-body-sm font-bold text-warning">
               <AlertTriangle className="w-4 h-4" />
               {t("rimport_about_to_overwrite")}
             </div>
-            <div className="text-[12px] text-warning">
+            <div className="text-caption text-warning">
               {t("rimport_summary_line")
                 .replace("{upd}", parsed.summary.updated)
                 .replace("{add}", parsed.summary.added)
                 .replace("{unch}", parsed.summary.unchanged)
                 .replace("{err}", parsed.summary.errors)}
             </div>
-            <div className="text-[11px] text-warning mt-1">
+            <div className="text-tiny text-warning mt-1">
               {t("rimport_snapshot_hint")}
             </div>
           </div>
@@ -420,7 +420,7 @@ export default function RatesImportModal({ open, onClose }) {
               onChange={(e) => setAcknowledged(e.target.checked)}
               className="mt-0.5 w-4 h-4 rounded border-border text-ink focus:ring-accent"
             />
-            <span className="text-[12px] text-ink-soft">
+            <span className="text-caption text-ink-soft">
               {t("rimport_ack")}
             </span>
           </label>
@@ -429,7 +429,7 @@ export default function RatesImportModal({ open, onClose }) {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
             >
               <ChevronLeft className="w-3 h-3" />
               {t("rimport_back")}
@@ -438,7 +438,7 @@ export default function RatesImportModal({ open, onClose }) {
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-3 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+                className="px-3 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
               >
                 {t("rimport_cancel")}
               </button>
@@ -446,7 +446,7 @@ export default function RatesImportModal({ open, onClose }) {
                 type="button"
                 onClick={handleApply}
                 disabled={!acknowledged || submitting}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-[12px] font-semibold bg-success text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold bg-success text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
                 {submitting ? t("rimport_applying") : t("rimport_apply")}
@@ -463,7 +463,7 @@ function SummaryBar({ summary, fileName, t }) {
   return (
     <div className="flex items-center gap-3 flex-wrap bg-surface-soft border border-border-soft rounded-card px-4 py-3">
       <FileSpreadsheet className="w-4 h-4 text-muted" />
-      <span className="text-[12px] font-semibold text-ink truncate max-w-[200px]" title={fileName}>
+      <span className="text-caption font-semibold text-ink truncate max-w-[200px]" title={fileName}>
         {fileName || "upload.xlsx"}
       </span>
       <div className="h-4 w-px bg-surface-sunk" />
@@ -483,7 +483,7 @@ function Pill({ tone, label }) {
     rose: "bg-rose-100 text-danger ring-rose-200",
   }[tone];
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold tracking-wider ring-1 ${styles}`}>
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-tiny font-bold tracking-wider ring-1 ${styles}`}>
       {label}
     </span>
   );
@@ -497,7 +497,7 @@ function StatusBadge({ status, t }) {
   };
   const it = map[status] || map.unchanged;
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ring-1 ${it.cls}`}>
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-tiny font-bold uppercase tracking-wider ring-1 ${it.cls}`}>
       {it.label}
     </span>
   );

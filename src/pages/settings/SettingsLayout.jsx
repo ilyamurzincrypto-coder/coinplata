@@ -50,7 +50,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
             </button>
           )}
         </div>
-        <p className="text-[13px] text-muted mt-1">
+        <p className="text-body-sm text-muted mt-1">
           {t("logged_in_as")}{" "}
           <span className="font-semibold text-ink">{currentUser.name}</span>
         </p>
@@ -66,7 +66,7 @@ export default function SettingsLayout({ onOpenHelp = null }) {
               <button
                 key={tab.id}
                 onClick={() => setActive(tab.id)}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-button text-[13px] text-left transition-colors ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-button text-body-sm text-left transition-colors ${
                   isActive
                     ? "bg-surface-sunk text-ink font-semibold"
                     : "text-ink-soft hover:bg-surface-soft hover:text-ink"

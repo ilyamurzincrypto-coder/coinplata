@@ -136,11 +136,11 @@ export default function PartnersTab() {
           <div className="flex items-center gap-2">
             <Handshake className="w-4 h-4 text-muted" />
             <h3 className="text-[15px] font-semibold tracking-tight">Партнёры (OTC)</h3>
-            <span className="text-[11px] text-muted-soft ml-1">{partners.length}</span>
+            <span className="text-tiny text-muted-soft ml-1">{partners.length}</span>
           </div>
           <button
             onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-caption font-semibold hover:bg-indigo-700 transition-colors"
           >
             <UserPlus className="w-3.5 h-3.5" />
             Добавить партнёра
@@ -155,7 +155,7 @@ export default function PartnersTab() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по имени, telegram, телефону, заметке…"
-              className="flex-1 bg-transparent outline-none text-[12.5px] text-ink placeholder:text-muted-soft min-w-0"
+              className="flex-1 bg-transparent outline-none text-caption text-ink placeholder:text-muted-soft min-w-0"
             />
             {query && (
               <button onClick={() => setQuery("")} className="p-0.5 rounded hover:bg-surface-sunk text-muted">
@@ -165,7 +165,7 @@ export default function PartnersTab() {
           </div>
 
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-[12.5px] text-muted-soft italic">
+            <div className="py-10 text-center text-caption text-muted-soft italic">
               {partners.length === 0
                 ? "Нет партнёров. Добавьте первого, чтобы он появился в OTC-форме."
                 : "Ничего не найдено."}
@@ -188,26 +188,26 @@ export default function PartnersTab() {
                       >
                         {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-[11px] font-bold text-accent shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-tiny font-bold text-accent shrink-0">
                         {p.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold text-ink inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-body-sm font-semibold text-ink inline-flex items-center gap-2 flex-wrap">
                           {p.name}
                           {!p.active && (
-                            <span className="text-[9px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
+                            <span className="text-micro font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                               deactivated
                             </span>
                           )}
                           <span
-                            className="inline-flex items-center gap-1 text-[10px] font-bold text-muted bg-surface-sunk rounded-full px-1.5 py-0.5"
+                            className="inline-flex items-center gap-1 text-tiny font-bold text-muted bg-surface-sunk rounded-full px-1.5 py-0.5"
                             title={`${activeAccs.length} active accounts`}
                           >
                             <Wallet className="w-2.5 h-2.5" />
                             {activeAccs.length}
                           </span>
                         </div>
-                        <div className="text-[11px] text-muted inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-tiny text-muted inline-flex items-center gap-2 flex-wrap">
                           {p.telegram && (
                             <span className="inline-flex items-center gap-0.5 text-info">
                               <Send className="w-2.5 h-2.5" />
@@ -227,7 +227,7 @@ export default function PartnersTab() {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => setAccountModalState({ mode: "add", partnerId: p.id })}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10.5px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200"
                             title="Добавить счёт партнёру"
                           >
                             <Plus className="w-3 h-3" />
@@ -257,7 +257,7 @@ export default function PartnersTab() {
                     {isOpen && (
                       <div className="px-3 pb-3 pt-1 bg-white border-t border-border-soft">
                         {accs.length === 0 ? (
-                          <div className="text-[11.5px] text-muted-soft italic py-2 text-center">
+                          <div className="text-caption text-muted-soft italic py-2 text-center">
                             Нет счетов. Добавьте первый — нажми кнопку «Счёт» справа.
                           </div>
                         ) : (
@@ -279,15 +279,15 @@ export default function PartnersTab() {
                                       <Icon className="w-3.5 h-3.5" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                      <div className="text-[12px] font-semibold text-ink truncate">
+                                      <div className="text-caption font-semibold text-ink truncate">
                                         {a.name}
                                         {!a.active && (
-                                          <span className="ml-1.5 text-[8.5px] font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
+                                          <span className="ml-1.5 text-micro font-bold text-muted bg-surface-sunk px-1 py-0.5 rounded uppercase">
                                             off
                                           </span>
                                         )}
                                       </div>
-                                      <div className="text-[10px] text-muted tabular-nums">
+                                      <div className="text-tiny text-muted tabular-nums">
                                         {curSymbol(a.currency)}
                                         {fmt(bal, a.currency)}{" "}
                                         <span className="opacity-60">{a.currency}</span>
@@ -303,7 +303,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "inflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-tiny font-bold"
                                       title="Контрагент внёс — фиксируем только partner-side"
                                     >
                                       <ArrowDownLeft className="w-3 h-3" />
@@ -313,7 +313,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "outflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-[11px] font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-tiny font-bold"
                                       title="Контрагент забрал у нас — указываем с какой кассы"
                                     >
                                       <ArrowUpRight className="w-3 h-3" />
@@ -436,7 +436,7 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
     <Modal open={open} onClose={onClose} title={title} width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Имя / Название
           </label>
           <input
@@ -444,12 +444,12 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Telegram
             </label>
             <input
@@ -457,11 +457,11 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={telegram}
               onChange={(e) => setTelegram(e.target.value)}
               placeholder="@username"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
               Телефон
             </label>
             <input
@@ -469,12 +469,12 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+7..."
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Заметка
           </label>
           <input
@@ -482,18 +482,18 @@ function PartnerFormModal({ open, onClose, onSubmit, initial, title }) {
             value={note}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Описание / каналы / условия..."
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk">
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk">
           Отмена
         </button>
         <button
           onClick={submit}
           disabled={!name.trim()}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold ${
             name.trim() ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
@@ -535,21 +535,21 @@ function PartnerDealsSection({ partnerId, partnerName }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-soft hover:text-ink transition-colors"
+        className="inline-flex items-center gap-1.5 text-caption font-semibold text-ink-soft hover:text-ink transition-colors"
       >
-        <span className={`text-muted-soft text-[10px] transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
+        <span className={`text-muted-soft text-tiny transition-transform ${open ? "rotate-90" : ""}`}>▶</span>
         Сделки с этим контрагентом
         {loaded && (
-          <span className="text-[10px] text-muted-soft tabular-nums">({deals.length})</span>
+          <span className="text-tiny text-muted-soft tabular-nums">({deals.length})</span>
         )}
       </button>
 
       {open && (
         <div className="mt-2 rounded-card border border-border-soft bg-surface-soft/60 p-2">
           {loading ? (
-            <div className="text-[12px] text-muted-soft text-center py-3">Загрузка…</div>
+            <div className="text-caption text-muted-soft text-center py-3">Загрузка…</div>
           ) : deals.length === 0 ? (
-            <div className="text-[12px] text-muted-soft text-center py-3">
+            <div className="text-caption text-muted-soft text-center py-3">
               Сделок с {partnerName} ещё не было
             </div>
           ) : (
@@ -560,14 +560,14 @@ function PartnerDealsSection({ partnerId, partnerName }) {
                 return (
                   <div
                     key={d.id}
-                    className="flex items-center justify-between gap-2 rounded-button bg-white border border-border-soft px-2.5 py-1.5 text-[11.5px]"
+                    className="flex items-center justify-between gap-2 rounded-button bg-white border border-border-soft px-2.5 py-1.5 text-caption"
                   >
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                      <span className="text-muted-soft tabular-nums whitespace-nowrap text-[10px]">
+                      <span className="text-muted-soft tabular-nums whitespace-nowrap text-tiny">
                         {dt.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })}
                       </span>
                       {isOtc && (
-                        <span className="inline-flex items-center px-1 py-0 rounded text-[9px] font-bold ring-1 bg-accent-bg text-accent ring-indigo-200">
+                        <span className="inline-flex items-center px-1 py-0 rounded text-micro font-bold ring-1 bg-accent-bg text-accent ring-indigo-200">
                           {d.kind === "broker" ? "BROKER" : "OTC"}
                         </span>
                       )}
@@ -581,7 +581,7 @@ function PartnerDealsSection({ partnerId, partnerName }) {
                           {fmt(d.amountIn, d.currencyIn)} {d.currencyIn}
                         </div>
                         {d.profit !== 0 && (
-                          <div className={`text-[9.5px] font-bold ${d.profit > 0 ? "text-success" : "text-danger"}`}>
+                          <div className={`text-micro font-bold ${d.profit > 0 ? "text-success" : "text-danger"}`}>
                             {d.profit > 0 ? "+" : ""}${fmt(d.profit, "USD")}
                           </div>
                         )}

@@ -63,7 +63,7 @@ function StatusBadge({ status }) {
       ? "Disabled"
       : "Active";
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ring-1 ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-semibold ring-1 ${cls}`}>
       <span
         className={`w-1.5 h-1.5 rounded-full ${
           status === "active"
@@ -90,7 +90,7 @@ function RoleBadge({ role }) {
       : "bg-surface-sunk text-ink-soft";
   const Icon = role === "owner" ? Crown : role === "admin" ? Shield : null;
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-semibold ${cls}`}>
       {Icon && <Icon className="w-3 h-3" />}
       {meta.label}
     </span>
@@ -433,7 +433,7 @@ export default function UsersTab() {
         <div className="flex items-center gap-2">
           <UsersIcon className="w-4 h-4 text-muted" />
           <h3 className="text-[15px] font-semibold tracking-tight">{t("settings_users")}</h3>
-          <span className="text-[11px] text-muted-soft">
+          <span className="text-tiny text-muted-soft">
             · {counts.active} active · {counts.invited} invited · {counts.disabled} disabled
           </span>
         </div>
@@ -451,7 +451,7 @@ export default function UsersTab() {
           {canManage && (
             <button
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
               Invite user
@@ -467,10 +467,10 @@ export default function UsersTab() {
         <div className="px-5 py-3 border-b border-border-soft bg-warning-soft/40">
           <div className="flex items-center gap-2 mb-2">
             <Mail className="w-3.5 h-3.5 text-warning" />
-            <span className="text-[11px] font-bold text-warning tracking-[0.12em] uppercase">
+            <span className="text-tiny font-bold text-warning tracking-[0.12em] uppercase">
               Pending invites · {visiblePending.length}
             </span>
-            <span className="text-[11px] text-warning">
+            <span className="text-tiny text-warning">
               — magic-link отправлен, но юзер ещё не пришёл
             </span>
           </div>
@@ -478,17 +478,17 @@ export default function UsersTab() {
             {visiblePending.map((inv) => (
               <div
                 key={inv.email}
-                className="flex items-center gap-2 px-3 py-2 bg-white rounded-card border border-warning/20 text-[12px]"
+                className="flex items-center gap-2 px-3 py-2 bg-white rounded-card border border-warning/20 text-caption"
               >
                 <Mail className="w-3 h-3 text-warning shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-ink truncate">
                     {inv.fullName || inv.email}
-                    <span className="ml-1.5 text-[10px] font-normal text-muted">
+                    <span className="ml-1.5 text-tiny font-normal text-muted">
                       {inv.email}
                     </span>
                   </div>
-                  <div className="text-[10px] text-muted mt-0.5">
+                  <div className="text-tiny text-muted mt-0.5">
                     {ROLES[inv.role]?.label || inv.role}
                     {inv.createdAt && (
                       <>
@@ -502,7 +502,7 @@ export default function UsersTab() {
                   <div className="flex items-center gap-1 shrink-0">
                     <button
                       onClick={() => handleResendInvite(inv)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-warning hover:text-warning hover:bg-amber-100 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-warning hover:text-warning hover:bg-amber-100 transition-colors"
                       title="Переотправить magic-link"
                     >
                       <RotateCcw className="w-3 h-3" />
@@ -510,7 +510,7 @@ export default function UsersTab() {
                     </button>
                     <button
                       onClick={() => handleCancelInvite(inv)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-danger hover:text-danger hover:bg-danger-soft transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-danger hover:text-danger hover:bg-danger-soft transition-colors"
                       title="Удалить приглашение"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -524,9 +524,9 @@ export default function UsersTab() {
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
+        <table className="w-full text-body-sm">
           <thead>
-            <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
+            <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
               <th className="px-5 py-2.5 font-bold">Name</th>
               <th className="px-3 py-2.5 font-bold">Email</th>
               <th className="px-3 py-2.5 font-bold">Role</th>
@@ -545,7 +545,7 @@ export default function UsersTab() {
                   <td className="px-5 py-3">
                     <div className="flex items-center gap-2.5">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold ${
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-tiny font-semibold ${
                           u.role === "owner"
                             ? "bg-gradient-to-br from-amber-500 to-amber-700"
                             : u.role === "admin"
@@ -558,10 +558,10 @@ export default function UsersTab() {
                         {u.initials}
                       </div>
                       <div>
-                        <div className={`text-[13px] font-semibold ${isDisabled ? "text-muted" : "text-ink"}`}>
+                        <div className={`text-body-sm font-semibold ${isDisabled ? "text-muted" : "text-ink"}`}>
                           {u.name}
                           {isSelf && (
-                            <span className="ml-1.5 text-[10px] font-semibold text-accent">(you)</span>
+                            <span className="ml-1.5 text-tiny font-semibold text-accent">(you)</span>
                           )}
                         </div>
                       </div>
@@ -573,7 +573,7 @@ export default function UsersTab() {
                       <select
                         value={u.role}
                         onChange={(e) => handleRoleChange(u, e.target.value)}
-                        className="bg-surface-soft border border-border-soft hover:border-border rounded-button px-2 py-1 text-[12px] font-semibold outline-none"
+                        className="bg-surface-soft border border-border-soft hover:border-border rounded-button px-2 py-1 text-caption font-semibold outline-none"
                       >
                         {ROLE_IDS.map((r) => (
                           <option key={r} value={r} disabled={r === "owner" && !isOwner}>
@@ -590,7 +590,7 @@ export default function UsersTab() {
                       <select
                         value={u.officeId || ""}
                         onChange={(e) => handleOfficeChange(u, e.target.value)}
-                        className="bg-surface-soft border border-border-soft hover:border-border rounded-button px-2 py-1 text-[12px] font-medium outline-none max-w-[150px]"
+                        className="bg-surface-soft border border-border-soft hover:border-border rounded-button px-2 py-1 text-caption font-medium outline-none max-w-[150px]"
                       >
                         <option value="">{t("user_office_global")}</option>
                         {activeOffices.map((o) => (
@@ -600,7 +600,7 @@ export default function UsersTab() {
                         ))}
                       </select>
                     ) : (
-                      <span className="text-[12px] text-ink-soft">
+                      <span className="text-caption text-ink-soft">
                         {u.officeId
                           ? offices.find((o) => o.id === u.officeId)?.name || "—"
                           : t("user_office_global")}
@@ -615,7 +615,7 @@ export default function UsersTab() {
                       {canManage && isInvited && (
                         <button
                           onClick={() => setActivateFor(u)}
-                          className="text-[11px] font-semibold text-info hover:text-sky-900 hover:bg-info-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-tiny font-semibold text-info hover:text-sky-900 hover:bg-info-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Mock activate — set password for this invited user"
                         >
                           <Key className="w-3 h-3" />
@@ -625,7 +625,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && u.status !== "disabled" && (
                         <button
                           onClick={() => setChangePwFor(u)}
-                          className="text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Set a new password directly"
                         >
                           <Lock className="w-3 h-3" />
@@ -635,7 +635,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && u.status === "active" && (
                         <button
                           onClick={() => handleResetPassword(u)}
-                          className="text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                           title="Invalidate password, send a fresh invite link"
                         >
                           <RotateCcw className="w-3 h-3" />
@@ -645,7 +645,7 @@ export default function UsersTab() {
                       {canManage && !isSelf && !isDisabled && (
                         <button
                           onClick={() => handleDisable(u)}
-                          className="text-[11px] font-semibold text-danger hover:text-danger hover:bg-danger-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-tiny font-semibold text-danger hover:text-danger hover:bg-danger-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                         >
                           <Power className="w-3 h-3" />
                           Disable
@@ -654,7 +654,7 @@ export default function UsersTab() {
                       {canManage && isDisabled && (
                         <button
                           onClick={() => handleEnable(u)}
-                          className="text-[11px] font-semibold text-success hover:text-success hover:bg-success-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
+                          className="text-tiny font-semibold text-success hover:text-success hover:bg-success-soft px-2 py-1 rounded-md transition-colors inline-flex items-center gap-1"
                         >
                           <RotateCcw className="w-3 h-3" />
                           Enable
@@ -667,7 +667,7 @@ export default function UsersTab() {
             })}
             {visibleUsers.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-[13px] text-muted-soft">
+                <td colSpan={6} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   No users match this filter
                 </td>
               </tr>
@@ -678,7 +678,7 @@ export default function UsersTab() {
 
       {toast && (
         <div
-          className={`px-5 py-2.5 text-[12px] font-medium border-t ${
+          className={`px-5 py-2.5 text-caption font-medium border-t ${
             toast.tone === "success"
               ? "bg-success-soft text-success border-success/20"
               : "bg-danger-soft text-danger border-danger/20"
@@ -765,12 +765,12 @@ function DirectPasswordModal({ user, onClose, onSave }) {
       width="md"
     >
       <div className="p-5 space-y-3">
-        <div className="text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+        <div className="text-tiny text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Direct change — user's status stays as-is (active → active, invited → active).
           No invite email, no token. Current password is NOT shown.
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             New password
           </label>
           <input
@@ -779,11 +779,11 @@ function DirectPasswordModal({ user, onClose, onSave }) {
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
             autoComplete="new-password"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Confirm password
           </label>
           <input
@@ -791,11 +791,11 @@ function DirectPasswordModal({ user, onClose, onSave }) {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             autoComplete="new-password"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -803,14 +803,14 @@ function DirectPasswordModal({ user, onClose, onSave }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -904,7 +904,7 @@ function CreateUserModal({ open, onClose, onCreated }) {
     <Modal open={open} onClose={onClose} title={t("invite_user_title")} width="md">
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             <UserIcon className="w-3 h-3 inline mr-1" /> {t("invite_field_name")}
           </label>
           <input
@@ -913,11 +913,11 @@ function CreateUserModal({ open, onClose, onCreated }) {
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder={t("invite_placeholder_name")}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("invite_field_email")}
           </label>
           <input
@@ -925,11 +925,11 @@ function CreateUserModal({ open, onClose, onCreated }) {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder={t("invite_placeholder_email")}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[14px] outline-none transition-colors"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body outline-none transition-colors"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("invite_field_role")}
           </label>
           <div className="inline-flex bg-surface-sunk p-1 rounded-card gap-0.5 flex-wrap">
@@ -941,7 +941,7 @@ function CreateUserModal({ open, onClose, onCreated }) {
                   type="button"
                   disabled={disabled}
                   onClick={() => setRole(r)}
-                  className={`px-3 py-1.5 text-[12px] font-semibold rounded-button transition-all ${
+                  className={`px-3 py-1.5 text-caption font-semibold rounded-button transition-all ${
                     role === r
                       ? "bg-white text-ink ring-1 ring-border-soft shadow-sm"
                       : disabled
@@ -955,10 +955,10 @@ function CreateUserModal({ open, onClose, onCreated }) {
             })}
           </div>
           {!isOwner && (
-            <p className="text-[10px] text-muted mt-1">{t("invite_owner_only_hint")}</p>
+            <p className="text-tiny text-muted mt-1">{t("invite_owner_only_hint")}</p>
           )}
         </div>
-        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+        <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           {isSupabaseConfigured ? t("invite_info_hint") : t("invite_info_demo")}
         </div>
       </div>
@@ -966,14 +966,14 @@ function CreateUserModal({ open, onClose, onCreated }) {
         <button
           onClick={onClose}
           disabled={sending}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           {t("cancel")}
         </button>
         <button
           onClick={handleSubmit}
           disabled={!name.trim() || sending}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             name.trim() && !sending
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
@@ -1011,16 +1011,16 @@ function InviteTokenModal({ data, onClose }) {
       width="md"
     >
       <div className="p-5">
-        <div className="text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+        <div className="text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
           {t("invite_link_label")}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-ink text-success font-mono text-[12px] px-3 py-2.5 rounded-card break-all select-all">
+          <div className="flex-1 bg-ink text-success font-mono text-caption px-3 py-2.5 rounded-card break-all select-all">
             {fakeLink}
           </div>
           <button
             onClick={copy}
-            className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-card text-[13px] font-semibold transition-colors ${
+            className={`inline-flex items-center gap-1.5 px-3 py-2.5 rounded-card text-body-sm font-semibold transition-colors ${
               copied ? "bg-success text-white" : "bg-ink text-white hover:bg-ink"
             }`}
           >
@@ -1028,11 +1028,11 @@ function InviteTokenModal({ data, onClose }) {
             {copied ? t("btn_copied") : t("btn_copy")}
           </button>
         </div>
-        <div className="mt-3 p-3 bg-warning-soft border border-warning/20 rounded-card text-[12px] text-warning">
+        <div className="mt-3 p-3 bg-warning-soft border border-warning/20 rounded-card text-caption text-warning">
           {t("invite_link_warn")}
           {isReset && ` ${t("invite_reset_warn_extra")}`}
         </div>
-        <div className="mt-3 text-[11px] text-muted">
+        <div className="mt-3 text-tiny text-muted">
           Mock: in production, this link is sent to {data.user.email || "the user's email"}.
           For the demo, use the "Activate" action on this user to set a password.
         </div>
@@ -1040,7 +1040,7 @@ function InviteTokenModal({ data, onClose }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+          className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
         >
           Done
         </button>
@@ -1095,14 +1095,14 @@ function ActivateUserModal({ user, onClose, onActivate }) {
       width="md"
     >
       <div className="p-5 space-y-3">
-        <div className="text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+        <div className="text-tiny text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Mock invite token:{" "}
-          <span className="font-mono text-[10px] bg-ink text-success px-1 rounded">
+          <span className="font-mono text-tiny bg-ink text-success px-1 rounded">
             {user.inviteToken ? `${user.inviteToken.slice(0, 8)}…` : "—"}
           </span>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             New password
           </label>
           <input
@@ -1110,27 +1110,27 @@ function ActivateUserModal({ user, onClose, onActivate }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Confirm password
           </label>
           <input
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-[12px] font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2 inline-flex items-center gap-1">
+          <div className="text-caption font-medium text-success bg-success-soft border border-success/20 rounded-md px-3 py-2 inline-flex items-center gap-1">
             <Check className="w-3.5 h-3.5" />
             Activated
           </div>
@@ -1139,14 +1139,14 @@ function ActivateUserModal({ user, onClose, onActivate }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!password || !confirm || success}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             password && confirm && !success
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"

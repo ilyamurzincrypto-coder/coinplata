@@ -59,14 +59,14 @@ export default function PeriodCloseModal({ open, onClose }) {
     <Modal open={open} onClose={onClose} title={t("trv2_pc_title")} subtitle={t("trv2_pc_date_note") + ` (${today})`} width="md">
       <div className="p-5 space-y-4">
         {lines.length === 0 ? (
-          <div className="rounded-card border border-border-soft bg-surface-soft p-4 text-[12.5px] text-muted text-center">
+          <div className="rounded-card border border-border-soft bg-surface-soft p-4 text-caption text-muted text-center">
             {t("trv2_pc_nothing")}
           </div>
         ) : (
           <>
-            <table className="w-full text-[12px]">
+            <table className="w-full text-caption">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted-soft border-b border-border-soft">
+                <tr className="text-left text-tiny uppercase tracking-wider text-muted-soft border-b border-border-soft">
                   <th className="py-1.5">{t("trv2_pc_col_account")}</th>
                   <th className="py-1.5">{t("trv2_to_col_currency")}</th>
                   <th className="py-1.5 text-right">{t("trv2_pc_col_balance")}</th>
@@ -76,7 +76,7 @@ export default function PeriodCloseModal({ open, onClose }) {
               <tbody>
                 {lines.map((l) => (
                   <tr key={l.accountCode} className="border-b border-border-soft">
-                    <td className="py-1.5"><span className="font-mono text-[11px] text-muted-soft">{l.accountCode}</span> {l.accountName}</td>
+                    <td className="py-1.5"><span className="font-mono text-tiny text-muted-soft">{l.accountCode}</span> {l.accountName}</td>
                     <td className="py-1.5 text-muted">{l.currency}</td>
                     <td className={`py-1.5 text-right tabular-nums ${l.kind === "revenue" ? "text-success" : "text-danger"}`}>{fmtNum(l.balance)}</td>
                     <td className="py-1.5 text-muted-soft">{l.kind === "revenue" ? "→ +" : "→ −"}{fmtNum(l.balance)}</td>
@@ -84,7 +84,7 @@ export default function PeriodCloseModal({ open, onClose }) {
                 ))}
               </tbody>
             </table>
-            <div className="rounded-card border border-border-soft bg-surface-soft px-3 py-2 text-[12.5px]">
+            <div className="rounded-card border border-border-soft bg-surface-soft px-3 py-2 text-caption">
               <span className="font-semibold text-ink-soft">{t("trv2_pc_net")}: </span>
               {netEntries.map(([cur, v], i) => (
                 <span key={cur} className={`tabular-nums font-bold ${v >= 0 ? "text-success" : "text-danger"}`}>
@@ -93,7 +93,7 @@ export default function PeriodCloseModal({ open, onClose }) {
               ))}
             </div>
             {confirmStep && (
-              <div className="rounded-card border-2 border-warning/30 bg-warning-soft px-3 py-2.5 text-[12px] text-warning">
+              <div className="rounded-card border-2 border-warning/30 bg-warning-soft px-3 py-2.5 text-caption text-warning">
                 {t("trv2_pc_confirm_warn").replace("{n}", String(lines.length))}
               </div>
             )}
@@ -101,11 +101,11 @@ export default function PeriodCloseModal({ open, onClose }) {
         )}
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} disabled={busy} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk disabled:opacity-60">
+        <button onClick={onClose} disabled={busy} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk disabled:opacity-60">
           {t("trv2_pm_reverse_cancel")}
         </button>
         <button onClick={run} disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold ${canSubmit ? (confirmStep ? "bg-warning text-white hover:bg-warning" : "bg-ink text-white hover:bg-black") : "bg-surface-sunk text-muted-soft cursor-not-allowed"}`}>
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold ${canSubmit ? (confirmStep ? "bg-warning text-white hover:bg-warning" : "bg-ink text-white hover:bg-black") : "bg-surface-sunk text-muted-soft cursor-not-allowed"}`}>
           {busy ? "…" : confirmStep ? t("trv2_pc_confirm") : t("trv2_pc_button")}
         </button>
       </div>

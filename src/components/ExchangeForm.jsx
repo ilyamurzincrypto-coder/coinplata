@@ -1670,11 +1670,11 @@ export default function ExchangeForm({
       {/* Sticky title strip — table-style header */}
       <div className="sticky top-0 z-20 bg-white border-b border-border-soft px-4 py-2 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-[14px] font-bold tracking-tight text-ink whitespace-nowrap">
+          <h2 className="text-body font-bold tracking-tight text-ink whitespace-nowrap">
             {isEdit ? t("edit_transaction") : t("new_exchange")}
           </h2>
-          <span className="text-muted-soft text-[10px]">·</span>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted min-w-0">
+          <span className="text-muted-soft text-tiny">·</span>
+          <div className="flex items-center gap-1.5 text-tiny text-muted min-w-0">
             <span className="font-medium whitespace-nowrap">{officeName(currentOffice)}</span>
             {!isEdit && (
               <>
@@ -1683,7 +1683,7 @@ export default function ExchangeForm({
                   <select
                     value={selectedManagerId}
                     onChange={(e) => setSelectedManagerId(e.target.value)}
-                    className="bg-white border border-border-soft hover:border-border rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer"
+                    className="bg-white border border-border-soft hover:border-border rounded-md px-1.5 py-0.5 text-tiny font-semibold text-ink-soft outline-none focus:ring-2 focus:ring-accent/20 cursor-pointer"
                     title={t("xf_create_deal_as")}
                   >
                     {managerCandidates.map((m) => (
@@ -1701,7 +1701,7 @@ export default function ExchangeForm({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <kbd className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-muted bg-white border border-border-soft/80 rounded px-1.5 py-0.5">
+          <kbd className="hidden sm:inline-flex items-center gap-1 text-tiny font-semibold text-muted bg-white border border-border-soft/80 rounded px-1.5 py-0.5">
             ⌘ K
           </kbd>
           {onCancel && (
@@ -1721,10 +1721,10 @@ export default function ExchangeForm({
           Партнёр (партнёры теперь — обычные клиенты со своими we_owe /
           they_owe obligations). */}
       <div className="px-4 py-2 border-b border-border-soft flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-bold tracking-[0.12em] text-muted uppercase whitespace-nowrap">
+        <span className="text-tiny font-bold tracking-[0.12em] text-muted uppercase whitespace-nowrap">
           {t("xf_client")}
         </span>
-        <span className="text-[9px] font-bold text-danger uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-danger-soft whitespace-nowrap">
+        <span className="text-micro font-bold text-danger uppercase tracking-[0.1em] px-1.5 py-0.5 rounded bg-danger-soft whitespace-nowrap">
           {t("xf_required")}
         </span>
         <div className="flex-1 min-w-[200px]">
@@ -1763,7 +1763,7 @@ export default function ExchangeForm({
         {/* Валюта в каждой строке (IN / extra-IN / OUT) — выпадающий список
             всех валют из справочника (ui/Select), а не text-input: чтобы
             оператор сразу видел все доступные валюты, а не догадывался. */}
-        <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-border-soft [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-border-soft [&_td:last-child]:border-r-0">
+        <table className="w-full text-body-sm border-collapse [&_th]:border-r [&_th]:border-border-soft [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-border-soft [&_td:last-child]:border-r-0">
           <colgroup>
             <col className="w-[110px]" />
             <col />
@@ -1772,16 +1772,16 @@ export default function ExchangeForm({
           </colgroup>
           <thead className="sticky top-[37px] z-10 bg-white border-b border-border-soft">
             <tr>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_col_side")}
               </th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_col_amount")}
               </th>
-              <th className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
+              <th className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
                 {t("xf_currency")}
               </th>
-              <th className="px-3 py-2 text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap" aria-label={t("xf_col_actions")} />
+              <th className="px-3 py-2 text-tiny font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap" aria-label={t("xf_col_actions")} />
             </tr>
           </thead>
           <tbody>
@@ -1789,14 +1789,14 @@ export default function ExchangeForm({
             {inEnabled && (
               <tr className="border-b border-border-soft hover:bg-surface-soft/80 transition-colors">
                 <td className="px-3 py-2 align-top whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                  <span className="inline-flex items-center gap-1 text-tiny font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                     <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                     {t("xf_in")}
                   </span>
                 </td>
                 <td className="px-3 py-1.5 align-top">
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-soft text-[14px] font-semibold leading-none">{curSymbol(curIn)}</span>
+                    <span className="text-muted-soft text-body font-semibold leading-none">{curSymbol(curIn)}</span>
                     <input
                       ref={amtInRef}
                       type="text"
@@ -1807,7 +1807,7 @@ export default function ExchangeForm({
                       placeholder="0"
                       className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
                     />
-                    <span className="text-[10px] text-muted-soft tabular-nums whitespace-nowrap">
+                    <span className="text-tiny text-muted-soft tabular-nums whitespace-nowrap">
                       bal {curSymbol(curIn)}{fmt(officeCurrencyBalance(curIn), curIn)}
                     </span>
                   </div>
@@ -1821,7 +1821,7 @@ export default function ExchangeForm({
                         currentOfficeId={currentOffice}
                       />
                       {availableAccounts.length === 0 && (
-                        <div className="mt-1 text-[10.5px] text-warning">
+                        <div className="mt-1 text-tiny text-warning">
                           {t("no_account_for_currency").replace("{cur}", curIn)}
                         </div>
                       )}
@@ -1850,14 +1850,14 @@ export default function ExchangeForm({
               return (
                 <tr key={xi.id} className="border-b border-border-soft even:bg-surface-soft/60 hover:bg-surface-soft/80 transition-colors">
                   <td className="px-3 py-2 align-top whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                    <span className="inline-flex items-center gap-1 text-tiny font-bold text-success bg-success-soft border border-success/20 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                       <ArrowDown className="w-2.5 h-2.5" strokeWidth={3} />
                       {t("xf_in_extra")}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 align-top">
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-soft text-[14px] font-semibold leading-none">{curSymbol(xiCur)}</span>
+                      <span className="text-muted-soft text-body font-semibold leading-none">{curSymbol(xiCur)}</span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -1917,7 +1917,7 @@ export default function ExchangeForm({
                       <button
                         type="button"
                         onClick={addExtraInput}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-success bg-white border border-success/20 hover:bg-success-soft rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-tiny font-semibold text-success bg-white border border-success/20 hover:bg-success-soft rounded-md px-2 py-1 transition-colors"
                         title={t("xf_add_in_tip")}
                       >
                         <Plus className="w-3 h-3" />
@@ -1929,7 +1929,7 @@ export default function ExchangeForm({
                         type="button"
                         onClick={removeIn}
                         title={t("remove_in_tip")}
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
+                        className="inline-flex items-center gap-1 text-tiny font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                       >
                         <X className="w-3 h-3" />
                         {t("remove_in")}
@@ -1945,7 +1945,7 @@ export default function ExchangeForm({
               <tr className="border-b border-border-soft">
                 <td colSpan={4} className="px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-[11.5px] text-muted">
+                    <div className="flex items-center gap-2 text-caption text-muted">
                       <ArrowDown className="w-3.5 h-3.5 opacity-50" />
                       <span className="font-semibold">
                         {t("in_disabled_label")}
@@ -1954,7 +1954,7 @@ export default function ExchangeForm({
                     <button
                       type="button"
                       onClick={addIn}
-                      className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-success hover:text-success hover:bg-success-soft rounded-full px-2.5 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-caption font-semibold text-success hover:text-success hover:bg-success-soft rounded-full px-2.5 py-1 transition-colors"
                     >
                       <Plus className="w-3 h-3" />
                       {t("add_in")}
@@ -1969,7 +1969,7 @@ export default function ExchangeForm({
               <tr className="border-b border-border-soft">
                 <td colSpan={4} className="px-3 py-1.5">
                   <div
-                    className={`flex items-center justify-between px-2 py-1 rounded text-[11.5px] tabular-nums transition-colors ${
+                    className={`flex items-center justify-between px-2 py-1 rounded text-caption tabular-nums transition-colors ${
                       exceedsInput
                         ? "bg-danger-soft text-danger"
                         : Math.abs(remainingIn) < EPS
@@ -2047,7 +2047,7 @@ export default function ExchangeForm({
                     className="border-b border-border-soft hover:bg-surface-soft/40 transition-colors"
                   >
                     <td className="px-3 py-2 align-top whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-accent bg-accent-bg border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
+                      <span className="inline-flex items-center gap-1 text-tiny font-bold text-accent bg-accent-bg border border-indigo-200 rounded px-1.5 py-0.5 tracking-[0.08em] uppercase">
                         <ArrowUp className="w-2.5 h-2.5" strokeWidth={3} />
                         {t("xf_out")} {outputs.length > 1 ? `#${idx + 1}` : ""}
                       </span>
@@ -2058,7 +2058,7 @@ export default function ExchangeForm({
                           выдача всегда с нашего счёта. */}
                       <div className="flex items-center justify-end mb-1">
                         <label
-                          className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-[9.5px] font-bold uppercase tracking-[0.08em] transition-colors ${
+                          className={`inline-flex items-center gap-1 cursor-pointer select-none px-1.5 py-0.5 rounded border text-micro font-bold uppercase tracking-[0.08em] transition-colors ${
                             o.applyFee !== false
                               ? "border-emerald-300 bg-success-soft text-success"
                               : "border-border-soft bg-surface-soft text-muted hover:border-border"
@@ -2078,7 +2078,7 @@ export default function ExchangeForm({
                       </div>
                       {/* Amount row — same style as IN amount */}
                       <div className="flex items-center gap-2">
-                        <span className="text-muted-soft text-[14px] font-semibold leading-none">
+                        <span className="text-muted-soft text-body font-semibold leading-none">
                           {curSymbol(o.currency)}
                         </span>
                         <input
@@ -2099,7 +2099,7 @@ export default function ExchangeForm({
                           className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[16px] font-bold tracking-tight min-w-0 leading-none"
                         />
                         <span
-                          className={`text-[10px] tabular-nums whitespace-nowrap ${
+                          className={`text-tiny tabular-nums whitespace-nowrap ${
                             insufficient ? "text-warning" : "text-muted-soft"
                           }`}
                           title={t("available")}
@@ -2124,7 +2124,7 @@ export default function ExchangeForm({
                             placeholder={t("xf_from_partner_account")}
                           />
                         ) : outAccs.length === 0 ? (
-                          <div className="text-[10.5px] text-warning">
+                          <div className="text-tiny text-warning">
                             {t("no_accounts_currency")} {o.currency}
                           </div>
                         ) : (
@@ -2146,7 +2146,7 @@ export default function ExchangeForm({
                             o.manualRate ? "border-warning/30" : "border-border-soft"
                           }`}
                         >
-                          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-1.5">
+                          <span className="text-micro font-bold text-muted-soft tracking-[0.15em] mr-1.5">
                             {t("rate")}
                           </span>
                           <input
@@ -2165,10 +2165,10 @@ export default function ExchangeForm({
                               })
                             }
                             placeholder="0.00"
-                            className="w-[80px] bg-transparent outline-none text-[12px] font-bold text-ink placeholder:text-muted-soft tabular-nums"
+                            className="w-[80px] bg-transparent outline-none text-caption font-bold text-ink placeholder:text-muted-soft tabular-nums"
                           />
                           {o.manualRate && (
-                            <span className="ml-1 text-[8.5px] font-bold text-warning tracking-wider uppercase">
+                            <span className="ml-1 text-micro font-bold text-warning tracking-wider uppercase">
                               {t("xf_manual_badge")}
                             </span>
                           )}
@@ -2208,7 +2208,7 @@ export default function ExchangeForm({
                           <button
                             type="button"
                             onClick={handleUseRemaining}
-                            className="inline-flex items-center gap-1 text-[10.5px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
+                            className="inline-flex items-center gap-1 text-tiny font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-md px-1.5 py-0.5 transition-colors"
                             title={t("xf_convert_remaining_tip")}
                           >
                             <Zap className="w-3 h-3" />
@@ -2227,13 +2227,13 @@ export default function ExchangeForm({
                               updateOutput(o.id, { address: e.target.value.trim() })
                             }
                             placeholder={t("xf_crypto_address_placeholder")}
-                            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-md px-2 py-1 text-[11px] font-mono text-ink-soft outline-none transition-colors placeholder:text-muted-soft"
+                            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-md px-2 py-1 text-tiny font-mono text-ink-soft outline-none transition-colors placeholder:text-muted-soft"
                           />
                         </div>
                       )}
                       {/* Partner mode hint */}
                       {o.outKind === "partner" && (
-                        <p className="mt-1 text-[10px] text-accent/80">
+                        <p className="mt-1 text-tiny text-accent/80">
                           💸 {t("xf_partner_pays_self_pre")}
                           <strong> we_owe</strong> {t("xf_partner_pays_self_mid")}{" "}
                           {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
@@ -2274,12 +2274,12 @@ export default function ExchangeForm({
                   {needsPayee && idx === firstInterOfficeIdx && (
                     <tr className="border-b border-border-soft bg-accent-bg/40">
                       <td colSpan={4} className="px-3 py-2">
-                        <label className="flex items-center gap-1.5 text-[10px] font-bold text-accent mb-1 tracking-[0.12em] uppercase">
+                        <label className="flex items-center gap-1.5 text-tiny font-bold text-accent mb-1 tracking-[0.12em] uppercase">
                           <UserPlus className="w-3 h-3" />
                           {t("xf_payee_label").replace("{office}", findOffice(payeeOfficeId)?.name || t("xf_other_office"))}
                         </label>
                         {payeeCandidates.length === 0 ? (
-                          <div className="text-[11.5px] text-warning bg-warning-soft border border-warning/20 rounded px-2 py-1 inline-flex items-center gap-1.5">
+                          <div className="text-caption text-warning bg-warning-soft border border-warning/20 rounded px-2 py-1 inline-flex items-center gap-1.5">
                             <AlertCircle className="w-3 h-3 shrink-0" />
                             {t("xf_no_managers_in_office")}
                           </div>
@@ -2287,7 +2287,7 @@ export default function ExchangeForm({
                           <select
                             value={payeeUserId}
                             onChange={(e) => setPayeeUserId(e.target.value)}
-                            className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded px-2 py-1 text-[12px] font-semibold text-ink outline-none cursor-pointer"
+                            className="w-full bg-white border border-indigo-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 rounded px-2 py-1 text-caption font-semibold text-ink outline-none cursor-pointer"
                           >
                             {payeeCandidates.map((c) => (
                               <option key={c.id} value={c.id}>
@@ -2314,7 +2314,7 @@ export default function ExchangeForm({
                   <button
                     type="button"
                     onClick={addOutput}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-white border border-indigo-200 hover:bg-accent-bg rounded-md px-2 py-1 transition-colors"
+                    className="inline-flex items-center gap-1 text-tiny font-semibold text-accent bg-white border border-indigo-200 hover:bg-accent-bg rounded-md px-2 py-1 transition-colors"
                   >
                     <Plus className="w-3 h-3" />
                     {t("add_output")}
@@ -2324,7 +2324,7 @@ export default function ExchangeForm({
                       type="button"
                       onClick={removeAllOutputs}
                       title={t("remove_output_tip")}
-                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
+                      className="inline-flex items-center gap-1 text-tiny font-semibold text-danger bg-white border border-danger/20 hover:bg-danger-soft rounded-md px-2 py-1 transition-colors"
                     >
                       <X className="w-3 h-3" />
                       {t("remove_output")}
@@ -2339,35 +2339,35 @@ export default function ExchangeForm({
             {amtIn && outputs[0]?.amount && outputs[0]?.rate && (
               <tr className="border-b border-border-soft bg-surface-soft/60">
                 <td colSpan={4} className="px-3 py-2">
-                  <div className="flex items-center justify-between gap-3 flex-wrap text-[12px]">
+                  <div className="flex items-center justify-between gap-3 flex-wrap text-caption">
                     <div className="inline-flex items-center gap-2 flex-wrap">
                       {outputs.length === 1 ? (
                         <span className="inline-flex items-baseline gap-1.5">
-                          <span className="text-[10px] font-bold text-muted uppercase tracking-[0.1em]">
+                          <span className="text-tiny font-bold text-muted uppercase tracking-[0.1em]">
                             {t("summary_rate")}
                           </span>
-                          <span className="text-[12.5px] font-semibold tabular-nums text-ink">
+                          <span className="text-caption font-semibold tabular-nums text-ink">
                             {parseFloat(outputs[0].rate).toLocaleString("en-US", { maximumFractionDigits: 6 })}
                           </span>
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-muted uppercase tracking-[0.1em]">
+                        <span className="text-tiny font-bold text-muted uppercase tracking-[0.1em]">
                           {t("xf_spread_margin")}
                         </span>
                       )}
                       <span className="inline-flex items-center gap-1.5">
-                        <span className="text-[10px] font-bold text-muted uppercase tracking-[0.08em]">
+                        <span className="text-tiny font-bold text-muted uppercase tracking-[0.08em]">
                           {t("xf_fee")}
                         </span>
-                        <span className="inline-flex items-center gap-1 text-[12.5px] font-bold tabular-nums text-warning">
+                        <span className="inline-flex items-center gap-1 text-caption font-bold tabular-nums text-warning">
                           ${fmt(effectiveFee)}
                           {minFeeApplied && (
-                            <span className="text-[9px] font-bold bg-amber-100 text-warning px-1 py-0.5 rounded">
+                            <span className="text-micro font-bold bg-amber-100 text-warning px-1 py-0.5 rounded">
                               {t("summary_min_label")}
                             </span>
                           )}
                           {!applyMinFee && (
-                            <span className="text-[9px] font-bold bg-surface-sunk text-ink-soft px-1 py-0.5 rounded">
+                            <span className="text-micro font-bold bg-surface-sunk text-ink-soft px-1 py-0.5 rounded">
                               {t("xf_no_min")}
                             </span>
                           )}
@@ -2375,10 +2375,10 @@ export default function ExchangeForm({
                       </span>
                     </div>
                     <div className="inline-flex items-baseline gap-2">
-                      <span className="text-[10px] font-bold text-ink-soft uppercase tracking-wider">
+                      <span className="text-tiny font-bold text-ink-soft uppercase tracking-wider">
                         {t("summary_you_receive")}
                       </span>
-                      <span className="text-[14px] font-bold tabular-nums text-ink">
+                      <span className="text-body font-bold tabular-nums text-ink">
                         {outputs
                           .map((o) => `${fmt(parseFloat(o.amount) || 0, o.currency)} ${o.currency}`)
                           .join(" + ")}
@@ -2386,7 +2386,7 @@ export default function ExchangeForm({
                     </div>
                   </div>
                   {outputs.length === 1 && parseFloat(outputs[0].rate) > 0 && (
-                    <div className="text-[10px] text-muted-soft tabular-nums text-right font-mono mt-0.5">
+                    <div className="text-tiny text-muted-soft tabular-nums text-right font-mono mt-0.5">
                       {fmt(parseFloat(amtIn), curIn)} × {parseFloat(outputs[0].rate).toFixed(6)}
                       {!applyMinFee || effectiveFee === 0 ? null : (
                         <>
@@ -2421,7 +2421,7 @@ export default function ExchangeForm({
                 onClick={handleReverse}
                 disabled={disabled}
                 title={title}
-                className={`ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11.5px] font-semibold border transition-colors ${
+                className={`ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-caption font-semibold border transition-colors ${
                   disabled
                     ? "bg-surface-soft border-border-soft text-muted-soft cursor-not-allowed"
                     : "bg-white border-border-soft text-ink-soft hover:bg-surface-sunk"
@@ -2442,7 +2442,7 @@ export default function ExchangeForm({
           визуально не используется — strip всегда раскрыт.
           ════════════════════════════════════════════════════════════════ */}
       <div className="px-4 py-2 border-t border-border-soft bg-surface-soft/30 flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
+        <span className="text-tiny font-bold text-muted tracking-[0.12em] uppercase whitespace-nowrap">
           {t("xf_conditions")}
         </span>
 
@@ -2504,8 +2504,8 @@ export default function ExchangeForm({
         />
 
         {/* Compact inline inputs */}
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_brokerage")}</span>
+        <label className="inline-flex items-center gap-1 text-tiny text-ink-soft">
+          <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_brokerage")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2516,12 +2516,12 @@ export default function ExchangeForm({
               )
             }
             placeholder="0"
-            className="w-[64px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none"
+            className="w-[64px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-caption tabular-nums outline-none"
             title={t("xf_brokerage_tip")}
           />
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_own_fee")}</span>
+        <label className="inline-flex items-center gap-1 text-tiny text-ink-soft">
+          <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_own_fee")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -2532,7 +2532,7 @@ export default function ExchangeForm({
               )
             }
             placeholder={t("xf_auto")}
-            className={`w-[72px] border rounded px-1.5 py-0.5 text-[12px] tabular-nums outline-none ${
+            className={`w-[72px] border rounded px-1.5 py-0.5 text-caption tabular-nums outline-none ${
               customFeeUsdInput
                 ? "bg-warning-soft border-warning/30 focus:border-amber-500 focus:ring-1 focus:ring-amber-500/20"
                 : "bg-white border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20"
@@ -2540,13 +2540,13 @@ export default function ExchangeForm({
             title={t("xf_custom_fee_tip")}
           />
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_backdate")}</span>
+        <label className="inline-flex items-center gap-1 text-tiny text-ink-soft">
+          <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_backdate")}</span>
           <input
             type="datetime-local"
             value={backdateAt}
             onChange={(e) => setBackdateAt(e.target.value)}
-            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
+            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-tiny tabular-nums outline-none"
             title={t("xf_backdate_tip")}
           />
           {backdateAt && (
@@ -2560,13 +2560,13 @@ export default function ExchangeForm({
             </button>
           )}
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_planned")}</span>
+        <label className="inline-flex items-center gap-1 text-tiny text-ink-soft">
+          <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_planned")}</span>
           <input
             type="datetime-local"
             value={plannedLocal}
             onChange={(e) => setPlannedLocal(e.target.value)}
-            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-[11px] tabular-nums outline-none"
+            className="bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1 py-0.5 text-tiny tabular-nums outline-none"
             title={t("ef_expected_completion")}
           />
           {plannedLocal && (
@@ -2580,25 +2580,25 @@ export default function ExchangeForm({
             </button>
           )}
         </label>
-        <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft flex-1 min-w-[160px]">
-          <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("comment")}</span>
+        <label className="inline-flex items-center gap-1 text-tiny text-ink-soft flex-1 min-w-[160px]">
+          <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("comment")}</span>
           <input
             type="text"
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder={t("comment_placeholder")}
-            className="flex-1 min-w-0 bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[12px] outline-none placeholder:text-muted-soft"
+            className="flex-1 min-w-0 bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-caption outline-none placeholder:text-muted-soft"
           />
         </label>
         {isCryptoCode(curIn) && (
-          <label className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
-            <span className="text-[9.5px] font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_tx_hash")}</span>
+          <label className="inline-flex items-center gap-1 text-tiny text-ink-soft">
+            <span className="text-micro font-bold uppercase tracking-[0.1em] text-muted whitespace-nowrap">{t("xf_tx_hash")}</span>
             <input
               type="text"
               value={inTxHash}
               onChange={(e) => setInTxHash(e.target.value.trim())}
               placeholder={t("ef_tx_hash_placeholder")}
-              className="w-[160px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-[11px] font-mono outline-none placeholder:text-muted-soft"
+              className="w-[160px] bg-white border border-border-soft focus:border-accent focus:ring-1 focus:ring-accent/20 rounded px-1.5 py-0.5 text-tiny font-mono outline-none placeholder:text-muted-soft"
               title={t("ef_tx_hash_hint")}
             />
           </label>
@@ -2609,7 +2609,7 @@ export default function ExchangeForm({
           когда partialMode=on. Раньше была вложена в Conditions accordion. */}
       {partialMode && outputs.length > 0 && (
         <div className="px-4 py-2 border-t border-border-soft bg-accent-bg/30">
-          <div className="text-[10px] font-bold text-accent uppercase tracking-[0.12em] mb-1.5">
+          <div className="text-tiny font-bold text-accent uppercase tracking-[0.12em] mb-1.5">
             {t("xf_partial_title")}
           </div>
           <div className="space-y-1.5">
@@ -2618,8 +2618,8 @@ export default function ExchangeForm({
               const now = parseFloat(partialPayNow[o.id] ?? "0") || 0;
               const remaining = Math.max(0, planned - now);
               return (
-                <div key={o.id} className="flex items-center gap-2 text-[12px]">
-                  <span className="text-[10px] font-bold text-muted-soft tabular-nums w-6">
+                <div key={o.id} className="flex items-center gap-2 text-caption">
+                  <span className="text-tiny font-bold text-muted-soft tabular-nums w-6">
                     #{idx + 1}
                   </span>
                   <span className="text-ink-soft min-w-[60px]">
@@ -2635,7 +2635,7 @@ export default function ExchangeForm({
                       const clean = e.target.value.replace(/[^\d.,]/g, "").replace(",", ".");
                       setPartialPayNow((prev) => ({ ...prev, [o.id]: clean }));
                     }}
-                    className="flex-1 bg-white border border-violet-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 rounded px-1.5 py-0.5 text-[12px] font-semibold tabular-nums outline-none"
+                    className="flex-1 bg-white border border-violet-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 rounded px-1.5 py-0.5 text-caption font-semibold tabular-nums outline-none"
                   />
                   {planned > 0 && remaining > 0 && (
                     <button
@@ -2646,17 +2646,17 @@ export default function ExchangeForm({
                           [o.id]: String(planned),
                         }))
                       }
-                      className="px-1.5 py-0.5 rounded text-[10px] font-bold text-accent bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
+                      className="px-1.5 py-0.5 rounded text-tiny font-bold text-accent bg-white border border-violet-200 hover:bg-violet-100 hover:border-violet-300 transition-colors whitespace-nowrap"
                       title={t("xf_insert_remainder_tip").replace("{amount}", `${fmt(remaining, o.currency)} ${o.currency}`)}
                     >
                       {t("xf_pay_all")}
                     </button>
                   )}
-                  <span className="text-[10px] text-muted-soft whitespace-nowrap tabular-nums">
+                  <span className="text-tiny text-muted-soft whitespace-nowrap tabular-nums">
                     / {fmt(planned, o.currency)}
                   </span>
                   {remaining > 0 && (
-                    <span className="text-[10px] font-bold text-accent tabular-nums whitespace-nowrap">
+                    <span className="text-tiny font-bold text-accent tabular-nums whitespace-nowrap">
                       {t("xf_owe")} {fmt(remaining, o.currency)}
                     </span>
                   )}
@@ -2684,7 +2684,7 @@ export default function ExchangeForm({
           с кнопкой «Создать сделку» был фиксированной высоты и не
           зависел от количества/длины предупреждений. */}
       {(canSubmit ? (accountWarnings.length > 0 || (amtIn && outputs[0]?.amount)) : true) && (
-        <div className="px-4 py-1.5 border-t border-border-soft bg-surface-soft/50 flex items-center gap-1.5 flex-wrap text-[11px]">
+        <div className="px-4 py-1.5 border-t border-border-soft bg-surface-soft/50 flex items-center gap-1.5 flex-wrap text-tiny">
           {amtIn && outputs[0]?.amount && (
             <span className="inline-flex items-center gap-1 tabular-nums font-semibold text-ink-soft">
               <span>{fmt(parseFloat(amtIn), curIn)} {curIn}</span>
@@ -2696,7 +2696,7 @@ export default function ExchangeForm({
               </span>
               {liveProfit !== 0 && (
                 <span
-                  className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded font-bold text-[11px] tabular-nums ${
+                  className={`ml-1 inline-flex items-center px-1.5 py-0.5 rounded font-bold text-tiny tabular-nums ${
                     liveProfit >= 0 ? "bg-emerald-100 text-success" : "bg-rose-100 text-danger"
                   }`}
                 >
@@ -2706,7 +2706,7 @@ export default function ExchangeForm({
             </span>
           )}
           {!canSubmit && (
-            <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-white border border-border-soft rounded px-2 py-0.5">
+            <span className="inline-flex items-center gap-1 text-tiny text-muted bg-white border border-border-soft rounded px-2 py-0.5">
               <AlertCircle className="w-3 h-3 text-muted-soft" />
               {!hasClient
                 ? t("xf_select_client")
@@ -2727,7 +2727,7 @@ export default function ExchangeForm({
           )}
           {accountWarnings.length > 0 && (
             <span
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-danger bg-danger-soft border border-danger/20 rounded px-2 py-0.5"
+              className="inline-flex items-center gap-1 text-tiny font-semibold text-danger bg-danger-soft border border-danger/20 rounded px-2 py-0.5"
               title={accountWarnings.map((w) => w.label).join("\n")}
             >
               <AlertCircle className="w-3 h-3" />
@@ -2744,7 +2744,7 @@ export default function ExchangeForm({
             {isEdit && (
               <button
                 onClick={onCancel}
-                className="px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:bg-surface-soft hover:border-border transition-colors"
+                className="px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-body-sm font-semibold hover:bg-surface-soft hover:border-border transition-colors"
               >
                 {t("cancel")}
               </button>
@@ -2792,7 +2792,7 @@ function PillToggle({ active, onChange, label, title, tone = "slate" }) {
       type="button"
       title={title}
       onClick={() => onChange(!active)}
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border transition-colors whitespace-nowrap ${tones[tone] || tones.slate}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-semibold border transition-colors whitespace-nowrap ${tones[tone] || tones.slate}`}
     >
       {label}
     </button>
@@ -2893,7 +2893,7 @@ function SubmitCTA({
             disabled={disabled}
           />
           <MenuItem
-            icon={<span className="inline-block text-[12px] font-bold text-accent">½</span>}
+            icon={<span className="inline-block text-caption font-bold text-accent">½</span>}
             label={t("xf_create_partial")}
             sub={t("xf_create_partial_sub")}
             onClick={() => {
@@ -2927,8 +2927,8 @@ function MenuItem({ icon, label, sub, onClick, disabled }) {
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold text-ink">{label}</div>
-        <div className="text-[10px] text-muted">{sub}</div>
+        <div className="text-body-sm font-semibold text-ink">{label}</div>
+        <div className="text-tiny text-muted">{sub}</div>
       </div>
     </button>
   );
@@ -2953,18 +2953,18 @@ function Toggle({ active, onChange, icon, label, sub, tone = "slate", suffix }) 
       }`}
     >
       <div
-        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-[11px] font-bold shrink-0 ${c.iconBg}`}
+        className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-tiny font-bold shrink-0 ${c.iconBg}`}
       >
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`text-[13px] font-semibold tracking-tight ${active ? c.text : "text-ink-soft"}`}>
+        <div className={`text-body-sm font-semibold tracking-tight ${active ? c.text : "text-ink-soft"}`}>
           {label}
         </div>
-        {sub && <div className="text-[10px] text-muted-soft truncate">{sub}</div>}
+        {sub && <div className="text-tiny text-muted-soft truncate">{sub}</div>}
       </div>
       {suffix && (
-        <span className={`text-[10px] font-bold tabular-nums ${c.text}`}>{suffix}</span>
+        <span className={`text-tiny font-bold tabular-nums ${c.text}`}>{suffix}</span>
       )}
       <button
         type="button"
@@ -3022,7 +3022,7 @@ function RateSourceDropdown({ output, sources, onPick }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold text-ink-soft bg-white border border-border-soft hover:bg-surface-soft hover:border-border transition-colors"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-tiny font-semibold text-ink-soft bg-white border border-border-soft hover:bg-surface-soft hover:border-border transition-colors"
         title={t("xf_rate_source")}
       >
         <span className="tabular-nums whitespace-nowrap">{buttonLabel}</span>
@@ -3052,7 +3052,7 @@ function RateSourceDropdown({ output, sources, onPick }) {
                   onPick(src);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-2.5 py-1 text-[11.5px] flex items-center justify-between gap-2 hover:bg-surface-soft ${
+                className={`w-full text-left px-2.5 py-1 text-caption flex items-center justify-between gap-2 hover:bg-surface-soft ${
                   isActive ? "bg-surface-soft font-bold" : ""
                 }`}
               >
@@ -3366,12 +3366,12 @@ function OutputRow({
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[10px] font-bold text-muted bg-white border border-border-soft rounded-md px-1.5 py-0.5">
+          <span className="text-tiny font-bold text-muted bg-white border border-border-soft rounded-md px-1.5 py-0.5">
             #{index + 1}
           </span>
           {o.otcDealId && (
             <span
-              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-success bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
+              className="inline-flex items-center gap-1 text-micro font-bold text-success bg-emerald-100 border border-emerald-300 rounded px-1.5 py-0.5 uppercase tracking-wider"
               title={t("xf_otc_from_deal_tip").replace("{n}", String(o.otcDealId))}
             >
               <ArrowLeftRight className="w-2.5 h-2.5" />
@@ -3412,7 +3412,7 @@ function OutputRow({
             onChange={(e) => onUpdate({ applyFee: e.target.checked })}
             className="w-3.5 h-3.5 rounded border-border text-success focus:ring-2 focus:ring-emerald-500/40 cursor-pointer"
           />
-          <span className="text-[10px] font-bold uppercase tracking-[0.08em] leading-none">
+          <span className="text-tiny font-bold uppercase tracking-[0.08em] leading-none">
             {t("xf_fee")}
           </span>
         </label>
@@ -3448,7 +3448,7 @@ function OutputRow({
             }
             onUpdate(patch);
           }}
-          className="shrink-0 bg-white border border-border-soft hover:border-border focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1.5 text-[13px] font-bold tabular-nums text-ink outline-none cursor-pointer"
+          className="shrink-0 bg-white border border-border-soft hover:border-border focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1.5 text-body-sm font-bold tabular-nums text-ink outline-none cursor-pointer"
           aria-label={t("xf_currency")}
         >
           {CURRENCIES.map((c) => (
@@ -3469,7 +3469,7 @@ function OutputRow({
          Активный chip подсвечен; клик = onUpdate({rate, manualRate:false}). */}
       {(Number.isFinite(officeRate) || Number.isFinite(globalRate)) && (
         <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] uppercase">
+          <span className="text-micro font-bold text-muted-soft tracking-[0.15em] uppercase">
             {t("xf_rate_source")}
           </span>
 
@@ -3486,7 +3486,7 @@ function OutputRow({
                   touched: false,
                 })
               }
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-tiny font-bold tabular-nums border transition-colors ${
                 !o.manualRate && o.rateSource === "global"
                   ? "bg-ink text-white border-ink"
                   : "bg-white text-ink-soft border-border-soft hover:bg-surface-soft"
@@ -3510,7 +3510,7 @@ function OutputRow({
                   touched: false,
                 })
               }
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-tiny font-bold tabular-nums border transition-colors ${
                 !o.manualRate && (!o.rateSource || o.rateSource === "auto")
                   ? "bg-indigo-600 text-white border-indigo-600"
                   : currentOfficeChip.hasOverride
@@ -3551,7 +3551,7 @@ function OutputRow({
                     touched: false,
                   })
                 }
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-bold tabular-nums border transition-colors ${baseCls}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-tiny font-bold tabular-nums border transition-colors ${baseCls}`}
                 title={
                   row.hasOverride
                     ? t("xf_office_override_tip").replace("{name}", row.name)
@@ -3576,7 +3576,7 @@ function OutputRow({
             o.manualRate ? "border-warning/30" : "border-border"
           }`}
         >
-          <span className="text-[9px] font-bold text-muted-soft tracking-[0.15em] mr-2">{t("rate")}</span>
+          <span className="text-micro font-bold text-muted-soft tracking-[0.15em] mr-2">{t("rate")}</span>
           <input
             type="text"
             inputMode="decimal"
@@ -3591,11 +3591,11 @@ function OutputRow({
               })
             }
             placeholder="0.00"
-            className="flex-1 bg-transparent outline-none text-[13px] font-bold text-ink placeholder:text-muted-soft tabular-nums min-w-0"
+            className="flex-1 bg-transparent outline-none text-body-sm font-bold text-ink placeholder:text-muted-soft tabular-nums min-w-0"
           />
           {o.manualRate && (
             <span
-              className="ml-1.5 text-[9px] font-bold text-warning tracking-wider uppercase"
+              className="ml-1.5 text-micro font-bold text-warning tracking-wider uppercase"
               title={t("xf_manual_rate_tip")}
             >
               {t("xf_manual_badge")}
@@ -3610,7 +3610,7 @@ function OutputRow({
           Кнопка «Инвертировать» одним кликом ставит 1/actualRate —
           обычно это и есть правильное значение. */}
       {rateLooksWrong && Number.isFinite(expectedRateViaUsd) && (
-        <div className="mt-1.5 px-2.5 py-1.5 rounded-button bg-warning-soft border border-warning/30 text-[11px] text-warning flex items-start gap-1.5">
+        <div className="mt-1.5 px-2.5 py-1.5 rounded-button bg-warning-soft border border-warning/30 text-tiny text-warning flex items-start gap-1.5">
           <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-warning" />
           <div className="flex-1 min-w-0">
             <div>
@@ -3649,7 +3649,7 @@ function OutputRow({
                   touched: false,
                 });
               }}
-              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning text-white text-[10.5px] font-bold hover:bg-warning transition-colors"
+              className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-warning text-white text-tiny font-bold hover:bg-warning transition-colors"
             >
               {t("xf_invert_rate").replace("{n}", (1 / actualRate).toFixed(4))}
             </button>
@@ -3660,7 +3660,7 @@ function OutputRow({
       {/* Account selector — наш счёт ИЛИ счёт партнёра. Phase 5 OTC. */}
       <div className="mt-2">
         <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-          <div className="text-[9px] font-bold text-muted tracking-[0.15em] uppercase">
+          <div className="text-micro font-bold text-muted tracking-[0.15em] uppercase">
             {t("deposit_from")}
           </div>
           {/* Segmented control: наш / партнёрский */}
@@ -3668,7 +3668,7 @@ function OutputRow({
             <button
               type="button"
               onClick={() => onUpdate({ outKind: "ours", partnerAccountId: null })}
-              className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
+              className={`px-2 py-0.5 rounded-full text-micro font-bold transition-colors ${
                 (o.outKind || "ours") === "ours"
                   ? "bg-white text-ink shadow-sm"
                   : "text-muted hover:text-ink"
@@ -3679,7 +3679,7 @@ function OutputRow({
             <button
               type="button"
               onClick={() => onUpdate({ outKind: "partner", accountId: null })}
-              className={`px-2 py-0.5 rounded-full text-[9.5px] font-bold transition-colors ${
+              className={`px-2 py-0.5 rounded-full text-micro font-bold transition-colors ${
                 o.outKind === "partner"
                   ? "bg-white text-accent shadow-sm"
                   : "text-muted hover:text-ink"
@@ -3698,13 +3698,13 @@ function OutputRow({
               partnerId={partnerHintId}
               placeholder={t("xf_from_partner_account")}
             />
-            <p className="mt-1 text-[10px] text-accent/80">
+            <p className="mt-1 text-tiny text-accent/80">
               💸 {t("xf_partner_pays_self_pre")}
               <strong> we_owe</strong> {t("xf_partner_pays_self_mid")} {fmt(parseFloat(o.amount) || 0, o.currency)} {o.currency}.
             </p>
           </>
         ) : outAccounts.length === 0 ? (
-          <div className="text-[11px] text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1.5 inline-flex items-center gap-1">
+          <div className="text-tiny text-warning bg-warning-soft border border-amber-100 rounded-md px-2 py-1.5 inline-flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {t("no_accounts_currency")} {o.currency}
           </div>
@@ -3722,7 +3722,7 @@ function OutputRow({
       {/* Recipient address — только для crypto */}
       {isCrypto && (
         <div className="mt-2">
-          <div className="text-[9px] font-bold text-muted tracking-[0.15em] uppercase mb-1">
+          <div className="text-micro font-bold text-muted tracking-[0.15em] uppercase mb-1">
             {t("xf_recipient_address")}
           </div>
           <input
@@ -3730,7 +3730,7 @@ function OutputRow({
             value={o.address || ""}
             onChange={(e) => onUpdate({ address: e.target.value.trim() })}
             placeholder={t("xf_crypto_address_placeholder")}
-            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[12px] font-mono text-ink-soft tracking-tight outline-none transition-colors placeholder:text-muted-soft"
+            className="w-full bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-caption font-mono text-ink-soft tracking-tight outline-none transition-colors placeholder:text-muted-soft"
           />
           {walletCheck && (
             <WalletHint
@@ -3748,7 +3748,7 @@ function OutputRow({
       <div className="mt-2 flex items-center justify-between gap-2 flex-wrap">
         {availableInCurrency !== undefined ? (
           <div
-            className={`inline-flex items-center gap-1 text-[10px] font-medium tabular-nums flex-wrap ${
+            className={`inline-flex items-center gap-1 text-tiny font-medium tabular-nums flex-wrap ${
               insufficient ? "text-warning" : "text-muted"
             }`}
           >
@@ -3791,7 +3791,7 @@ function OutputRow({
           <button
             type="button"
             onClick={handleUseRemaining}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-button px-2 py-1 transition-colors"
+            className="inline-flex items-center gap-1 text-tiny font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200 rounded-button px-2 py-1 transition-colors"
             title={t("xf_convert_remaining_tip")}
           >
             <Zap className="w-3 h-3" />
@@ -3803,7 +3803,7 @@ function OutputRow({
 
       {/* Suggest other offices when insufficient in current */}
       {insufficient && otherOfficesWithBalance.length > 0 && (
-        <div className="mt-2 px-3 py-2 rounded-card bg-info-soft border border-sky-200 text-[11px]">
+        <div className="mt-2 px-3 py-2 rounded-card bg-info-soft border border-sky-200 text-tiny">
           <div className="font-bold text-sky-900 mb-1">
             {t("insufficient_suggest_body").replace("{cur}", o.currency)}
           </div>
@@ -3837,7 +3837,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   const { t } = useTranslation();
   if (status === "invalid_hash") {
     return (
-      <div className="mt-1.5 text-[11px] text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-tiny text-warning bg-warning-soft border border-warning/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         {t("xf_wallet_invalid_hash")}
       </div>
@@ -3845,7 +3845,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   if (status === "unknown_network") {
     return (
-      <div className="mt-1.5 text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-2 py-1">
+      <div className="mt-1.5 text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-2 py-1">
         {t("xf_wallet_unknown_network")}
       </div>
     );
@@ -3853,7 +3853,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   if (status === "conflict") {
     const other = counterparties?.find((c) => c.id === conflict?.clientId);
     return (
-      <div className="mt-1.5 text-[11px] text-danger bg-danger-soft border border-danger/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-tiny text-danger bg-danger-soft border border-danger/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <AlertCircle className="w-3 h-3" />
         <span>
           {t("xf_wallet_conflict")}
@@ -3864,7 +3864,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   if (status === "known") {
     return (
-      <div className="mt-1.5 text-[11px] text-success bg-success-soft border border-success/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
+      <div className="mt-1.5 text-tiny text-success bg-success-soft border border-success/20 rounded-md px-2 py-1 inline-flex items-center gap-1">
         <Check className="w-3 h-3" />
         {t("xf_wallet_known")} · {network}
       </div>
@@ -3872,7 +3872,7 @@ function WalletHint({ status, address, network, conflict, counterparties }) {
   }
   // new
   return (
-    <div className="mt-1.5 text-[11px] text-ink-soft bg-surface-soft border border-border-soft rounded-md px-2 py-1">
+    <div className="mt-1.5 text-tiny text-ink-soft bg-surface-soft border border-border-soft rounded-md px-2 py-1">
       {t("xf_wallet_new")} · {network} — {t("xf_wallet_new_suffix")}
     </div>
   );

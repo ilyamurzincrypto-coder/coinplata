@@ -28,7 +28,7 @@ export default function FilterPill({
       {Icon && <Icon size={12} strokeWidth={2.2} />}
       {label}
       {count != null && (
-        <span className="font-mono text-[10px] opacity-60 tabular">{count}</span>
+        <span className="font-mono text-tiny opacity-60 tabular">{count}</span>
       )}
     </button>
   );

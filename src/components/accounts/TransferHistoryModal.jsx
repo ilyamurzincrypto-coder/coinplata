@@ -171,7 +171,7 @@ export default function TransferHistoryModal({ open, onClose }) {
                 key={f.id}
                 type="button"
                 onClick={() => setStatusFilter(f.id)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[11px] font-bold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-tiny font-bold transition-colors ${
                   active
                     ? "bg-ink text-white"
                     : "bg-surface-sunk text-ink-soft hover:bg-surface-sunk"
@@ -179,7 +179,7 @@ export default function TransferHistoryModal({ open, onClose }) {
               >
                 {f.label}
                 <span
-                  className={`tabular-nums text-[10px] px-1 rounded ${
+                  className={`tabular-nums text-tiny px-1 rounded ${
                     active ? "bg-white/20" : "bg-surface-sunk/70 text-muted"
                   }`}
                 >
@@ -195,7 +195,7 @@ export default function TransferHistoryModal({ open, onClose }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Поиск по счёту, офису, менеджеру, заметке…"
-              className="flex-1 bg-transparent outline-none text-[12px] text-ink placeholder:text-muted-soft min-w-0"
+              className="flex-1 bg-transparent outline-none text-caption text-ink placeholder:text-muted-soft min-w-0"
             />
             {query && (
               <button
@@ -211,7 +211,7 @@ export default function TransferHistoryModal({ open, onClose }) {
           <button
             onClick={handleExport}
             disabled={filtered.length === 0}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[11px] font-semibold bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-tiny font-semibold bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border disabled:opacity-50 transition-colors"
             title="Export CSV"
           >
             <Download className="w-3 h-3" />
@@ -222,7 +222,7 @@ export default function TransferHistoryModal({ open, onClose }) {
         {/* Список */}
         <div className="bg-surface-soft/40 border border-border-soft rounded-card overflow-hidden max-h-[60vh] overflow-y-auto">
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-[12px] text-muted-soft italic">
+            <div className="py-10 text-center text-caption text-muted-soft italic">
               Ничего не найдено
             </div>
           ) : (
@@ -246,7 +246,7 @@ export default function TransferHistoryModal({ open, onClose }) {
                         <ArrowDownToLine className="w-4 h-4 text-muted-soft shrink-0" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-bold text-ink inline-flex items-center gap-2 flex-wrap">
+                        <div className="text-body-sm font-bold text-ink inline-flex items-center gap-2 flex-wrap">
                           <span className="tabular-nums">
                             {curSymbol(fromCur)}
                             {fmt(t.fromAmount, fromCur)} {fromCur}
@@ -259,20 +259,20 @@ export default function TransferHistoryModal({ open, onClose }) {
                                 {fmt(t.toAmount, toCur)} {toCur}
                               </span>
                               {t.rate && (
-                                <span className="text-[10px] text-muted font-normal">
+                                <span className="text-tiny text-muted font-normal">
                                   @ {t.rate}
                                 </span>
                               )}
                             </>
                           )}
                           <span
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold border ${styl.bg} ${styl.text} ${styl.border}`}
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-bold border ${styl.bg} ${styl.text} ${styl.border}`}
                           >
                             <StatusIcon className="w-2.5 h-2.5" />
                             {styl.label}
                           </span>
                         </div>
-                        <div className="text-[11px] text-muted inline-flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <div className="text-tiny text-muted inline-flex items-center gap-1.5 flex-wrap mt-0.5">
                           <Building2 className="w-3 h-3" />
                           <span className="truncate">
                             {fromAcc ? `${officeName(fromAcc.officeId)} · ${fromAcc.name}` : "—"}
@@ -282,7 +282,7 @@ export default function TransferHistoryModal({ open, onClose }) {
                             {toAcc ? `${officeName(toAcc.officeId)} · ${toAcc.name}` : "—"}
                           </span>
                         </div>
-                        <div className="text-[10.5px] text-muted-soft inline-flex items-center gap-1.5 flex-wrap mt-0.5">
+                        <div className="text-tiny text-muted-soft inline-flex items-center gap-1.5 flex-wrap mt-0.5">
                           <span>{formatDate(t.createdAt)}</span>
                           {sender && (
                             <>

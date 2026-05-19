@@ -47,7 +47,7 @@ export default function Select({
         onClick={() => setOpen((o) => !o)}
         onBlur={() => setTimeout(() => setOpen(false), 120)}
         className={`w-full flex items-center justify-between gap-2 bg-white border border-border-soft hover:border-border rounded-card transition-colors ${
-          compact ? "px-2.5 py-1.5 text-[13px]" : "px-3 py-2.5 text-[14px]"
+          compact ? "px-2.5 py-1.5 text-body-sm" : "px-3 py-2.5 text-body"
         } text-ink focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent`}
       >
         <span className="flex items-center gap-2 min-w-0">
@@ -68,7 +68,7 @@ export default function Select({
                   onChange(opt.value);
                   setOpen(false);
                 }}
-                className={`w-full text-left px-3 py-1.5 text-[13px] hover:bg-surface-soft flex items-center justify-between ${
+                className={`w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-soft flex items-center justify-between ${
                   isSelected ? "text-ink font-medium" : "text-ink-soft"
                 }`}
               >

@@ -18,10 +18,10 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
   const fmt = ch.isNative ? ((v) => `${fmtNum(v)} ${ch.currency}`) : ((v) => formatBase(v, baseCurrency));
 
   const selector = (
-    <label className="flex items-center gap-1.5 text-[11px] text-muted">
+    <label className="flex items-center gap-1.5 text-tiny text-muted">
       {t("trv2_to_chess_currency") || "Валюта"}:
       <select value={cur} onChange={(e) => setCur(e.target.value)}
-        className="bg-surface-soft border border-border-soft rounded-[6px] px-1.5 py-0.5 text-[11px] outline-none">
+        className="bg-surface-soft border border-border-soft rounded-[6px] px-1.5 py-0.5 text-tiny outline-none">
         <option value="">{t("trv2_to_chess_currency_base") || "Базовая"} ({baseCurrency})</option>
         {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -32,7 +32,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
     return (
       <div className="space-y-2">
         <div className="flex justify-end">{selector}</div>
-        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-[12.5px] text-muted-soft">{t("trv2_to_empty_chess")}</div>
+        <div className="bg-white rounded-card-lg border border-border-soft px-4 py-8 text-center text-caption text-muted-soft">{t("trv2_to_empty_chess")}</div>
       </div>
     );
   }
@@ -46,20 +46,20 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
     <div className="space-y-2">
       <div className="flex justify-end">{selector}</div>
       <div className="bg-white rounded-card-lg border border-border-soft overflow-auto">
-        <table className="text-[11px] border-collapse">
+        <table className="text-tiny border-collapse">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 bg-surface-sunk px-2 py-1.5 border border-border-soft text-muted-soft text-[10px] uppercase">Дт ╲ Кт</th>
+              <th className="sticky left-0 z-10 bg-surface-sunk px-2 py-1.5 border border-border-soft text-muted-soft text-tiny uppercase">Дт ╲ Кт</th>
               {cols.map((c) => (
-                <th key={c.accountId} title={c.name} className="bg-surface-sunk px-2 py-1.5 border border-border-soft font-mono text-[10px] text-ink-soft whitespace-nowrap">{c.code}</th>
+                <th key={c.accountId} title={c.name} className="bg-surface-sunk px-2 py-1.5 border border-border-soft font-mono text-tiny text-ink-soft whitespace-nowrap">{c.code}</th>
               ))}
-              <th className="bg-surface-sunk px-2 py-1.5 border border-border-soft text-[10px] text-muted whitespace-nowrap">{t("trv2_to_chess_row_total")}</th>
+              <th className="bg-surface-sunk px-2 py-1.5 border border-border-soft text-tiny text-muted whitespace-nowrap">{t("trv2_to_chess_row_total")}</th>
             </tr>
           </thead>
           <tbody>
             {rowsAccts.map((r) => (
               <tr key={r.accountId}>
-                <th title={r.name} className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft font-mono text-[10px] text-ink-soft text-left whitespace-nowrap">{r.code}</th>
+                <th title={r.name} className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft font-mono text-tiny text-ink-soft text-left whitespace-nowrap">{r.code}</th>
                 {cols.map((c) => (
                   <td key={c.accountId} className="px-2 py-1.5 border border-border-soft text-right tabular-nums">{cell(r.accountId, c.accountId)}</td>
                 ))}
@@ -67,7 +67,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
               </tr>
             ))}
             <tr>
-              <th className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft text-[10px] text-muted text-left whitespace-nowrap">{t("trv2_to_chess_col_total")}</th>
+              <th className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft text-tiny text-muted text-left whitespace-nowrap">{t("trv2_to_chess_col_total")}</th>
               {cols.map((c) => (
                 <td key={c.accountId} className="px-2 py-1.5 border border-border-soft text-right tabular-nums font-medium bg-surface-soft">{fmt(ch.colTotals.get(c.accountId) || 0)}</td>
               ))}
@@ -76,9 +76,9 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-muted-soft">{t("trv2_to_chess_note").replace("{cur}", ch.currency)}</p>
+      <p className="text-tiny text-muted-soft">{t("trv2_to_chess_note").replace("{cur}", ch.currency)}</p>
       {ch.isNative && (
-        <p className="text-[11px] text-amber-600">{t("trv2_to_chess_native_note") || "Для кросс-валютных сделок суммы по столбцам могут не сходиться — недостающая нога в другой валюте."}</p>
+        <p className="text-tiny text-amber-600">{t("trv2_to_chess_native_note") || "Для кросс-валютных сделок суммы по столбцам могут не сходиться — недостающая нога в другой валюте."}</p>
       )}
     </div>
   );

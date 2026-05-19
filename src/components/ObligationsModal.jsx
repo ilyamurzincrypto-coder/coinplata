@@ -237,7 +237,7 @@ export default function ObligationsModal({ open, onClose }) {
     <>
       <Modal open={open} onClose={onClose} title="Open obligations" subtitle={`${openObligations.length} open`} width="2xl">
         {USE_NEW_LEDGER && (
-          <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-[12.5px] text-warning">
+          <div className="mx-5 mt-4 px-3.5 py-2.5 rounded-card bg-warning-soft border border-warning/20 text-caption text-warning">
             <span className="font-semibold">Settle / Receive / Cancel отключены в режиме v2 ledger.</span>{" "}
             Эти операции ещё не имеют v2-обёрток. Чтобы продолжить, попроси админа выключить{" "}
             <code className="px-1 bg-amber-100 rounded">VITE_USE_NEW_LEDGER</code>.
@@ -245,7 +245,7 @@ export default function ObligationsModal({ open, onClose }) {
         )}
         <div className="p-5 max-h-[70vh] overflow-auto space-y-4">
           {openObligations.length === 0 ? (
-            <div className="text-center py-10 text-[13px] text-muted">
+            <div className="text-center py-10 text-body-sm text-muted">
               No open obligations — all commitments are settled.
             </div>
           ) : (
@@ -255,7 +255,7 @@ export default function ObligationsModal({ open, onClose }) {
                 {[...totalsByCurrency.entries()].map(([cur, amt]) => (
                   <div
                     key={cur}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-warning-soft border border-warning/20 text-[12px]"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card bg-warning-soft border border-warning/20 text-caption"
                   >
                     <Lock className="w-3 h-3 text-warning" />
                     <span className="font-bold text-warning tabular-nums">
@@ -297,7 +297,7 @@ export default function ObligationsModal({ open, onClose }) {
         <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
+            className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors inline-flex items-center gap-1"
           >
             <X className="w-3 h-3" />
             Close
@@ -346,9 +346,9 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
   return (
     <div className="px-4 py-3 hover:bg-surface-soft flex items-center gap-3 flex-wrap">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-[13px] font-semibold text-ink">
+        <div className="flex items-center gap-2 text-body-sm font-semibold text-ink">
           <span
-            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-micro font-bold uppercase tracking-wider ${
               isTheyOwe
                 ? "bg-sky-100 text-info"
                 : "bg-amber-100 text-warning"
@@ -360,13 +360,13 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
             {curSymbol(o.currency)}{fmt(remaining, o.currency)}
           </span>
           {(o.paidAmount || 0) > 0 && (
-            <span className="text-[10px] font-semibold text-muted-soft tabular-nums">
+            <span className="text-tiny font-semibold text-muted-soft tabular-nums">
               / {fmt(o.amount, o.currency)}
             </span>
           )}
           <span className="text-muted font-normal">{o.currency}</span>
           <span className="text-muted-soft">·</span>
-          <span className="inline-flex items-center gap-1 text-[11px] text-ink-soft">
+          <span className="inline-flex items-center gap-1 text-tiny text-ink-soft">
             <Building2 className="w-2.5 h-2.5 text-muted-soft" />
             {office?.name || o.officeId}
           </span>
@@ -379,7 +379,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
             />
           </div>
         )}
-        <div className="text-[11px] text-muted mt-0.5 flex items-center gap-2 flex-wrap">
+        <div className="text-tiny text-muted mt-0.5 flex items-center gap-2 flex-wrap">
           <span>Deal #{o.dealId}</span>
           {o.counterpartyName && (
             <>
@@ -403,7 +403,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
           )}
         </div>
         {!canSettle && (
-          <div className="mt-1 text-[10px] text-warning inline-flex items-center gap-1">
+          <div className="mt-1 text-tiny text-warning inline-flex items-center gap-1">
             <AlertTriangle className="w-2.5 h-2.5" />
             Need {fmt(o.amount - Math.max(0, bestAccount.available), o.currency)} more on {bestAccount.account?.name || "any account"} to settle
           </div>
@@ -414,7 +414,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
         <button
           onClick={onSettle}
           disabled={!canSettle}
-          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold transition-colors ${
+          className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-tiny font-semibold transition-colors ${
             canSettle
               ? isTheyOwe
                 ? "bg-sky-600 text-white hover:bg-sky-700"
@@ -428,7 +428,7 @@ function ObligationRow({ obligation: o, office, deal, accounts, balanceOf, reser
         </button>
         <button
           onClick={onCancel}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-tiny font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
           title="Cancel obligation (deal stays pending)"
         >
           <RotateCcw className="w-3 h-3" />
@@ -505,12 +505,12 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
   return (
     <Modal open={!!obligation} onClose={onClose} title={title} width="md">
       <div className="p-5 space-y-3">
-        <div className={`border rounded-card px-3 py-2 text-[12px] ${
+        <div className={`border rounded-card px-3 py-2 text-caption ${
           isReceive
             ? "bg-info-soft border-sky-200"
             : "bg-surface-soft border-border-soft"
         }`}>
-          <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${
+          <div className={`text-tiny font-bold uppercase tracking-wider mb-1 ${
             isReceive ? "text-info" : "text-muted"
           }`}>
             {isReceive ? "Client will pay" : "To settle"}
@@ -522,19 +522,19 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
           </div>
           <div className="text-[16px] font-bold tabular-nums text-ink">
             {curSymbol(obligation.currency)}{fmt(remaining, obligation.currency)}{" "}
-            <span className="text-[12px] text-muted font-medium">{obligation.currency}</span>
-            <span className="text-[11px] text-muted-soft font-medium ml-2">
+            <span className="text-caption text-muted font-medium">{obligation.currency}</span>
+            <span className="text-tiny text-muted-soft font-medium ml-2">
               remaining of {fmt(obligation.amount, obligation.currency)}
             </span>
           </div>
-          <div className="text-[11px] text-muted mt-0.5">
+          <div className="text-tiny text-muted mt-0.5">
             Deal #{obligation.dealId}
           </div>
         </div>
 
         {/* Amount input — можно меньше remaining для partial */}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Amount {isReceive ? "received" : "to pay"}
           </label>
           <div className="flex items-center gap-2">
@@ -545,35 +545,35 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
               onChange={(e) =>
                 setAmountStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
               }
-              className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[14px] font-semibold tabular-nums outline-none"
+              className="flex-1 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-body font-semibold tabular-nums outline-none"
             />
             <button
               type="button"
               onClick={() => setAmountStr(String(remaining))}
-              className="px-2.5 py-2 rounded-card text-[11px] font-semibold bg-surface-sunk text-ink-soft hover:bg-surface-sunk transition-colors"
+              className="px-2.5 py-2 rounded-card text-tiny font-semibold bg-surface-sunk text-ink-soft hover:bg-surface-sunk transition-colors"
               title="Set to full remaining"
             >
               Full
             </button>
           </div>
           {!amountValid && amountStr && (
-            <p className="text-[10px] text-danger mt-1">
+            <p className="text-tiny text-danger mt-1">
               Must be between 0 and {fmt(remaining, obligation.currency)}
             </p>
           )}
           {amountNum > 0 && amountNum < remaining && (
-            <p className="text-[10px] text-warning mt-1">
+            <p className="text-tiny text-warning mt-1">
               Partial {isReceive ? "receive" : "settle"} — {fmt(remaining - amountNum, obligation.currency)} {obligation.currency} will stay open.
             </p>
           )}
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Pay from account
           </label>
           {candidates.length === 0 ? (
-            <div className="text-[12px] text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
+            <div className="text-caption text-warning bg-warning-soft border border-warning/20 rounded-md px-3 py-2">
               No accounts with {obligation.currency} in this office. Top up or transfer first.
             </div>
           ) : (
@@ -595,8 +595,8 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
                         : "border-border-soft bg-surface-soft opacity-60 cursor-not-allowed"
                     }`}
                   >
-                    <span className="text-[13px] font-semibold">{c.name}</span>
-                    <span className="text-[11px] tabular-nums">
+                    <span className="text-body-sm font-semibold">{c.name}</span>
+                    <span className="text-tiny tabular-nums">
                       {curSymbol(obligation.currency)}{fmt(c.available, obligation.currency)}
                     </span>
                   </button>
@@ -607,12 +607,12 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
 
-        <div className="text-[10px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+        <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           {isReceive
             ? "Will create an IN movement on the selected account. If this closes the obligation and no others remain on the deal, the deal moves to Completed."
             : "Will create an OUT movement on the selected account. If this closes the obligation and no others remain on the deal, the deal moves to Completed."}
@@ -621,14 +621,14 @@ function SettleModal({ obligation, onClose, onSettle, mode = "settle" }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit || busy}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors inline-flex items-center gap-1.5 ${
             canSubmit && !busy
               ? isReceive
                 ? "bg-sky-600 text-white hover:bg-sky-700"

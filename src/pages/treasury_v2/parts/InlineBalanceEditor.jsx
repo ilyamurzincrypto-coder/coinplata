@@ -302,7 +302,7 @@ export default function InlineBalanceEditor({
 
         {isNewDim && (
           <label className="block mb-2">
-            <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
+            <span className="block text-tiny font-bold text-muted uppercase tracking-wider mb-0.5">
               {dimKind === "client" ? "Клиент *" : "Партнёр *"}
             </span>
             <select
@@ -322,7 +322,7 @@ export default function InlineBalanceEditor({
         )}
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
+          <span className="block text-tiny font-bold text-muted uppercase tracking-wider mb-0.5">
             {isNewDim
               ? `Начальный остаток (${account.currency})`
               : `Новый остаток (${account.currency})`}
@@ -339,7 +339,7 @@ export default function InlineBalanceEditor({
         </label>
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
+          <span className="block text-tiny font-bold text-muted uppercase tracking-wider mb-0.5">
             Комментарий *
           </span>
           <input
@@ -353,7 +353,7 @@ export default function InlineBalanceEditor({
         </label>
 
         <label className="block mb-2">
-          <span className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-0.5">
+          <span className="block text-tiny font-bold text-muted uppercase tracking-wider mb-0.5">
             Дата эффекта
           </span>
           <input

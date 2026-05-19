@@ -184,7 +184,7 @@ function Root() {
   if (isSupabaseConfigured) {
     if (currentUser?.status === "_loading") {
       return (
-        <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center text-muted text-[13px]">
+        <div className="min-h-screen bg-[#f5f5f3] flex items-center justify-center text-muted text-body-sm">
           Loading workspace…
         </div>
       );
@@ -197,7 +197,7 @@ function Root() {
   return (
     <div className="min-h-screen bg-[#f5f5f3] text-ink font-sans">
       {!isSupabaseConfigured && (
-        <div className="bg-warning text-ink text-[12px] font-semibold text-center px-4 py-2 border-b border-amber-600">
+        <div className="bg-warning text-ink text-caption font-semibold text-center px-4 py-2 border-b border-amber-600">
           {t("demo_banner")}
         </div>
       )}
@@ -419,7 +419,7 @@ function AuthGate({ children }) {
   if (isSupabaseConfigured) {
     if (session === undefined) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-muted text-[13px]">
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-muted text-body-sm">
           Loading…
         </div>
       );
@@ -428,7 +428,7 @@ function AuthGate({ children }) {
     // Есть session — ждём profile.
     if (profile === undefined) {
       return (
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-muted text-[13px]">
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-muted text-body-sm">
           Loading…
         </div>
       );

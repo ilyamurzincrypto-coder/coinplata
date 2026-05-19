@@ -177,7 +177,7 @@ export default function ObligationsFilterPanel({
 function Row({ label, children }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[10px] text-muted-soft uppercase tracking-wider w-20 shrink-0 font-semibold">
+      <span className="text-tiny text-muted-soft uppercase tracking-wider w-20 shrink-0 font-semibold">
         {label}:
       </span>
       <div className="flex items-center gap-1 flex-wrap">{children}</div>

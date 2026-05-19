@@ -175,7 +175,7 @@ export default function CashClosureBadge({ currentOffice }) {
     setModalOpen(true);
   };
   // Apple-style: тот же визуальный язык что OfficeSwitcher рядом —
-  // bg-white, border-border-soft, rounded-card, px-3 py-1.5, text-[13px].
+  // bg-white, border-border-soft, rounded-card, px-3 py-1.5, text-body-sm.
   // Состояние выражается ТОЛЬКО через цветную точку слева. Без цветных фонов.
   const config = {
     closed: {
@@ -215,10 +215,10 @@ export default function CashClosureBadge({ currentOffice }) {
           <span className={`w-2 h-2 rounded-full ${config.dot}`} />
         </span>
         <Icon className={`w-3.5 h-3.5 shrink-0 ${config.iconCls}`} />
-        <span className="text-[13px] font-semibold truncate hidden md:inline">
+        <span className="text-body-sm font-semibold truncate hidden md:inline">
           {config.label}
         </span>
-        <span className="text-[13px] font-semibold md:hidden">
+        <span className="text-body-sm font-semibold md:hidden">
           {state === "closed" ? "✓" : t("cc_badge_close")}
         </span>
       </button>
@@ -242,11 +242,11 @@ export default function CashClosureBadge({ currentOffice }) {
               <Clock className="w-5 h-5 text-warning" />
             </div>
             <div className="flex-1">
-              <p className="text-[13.5px] text-ink-soft leading-snug">
+              <p className="text-body-sm text-ink-soft leading-snug">
                 {t("cc_confirm_during_workday")}
               </p>
               {confirmInfo && (
-                <div className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-muted tabular-nums bg-surface-soft border border-border-soft rounded-button px-2.5 py-1">
+                <div className="mt-2 inline-flex items-center gap-1.5 text-caption text-muted tabular-nums bg-surface-soft border border-border-soft rounded-button px-2.5 py-1">
                   <span className="font-semibold text-ink-soft">{confirmInfo.closeTime}</span>
                   <span>·</span>
                   <span>~{confirmInfo.minsLeft} {t("cc_confirm_min_left")}</span>
@@ -259,14 +259,14 @@ export default function CashClosureBadge({ currentOffice }) {
           <button
             type="button"
             onClick={() => setConfirmInfo(null)}
-            className="px-4 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-[13px] font-semibold hover:border-border hover:bg-surface-soft transition-colors"
+            className="px-4 py-2 rounded-card bg-white border border-border-soft text-ink-soft text-body-sm font-semibold hover:border-border hover:bg-surface-soft transition-colors"
           >
             {t("cc_confirm_continue")}
           </button>
           <button
             type="button"
             onClick={proceedFromConfirm}
-            className="px-4 py-2 rounded-card bg-danger text-white text-[13px] font-semibold hover:bg-danger transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
+            className="px-4 py-2 rounded-card bg-danger text-white text-body-sm font-semibold hover:bg-danger transition-colors shadow-[0_4px_14px_-4px_rgba(244,63,94,0.5)]"
           >
             {t("cc_confirm_close_anyway")}
           </button>

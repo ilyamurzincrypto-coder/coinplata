@@ -99,15 +99,15 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
       >
         {open ? <ChevronDown className="w-4 h-4 text-muted-soft shrink-0" /> : <ChevronRight className="w-4 h-4 text-muted-soft shrink-0" />}
         <div className="flex-1 min-w-0">
-          <div className="text-[13px] font-bold text-ink uppercase tracking-wide">{t(titleKey)}</div>
-          <div className="text-[11px] text-muted-soft">{t(subKey)}</div>
+          <div className="text-body-sm font-bold text-ink uppercase tracking-wide">{t(titleKey)}</div>
+          <div className="text-tiny text-muted-soft">{t(subKey)}</div>
         </div>
         <div className="text-[18px] font-bold tabular-nums text-ink shrink-0">{baseAmt(tree.totalInBase)}</div>
       </div>
       {open && (
         <div className="pl-7 pr-1 pb-1">
           {tree.currencies.length === 0 ? (
-            <div className="py-2 text-[12px] text-muted-soft">{t("trv2_dash_empty_funds")}</div>
+            <div className="py-2 text-caption text-muted-soft">{t("trv2_dash_empty_funds")}</div>
           ) : (
             tree.currencies.map((c) => {
               const ckey = `${id}:${c.currency}`;
@@ -119,14 +119,14 @@ function FundsSection({ id, titleKey, subKey, tree, baseCurrency, expanded, togg
                     className="flex items-center gap-2 py-1.5 cursor-pointer hover:bg-surface-soft rounded-[6px] -mx-1 px-1"
                   >
                     {copen ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-soft shrink-0" />}
-                    <span className="text-[12.5px] font-semibold text-ink-soft w-12 shrink-0">{c.currency}</span>
-                    <span className="text-[12.5px] tabular-nums text-ink">{curAmt(c.native, c.currency)}</span>
-                    <span className="text-[11.5px] text-muted-soft tabular-nums ml-2">(≈ {baseAmt(c.inBase)})</span>
+                    <span className="text-caption font-semibold text-ink-soft w-12 shrink-0">{c.currency}</span>
+                    <span className="text-caption tabular-nums text-ink">{curAmt(c.native, c.currency)}</span>
+                    <span className="text-caption text-muted-soft tabular-nums ml-2">(≈ {baseAmt(c.inBase)})</span>
                   </div>
                   {copen && (
                     <div className="pl-6">
                       {c.leaves.map((leaf) => (
-                        <div key={leaf.key} className="flex items-baseline gap-3 py-1 text-[12px]">
+                        <div key={leaf.key} className="flex items-baseline gap-3 py-1 text-caption">
                           <span className="text-muted flex-1 truncate">{leaf.label}</span>
                           <span className="tabular-nums text-ink-soft shrink-0">{curAmt(leaf.native, c.currency)}</span>
                         </div>
@@ -225,7 +225,7 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
         />
         <div className="border-t border-border-soft" />
         {/* Период для доход/расход — общий с PnLCard ниже. */}
-        <div className="px-3 py-2 flex items-center gap-2 text-[11px] text-muted">
+        <div className="px-3 py-2 flex items-center gap-2 text-tiny text-muted">
           <span className="font-bold uppercase tracking-wide">Период доходов/расходов:</span>
           <PeriodPicker value={period} onChange={setPeriod} />
         </div>
@@ -251,16 +251,16 @@ function FundsTreeCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
         />
       </div>
       <div className="mt-3 pt-3 border-t border-border-soft rounded-card bg-surface-soft px-3 py-2.5 space-y-1.5">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12.5px]">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted">{t("trv2_dash_totals")}</span>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-caption">
+          <span className="text-tiny font-bold uppercase tracking-wide text-muted">{t("trv2_dash_totals")}</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_total_assets")}</span> <span className="font-bold tabular-nums text-ink">{fmtBaseAmount(available.totalInBase, baseCurrency)}</span></span>
           <span className="text-muted-soft">+</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_total_client_liab")}</span> <span className="font-bold tabular-nums text-ink">{fmtSignedBase(passives, baseCurrency)}</span></span>
           <span className="text-muted-soft">=</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_net_capital")}</span> <span className={`font-bold tabular-nums ${netCapital < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(netCapital, baseCurrency)}</span></span>
         </div>
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px] pt-1 border-t border-border-soft">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-muted">За период</span>
+        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 text-caption pt-1 border-t border-border-soft">
+          <span className="text-tiny font-bold uppercase tracking-wide text-muted">За период</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_revenue")}</span> <span className="font-bold tabular-nums text-success">+{fmtBaseAmount(pnl.revenue.total || 0, baseCurrency)}</span></span>
           <span className="text-muted-soft">−</span>
           <span className="text-ink-soft"><span className="text-muted">{t("trv2_dash_expense")}</span> <span className="font-bold tabular-nums text-danger">{fmtBaseAmount(pnl.expense.total || 0, baseCurrency)}</span></span>
@@ -289,11 +289,11 @@ function PnLCard({ ctx, officeFilter, baseCurrency, period, setPeriod }) {
   const net = pnl.netProfit;
   return (
     <Card>
-      <h3 className="text-[13px] font-bold text-ink mb-2">{t("trv2_dash_pnl")}</h3>
+      <h3 className="text-body-sm font-bold text-ink mb-2">{t("trv2_dash_pnl")}</h3>
       <div className="mb-3"><PeriodPicker value={period} onChange={setPeriod} /></div>
-      <div className="text-[11px] text-muted">{t("trv2_dash_net_profit")}</div>
+      <div className="text-tiny text-muted">{t("trv2_dash_net_profit")}</div>
       <div className={`text-[22px] font-bold tabular-nums ${net < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(net, baseCurrency)}</div>
-      <div className="mt-3 space-y-1 text-[12px]">
+      <div className="mt-3 space-y-1 text-caption">
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_revenue")}</span><span className="tabular-nums">+{fmtBaseAmount(pnl.revenue.total, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_expense")}</span><span className="tabular-nums">−{fmtBaseAmount(pnl.expense.total, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_fx")}</span><span className="tabular-nums">{fmtSignedBase(pnl.fxNet, baseCurrency)}</span></div>
@@ -318,18 +318,18 @@ function ObligationsCard({ officeFilter }) {
 
   return (
     <Card>
-      <h3 className="text-[13px] font-bold text-ink mb-2">{t("trv2_dash_open_oblig")}</h3>
+      <h3 className="text-body-sm font-bold text-ink mb-2">{t("trv2_dash_open_oblig")}</h3>
       {loading ? (
-        <div className="text-[12px] text-muted-soft">…</div>
+        <div className="text-caption text-muted-soft">…</div>
       ) : filtered.length === 0 ? (
-        <div className="text-[12px] text-muted-soft">{t("trv2_dash_oblig_none")}</div>
+        <div className="text-caption text-muted-soft">{t("trv2_dash_oblig_none")}</div>
       ) : (
         <>
           <div className="text-[22px] font-bold tabular-nums text-ink">{filtered.length}</div>
-          <div className="text-[12px] text-ink-soft mt-0.5">
+          <div className="text-caption text-ink-soft mt-0.5">
             {legTotals.length === 0 ? "—" : legTotals.map((lt, i) => <span key={lt.currency}>{i > 0 ? " · " : ""}{fmtNum(lt.amount)} {lt.currency}</span>)}
           </div>
-          <div className="text-[11.5px] text-muted mt-2">
+          <div className="text-caption text-muted mt-2">
             {t("trv2_dash_oblig_breakdown")
               .replace("{overdue}", String(buckets.overdue.length))
               .replace("{today}", String(buckets.today.length))
@@ -366,9 +366,9 @@ function RecentDealsCard({ ctx, officeFilter, onOpenSource, period }) {
 
   return (
     <Card className="md:col-span-2 lg:col-span-3">
-      <h3 className="text-[13px] font-bold text-ink mb-2">{t("trv2_dash_recent_deals")}</h3>
+      <h3 className="text-body-sm font-bold text-ink mb-2">{t("trv2_dash_recent_deals")}</h3>
       {tree.length === 0 ? (
-        <div className="text-[12px] text-muted-soft">{t("trv2_dash_no_deals")}</div>
+        <div className="text-caption text-muted-soft">{t("trv2_dash_no_deals")}</div>
       ) : (
         <div className="divide-y divide-border-soft">
           {tree.map((node) => {
@@ -380,9 +380,9 @@ function RecentDealsCard({ ctx, officeFilter, onOpenSource, period }) {
               <div
                 key={tx.id}
                 onClick={clickable ? () => onOpenSource(tx) : undefined}
-                className={`py-2 flex items-baseline gap-3 text-[12.5px] ${clickable ? "cursor-pointer hover:bg-surface-soft -mx-2 px-2 rounded" : ""}`}
+                className={`py-2 flex items-baseline gap-3 text-caption ${clickable ? "cursor-pointer hover:bg-surface-soft -mx-2 px-2 rounded" : ""}`}
               >
-                <span className="text-[11px] text-muted-soft tabular-nums shrink-0 w-20">{date}</span>
+                <span className="text-tiny text-muted-soft tabular-nums shrink-0 w-20">{date}</span>
                 <span className="text-ink-soft shrink-0 max-w-[160px] truncate">{cpName(tx)}</span>
                 <span className="text-muted truncate flex-1">{line || tx.description || "—"}</span>
               </div>
@@ -400,11 +400,11 @@ function IdentityCard({ ctx, officeFilter, baseCurrency }) {
   const ok = totals.identityCheck.ok;
   return (
     <Card>
-      <h3 className="text-[13px] font-bold text-ink mb-2">{t("trv2_dash_capital")}</h3>
-      <div className={`text-[12px] font-medium px-2.5 py-1.5 rounded-button inline-block ${ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
+      <h3 className="text-body-sm font-bold text-ink mb-2">{t("trv2_dash_capital")}</h3>
+      <div className={`text-caption font-medium px-2.5 py-1.5 rounded-button inline-block ${ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
         {ok ? t("trv2_dash_identity_ok") : t("trv2_dash_identity_off").replace("{delta}", fmtBaseAmount(totals.identityCheck.delta, baseCurrency))}
       </div>
-      <div className="mt-3 space-y-1 text-[12px]">
+      <div className="mt-3 space-y-1 text-caption">
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_assets")}</span><span className="tabular-nums">{fmtBaseAmount(totals.assets, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_liabilities")}</span><span className="tabular-nums">{fmtSignedBase(-totals.liabilities, baseCurrency)}</span></div>
         <div className="flex justify-between"><span className="text-muted">{t("trv2_dash_equity")}</span><span className="tabular-nums">{fmtBaseAmount(totals.equity, baseCurrency)}</span></div>

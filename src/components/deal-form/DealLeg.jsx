@@ -39,7 +39,7 @@ export default function DealLeg({
       {/* Header блока */}
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-ink text-white text-[10px] font-bold font-mono tabular">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-ink text-white text-tiny font-bold font-mono tabular">
             {number}
           </span>
           <span className="text-micro text-muted uppercase">{label}</span>
@@ -126,7 +126,7 @@ function CcyPill({ ccy, options, onChange }) {
   return (
     <label className="inline-flex items-center gap-1.5 h-10 pl-2 pr-3 rounded-pill bg-surface-soft hover:bg-surface-sunk cursor-pointer transition-colors shrink-0 relative">
       <CurrencyIcon ccy={ccy} size="sm" />
-      <span className="font-mono font-bold text-[14px] text-ink">{ccy}</span>
+      <span className="font-mono font-bold text-body text-ink">{ccy}</span>
       <ChevronDown className="w-3 h-3 text-muted" strokeWidth={2.2} />
       <select
         value={ccy}

@@ -52,7 +52,7 @@ export default function SubmitCTA({
         disabled={isDisabled}
         className={
           "inline-flex items-center gap-1.5 px-4 py-2 rounded-l-[var(--radius-section)] " +
-          "text-[12.5px] font-bold uppercase tracking-wider " +
+          "text-caption font-bold uppercase tracking-wider " +
           (isDisabled
             ? "bg-surface-sunk text-muted-soft cursor-not-allowed "
             : "bg-indigo-600 hover:bg-indigo-700 text-white ")
@@ -87,14 +87,14 @@ export default function SubmitCTA({
           <button
             type="button"
             onClick={() => { setOpen(false); onSubmitDraft?.(); }}
-            className="block w-full text-left px-3 py-2 text-[12.5px] text-ink-soft hover:bg-surface-soft"
+            className="block w-full text-left px-3 py-2 text-caption text-ink-soft hover:bg-surface-soft"
           >
             {t("submit_save_draft")}
           </button>
           <button
             type="button"
             onClick={() => { setOpen(false); onSubmitAndNotify?.(); }}
-            className="block w-full text-left px-3 py-2 text-[12.5px] text-ink-soft hover:bg-surface-soft"
+            className="block w-full text-left px-3 py-2 text-caption text-ink-soft hover:bg-surface-soft"
           >
             {t("submit_create_and_notify")}
           </button>

@@ -45,7 +45,7 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
             </button>
           )}
         </div>
-        <p className="text-[13px] text-muted mt-1">{t("cp_subtitle")}</p>
+        <p className="text-body-sm text-muted mt-1">{t("cp_subtitle")}</p>
       </div>
 
       {/* Tab strip — общий паттерн с TreasuryShell */}
@@ -57,7 +57,7 @@ export default function CounterpartiesPage({ onOpenHelp = null }) {
             <button
               key={tab.id}
               onClick={() => setActive(tab.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-[13px] font-medium whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-button text-body-sm font-medium whitespace-nowrap transition-colors ${
                 isActive
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"

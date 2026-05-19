@@ -21,10 +21,10 @@ function Section({ label, lines }) {
   if (!lines.length) return null;
   return (
     <div>
-      <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-0.5">{label}</div>
+      <div className="text-tiny font-semibold text-muted uppercase tracking-wider mb-0.5">{label}</div>
       <ul className="space-y-0.5">
         {lines.map((l, i) => (
-          <li key={i} className="text-[12px] text-ink-soft">{l}</li>
+          <li key={i} className="text-caption text-ink-soft">{l}</li>
         ))}
       </ul>
     </div>
@@ -106,11 +106,11 @@ export default function DealDetail({ node, accById, counterpartyName }) {
         <Section label={t("xf_out")} lines={outLines} />
         {marginLines.length > 0 && (
           <div>
-            <div className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-0.5">{t("cashdeal_margin")}</div>
-            <div className="text-[12px] text-success">~ {marginLines.join(" + ")}</div>
+            <div className="text-tiny font-semibold text-muted uppercase tracking-wider mb-0.5">{t("cashdeal_margin")}</div>
+            <div className="text-caption text-success">~ {marginLines.join(" + ")}</div>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-border-soft text-[12px] text-ink-soft">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-1 border-t border-border-soft text-caption text-ink-soft">
           <span><span className="text-muted-soft">{t("cashdeal_counterparty")}:</span> <span className="font-medium text-ink-soft">{counterparty}</span></span>
           {rate && (
             <span><span className="text-muted-soft">{t("cashdeal_rate")}:</span> <span className="font-medium text-ink-soft tabular-nums">{fmtRate(rate.rate)}</span> <span className="text-muted-soft">{rate.to}/{rate.from}</span></span>
@@ -119,13 +119,13 @@ export default function DealDetail({ node, accById, counterpartyName }) {
             <span className="text-muted-soft">{t("cashdeal_status")}:</span>
             <span className="font-medium text-ink-soft">{statusLabel}</span>
             {meta.has_deferred && (
-              <span className="px-1.5 py-0.5 rounded bg-warning-soft text-warning text-[10.5px] font-medium">{t("cashdeal_has_obligation")}</span>
+              <span className="px-1.5 py-0.5 rounded bg-warning-soft text-warning text-tiny font-medium">{t("cashdeal_has_obligation")}</span>
             )}
           </span>
           {dt && <span><span className="text-muted-soft">{t("cashdeal_date")}:</span> {dt}</span>}
         </div>
         {meta.comment && (
-          <div className="text-[11.5px] text-muted italic">«{meta.comment}»</div>
+          <div className="text-caption text-muted italic">«{meta.comment}»</div>
         )}
       </div>
     </div>

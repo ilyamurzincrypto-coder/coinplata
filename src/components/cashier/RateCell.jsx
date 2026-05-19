@@ -46,7 +46,7 @@ export default function RateCell({
         disabled={disabled}
         className={
           `w-full bg-transparent border-0 outline-none ` +
-          `text-[13px] tabular-nums text-right ` +
+          `text-body-sm tabular-nums text-right ` +
           `placeholder:text-muted-soft ` +
           `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] px-2 py-1.5 ` +
           (manual ? "text-warning font-semibold " : "text-ink-soft ") +

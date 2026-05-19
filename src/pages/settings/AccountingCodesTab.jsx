@@ -80,7 +80,7 @@ export default function AccountingCodesTab() {
     <div>
       <div className="px-5 py-4 border-b border-border-soft">
         <h2 className="text-[16px] font-semibold tracking-tight">План счетов</h2>
-        <p className="text-[12px] text-muted mt-0.5">
+        <p className="text-caption text-muted mt-0.5">
           Бухгалтерские коды (например 2008, 386). Префиксят имя в проводках
           Дт/Кт. Поле опциональное — пусто = код не показывается.
         </p>
@@ -95,7 +95,7 @@ export default function AccountingCodesTab() {
               <button
                 key={s.id}
                 onClick={() => setScope(s.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-[12px] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-caption font-semibold transition-colors ${
                   isActive ? "bg-white text-ink shadow-sm" : "text-ink-soft hover:text-ink"
                 }`}
               >
@@ -112,14 +112,14 @@ export default function AccountingCodesTab() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по имени или коду"
-            className="w-full pl-7 pr-2 py-1.5 text-[12px] bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border"
+            className="w-full pl-7 pr-2 py-1.5 text-caption bg-surface-soft border border-border-soft rounded-button outline-none focus:bg-white focus:border-border"
           />
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full text-[12.5px]">
-          <thead className="bg-surface-soft border-b border-border-soft text-[10px] font-bold text-muted tracking-wider uppercase">
+        <table className="w-full text-caption">
+          <thead className="bg-surface-soft border-b border-border-soft text-tiny font-bold text-muted tracking-wider uppercase">
             <tr>
               <th className="px-5 py-2 text-left w-32">Код</th>
               <th className="px-3 py-2 text-left">Название</th>
@@ -129,7 +129,7 @@ export default function AccountingCodesTab() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-5 py-12 text-center text-[13px] text-muted-soft">
+                <td colSpan={3} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   Нет записей
                 </td>
               </tr>
@@ -180,7 +180,7 @@ function CodeRow({ row }) {
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
           placeholder="—"
-          className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1 text-[12.5px] tabular-nums font-semibold outline-none transition-colors"
+          className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2 py-1 text-caption tabular-nums font-semibold outline-none transition-colors"
         />
       </td>
       <td className="px-3 py-2 text-ink font-semibold">{row.name}</td>

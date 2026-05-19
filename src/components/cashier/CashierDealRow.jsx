@@ -56,24 +56,24 @@ export default function CashierDealRow({ node, accById, counterpartyName }) {
     <div className="border-t border-border-soft first:border-t-0">
       <div className="px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:bg-surface-soft" onClick={() => setExpanded((v) => !v)}>
         {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-soft shrink-0" />}
-        <span className="text-[11px] text-muted-soft tabular-nums w-[64px] shrink-0">{dtStr}</span>
-        <span className="text-[12.5px] font-semibold text-ink w-[120px] truncate shrink-0" title={counterparty}>{counterparty}</span>
+        <span className="text-tiny text-muted-soft tabular-nums w-[64px] shrink-0">{dtStr}</span>
+        <span className="text-caption font-semibold text-ink w-[120px] truncate shrink-0" title={counterparty}>{counterparty}</span>
         {isOtc && (
-          <span className="text-[9.5px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-accent-bg text-accent shrink-0">OTC</span>
+          <span className="text-micro font-bold tracking-wide px-1.5 py-0.5 rounded bg-accent-bg text-accent shrink-0">OTC</span>
         )}
-        <span className="flex-1 min-w-0 text-[12.5px] text-ink-soft truncate tabular-nums">
+        <span className="flex-1 min-w-0 text-caption text-ink-soft truncate tabular-nums">
           {inStr} <span className="text-muted-soft mx-0.5">→</span> {outStr}
           {rate && <span className="text-muted-soft ml-2">@ {fmtRate(rate.rate)}</span>}
         </span>
         {marginStr && (
-          <span className="text-[11.5px] text-success font-medium tabular-nums shrink-0 whitespace-nowrap">{t("cashier_deal_margin")} {marginStr}</span>
+          <span className="text-caption text-success font-medium tabular-nums shrink-0 whitespace-nowrap">{t("cashier_deal_margin")} {marginStr}</span>
         )}
         {isReversed ? (
-          <span className="inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded bg-surface-sunk text-muted shrink-0"><RotateCcw className="w-3 h-3" />{t("cashdeal_status_reversed")}</span>
+          <span className="inline-flex items-center gap-1 text-tiny px-1.5 py-0.5 rounded bg-surface-sunk text-muted shrink-0"><RotateCcw className="w-3 h-3" />{t("cashdeal_status_reversed")}</span>
         ) : hasObligation ? (
-          <span className="inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded bg-warning-soft text-warning shrink-0"><Clock className="w-3 h-3" />{t("cashdeal_has_obligation")}</span>
+          <span className="inline-flex items-center gap-1 text-tiny px-1.5 py-0.5 rounded bg-warning-soft text-warning shrink-0"><Clock className="w-3 h-3" />{t("cashdeal_has_obligation")}</span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-[10.5px] px-1.5 py-0.5 rounded bg-success-soft text-success shrink-0"><CheckCircle2 className="w-3 h-3" />{t("cashdeal_status_posted")}</span>
+          <span className="inline-flex items-center gap-1 text-tiny px-1.5 py-0.5 rounded bg-success-soft text-success shrink-0"><CheckCircle2 className="w-3 h-3" />{t("cashdeal_status_posted")}</span>
         )}
       </div>
       {expanded && (
@@ -82,10 +82,10 @@ export default function CashierDealRow({ node, accById, counterpartyName }) {
           {(canEditNote || canReverse) && (
             <div className="px-6 pb-3 flex items-center gap-4">
               {canEditNote && (
-                <button onClick={() => setNoteOpen(true)} className="text-[12px] text-accent hover:underline">{t("trv2_tx_edit_note")}</button>
+                <button onClick={() => setNoteOpen(true)} className="text-caption text-accent hover:underline">{t("trv2_tx_edit_note")}</button>
               )}
               {canReverse && (
-                <button onClick={() => setReverseOpen(true)} className="text-[12px] text-danger hover:underline">{t("trv2_journal_undo_deal")}</button>
+                <button onClick={() => setReverseOpen(true)} className="text-caption text-danger hover:underline">{t("trv2_journal_undo_deal")}</button>
               )}
             </div>
           )}

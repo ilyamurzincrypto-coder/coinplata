@@ -77,12 +77,12 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <button
           onClick={onBack}
           type="button"
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[12px] font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
         >
           <ChevronLeft className="w-3 h-3" />
           {t("cov_back")}
         </button>
-        <div className="text-[11px] font-bold uppercase tracking-wider text-muted">
+        <div className="text-tiny font-bold uppercase tracking-wider text-muted">
           {t("cov_title")}
         </div>
       </div>
@@ -119,10 +119,10 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {/* === Matrix === */}
       <section>
         <div className="flex items-center justify-between mb-2">
-          <h4 className="text-[12px] font-bold uppercase tracking-wider text-ink-soft">
+          <h4 className="text-caption font-bold uppercase tracking-wider text-ink-soft">
             {t("cov_matrix")}
           </h4>
-          <div className="flex items-center gap-2 text-[10px] font-semibold">
+          <div className="flex items-center gap-2 text-tiny font-semibold">
             <LegendPill tone="emerald" label={t("cov_legend_covered")} />
             <LegendPill tone="rose" label={t("cov_legend_missing")} />
             <LegendPill tone="slate" label={t("cov_legend_dismissed")} />
@@ -134,7 +134,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
       {/* === Actions row === */}
       {(coverage.missing.length > 0 || coverage.oneWay.length > 0) && (
         <div className="flex items-center gap-2 flex-wrap bg-surface-soft border border-border-soft rounded-card px-4 py-3">
-          <div className="text-[12px] text-ink-soft flex-1">
+          <div className="text-caption text-ink-soft flex-1">
             <TrendingUp className="inline w-3.5 h-3.5 mr-1 text-muted" />
             {coverage.missing.length > 0 && (
               <>{t("cov_got_missing")} <strong>{coverage.missing.length}</strong> {t("cov_missing_pairs_word")}</>
@@ -148,14 +148,14 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
           <button
             onClick={handleExportMissing}
             disabled={coverage.missing.length === 0 && coverage.oneWay.length === 0}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-tiny font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
           >
             <Download className="w-3 h-3" />
             {t("cov_export_missing")}
           </button>
           <button
             onClick={onOpenImport}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-[11px] font-semibold text-white bg-ink hover:bg-ink"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button text-tiny font-semibold text-white bg-ink hover:bg-ink"
           >
             {t("cov_import_xlsx")}
           </button>
@@ -167,10 +167,10 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <section>
           <div className="flex items-center gap-1.5 mb-2">
             <ArrowLeftRight className="w-3.5 h-3.5 text-warning" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-warning">
+            <h4 className="text-caption font-bold uppercase tracking-wider text-warning">
               {t("cov_oneway_heading")} · {coverage.oneWay.length}
             </h4>
-            <span className="text-[11px] text-muted font-normal normal-case tracking-normal">
+            <span className="text-tiny text-muted font-normal normal-case tracking-normal">
               — {t("cov_oneway_hint")}
             </span>
           </div>
@@ -183,20 +183,20 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   key={`${from}-${to}`}
                   className="flex items-center gap-3 px-3 py-2 border-b border-amber-100 last:border-0"
                 >
-                  <span className="inline-flex items-center gap-1 text-[12px]">
+                  <span className="inline-flex items-center gap-1 text-caption">
                     <span className="font-semibold">{from}</span>
                     <span className="text-muted-soft">→</span>
                     <span className="font-semibold">{to}</span>
-                    <span className="text-[11px] text-muted tabular-nums">
+                    <span className="text-tiny text-muted tabular-nums">
                       {existingRate ? existingRate : ""}
                     </span>
                   </span>
-                  <span className="text-warning text-[11px] font-semibold">
+                  <span className="text-warning text-tiny font-semibold">
                     {t("cov_missing_word")} {missingDirection}
                   </span>
                   <button
                     onClick={() => onQuickAdd?.(mf, mt)}
-                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-ink text-white hover:bg-ink"
+                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold bg-ink text-white hover:bg-ink"
                   >
                     <Plus className="w-3 h-3" />
                     {missingDirection}
@@ -213,7 +213,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <section>
           <div className="flex items-center gap-1.5 mb-2">
             <AlertTriangle className="w-3.5 h-3.5 text-danger" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-danger">
+            <h4 className="text-caption font-bold uppercase tracking-wider text-danger">
               {t("cov_missing_heading")} · {coverage.missing.length}
             </h4>
           </div>
@@ -223,16 +223,16 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                 key={`${from}-${to}`}
                 className="flex items-center gap-2 px-3 py-2 border-b border-rose-100 last:border-0"
               >
-                <span className="text-[12px]">
+                <span className="text-caption">
                   <span className="font-semibold">{from}</span>
                   <span className="text-muted-soft mx-1">↔</span>
                   <span className="font-semibold">{to}</span>
                 </span>
-                <span className="text-[10px] text-muted italic">{t("cov_missing_hint")}</span>
+                <span className="text-tiny text-muted italic">{t("cov_missing_hint")}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <button
                     onClick={() => onQuickAdd?.(from, to)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-ink text-white hover:bg-ink"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold bg-ink text-white hover:bg-ink"
                     title={`Add ${from} → ${to}`}
                   >
                     <Plus className="w-3 h-3" />
@@ -240,7 +240,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   </button>
                   <button
                     onClick={() => onQuickAdd?.(to, from)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-white text-ink-soft border border-border-soft hover:border-border"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold bg-white text-ink-soft border border-border-soft hover:border-border"
                     title={`Add ${to} → ${from}`}
                   >
                     <Plus className="w-3 h-3" />
@@ -265,11 +265,11 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <section className="rounded-card border border-danger/40 bg-danger-soft px-4 py-3">
           <div className="flex items-center gap-1.5 mb-1">
             <AlertTriangle className="w-3.5 h-3.5 text-danger" />
-            <h4 className="text-[12px] font-bold uppercase tracking-wider text-danger">
+            <h4 className="text-caption font-bold uppercase tracking-wider text-danger">
               {t("cov_isolated_heading")} · {coverage.isolated.length}
             </h4>
           </div>
-          <div className="text-[12px] text-danger">
+          <div className="text-caption text-danger">
             <strong>{coverage.isolated.join(", ")}</strong> {t("cov_isolated_msg")}
           </div>
         </section>
@@ -280,7 +280,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         <section>
           <button
             onClick={() => setShowDismissed((v) => !v)}
-            className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted hover:text-ink"
+            className="inline-flex items-center gap-1 text-tiny font-semibold text-muted hover:text-ink"
           >
             {showDismissed ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
             {showDismissed ? t("cov_hide") : t("cov_show")} {t("cov_dismissed_word")} ({coverage.dismissed.length})
@@ -292,7 +292,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                   key={`${from}-${to}`}
                   className="flex items-center gap-2 px-3 py-2 border-b border-border-soft last:border-0"
                 >
-                  <span className="text-[11px] text-ink-soft">
+                  <span className="text-tiny text-ink-soft">
                     {from} ↔ {to}
                   </span>
                   <button
@@ -300,7 +300,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                       handleUndismiss(from, to);
                       handleUndismiss(to, from);
                     }}
-                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
+                    className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft"
                   >
                     <Eye className="w-3 h-3" />
                     {t("cov_restore")}
@@ -313,7 +313,7 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
                     clearDismissed();
                     setDismissedTick((t) => t + 1);
                   }}
-                  className="text-[10px] font-semibold text-danger hover:text-danger"
+                  className="text-tiny font-semibold text-danger hover:text-danger"
                 >
                   {t("cov_clear_dismissed")}
                 </button>
@@ -329,8 +329,8 @@ export default function RatesCoveragePanel({ onBack, onQuickAdd, onOpenImport })
         coverage.isolated.length === 0 && (
           <div className="rounded-card border border-success/20 bg-success-soft p-5 text-center">
             <CheckCircle2 className="w-8 h-8 text-success mx-auto mb-2" />
-            <div className="text-[14px] font-bold text-success">{t("cov_full_title")}</div>
-            <div className="text-[12px] text-success mt-1">
+            <div className="text-body font-bold text-success">{t("cov_full_title")}</div>
+            <div className="text-caption text-success mt-1">
               {t("cov_full_sub")}
             </div>
           </div>
@@ -350,11 +350,11 @@ function SummaryStat({ label, value, sub, tone, big }) {
   };
   return (
     <div className={`rounded-card border px-4 py-3 ${colors[tone] || colors.slate}`}>
-      <div className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}</div>
+      <div className="text-tiny font-bold uppercase tracking-wider opacity-70">{label}</div>
       <div className={`${big ? "text-[24px]" : "text-[18px]"} font-bold tabular-nums tracking-tight mt-1`}>
         {value}
       </div>
-      <div className="text-[10px] opacity-70 mt-0.5 truncate" title={sub}>{sub}</div>
+      <div className="text-tiny opacity-70 mt-0.5 truncate" title={sub}>{sub}</div>
     </div>
   );
 }
@@ -376,7 +376,7 @@ function LegendPill({ tone, label }) {
 function CoverageMatrix({ coverage, onQuickAdd }) {
   const { currencies, matrix } = coverage;
   const cellClass = (status) => {
-    const base = "w-full aspect-square flex items-center justify-center text-[9px] font-bold rounded-sm transition-colors";
+    const base = "w-full aspect-square flex items-center justify-center text-micro font-bold rounded-sm transition-colors";
     switch (status) {
       case "existing":
         return `${base} bg-emerald-400 text-white`;
@@ -398,14 +398,14 @@ function CoverageMatrix({ coverage, onQuickAdd }) {
         {/* header row */}
         <div />
         {currencies.map((c) => (
-          <div key={`h-${c}`} className="text-[9px] font-bold text-ink-soft text-center py-1 truncate">
+          <div key={`h-${c}`} className="text-micro font-bold text-ink-soft text-center py-1 truncate">
             {c}
           </div>
         ))}
         {/* body */}
         {currencies.map((from) => (
           <React.Fragment key={`row-${from}`}>
-            <div className="text-[9px] font-bold text-ink-soft pr-2 py-1 flex items-center justify-end">
+            <div className="text-micro font-bold text-ink-soft pr-2 py-1 flex items-center justify-end">
               {from}
             </div>
             {currencies.map((to) => {

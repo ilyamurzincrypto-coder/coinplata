@@ -18,7 +18,7 @@ export default function BalanceBadge({
     ? `${label}: ${currency} overdraft ${fmt(shortage, currency)}`
     : `${label}: ${curSymbol(currency)}${fmt(amount, currency)} ${currency}`;
   return (
-    <span className={`text-[10px] tabular-nums ${tone}`} title={title}>
+    <span className={`text-tiny tabular-nums ${tone}`} title={title}>
       {curSymbol(currency)}
       {fmt(amount, currency)}
     </span>

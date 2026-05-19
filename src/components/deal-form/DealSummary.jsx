@@ -64,7 +64,7 @@ export default function DealSummary({
         >
           {submitting ? "Создание…" : "Создать сделку"}
           {!submitting && (
-            <kbd className="inline-flex items-center justify-center h-5 px-1.5 bg-white/15 border border-white/20 rounded text-[10px] font-mono font-semibold">
+            <kbd className="inline-flex items-center justify-center h-5 px-1.5 bg-white/15 border border-white/20 rounded text-tiny font-mono font-semibold">
               ⌘↵
             </kbd>
           )}

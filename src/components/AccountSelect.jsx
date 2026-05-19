@@ -127,16 +127,16 @@ export default function AccountSelect({
           <>
             <span className="text-[15px]">{TYPE_ICONS[selected.type] || "•"}</span>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold text-ink truncate flex items-center gap-1.5">
+              <div className="text-body-sm font-semibold text-ink truncate flex items-center gap-1.5">
                 {selected.name}
                 {isInteroffice && (
-                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200">
+                  <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-micro font-bold bg-warning-soft text-warning ring-1 ring-amber-200">
                     <ArrowLeftRight className="w-2 h-2" />
                     {t("acsel_interoffice_badge")}
                   </span>
                 )}
               </div>
-              <div className="text-[10px] text-muted font-medium uppercase tracking-wider">
+              <div className="text-tiny text-muted font-medium uppercase tracking-wider">
                 {selected.currency} · {selected.type}
                 {isInteroffice && ` · ${officeName(selected.officeId)}`}
               </div>
@@ -145,7 +145,7 @@ export default function AccountSelect({
         ) : (
           <>
             <Wallet className="w-3.5 h-3.5 text-muted-soft" />
-            <span className="flex-1 text-[13px] text-muted-soft">{placeholderText}</span>
+            <span className="flex-1 text-body-sm text-muted-soft">{placeholderText}</span>
           </>
         )}
         <ChevronDown
@@ -170,7 +170,7 @@ export default function AccountSelect({
 
       {/* Interoffice hint below trigger */}
       {isInteroffice && !open && (
-        <div className="mt-1 text-[10px] font-medium text-warning bg-warning-soft/80 border border-warning/20 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
+        <div className="mt-1 text-tiny font-medium text-warning bg-warning-soft/80 border border-warning/20 rounded-md px-2 py-0.5 inline-flex items-center gap-1">
           <ArrowLeftRight className="w-2.5 h-2.5" />
           {t("acsel_interoffice_hint").replace("{office}", officeName(selected.officeId))}
         </div>
@@ -189,21 +189,21 @@ export default function AccountSelect({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("acsel_search_placeholder")}
-              className="w-full pl-7 pr-2 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[12px] outline-none placeholder:text-muted-soft"
+              className="w-full pl-7 pr-2 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-caption outline-none placeholder:text-muted-soft"
             />
           </div>
 
           {/* List */}
           <div className="max-h-72 overflow-auto py-1">
             {filtered.length === 0 && (
-              <div className="px-3 py-4 text-center text-[12px] text-muted-soft">
+              <div className="px-3 py-4 text-center text-caption text-muted-soft">
                 {t("acsel_no_match")}
               </div>
             )}
             {sections.map((section) => (
               <div key={section.id}>
                 {section.label && (
-                  <div className="px-3 pt-2 pb-1 text-[9px] font-bold text-muted tracking-widest uppercase bg-surface-soft/60 border-y border-border-soft flex items-center gap-1">
+                  <div className="px-3 pt-2 pb-1 text-micro font-bold text-muted tracking-widest uppercase bg-surface-soft/60 border-y border-border-soft flex items-center gap-1">
                     {section.id === "__others__" ? (
                       <ArrowLeftRight className="w-2.5 h-2.5 text-warning" />
                     ) : (
@@ -224,7 +224,7 @@ export default function AccountSelect({
                 {section.groups &&
                   section.groups.map((g) => (
                     <div key={g.officeId}>
-                      <div className="pl-5 pr-3 pt-1 pb-0.5 text-[10px] font-semibold text-ink-soft flex items-center gap-1">
+                      <div className="pl-5 pr-3 pt-1 pb-0.5 text-tiny font-semibold text-ink-soft flex items-center gap-1">
                         <Building2 className="w-2.5 h-2.5 text-muted-soft" />
                         {g.officeName}
                       </div>
@@ -257,10 +257,10 @@ function AccountOption({ account: a, isActive, onPick, indent }) {
         isActive ? "bg-ink text-white" : "hover:bg-surface-soft text-ink"
       }`}
     >
-      <span className="text-[14px]">{TYPE_ICONS[a.type] || "•"}</span>
+      <span className="text-body">{TYPE_ICONS[a.type] || "•"}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-semibold truncate">{a.name}</div>
-        <div className={`text-[10px] font-medium uppercase tracking-wider ${isActive ? "text-muted-soft" : "text-muted"}`}>
+        <div className="text-body-sm font-semibold truncate">{a.name}</div>
+        <div className={`text-tiny font-medium uppercase tracking-wider ${isActive ? "text-muted-soft" : "text-muted"}`}>
           {a.currency} · {a.type}
         </div>
       </div>

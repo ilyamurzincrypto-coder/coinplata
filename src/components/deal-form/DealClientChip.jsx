@@ -80,7 +80,7 @@ export default function DealClientChip({ client, onClear }) {
 
   return (
     <div className="flex-1 max-w-xl flex items-center gap-3 h-10">
-      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${grad} text-white text-[12px] font-bold flex items-center justify-center shrink-0`}>
+      <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${grad} text-white text-caption font-bold flex items-center justify-center shrink-0`}>
         {initialsOf(client.nickname || client.name)}
       </div>
       <div className="min-w-0 flex-1">

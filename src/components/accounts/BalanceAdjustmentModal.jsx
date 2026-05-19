@@ -120,19 +120,19 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
       <div className="p-5 space-y-4">
         {/* Current balance */}
         <div className="rounded-card border border-border-soft bg-surface-soft p-3.5">
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted uppercase tracking-wider mb-1">
+          <div className="flex items-center gap-1.5 text-tiny font-bold text-muted uppercase tracking-wider mb-1">
             <Scale className="w-3.5 h-3.5" />
             Текущий баланс
           </div>
           <div className="text-[22px] font-bold text-ink tabular-nums">
             {sym}{fmt(currentBalance, account.currency)}
-            <span className="ml-2 text-[14px] text-muted-soft font-semibold">{account.currency}</span>
+            <span className="ml-2 text-body text-muted-soft font-semibold">{account.currency}</span>
           </div>
         </div>
 
         {/* New balance input */}
         <div>
-          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+          <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
             Новый баланс
           </label>
           <div className="relative flex items-baseline gap-2 bg-white rounded-card border-2 border-border focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-500/20 px-4 py-3">
@@ -149,7 +149,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
               autoFocus
               className="flex-1 bg-transparent outline-none text-ink placeholder:text-muted-soft tabular-nums text-[20px] font-bold tracking-tight min-w-0"
             />
-            <span className="text-muted-soft text-[12px] font-bold tracking-wider">{account.currency}</span>
+            <span className="text-muted-soft text-caption font-bold tracking-wider">{account.currency}</span>
           </div>
         </div>
 
@@ -163,7 +163,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
             }`}
           >
             <Calculator className="w-4 h-4 shrink-0" />
-            <div className="text-[12px] flex-1">
+            <div className="text-caption flex-1">
               <span className="font-bold">
                 {isPositive ? "+" : ""}{fmt(diff, account.currency)} {account.currency}
               </span>
@@ -174,7 +174,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
           </div>
         )}
         {validNewBalance && noChange && (
-          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-[12px]">
+          <div className="rounded-card border border-warning/20 bg-warning-soft text-warning p-3 flex items-center gap-2 text-caption">
             <AlertCircle className="w-4 h-4 shrink-0" />
             Новый баланс равен текущему — корректировать нечего.
           </div>
@@ -182,7 +182,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
 
         {/* Note */}
         <div>
-          <label className="block text-[11px] font-bold text-muted uppercase tracking-wider mb-1.5">
+          <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1.5">
             Комментарий <span className="text-danger">*</span>
           </label>
           <textarea
@@ -193,16 +193,16 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
             }}
             rows={2}
             placeholder="Например: инвентаризация на 29.04.26, разница из-за ручного завоза налички"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-[13px] outline-none resize-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2.5 text-body-sm outline-none resize-none"
           />
-          <div className="text-[10.5px] text-muted mt-1">
+          <div className="text-tiny text-muted mt-1">
             Обязательно — попадёт в audit trail и историю.
           </div>
         </div>
 
         {/* Confirmation warning */}
         {confirmStep && (
-          <div className="rounded-card border-2 border-warning/30 bg-warning-soft p-3 text-[12px] text-warning">
+          <div className="rounded-card border-2 border-warning/30 bg-warning-soft p-3 text-caption text-warning">
             <div className="flex items-center gap-1.5 font-bold mb-1">
               <AlertCircle className="w-4 h-4" />
               Подтвердите корректировку
@@ -218,7 +218,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
         <button
           type="button"
           onClick={handleShowHistory}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-ink-soft hover:text-ink transition-colors"
+          className="inline-flex items-center gap-1.5 text-caption font-semibold text-ink-soft hover:text-ink transition-colors"
         >
           <History className="w-3.5 h-3.5" />
           {showHistory ? "Скрыть историю" : "История корректировок"}
@@ -226,13 +226,13 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
         {showHistory && (
           <div className="rounded-card border border-border-soft bg-white max-h-48 overflow-auto">
             {historyLoading ? (
-              <div className="p-4 text-center text-[12px] text-muted-soft">Загрузка…</div>
+              <div className="p-4 text-center text-caption text-muted-soft">Загрузка…</div>
             ) : history.length === 0 ? (
-              <div className="p-4 text-center text-[12px] text-muted-soft">Корректировок ещё не было</div>
+              <div className="p-4 text-center text-caption text-muted-soft">Корректировок ещё не было</div>
             ) : (
-              <table className="w-full text-[12px]">
+              <table className="w-full text-caption">
                 <thead>
-                  <tr className="border-b border-border-soft text-left text-[10px] font-bold text-muted tracking-wider uppercase">
+                  <tr className="border-b border-border-soft text-left text-tiny font-bold text-muted tracking-wider uppercase">
                     <th className="px-3 py-2">Дата</th>
                     <th className="px-3 py-2 text-right">Было</th>
                     <th className="px-3 py-2 text-right">Стало</th>
@@ -262,7 +262,7 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
                         <td className="px-3 py-1.5 text-ink-soft">
                           {h.createdByName || "—"}
                           {h.note && (
-                            <div className="text-[10px] text-muted-soft truncate max-w-[180px]" title={h.note}>
+                            <div className="text-tiny text-muted-soft truncate max-w-[180px]" title={h.note}>
                               {h.note}
                             </div>
                           )}
@@ -281,14 +281,14 @@ export default function BalanceAdjustmentModal({ open, account, onClose, onAdjus
         <button
           onClick={onClose}
           disabled={busy}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Отмена
         </button>
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit
               ? confirmStep
                 ? "bg-warning text-white hover:bg-warning"

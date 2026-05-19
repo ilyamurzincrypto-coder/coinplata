@@ -40,7 +40,7 @@ export default function MasterDataTab() {
       <div className="px-5 py-4 border-b border-border-soft flex items-center gap-2">
         <Book className="w-4 h-4 text-muted" />
         <h2 className="text-[16px] font-semibold tracking-tight">Master data</h2>
-        <span className="text-[11px] text-muted-soft">· unified reference dictionaries</span>
+        <span className="text-tiny text-muted-soft">· unified reference dictionaries</span>
       </div>
 
       <div className="px-5 py-3 border-b border-border-soft flex items-center gap-1 flex-wrap">
@@ -51,7 +51,7 @@ export default function MasterDataTab() {
             <button
               key={s.id}
               onClick={() => setSection(s.id)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-[12px] font-semibold transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-button text-caption font-semibold transition-colors ${
                 active
                   ? "bg-ink text-white"
                   : "text-ink-soft hover:bg-surface-soft hover:text-ink"
@@ -204,7 +204,7 @@ function CategoriesSection() {
         t={t}
       />
 
-      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+      <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
         <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
         <div>{t("cat_info_hint")}</div>
       </div>
@@ -250,21 +250,21 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
     <section className="border border-border-soft rounded-card overflow-hidden">
       <div className="px-4 py-2.5 border-b border-border-soft flex items-center justify-between bg-surface-soft/40">
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ring-1 ${toneClass}`}>
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-tiny font-bold ring-1 ${toneClass}`}>
             {items.length}
           </span>
-          <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
+          <h3 className="text-body-sm font-semibold text-ink">{title}</h3>
         </div>
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button bg-ink text-white text-tiny font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           {t("cat_add")}
         </button>
       </div>
       {items.length === 0 ? (
-        <div className="px-4 py-6 text-center text-[12px] text-muted-soft">{t("cat_none")}</div>
+        <div className="px-4 py-6 text-center text-caption text-muted-soft">{t("cat_none")}</div>
       ) : (
         <div className="divide-y divide-border-soft">
           {tree.map((c) => (
@@ -275,22 +275,22 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
             >
               <div className="flex items-center gap-2 min-w-0">
                 {c.depth > 0 && (
-                  <span className="text-muted-soft select-none text-[12px] font-mono">└</span>
+                  <span className="text-muted-soft select-none text-caption font-mono">└</span>
                 )}
                 <div>
                   <div
-                    className={`text-[13px] ${
+                    className={`text-body-sm ${
                       c.depth === 0 ? "font-bold text-ink" : "font-medium text-ink-soft"
                     }`}
                   >
                     {c.name}
                     {c.orphan && (
-                      <span className="ml-2 text-[9px] font-bold text-warning uppercase tracking-wider">
+                      <span className="ml-2 text-micro font-bold text-warning uppercase tracking-wider">
                         orphan
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-muted uppercase tracking-wider">
+                  <div className="text-tiny text-muted uppercase tracking-wider">
                     {c.depth === 0 ? c.group : t("cat_subcategory")}
                   </div>
                 </div>
@@ -387,19 +387,19 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
     >
       <div className="p-5 space-y-3">
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_name")}</label>
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_name")}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             autoFocus
             placeholder={t("cat_name_placeholder")}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_type")}</label>
             <div
               className={`inline-flex bg-surface-sunk p-0.5 rounded-card w-full ${
                 typeLocked ? "opacity-60 cursor-not-allowed" : ""
@@ -420,7 +420,7 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
                       if (parent && parent.type !== tp) setParentId("");
                     }
                   }}
-                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
+                  className={`flex-1 px-3 py-2 text-caption font-semibold rounded-button transition-all ${
                     type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   } ${typeLocked && type !== tp ? "cursor-not-allowed" : ""}`}
                 >
@@ -429,18 +429,18 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
               ))}
             </div>
             {typeLocked && (
-              <div className="text-[10px] text-warning mt-1 flex items-start gap-1">
+              <div className="text-tiny text-warning mt-1 flex items-start gap-1">
                 <span>⚠</span>
                 <span>{typeLockedReason}</span>
               </div>
             )}
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_group")}</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">{t("cat_group")}</label>
             <select
               value={group}
               onChange={(e) => setGroup(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
             >
               {CATEGORY_GROUPS.map((g) => (
                 <option key={g.id} value={g.id}>{g.label}</option>
@@ -451,30 +451,30 @@ function CategoryFormModal({ open, initial, allCategories, onClose, onSave }) {
 
         {/* Parent category select — доступен всегда кроме случая когда у редактируемой категории есть дети */}
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             {t("cat_parent")}
           </label>
           <select
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           >
             <option value="">— {t("cat_parent_none")} —</option>
             {possibleParents.map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
             ))}
           </select>
-          <div className="text-[11px] text-muted mt-1">
+          <div className="text-tiny text-muted mt-1">
             {parentId ? t("cat_parent_hint_sub") : t("cat_parent_hint_top")}
           </div>
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">{t("cancel")}</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors">{t("cancel")}</button>
         <button
           onClick={() => onSave({ name: name.trim(), type, group, parentId: parentId || null })}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >{t("save")}</button>
@@ -568,12 +568,12 @@ function CurrenciesSection() {
   return (
     <div className="p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] text-muted">
+        <div className="text-tiny text-muted">
           {currencies.length} currencies — shared with Dashboard → Rates.
         </div>
         <button
           onClick={() => setEditing({ kind: "new" })}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button bg-ink text-white text-[11px] font-semibold hover:bg-ink transition-colors"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-button bg-ink text-white text-tiny font-semibold hover:bg-ink transition-colors"
         >
           <Plus className="w-2.5 h-2.5" />
           Add currency
@@ -585,14 +585,14 @@ function CurrenciesSection() {
           {currencies.map((c) => (
             <div key={c.code} className="px-4 py-2 flex items-center justify-between gap-2 group">
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-card flex items-center justify-center text-[13px] font-bold ${
+                <div className={`w-9 h-9 rounded-card flex items-center justify-center text-body-sm font-bold ${
                   c.type === "crypto" ? "bg-accent-bg text-accent ring-1 ring-indigo-100" : "bg-surface-sunk text-ink-soft"
                 }`}>
                   {c.symbol || c.code[0]}
                 </div>
                 <div>
-                  <div className="text-[13px] font-semibold text-ink tracking-wide">{c.code}</div>
-                  <div className="text-[11px] text-muted">
+                  <div className="text-body-sm font-semibold text-ink tracking-wide">{c.code}</div>
+                  <div className="text-tiny text-muted">
                     {c.name} · {c.type} · {c.decimals}d
                   </div>
                 </div>
@@ -608,7 +608,7 @@ function CurrenciesSection() {
             </div>
           ))}
           {currencies.length === 0 && (
-            <div className="px-4 py-6 text-center text-[12px] text-muted-soft">No currencies yet</div>
+            <div className="px-4 py-6 text-center text-caption text-muted-soft">No currencies yet</div>
           )}
         </div>
       </section>
@@ -655,7 +655,7 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
       <div className="p-5 space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Code</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">Code</label>
             <input
               type="text"
               value={code}
@@ -663,18 +663,18 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
               placeholder="USDC"
               maxLength={6}
               disabled={isEdit}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] font-bold tracking-wider uppercase outline-none disabled:opacity-60"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-bold tracking-wider uppercase outline-none disabled:opacity-60"
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Type</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">Type</label>
             <div className="inline-flex bg-surface-sunk p-0.5 rounded-card w-full">
               {["fiat", "crypto"].map((tp) => (
                 <button
                   key={tp}
                   type="button"
                   onClick={() => setType(tp)}
-                  className={`flex-1 px-3 py-2 text-[12px] font-semibold rounded-button transition-all ${
+                  className={`flex-1 px-3 py-2 text-caption font-semibold rounded-button transition-all ${
                     type === tp ? "bg-white text-ink shadow-sm" : "text-muted"
                   }`}
                 >
@@ -686,45 +686,45 @@ function CurrencyFormModal({ open, initial, onClose, onSave }) {
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Symbol</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">Symbol</label>
             <input
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
               placeholder="$"
               maxLength={3}
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
           <div className="col-span-2">
-            <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Name</label>
+            <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="USD Coin"
-              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] outline-none"
+              className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
             />
           </div>
         </div>
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">Decimals</label>
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">Decimals</label>
           <input
             type="number"
             min={0}
             max={8}
             value={decimals}
             onChange={(e) => setDecimals(parseInt(e.target.value, 10) || 0)}
-            className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[14px] tabular-nums outline-none"
+            className="w-24 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
           />
         </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
-        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors">Cancel</button>
+        <button onClick={onClose} className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors">Cancel</button>
         <button
           onClick={() => onSave({ code: code.trim().toUpperCase(), type, symbol: symbol.trim(), name: name.trim() || code.trim().toUpperCase(), decimals })}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-[13px] font-semibold transition-colors ${
+          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
             canSubmit ? "bg-ink text-white hover:bg-ink" : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >Save</button>
@@ -750,7 +750,7 @@ function ChannelsSection() {
 
   return (
     <div className="p-5 space-y-3">
-      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+      <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
         <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
         <div>
           Read-only view. Create or edit channels in{" "}
@@ -763,14 +763,14 @@ function ChannelsSection() {
           if (chs.length === 0) return null;
           return (
             <div key={c.code} className="px-4 py-2.5">
-              <div className="text-[11px] font-bold tracking-wider text-ink-soft mb-1.5">
+              <div className="text-tiny font-bold tracking-wider text-ink-soft mb-1.5">
                 {c.code} <span className="text-muted-soft font-normal">· {c.type}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {chs.map((ch) => (
                   <span
                     key={ch.id}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold border ${
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold border ${
                       ch.kind === "network"
                         ? "bg-accent-bg text-accent border-indigo-100"
                         : "bg-surface-soft text-ink-soft border-border-soft"
@@ -778,10 +778,10 @@ function ChannelsSection() {
                   >
                     {channelShortLabel(ch)}
                     {ch.isDefaultForCurrency && (
-                      <span className="text-[9px] font-bold text-success bg-success-soft px-1 rounded">default</span>
+                      <span className="text-micro font-bold text-success bg-success-soft px-1 rounded">default</span>
                     )}
                     {ch.gasFee != null && (
-                      <span className="text-[9px] text-muted tabular-nums">gas ${ch.gasFee}</span>
+                      <span className="text-micro text-muted tabular-nums">gas ${ch.gasFee}</span>
                     )}
                   </span>
                 ))}
@@ -800,13 +800,13 @@ function ChannelsSection() {
 function TagsSection() {
   return (
     <div className="p-5 space-y-3">
-      <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+      <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
         <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
         <div>Built-in set. Extend in <span className="font-mono text-ink-soft">src/store/data.js → CLIENT_TAGS</span>.</div>
       </div>
       <div className="flex flex-wrap gap-2">
         {CLIENT_TAGS.map((tag) => (
-          <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md text-[12px] font-semibold bg-surface-sunk text-ink-soft ring-1 ring-border-soft">
+          <span key={tag} className="inline-flex items-center px-2.5 py-1 rounded-md text-caption font-semibold bg-surface-sunk text-ink-soft ring-1 ring-border-soft">
             {tag}
           </span>
         ))}

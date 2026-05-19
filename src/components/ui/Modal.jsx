@@ -69,7 +69,7 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
                 <h3 className="text-[17px] font-bold tracking-tight text-ink">{title}</h3>
               )}
               {subtitle && (
-                <p className="text-[12px] text-muted mt-0.5">{subtitle}</p>
+                <p className="text-caption text-muted mt-0.5">{subtitle}</p>
               )}
             </div>
             <button

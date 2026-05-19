@@ -242,7 +242,7 @@ export default function ListTab() {
   return (
     <div className="space-y-5">
       {/* Subtitle row — counts */}
-      <div className="text-[12.5px] text-muted">
+      <div className="text-caption text-muted">
         {counts.all} {t("cp_total")} · {counts.client} {t("cp_clients_lc")} · {counts.partner} {t("cp_partners_lc")} · {totalDeals} {t("cp_deals_lc")} · {sym}{fmt(totalVolume, base)} {t("cp_volume_lc")}
       </div>
 
@@ -286,7 +286,7 @@ export default function ListTab() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t("cp_search_ph")}
-                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-64 transition-colors placeholder:text-muted-soft"
+                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-body-sm outline-none w-64 transition-colors placeholder:text-muted-soft"
               />
             </div>
             <div className="inline-flex bg-surface-sunk p-0.5 rounded-button gap-0.5">
@@ -302,7 +302,7 @@ export default function ListTab() {
                   key={o.id}
                   type="button"
                   onClick={() => setArchiveFilter(o.id)}
-                  className={`px-2.5 py-1 text-[11px] font-semibold rounded-[6px] transition-all ${
+                  className={`px-2.5 py-1 text-tiny font-semibold rounded-[6px] transition-all ${
                     archiveFilter === o.id
                       ? "bg-white text-ink shadow-sm"
                       : "text-muted hover:text-ink"
@@ -314,7 +314,7 @@ export default function ListTab() {
             </div>
             <button
               onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-emerald-600 text-white text-[12px] font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-emerald-600 text-white text-caption font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
               title="Добавить нового клиента"
             >
               <Users className="w-3 h-3" />
@@ -322,7 +322,7 @@ export default function ListTab() {
             </button>
             <button
               onClick={() => setAddPartnerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-[12px] font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-caption font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
               title="Добавить нового партнёра (контрагента для OTC сделок)"
             >
               <Handshake className="w-3 h-3" />
@@ -332,9 +332,9 @@ export default function ListTab() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-[13px]">
+          <table className="w-full text-body-sm">
             <thead>
-              <tr className="text-left text-[10px] font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
+              <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
                 <th className="px-5 py-2.5 font-bold">{t("cp_col_name")}</th>
                 <th className="px-3 py-2.5 font-bold">{t("cp_col_type")}</th>
                 <th className="px-3 py-2.5 font-bold text-right">{t("cp_col_activity")}</th>
@@ -363,7 +363,7 @@ export default function ListTab() {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-[13px] text-muted-soft">
+                  <td colSpan={7} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                     {search
                       ? t("cp_no_match")
                       : archiveFilter === "archived"
@@ -457,7 +457,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
       <td className="px-5 py-3">
         <div className="flex items-center gap-2.5">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
+            className={`w-8 h-8 rounded-full flex items-center justify-center text-tiny font-bold ${
               isClient
                 ? "bg-gradient-to-br from-surface-sunk to-surface-sunk text-ink-soft"
                 : "bg-gradient-to-br from-indigo-100 to-indigo-200 text-accent"
@@ -466,11 +466,11 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
             {initials}
           </div>
           <div>
-            <div className="font-semibold text-ink text-[13px] flex items-center gap-1.5">
+            <div className="font-semibold text-ink text-body-sm flex items-center gap-1.5">
               {row.name}
               {isClient && <ClientTag tag={row.tag} size="xs" />}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-muted">
+            <div className="flex items-center gap-2 text-tiny text-muted">
               {row.telegram && (
                 <span className="inline-flex items-center gap-0.5 text-info">
                   <Send className="w-2.5 h-2.5" />
@@ -505,7 +505,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
           <span className="text-muted-soft">—</span>
         ) : (
           <span
-            className={`inline-flex items-center px-2 py-1 rounded-md text-[13px] font-bold ${
+            className={`inline-flex items-center px-2 py-1 rounded-md text-body-sm font-bold ${
               row.net >= 0
                 ? "bg-success-soft text-success ring-1 ring-emerald-100"
                 : "bg-danger-soft text-danger ring-1 ring-rose-100"
@@ -515,7 +515,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-muted text-[12px] tabular-nums whitespace-nowrap hidden lg:table-cell">
+      <td className="px-5 py-3 text-muted text-caption tabular-nums whitespace-nowrap hidden lg:table-cell">
         {row.lastActivity || "—"}
       </td>
       <td
@@ -557,7 +557,7 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
             </button>
           </div>
         ) : (
-          <span className="text-[10px] text-muted-soft italic">—</span>
+          <span className="text-tiny text-muted-soft italic">—</span>
         )}
       </td>
     </tr>
@@ -567,14 +567,14 @@ function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
 function TypeBadge({ kind, t }) {
   if (kind === "client") {
     return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-success-soft text-success ring-1 ring-emerald-200">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-bold uppercase tracking-wider bg-success-soft text-success ring-1 ring-emerald-200">
         <Users className="w-2.5 h-2.5" />
         {t("cp_type_client_badge")}
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-accent-bg text-accent ring-1 ring-indigo-200">
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-bold uppercase tracking-wider bg-accent-bg text-accent ring-1 ring-indigo-200">
       <Handshake className="w-2.5 h-2.5" />
       {t("cp_type_partner_badge")}
     </span>
@@ -596,14 +596,14 @@ function TypeChip({ active, onClick, count, icon, tone = "slate", children }) {
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card border text-[12px] font-semibold transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card border text-caption font-semibold transition-colors ${
         active ? toneActive : toneIdle
       }`}
     >
       {icon}
       <span>{children}</span>
       <span
-        className={`text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded ${
+        className={`text-tiny font-bold tabular-nums px-1.5 py-0.5 rounded ${
           active ? "bg-white/20" : "bg-surface-sunk"
         }`}
       >

@@ -65,7 +65,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
             <button
               key={p.id}
               onClick={() => onPageChange(p.id)}
-              className={`px-2.5 py-1.5 rounded-button text-[13px] transition-colors ${
+              className={`px-2.5 py-1.5 rounded-button text-body-sm transition-colors ${
                 page === p.id
                   ? "bg-surface-sunk text-ink font-semibold"
                   : "text-muted hover:text-ink hover:bg-surface-soft"
@@ -80,7 +80,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
         {page === "cashier" && (
           <div className="hidden md:flex items-center gap-2 shrink-0">
             {isScopedManager ? (
-              <div className="inline-flex items-center gap-1.5 bg-white border border-border-soft rounded-card px-3 py-1.5 text-[13px] font-semibold text-ink-soft">
+              <div className="inline-flex items-center gap-1.5 bg-white border border-border-soft rounded-card px-3 py-1.5 text-body-sm font-semibold text-ink-soft">
                 <Building2 className="w-3.5 h-3.5 text-muted-soft" />
                 {scopedOffices[0]?.name || "—"}
               </div>
@@ -122,7 +122,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           <button
             key={p.id}
             onClick={() => onPageChange(p.id)}
-            className={`px-3 py-1 rounded-button text-[12px] whitespace-nowrap transition-colors ${
+            className={`px-3 py-1 rounded-button text-caption whitespace-nowrap transition-colors ${
               page === p.id
                 ? "bg-surface-sunk text-ink font-medium"
                 : "text-muted hover:text-ink"

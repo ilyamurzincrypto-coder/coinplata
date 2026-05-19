@@ -38,7 +38,7 @@ export default function DealRateBlock({
 
       {/* Курс + источник */}
       <div className="flex-1 min-w-0">
-        <div className="text-[10px] uppercase tracking-wider font-bold text-white/60 mb-0.5">
+        <div className="text-tiny uppercase tracking-wider font-bold text-white/60 mb-0.5">
           Курс обмена
         </div>
         <div className="flex items-baseline gap-2">
@@ -50,22 +50,22 @@ export default function DealRateBlock({
             to={toCcy}
             inputClassName="bg-transparent text-white font-mono tabular text-[20px] font-bold border-b border-transparent focus:border-white/40 outline-none transition-colors w-28 min-w-0 placeholder:text-white/30"
           />
-          <span className="text-[11px] text-white/60 font-mono">
+          <span className="text-tiny text-white/60 font-mono">
             {fromCcy} → {toCcy}
           </span>
         </div>
         {warning ? (
-          <div className="mt-0.5 text-[10px] text-rose-300 inline-flex items-center gap-1.5 font-semibold">
+          <div className="mt-0.5 text-tiny text-rose-300 inline-flex items-center gap-1.5 font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             {warning}
           </div>
         ) : manualMode ? (
-          <div className="mt-0.5 text-[10px] text-white/60 inline-flex items-center gap-1.5">
+          <div className="mt-0.5 text-tiny text-white/60 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-300" />
             <span>Курс введён вручную</span>
           </div>
         ) : sourceLabel ? (
-          <div className="mt-0.5 text-[10px] text-white/50 inline-flex items-center gap-1.5">
+          <div className="mt-0.5 text-tiny text-white/50 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot" style={{ boxShadow: "0 0 6px rgba(16,185,129,0.6)" }} />
             <span>Источник: {sourceLabel}{ageLabel ? ` · ${ageLabel}` : ""}</span>
           </div>

@@ -23,7 +23,7 @@ export default function CurrencyPicker({
       aria-label={ariaLabel}
       disabled={disabled}
       className={
-        `bg-transparent border-0 outline-none text-[13px] font-semibold tabular-nums ` +
+        `bg-transparent border-0 outline-none text-body-sm font-semibold tabular-nums ` +
         `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] ` +
         `px-2 py-1.5 cursor-pointer w-full ` +
         `disabled:cursor-not-allowed disabled:opacity-50 ${className}`

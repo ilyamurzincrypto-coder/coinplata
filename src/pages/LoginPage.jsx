@@ -227,14 +227,14 @@ export default function LoginPage() {
             <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
               Sign in to your account
             </h1>
-            <p className="text-[13px] text-muted-soft mt-1.5">
+            <p className="text-body-sm text-muted-soft mt-1.5">
               Secure access to your cashier system
             </p>
           </header>
 
           {/* Notice: Supabase not configured */}
           {!isSupabaseConfigured && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning/10 border border-amber-500/25 text-amber-300 text-[12px]">
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning/10 border border-amber-500/25 text-amber-300 text-caption">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
                 Backend not connected yet — this is a UI preview. Inputs are for
@@ -260,7 +260,7 @@ export default function LoginPage() {
                 onKeyDown={handleEmailKeyDown}
                 disabled={loading}
                 placeholder="you@company.com"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -295,7 +295,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-[14px] text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -303,13 +303,13 @@ export default function LoginPage() {
             {(error || info) && (
               <div className="mt-4">
                 {error && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-caption animate-[fadeIn_200ms_ease-out]">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{error}</span>
                   </div>
                 )}
                 {info && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-[12px] animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-caption animate-[fadeIn_200ms_ease-out]">
                     <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{info}</span>
                   </div>
@@ -321,7 +321,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || recoveryLoading}
-              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-[14px] transition-all ${
+              className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-body transition-all ${
                 loading || recoveryLoading
                   ? "bg-success/60 text-ink/60 cursor-not-allowed"
                   : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
@@ -346,7 +346,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={loading || recoveryLoading}
-                className="text-[12px] font-medium text-muted-soft hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+                className="text-caption font-medium text-muted-soft hover:text-emerald-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
               >
                 {recoveryLoading ? (
                   <>
@@ -360,14 +360,14 @@ export default function LoginPage() {
             </div>
           </form>
 
-          <p className="mt-6 text-center text-[11px] text-muted leading-relaxed">
+          <p className="mt-6 text-center text-tiny text-muted leading-relaxed">
             Don't have an account?{" "}
             <span className="text-muted-soft">Access is invite-only — ask an admin.</span>
           </p>
         </div>
 
         {/* Footer */}
-        <footer className="mt-8 flex flex-col items-center gap-1.5 text-[10px] text-ink-soft">
+        <footer className="mt-8 flex flex-col items-center gap-1.5 text-tiny text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-muted" />
             Secure · Private · Internal system
@@ -425,7 +425,7 @@ function Field({ icon, label, htmlFor, children, className = "", rightSlot }) {
     >
       <label
         htmlFor={htmlFor}
-        className="flex items-center gap-1.5 text-[10px] font-semibold text-muted tracking-[0.1em] uppercase"
+        className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase"
       >
         <span className="text-muted group-focus-within:text-success transition-colors">
           {icon}

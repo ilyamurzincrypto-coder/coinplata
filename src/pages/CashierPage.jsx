@@ -491,13 +491,13 @@ export default function CashierPage({
                     <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
                   </div>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-success mb-0.5">
+                    <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
                       С клиентом
                     </div>
                     <div className="text-[16px] font-bold tracking-tight">
                       {t("cta_resume_exchange_title")}
                     </div>
-                    <div className="text-[12px] text-muted">
+                    <div className="text-caption text-muted">
                       {t("cta_resume_exchange_hint")}
                     </div>
                   </div>
@@ -514,19 +514,19 @@ export default function CashierPage({
                     <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-success mb-0.5">
+                    <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
                       С клиентом
                     </div>
                     <div className="text-[16px] font-bold tracking-tight">
                       {t("cta_new_exchange_title")}
                     </div>
-                    <div className="text-[12px] text-muted-soft">
+                    <div className="text-caption text-muted-soft">
                       {t("cta_new_exchange_hint")}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold text-muted-soft">
+                  <span className="hidden sm:inline-flex items-center gap-1 text-tiny font-semibold text-muted-soft">
                     {t("cta_press_key")}
                     <kbd className="px-1.5 py-0.5 rounded-md bg-ink border border-ink text-white/80 tracking-wider">
                       N
@@ -543,8 +543,8 @@ export default function CashierPage({
                 className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-accent hover:bg-accent-bg hover:border-indigo-400 transition-colors shrink-0"
               >
                 <ArrowRightLeft className="w-5 h-5 mb-1" strokeWidth={2.5} />
-                <span className="text-[11px] font-bold tracking-tight">Перемещение</span>
-                <span className="text-[9px] text-accent font-semibold mt-0.5">между счетами</span>
+                <span className="text-tiny font-bold tracking-tight">Перемещение</span>
+                <span className="text-micro text-accent font-semibold mt-0.5">между счетами</span>
               </button>
               {onOpenHelp && (
                 <button
@@ -604,10 +604,10 @@ export default function CashierPage({
                     <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[14px] font-bold text-ink tracking-tight">
+                    <div className="text-body font-bold text-ink tracking-tight">
                       {t("cta_new_exchange_title")}
                     </div>
-                    <div className="text-[11px] text-muted truncate">
+                    <div className="text-tiny text-muted truncate">
                       {t("drawer_minimize_hint")}
                     </div>
                   </div>
@@ -616,7 +616,7 @@ export default function CashierPage({
                   <button
                     onClick={minimizeCreate}
                     title={`${t("btn_minimize")} (Esc)`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-[12px] font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
                   >
                     <Minus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_minimize")}</span>
@@ -624,7 +624,7 @@ export default function CashierPage({
                   <button
                     onClick={closeCreate}
                     title={t("btn_close_discard")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-[12px] font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
                   >
                     <X className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">{t("btn_close")}</span>
@@ -634,7 +634,7 @@ export default function CashierPage({
 
               <div className="p-5">
                 {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
-                  <div className="mb-3 flex items-start gap-2 text-[12px] text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
+                  <div className="mb-3 flex items-start gap-2 text-caption text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
                     <span aria-hidden>🎓</span>
                     <span>
                       Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.

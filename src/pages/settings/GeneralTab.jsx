@@ -104,7 +104,7 @@ export default function GeneralTab() {
         <div className="p-5 space-y-4">
           <div>
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-              <label className="flex items-center gap-1.5 text-[13px] text-ink-soft font-medium">
+              <label className="flex items-center gap-1.5 text-body-sm text-ink-soft font-medium">
                 <Coins className="w-3.5 h-3.5 text-muted" />
                 {t("base_currency_label")}
               </label>
@@ -115,7 +115,7 @@ export default function GeneralTab() {
                 size="sm"
               />
             </div>
-            <p className="text-[11px] text-muted mb-2">
+            <p className="text-tiny text-muted mb-2">
               {t("base_currency_hint")}
             </p>
             {/* Курс выбранной base на сегодня — чтобы админ видел по
@@ -123,7 +123,7 @@ export default function GeneralTab() {
                 нужно — поменять курс можно через DailyRatesModal /
                 Edit rates. */}
             {baseCur !== "USD" && (
-              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-card bg-success-soft/50 border border-success/20 text-[12px]">
+              <div className="inline-flex items-center gap-2 px-3 py-2 rounded-card bg-success-soft/50 border border-success/20 text-caption">
                 <TrendingUp className="w-3.5 h-3.5 text-success shrink-0" />
                 <span className="text-ink-soft">
                   Курс на сегодня:{" "}
@@ -140,7 +140,7 @@ export default function GeneralTab() {
                     </span>
                   </>
                 )}
-                <span className="text-[10px] text-muted-soft ml-1">
+                <span className="text-tiny text-muted-soft ml-1">
                   изменить → Касса → Quick / Edit rates
                 </span>
               </div>
@@ -156,18 +156,18 @@ export default function GeneralTab() {
           <div>
             <div className="flex items-center gap-1.5 mb-2">
               <ArrowLeftRight className="w-3.5 h-3.5 text-muted" />
-              <label className="text-[13px] text-ink-soft font-medium">
+              <label className="text-body-sm text-ink-soft font-medium">
                 Биржевой курс (для дашборда)
               </label>
             </div>
-            <p className="text-[11px] text-muted mb-2">
+            <p className="text-tiny text-muted mb-2">
               Используется при переключении USD/EUR на главной странице
               (Balances). Не влияет на курсы обмена офиса. Если задан
               только один — обратный вычисляется автоматически (1/курс).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div>
-                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
                   1 USD → EUR
                 </label>
                 <input
@@ -179,11 +179,11 @@ export default function GeneralTab() {
                     setFxUsdEur(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="0.92"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-body-sm font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-muted uppercase tracking-wider mb-1">
+                <label className="block text-tiny font-bold text-muted uppercase tracking-wider mb-1">
                   1 EUR → USD
                 </label>
                 <input
@@ -195,7 +195,7 @@ export default function GeneralTab() {
                     setFxEurUsd(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
                   }
                   placeholder="1.087"
-                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+                  className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-body-sm font-semibold tabular-nums outline-none disabled:text-muted"
                 />
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function GeneralTab() {
               <div className="mt-2 flex justify-end">
                 <button
                   onClick={saveFx}
-                  className="px-3 py-1.5 rounded-button bg-ink text-white text-[12px] font-semibold hover:bg-ink transition-colors"
+                  className="px-3 py-1.5 rounded-button bg-ink text-white text-caption font-semibold hover:bg-ink transition-colors"
                 >
                   Сохранить fx-курсы
                 </button>
@@ -214,7 +214,7 @@ export default function GeneralTab() {
           <div className="h-px bg-surface-sunk" />
 
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <label className="text-[13px] text-ink-soft font-medium">
+            <label className="text-body-sm text-ink-soft font-medium">
               {t("referral_pct_label")}
             </label>
             <input
@@ -225,7 +225,7 @@ export default function GeneralTab() {
               onChange={(e) =>
                 setRefPct(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
               }
-              className="w-40 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-[13px] font-semibold tabular-nums outline-none disabled:text-muted"
+              className="w-40 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-card px-3 py-2 text-body-sm font-semibold tabular-nums outline-none disabled:text-muted"
             />
           </div>
 
@@ -233,14 +233,14 @@ export default function GeneralTab() {
             <div className="pt-2 flex justify-end">
               <button
                 onClick={save}
-                className="px-4 py-2 rounded-card bg-ink text-white text-[13px] font-semibold hover:bg-ink transition-colors"
+                className="px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
               >
                 {t("save")}
               </button>
             </div>
           )}
 
-          <div className="mt-2 text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
+          <div className="mt-2 text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
             <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
             <span>
               Minimum fee and fee % are now configured{" "}

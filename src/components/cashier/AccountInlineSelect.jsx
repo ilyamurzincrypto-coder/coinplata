@@ -70,7 +70,7 @@ export default function AccountInlineSelect({
         disabled={disabled}
         className={
           `w-full appearance-none bg-transparent border-0 outline-none ` +
-          `text-[13px] text-ink-soft ` +
+          `text-body-sm text-ink-soft ` +
           `focus:bg-white focus:ring-1 focus:ring-accent/20 rounded-[var(--radius-cell)] ` +
           `pl-2 pr-7 py-1.5 cursor-pointer ` +
           `disabled:cursor-not-allowed disabled:opacity-50`

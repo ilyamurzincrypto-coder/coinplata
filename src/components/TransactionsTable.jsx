@@ -718,7 +718,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-[15px] font-semibold tracking-tight">{t("transactions")}</h2>
-          <p className="text-[12px] text-muted mt-0.5">
+          <p className="text-caption text-muted mt-0.5">
             {filtered.length} of {officeTxs.length} · {effectiveOfficeId === null ? "All offices" : officeName(effectiveOfficeId)}
           </p>
         </div>
@@ -729,7 +729,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("search_placeholder")}
-            className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-[13px] outline-none w-56 transition-colors placeholder:text-muted-soft"
+            className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-body-sm outline-none w-56 transition-colors placeholder:text-muted-soft"
           />
         </div>
       </div>
@@ -738,7 +738,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       <div className="px-5 py-2.5 border-b border-border-soft bg-surface-soft/50 flex items-center gap-2 flex-wrap">
         <div className="flex items-center gap-1 text-muted mr-1">
           <Filter className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-semibold tracking-wide uppercase">{t("filters")}</span>
+          <span className="text-tiny font-semibold tracking-wide uppercase">{t("filters")}</span>
         </div>
         <div>
           <Select
@@ -752,7 +752,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 .map((o) => ({ value: o.id, label: o.name })),
             ]}
             compact
-            icon={<span className="text-[10px] font-bold text-muted-soft tracking-wider">OFFICE</span>}
+            icon={<span className="text-tiny font-bold text-muted-soft tracking-wider">OFFICE</span>}
           />
         </div>
         <div>
@@ -761,7 +761,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             onChange={setFilterCurrency}
             options={["All", ...CURRENCIES]}
             compact
-            icon={<span className="text-[10px] font-bold text-muted-soft tracking-wider">CCY</span>}
+            icon={<span className="text-tiny font-bold text-muted-soft tracking-wider">CCY</span>}
           />
         </div>
         <div>
@@ -770,7 +770,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             onChange={setFilterStatus}
             options={STATUS_OPTIONS}
             compact
-            icon={<span className="text-[10px] font-bold text-muted-soft tracking-wider">STATUS</span>}
+            icon={<span className="text-tiny font-bold text-muted-soft tracking-wider">STATUS</span>}
           />
         </div>
         <div>
@@ -779,27 +779,27 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             onChange={setFilterManager}
             options={managers}
             compact
-            icon={<span className="text-[10px] font-bold text-muted-soft tracking-wider">MGR</span>}
+            icon={<span className="text-tiny font-bold text-muted-soft tracking-wider">MGR</span>}
           />
         </div>
         <div className="inline-flex items-center gap-1 bg-white border border-border-soft rounded-button px-2 py-1">
-          <span className="text-[9px] font-bold text-muted-soft tracking-wider uppercase">Amt</span>
+          <span className="text-micro font-bold text-muted-soft tracking-wider uppercase">Amt</span>
           <input
             type="text"
             inputMode="decimal"
             value={amountMin}
             onChange={(e) => setAmountMin(e.target.value.replace(/[^\d.]/g, ""))}
             placeholder="min"
-            className="w-14 bg-transparent outline-none text-[11px] tabular-nums"
+            className="w-14 bg-transparent outline-none text-tiny tabular-nums"
           />
-          <span className="text-muted-soft text-[10px]">—</span>
+          <span className="text-muted-soft text-tiny">—</span>
           <input
             type="text"
             inputMode="decimal"
             value={amountMax}
             onChange={(e) => setAmountMax(e.target.value.replace(/[^\d.]/g, ""))}
             placeholder="max"
-            className="w-14 bg-transparent outline-none text-[11px] tabular-nums"
+            className="w-14 bg-transparent outline-none text-tiny tabular-nums"
           />
         </div>
         <div>
@@ -819,15 +819,15 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             type="date"
             value={customFrom}
             onChange={(e) => setCustomFrom(e.target.value)}
-            className="bg-transparent outline-none text-[11px] tabular-nums w-[110px]"
+            className="bg-transparent outline-none text-tiny tabular-nums w-[110px]"
             title="Период: от"
           />
-          <span className="text-muted-soft text-[10px]">—</span>
+          <span className="text-muted-soft text-tiny">—</span>
           <input
             type="date"
             value={customTo}
             onChange={(e) => setCustomTo(e.target.value)}
-            className="bg-transparent outline-none text-[11px] tabular-nums w-[110px]"
+            className="bg-transparent outline-none text-tiny tabular-nums w-[110px]"
             title="Период: до (включительно)"
           />
           {(customFrom || customTo) && (
@@ -844,7 +844,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         {hasActiveFilters && (
           <button
             onClick={clearFilters}
-            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-button text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft transition-colors"
+            className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-button text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-white border border-transparent hover:border-border-soft transition-colors"
           >
             <X className="w-3 h-3" /> {t("clear")}
           </button>
@@ -858,7 +858,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         <div className="mx-5 mb-2 flex justify-end">
           <button
             onClick={handleExportCSV}
-            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-ink-soft hover:text-ink hover:bg-white border border-border-soft hover:border-border"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-tiny font-semibold text-ink-soft hover:text-ink hover:bg-white border border-border-soft hover:border-border"
             title="Export all filtered rows to CSV"
           >
             <Upload className="w-3 h-3" />
@@ -869,7 +869,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
 
       {/* Table — bank-style row layout: одна строка = одна сделка, колонки выровнены. */}
       <div className="overflow-x-auto">
-        <table className="w-full text-[13px] border-collapse [&_th]:border-r [&_th]:border-border-soft [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-border-soft [&_td:last-child]:border-r-0">
+        <table className="w-full text-body-sm border-collapse [&_th]:border-r [&_th]:border-border-soft [&_th:last-child]:border-r-0 [&_td]:border-r [&_td]:border-border-soft [&_td:last-child]:border-r-0">
           <colgroup>
             <col className="w-[72px]" />
             <col className="w-[160px]" />
@@ -887,62 +887,62 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             <tr>
               <th
                 onClick={() => toggleSort("time")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
               >
                 {t("time")}{sortIndicator("time")}
               </th>
               <th
                 onClick={() => toggleSort("type")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden sm:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden sm:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("type")}{sortIndicator("type")}
               </th>
               <th
                 onClick={() => toggleSort("counterparty")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("counterparty") || "Контрагент"}{sortIndicator("counterparty")}
               </th>
               <th
                 onClick={() => toggleSort("in")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-right text-tiny font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
               >
                 {t("in")}{sortIndicator("in")}
               </th>
               <th
                 onClick={() => toggleSort("rate")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-right text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("rate")}{sortIndicator("rate")}
               </th>
               <th
                 onClick={() => toggleSort("out")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-right text-tiny font-bold text-muted tracking-[0.12em] uppercase cursor-pointer select-none whitespace-nowrap hover:text-ink hover:bg-surface-soft"
               >
                 {t("out")}{sortIndicator("out")}
               </th>
               <th
                 onClick={() => toggleSort("fee")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-right text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden md:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("fee")}{sortIndicator("fee")}
               </th>
               <th
                 onClick={() => toggleSort("profit")}
-                className="px-3 py-2 text-right text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-right text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("profit")}{sortIndicator("profit")}
               </th>
               <th
                 onClick={() => toggleSort("risk")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden lg:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 Risk{sortIndicator("risk")}
               </th>
               <th className="px-3 py-2"></th>
               <th
                 onClick={() => toggleSort("manager")}
-                className="px-3 py-2 text-left text-[10px] font-bold text-muted tracking-[0.12em] uppercase hidden xl:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
+                className="px-3 py-2 text-left text-tiny font-bold text-muted tracking-[0.12em] uppercase hidden xl:table-cell cursor-pointer select-none hover:text-ink hover:bg-surface-soft"
               >
                 {t("manager")}{sortIndicator("manager")}
               </th>
@@ -991,8 +991,8 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 .filter(Boolean)
                 .join("\n");
               // Унифицированные классы для money-cells (правое выравнивание + tabular).
-              const moneyCell = "px-3 py-2 text-right tabular-nums whitespace-nowrap text-[13px] align-middle";
-              const textCell = "px-3 py-2 text-[13px] align-middle";
+              const moneyCell = "px-3 py-2 text-right tabular-nums whitespace-nowrap text-body-sm align-middle";
+              const textCell = "px-3 py-2 text-body-sm align-middle";
               // Row classes: base + zebra + state overrides. Approved → emerald
               // override; pinned/otc/broker/deleted/new — каждый со своим тоном.
               const rowBase =
@@ -1024,7 +1024,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                     <div className="font-semibold text-ink tabular-nums leading-tight">
                       {tx.time}
                     </div>
-                    <div className="text-[11px] text-muted-soft tabular-nums leading-tight">
+                    <div className="text-tiny text-muted-soft tabular-nums leading-tight">
                       {tx.date}
                     </div>
                   </td>
@@ -1032,7 +1032,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   <td className={`${textCell} hidden sm:table-cell`}>
                     <div className="flex items-center gap-1 flex-wrap">
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-semibold ${
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold ${
                           displayType === "EXCHANGE"
                             ? "bg-surface-sunk text-ink-soft"
                             : displayType === "IN"
@@ -1047,7 +1047,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       <KindPill type="deal" kind={tx.kind} />
                       {tx.status === "pending" && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-warning-soft text-warning ring-1 ring-amber-200"
                           title={t("pending_hint")}
                         >
                           <Clock className="w-2.5 h-2.5" />
@@ -1056,7 +1056,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.status === "checking" && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-info-soft text-info ring-1 ring-sky-200"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-info-soft text-info ring-1 ring-sky-200"
                           title={t("tip_checking")}
                         >
                           <Radar className="w-2.5 h-2.5 animate-pulse" />
@@ -1065,7 +1065,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.status === "completed" && tx.confirmedAt && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-success-soft text-success ring-1 ring-emerald-200"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-success-soft text-success ring-1 ring-emerald-200"
                           title={`${t("badge_confirmed")} ${tx.confirmedAt}${tx.confirmedTxHash ? ` · tx ${tx.confirmedTxHash.slice(0, 10)}…` : ""}`}
                         >
                           <CheckCircle2 className="w-2.5 h-2.5" />
@@ -1073,14 +1073,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         </span>
                       )}
                       {isDeleted && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-surface-sunk text-ink-soft">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-surface-sunk text-ink-soft">
                           <Trash2 className="w-2.5 h-2.5" />
                           {t("status_deleted")}
                         </span>
                       )}
                       {tx.status === "flagged" && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-danger-soft text-danger ring-1 ring-rose-200"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-danger-soft text-danger ring-1 ring-rose-200"
                           title={t("tip_flagged")}
                         >
                           <Flag className="w-2.5 h-2.5" />
@@ -1089,7 +1089,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.pinned && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-accent-bg text-accent ring-1 ring-indigo-200"
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-micro font-bold bg-accent-bg text-accent ring-1 ring-indigo-200"
                           title={t("tip_pinned")}
                         >
                           <Pin className="w-2.5 h-2.5" />
@@ -1111,7 +1111,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         if (offs.size <= 1) return null;
                         return (
                           <span
-                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-warning-soft text-warning ring-1 ring-amber-200"
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-warning-soft text-warning ring-1 ring-amber-200"
                             title="Transaction spans more than one office"
                           >
                             <ArrowLeftRight className="w-2.5 h-2.5" />
@@ -1121,7 +1121,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       })()}
                       {tx.referral && (
                         <span
-                          className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md text-[10px] font-semibold bg-accent-bg text-accent"
+                          className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-md text-tiny font-semibold bg-accent-bg text-accent"
                           title="Referral"
                         >
                           <UserPlus className="w-2.5 h-2.5" />
@@ -1141,7 +1141,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         </div>
                         {tx.counterpartyTelegram && (
                           <div
-                            className="text-[11px] text-muted truncate"
+                            className="text-tiny text-muted truncate"
                             title={tx.counterpartyTelegram}
                           >
                             {tx.counterpartyTelegram}
@@ -1185,13 +1185,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         .join(" · ");
                       return (
                         <div className="inline-flex items-center gap-1 justify-end whitespace-nowrap">
-                          <span className="text-[13px] font-medium text-ink tabular-nums">
+                          <span className="text-body-sm font-medium text-ink tabular-nums">
                             {fmt(mainSum, mainCur)}
                           </span>
-                          <span className="text-muted-soft text-[11px]">{mainCur}</span>
+                          <span className="text-muted-soft text-tiny">{mainCur}</span>
                           {extraCount > 0 && (
                             <span
-                              className="text-[9px] font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
+                              className="text-micro font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
                               title={tipExtra}
                             >
                               +{extraCount}
@@ -1222,7 +1222,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                           <span>{first}</span>
                           {uniq.length > 1 && (
                             <span
-                              className="text-[9px] font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
+                              className="text-micro font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
                               title={`Разные курсы: ${uniq.join(" / ")}`}
                             >
                               +{uniq.length - 1}
@@ -1263,7 +1263,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   <td className={`${textCell} whitespace-nowrap hidden lg:table-cell`}>
                     {tx.riskLevel ? (
                       <span
-                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-bold ring-1 ${riskLevelStyle(tx.riskLevel)}`}
                         title={(tx.riskFlags || []).join(", ") || "no flags"}
                       >
                         <Shield className="w-2.5 h-2.5" />
@@ -1288,7 +1288,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                               { success: "Выдано", errorPrefix: "Ошибка" }
                             );
                           }}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
                           title="Подтвердить физическую выдачу денег клиенту"
                         >
                           <HandCoins className="w-3 h-3" />
@@ -1299,7 +1299,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         <button
                           onClick={() => handleComplete(tx)}
                           disabled={isBusy(tx.id) || USE_NEW_LEDGER}
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold transition-colors ${
                             isBusy(tx.id) || USE_NEW_LEDGER
                               ? "bg-surface-sunk text-muted cursor-not-allowed"
                               : "bg-emerald-600 text-white hover:bg-emerald-700"
@@ -1313,7 +1313,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       {tx.status === "checking" && canEdit && (
                         <button
                           onClick={() => handleSimulateConfirm(tx)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors"
                           title="Simulate blockchain incoming tx (demo — stub)"
                         >
                           <Zap className="w-3 h-3" />
@@ -1386,20 +1386,20 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                   {/* MANAGER — теперь самая правая колонка вместо пустой. */}
                   <td className={`${textCell} whitespace-nowrap hidden xl:table-cell`}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <div className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-surface-sunk to-surface-sunk flex items-center justify-center text-[10px] font-bold text-ink-soft">
+                      <div className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-surface-sunk to-surface-sunk flex items-center justify-center text-tiny font-bold text-ink-soft">
                         {tx.manager.split(". ")[1]?.[0] || tx.manager[0]}
                       </div>
                       <span
-                        className="text-ink-soft text-[13px] truncate"
+                        className="text-ink-soft text-body-sm truncate"
                         title={tx.manager}
                       >
                         {tx.manager}
                       </span>
                       {tx.payeeName && (
                         <>
-                          <span className="text-[10px] text-muted-soft shrink-0">→</span>
+                          <span className="text-tiny text-muted-soft shrink-0">→</span>
                           <span
-                            className="text-[12px] font-semibold text-accent truncate"
+                            className="text-caption font-semibold text-accent truncate"
                             title={`Payee: ${tx.payeeName}${tx.payeeOfficeId ? ` · ${officeName(tx.payeeOfficeId)}` : ""}`}
                           >
                             {tx.payeeName}
@@ -1408,7 +1408,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.payeeUserId && !tx.payedOutAt && (
                         <span
-                          className="inline-flex items-center gap-1 text-[9px] font-bold text-warning bg-warning-soft border border-warning/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          className="inline-flex items-center gap-1 text-micro font-bold text-warning bg-warning-soft border border-warning/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
                           title="Ожидает выдачи назначенным менеджером"
                         >
                           <Clock className="w-2.5 h-2.5" />
@@ -1416,7 +1416,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                       )}
                       {tx.payedOutAt && (
                         <span
-                          className="inline-flex items-center gap-1 text-[9px] font-bold text-success bg-success-soft border border-success/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
+                          className="inline-flex items-center gap-1 text-micro font-bold text-success bg-success-soft border border-success/20 rounded px-1 py-0.5 uppercase tracking-wider shrink-0"
                           title={`Выдано ${new Date(tx.payedOutAt).toLocaleString()}`}
                         >
                           <CheckCircle2 className="w-2.5 h-2.5" />
@@ -1430,10 +1430,10 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={12} className="px-5 py-16 text-center">
-                  <div className="text-muted-soft text-[13px]">{t("no_match")}</div>
+                  <div className="text-muted-soft text-body-sm">{t("no_match")}</div>
                   <button
                     onClick={clearFilters}
-                    className="mt-2 text-[12px] text-ink font-medium hover:underline inline-flex items-center gap-1"
+                    className="mt-2 text-caption text-ink font-medium hover:underline inline-flex items-center gap-1"
                   >
                     <X className="w-3 h-3" /> {t("clear_filters")}
                   </button>
@@ -1445,13 +1445,13 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
       </div>
 
       {/* Pagination */}
-      <div className="px-5 py-2 border-t border-border-soft bg-white flex items-center justify-between flex-wrap gap-2 text-[12px]">
+      <div className="px-5 py-2 border-t border-border-soft bg-white flex items-center justify-between flex-wrap gap-2 text-caption">
         <div className="flex items-center gap-2 text-muted">
           <span>Rows per page</span>
           <select
             value={pageSize}
             onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
-            className="bg-surface-soft border border-border-soft rounded-[6px] px-2 py-1 text-[11px] font-semibold outline-none"
+            className="bg-surface-soft border border-border-soft rounded-[6px] px-2 py-1 text-tiny font-semibold outline-none"
           >
             {[10, 25, 50, 100].map((n) => (
               <option key={n} value={n}>{n}</option>
@@ -1512,7 +1512,7 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
         });
         const baseSym = curSymbol(baseCurrency);
         return (
-          <div className="px-5 py-3 border-t border-border-soft bg-surface-soft/40 flex items-center justify-between text-[12px] flex-wrap gap-3">
+          <div className="px-5 py-3 border-t border-border-soft bg-surface-soft/40 flex items-center justify-between text-caption flex-wrap gap-3">
             <div className="flex items-center gap-4 flex-wrap">
               <span className="text-muted">
                 {t("showing")}{" "}
@@ -1522,14 +1522,14 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                 {t("transactions").toLowerCase()}
               </span>
               {countCompleted > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-success">
+                <span className="inline-flex items-center gap-1 text-tiny text-success">
                   <span className="w-1.5 h-1.5 rounded-full bg-success" />
                   <span className="tabular-nums font-semibold">{countCompleted}</span>
                   <span className="text-success/70">completed</span>
                 </span>
               )}
               {countPending > 0 && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-warning">
+                <span className="inline-flex items-center gap-1 text-tiny text-warning">
                   <span className="w-1.5 h-1.5 rounded-full bg-warning" />
                   <span className="tabular-nums font-semibold">{countPending}</span>
                   <span className="text-warning/70">pending</span>
@@ -1623,10 +1623,10 @@ function OutputsCell({ tx, outputs, accounts, canEdit, onSend, onConfirm }) {
       <span className="font-semibold text-ink tabular-nums">
         {fmt(main.amount, main.currency)}
       </span>
-      <span className="text-muted-soft font-medium text-[11px]">{main.currency}</span>
+      <span className="text-muted-soft font-medium text-tiny">{main.currency}</span>
       {extraCount > 0 && (
         <span
-          className="text-[9px] font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
+          className="text-micro font-bold text-muted bg-surface-sunk rounded px-1 py-0.5"
           title={tipExtra}
         >
           +{extraCount}
@@ -1657,16 +1657,16 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
 
   return (
     <div className="flex items-center justify-end gap-1.5 flex-wrap">
-      <span className="font-semibold text-ink text-[13px] tabular-nums">
+      <span className="font-semibold text-ink text-body-sm tabular-nums">
         {fmt(o.amount, o.currency)}
       </span>
-      <span className="text-[10px] text-muted font-bold w-10 text-left">
+      <span className="text-tiny text-muted font-bold w-10 text-left">
         {o.currency}
       </span>
 
       {/* Partial: показываем прогресс "actual / planned" */}
       {legState.status === "partial" && (
-        <span className="text-[10px] font-bold text-accent tabular-nums">
+        <span className="text-tiny font-bold text-accent tabular-nums">
           {fmt(legState.actual, o.currency)}/{fmt(legState.planned, o.currency)}
         </span>
       )}
@@ -1674,7 +1674,7 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
       {/* Leg status chip (для не-crypto) */}
       {showLegChip && legState.status !== "completed" && (
         <span
-          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold ring-1 ${legStyle.cls}`}
+          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-micro font-bold ring-1 ${legStyle.cls}`}
           title={
             legState.status === "delayed"
               ? `Planned ${formatShortDate(o.plannedAt)} · delayed ${legState.delayDays}d`
@@ -1687,7 +1687,7 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
 
       {/* Completed date (compact) — только если не legacy и сделка не свежая */}
       {showLegChip && legState.status === "completed" && o.completedAt && (
-        <span className="text-[10px] text-muted-soft tabular-nums">
+        <span className="text-tiny text-muted-soft tabular-nums">
           ✓ {formatShortDate(o.completedAt)}
         </span>
       )}
@@ -1701,7 +1701,7 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
       {isCryptoOut && canEdit && o.sendStatus === "pending_send" && (
         <button
           onClick={onSend}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors"
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-semibold bg-sky-600 text-white hover:bg-sky-700 transition-colors"
           title="Enter on-chain tx hash"
         >
           <Send className="w-2.5 h-2.5" />
@@ -1711,7 +1711,7 @@ function OutputRowLine({ output: o, index, canEdit, onSend, onConfirm }) {
       {isCryptoOut && canEdit && o.sendStatus === "sent" && (
         <button
           onClick={onConfirm}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
+          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors"
           title="Simulate blockchain confirmation (demo)"
         >
           <CheckCircle2 className="w-2.5 h-2.5" />
@@ -1735,7 +1735,7 @@ function InStatusLine({ tx }) {
   });
   if (state.status === "completed") {
     return tx.inCompletedAt ? (
-      <div className="text-[9px] text-muted-soft tabular-nums mt-0.5">
+      <div className="text-micro text-muted-soft tabular-nums mt-0.5">
         ✓ {formatShortDate(tx.inCompletedAt)}
       </div>
     ) : null;
@@ -1743,14 +1743,14 @@ function InStatusLine({ tx }) {
   const style = legStatusStyle(state.status);
   if (state.status === "partial") {
     return (
-      <div className="text-[9px] font-bold text-accent tabular-nums mt-0.5">
+      <div className="text-micro font-bold text-accent tabular-nums mt-0.5">
         {fmt(state.actual, tx.curIn)}/{fmt(state.planned, tx.curIn)}
       </div>
     );
   }
   return (
     <div
-      className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-[9px] font-bold ring-1 mt-0.5 ${style.cls}`}
+      className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded text-micro font-bold ring-1 mt-0.5 ${style.cls}`}
       title={
         state.status === "delayed"
           ? `Planned ${formatShortDate(tx.inPlannedAt)} · delayed ${state.delayDays}d`
@@ -1773,7 +1773,7 @@ function SendStatusBadge({ status }) {
   const m = map[status] || { label: status, cls: "bg-surface-sunk text-ink-soft ring-border-soft", Icon: Clock };
   const Icon = m.Icon;
   return (
-    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-bold ring-1 ${m.cls}`}>
+    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-micro font-bold ring-1 ${m.cls}`}>
       <Icon className="w-2.5 h-2.5" />
       {m.label}
     </span>
@@ -1819,10 +1819,10 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
   return (
     <Modal open={!!data} onClose={onCancel} title="Record outgoing transfer" width="md">
       <div className="p-5 space-y-3">
-        <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2 text-[12px]">
+        <div className="bg-surface-soft border border-border-soft rounded-card px-3 py-2 text-caption">
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-muted">
-              <span className="text-[10px] font-bold uppercase tracking-wider mr-1">Deal</span>
+              <span className="text-tiny font-bold uppercase tracking-wider mr-1">Deal</span>
               #{tx.id} · output {outputIndex + 1}
             </span>
             <span className="font-bold text-ink tabular-nums">
@@ -1830,14 +1830,14 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
             </span>
           </div>
           {output.address && (
-            <div className="mt-1 text-[11px] text-muted font-mono truncate">
+            <div className="mt-1 text-tiny text-muted font-mono truncate">
               → {output.address}
             </div>
           )}
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             Network
           </label>
           <div className="flex gap-1.5">
@@ -1846,7 +1846,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
                 key={n}
                 type="button"
                 onClick={() => setNetwork(n)}
-                className={`px-3 py-1.5 text-[12px] font-semibold rounded-button border transition-colors ${
+                className={`px-3 py-1.5 text-caption font-semibold rounded-button border transition-colors ${
                   network === n
                     ? "bg-ink text-white border-ink"
                     : "bg-white text-ink-soft border-border-soft hover:border-border"
@@ -1859,7 +1859,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-muted mb-1.5 tracking-wide uppercase">
+          <label className="block text-tiny font-semibold text-muted mb-1.5 tracking-wide uppercase">
             On-chain tx hash
           </label>
           <input
@@ -1868,9 +1868,9 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
             onChange={(e) => setTxHash(e.target.value.trim())}
             autoFocus
             placeholder="0x… or 64-hex"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-[12px] font-mono outline-none"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-caption font-mono outline-none"
           />
-          <p className="text-[10px] text-muted mt-1">
+          <p className="text-tiny text-muted mt-1">
             After saving, status moves to <span className="font-semibold">Sent</span>.
             Balance stays reserved until you click <span className="font-semibold">Confirm</span> (demo)
             or polling auto-confirms in production.
@@ -1878,7 +1878,7 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
         </div>
 
         {error && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
             {error}
           </div>
         )}
@@ -1886,13 +1886,13 @@ function SendCryptoModal({ data, onCancel, onConfirm }) {
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
           onClick={onCancel}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 rounded-card bg-sky-600 text-white text-[13px] font-semibold hover:bg-sky-700 transition-colors inline-flex items-center gap-1.5"
+          className="px-4 py-2 rounded-card bg-sky-600 text-white text-body-sm font-semibold hover:bg-sky-700 transition-colors inline-flex items-center gap-1.5"
         >
           <Send className="w-3 h-3" />
           Mark as sent
@@ -1909,12 +1909,12 @@ function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
   return (
     <Modal open={!!tx} onClose={onCancel} title="Delete transaction?" width="md">
       <div className="p-5 space-y-3">
-        <p className="text-[13px] text-ink-soft">
+        <p className="text-body-sm text-ink-soft">
           Deleting <span className="font-semibold">#{tx.id}</span> ({tx.curIn}{" "}
           {tx.amtIn}) will roll back all its fund movements.
         </p>
         {isConfirmedCrypto && (
-          <div className="text-[12px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2 inline-flex items-start gap-2">
+          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2 inline-flex items-start gap-2">
             <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
             <span>
               This deal was auto-confirmed on-chain (tx{" "}
@@ -1924,7 +1924,7 @@ function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
             </span>
           </div>
         )}
-        <div className="text-[11px] text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
+        <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Row stays visible with a <span className="font-semibold">Deleted</span> badge.
           The transaction can't be restored from the UI.
         </div>
@@ -1933,14 +1933,14 @@ function DeleteTxModal({ tx, onCancel, onConfirm, busy = false }) {
         <button
           onClick={onCancel}
           disabled={busy}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-[13px] font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
+          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors disabled:opacity-60"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           disabled={busy}
-          className={`px-4 py-2 rounded-card text-white text-[13px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+          className={`px-4 py-2 rounded-card text-white text-body-sm font-semibold transition-colors inline-flex items-center gap-1.5 ${
             busy ? "bg-rose-400 cursor-not-allowed" : "bg-danger hover:bg-rose-700"
           }`}
         >
