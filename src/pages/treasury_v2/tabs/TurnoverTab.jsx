@@ -28,19 +28,27 @@ export default function TurnoverTab({ ctx, officeFilter, formatBase, baseCurrenc
 
   return (
     <div className="space-y-3">
-      <div className="bg-white border border-slate-200/70 rounded-[12px] p-3 flex flex-wrap items-center gap-4">
+      <div className="bg-surface rounded-card p-3 flex flex-wrap items-center gap-4">
         <PeriodPicker value={period} onChange={setP} />
-        <div className="flex items-center gap-1.5">
+        <div className="inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill">
           {VIEWS.map((v) => (
-            <button key={v} onClick={() => setV(v)}
-              className={`px-2.5 py-1 rounded-[8px] text-[12px] font-medium ${view === v ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            <button
+              key={v}
+              type="button"
+              onClick={() => setV(v)}
+              className={`h-7 px-2.5 rounded-pill text-caption font-semibold transition-all duration-150 ease-apple ${
+                view === v
+                  ? "bg-surface text-ink shadow-seg"
+                  : "text-muted hover:text-ink"
+              }`}
+            >
               {t(v === "osv" ? "trv2_to_view_osv" : "trv2_to_view_chess")}
             </button>
           ))}
         </div>
       </div>
       {truncated && (
-        <div className="rounded-[10px] px-3 py-2 text-[12px] bg-amber-50 text-amber-800 border border-amber-200">{t("trv2_window_partial")}</div>
+        <div className="rounded-card px-card py-2 text-caption bg-warning-soft text-warning border border-warning/20">{t("trv2_window_partial")}</div>
       )}
       {view === "osv"
         ? <TrialBalanceTable ctx={ctx} window={win} officeFilter={officeFilter} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={onOpenTx} />

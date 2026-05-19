@@ -21,11 +21,17 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <span className="text-[12px] text-slate-500">{t("trv2_tab_equity")}</span>
+        <div className="text-h2 text-ink flex items-center gap-2">
+          {t("trv2_tab_equity")}
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+            {sections.length}
+          </span>
+        </div>
         {can("accounting", "edit") && (
           <button
+            type="button"
             onClick={() => setAddOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[10px] bg-slate-900 text-white text-[12.5px] font-semibold hover:bg-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
             {t("trv2_chart_add_btn")}
@@ -33,7 +39,7 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
         )}
       </div>
       {sections.length === 0 ? (
-        <div className="p-5 text-slate-400 text-[13px]">{t("trv2_no_accounts")}</div>
+        <div className="bg-surface rounded-card p-card text-center text-body-sm text-muted">{t("trv2_no_accounts")}</div>
       ) : (
         sections.map((s) => (
           <ClassSection key={s.subtype} labelKey={s.labelKey} totalInBase={s.totalInBase} formatBase={formatBase} baseCurrency={baseCurrency}>
@@ -43,7 +49,11 @@ export default function EquityTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
           </ClassSection>
         ))
       )}
-      <div className={`rounded-[10px] px-4 py-3 text-[12.5px] font-medium ${totals.identityCheck.ok ? "bg-emerald-50 text-emerald-900" : "bg-rose-50 text-rose-900"}`}>
+      <div className={`rounded-card px-card py-3 text-body-sm font-medium font-mono tabular ${
+        totals.identityCheck.ok
+          ? "bg-success-soft text-success border border-success/20"
+          : "bg-danger-soft text-danger border border-danger/20"
+      }`}>
         {t("trv2_tab_equity")} {formatBase(totals.equity, baseCurrency)}
         {Math.abs(totals.pnl || 0) > 0.005 && (
           <span className="opacity-70"> ({t("trv2_balance_incl_pnl")} {formatBase(totals.pnl, baseCurrency)})</span>

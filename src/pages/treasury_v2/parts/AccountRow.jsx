@@ -22,13 +22,15 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
   return (
     <>
       <div
-        className="px-4 py-2 flex items-center gap-2 cursor-pointer hover:bg-slate-50 border-t border-slate-100"
+        className="px-card py-2 flex items-center gap-2 cursor-pointer hover:bg-surface-soft border-t border-border-soft transition-colors"
         onClick={() => setExpanded((v) => !v)}
       >
-        {expanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-        <span className="font-mono text-[11px] text-slate-400 w-12">{account.code}</span>
-        <span className="flex-1 text-[12.5px] font-medium text-slate-900 truncate">{account.name}</span>
-        <span className="text-[12px] text-slate-500 tabular-nums w-32 text-right">
+        {expanded
+          ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
+          : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+        <span className="font-mono text-tiny text-muted-soft w-12">{account.code}</span>
+        <span className="flex-1 text-body-sm font-medium text-ink truncate">{account.name}</span>
+        <span className="text-body-sm font-mono tabular text-ink-soft w-32 text-right">
           {/* Если у юзера нет accounting:edit и счёт — субконто-агрегат
               (dims != null), редактор всё равно деградирует в read-only;
               для dimensioned счетов inline-edit на родителе блокируем
@@ -47,13 +49,13 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
             />
           )}
         </span>
-        <span className="text-[12.5px] font-semibold tabular-nums w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
+        <span className="text-body-sm font-mono tabular font-semibold text-ink w-28 text-right">{formatBase(account.balanceInBase * displayMul, baseCurrency)}</span>
       </div>
       {expanded && (dims
         ? (
             <>
               {dims.length === 0 ? (
-                <div className="pl-9 pr-4 py-2 text-[11px] text-slate-400">—</div>
+                <div className="pl-9 pr-card py-2 text-tiny text-muted-soft">—</div>
               ) : (
                 dims.map((d, i) => (
                   <AccountSubcontoRow
@@ -71,7 +73,7 @@ export default function AccountRow({ account, ctx, formatBase, baseCurrency, onO
               {/* «+ Контрагент» — добавить новый субсчёт. Видно если у
                   родителя задан client_dim_required или partner_dim_required. */}
               {dimKind && parentFull && (
-                <div className="pl-9 pr-4 py-2 border-t border-slate-100 bg-slate-50/30">
+                <div className="pl-9 pr-card py-2 border-t border-border-soft bg-surface-soft/30">
                   <InlineBalanceEditor
                     mode="newDim"
                     dimKind={dimKind}

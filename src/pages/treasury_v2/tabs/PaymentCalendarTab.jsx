@@ -10,11 +10,11 @@ import { bucketObligations, PC_BUCKETS, obligationLegTotals } from "../../../lib
 
 const fmtNum = (n) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 const BUCKET_STYLE = {
-  overdue: "bg-rose-50 text-rose-700 border-rose-200",
-  today: "bg-amber-50 text-amber-800 border-amber-200",
-  week: "bg-sky-50 text-sky-700 border-sky-200",
-  later: "bg-slate-50 text-slate-600 border-slate-200",
-  no_date: "bg-slate-50 text-slate-500 border-slate-200",
+  overdue: "bg-danger-soft text-danger border-danger/20",
+  today:   "bg-warning-soft text-warning border-warning/20",
+  week:    "bg-info-soft text-info border-info/20",
+  later:   "bg-surface-soft text-ink-soft border-border-soft",
+  no_date: "bg-surface-soft text-muted border-border-soft",
 };
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("en-GB") : "—");
 
@@ -28,8 +28,8 @@ export default function PaymentCalendarTab({ officeFilter }) {
   const buckets = useMemo(() => bucketObligations(filtered), [filtered]);
   const total = filtered.length;
 
-  if (loading) return <div className="bg-white rounded-[14px] border border-slate-200/70 px-4 py-8 text-center text-[12.5px] text-slate-400">…</div>;
-  if (total === 0) return <div className="bg-white rounded-[14px] border border-slate-200/70 px-4 py-8 text-center text-[12.5px] text-slate-400">{t("trv2_cal_empty")}</div>;
+  if (loading) return <div className="bg-surface rounded-card px-card py-8 text-center text-body-sm text-muted">…</div>;
+  if (total === 0) return <div className="bg-surface rounded-card px-card py-8 text-center text-body-sm text-muted">{t("trv2_cal_empty")}</div>;
 
   return (
     <div className="space-y-3">
@@ -37,23 +37,23 @@ export default function PaymentCalendarTab({ officeFilter }) {
         const rows = buckets[k];
         if (rows.length === 0) return null;
         return (
-          <section key={k} className="bg-white rounded-[14px] border border-slate-200/70 overflow-hidden">
-            <header className={`px-4 py-2 border-b text-[12px] font-bold flex items-center justify-between ${BUCKET_STYLE[k]}`}>
+          <section key={k} className="bg-surface rounded-card overflow-hidden">
+            <header className={`px-card py-2 border-b text-caption font-bold flex items-center justify-between ${BUCKET_STYLE[k]}`}>
               <span>{t(`trv2_cal_${k}`)}</span>
-              <span className="text-[11px] font-medium opacity-80">{t("trv2_cal_count").replace("{n}", String(rows.length))}</span>
+              <span className="text-tiny font-mono tabular opacity-80">{t("trv2_cal_count").replace("{n}", String(rows.length))}</span>
             </header>
-            <table className="w-full text-[12px]">
+            <table className="w-full text-caption">
               <tbody>
                 {rows.map((it) => (
-                  <tr key={it.id} className="border-t border-slate-100">
-                    <td className="px-4 py-1.5 text-slate-500 w-24 tabular-nums">{fmtDate(it.due_date)}</td>
-                    <td className="px-2 py-1.5 text-slate-700">{it.counterparty_name || "—"}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-700">
+                  <tr key={it.id} className="border-t border-border-soft hover:bg-surface-soft transition-colors">
+                    <td className="px-card py-1.5 text-muted w-24 font-mono tabular">{fmtDate(it.due_date)}</td>
+                    <td className="px-2 py-1.5 text-ink-soft">{it.counterparty_name || "—"}</td>
+                    <td className="px-2 py-1.5 text-right font-mono tabular text-ink-soft">
                       {obligationLegTotals(it).map((lt, i) => (
                         <span key={lt.currency}>{i > 0 ? " · " : ""}{fmtNum(lt.amount)} {lt.currency}</span>
                       ))}
                     </td>
-                    <td className="px-2 py-1.5 text-right text-[10px] uppercase tracking-wider text-slate-400 w-20">{it.status}</td>
+                    <td className="px-2 py-1.5 text-right text-micro uppercase tracking-wider text-muted-soft w-20">{it.status}</td>
                   </tr>
                 ))}
               </tbody>
@@ -61,7 +61,7 @@ export default function PaymentCalendarTab({ officeFilter }) {
           </section>
         );
       })}
-      <p className="text-[11px] text-slate-400">{t("trv2_cal_note")}</p>
+      <p className="text-tiny text-muted-soft">{t("trv2_cal_note")}</p>
     </div>
   );
 }
