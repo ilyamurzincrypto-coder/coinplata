@@ -85,33 +85,33 @@ export default function ObligationsFilterPanel({
   const clearAll = () => setFilters(defaultFilters());
 
   return (
-    <div className="border-b border-slate-100">
+    <div className="border-b border-border-soft">
       {/* Toggle bar */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-slate-600 hover:bg-slate-50/40"
+        className="w-full flex items-center gap-2 px-card py-2 text-caption text-ink-soft hover:bg-surface-soft transition-colors"
       >
-        <Filter className="w-3 h-3" />
+        <Filter className="w-3 h-3 text-muted" strokeWidth={2} />
         <span className="font-semibold">{t("open_obligations_filter_button")}</span>
         {activeCount > 0 && (
-          <span className="text-[10px] tabular-nums text-indigo-600">
+          <span className="text-tiny tabular-nums text-info font-mono">
             {t("open_obligations_filter_active").replace("{{n}}", String(activeCount))}
           </span>
         )}
         {staleCount > 0 && (
-          <span className="text-[10px] tabular-nums text-rose-600 inline-flex items-center gap-0.5">
-            <AlertTriangle className="w-3 h-3" />
+          <span className="text-tiny tabular-nums text-danger inline-flex items-center gap-0.5 font-mono">
+            <AlertTriangle className="w-3 h-3" strokeWidth={2} />
             {t("open_obligations_filter_stale_count").replace("{{n}}", String(staleCount))}
           </span>
         )}
-        <span className="ml-auto">
-          {open ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        <span className="ml-auto text-muted-soft">
+          {open ? <ChevronUp className="w-3 h-3" strokeWidth={2.2} /> : <ChevronDown className="w-3 h-3" strokeWidth={2.2} />}
         </span>
       </button>
 
       {open && (
-        <div className="px-3 py-2 space-y-2 bg-slate-50/30 border-t border-slate-100">
+        <div className="px-card py-2.5 space-y-2 bg-surface-soft/50 border-t border-border-soft">
           {/* Status (multi) */}
           <Row label={t("open_obligations_filter_status_label")}>
             {STATUS_OPTIONS.map((opt) => (
@@ -148,7 +148,7 @@ export default function ObligationsFilterPanel({
               <select
                 value={filters.office || ""}
                 onChange={(e) => setOffice(e.target.value)}
-                className="bg-white border border-slate-200 rounded-[var(--radius-cell)] px-2 py-0.5 text-[11px] outline-none focus:ring-1 focus:ring-slate-300"
+                className="bg-surface border border-border rounded-button px-2 py-1 text-tiny outline-none focus:ring-1 focus:ring-accent text-ink"
               >
                 <option value="">{t("open_obligations_filter_office_all")}</option>
                 {activeOffices.map((o) => (
@@ -163,7 +163,7 @@ export default function ObligationsFilterPanel({
             <button
               type="button"
               onClick={clearAll}
-              className="text-[10px] text-slate-500 hover:text-slate-800 underline"
+              className="text-tiny text-muted hover:text-ink font-semibold transition-colors"
             >
               {t("open_obligations_filter_clear_all")}
             </button>
@@ -177,7 +177,7 @@ export default function ObligationsFilterPanel({
 function Row({ label, children }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-[10px] text-slate-400 uppercase tracking-wider w-20 shrink-0">
+      <span className="text-[10px] text-muted-soft uppercase tracking-wider w-20 shrink-0 font-semibold">
         {label}:
       </span>
       <div className="flex items-center gap-1 flex-wrap">{children}</div>
@@ -191,10 +191,10 @@ function Chip({ active, onClick, children }) {
       type="button"
       onClick={onClick}
       className={
-        "inline-flex items-center px-2 py-0.5 rounded-[var(--radius-cell)] border text-[11px] font-semibold " +
+        "inline-flex items-center h-6 px-2 rounded-button border text-tiny font-semibold transition-colors " +
         (active
-          ? "bg-indigo-50 hover:bg-indigo-100 border-indigo-300 text-indigo-700"
-          : "bg-white hover:bg-slate-100 border-slate-200 text-slate-600")
+          ? "bg-accent-bg hover:bg-accent-soft border-accent text-success"
+          : "bg-surface hover:bg-surface-soft border-border text-ink-soft")
       }
     >
       {children}
