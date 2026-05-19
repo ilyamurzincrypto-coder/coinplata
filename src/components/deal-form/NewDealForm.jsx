@@ -261,6 +261,15 @@ export default function NewDealForm({
     if (acc && acc.currency !== curIn) setAccountIdIn("");
   }, [curIn, accountIdIn, accounts]);
 
+  // ── Если IN-валюта совпала с primary OUT — авто-flip primary на
+  //    первую отличающуюся валюту. Юзер не должен видеть TRY→TRY.
+  useEffect(() => {
+    if (!primary || curIn !== primary.currency) return;
+    const candidates = ["TRY", "EUR", "USDT", "USD", "RUB"];
+    const next = candidates.find((c) => c !== curIn) || "USDT";
+    patchOutput(0, { currency: next, rate: "", manualRate: false, amountTouched: false });
+  }, [curIn, primary, patchOutput]);
+
   // ── Reset accountId per-output при смене currency ────────────────────
   useEffect(() => {
     outputs.forEach((o, i) => {
@@ -331,8 +340,12 @@ export default function NewDealForm({
   }, [amtIn, curIn, outputs, primary]);
 
   // ── Margin (упрощённо — только по primary leg) ────────────────────────
+  // Если IN-валюта совпадает с primary OUT — это невалидная сделка
+  // (нельзя обменять валюту саму на себя), margin не вычисляется.
+  // То же — для невалидных или нулевых значений.
   const marginInfo = useMemo(() => {
     if (!primary) return { marginUsd: null, spreadPct: null };
+    if (curIn === primary.currency) return { marginUsd: null, spreadPct: null };
     const amt = parseFloat(amtIn);
     const userRate = parseFloat(primary.rate);
     const market = getRate(curIn, primary.currency);
@@ -340,11 +353,19 @@ export default function NewDealForm({
       return { marginUsd: null, spreadPct: null };
     }
     const spreadPct = (userRate - market) / market;
+    // Если spread абсурдно большой (>30% по модулю) — скорее всего юзер
+    // ввёл курс не той пары / валюты совпадают. Скрываем margin вместо
+    // дикого +$940 на TRY→TRY с rate 44.6.
+    if (Math.abs(spreadPct) > 0.3) return { marginUsd: null, spreadPct: null };
     const marginInIn = amt * spreadPct;
     const toUsd = curIn === "USD" ? 1 : getRate(curIn, "USD");
     const marginUsd = Number.isFinite(toUsd) ? marginInIn * toUsd : marginInIn;
     return { marginUsd, spreadPct };
   }, [amtIn, primary, curIn, getRate]);
+
+  // Warning когда IN и primary OUT — одна валюта. Подсвечивается в
+  // rate-капсуле и блокирует submit (через canSubmit ниже).
+  const sameCurrencyWarning = primary && curIn === primary.currency;
 
   // ── Submit validation ─────────────────────────────────────────────────
   const canSubmit = useMemo(() => {
@@ -483,6 +504,7 @@ export default function NewDealForm({
         marginUsd={marginInfo.marginUsd}
         spreadPct={marginInfo.spreadPct}
         onReverse={reverseRate}
+        warning={sameCurrencyWarning ? "Выбери разные валюты для IN и OUT" : null}
       />
 
       {/* Primary OUT — большой блок */}
@@ -563,9 +585,9 @@ export default function NewDealForm({
       />
 
       <DealSummary
-        summary={summary}
-        marginUsd={marginInfo.marginUsd}
-        spreadPct={marginInfo.spreadPct}
+        summary={sameCurrencyWarning ? null : summary}
+        marginUsd={sameCurrencyWarning ? null : marginInfo.marginUsd}
+        spreadPct={sameCurrencyWarning ? null : marginInfo.spreadPct}
         canSubmit={canSubmit}
         submitting={submitting}
         onCancel={onCancel}

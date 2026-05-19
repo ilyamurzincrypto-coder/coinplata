@@ -18,6 +18,7 @@ export default function DealRateBlock({
   marginUsd,        // number — маржа в USD (опц.)
   spreadPct,        // number — % спред (опц.)
   onReverse,        // swap from/to
+  warning,          // string | null — текст предупреждения (например «одинаковые валюты»)
 }) {
   const hasMargin = Number.isFinite(marginUsd) && marginUsd !== 0;
   const marginPositive = (marginUsd || 0) >= 0;
@@ -46,12 +47,17 @@ export default function DealRateBlock({
             {fromCcy} → {toCcy}
           </span>
         </div>
-        {sourceLabel && (
+        {warning ? (
+          <div className="mt-1 text-tiny text-rose-300 inline-flex items-center gap-1.5 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+            {warning}
+          </div>
+        ) : sourceLabel ? (
           <div className="mt-1 text-tiny text-white/50 inline-flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot" style={{ boxShadow: "0 0 6px rgba(16,185,129,0.6)" }} />
             <span>Источник: {sourceLabel}{ageLabel ? ` · ${ageLabel}` : ""}</span>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Right side */}
@@ -67,7 +73,7 @@ export default function DealRateBlock({
             Обратный
           </button>
         )}
-        {hasMargin && (
+        {hasMargin && !warning && (
           <div className={`text-tiny font-mono tabular font-bold ${marginPositive ? "text-accent-glow" : "text-rose-400"}`}>
             {marginPositive ? "+" : "−"}${Math.abs(marginUsd).toFixed(2)}
             {Number.isFinite(spreadPct) && spreadPct !== 0 && (
