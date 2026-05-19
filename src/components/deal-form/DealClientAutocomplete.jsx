@@ -22,6 +22,8 @@ import { useRates } from "../../store/rates.jsx";
 import { convert } from "../../utils/convert.js";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { useClientsBalancesBatch } from "../../hooks/useClientLedgerBalances.js";
+import { insertClient } from "../../lib/supabaseWrite.js";
+import { isSupabaseConfigured } from "../../lib/supabase.js";
 
 // ── Helpers ────────────────────────────────────────────────────────────
 function initialsOf(name) {
@@ -181,26 +183,69 @@ export default function DealClientAutocomplete({
     inputRef.current?.blur();
   }, [onChange, onSelectClient]);
 
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
+
   const startQuickCreate = useCallback(() => {
     setMode("create");
     setCreateTelegram("");
     setCreateIsReferral(false);
+    setCreateError(null);
   }, []);
 
   const cancelQuickCreate = useCallback(() => {
     setMode("list");
+    setCreateError(null);
   }, []);
 
-  const commitQuickCreate = useCallback(() => {
+  // Создание клиента: пишем сразу в БД через insertClient → получаем
+  // реальный UUID. Локальный addCounterparty оставляем для UI-fallback
+  // когда Supabase не настроен. Тег "referral" не пишем в clients.tag —
+  // DB constraint разрешает только VIP/Regular/New/Risky; реферал-флаг
+  // живёт отдельно в state DealForm.
+  const commitQuickCreate = useCallback(async () => {
     const q = (value || "").trim();
     if (!q) return;
-    const tag = createIsReferral ? "referral" : "";
-    const created = addCounterparty({
-      nickname: q,
-      telegram: createTelegram.trim() || "",
-      tag,
-    });
-    if (created) selectClient(created);
+    setCreating(true);
+    setCreateError(null);
+    try {
+      let created = null;
+      if (isSupabaseConfigured) {
+        const row = await insertClient({
+          nickname: q,
+          telegram: createTelegram.trim() || "",
+          tag: null,
+          // DB constraint на clients.tag разрешает только VIP/Regular/New/Risky.
+          // Признак реферала сохраняем в note как [referral] чтобы он переживал
+          // reload (auto-detect в DealForm.onSelectClient смотрит на note).
+          note: createIsReferral ? "[referral]" : "",
+        });
+        if (row?.id) {
+          created = {
+            id: row.id,
+            nickname: row.nickname || q,
+            telegram: row.telegram || createTelegram.trim() || "",
+            tag: createIsReferral ? "referral" : "",
+            note: row.note || "",
+          };
+        }
+      }
+      if (!created) {
+        // Fallback (без supabase) — в-памяти
+        created = addCounterparty({
+          nickname: q,
+          telegram: createTelegram.trim() || "",
+          tag: createIsReferral ? "referral" : "",
+        });
+      } else {
+        addCounterparty(created); // зеркалим в локальный store для autocomplete
+      }
+      if (created) selectClient(created);
+    } catch (err) {
+      setCreateError(err?.message || "Не удалось создать клиента");
+    } finally {
+      setCreating(false);
+    }
   }, [value, createTelegram, createIsReferral, addCounterparty, selectClient]);
 
   const onKeyDown = useCallback((e) => {
@@ -282,6 +327,8 @@ export default function DealClientAutocomplete({
               onIsReferralChange={setCreateIsReferral}
               onCancel={cancelQuickCreate}
               onCommit={commitQuickCreate}
+              busy={creating}
+              error={createError}
             />
           ) : (
             <>
@@ -454,6 +501,8 @@ function QuickCreateForm({
   onIsReferralChange,
   onCancel,
   onCommit,
+  busy = false,
+  error = null,
 }) {
   return (
     <div className="p-4">
@@ -498,21 +547,27 @@ function QuickCreateForm({
           </span>
         </label>
       </div>
+      {error && (
+        <div className="mt-3 px-2 py-1.5 rounded-card text-caption text-danger bg-danger-soft border border-danger/20">
+          {error}
+        </div>
+      )}
       <div className="mt-4 flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 px-3.5 rounded-button bg-surface border border-border text-ink text-caption font-semibold hover:bg-surface-soft transition-colors"
+          disabled={busy}
+          className="h-9 px-3.5 rounded-button bg-surface border border-border text-ink text-caption font-semibold hover:bg-surface-soft disabled:opacity-50 transition-colors"
         >
           Отмена
         </button>
         <button
           type="button"
           onClick={onCommit}
-          disabled={!draftName?.trim()}
+          disabled={!draftName?.trim() || busy}
           className="h-9 px-4 rounded-button bg-ink text-white text-caption font-semibold hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Создать и продолжить
+          {busy ? "Создаём…" : "Создать и продолжить"}
         </button>
       </div>
     </div>

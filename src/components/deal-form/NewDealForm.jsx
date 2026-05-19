@@ -615,7 +615,12 @@ export default function NewDealForm({
         onSelectClient={(c) => {
           setSelectedClient(c);
           setCounterparty(c?.nickname || "");
-          if (c?.tag && /referral|реферал/i.test(c.tag)) {
+          // Auto-detect referral по tag ИЛИ по [referral]-метке в note
+          // (DB-tag constraint не пускает 'referral', поэтому quick-create
+          // сохраняет признак в note).
+          const tagHit = c?.tag && /referral|реферал/i.test(c.tag);
+          const noteHit = c?.note && /\[referral\]/i.test(c.note);
+          if (tagHit || noteHit) {
             setReferral(true);
             setReferralAuto(true);
           }
