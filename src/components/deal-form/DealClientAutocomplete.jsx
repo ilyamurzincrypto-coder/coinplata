@@ -332,6 +332,25 @@ export default function DealClientAutocomplete({
             />
           ) : (
             <>
+              {/* Всегда виден «+ Новый клиент» в шапке выпадашки —
+                  чтобы можно было создать без необходимости начать набирать. */}
+              <button
+                type="button"
+                onClick={startQuickCreate}
+                className="w-full grid grid-cols-[32px_1fr] items-center gap-3 px-3.5 py-2.5 border-b border-border-soft text-left hover:bg-accent-bg transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-accent-bg text-accent flex items-center justify-center shrink-0">
+                  <Plus className="w-4 h-4" strokeWidth={2.5} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-body-sm font-semibold text-ink truncate">
+                    Новый клиент
+                  </div>
+                  <div className="text-tiny text-muted">
+                    быстрая форма прямо здесь
+                  </div>
+                </div>
+              </button>
               {results.length > 0 && (
                 <div className="px-3.5 pt-2 pb-1 text-tiny uppercase tracking-wider font-bold text-muted-soft">
                   {sectionTitle}
