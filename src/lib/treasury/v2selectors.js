@@ -265,6 +265,63 @@ export function accountEntries(ctx, accountId, limit = 50, period = null, dim = 
     });
 }
 
+// Иерархический вид капитала: Подтип (opening_balance / retained_earnings /
+// fx_gain / fx_loss / owner_contribution / ...) → Валюта → Account leaf.
+// Зеркало assetsByOfficeCurrency() но level-1 = subtype вместо office
+// (у equity нет привязки к офису по природе — это глобальные категории
+// учёта собственных средств).
+//
+// Returns: [{ subtype, labelKey, totalInBase, currencies: [{ currency,
+//   total, totalInBase, accounts: [{ accountId, code, name, currency,
+//   balance, balanceInBase }] }] }]
+// Подтипы по |totalInBase| desc; валюты по |totalInBase| desc; счета
+// по |balanceInBase| desc.
+export function equityBySubtypeCurrency(ctx) {
+  const { accounts, balances, toBase, officeFilter } = ctx;
+  const balByAccount = new Map();
+  for (const b of balances) {
+    const arr = balByAccount.get(b.accountId) || [];
+    arr.push(b);
+    balByAccount.set(b.accountId, arr);
+  }
+  const bySubtype = new Map();
+  for (const acc of accounts) {
+    if (acc.type !== "equity") continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const rows = balByAccount.get(acc.id) || [];
+    let balance = 0, balanceInBase = 0;
+    for (const b of rows) {
+      balance += Number(b.balance) || 0;
+      balanceInBase += toBase(b.balance, b.currency) || 0;
+    }
+    const subtypeKey = acc.subtype || "other";
+    const sect = bySubtype.get(subtypeKey) || {
+      subtype: subtypeKey,
+      labelKey: SUBTYPE_LABEL_KEYS[subtypeKey] || "trv2_subtype_other",
+      totalInBase: 0,
+      byCurrency: new Map(),
+    };
+    const ccyKey = acc.currency || "?";
+    const cur = sect.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
+    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase });
+    cur.total += balance;
+    cur.totalInBase += balanceInBase;
+    sect.byCurrency.set(ccyKey, cur);
+    sect.totalInBase += balanceInBase;
+    bySubtype.set(subtypeKey, sect);
+  }
+  return [...bySubtype.values()]
+    .map((s) => ({
+      subtype: s.subtype,
+      labelKey: s.labelKey,
+      totalInBase: s.totalInBase,
+      currencies: [...s.byCurrency.values()]
+        .map((c) => ({ ...c, accounts: c.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) }))
+        .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase)),
+    }))
+    .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase));
+}
+
 // «Касса-группа»: для одного account-id находим все sibling-счета той же кассы.
 // Группировка по (type, officeId, namePrefix) — namePrefix = имя без хвоста
 // " · CCY" если он есть. Это даёт корректную группу даже когда subtype

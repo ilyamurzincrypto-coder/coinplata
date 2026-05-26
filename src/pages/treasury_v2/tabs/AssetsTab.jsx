@@ -303,6 +303,8 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
           open
           onClose={() => setAddOpen(false)}
           defaultOfficeId={officeFilter && officeFilter !== "all" ? officeFilter : null}
+          defaultType="asset"
+          lockType
         />
       )}
 

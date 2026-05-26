@@ -40,7 +40,7 @@ const DEFAULT_SUBTYPE = {
 };
 const NO_OFFICE = "__none__";
 
-export default function ChartAccountModal({ open, onClose, defaultOfficeId = null, defaultType = "asset", defaultSubtype = null }) {
+export default function ChartAccountModal({ open, onClose, defaultOfficeId = null, defaultType = "asset", defaultSubtype = null, lockType = false }) {
   const { t } = useTranslation();
   const { codes } = useCurrencies();
   const { activeOffices, findOffice } = useOffices();
@@ -121,24 +121,40 @@ export default function ChartAccountModal({ open, onClose, defaultOfficeId = nul
   return (
     <Modal open={open} onClose={onClose} title={t("trv2_chart_add_title")} width="md">
       <div className="p-5 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_type")}</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full h-10 bg-surface-sunk text-ink rounded-input px-3 text-body-sm font-semibold border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all duration-150 ease-apple"
-            >
-              {TYPES.map((tp) => (
-                <option key={tp} value={tp}>{t(TYPE_LABEL_KEYS[tp])}</option>
-              ))}
-            </select>
+        {lockType ? (
+          // Тип залочен — показываем как информационную пилюлю, не редактируется.
+          <div className="flex items-center gap-2 -mt-1">
+            <span className="text-micro text-muted uppercase">{t("trv2_chart_type")}:</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-badge bg-accent-bg text-accent text-tiny font-bold uppercase tracking-wider">
+              {t(TYPE_LABEL_KEYS[type])}
+            </span>
           </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_type")}</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+                className="w-full h-10 bg-surface-sunk text-ink rounded-input px-3 text-body-sm font-semibold border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all duration-150 ease-apple"
+              >
+                {TYPES.map((tp) => (
+                  <option key={tp} value={tp}>{t(TYPE_LABEL_KEYS[tp])}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_subtype")}</label>
+              <SearchableSelect value={subtype} onChange={(v) => setSubtype(v || subtype)} options={subtypeOptions} />
+            </div>
+          </div>
+        )}
+        {lockType && (
           <div>
             <label className="block text-micro text-muted uppercase mb-1.5">{t("trv2_chart_subtype")}</label>
             <SearchableSelect value={subtype} onChange={(v) => setSubtype(v || subtype)} options={subtypeOptions} />
           </div>
-        </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>
