@@ -52,7 +52,7 @@ vi.mock("../../lib/newLedger.js", () => ({ rpcCreateManualEntryV2: () => Promise
 import TreasuryShell from "./TreasuryShell.jsx";
 
 describe("TreasuryShell integration smoke", () => {
-  it("renders the tabs, opens on the Dashboard, and the Assets tab shows the office×currency pivot on click", () => {
+  it("renders the tabs, opens on the Dashboard, and the Assets tab shows the office→currency→accounts tree on click", () => {
     render(<TreasuryShell />);
     for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_pnl", "trv2_tab_journal"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
@@ -60,11 +60,15 @@ describe("TreasuryShell integration smoke", () => {
     // Dashboard is the landing tab → its capital card is visible
     expect(screen.getByText("trv2_dash_capital")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
-    // ac_cash has officeId null → "no office" row is the only office row; leaves hidden until expanded
+    // ac_cash has officeId null → "no office" row is the only office row; currency/leaves hidden until expanded
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
+    expect(screen.queryByText("USD")).toBeNull();
     expect(screen.queryByText("1110")).toBeNull();
-    // expand office → leaves shown directly (no currency level in pivot)
+    // expand office → currency row visible
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
+    expect(screen.getByText("USD")).toBeInTheDocument();
+    // expand currency → leaf account visible
+    fireEvent.click(screen.getByText("USD"));
     expect(screen.getByText("1110")).toBeInTheDocument();
   });
 
@@ -73,6 +77,7 @@ describe("TreasuryShell integration smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     expect(container.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
+    fireEvent.click(screen.getByText("USD"));
     fireEvent.click(screen.getByText("1110"));
     expect(container.textContent).toContain("D-7"); // source-doc link in the inline entry table
   });

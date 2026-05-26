@@ -69,39 +69,29 @@ export function groupByClass(ctx, accountType) {
   return [...bySubtype.values()].sort((a, b) => b.totalInBase - a.totalInBase);
 }
 
-// Pivot-вид asset-счетов для вкладки Treasury → Активы: офисы в строках,
-// валюты в колонках. Возвращает плоскую структуру для табличного UI.
-// Колонки-валюты строятся из набора валют, встретившихся в asset-счетах
-// (даже с нулевым балансом — если счёт в плане есть, колонка должна быть).
-// Порядок колонок: ctx.baseCurrency первой, остальные по Σ|toBase(amount)| desc.
-// Строки: null-office всегда последним, остальные по |totalInBase| desc.
+// Иерархический вид asset-счетов для вкладки Treasury → Активы:
+// office → currency → accounts. Одна колонка значений (вертикальное дерево).
+// Возвращает [{ officeId, totalInBase, currencies: [{ currency, total,
+//   totalInBase, accounts: [{ accountId, code, name, currency, balance,
+//   balanceInBase }] }] }]. `officeId` is null для bucket'a «без офиса».
+// Уважает `ctx.officeFilter`. Офисы по |totalInBase| desc; null-office sinks
+// to end. Валюты в офисе по |totalInBase| desc; счета по |balanceInBase| desc.
 //
-// Returns: {
-//   currencies: ["USD", "EUR", ...],
-//   rows: [{
-//     officeId: string|null,
-//     totals: { [currency]: nativeAmount },
-//     totalInBase,
-//     accounts: [{ accountId, code, name, currency, balance, balanceInBase }]
-//   }],
-//   grandTotals: { [currency]: nativeAmount, inBase: number }
-// }
-export function assetsPivotByOffice(ctx) {
-  const { accounts, balances, toBase, baseCurrency, officeFilter } = ctx;
+// История: была версия assetsPivotByOffice (валюты-колонки горизонтально) —
+// не масштабировалась дальше 5-6 валют (правый край резало), откатили
+// 2026-05-26 (см. memory feedback_assets_tree_layout).
+export function assetsByOfficeCurrency(ctx) {
+  const { accounts, balances, toBase, officeFilter } = ctx;
   const balByAccount = new Map();
   for (const b of balances) {
     const arr = balByAccount.get(b.accountId) || [];
     arr.push(b);
     balByAccount.set(b.accountId, arr);
   }
-  const byOffice = new Map();          // officeKey → row builder
-  const ccyVolume = new Map();         // currency → Σ|inBase| across all visible rows
-  const allCurrencies = new Set();     // все валюты asset-счетов (для колонок, даже с 0)
+  const byOffice = new Map(); // officeId|"__none__" -> { officeId, totalInBase, byCurrency: Map }
   for (const acc of accounts) {
     if (acc.type !== "asset") continue;
     if (!passesOfficeFilter(acc, officeFilter)) continue;
-    const ccy = acc.currency || "?";
-    allCurrencies.add(ccy);
     const rows = balByAccount.get(acc.id) || [];
     let balance = 0, balanceInBase = 0;
     for (const b of rows) {
@@ -109,57 +99,34 @@ export function assetsPivotByOffice(ctx) {
       balanceInBase += toBase(b.balance, b.currency) || 0;
     }
     const officeKey = acc.officeId || "__none__";
-    const row = byOffice.get(officeKey) || {
-      officeId: acc.officeId || null,
-      totals: {},
-      totalInBase: 0,
-      accounts: [],
-    };
-    row.totals[ccy] = (row.totals[ccy] || 0) + balance;
-    row.totalInBase += balanceInBase;
-    row.accounts.push({
-      accountId: acc.id, code: acc.code, name: acc.name,
-      currency: acc.currency, balance, balanceInBase,
-    });
-    byOffice.set(officeKey, row);
-    ccyVolume.set(ccy, (ccyVolume.get(ccy) || 0) + Math.abs(balanceInBase));
+    const off = byOffice.get(officeKey) || { officeId: acc.officeId || null, totalInBase: 0, byCurrency: new Map() };
+    const ccyKey = acc.currency || "?";
+    const cur = off.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
+    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase });
+    cur.total += balance;
+    cur.totalInBase += balanceInBase;
+    off.byCurrency.set(ccyKey, cur);
+    off.totalInBase += balanceInBase;
+    byOffice.set(officeKey, off);
   }
-
-  // Колонки: base первой, остальные по Σ|inBase| desc
-  const currencies = [...allCurrencies].sort((a, b) => {
-    if (a === baseCurrency && b !== baseCurrency) return -1;
-    if (b === baseCurrency && a !== baseCurrency) return 1;
-    return (ccyVolume.get(b) || 0) - (ccyVolume.get(a) || 0);
-  });
-
-  // Строки: листы по |balanceInBase| desc; null-office последним, остальные по |totalInBase| desc
-  const rows = [...byOffice.values()]
-    .map((r) => ({
-      ...r,
-      accounts: r.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)),
+  return [...byOffice.values()]
+    .map((off) => ({
+      officeId: off.officeId,
+      totalInBase: off.totalInBase,
+      currencies: [...off.byCurrency.values()]
+        .map((c) => ({ ...c, accounts: c.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) }))
+        .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase)),
     }))
     .sort((a, b) => {
       if (a.officeId === null && b.officeId !== null) return 1;
       if (b.officeId === null && a.officeId !== null) return -1;
       return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
     });
-
-  // grandTotals
-  const grandTotals = { inBase: 0 };
-  for (const ccy of currencies) grandTotals[ccy] = 0;
-  for (const r of rows) {
-    grandTotals.inBase += r.totalInBase;
-    for (const ccy of currencies) {
-      if (r.totals[ccy] != null) grandTotals[ccy] += r.totals[ccy];
-    }
-  }
-
-  return { currencies, rows, grandTotals };
 }
 
 /**
- * Иерархический вид пассивов с группировкой по контрагенту вместо office.
- * Иерархия:
+ * Зеркало assetsByOfficeCurrency() для пассивов с группировкой по
+ * контрагенту вместо office. Иерархия:
  *   Counterparty (client/partner) → Currency → Source ledger.account leaf
  *
  * Используется в Treasury → Пассивы (counterparty-режим, default) и

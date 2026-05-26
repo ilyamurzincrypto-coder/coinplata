@@ -36,36 +36,38 @@ function renderTab(ctx = makeLedgerCtx()) {
   return render(<AssetsTab ctx={ctx} officeFilter="all" formatBase={formatBase} baseCurrency="USD" onOpenTx={() => {}} />);
 }
 
-describe("AssetsTab — pivot Office × Currency", () => {
+describe("AssetsTab — дерево Office → Currency → Account", () => {
   beforeEach(() => { canAccountingEdit = true; exportCSVSpy.mockClear(); });
 
-  it("рендерит таблицу с заголовком 'Касса' + колонками валют + правой ≈USD", () => {
+  it("рендерит таблицу с шапкой 'Касса' + '≈ USD' и строки-офисы", () => {
     renderTab();
     const thead = document.querySelector("thead");
     expect(thead).not.toBeNull();
     expect(within(thead).getByText("trv2_assets_col_office")).toBeInTheDocument();
-    expect(within(thead).getByText("USD")).toBeInTheDocument();
-    expect(within(thead).getByText("USDT")).toBeInTheDocument();
-  });
-
-  it("строки-офисы видны: 'Mark Antalya' и 'trv2_assets_no_office'", () => {
-    renderTab();
+    expect(within(thead).getByText("≈ USD")).toBeInTheDocument();
     expect(screen.getByText("Mark Antalya")).toBeInTheDocument();
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
+    // листья и валюты скрыты до раскрытия
+    expect(screen.queryByText("USD")).toBeNull();
     expect(screen.queryByText("1110")).toBeNull();
   });
 
-  it("клик по строке-офису раскрывает листы-счета", () => {
+  it("клик по офису раскрывает валюты; клик по валюте раскрывает листья", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
+    expect(screen.getByText("USD")).toBeInTheDocument();
+    expect(screen.getByText("USDT")).toBeInTheDocument();
+    // листья всё ещё скрыты
+    expect(screen.queryByText("1110")).toBeNull();
+    fireEvent.click(screen.getByText("USD"));
     expect(screen.getByText("1110")).toBeInTheDocument();
     expect(screen.getByText("Cash · Mark Antalya · USD")).toBeInTheDocument();
-    expect(screen.getByText("1316")).toBeInTheDocument();
   });
 
-  it("клик по строке-листу разворачивает AccountInlineEntries", () => {
+  it("клик по листу разворачивает AccountInlineEntries", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
+    fireEvent.click(screen.getByText("USD"));
     fireEvent.click(screen.getByText("Cash · Mark Antalya · USD"));
     expect(screen.getByTestId("inline-entries")).toHaveTextContent("ac_cash_usd_mark");
   });
@@ -75,22 +77,11 @@ describe("AssetsTab — pivot Office × Currency", () => {
     const tfoot = document.querySelector("tfoot");
     expect(tfoot).not.toBeNull();
     expect(within(tfoot).getByText("trv2_assets_grand_total")).toBeInTheDocument();
+    // 11000 USD (cash mark) + 150 USDT (hot mark) + 1000 USDT (treasury) = 12150
     expect(within(tfoot).getByText("$12,150")).toBeInTheDocument();
   });
 
-  it("клик по заголовку колонки USD сортирует строки по этой колонке", () => {
-    renderTab();
-    const tbody = document.querySelector("tbody");
-    const rowsBefore = within(tbody).getAllByRole("row");
-    expect(within(rowsBefore[0]).queryByText("Mark Antalya")).toBeTruthy();
-
-    fireEvent.click(within(document.querySelector("thead")).getByText("USD"));
-    fireEvent.click(within(document.querySelector("thead")).getByText("USD")); // asc
-    const rowsAsc = within(tbody).getAllByRole("row");
-    expect(within(rowsAsc[0]).queryByText("trv2_assets_no_office")).toBeTruthy();
-  });
-
-  it("кнопка 'Ненулевые' скрывает офисы с нулём и валюты с Σ==0", () => {
+  it("кнопка 'Ненулевые' скрывает офисы с нулём", () => {
     const ctx = makeLedgerCtx({
       accounts: [
         { id: "a1", code: "1", name: "non-zero", type: "asset", subtype: "cash", currency: "USD", officeId: "office-mark" },
@@ -108,20 +99,18 @@ describe("AssetsTab — pivot Office × Currency", () => {
     expect(screen.queryByText("trv2_assets_no_office")).toBeNull();
   });
 
-  it("CSV-экспорт вызывается с pivot-колонками (office + currencies + base_<ccy>) и строкой ИТОГО", () => {
+  it("CSV-экспорт — flat per-account (office, code, name, currency, native, base)", () => {
     renderTab();
     fireEvent.click(screen.getByText(/^CSV$/));
     expect(exportCSVSpy).toHaveBeenCalledTimes(1);
     const arg = exportCSVSpy.mock.calls[0][0];
     expect(arg.filename).toMatch(/^assets_\d{4}-\d{2}-\d{2}\.csv$/);
-    const colKeys = arg.columns.map((c) => c.key);
-    expect(colKeys[0]).toBe("office");
-    expect(colKeys).toContain("USD");
-    expect(colKeys).toContain("USDT");
-    expect(colKeys[colKeys.length - 1]).toBe("base_usd");
-    const lastRow = arg.rows[arg.rows.length - 1];
-    expect(lastRow.office).toBe("trv2_assets_grand_total");
-    expect(lastRow.base_usd).toBe(12150);
+    expect(arg.columns.map((c) => c.key)).toEqual([
+      "office", "accountCode", "accountName", "currency", "balance", "balanceInBase",
+    ]);
+    // три asset-счёта = три строки
+    expect(arg.rows).toHaveLength(3);
+    expect(arg.rows[0]).toMatchObject({ accountCode: "1110", currency: "USD", balance: 11000, balanceInBase: 11000 });
   });
 
   it("кнопка '+ Счёт в план' видна только при accounting:edit", () => {
