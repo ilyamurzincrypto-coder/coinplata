@@ -45,6 +45,8 @@ export default function PostingTab({ ctx, onDone }) {
     () => POSTING_TEMPLATES.map((tpl) => ({
       id: tpl.id,
       name: (tpl.name && (tpl.name[lang] || tpl.name.ru || tpl.name.en)) || tpl.id,
+      description: (tpl.description && (tpl.description[lang] || tpl.description.ru || tpl.description.en)) || "",
+      lines: tpl.lines || [],
       searchText: [tpl.name?.ru, tpl.name?.en, tpl.name?.tr, tpl.description?.ru, tpl.description?.en, tpl.description?.tr].filter(Boolean).join(" "),
     })),
     [lang]
@@ -156,13 +158,7 @@ export default function PostingTab({ ctx, onDone }) {
           <div className="flex items-center gap-2 text-caption ml-auto min-w-[260px]">
             <span className="text-muted shrink-0">{t("trv2_pm_template")}</span>
             <div className="flex-1 min-w-0">
-              <SearchableSelect
-                value={null}
-                options={templateOpts}
-                onChange={applyTemplate}
-                placeholder={t("trv2_pm_template_pick")}
-                emptyText={t("trv2_pm_template_empty")}
-              />
+              <TemplatePicker options={templateOpts} onPick={applyTemplate} placeholder={t("trv2_pm_template_pick")} t={t} />
             </div>
           </div>
         </div>
@@ -274,6 +270,68 @@ export default function PostingTab({ ctx, onDone }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Кастомный выпадающий picker шаблонов проводок. В отличие от SearchableSelect,
+// рендерит для каждой опции: название + описание + preview ножек (Дт/Кт subtype),
+// чтобы было видно «из чего сделан» каждый шаблон.
+function TemplatePicker({ options, onPick, placeholder, t }) {
+  const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(null);
+  const wrapRef = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full h-9 px-3 rounded-input bg-surface-sunk text-ink text-caption text-left border-0 ring-1 ring-inset ring-transparent hover:ring-border-soft focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+      >
+        {placeholder} ▾
+      </button>
+      {open && (
+        <div className="absolute z-30 top-full mt-1 left-0 w-[420px] max-h-[420px] overflow-y-auto bg-surface rounded-card-lg shadow-modal border border-border-soft py-1">
+          {options.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onMouseEnter={() => setHover(opt.id)}
+              onMouseLeave={() => setHover(null)}
+              onClick={() => { onPick(opt.id); setOpen(false); }}
+              className={`w-full px-3 py-2 text-left transition-colors ${hover === opt.id ? "bg-surface-soft" : ""}`}
+            >
+              <div className="text-body-sm font-semibold text-ink truncate">{opt.name}</div>
+              {opt.description && (
+                <div className="text-tiny text-muted mt-0.5 leading-snug line-clamp-2">{opt.description}</div>
+              )}
+              {opt.lines && opt.lines.length > 0 && (
+                <div className="mt-1 inline-flex flex-wrap gap-1">
+                  {opt.lines.map((l, i) => (
+                    <span
+                      key={i}
+                      className={`inline-flex items-center gap-1 text-tiny font-mono px-1.5 py-0.5 rounded-badge ${
+                        l.side === "dr"
+                          ? "bg-success-soft text-success"
+                          : "bg-danger-soft text-danger"
+                      }`}
+                    >
+                      <span className="font-bold uppercase">{l.side === "dr" ? t("trv2_col_dr") : t("trv2_col_cr")}</span>
+                      <span className="opacity-80">{l.subtype}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
