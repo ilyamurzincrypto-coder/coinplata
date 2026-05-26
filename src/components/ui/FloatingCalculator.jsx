@@ -1,12 +1,13 @@
 // src/components/ui/FloatingCalculator.jsx
-// Плавающий мини-калькулятор в правом-нижнем углу. По клику разворачивается
-// в popup с клавиатурой. Поддерживает арифметику (+ − × ÷ . и скобки через
-// CalcInput.evalMath). Кнопка «Копировать» кладёт результат в clipboard.
+// Плавающий мини-калькулятор — draggable, position сохраняется в localStorage.
+// FAB в углу (по умолчанию слева снизу — чтобы не перекрывать GlossaryFab
+// который сидит bottom-4 right-4). Header панели — drag-handle.
 //
-// Состояние локальное (нет смысла persist'ить — это рабочий black-board).
+// Состояние локальное (нет смысла persist'ить expression — это рабочий
+// black-board), но position persist'ится.
 
-import React, { useState } from "react";
-import { Calculator, X, Copy, Check } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { Calculator, X, Copy, Check, Move } from "lucide-react";
 import { evalMath } from "./CalcInput.jsx";
 
 const KEYS = [
@@ -16,6 +17,8 @@ const KEYS = [
   [".", "0", "(", "+"],
   ["C", "⌫", ")", "="],
 ];
+const POS_KEY = "coinplata:calc-pos";
+const DEFAULT_POS = { x: 20, y: typeof window === "undefined" ? 600 : Math.max(window.innerHeight - 80, 100) };
 
 function applyKey(expr, k) {
   if (k === "C") return "";
@@ -26,12 +29,68 @@ function applyKey(expr, k) {
   return expr + k;
 }
 
+function loadPos() {
+  try {
+    const v = JSON.parse(localStorage.getItem(POS_KEY) || "null");
+    if (v && typeof v.x === "number" && typeof v.y === "number") return v;
+  } catch {}
+  return DEFAULT_POS;
+}
+
 export default function FloatingCalculator() {
   const [open, setOpen] = useState(false);
   const [expr, setExpr] = useState("");
   const [copied, setCopied] = useState(false);
+  const [pos, setPos] = useState(loadPos);
+  const dragState = useRef(null);
 
   const result = evalMath(expr);
+
+  // Сохраняем позицию когда меняется
+  useEffect(() => {
+    try { localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch {}
+  }, [pos]);
+
+  // Глобальные mousemove/mouseup на window для drag
+  useEffect(() => {
+    if (!dragState.current) return undefined;
+    function onMove(e) {
+      const s = dragState.current;
+      if (!s) return;
+      const cx = e.touches ? e.touches[0].clientX : e.clientX;
+      const cy = e.touches ? e.touches[0].clientY : e.clientY;
+      const nx = Math.max(4, Math.min(window.innerWidth - s.w - 4, cx - s.offX));
+      const ny = Math.max(4, Math.min(window.innerHeight - s.h - 4, cy - s.offY));
+      setPos({ x: nx, y: ny });
+    }
+    function onUp() {
+      dragState.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+  }, [dragState.current]);
+
+  const startDrag = (e) => {
+    const target = e.currentTarget.parentElement.parentElement; // panel root
+    const rect = target.getBoundingClientRect();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    dragState.current = { offX: cx - rect.left, offY: cy - rect.top, w: rect.width, h: rect.height };
+    // Trigger effect re-subscribe
+    setPos((p) => ({ ...p }));
+  };
 
   const onKey = (k) => {
     if (k === "=") {
@@ -51,26 +110,35 @@ export default function FloatingCalculator() {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-[900]">
+    <div
+      className="fixed z-[900]"
+      style={{ left: pos.x, top: pos.y }}
+    >
       {!open ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          title="Калькулятор"
-          className="w-12 h-12 rounded-full bg-ink text-white shadow-cta-glow hover:bg-black hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center"
+          title="Калькулятор (можно перетаскивать)"
+          className="w-11 h-11 rounded-full bg-ink text-white shadow-cta-glow hover:bg-black hover:-translate-y-0.5 active:translate-y-0 transition-all flex items-center justify-center"
         >
           <Calculator className="w-5 h-5" strokeWidth={2.2} />
         </button>
       ) : (
         <div className="w-[260px] bg-surface rounded-card-lg shadow-modal border border-border-soft overflow-hidden animate-[slideUp_120ms_ease-out]">
-          <div className="px-3 py-2 border-b border-border-soft flex items-center justify-between bg-surface-sunk">
+          <div
+            className="px-3 py-2 border-b border-border-soft flex items-center justify-between bg-surface-sunk cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={startDrag}
+            onTouchStart={startDrag}
+          >
             <span className="text-tiny font-bold text-muted uppercase tracking-wider inline-flex items-center gap-1.5">
+              <Move className="w-3 h-3" strokeWidth={2.2} />
               <Calculator className="w-3.5 h-3.5" strokeWidth={2.2} />
               Калькулятор
             </span>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+              onMouseDown={(e) => e.stopPropagation()}
               className="p-1 rounded text-muted hover:text-ink hover:bg-surface-soft transition-colors"
               aria-label="Закрыть"
             >

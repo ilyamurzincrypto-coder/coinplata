@@ -459,8 +459,8 @@ function PerPairRow({
   onCopySell,
 }) {
   return (
-    <div className="flex items-center gap-2 px-1 py-1.5">
-      <span className="text-body-sm font-bold tracking-wide w-[64px] shrink-0 text-ink-soft">
+    <div className="flex items-center gap-1.5 px-1 py-1.5 flex-wrap sm:flex-nowrap">
+      <span className="text-tiny font-bold tracking-wide w-[56px] shrink-0 text-ink-soft">
         {formatPair(pair)}
       </span>
       <div className="relative shrink-0 inline-flex items-center gap-0.5">
