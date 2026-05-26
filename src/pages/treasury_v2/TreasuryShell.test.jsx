@@ -60,8 +60,8 @@ describe("TreasuryShell integration smoke", () => {
     for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_transactions"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
     }
-    // Dashboard is the landing tab → its capital card is visible
-    expect(screen.getByText("trv2_dash_capital")).toBeInTheDocument();
+    // Dashboard is the landing tab → видим KPI «Капитал (чистый)» из новой шапки
+    expect(screen.getByText("Капитал (чистый)")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     // ac_cash has officeId null → "no office" row is the only office row; currency/leaves hidden until expanded
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
