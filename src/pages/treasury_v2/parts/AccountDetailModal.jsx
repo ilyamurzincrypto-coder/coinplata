@@ -201,6 +201,84 @@ export default function AccountDetailModal({
     });
   }, [entries, search, ctx]);
 
+  // ОСВ за период (Оборотно-Сальдовая Ведомость):
+  // opening = balance at `from` (computed via current minus all entries since `from`)
+  // closing = balance at `to`   (current minus all entries after `to`)
+  // turnover Дт/Кт = sums by direction over in-period entries.
+  // Считаем по entries исходного режима (account / dim / group / cp).
+  const osv = useMemo(() => {
+    if (!period) {
+      // «Всё время» — opening = 0, closing = current, turnover = всё
+      const refType = account?.type || "liability";
+      const incCr = CREDIT_NORMAL.has(refType);
+      let dr = 0, cr = 0, drBase = 0, crBase = 0;
+      const fullEntries = isCpMode && cpKind && cpId
+        ? counterpartyEntries(ctx, cpKind, cpId, 100000, null, null)
+        : isGroupMode && groupCtx
+          ? groupEntries(ctx, groupCtx.accounts.map((a) => a.accountId), 100000, null, null)
+          : account
+            ? accountEntries(ctx, account.id, 100000, null, dim)
+            : [];
+      for (const e of fullEntries) {
+        const amt = Number(e.amount) || 0;
+        const inBase = toDisplayBase(amt, e.currency);
+        if (e.direction === "dr") { dr += amt; drBase += inBase; }
+        else { cr += amt; crBase += inBase; }
+      }
+      const closing = isCpMode ? cpData.totalInBase : (isGroupMode ? groupCtx.totalInBase : balanceInBase);
+      return { opening: 0, openingNative: 0, dr, cr, drBase, crBase, closing, closingNative: balanceNative, incCr };
+    }
+    const fromMs = new Date(period.from).getTime();
+    const toMs = new Date(period.to).getTime();
+    // Все entries без period-фильтра
+    const allEntries = isCpMode && cpKind && cpId
+      ? counterpartyEntries(ctx, cpKind, cpId, 100000, null, null)
+      : isGroupMode && groupCtx
+        ? groupEntries(ctx, groupCtx.accounts.map((a) => a.accountId), 100000, null, null)
+        : account
+          ? accountEntries(ctx, account.id, 100000, null, dim)
+          : [];
+    const txById = new Map((ctx?.transactions || []).map((t) => [t.id, t]));
+    const refType = account?.type || "liability";
+    const incCr = CREDIT_NORMAL.has(refType);
+    const sign = (e) => {
+      const s = e.direction === "dr" ? 1 : -1;
+      return incCr ? -s : s; // для liability/equity/revenue Кт+ Дт-
+    };
+    let drInPeriod = 0, crInPeriod = 0, drInPeriodBase = 0, crInPeriodBase = 0;
+    let signedAfterTo = 0, signedAfterToBase = 0;
+    let signedInPeriod = 0, signedInPeriodBase = 0;
+    for (const e of allEntries) {
+      const tx = txById.get(e.txId);
+      const ts = tx ? new Date(tx.effectiveDate).getTime() : new Date(e.createdAt).getTime();
+      const amt = Number(e.amount) || 0;
+      const amtBase = toDisplayBase(amt, e.currency);
+      const s = sign(e) * amt;
+      const sBase = sign(e) * amtBase;
+      if (ts > toMs) {
+        signedAfterTo += s;
+        signedAfterToBase += sBase;
+      } else if (ts >= fromMs) {
+        signedInPeriod += s;
+        signedInPeriodBase += sBase;
+        if (e.direction === "dr") { drInPeriod += amt; drInPeriodBase += amtBase; }
+        else { crInPeriod += amt; crInPeriodBase += amtBase; }
+      }
+    }
+    const currentInBase = isCpMode ? cpData.totalInBase : (isGroupMode ? groupCtx.totalInBase : balanceInBase);
+    // closing = current − all entries strictly after `to`
+    const closingNative = balanceNative - signedAfterTo;
+    const closing = currentInBase - signedAfterToBase;
+    const openingNative = closingNative - signedInPeriod;
+    const opening = closing - signedInPeriodBase;
+    return {
+      opening, openingNative,
+      dr: drInPeriod, cr: crInPeriod,
+      drBase: drInPeriodBase, crBase: crInPeriodBase,
+      closing, closingNative, incCr,
+    };
+  }, [ctx, period, isCpMode, cpKind, cpId, cpData, isGroupMode, groupCtx, account, dim, balanceNative, balanceInBase, toDisplayBase]);
+
   // Turnover за период (по видимым после фильтра). Native — только когда все
   // entries одной валюты; иначе native теряет смысл. Зато base всегда суммируется.
   const turnover = useMemo(() => {
@@ -530,6 +608,54 @@ export default function AccountDetailModal({
             placeholder={t("trv2_detail_search_ph")}
             className="w-full h-8 pl-8 pr-3 text-body-sm bg-surface-sunk rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
           />
+        </div>
+      </div>
+
+      {/* ОСВ — оборотно-сальдовая ведомость за период */}
+      <div className="px-5 py-3 border-b border-border-soft bg-surface-soft/40">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {[
+            {
+              label: "Остаток на начало",
+              base: osv.opening,
+              native: !isCpMode && !isGroupMode ? osv.openingNative : null,
+              tone: "muted",
+            },
+            {
+              label: "Обороты Дт",
+              base: osv.drBase,
+              native: !isCpMode && !isGroupMode ? osv.dr : null,
+              tone: "ink",
+            },
+            {
+              label: "Обороты Кт",
+              base: osv.crBase,
+              native: !isCpMode && !isGroupMode ? osv.cr : null,
+              tone: "ink",
+            },
+            {
+              label: "Остаток на конец",
+              base: osv.closing,
+              native: !isCpMode && !isGroupMode ? osv.closingNative : null,
+              tone: "success",
+              bold: true,
+            },
+          ].map((it) => {
+            const toneCls = it.tone === "success" ? "text-success" : it.tone === "muted" ? "text-muted" : "text-ink";
+            return (
+              <div key={it.label} className="bg-surface rounded-card border border-border-soft p-2.5">
+                <div className="text-tiny text-muted-soft uppercase tracking-wider font-bold mb-1">{it.label}</div>
+                <div className={`font-mono tabular ${it.bold ? "font-bold text-body" : "font-semibold text-body-sm"} ${toneCls}`}>
+                  {fmtBase(it.base)}
+                </div>
+                {it.native != null && !isCpMode && !isGroupMode && account && (
+                  <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                    {fmtAmount(it.native)} {account.currency}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
