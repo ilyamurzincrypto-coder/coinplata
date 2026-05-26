@@ -126,11 +126,14 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         <div className="bg-surface rounded-card overflow-hidden">
           <table className="w-full border-collapse">
             <thead className="sticky top-0 z-10 bg-surface">
-              <tr className="border-b border-border-soft">
-                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5">
+              <tr className="border-b-2 border-border-soft">
+                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
                   {t("trv2_assets_col_office")}
                 </th>
-                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap w-[200px] border-r border-border-soft">
+                  Native
+                </th>
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap w-[140px]">
                   ≈ {baseCurrency}
                 </th>
               </tr>
@@ -149,13 +152,16 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                       className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
                       onClick={() => toggle(officeKey)}
                     >
-                      <td className="px-card py-2.5">
+                      <td className="px-card py-2.5 border-r border-border-soft">
                         <div className="flex items-center gap-2">
                           {officeOpen
                             ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
                             : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
                           <span className="text-h3 text-ink font-semibold truncate">{officeName}</span>
                         </div>
+                      </td>
+                      <td className="text-right px-card py-2.5 border-r border-border-soft">
+                        <span className="text-tiny text-muted-soft">—</span>
                       </td>
                       <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
                         {formatBase(office.totalInBase, baseCurrency)}
@@ -165,7 +171,6 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                     {officeOpen && office.currencies.map((cur) => {
                       const curKey = `${officeKey}|cur:${cur.currency}`;
                       const curOpen = expanded.has(curKey);
-                      const isBase = cur.currency === baseCurrency;
                       return (
                         <React.Fragment key={curKey}>
                           {/* Level 2 — currency */}
@@ -173,7 +178,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                             className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
                             onClick={() => toggle(curKey)}
                           >
-                            <td className="pl-9 pr-card py-2">
+                            <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
                                 {curOpen
                                   ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
@@ -184,13 +189,11 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 </span>
                               </div>
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap">
-                              <span className="font-semibold text-ink">{nativeFmt(cur.total, cur.currency)}</span>
-                              {!isBase && (
-                                <span className="text-tiny text-muted-soft ml-2">
-                                  (≈ {formatBase(cur.totalInBase, baseCurrency)})
-                                </span>
-                              )}
+                            <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">
+                              {nativeFmt(cur.total, cur.currency)}
+                            </td>
+                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                              {formatBase(cur.totalInBase, baseCurrency)}
                             </td>
                           </tr>
 
@@ -204,7 +207,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                   className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
                                   onClick={() => toggle(accKey)}
                                 >
-                                  <td className="pl-16 pr-card py-1.5">
+                                  <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                     <div className="flex items-center gap-2">
                                       {accOpen
                                         ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
@@ -214,7 +217,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                     </div>
                                   </td>
                                   <td
-                                    className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap"
+                                    className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <InlineBalanceEditor
@@ -230,10 +233,13 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                       suffix={a.currency}
                                     />
                                   </td>
+                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                    {formatBase(a.balanceInBase, baseCurrency)}
+                                  </td>
                                 </tr>
                                 {accOpen && (
                                   <tr>
-                                    <td colSpan={2} className="p-0">
+                                    <td colSpan={3} className="p-0">
                                       <AccountInlineEntries ctx={ctx} accountId={a.accountId} onOpenTx={onOpenTx} />
                                     </td>
                                   </tr>
@@ -249,9 +255,12 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
               })}
             </tbody>
             <tfoot className="sticky bottom-0 z-10 bg-surface-sunk">
-              <tr className="border-t border-border-soft">
-                <td className="px-card py-2.5 text-body-sm font-bold text-ink uppercase tracking-wider">
+              <tr className="border-t-2 border-border-soft">
+                <td className="px-card py-2.5 text-body-sm font-bold text-ink uppercase tracking-wider border-r border-border-soft">
                   {t("trv2_assets_grand_total")}
+                </td>
+                <td className="text-right px-card py-2.5 border-r border-border-soft">
+                  <span className="text-tiny text-muted-soft">—</span>
                 </td>
                 <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
                   {formatBase(grandTotal, baseCurrency)}

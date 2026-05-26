@@ -39,11 +39,12 @@ function renderTab(ctx = makeLedgerCtx()) {
 describe("AssetsTab — дерево Office → Currency → Account", () => {
   beforeEach(() => { canAccountingEdit = true; exportCSVSpy.mockClear(); });
 
-  it("рендерит таблицу с шапкой 'Касса' + '≈ USD' и строки-офисы", () => {
+  it("рендерит таблицу с шапкой 'Касса' + 'Native' + '≈ USD' и строки-офисы", () => {
     renderTab();
     const thead = document.querySelector("thead");
     expect(thead).not.toBeNull();
     expect(within(thead).getByText("trv2_assets_col_office")).toBeInTheDocument();
+    expect(within(thead).getByText("Native")).toBeInTheDocument();
     expect(within(thead).getByText("≈ USD")).toBeInTheDocument();
     expect(screen.getByText("Mark Antalya")).toBeInTheDocument();
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
