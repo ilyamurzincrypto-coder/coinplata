@@ -124,16 +124,21 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         </div>
       ) : (
         <div className="bg-surface rounded-card overflow-hidden">
-          <table className="w-full border-collapse">
+          <table className="w-full border-collapse table-fixed">
+            <colgroup>
+              <col />
+              <col className="w-[240px]" />
+              <col className="w-[160px]" />
+            </colgroup>
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b-2 border-border-soft">
                 <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
                   {t("trv2_assets_col_office")}
                 </th>
-                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap w-[200px] border-r border-border-soft">
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
                   Native
                 </th>
-                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap w-[140px]">
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
                   ≈ {baseCurrency}
                 </th>
               </tr>
