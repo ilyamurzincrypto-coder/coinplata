@@ -455,6 +455,19 @@ export async function rpcHardDeleteDeal(dealId) {
   bumpDataVersion();
 }
 
+// Подтверждение ledger-транзакции (любой kind — deal/manual/...). Пишет
+// в transactions.metadata: confirmed_at = now(), confirmed_by = current user.
+// Используется в JournalTab («Подтвердить» в entries-view) и видно в Кассе.
+export async function rpcConfirmLedgerTransaction(txId) {
+  assertConfigured();
+  if (!txId || typeof txId !== "string") throw new Error(`txId required (got ${txId})`);
+  unwrap(
+    await supabase.rpc("confirm_ledger_transaction", { p_tx_id: txId }),
+    "confirm_ledger_transaction"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcConfirmDealLeg(dealId, legIndex) {
   assertConfigured();
   const id = requirePositive(dealId, "dealId");

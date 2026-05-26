@@ -5,10 +5,12 @@
 // + Inline-форма «+ Ручная проводка» сверху, развёрнута по умолчанию.
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { transactionTree, nodeMatchesSearch } from "../../../lib/treasury/v2selectors.js";
+import { rpcConfirmLedgerTransaction, withToast } from "../../../lib/supabaseWrite.js";
+import { emitToast } from "../../../lib/toast.jsx";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
@@ -203,7 +205,7 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
               {search ? t("trv2_search_no_results") : t("trv2_journal_no_tx")}
             </div>
           ) : (
-            <EntriesTable rows={flatEntries} onOpenSource={onOpenSource} t={t} />
+            <EntriesTable rows={flatEntries} onOpenSource={onOpenSource} t={t} canConfirm={canPost} />
           )
         ) : (
           filtered.length === 0 ? (
@@ -250,7 +252,30 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
 }
 
 // Flat-entries table — 1С-стиль: жёсткая сетка, vertical dividers, zebra.
-function EntriesTable({ rows, onOpenSource, t }) {
+function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
+  // Подтверждать можно только всю tx целиком; чтобы кнопка не дублилась
+  // на каждой ножке одной транзакции, рисуем её только на ПЕРВОЙ строке
+  // каждой tx (по txId), у остальных — checkmark или empty.
+  const firstSeen = React.useMemo(() => {
+    const set = new Set();
+    const first = new Set();
+    for (const r of rows) {
+      const txId = r.tx?.id;
+      if (txId && !set.has(txId)) {
+        set.add(txId);
+        first.add(r.id);
+      }
+    }
+    return first;
+  }, [rows]);
+
+  const onConfirm = async (txId) => {
+    await withToast(
+      () => rpcConfirmLedgerTransaction(txId),
+      { success: "Транзакция подтверждена", errorPrefix: "Подтверждение" }
+    );
+  };
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-caption border-collapse table-fixed">
@@ -262,6 +287,7 @@ function EntriesTable({ rows, onOpenSource, t }) {
           <col className="w-[140px]" />
           <col className="w-[140px]" />
           <col className="w-[100px]" />
+          <col className="w-[130px]" />
         </colgroup>
         <thead className="bg-surface">
           <tr className="border-b-2 border-border-soft">
@@ -271,7 +297,8 @@ function EntriesTable({ rows, onOpenSource, t }) {
             <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_detail_col_contra")}</th>
             <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_col_dr")}</th>
             <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_col_cr")}</th>
-            <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2">{t("trv2_detail_col_doc")}</th>
+            <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_detail_col_doc")}</th>
+            <th className="text-center text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2">Подтв.</th>
           </tr>
         </thead>
         <tbody>
@@ -308,7 +335,7 @@ function EntriesTable({ rows, onOpenSource, t }) {
                 <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${!isDr ? "text-danger font-bold" : "text-muted-soft"}`}>
                   {!isDr ? amtStr : "—"}
                 </td>
-                <td className="px-2 py-1.5 whitespace-nowrap">
+                <td className="px-2 py-1.5 whitespace-nowrap border-r border-border-soft">
                   {row.tx.sourceRefId && onOpenSource ? (
                     <button
                       type="button"
@@ -319,6 +346,32 @@ function EntriesTable({ rows, onOpenSource, t }) {
                     </button>
                   ) : (
                     <span className="text-muted-soft font-mono text-tiny">{sourceLabel}</span>
+                  )}
+                </td>
+                <td className="px-2 py-1.5 text-center whitespace-nowrap">
+                  {row.tx.metadata?.confirmed_at ? (
+                    <span
+                      className="inline-flex items-center gap-1 text-tiny font-bold text-success"
+                      title={`Подтверждено ${new Date(row.tx.metadata.confirmed_at).toLocaleString()}${row.tx.metadata.confirmed_by ? ` · ${row.tx.metadata.confirmed_by}` : ""}`}
+                    >
+                      <Check className="w-3 h-3" strokeWidth={3} />
+                      ✓
+                    </span>
+                  ) : firstSeen.has(row.id) ? (
+                    canConfirm ? (
+                      <button
+                        type="button"
+                        onClick={() => onConfirm(row.tx.id)}
+                        className="h-6 px-2 rounded-button bg-accent-bg text-accent hover:bg-accent/15 text-tiny font-bold transition-colors"
+                        title="Подтвердить транзакцию (видно в Кассе)"
+                      >
+                        Подтвердить
+                      </button>
+                    ) : (
+                      <span className="text-tiny text-muted-soft">—</span>
+                    )
+                  ) : (
+                    <span className="text-tiny text-muted-soft">·</span>
                   )}
                 </td>
               </tr>
