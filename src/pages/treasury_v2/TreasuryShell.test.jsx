@@ -35,6 +35,9 @@ vi.mock("../../store/openObligations.js", () => ({ useOpenObligations: () => ({ 
 vi.mock("../../store/baseCurrency.js", () => ({
   useBaseCurrency: () => ({ toBase: (a) => Number(a) || 0, formatBase: (a) => `$${Number(a) || 0}`, base: "USD" }),
 }));
+vi.mock("../../store/rates.jsx", () => ({
+  useRates: () => ({ getRate: (from, to) => (from === to ? 1 : 1) }),
+}));
 vi.mock("../../store/ledger.jsx", () => ({
   useLedger: () => ({
     accounts: fx.accounts, balances: fx.balances, transactions: fx.transactions, entries: fx.entries,
@@ -54,7 +57,7 @@ import TreasuryShell from "./TreasuryShell.jsx";
 describe("TreasuryShell integration smoke", () => {
   it("renders the tabs, opens on the Dashboard, and the Assets tab shows the office→currency→accounts tree on click", () => {
     render(<TreasuryShell />);
-    for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_pnl", "trv2_tab_journal"]) {
+    for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_transactions"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
     }
     // Dashboard is the landing tab → its capital card is visible
@@ -85,7 +88,7 @@ describe("TreasuryShell integration smoke", () => {
 
   it("switches to Журнал and drills into the transaction-detail modal", () => {
     const { container } = render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
     fireEvent.click(screen.getByText("deal #D-7")); // expand the tx row
     fireEvent.click(screen.getByRole("button", { name: "trv2_journal_open_source" }));
     expect(container.textContent).toContain("smoke-tx"); // tx metadata rendered in the modal
@@ -103,7 +106,7 @@ describe("TreasuryShell — manual entry is no longer a standalone tab", () => {
   it("opens the manual-entry editor from inside the Журнал tab when allowed", () => {
     canAccountingEdit = true;
     render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
     expect(screen.queryByRole("button", { name: "trv2_pm_post" })).toBeNull(); // editor not open yet
     fireEvent.click(screen.getByRole("button", { name: "trv2_journal_new_manual" }));
     // PostingTab (with its "Провести" submit button) renders inside the modal
@@ -112,17 +115,10 @@ describe("TreasuryShell — manual entry is no longer a standalone tab", () => {
   it("hides the '+ Ручная проводка' button without accounting:edit", () => {
     canAccountingEdit = false;
     render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
     expect(screen.queryByRole("button", { name: "trv2_journal_new_manual" })).toBeNull();
   });
 });
 
-describe("TreasuryShell — Обороты tab", () => {
-  it("renders the Обороты tab and opening it shows the ОСВ view", () => {
-    render(<TreasuryShell />);
-    const tab = screen.getByRole("button", { name: "trv2_tab_turnover" });
-    expect(tab).toBeInTheDocument();
-    fireEvent.click(tab);
-    expect(screen.getByRole("button", { name: "trv2_to_view_osv" })).toBeInTheDocument();
-  });
-});
+// Tabs Сделки/Календарь/ДДС/Корр-счета/P&L/Обороты выпилены 2026-05-26 —
+// связанные интеграционные тесты удалены вместе с ними.

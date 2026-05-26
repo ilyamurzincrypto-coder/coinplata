@@ -17,12 +17,17 @@ import { Search, Calendar } from "lucide-react";
 import Modal from "../../../components/ui/Modal.jsx";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useOffices } from "../../../store/offices.jsx";
+import { useRates } from "../../../store/rates.jsx";
 import {
   accountEntries, counterpartyEntries, liabilitiesByCounterparty,
   accountGroupContext, groupEntries, SUBTYPE_LABEL_KEYS,
 } from "../../../lib/treasury/v2selectors.js";
+import { convert } from "../../../utils/convert.js";
+import { curSymbol } from "../../../utils/money.js";
 import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
+
+const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
 
 const TYPE_LABEL = {
   asset: "trv2_acctype_asset",
@@ -50,11 +55,20 @@ export default function AccountDetailModal({
 }) {
   const { t } = useTranslation();
   const { findOffice } = useOffices();
+  const { getRate } = useRates();
   // Date range — старт: последний месяц.
   const [from, setFrom] = useState(() => daysAgoISO(30));
   const [to, setTo] = useState(() => todayISO());
   const [search, setSearch] = useState("");
-  const [activeCcy, setActiveCcy] = useState("__all__"); // для CP-mode
+  const [activeCcy, setActiveCcy] = useState("__all__");
+  const [displayBase, setDisplayBase] = useState(baseCurrency || "USD");
+
+  // Локальный «привести к» — convert суммы в displayBase через rates.
+  const toDisplayBase = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0, [getRate, displayBase]);
+  const fmtBase = useMemo(() => (amt) => {
+    const v = Number(amt) || 0;
+    return `${curSymbol(displayBase)}${Math.round(v).toLocaleString("en-US")}`;
+  }, [displayBase]);
 
   const cpKind = clientId ? "client" : partnerId ? "partner" : null;
   const cpId = clientId || partnerId;
@@ -136,6 +150,34 @@ export default function AccountDetailModal({
     return [];
   }, [ctx, account, dim, period, isCpMode, cpKind, cpId, isGroupMode, groupCtx, activeCcy]);
 
+  // Карта проводок по transactionId — для поиска контр-счёта (вторая ножка).
+  const txEntriesMap = useMemo(() => {
+    const m = new Map();
+    for (const e of (ctx?.entries || [])) {
+      const arr = m.get(e.transactionId) || [];
+      arr.push(e);
+      m.set(e.transactionId, arr);
+    }
+    return m;
+  }, [ctx]);
+  const accById = useMemo(() => new Map((ctx?.accounts || []).map((a) => [a.id, a])), [ctx]);
+
+  function contraOf(entry) {
+    const all = txEntriesMap.get(entry.txId) || [];
+    // Самая большая по сумме ножка противоположного направления (исключая саму)
+    let best = null;
+    let bestAmt = -Infinity;
+    for (const e of all) {
+      if (e.id === entry.id) continue;
+      if (e.direction === entry.direction) continue;
+      const amt = Number(e.amount) || 0;
+      if (amt > bestAmt) { best = e; bestAmt = amt; }
+    }
+    if (!best) return null;
+    const acc = accById.get(best.accountId);
+    return acc ? { code: acc.code, name: acc.name } : null;
+  }
+
   const filteredEntries = useMemo(() => {
     if (!search.trim()) return entries;
     const q = search.trim().toLowerCase();
@@ -154,19 +196,25 @@ export default function AccountDetailModal({
     });
   }, [entries, search, ctx]);
 
-  // Turnover за период (по видимым после фильтра)
+  // Turnover за период (по видимым после фильтра). Native — только когда все
+  // entries одной валюты; иначе native теряет смысл. Зато base всегда суммируется.
   const turnover = useMemo(() => {
-    let dr = 0, cr = 0;
+    let dr = 0, cr = 0, drBase = 0, crBase = 0;
+    const ccySet = new Set();
     for (const e of filteredEntries) {
       const amt = Number(e.amount) || 0;
-      if (e.direction === "dr") dr += amt;
-      else cr += amt;
+      ccySet.add(e.currency);
+      const inBase = toDisplayBase(amt, e.currency);
+      if (e.direction === "dr") { dr += amt; drBase += inBase; }
+      else { cr += amt; crBase += inBase; }
     }
-    const refType = account?.type || "liability"; // CP-mode = liability
+    const refType = account?.type || "liability";
     const incCr = CREDIT_NORMAL.has(refType);
     const delta = incCr ? cr - dr : dr - cr;
-    return { dr, cr, delta };
-  }, [filteredEntries, account]);
+    const deltaBase = incCr ? crBase - drBase : drBase - crBase;
+    const singleCcy = ccySet.size === 1 ? [...ccySet][0] : null;
+    return { dr, cr, delta, drBase, crBase, deltaBase, singleCcy };
+  }, [filteredEntries, account, toDisplayBase]);
 
   if (!open) return null;
   if (!isCpMode && !account) return null;
@@ -409,7 +457,7 @@ export default function AccountDetailModal({
 
       {currencyTabs}
 
-      {/* Period: date range + quick presets */}
+      {/* Period: date range + quick presets + base picker */}
       <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
         <Calendar className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
         <span className="text-caption text-muted font-semibold mr-1">{t("trv2_detail_period")}:</span>
@@ -418,7 +466,7 @@ export default function AccountDetailModal({
           value={from}
           max={to || undefined}
           onChange={(e) => setFrom(e.target.value)}
-          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
         />
         <span className="text-muted">—</span>
         <input
@@ -426,13 +474,30 @@ export default function AccountDetailModal({
           value={to}
           min={from || undefined}
           onChange={(e) => setTo(e.target.value)}
-          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
         />
-        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border-soft">
+        <div className="flex items-center gap-1 ml-1 pl-2 border-l border-border-soft">
           <button type="button" onClick={() => applyPreset(7)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_week")}</button>
           <button type="button" onClick={() => applyPreset(30)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_month")}</button>
           <button type="button" onClick={() => applyPreset(365)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_year")}</button>
           <button type="button" onClick={() => applyPreset(null)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_all")}</button>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <span className="text-tiny text-muted-soft uppercase tracking-wider font-bold">≈</span>
+          <div className="inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill">
+            {BASE_OPTIONS.map((ccy) => (
+              <button
+                key={ccy}
+                type="button"
+                onClick={() => setDisplayBase(ccy)}
+                className={`h-6 px-2 rounded-pill text-tiny font-bold tracking-wider transition-colors ${
+                  displayBase === ccy ? "bg-ink text-white" : "text-muted hover:text-ink"
+                }`}
+              >
+                {ccy}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -450,51 +515,68 @@ export default function AccountDetailModal({
         </div>
       </div>
 
-      {/* Entries table */}
+      {/* Entries table — жёсткая сетка с vertical dividers */}
       <div className="max-h-[420px] overflow-y-auto">
         {filteredEntries.length === 0 ? (
           <div className="px-5 py-10 text-center text-caption text-muted">
             {t("trv2_no_entries")}
           </div>
         ) : (
-          <table className="w-full text-caption">
+          <table className="w-full text-caption border-collapse table-fixed">
+            <colgroup>
+              <col className="w-[88px]" />
+              <col />
+              <col className="w-[220px]" />
+              <col className="w-[140px]" />
+              <col className="w-[140px]" />
+              <col className="w-[110px]" />
+              <col className="w-[90px]" />
+            </colgroup>
             <thead className="sticky top-0 bg-surface z-10">
-              <tr className="border-b border-border-soft">
-                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-3 py-2 w-24">{t("trv2_detail_col_date")}</th>
-                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2">{t("trv2_detail_col_descr")}</th>
-                <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 w-28">{t("trv2_col_dr")}</th>
-                <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 w-28">{t("trv2_col_cr")}</th>
-                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 w-24">{t("trv2_detail_col_doc")}</th>
+              <tr className="border-b-2 border-border-soft">
+                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-3 py-2 border-r border-border-soft">{t("trv2_detail_col_date")}</th>
+                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_detail_col_descr")}</th>
+                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_detail_col_contra")}</th>
+                <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_col_dr")}</th>
+                <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft">{t("trv2_col_cr")}</th>
+                <th className="text-right text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2 border-r border-border-soft whitespace-nowrap">≈&nbsp;{displayBase}</th>
+                <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-2 py-2">{t("trv2_detail_col_doc")}</th>
               </tr>
             </thead>
             <tbody>
-              {filteredEntries.map((e) => {
+              {filteredEntries.map((e, idx) => {
                 const isDr = e.direction === "dr";
                 const grows = isDr === !incCr;
                 const amtStr = `${fmtAmount(e.amount)} ${e.currency}`;
-                const cpFromEntry = e.clientId || e.partnerId || null;
-                const cpEntryName = (cpFromEntry && ctx?.counterpartyName) ? (() => {
-                  try { return ctx.counterpartyName(cpFromEntry); } catch { return null; }
-                })() : null;
+                const contra = contraOf(e);
+                const inBase = toDisplayBase(e.amount, e.currency);
+                const baseStr = fmtBase(inBase);
                 return (
-                  <tr key={e.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
-                    <td className="px-3 py-1.5 text-muted font-mono tabular">
+                  <tr key={e.id} className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} hover:bg-surface-soft`}>
+                    <td className="px-3 py-1.5 text-muted font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
                       {new Date(e.createdAt).toISOString().slice(0, 10)}
                     </td>
-                    <td className="px-2 py-1.5">
-                      <div className="text-body-sm text-ink truncate">{e.note || e.txKind}</div>
-                      <div className="text-tiny text-muted-soft truncate">
-                        {e.accountCode ? `${e.accountCode} · ${e.accountName || ""}` : ""}
-                        {cpEntryName ? (e.accountCode ? ` · ${cpEntryName}` : cpEntryName) : ""}
-                      </div>
+                    <td className="px-2 py-1.5 border-r border-border-soft">
+                      <span className="text-body-sm text-ink truncate block">{e.note || e.txKind}</span>
                     </td>
-                    <td className={`px-2 py-1.5 text-right font-mono tabular ${isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
+                    <td className="px-2 py-1.5 border-r border-border-soft">
+                      {contra ? (
+                        <span className="flex items-baseline gap-1.5 truncate">
+                          <span className="font-mono text-tiny text-muted-soft shrink-0">{contra.code}</span>
+                          <span className="text-body-sm text-ink-soft truncate">{contra.name}</span>
+                        </span>
+                      ) : <span className="text-muted-soft">—</span>}
+                    </td>
+                    <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
                       {isDr ? amtStr : "—"}
                     </td>
-                    <td className={`px-2 py-1.5 text-right font-mono tabular ${!isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
+                    <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${!isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
                       {!isDr ? amtStr : "—"}
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 py-1.5 text-right font-mono tabular text-muted-soft whitespace-nowrap border-r border-border-soft">
+                      {baseStr}
+                    </td>
+                    <td className="px-2 py-1.5 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => onOpenTx?.(e.txId)}
@@ -511,16 +593,22 @@ export default function AccountDetailModal({
         )}
       </div>
 
-      {/* Turnover footer */}
+      {/* Turnover footer — native (если одна валюта) + base всегда */}
       <div className="px-5 py-3 border-t border-border-soft bg-surface-sunk flex items-center justify-between gap-4 flex-wrap text-caption">
         <span className="text-muted">
           {t("trv2_detail_entries_count")}: <span className="font-bold text-ink font-mono tabular">{filteredEntries.length}</span>
         </span>
         <div className="flex items-center gap-4 font-mono tabular">
-          <span className="text-muted-soft">{t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {ccyLabel}</span></span>
-          <span className="text-muted-soft">{t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {ccyLabel}</span></span>
-          <span className={`font-bold ${turnover.delta >= 0 ? "text-success" : "text-danger"}`}>
-            Δ: {turnover.delta >= 0 ? "+" : ""}{fmtAmount(turnover.delta)} {ccyLabel}
+          {turnover.singleCcy && (
+            <>
+              <span className="text-muted-soft">{t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {turnover.singleCcy}</span></span>
+              <span className="text-muted-soft">{t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {turnover.singleCcy}</span></span>
+            </>
+          )}
+          <span className="text-muted-soft">≈ {t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtBase(turnover.drBase)}</span></span>
+          <span className="text-muted-soft">≈ {t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtBase(turnover.crBase)}</span></span>
+          <span className={`font-bold ${turnover.deltaBase >= 0 ? "text-success" : "text-danger"}`}>
+            Δ: {turnover.deltaBase >= 0 ? "+" : ""}{fmtBase(turnover.deltaBase)}
           </span>
         </div>
       </div>

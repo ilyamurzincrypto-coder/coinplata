@@ -12,40 +12,18 @@ import DashboardTab from "./tabs/DashboardTab.jsx";
 import AssetsTab from "./tabs/AssetsTab.jsx";
 import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
-import PnLTab from "./tabs/PnLTab.jsx";
-import TurnoverTab from "./tabs/TurnoverTab.jsx";
-import CashFlowTab from "./tabs/CashFlowTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
-import DealsTab from "./tabs/DealsTab.jsx";
-import PaymentCalendarTab from "./tabs/PaymentCalendarTab.jsx";
-import CorrespondentsTab from "./tabs/CorrespondentsTab.jsx";
 
-// Порядок вкладок выстроен по частоте использования для обменника:
-//   ОБЗОР:    Дашборд
-//   ОПЕРАЦИИ: Сделки, Платёжный календарь, ДДС  ← менеджер каждый день
-//   БАЛАНС:   Активы, Пассивы, Капитал, Корр-счета  ← на дату
-//   ОТЧЁТЫ:   P&L, Обороты  ← за период для бухгалтера
-//   ИСТОРИЯ:  Журнал  ← все транзакции с проводками
-//
-// `groupStart: true` — после этого таба рисуется тонкий разделитель в
-// tab strip, чтобы границы групп были видны глазом.
+// Treasury — 5 вкладок: Дашборд / Активы / Пассивы / Капитал / Транзакции
+// (Сделки, Платёжный календарь, ДДС, Корр-счета, P&L, Обороты выпилены
+// 2026-05-26 по решению Кирилла; ключевые сценарии переехали в детальные
+// модалы и транзакционный журнал).
 const BASE_TABS = [
-  // ── Обзор ──
-  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab, groupStart: true },
-  // ── Операции (управленческое) ──
-  { id: "deals", labelKey: "trv2_tab_deals", component: DealsTab, groupStart: true },
-  { id: "calendar", labelKey: "trv2_tab_calendar", component: PaymentCalendarTab },
-  { id: "cashflow", labelKey: "trv2_tab_cashflow", component: CashFlowTab },
-  // ── Баланс на дату ──
-  { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab, groupStart: true },
+  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab },
+  { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
-  { id: "correspondents", labelKey: "trv2_tab_correspondents", component: CorrespondentsTab },
-  // ── Отчёты за период ──
-  { id: "pnl", labelKey: "trv2_tab_pnl", component: PnLTab, groupStart: true },
-  { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
-  // ── История ──
-  { id: "journal", labelKey: "trv2_tab_journal", component: JournalTab, groupStart: true },
+  { id: "journal", labelKey: "trv2_tab_transactions", component: JournalTab },
 ];
 
 // Manual journal entries used to be a standalone tab; they now live as a "+ Ручная
