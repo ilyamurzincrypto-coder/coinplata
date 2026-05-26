@@ -574,3 +574,104 @@ describe("chessTurnover", () => {
     expect(usdt.accounts).toEqual([]);
   });
 });
+
+import { assetsPivotByOffice } from "./v2selectors.js";
+describe("assetsPivotByOffice", () => {
+  it("строит pivot из asset-счетов: офисы в строках, валюты в колонках", () => {
+    const ctx = makeLedgerCtx();
+    const pivot = assetsPivotByOffice(ctx);
+    // Asset accounts: ac_cash_usd_mark (office-mark, USD 11000),
+    //                 ac_hot_usdt_mark (office-mark, USDT 150),
+    //                 ac_treasury_usdt (null office, USDT 1000)
+    // Валюты в плане счетов: USD, USDT. Base = USD → USD первой.
+    expect(pivot.currencies).toEqual(["USD", "USDT"]);
+    // rows: office-mark (totalInBase 11150) первой, null-офис в конце (1000)
+    expect(pivot.rows.map((r) => r.officeId)).toEqual(["office-mark", null]);
+    expect(pivot.rows[0].totals).toEqual({ USD: 11000, USDT: 150 });
+    expect(pivot.rows[0].totalInBase).toBe(11150);
+    expect(pivot.rows[1].totals).toEqual({ USDT: 1000 });
+    expect(pivot.rows[1].totalInBase).toBe(1000);
+    expect(pivot.grandTotals).toEqual({ USD: 11000, USDT: 1150, inBase: 12150 });
+  });
+
+  it("включает в accounts[] все asset-счета офиса, отсортированные по |balanceInBase| desc", () => {
+    const ctx = makeLedgerCtx();
+    const pivot = assetsPivotByOffice(ctx);
+    const mark = pivot.rows.find((r) => r.officeId === "office-mark");
+    expect(mark.accounts.map((a) => a.accountId)).toEqual([
+      "ac_cash_usd_mark", // 11000 base
+      "ac_hot_usdt_mark", // 150 base
+    ]);
+    expect(mark.accounts[0]).toMatchObject({
+      accountId: "ac_cash_usd_mark", code: "1110", currency: "USD", balance: 11000, balanceInBase: 11000,
+    });
+  });
+
+  it("officeFilter=<uuid> оставляет только этот офис и исключает null-office", () => {
+    const ctx = makeLedgerCtx({ officeFilter: "office-mark" });
+    const pivot = assetsPivotByOffice(ctx);
+    expect(pivot.rows).toHaveLength(1);
+    expect(pivot.rows[0].officeId).toBe("office-mark");
+    // USDT остаётся в колонках, т.к. у office-mark есть USDT-счёт
+    expect(pivot.currencies).toEqual(["USD", "USDT"]);
+  });
+
+  it("включает в currencies валюту даже если у счёта нулевой баланс", () => {
+    const ctx = makeLedgerCtx({
+      accounts: [
+        { id: "a1", code: "1110", name: "Cash USD", type: "asset", subtype: "cash", currency: "USD", officeId: "o1" },
+        { id: "a2", code: "1120", name: "Cash EUR", type: "asset", subtype: "cash", currency: "EUR", officeId: "o1" },
+      ],
+      balances: [
+        { accountId: "a1", currency: "USD", clientId: null, partnerId: null, balance: 100 },
+        // a2 — без balance row → 0
+      ],
+      toBase: (amt, cur) => Number(amt) * ({ USD: 1, EUR: 1.1 }[cur] ?? 0),
+      baseCurrency: "USD",
+      officeFilter: "all",
+    });
+    const pivot = assetsPivotByOffice(ctx);
+    // EUR колонка есть, хотя баланс 0
+    expect(pivot.currencies).toContain("EUR");
+    const o1 = pivot.rows[0];
+    expect(o1.totals.EUR ?? 0).toBe(0);
+  });
+
+  it("baseCurrency всегда первая в currencies, остальные — по Σ|inBase| desc", () => {
+    const ctx = makeLedgerCtx({
+      accounts: [
+        { id: "a1", code: "1", name: "TRY", type: "asset", subtype: "cash", currency: "TRY", officeId: "o1" },
+        { id: "a2", code: "2", name: "EUR", type: "asset", subtype: "cash", currency: "EUR", officeId: "o1" },
+        { id: "a3", code: "3", name: "USD", type: "asset", subtype: "cash", currency: "USD", officeId: "o1" },
+      ],
+      balances: [
+        { accountId: "a1", currency: "TRY", clientId: null, partnerId: null, balance: 1000000 }, // base ~ 30000
+        { accountId: "a2", currency: "EUR", clientId: null, partnerId: null, balance: 100 },     // base ~ 110
+        { accountId: "a3", currency: "USD", clientId: null, partnerId: null, balance: 500 },     // base 500
+      ],
+      toBase: (amt, cur) => Number(amt) * ({ USD: 1, EUR: 1.1, TRY: 0.03 }[cur] ?? 0),
+      baseCurrency: "USD",
+      officeFilter: "all",
+    });
+    const pivot = assetsPivotByOffice(ctx);
+    expect(pivot.currencies).toEqual(["USD", "TRY", "EUR"]); // USD first, then TRY (30000), then EUR (110)
+  });
+
+  it("null-office всегда последний даже если у него больше |totalInBase|", () => {
+    const ctx = makeLedgerCtx({
+      accounts: [
+        { id: "a1", code: "1", name: "small office", type: "asset", subtype: "cash", currency: "USD", officeId: "o1" },
+        { id: "a2", code: "2", name: "big null", type: "asset", subtype: "cash", currency: "USD", officeId: null },
+      ],
+      balances: [
+        { accountId: "a1", currency: "USD", clientId: null, partnerId: null, balance: 10 },
+        { accountId: "a2", currency: "USD", clientId: null, partnerId: null, balance: 999999 },
+      ],
+      toBase: (amt) => Number(amt),
+      baseCurrency: "USD",
+      officeFilter: "all",
+    });
+    const pivot = assetsPivotByOffice(ctx);
+    expect(pivot.rows.map((r) => r.officeId)).toEqual(["o1", null]);
+  });
+});
