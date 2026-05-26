@@ -711,7 +711,7 @@ export default function AccountDetailModal({
       {/* Обороты за период — компактная строка */}
       <div className="px-5 py-2 border-t border-border-soft bg-surface-soft/40 flex items-baseline justify-between gap-3 flex-wrap text-caption">
         <span className="text-tiny text-muted uppercase tracking-wider font-bold">
-          Обороты за период · {filteredEntries.length} проводок
+          Обороты {period ? `${new Date(period.from).toISOString().slice(0, 10)} — ${new Date(period.to).toISOString().slice(0, 10)}` : "за всё время"} · {filteredEntries.length} проводок
         </span>
         <div className="flex items-baseline gap-4 font-mono tabular">
           {turnover.singleCcy && (
