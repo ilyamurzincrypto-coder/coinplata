@@ -1,20 +1,22 @@
 // src/pages/treasury_v2/tabs/LiabilitiesTab.jsx
+// «Пассивы» — tree-table 1:1 с Активами:
+//   Контрагент → Валюта → Source-account.
+// Клик по строке-контрагенту → AccountDetailModal в CP-mode (мульти-валютный).
+// Клик по строке-листу → AccountDetailModal account+dim mode.
+// Chevron на левом краю каждого уровня — отдельный кнопка-тогл для expand.
 //
-// «Пассивы» — flat-list контрагентов с балансами по customer_liab/partner_liab/unearned.
-// Group-by-counterparty единственный режим (legacy by-type-tabs убран).
-// Фильтр client / partner / all + кнопка «+ Обязательство» → CreateLiabilityDialog.
+// Toolbar (как было): CP-type filter, sort, nonzero, search, +Обязательство.
 
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, Search, Download } from "lucide-react";
+import { Plus, Search, Download, ChevronRight, ChevronDown } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
-import { usePartners } from "../../../store/partners.jsx";
-import { updateClientRow, rpcArchiveClient, rpcDeleteClient } from "../../../lib/supabaseWrite.js";
-import { emitToast } from "../../../lib/toast.jsx";
 import { exportCSV } from "../../../utils/csv.js";
 import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js";
-import CounterpartyGroup from "../parts/CounterpartyGroup.jsx";
+import { fmt, curSymbol } from "../../../utils/money.js";
+import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
+import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const CP_FILTER_KEY = "coinplata:liabilities-cp-filter";
 const SORT_KEY = "coinplata:liabilities-sort";
@@ -25,94 +27,40 @@ const SORT_OPTIONS = [
   { id: "referral", label: "Реферал first" },
 ];
 
-export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
+function nativeFmt(amount, currency) {
+  return `${curSymbol(currency)}${fmt(amount, currency)}`;
+}
+
+export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
   const { t } = useTranslation();
   const can = useCan();
-  const { updatePartner, removePartner } = usePartners();
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  // Inline rename контрагента из карточки.
-  const renameCounterparty = useCallback(async (cp, newName) => {
-    try {
-      if (cp.kind === "client") {
-        await updateClientRow(cp.id, { nickname: newName });
-      } else {
-        await updatePartner(cp.id, { name: newName });
-      }
-      emitToast("success", "Имя обновлено");
-    } catch (err) {
-      emitToast("error", err?.message || "Не удалось переименовать");
-      throw err;
-    }
-  }, [updatePartner]);
-
-  // Archive — мягкое скрытие, история остаётся.
-  const archiveCounterparty = useCallback(async (cp) => {
-    try {
-      if (cp.kind === "client") {
-        await rpcArchiveClient(cp.id, true);
-      } else {
-        // partners.update.archived нет — деактивируем через soft-delete RPC.
-        await removePartner(cp.id);
-      }
-      emitToast("success", "Архивирован");
-    } catch (err) {
-      emitToast("error", err?.message || "Не удалось архивировать");
-      throw err;
-    }
-  }, [removePartner]);
-
-  // Delete — hard, RPC проверит наличие проводок и упадёт с понятной ошибкой.
-  const deleteCounterparty = useCallback(async (cp) => {
-    try {
-      if (cp.kind === "client") {
-        await rpcDeleteClient(cp.id);
-      } else {
-        await removePartner(cp.id);
-      }
-      emitToast("success", "Удалён");
-    } catch (err) {
-      emitToast("error", err?.message || "Не удалось удалить");
-      throw err;
-    }
-  }, [removePartner]);
+  const [expanded, setExpanded] = useState(() => new Set());
+  // Модал: либо CP (clientId/partnerId), либо лист (accountId+dim)
+  const [detailOpen, setDetailOpen] = useState(null);
+  // detailOpen = { accountId?, clientId?, partnerId? }
 
   const [cpFilter, setCpFilter] = useState(() => {
     try {
       const v = localStorage.getItem(CP_FILTER_KEY);
       return v === "client" || v === "partner" || v === "all" ? v : "all";
-    } catch {
-      return "all";
-    }
+    } catch { return "all"; }
   });
-  const setCpFilterPersist = (v) => {
-    setCpFilter(v);
-    try { localStorage.setItem(CP_FILTER_KEY, v); } catch {}
-  };
+  const setCpFilterPersist = (v) => { setCpFilter(v); try { localStorage.setItem(CP_FILTER_KEY, v); } catch {} };
 
   const [sortMode, setSortMode] = useState(() => {
     try {
       const v = localStorage.getItem(SORT_KEY);
       return SORT_OPTIONS.some((o) => o.id === v) ? v : "balance";
-    } catch {
-      return "balance";
-    }
+    } catch { return "balance"; }
   });
-  const setSortModePersist = (v) => {
-    setSortMode(v);
-    try { localStorage.setItem(SORT_KEY, v); } catch {}
-  };
+  const setSortModePersist = (v) => { setSortMode(v); try { localStorage.setItem(SORT_KEY, v); } catch {} };
 
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
   });
-  const setNonZeroPersist = (v) => {
-    setNonZeroOnly(v);
-    try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {}
-  };
+  const setNonZeroPersist = (v) => { setNonZeroOnly(v); try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {} };
 
-  // Поиск debounce 150ms — для длинных списков. raw — что в input,
-  // applied — что применяется к фильтру.
   const [searchRaw, setSearchRaw] = useState("");
   const [search, setSearch] = useState("");
   useEffect(() => {
@@ -128,27 +76,21 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
             : cpFilter === "partner" ? partnerGroups
             : [...clientGroups, ...partnerGroups];
 
-    // Filter: только ненулевые балансы
-    if (nonZeroOnly) {
-      list = list.filter((g) => Math.abs(g.totalInBase) > 0.005);
-    }
+    if (nonZeroOnly) list = list.filter((g) => Math.abs(g.totalInBase) > 0.005);
 
-    // Filter: поиск по имени/telegram/tag
     if (search) {
       list = list.filter((g) => {
-        const haystack = [g.name, g.telegram, g.tag].filter(Boolean).map((s) => String(s).toLowerCase());
-        return haystack.some((s) => s.includes(search));
+        const hay = [g.name, g.telegram, g.tag].filter(Boolean).map((s) => String(s).toLowerCase());
+        return hay.some((s) => s.includes(search));
       });
     }
 
-    // Sort
     const sorted = [...list];
     if (sortMode === "balance") {
       sorted.sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase));
     } else if (sortMode === "name") {
       sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     } else {
-      // referral first then balance
       sorted.sort((a, b) => {
         if (a.isReferral !== b.isReferral) return a.isReferral ? -1 : 1;
         return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
@@ -158,9 +100,27 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
   }, [cpFilter, clientGroups, partnerGroups, nonZeroOnly, search, sortMode]);
 
   const grandTotalInBase = useMemo(
-    () => [...clientGroups, ...partnerGroups].reduce((s, g) => s + g.totalInBase, 0),
-    [clientGroups, partnerGroups]
+    () => visibleGroups.reduce((s, g) => s + g.totalInBase, 0),
+    [visibleGroups]
   );
+
+  const toggle = useCallback((key) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const openCp = (cp) => setDetailOpen(
+    cp.kind === "client" ? { clientId: cp.id } : { partnerId: cp.id }
+  );
+
+  const openLeaf = (cp, accountId) => setDetailOpen({
+    accountId,
+    clientId: cp.kind === "client" ? cp.id : null,
+    partnerId: cp.kind === "partner" ? cp.id : null,
+  });
 
   return (
     <div className="space-y-3">
@@ -168,11 +128,11 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-baseline gap-3 flex-wrap">
           <h2 className="text-h2 text-ink font-semibold">{t("trv2_tab_liabilities")}</h2>
-          <span className="text-body-sm font-mono tabular text-ink-soft">
-            {formatBase(grandTotalInBase, baseCurrency)}
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+            {visibleGroups.length}
           </span>
-          <span className="text-tiny text-muted-soft">
-            {clientGroups.length} клиентов · {partnerGroups.length} партнёров
+          <span className="text-caption text-muted font-normal font-mono tabular">
+            ≈ {formatBase(grandTotalInBase, baseCurrency)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -199,7 +159,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
         </div>
       </div>
 
-      {/* Toolbar: CP-type filter + sort + non-zero toggle + search */}
+      {/* Toolbar */}
       <div className="bg-surface rounded-card p-2.5 flex items-center gap-2 flex-wrap">
         <SegmentedSmall
           value={cpFilter}
@@ -210,18 +170,12 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
             { id: "partner", label: `Партнёры · ${partnerGroups.length}` },
           ]}
         />
-        <SegmentedSmall
-          value={sortMode}
-          onChange={setSortModePersist}
-          options={SORT_OPTIONS}
-        />
+        <SegmentedSmall value={sortMode} onChange={setSortModePersist} options={SORT_OPTIONS} />
         <button
           type="button"
           onClick={() => setNonZeroPersist(!nonZeroOnly)}
           className={`h-7 px-2.5 rounded-pill text-tiny font-semibold transition-all whitespace-nowrap ${
-            nonZeroOnly
-              ? "bg-ink text-white"
-              : "bg-surface-sunk text-muted hover:text-ink"
+            nonZeroOnly ? "bg-ink text-white" : "bg-surface-sunk text-muted hover:text-ink"
           }`}
           title="Скрыть нулевые балансы"
         >
@@ -239,27 +193,160 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
         </div>
       </div>
 
-      <div className="text-tiny text-muted-soft">{t("trv2_liab_sign_note")}</div>
-
       {visibleGroups.length === 0 ? (
         <div className="bg-surface rounded-card px-card py-8 text-center text-body-sm text-muted">
           {t("trv2_no_accounts")}
         </div>
       ) : (
         <div className="bg-surface rounded-card overflow-hidden">
-          {visibleGroups.map((cp) => (
-            <CounterpartyGroup
-              key={`${cp.kind}:${cp.id}`}
-              cp={cp}
-              formatBase={formatBase}
-              baseCurrency={baseCurrency}
-              canEdit={can("accounting", "edit")}
-              accounts={ctx?.accounts || []}
-              onRename={renameCounterparty}
-              onArchive={archiveCounterparty}
-              onDelete={deleteCounterparty}
-            />
-          ))}
+          <table className="w-full border-collapse table-fixed">
+            <colgroup>
+              <col />
+              <col className="w-[240px]" />
+              <col className="w-[160px]" />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-surface">
+              <tr className="border-b-2 border-border-soft">
+                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
+                  Контрагент
+                </th>
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
+                  Native
+                </th>
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
+                  ≈ {baseCurrency}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleGroups.map((cp) => {
+                const cpKey = `cp:${cp.kind}:${cp.id}`;
+                const cpOpen = expanded.has(cpKey);
+                return (
+                  <React.Fragment key={cpKey}>
+                    {/* Level 1 — counterparty: click row → open CP modal; chevron → expand */}
+                    <tr
+                      className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
+                      onClick={() => openCp(cp)}
+                      title="Открыть карточку контрагента"
+                    >
+                      <td className="px-card py-2.5 border-r border-border-soft">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggle(cpKey); }}
+                            className="p-0.5 -m-0.5 rounded hover:bg-surface-sunk transition-colors"
+                            title={cpOpen ? "Свернуть" : "Развернуть"}
+                          >
+                            {cpOpen
+                              ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
+                              : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+                          </button>
+                          <span className="text-h3 text-ink font-semibold truncate">{cp.name}</span>
+                          {cp.isReferral && (
+                            <span className="text-tiny font-semibold text-success uppercase tracking-wider shrink-0">реф</span>
+                          )}
+                          <span className="text-tiny text-muted-soft truncate">
+                            {cp.kind === "client" ? "клиент" : "партнёр"}
+                            {cp.telegram ? ` · ${cp.telegram}` : ""}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right px-card py-2.5 border-r border-border-soft">
+                        <span className="text-tiny text-muted-soft">—</span>
+                      </td>
+                      <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
+                        cp.totalInBase < 0 ? "text-danger" : "text-ink"
+                      }`}>
+                        {formatBase(cp.totalInBase, baseCurrency)}
+                      </td>
+                    </tr>
+
+                    {cpOpen && cp.byCurrency.map((cur) => {
+                      const curKey = `${cpKey}|cur:${cur.currency}`;
+                      const curExpanded = expanded.has(curKey);
+                      const isBase = cur.currency === baseCurrency;
+                      return (
+                        <React.Fragment key={curKey}>
+                          {/* Level 2 — currency: click row → expand source accounts */}
+                          <tr
+                            className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                            onClick={() => toggle(curKey)}
+                          >
+                            <td className="pl-9 pr-card py-2 border-r border-border-soft">
+                              <div className="flex items-center gap-2">
+                                {curExpanded
+                                  ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
+                                  : <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />}
+                                <CurrencyIcon ccy={cur.currency} size="sm" />
+                                <span className="text-caption font-semibold text-ink-soft tracking-wider">
+                                  {cur.currency}
+                                </span>
+                              </div>
+                            </td>
+                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
+                              cur.balance < 0 ? "text-danger" : "text-ink"
+                            }`}>
+                              {nativeFmt(cur.balance, cur.currency)}
+                            </td>
+                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
+                              cur.balanceInBase < 0 ? "text-danger" : "text-ink-soft"
+                            }`}>
+                              {formatBase(cur.balanceInBase, baseCurrency)}
+                            </td>
+                          </tr>
+
+                          {curExpanded && cur.sourceAccounts.map((a) => {
+                            const accKey = `${curKey}|acc:${a.accountId}`;
+                            return (
+                              <tr
+                                key={accKey}
+                                className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                                onClick={() => openLeaf(cp, a.accountId)}
+                                title="Открыть детали счёта"
+                              >
+                                <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
+                                  <div className="flex items-center gap-2">
+                                    <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                    <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
+                                    <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                  </div>
+                                </td>
+                                <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                                  a.balance < 0 ? "text-danger" : "text-ink-soft"
+                                }`}>
+                                  {nativeFmt(a.balance, cur.currency)}
+                                </td>
+                                <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-muted-soft whitespace-nowrap">
+                                  {/* per-account base — точно вычислять не строим, оставляем native */}
+                                  —
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+            <tfoot className="sticky bottom-0 z-10 bg-surface-sunk">
+              <tr className="border-t-2 border-border-soft">
+                <td className="px-card py-2.5 text-body-sm font-bold text-ink uppercase tracking-wider border-r border-border-soft">
+                  ИТОГО
+                </td>
+                <td className="text-right px-card py-2.5 border-r border-border-soft">
+                  <span className="text-tiny text-muted-soft">—</span>
+                </td>
+                <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
+                  grandTotalInBase < 0 ? "text-danger" : "text-ink"
+                }`}>
+                  {formatBase(grandTotalInBase, baseCurrency)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       )}
 
@@ -270,41 +357,41 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency }) {
         clients={ctx?.clients || []}
         partners={ctx?.partners || []}
       />
+
+      <AccountDetailModal
+        open={!!detailOpen}
+        onClose={() => setDetailOpen(null)}
+        ctx={ctx}
+        accountId={detailOpen?.accountId || null}
+        clientId={detailOpen?.clientId || null}
+        partnerId={detailOpen?.partnerId || null}
+        formatBase={formatBase}
+        baseCurrency={baseCurrency}
+        onOpenTx={onOpenTx}
+      />
     </div>
   );
 }
 
-// One row per (counterparty × currency × source_account) — даёт бухгалтеру
-// все срезы баланса без дальнейшей перекомпоновки.
 function doExport(groups, baseCurrency) {
   const rows = [];
   for (const cp of groups) {
     for (const cur of cp.byCurrency) {
       if (!cur.sourceAccounts || cur.sourceAccounts.length === 0) {
         rows.push({
-          kind: cp.kind,
-          name: cp.name,
-          telegram: cp.telegram || "",
+          kind: cp.kind, name: cp.name, telegram: cp.telegram || "",
           isReferral: cp.isReferral ? "true" : "false",
-          currency: cur.currency,
-          balance: cur.balance,
-          balanceInBase: cur.balanceInBase,
-          accountCode: "",
-          accountName: "",
+          currency: cur.currency, balance: cur.balance, balanceInBase: cur.balanceInBase,
+          accountCode: "", accountName: "",
         });
         continue;
       }
       for (const acc of cur.sourceAccounts) {
         rows.push({
-          kind: cp.kind,
-          name: cp.name,
-          telegram: cp.telegram || "",
+          kind: cp.kind, name: cp.name, telegram: cp.telegram || "",
           isReferral: cp.isReferral ? "true" : "false",
-          currency: cur.currency,
-          balance: acc.balance,
-          balanceInBase: undefined,  // accuracy per-account только в native
-          accountCode: acc.code,
-          accountName: acc.name,
+          currency: cur.currency, balance: acc.balance, balanceInBase: undefined,
+          accountCode: acc.code, accountName: acc.name,
         });
       }
     }

@@ -2,7 +2,7 @@
 //
 // Аватар-инициалы со стабильным gradient'ом по hash имени. Переиспользуется
 // везде где нужен глиф контрагента: DealClientChip, DealClientAutocomplete
-// (через локальные helpers), Treasury → Liabilities (CounterpartyGroup).
+// (через локальные helpers), Treasury → Liabilities (LiabilitiesTab tree).
 
 import React from "react";
 

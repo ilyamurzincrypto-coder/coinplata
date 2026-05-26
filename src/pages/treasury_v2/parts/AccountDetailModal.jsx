@@ -1,17 +1,26 @@
 // src/pages/treasury_v2/parts/AccountDetailModal.jsx
-// Детальный модал по счёту (открывается из дерева Активов/Капитала).
-// 1С-стиль: шапка с кодом+названием, баланс-блок с inline-edit,
-// период-фильтр (пресеты), таблица проводок с Дт/Кт и оборотами за период.
+// Детальный модал по счёту ИЛИ контрагенту.
 //
-// v1 — на один счёт (одна валюта). v2 (будущая итерация) добавит
-// мульти-валютный режим для контрагентов (Пассивы).
+// Режимы:
+//  • account — один account (Активы/Капитал лист)
+//  • account+dim — один account отфильтрованный по client/partner (лист Пассивов)
+//  • counterparty — все liability-счета этого CP агрегированно, мульти-валютные KPI,
+//    вкладки на валюту (клик по контрагенту в Пассивах)
+//
+// Props:
+//   open, onClose, ctx, formatBase, baseCurrency, onOpenTx
+//   accountId?           — если задан, режим account (опционально + dim)
+//   clientId? partnerId? — dim или (без accountId) — CP-mode
 
 import React, { useMemo, useState } from "react";
 import { Search, Calendar } from "lucide-react";
 import Modal from "../../../components/ui/Modal.jsx";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useOffices } from "../../../store/offices.jsx";
-import { accountEntries, SUBTYPE_LABEL_KEYS } from "../../../lib/treasury/v2selectors.js";
+import {
+  accountEntries, counterpartyEntries, liabilitiesByCounterparty,
+  accountGroupContext, groupEntries, SUBTYPE_LABEL_KEYS,
+} from "../../../lib/treasury/v2selectors.js";
 import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
@@ -24,7 +33,6 @@ const TYPE_LABEL = {
 };
 const CREDIT_NORMAL = new Set(["liability", "equity", "revenue"]);
 
-// Период: from/to ISO strings, или null для «всё время».
 const PRESETS = [
   { key: "today", labelKey: "trv2_period_today", days: 0 },
   { key: "week", labelKey: "trv2_period_week", days: 7 },
@@ -51,21 +59,53 @@ function fmtAmount(n) {
   return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function AccountDetailModal({ open, onClose, ctx, accountId, formatBase, baseCurrency, onOpenTx }) {
+export default function AccountDetailModal({
+  open, onClose, ctx, formatBase, baseCurrency, onOpenTx,
+  accountId = null, clientId = null, partnerId = null,
+}) {
   const { t } = useTranslation();
   const { findOffice } = useOffices();
   const [preset, setPreset] = useState("month");
   const [search, setSearch] = useState("");
+  const [activeCcy, setActiveCcy] = useState("__all__"); // для CP-mode
 
+  const cpKind = clientId ? "client" : partnerId ? "partner" : null;
+  const cpId = clientId || partnerId;
+  const isCpMode = !accountId && !!cpId;
+  const dim = cpId ? { clientId, partnerId } : null;
+
+  // Resolve account (для account-mode/group-mode)
   const account = useMemo(() => {
     if (!accountId) return null;
     return (ctx?.accounts || []).find((a) => a.id === accountId) || null;
   }, [ctx, accountId]);
 
-  // Текущий native + base баланс — Σ balances по этому accountId.
+  // Group context — для asset/equity клик на лист → показываем всю кассу
+  // (multi-currency). Для liability с dim — НЕ группируем (важен dim filter).
+  const groupCtx = useMemo(() => {
+    if (!account || isCpMode) return null;
+    if (dim) return null; // liability+dim → account-mode, не group
+    if (account.type !== "asset" && account.type !== "equity") return null;
+    return accountGroupContext(ctx, account.id);
+  }, [ctx, account, dim, isCpMode]);
+  const isGroupMode = !!groupCtx && groupCtx.accounts.length > 1;
+
+  // Resolve CP (для cp-mode)
+  const cpData = useMemo(() => {
+    if (!isCpMode) return null;
+    const list = liabilitiesByCounterparty(ctx, cpKind);
+    return list.find((g) => g.id === cpId) || null;
+  }, [ctx, cpKind, cpId, isCpMode]);
+
+  // Balance: account-mode → filter balances by accountId (+ dim если есть)
   const { balanceNative, balanceInBase } = useMemo(() => {
     if (!account) return { balanceNative: 0, balanceInBase: 0 };
-    const rows = (ctx?.balances || []).filter((b) => b.accountId === account.id);
+    const rows = (ctx?.balances || []).filter((b) => {
+      if (b.accountId !== account.id) return false;
+      if (dim && dim.clientId && b.clientId !== dim.clientId) return false;
+      if (dim && dim.partnerId && b.partnerId !== dim.partnerId) return false;
+      return true;
+    });
     let bn = 0, bb = 0;
     for (const b of rows) {
       const n = Number(b.balance) || 0;
@@ -73,15 +113,29 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
       bb += (ctx?.toBase ? ctx.toBase(n, b.currency) : n) || 0;
     }
     return { balanceNative: bn, balanceInBase: bb };
-  }, [ctx, account]);
+  }, [ctx, account, dim]);
 
   const period = useMemo(() => presetToPeriod(preset), [preset]);
 
+  // Entries:
+  //   CP mode    → counterpartyEntries (+ccy filter)
+  //   Group mode → groupEntries для всех sibling accountIds (+ccy filter)
+  //   Account    → accountEntries (+optional dim)
   const entries = useMemo(() => {
-    if (!account) return [];
-    // accountEntries уже фильтрует по period (effectiveDate транзакции)
-    return accountEntries(ctx, account.id, 500, period);
-  }, [ctx, account, period]);
+    if (isCpMode && cpKind && cpId) {
+      const ccy = activeCcy === "__all__" ? null : activeCcy;
+      return counterpartyEntries(ctx, cpKind, cpId, 500, period, ccy);
+    }
+    if (isGroupMode && groupCtx) {
+      const ccy = activeCcy === "__all__" ? null : activeCcy;
+      const ids = groupCtx.accounts.map((a) => a.accountId);
+      return groupEntries(ctx, ids, 500, period, ccy);
+    }
+    if (account) {
+      return accountEntries(ctx, account.id, 500, period, dim);
+    }
+    return [];
+  }, [ctx, account, dim, period, isCpMode, cpKind, cpId, isGroupMode, groupCtx, activeCcy]);
 
   const filteredEntries = useMemo(() => {
     if (!search.trim()) return entries;
@@ -94,13 +148,14 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
       const hay = [
         e.note, e.txKind, e.sourceRefId, e.txId,
         e.currency, String(e.amount),
+        e.accountCode, e.accountName,
         cpName(e.clientId), cpName(e.partnerId),
       ].filter(Boolean).join(" ").toLowerCase();
       return hay.includes(q);
     });
   }, [entries, search, ctx]);
 
-  // Обороты за период
+  // Turnover за период (по видимым после фильтра)
   const turnover = useMemo(() => {
     let dr = 0, cr = 0;
     for (const e of filteredEntries) {
@@ -108,51 +163,159 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
       if (e.direction === "dr") dr += amt;
       else cr += amt;
     }
-    const incCr = CREDIT_NORMAL.has(account?.type);
+    const refType = account?.type || "liability"; // CP-mode = liability
+    const incCr = CREDIT_NORMAL.has(refType);
     const delta = incCr ? cr - dr : dr - cr;
     return { dr, cr, delta };
   }, [filteredEntries, account]);
 
-  if (!open || !account) return null;
+  if (!open) return null;
+  if (!isCpMode && !account) return null;
+  if (isCpMode && !cpData) return null;
 
-  const officeName = account.officeId ? (findOffice(account.officeId)?.name || account.officeId) : null;
-  const subtypeLabel = account.subtype ? t(SUBTYPE_LABEL_KEYS[account.subtype] || "trv2_subtype_other") : null;
-  const typeLabel = t(TYPE_LABEL[account.type] || "trv2_acctype_asset");
-  const isBaseCcy = account.currency === baseCurrency;
-  const incCr = CREDIT_NORMAL.has(account.type);
+  // === Header ===
+  let titleNode;
+  if (isCpMode) {
+    titleNode = (
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-accent-bg text-accent flex items-center justify-center font-bold text-body-sm">
+          {(cpData.name || "?").slice(0, 1).toUpperCase()}
+        </div>
+        <div>
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <span className="text-[17px] font-bold tracking-tight text-ink">{cpData.name}</span>
+            {cpData.isReferral && (
+              <span className="text-tiny font-semibold text-success uppercase tracking-wider">реферал</span>
+            )}
+          </div>
+          <div className="text-caption text-muted mt-0.5">
+            {cpKind === "client" ? t("trv2_cp_kind_client") : t("trv2_cp_kind_partner")}
+            {cpData.telegram ? ` · ${cpData.telegram}` : ""}
+            {cpData.tag ? ` · ${cpData.tag}` : ""}
+          </div>
+        </div>
+      </div>
+    );
+  } else {
+    const officeName = account.officeId ? (findOffice(account.officeId)?.name || account.officeId) : null;
+    const subtypeLabel = account.subtype ? t(SUBTYPE_LABEL_KEYS[account.subtype] || "trv2_subtype_other") : null;
+    const typeLabel = t(TYPE_LABEL[account.type] || "trv2_acctype_asset");
+    const cpName = dim && ctx?.counterpartyName ? (() => {
+      try { return ctx.counterpartyName(cpId); } catch { return null; }
+    })() : null;
+    // В group-mode заголовок — название кассы (без " · CCY") + список валют
+    if (isGroupMode) {
+      titleNode = (
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-accent-bg text-accent flex items-center justify-center font-bold text-body-sm">
+            {(groupCtx.kassaName || "?").slice(0, 1).toUpperCase()}
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="text-[17px] font-bold tracking-tight text-ink">{groupCtx.kassaName}</span>
+              <span className="text-tiny font-mono tabular text-muted-soft">{groupCtx.accounts.length} валют</span>
+            </div>
+            <div className="text-caption text-muted mt-0.5">
+              {typeLabel}
+              {subtypeLabel ? ` · ${subtypeLabel}` : ""}
+              {officeName ? ` · ${officeName}` : ""}
+            </div>
+          </div>
+        </div>
+      );
+    } else {
+      titleNode = (
+        <div className="flex items-center gap-3">
+          <CurrencyIcon ccy={account.currency} size="md" />
+          <div>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="font-mono text-tiny text-muted-soft">{account.code}</span>
+              <span className="text-[17px] font-bold tracking-tight text-ink">
+                {cpName ? `${cpName}` : account.name}
+              </span>
+              {cpName && <span className="text-caption text-muted">· {account.name}</span>}
+            </div>
+            <div className="text-caption text-muted mt-0.5">
+              {typeLabel}
+              {subtypeLabel ? ` · ${subtypeLabel}` : ""}
+              {officeName ? ` · ${officeName}` : ""}
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
 
-  const titleNode = (
-    <div className="flex items-center gap-3">
-      <CurrencyIcon ccy={account.currency} size="md" />
+  // === Balance block ===
+  let balanceNode;
+  if (isCpMode) {
+    // Multi-currency KPI grid
+    balanceNode = (
       <div>
-        <div className="flex items-baseline gap-2">
-          <span className="font-mono text-tiny text-muted-soft">{account.code}</span>
-          <span className="text-[17px] font-bold tracking-tight text-ink">{account.name}</span>
+        <div className="text-tiny text-muted uppercase tracking-wider font-semibold mb-2">
+          {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(cpData.totalInBase, baseCurrency)}</span>
         </div>
-        <div className="text-caption text-muted mt-0.5">
-          {typeLabel}
-          {subtypeLabel ? ` · ${subtypeLabel}` : ""}
-          {officeName ? ` · ${officeName}` : ""}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {cpData.byCurrency.map((c) => (
+            <div key={c.currency} className="bg-surface rounded-card p-2.5 border border-border-soft">
+              <div className="flex items-center gap-1.5 mb-1">
+                <CurrencyIcon ccy={c.currency} size="sm" />
+                <span className="text-caption font-bold text-ink-soft tracking-wider">{c.currency}</span>
+              </div>
+              <div className="font-mono tabular text-body font-bold text-ink">{fmtAmount(c.balance)}</div>
+              <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                ≈ {formatBase(c.balanceInBase, baseCurrency)}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
-    </div>
-  );
-
-  return (
-    <Modal open={open} onClose={onClose} width="4xl">
-      <div className="px-5 py-4 border-b border-border-soft flex items-start justify-between gap-3">
-        <div>{titleNode}</div>
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-button hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
-          aria-label="Close"
-        >
-          ✕
-        </button>
+    );
+  } else if (isGroupMode) {
+    // Multi-currency KPI per sibling account — каждая ячейка кликабельна для inline-edit
+    balanceNode = (
+      <div>
+        <div className="text-tiny text-muted uppercase tracking-wider font-semibold mb-2">
+          {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(groupCtx.totalInBase, baseCurrency)}</span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          {groupCtx.accounts.map((a) => {
+            const isBase = a.currency === baseCurrency;
+            return (
+              <div key={a.accountId} className="bg-surface rounded-card p-2.5 border border-border-soft">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <CurrencyIcon ccy={a.currency} size="sm" />
+                  <span className="text-caption font-bold text-ink-soft tracking-wider">{a.currency}</span>
+                  <span className="text-tiny text-muted-soft font-mono ml-auto">{a.code}</span>
+                </div>
+                <div className="font-mono tabular text-body font-bold text-ink" onClick={(e) => e.stopPropagation()}>
+                  <InlineBalanceEditor
+                    account={{
+                      code: a.code, currency: a.currency,
+                      type: groupCtx.type, subtype: groupCtx.subtype,
+                      balance: a.balance,
+                    }}
+                    displayMul={1}
+                    accounts={ctx?.accounts || []}
+                    suffix={a.currency}
+                    balanceOverride={a.balance}
+                  />
+                </div>
+                {!isBase && (
+                  <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                    ≈ {formatBase(a.balanceInBase, baseCurrency)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
-
-      {/* Balance block */}
-      <div className="px-5 py-4 border-b border-border-soft bg-surface-soft/40">
+    );
+  } else {
+    const isBaseCcy = account.currency === baseCurrency;
+    balanceNode = (
+      <div>
         <div className="text-tiny text-muted uppercase tracking-wider font-semibold mb-2">
           {t("trv2_detail_balance")}
         </div>
@@ -177,10 +340,75 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
               displayMul={1}
               accounts={ctx?.accounts || []}
               suffix={account.currency}
+              clientId={clientId}
+              partnerId={partnerId}
+              balanceOverride={balanceNative}
             />
           </span>
         </div>
       </div>
+    );
+  }
+
+  // Currency tabs (CP-mode и group-mode — multi-currency views)
+  const tabCurrencies = isCpMode
+    ? cpData.byCurrency.map((c) => c.currency)
+    : isGroupMode
+      ? groupCtx.currencies
+      : null;
+  const currencyTabs = tabCurrencies ? (
+    <div className="px-5 py-2 border-b border-border-soft flex items-center gap-1.5 flex-wrap">
+      <button
+        type="button"
+        onClick={() => setActiveCcy("__all__")}
+        className={`h-7 px-2.5 rounded-button text-caption font-semibold transition-colors ${
+          activeCcy === "__all__" ? "bg-ink text-white" : "bg-surface-sunk text-ink-soft hover:bg-surface-soft"
+        }`}
+      >
+        {t("trv2_detail_ccy_all")}
+      </button>
+      {tabCurrencies.map((ccy) => (
+        <button
+          key={ccy}
+          type="button"
+          onClick={() => setActiveCcy(ccy)}
+          className={`h-7 px-2.5 rounded-button text-caption font-semibold transition-colors inline-flex items-center gap-1.5 ${
+            activeCcy === ccy ? "bg-ink text-white" : "bg-surface-sunk text-ink-soft hover:bg-surface-soft"
+          }`}
+        >
+          <CurrencyIcon ccy={ccy} size="sm" />
+          {ccy}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  // Дт/Кт display for an entry — visible на «прирост» зеленым.
+  const refType = isCpMode ? "liability" : (account?.type || "asset");
+  const incCr = CREDIT_NORMAL.has(refType);
+  const ccyLabel = (isCpMode || isGroupMode)
+    ? (activeCcy === "__all__" ? "" : activeCcy)
+    : account.currency;
+
+  return (
+    <Modal open={open} onClose={onClose} width="4xl">
+      <div className="px-5 py-4 border-b border-border-soft flex items-start justify-between gap-3">
+        <div>{titleNode}</div>
+        <button
+          onClick={onClose}
+          className="p-1.5 rounded-button hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Balance block */}
+      <div className="px-5 py-4 border-b border-border-soft bg-surface-soft/40">
+        {balanceNode}
+      </div>
+
+      {currencyTabs}
 
       {/* Period filter */}
       <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
@@ -236,9 +464,9 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
                 const isDr = e.direction === "dr";
                 const grows = isDr === !incCr;
                 const amtStr = `${fmtAmount(e.amount)} ${e.currency}`;
-                const cpId = e.clientId || e.partnerId || null;
-                const cpName = (cpId && ctx?.counterpartyName) ? (() => {
-                  try { return ctx.counterpartyName(cpId); } catch { return null; }
+                const cpFromEntry = e.clientId || e.partnerId || null;
+                const cpEntryName = (cpFromEntry && ctx?.counterpartyName) ? (() => {
+                  try { return ctx.counterpartyName(cpFromEntry); } catch { return null; }
                 })() : null;
                 return (
                   <tr key={e.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
@@ -247,7 +475,10 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
                     </td>
                     <td className="px-2 py-1.5">
                       <div className="text-body-sm text-ink truncate">{e.note || e.txKind}</div>
-                      {cpName && <div className="text-tiny text-muted-soft truncate">{cpName}</div>}
+                      <div className="text-tiny text-muted-soft truncate">
+                        {e.accountCode ? `${e.accountCode} · ${e.accountName || ""}` : ""}
+                        {cpEntryName ? (e.accountCode ? ` · ${cpEntryName}` : cpEntryName) : ""}
+                      </div>
                     </td>
                     <td className={`px-2 py-1.5 text-right font-mono tabular ${isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
                       {isDr ? amtStr : "—"}
@@ -278,10 +509,10 @@ export default function AccountDetailModal({ open, onClose, ctx, accountId, form
           {t("trv2_detail_entries_count")}: <span className="font-bold text-ink font-mono tabular">{filteredEntries.length}</span>
         </span>
         <div className="flex items-center gap-4 font-mono tabular">
-          <span className="text-muted-soft">{t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {account.currency}</span></span>
-          <span className="text-muted-soft">{t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {account.currency}</span></span>
+          <span className="text-muted-soft">{t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {ccyLabel}</span></span>
+          <span className="text-muted-soft">{t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {ccyLabel}</span></span>
           <span className={`font-bold ${turnover.delta >= 0 ? "text-success" : "text-danger"}`}>
-            Δ: {turnover.delta >= 0 ? "+" : ""}{fmtAmount(turnover.delta)} {account.currency}
+            Δ: {turnover.delta >= 0 ? "+" : ""}{fmtAmount(turnover.delta)} {ccyLabel}
           </span>
         </div>
       </div>
