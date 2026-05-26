@@ -12,7 +12,7 @@
 //   accountId?           — если задан, режим account (опционально + dim)
 //   clientId? partnerId? — dim или (без accountId) — CP-mode
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Search, Calendar, Plus } from "lucide-react";
 import Modal from "../../../components/ui/Modal.jsx";
 import { useTranslation } from "../../../i18n/translations.jsx";
@@ -65,6 +65,8 @@ export default function AccountDetailModal({
   const [from, setFrom] = useState(() => daysAgoISO(30));
   const [to, setTo] = useState(() => todayISO());
   const [search, setSearch] = useState("");
+  // activeCcy инициализируется на «Все», но в useEffect ниже при открытии модала
+  // подсветим валюту кликнутого счёта (если group-mode).
   const [activeCcy, setActiveCcy] = useState("__all__");
   const [displayBase, setDisplayBase] = useState(baseCurrency || "USD");
 
@@ -95,6 +97,17 @@ export default function AccountDetailModal({
     return accountGroupContext(ctx, account.id);
   }, [ctx, account, dim, isCpMode]);
   const isGroupMode = !!groupCtx && groupCtx.accounts.length > 1;
+
+  // При открытии модала: если в group-mode и клик был по конкретной валюте —
+  // ставим её как активную вкладку (логично: открыл EUR → видишь EUR-данные).
+  useEffect(() => {
+    if (!open) return;
+    if (isGroupMode && account?.currency) {
+      setActiveCcy(account.currency);
+    } else {
+      setActiveCcy("__all__");
+    }
+  }, [open, accountId, isGroupMode, account?.currency]);
 
   // Resolve CP (для cp-mode)
   const cpData = useMemo(() => {
