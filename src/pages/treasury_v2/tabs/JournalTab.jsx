@@ -191,30 +191,6 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
         >{t("trv2_journal_export_csv")}</button>
       </div>
 
-      {/* Inline +Ручная проводка — collapsible, открыт по дефолту */}
-      {canPost && (
-        <div className="bg-surface rounded-card overflow-hidden">
-          <button
-            type="button"
-            onClick={() => setPostingOpenPersist(!postingOpen)}
-            className="w-full px-card py-2.5 flex items-center gap-2 hover:bg-surface-soft transition-colors text-left border-b border-border-soft"
-          >
-            <Plus className="w-4 h-4 text-accent" strokeWidth={2.5} />
-            <span className="text-body-sm font-semibold text-ink">{t("trv2_journal_new_manual")}</span>
-            <span className="ml-auto">
-              {postingOpen
-                ? <ChevronUp className="w-4 h-4 text-muted" strokeWidth={2.2} />
-                : <ChevronDown className="w-4 h-4 text-muted" strokeWidth={2.2} />}
-            </span>
-          </button>
-          {postingOpen && (
-            <div className="px-5 py-4">
-              <PostingTab ctx={ctx} onDone={() => { /* остаёмся в Проводках, новый entry появится сверху */ }} />
-            </div>
-          )}
-        </div>
-      )}
-
       {truncated && (
         <div className="rounded-card px-card py-2 text-caption bg-warning-soft text-warning border border-warning/20">{t("trv2_window_partial")}</div>
       )}
@@ -239,6 +215,36 @@ export default function JournalTab({ ctx, officeFilter, onOpenSource }) {
           )
         )}
       </section>
+
+      {/* Spacer чтобы sticky-bottom PostingTab card не перекрывала последние строки списка */}
+      {canPost && postingOpen && <div className="h-[420px]" aria-hidden />}
+      {canPost && !postingOpen && <div className="h-[52px]" aria-hidden />}
+
+      {/* PostingTab — sticky к низу экрана для быстрого ввода. Collapsible. */}
+      {canPost && (
+        <div className="fixed bottom-0 left-0 right-0 z-[800] bg-surface border-t-2 border-border-soft shadow-[0_-8px_24px_-12px_rgba(15,23,42,0.18)]">
+          <div className="max-w-screen-2xl mx-auto">
+            <button
+              type="button"
+              onClick={() => setPostingOpenPersist(!postingOpen)}
+              className="w-full px-card py-2.5 flex items-center gap-2 hover:bg-surface-soft transition-colors text-left"
+            >
+              <Plus className="w-4 h-4 text-accent" strokeWidth={2.5} />
+              <span className="text-body-sm font-semibold text-ink">{t("trv2_journal_new_manual")}</span>
+              <span className="ml-auto">
+                {postingOpen
+                  ? <ChevronDown className="w-4 h-4 text-muted" strokeWidth={2.2} />
+                  : <ChevronUp className="w-4 h-4 text-muted" strokeWidth={2.2} />}
+              </span>
+            </button>
+            {postingOpen && (
+              <div className="px-5 pt-2 pb-4 border-t border-border-soft max-h-[480px] overflow-y-auto">
+                <PostingTab ctx={ctx} onDone={() => { /* остаёмся в Проводках; новая запись появится сверху */ }} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

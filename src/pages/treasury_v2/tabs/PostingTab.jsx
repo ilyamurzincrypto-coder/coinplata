@@ -15,6 +15,7 @@ import {
 import AccountPicker from "../parts/AccountPicker.jsx";
 import TransactionEntries from "../parts/TransactionEntries.jsx";
 import SearchableSelect from "../../../components/ui/SearchableSelect.jsx";
+import CalcInput from "../../../components/ui/CalcInput.jsx";
 import { POSTING_TEMPLATES, resolveTemplate } from "../../../lib/treasury/postingTemplates.js";
 
 let _lineSeq = 0;
@@ -217,14 +218,14 @@ export default function PostingTab({ ctx, onDone }) {
                   )}
                 </td>
                 <td className="px-2 py-1.5 text-right">
-                  <input inputMode="decimal" value={l.side === "dr" ? l.amount : ""}
-                    onChange={(e) => setAmount(l.id, "dr", e.target.value)}
-                    className={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "dr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
+                  <CalcInput value={l.side === "dr" ? l.amount : ""}
+                    onChange={(v) => setAmount(l.id, "dr", v)}
+                    inputClassName={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "dr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
                 </td>
                 <td className="px-2 py-1.5 text-right">
-                  <input inputMode="decimal" value={l.side === "cr" ? l.amount : ""}
-                    onChange={(e) => setAmount(l.id, "cr", e.target.value)}
-                    className={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "cr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
+                  <CalcInput value={l.side === "cr" ? l.amount : ""}
+                    onChange={(v) => setAmount(l.id, "cr", v)}
+                    inputClassName={`w-28 text-right bg-surface-soft border rounded-button px-2 py-1 outline-none ${l.side === "cr" && lineErr(l.id, "amount") ? "border-danger/40" : "border-border-soft"}`} />
                 </td>
                 <td className="px-2 py-1.5 text-center">
                   <button type="button" title={t("trv2_pm_remove_line")} disabled={lines.length <= 2}
