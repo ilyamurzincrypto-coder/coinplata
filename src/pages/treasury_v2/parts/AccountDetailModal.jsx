@@ -33,26 +33,11 @@ const TYPE_LABEL = {
 };
 const CREDIT_NORMAL = new Set(["liability", "equity", "revenue"]);
 
-const PRESETS = [
-  { key: "today", labelKey: "trv2_period_today", days: 0 },
-  { key: "week", labelKey: "trv2_period_week", days: 7 },
-  { key: "month", labelKey: "trv2_period_month", days: 30 },
-  { key: "quarter", labelKey: "trv2_period_quarter", days: 90 },
-  { key: "year", labelKey: "trv2_period_year", days: 365 },
-  { key: "all", labelKey: "trv2_period_all", days: null },
-];
-
-function presetToPeriod(preset) {
-  if (preset === "all") return null;
-  const to = new Date();
-  if (preset === "today") {
-    const from = new Date(to);
-    from.setHours(0, 0, 0, 0);
-    return { from: from.toISOString(), to: to.toISOString() };
-  }
-  const days = PRESETS.find((p) => p.key === preset)?.days ?? 30;
-  const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
-  return { from: from.toISOString(), to: to.toISOString() };
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+function daysAgoISO(days) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
 function fmtAmount(n) {
@@ -65,7 +50,9 @@ export default function AccountDetailModal({
 }) {
   const { t } = useTranslation();
   const { findOffice } = useOffices();
-  const [preset, setPreset] = useState("month");
+  // Date range — старт: последний месяц.
+  const [from, setFrom] = useState(() => daysAgoISO(30));
+  const [to, setTo] = useState(() => todayISO());
   const [search, setSearch] = useState("");
   const [activeCcy, setActiveCcy] = useState("__all__"); // для CP-mode
 
@@ -115,7 +102,19 @@ export default function AccountDetailModal({
     return { balanceNative: bn, balanceInBase: bb };
   }, [ctx, account, dim]);
 
-  const period = useMemo(() => presetToPeriod(preset), [preset]);
+  // period: null когда обе границы пустые («Всё время»); иначе ISO from/to
+  const period = useMemo(() => {
+    if (!from && !to) return null;
+    const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : new Date(0).toISOString();
+    const toIso = to ? new Date(`${to}T23:59:59`).toISOString() : new Date().toISOString();
+    return { from: fromIso, to: toIso };
+  }, [from, to]);
+
+  const applyPreset = (days) => {
+    if (days == null) { setFrom(""); setTo(""); return; }
+    setFrom(daysAgoISO(days));
+    setTo(todayISO());
+  };
 
   // Entries:
   //   CP mode    → counterpartyEntries (+ccy filter)
@@ -410,22 +409,31 @@ export default function AccountDetailModal({
 
       {currencyTabs}
 
-      {/* Period filter */}
+      {/* Period: date range + quick presets */}
       <div className="px-5 py-3 border-b border-border-soft flex items-center gap-2 flex-wrap">
         <Calendar className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
         <span className="text-caption text-muted font-semibold mr-1">{t("trv2_detail_period")}:</span>
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => setPreset(p.key)}
-            className={`h-7 px-2.5 rounded-button text-caption font-semibold transition-colors ${
-              preset === p.key ? "bg-ink text-white" : "bg-surface-sunk text-ink-soft hover:bg-surface-soft"
-            }`}
-          >
-            {t(p.labelKey)}
-          </button>
-        ))}
+        <input
+          type="date"
+          value={from}
+          max={to || undefined}
+          onChange={(e) => setFrom(e.target.value)}
+          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+        />
+        <span className="text-muted">—</span>
+        <input
+          type="date"
+          value={to}
+          min={from || undefined}
+          onChange={(e) => setTo(e.target.value)}
+          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+        />
+        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-border-soft">
+          <button type="button" onClick={() => applyPreset(7)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_week")}</button>
+          <button type="button" onClick={() => applyPreset(30)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_month")}</button>
+          <button type="button" onClick={() => applyPreset(365)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_year")}</button>
+          <button type="button" onClick={() => applyPreset(null)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_all")}</button>
+        </div>
       </div>
 
       {/* Search */}

@@ -265,21 +265,35 @@ export function accountEntries(ctx, accountId, limit = 50, period = null, dim = 
     });
 }
 
-// «Касса-группа»: для одного account-id находим все sibling-счета по тому же
-// (officeId, subtype, type) — в нашей модели они представляют одну логическую
-// кассу с разными валютами. Используется в AccountDetailModal чтобы показать
-// мульти-валютный вид при клике на лист-счёт в Активах/Капитале.
+// «Касса-группа»: для одного account-id находим все sibling-счета той же кассы.
+// Группировка по (type, officeId, namePrefix) — namePrefix = имя без хвоста
+// " · CCY" если он есть. Это даёт корректную группу даже когда subtype
+// различается между валютами (исторические данные).
 //
 // Returns: { officeId, subtype, type, kassaName,
 //            accounts: [{accountId, code, name, currency, balance, balanceInBase}],
 //            totalInBase, currencies: ["USD","EUR",...] }
 //          | null если accountId не найден
+function namePrefix(name) {
+  const parts = String(name || "").split(" · ");
+  if (parts.length > 1) {
+    const last = parts[parts.length - 1].trim();
+    if (last.length <= 5 && /^[A-Z]{2,5}$/.test(last)) {
+      return parts.slice(0, -1).join(" · ");
+    }
+  }
+  return String(name || "");
+}
+
 export function accountGroupContext(ctx, accountId) {
   const { accounts, balances, toBase } = ctx;
   const seed = accounts.find((a) => a.id === accountId);
   if (!seed) return null;
+  const seedPrefix = namePrefix(seed.name);
   const siblings = accounts.filter((a) =>
-    a.type === seed.type && a.subtype === seed.subtype && (a.officeId || null) === (seed.officeId || null)
+    a.type === seed.type &&
+    (a.officeId || null) === (seed.officeId || null) &&
+    namePrefix(a.name) === seedPrefix
   );
   const balByAcc = new Map();
   for (const b of balances) {
@@ -300,17 +314,11 @@ export function accountGroupContext(ctx, accountId) {
     return { accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance: bal, balanceInBase: balInBase };
   }).sort((a, b) => Math.abs(b.balanceInBase) - Math.abs(a.balanceInBase));
 
-  // kassaName: общая часть имени (без " · CCY" хвоста) либо subtype + office
-  // Берём имя seed-а и режем последний сегмент если это валюта.
-  const seedParts = (seed.name || "").split(" · ");
-  const tailIsCcy = seedParts.length > 1 && seedParts[seedParts.length - 1].length <= 5;
-  const kassaName = tailIsCcy ? seedParts.slice(0, -1).join(" · ") : (seed.name || `${seed.subtype || ""}`);
-
   return {
     officeId: seed.officeId || null,
     subtype: seed.subtype || null,
     type: seed.type,
-    kassaName,
+    kassaName: seedPrefix || (seed.name || ""),
     accounts: accList,
     totalInBase,
     currencies: accList.map((a) => a.currency),

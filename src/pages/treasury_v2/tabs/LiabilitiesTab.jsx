@@ -7,8 +7,8 @@
 //
 // Toolbar (как было): CP-type filter, sort, nonzero, search, +Обязательство.
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Plus, Search, Download, ChevronRight, ChevronDown } from "lucide-react";
+import React, { useState, useMemo, useCallback } from "react";
+import { Plus, Download, ChevronRight, ChevronDown, Building2 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { exportCSV } from "../../../utils/csv.js";
@@ -18,14 +18,7 @@ import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
-const CP_FILTER_KEY = "coinplata:liabilities-cp-filter";
-const SORT_KEY = "coinplata:liabilities-sort";
 const NONZERO_KEY = "coinplata:liabilities-nonzero";
-const SORT_OPTIONS = [
-  { id: "balance", label: "По балансу" },
-  { id: "name", label: "По имени" },
-  { id: "referral", label: "Реферал first" },
-];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -40,64 +33,24 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   const [detailOpen, setDetailOpen] = useState(null);
   // detailOpen = { accountId?, clientId?, partnerId? }
 
-  const [cpFilter, setCpFilter] = useState(() => {
-    try {
-      const v = localStorage.getItem(CP_FILTER_KEY);
-      return v === "client" || v === "partner" || v === "all" ? v : "all";
-    } catch { return "all"; }
-  });
-  const setCpFilterPersist = (v) => { setCpFilter(v); try { localStorage.setItem(CP_FILTER_KEY, v); } catch {} };
-
-  const [sortMode, setSortMode] = useState(() => {
-    try {
-      const v = localStorage.getItem(SORT_KEY);
-      return SORT_OPTIONS.some((o) => o.id === v) ? v : "balance";
-    } catch { return "balance"; }
-  });
-  const setSortModePersist = (v) => { setSortMode(v); try { localStorage.setItem(SORT_KEY, v); } catch {} };
-
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
   });
   const setNonZeroPersist = (v) => { setNonZeroOnly(v); try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {} };
 
-  const [searchRaw, setSearchRaw] = useState("");
-  const [search, setSearch] = useState("");
-  useEffect(() => {
-    const id = setTimeout(() => setSearch(searchRaw.trim().toLowerCase()), 150);
-    return () => clearTimeout(id);
-  }, [searchRaw]);
-
   const clientGroups = useMemo(() => liabilitiesByCounterparty(ctx, "client"), [ctx]);
   const partnerGroups = useMemo(() => liabilitiesByCounterparty(ctx, "partner"), [ctx]);
 
+  // Реферал сверху → потом |totalInBase| desc; все типы CP вместе (как Активы — все офисы вместе).
   const visibleGroups = useMemo(() => {
-    let list = cpFilter === "client" ? clientGroups
-            : cpFilter === "partner" ? partnerGroups
-            : [...clientGroups, ...partnerGroups];
-
+    let list = [...clientGroups, ...partnerGroups];
     if (nonZeroOnly) list = list.filter((g) => Math.abs(g.totalInBase) > 0.005);
-
-    if (search) {
-      list = list.filter((g) => {
-        const hay = [g.name, g.telegram, g.tag].filter(Boolean).map((s) => String(s).toLowerCase());
-        return hay.some((s) => s.includes(search));
-      });
-    }
-
-    const sorted = [...list];
-    if (sortMode === "balance") {
-      sorted.sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase));
-    } else if (sortMode === "name") {
-      sorted.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    } else {
-      sorted.sort((a, b) => {
-        if (a.isReferral !== b.isReferral) return a.isReferral ? -1 : 1;
-        return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
-      });
-    }
-    return sorted;
-  }, [cpFilter, clientGroups, partnerGroups, nonZeroOnly, search, sortMode]);
+    list.sort((a, b) => {
+      if (a.isReferral !== b.isReferral) return a.isReferral ? -1 : 1;
+      return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
+    });
+    return list;
+  }, [clientGroups, partnerGroups, nonZeroOnly]);
 
   const grandTotalInBase = useMemo(
     () => visibleGroups.reduce((s, g) => s + g.totalInBase, 0),
@@ -124,18 +77,28 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
 
   return (
     <div className="space-y-3">
-      {/* Header */}
+      {/* Header — 1:1 со структурой шапки в AssetsTab */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <h2 className="text-h2 text-ink font-semibold">{t("trv2_tab_liabilities")}</h2>
+        <div className="text-h2 text-ink flex items-center gap-2">
+          {t("trv2_tab_liabilities")}
           <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
             {visibleGroups.length}
           </span>
-          <span className="text-caption text-muted font-normal font-mono tabular">
+          <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
             ≈ {formatBase(grandTotalInBase, baseCurrency)}
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setNonZeroPersist(!nonZeroOnly)}
+            className={`h-9 px-3 rounded-button text-body-sm font-semibold transition-all whitespace-nowrap ${
+              nonZeroOnly ? "bg-ink text-white" : "bg-surface-sunk text-ink-soft hover:bg-surface-soft"
+            }`}
+            title="Скрыть нулевые балансы"
+          >
+            Ненулевые
+          </button>
           <button
             type="button"
             onClick={() => doExport(visibleGroups, baseCurrency)}
@@ -159,43 +122,14 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="bg-surface rounded-card p-2.5 flex items-center gap-2 flex-wrap">
-        <SegmentedSmall
-          value={cpFilter}
-          onChange={setCpFilterPersist}
-          options={[
-            { id: "all",     label: `Все · ${clientGroups.length + partnerGroups.length}` },
-            { id: "client",  label: `Клиенты · ${clientGroups.length}` },
-            { id: "partner", label: `Партнёры · ${partnerGroups.length}` },
-          ]}
-        />
-        <SegmentedSmall value={sortMode} onChange={setSortModePersist} options={SORT_OPTIONS} />
-        <button
-          type="button"
-          onClick={() => setNonZeroPersist(!nonZeroOnly)}
-          className={`h-7 px-2.5 rounded-pill text-tiny font-semibold transition-all whitespace-nowrap ${
-            nonZeroOnly ? "bg-ink text-white" : "bg-surface-sunk text-muted hover:text-ink"
-          }`}
-          title="Скрыть нулевые балансы"
-        >
-          Ненулевые
-        </button>
-        <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
-          <Search className="w-3.5 h-3.5 text-muted-soft shrink-0" strokeWidth={2} />
-          <input
-            type="text"
-            value={searchRaw}
-            onChange={(e) => setSearchRaw(e.target.value)}
-            placeholder="Поиск по имени, telegram"
-            className="flex-1 min-w-0 h-7 px-2 rounded-input bg-surface-sunk text-ink text-caption placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
-          />
-        </div>
-      </div>
-
       {visibleGroups.length === 0 ? (
-        <div className="bg-surface rounded-card px-card py-8 text-center text-body-sm text-muted">
-          {t("trv2_no_accounts")}
+        <div className="bg-surface rounded-card p-card">
+          <div className="py-10 text-center">
+            <div className="inline-flex w-11 h-11 rounded-full bg-surface-sunk text-muted-soft items-center justify-center mb-3">
+              <Building2 className="w-5 h-5" strokeWidth={2} />
+            </div>
+            <div className="text-body font-semibold text-ink mb-1">{t("trv2_no_accounts")}</div>
+          </div>
         </div>
       ) : (
         <div className="bg-surface rounded-card overflow-hidden">
@@ -409,25 +343,4 @@ function doExport(groups, baseCurrency) {
   ];
   const stamp = new Date().toISOString().slice(0, 10);
   exportCSV({ filename: `liabilities_${stamp}.csv`, columns: cols, rows });
-}
-
-function SegmentedSmall({ value, onChange, options }) {
-  return (
-    <div className="inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill">
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          onClick={() => onChange(opt.id)}
-          className={`h-7 px-2.5 rounded-pill text-tiny font-semibold transition-all duration-150 ease-apple whitespace-nowrap ${
-            value === opt.id
-              ? "bg-surface text-ink shadow-seg"
-              : "text-muted hover:text-ink"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
 }
