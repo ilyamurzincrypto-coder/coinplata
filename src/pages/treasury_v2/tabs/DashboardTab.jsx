@@ -413,6 +413,116 @@ function IdentityCard({ ctx, officeFilter, baseCurrency }) {
   );
 }
 
+// KPI cards — крупные показатели сверху Дашборда. Cтиль наш (rounded-card-lg,
+// крупная цифра + label + sub-line), информативность как в 1С (Total balance /
+// Client portfolio / Net capital / Net P&L / Active clients).
+function KPIGrid({ ctx, officeFilter, baseCurrency, period }) {
+  const totals = useMemo(() => balanceCheckTotals({ ...ctx, officeFilter }), [ctx, officeFilter]);
+  const win = useMemo(() => presetWindow(period), [period]);
+  const pnl = useMemo(() => pnlForPeriod({ ...ctx, officeFilter }, { from: win.from, to: win.to }), [ctx, officeFilter, win.from, win.to]);
+  // active clients = распознанные клиенты с ненулевыми customer_liab балансами
+  const activeClients = useMemo(() => {
+    const set = new Set();
+    const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
+    for (const b of ctx.balances || []) {
+      const acc = accById.get(b.accountId);
+      if (!acc) continue;
+      if (acc.type !== "liability" || acc.subtype !== "customer_liab") continue;
+      if (officeFilter !== "all" && officeFilter && acc.officeId !== officeFilter) continue;
+      if (!b.clientId || b.clientId === ZERO_UUID) continue;
+      if (Math.abs(Number(b.balance) || 0) < 0.005) continue;
+      set.add(b.clientId);
+    }
+    return set.size;
+  }, [ctx, officeFilter]);
+  // tx count за период
+  const txCount = useMemo(() => {
+    const fromMs = new Date(win.from).getTime();
+    const toMs = new Date(win.to).getTime();
+    let n = 0;
+    for (const tx of ctx.transactions || []) {
+      const ts = new Date(tx.effectiveDate).getTime();
+      if (ts >= fromMs && ts <= toMs) n++;
+    }
+    return n;
+  }, [ctx, win.from, win.to]);
+
+  const items = [
+    { label: "Активы", value: totals.assets, sub: "наши деньги (касса+крипто)", tone: "ink" },
+    { label: "Клиенты должны нам / мы клиентам", value: -totals.liabilities, sub: "Дт − Кт (Пассивы со знаком)", tone: totals.liabilities > 0 ? "danger" : "muted" },
+    { label: "Капитал", value: totals.equity, sub: "= Активы + Пассивы", tone: "success" },
+    { label: "Чистая прибыль за период", value: pnl.netProfit, sub: `доходы − расходы + курсовые · ${txCount} tx`, tone: pnl.netProfit >= 0 ? "success" : "danger" },
+    { label: "Активных клиентов", value: activeClients, sub: "с ненулевым обязательством", tone: "ink", raw: true },
+  ];
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      {items.map((it) => {
+        const toneCls = it.tone === "success" ? "text-success"
+          : it.tone === "danger" ? "text-danger"
+          : it.tone === "muted" ? "text-muted"
+          : "text-ink";
+        const valueStr = it.raw ? String(it.value) : fmtSignedBase(it.value, baseCurrency);
+        return (
+          <div key={it.label} className="bg-white rounded-card-lg border border-border-soft p-4 hover:shadow-sm transition-shadow">
+            <div className="text-tiny text-muted-soft uppercase tracking-wider font-bold mb-1.5">{it.label}</div>
+            <div className={`text-[22px] font-bold font-mono tabular leading-tight ${toneCls}`}>
+              {valueStr}
+            </div>
+            <div className="text-tiny text-muted-soft mt-1 truncate">{it.sub}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Currency distribution — топ-валют по объёму в base. Горизонтальные бары —
+// относительный «вес» каждой валюты в общем балансе.
+function CurrencyDistributionCard({ ctx, officeFilter, baseCurrency }) {
+  const distribution = useMemo(() => {
+    const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
+    const byCcy = new Map();
+    for (const b of ctx.balances || []) {
+      const acc = accById.get(b.accountId);
+      if (!acc) continue;
+      if (acc.type !== "asset") continue;
+      if (officeFilter !== "all" && officeFilter && acc.officeId !== officeFilter) continue;
+      const inBase = Math.abs(ctx.toBase(b.balance, b.currency) || 0);
+      if (inBase < 0.005) continue;
+      byCcy.set(b.currency, (byCcy.get(b.currency) || 0) + inBase);
+    }
+    const list = [...byCcy.entries()].map(([currency, value]) => ({ currency, value }))
+      .sort((a, b) => b.value - a.value);
+    const total = list.reduce((s, x) => s + x.value, 0);
+    return { list: list.slice(0, 7), total };
+  }, [ctx, officeFilter]);
+  return (
+    <div className="bg-white rounded-card-lg border border-border-soft p-4">
+      <div className="text-body-sm font-bold text-ink mb-3">Распределение по валютам</div>
+      {distribution.list.length === 0 ? (
+        <div className="py-4 text-caption text-muted-soft text-center">Активов нет</div>
+      ) : (
+        <div className="space-y-2">
+          {distribution.list.map((it) => {
+            const pct = distribution.total > 0 ? (it.value / distribution.total) * 100 : 0;
+            return (
+              <div key={it.currency}>
+                <div className="flex items-baseline justify-between text-caption mb-0.5">
+                  <span className="font-bold text-ink-soft">{it.currency}</span>
+                  <span className="font-mono tabular text-ink">{fmtBaseAmount(it.value, baseCurrency)} <span className="text-muted-soft">· {pct.toFixed(1)}%</span></span>
+                </div>
+                <div className="h-1.5 rounded-full bg-surface-sunk overflow-hidden">
+                  <div className="h-full bg-ink transition-all" style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardTab({ ctx, officeFilter, baseCurrency, onOpenSource }) {
   const [period, setPeriodState] = useState(() => {
     try { return localStorage.getItem("coinplata.treasury_dash_period") || "month"; } catch { return "month"; }
@@ -420,15 +530,21 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, onOpenSo
   const setPeriod = (v) => { setPeriodState(v); try { localStorage.setItem("coinplata.treasury_dash_period", v); } catch {} };
   return (
     <div className="space-y-4">
-      <FundsTreeCard
-        ctx={ctx}
-        officeFilter={officeFilter}
-        baseCurrency={baseCurrency}
-        period={period}
-        setPeriod={setPeriod}
-      />
-      {/* PnLCard убран — доходы/расходы и сводка прибыли теперь в верхней
-          FundsTreeCard. Здесь оставляем только сопутствующие карточки. */}
+      {/* KPI grid — 5 крупных карточек сверху */}
+      <KPIGrid ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} period={period} />
+
+      {/* Detailed funds tree + currency distribution side-by-side */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
+        <FundsTreeCard
+          ctx={ctx}
+          officeFilter={officeFilter}
+          baseCurrency={baseCurrency}
+          period={period}
+          setPeriod={setPeriod}
+        />
+        <CurrencyDistributionCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <ObligationsCard officeFilter={officeFilter} />
         <IdentityCard ctx={ctx} officeFilter={officeFilter} baseCurrency={baseCurrency} />
