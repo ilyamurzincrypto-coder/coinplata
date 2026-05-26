@@ -265,17 +265,18 @@ export function accountEntries(ctx, accountId, limit = 50, period = null, dim = 
     });
 }
 
-// Иерархический вид капитала: Подтип (opening_balance / retained_earnings /
-// fx_gain / fx_loss / owner_contribution / ...) → Валюта → Account leaf.
-// Зеркало assetsByOfficeCurrency() но level-1 = subtype вместо office
-// (у equity нет привязки к офису по природе — это глобальные категории
-// учёта собственных средств).
+// Иерархический вид капитала: 4 уровня — Подтип → Офис → Валюта → Счёт.
+// Зеркало assetsByOfficeCurrency() но с дополнительным subtype-level сверху
+// (у equity нет привязки к офису по природе, но Кириллу нужна детализация
+// по офисам внутри подтипа — например когда Opening Balance создаётся
+// разный для каждого офиса).
 //
-// Returns: [{ subtype, labelKey, totalInBase, currencies: [{ currency,
-//   total, totalInBase, accounts: [{ accountId, code, name, currency,
-//   balance, balanceInBase }] }] }]
-// Подтипы по |totalInBase| desc; валюты по |totalInBase| desc; счета
-// по |balanceInBase| desc.
+// Returns: [{ subtype, labelKey, totalInBase, offices: [{ officeId,
+//   totalInBase, currencies: [{ currency, total, totalInBase,
+//   accounts: [{ accountId, code, name, currency, balance, balanceInBase }]
+// }] }] }]
+// Сортировка: subtypes по |totalInBase| desc; offices null-last+|totalInBase|
+// desc; currencies |totalInBase| desc; accounts |balanceInBase| desc.
 export function equityBySubtypeCurrency(ctx) {
   const { accounts, balances, toBase, officeFilter } = ctx;
   const balByAccount = new Map();
@@ -299,14 +300,18 @@ export function equityBySubtypeCurrency(ctx) {
       subtype: subtypeKey,
       labelKey: SUBTYPE_LABEL_KEYS[subtypeKey] || "trv2_subtype_other",
       totalInBase: 0,
-      byCurrency: new Map(),
+      byOffice: new Map(),
     };
+    const officeKey = acc.officeId || "__none__";
+    const off = sect.byOffice.get(officeKey) || { officeId: acc.officeId || null, totalInBase: 0, byCurrency: new Map() };
     const ccyKey = acc.currency || "?";
-    const cur = sect.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
+    const cur = off.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
     cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase });
     cur.total += balance;
     cur.totalInBase += balanceInBase;
-    sect.byCurrency.set(ccyKey, cur);
+    off.byCurrency.set(ccyKey, cur);
+    off.totalInBase += balanceInBase;
+    sect.byOffice.set(officeKey, off);
     sect.totalInBase += balanceInBase;
     bySubtype.set(subtypeKey, sect);
   }
@@ -315,9 +320,19 @@ export function equityBySubtypeCurrency(ctx) {
       subtype: s.subtype,
       labelKey: s.labelKey,
       totalInBase: s.totalInBase,
-      currencies: [...s.byCurrency.values()]
-        .map((c) => ({ ...c, accounts: c.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) }))
-        .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase)),
+      offices: [...s.byOffice.values()]
+        .map((o) => ({
+          officeId: o.officeId,
+          totalInBase: o.totalInBase,
+          currencies: [...o.byCurrency.values()]
+            .map((c) => ({ ...c, accounts: c.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) }))
+            .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase)),
+        }))
+        .sort((a, b) => {
+          if (a.officeId === null && b.officeId !== null) return 1;
+          if (b.officeId === null && a.officeId !== null) return -1;
+          return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
+        }),
     }))
     .sort((a, b) => Math.abs(b.totalInBase) - Math.abs(a.totalInBase));
 }

@@ -11,6 +11,7 @@ import { ChevronRight, ChevronDown, Plus, Building2, Download } from "lucide-rea
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { useRates } from "../../../store/rates.jsx";
+import { useOffices } from "../../../store/offices.jsx";
 import { equityBySubtypeCurrency, balanceCheckTotals } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { convert } from "../../../utils/convert.js";
@@ -32,6 +33,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
   const { t } = useTranslation();
   const can = useCan();
   const { getRate } = useRates();
+  const { findOffice } = useOffices();
   const [displayBase, setDisplayBase] = useState(() => {
     try {
       const v = localStorage.getItem(DISPLAY_BASE_KEY);
@@ -64,11 +66,16 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
     return tree
       .map((s) => ({
         ...s,
-        currencies: s.currencies
-          .map((cur) => ({ ...cur, accounts: cur.accounts.filter((a) => isNonZero(a.balance)) }))
-          .filter((cur) => isNonZero(cur.total) && cur.accounts.length > 0),
+        offices: s.offices
+          .map((o) => ({
+            ...o,
+            currencies: o.currencies
+              .map((cur) => ({ ...cur, accounts: cur.accounts.filter((a) => isNonZero(a.balance)) }))
+              .filter((cur) => isNonZero(cur.total) && cur.accounts.length > 0),
+          }))
+          .filter((o) => isNonZero(o.totalInBase) && o.currencies.length > 0),
       }))
-      .filter((s) => isNonZero(s.totalInBase) && s.currencies.length > 0);
+      .filter((s) => isNonZero(s.totalInBase) && s.offices.length > 0);
   }, [tree, nonZeroOnly]);
 
   const toggle = (key) =>
@@ -106,7 +113,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
           </button>
           <button
             type="button"
-            onClick={() => doExportEquity(filteredTree, displayBase, t)}
+            onClick={() => doExportEquity(filteredTree, displayBase, t, findOffice)}
             disabled={filteredTree.length === 0}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
             title="Экспорт капитала в CSV"
@@ -194,70 +201,103 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                       </td>
                     </tr>
 
-                    {sOpen && sect.currencies.map((cur) => {
-                      const curKey = `${sKey}|cur:${cur.currency}`;
-                      const curOpen = expanded.has(curKey);
+                    {sOpen && sect.offices.map((off) => {
+                      const officeKey = `${sKey}|office:${off.officeId || "none"}`;
+                      const officeOpen = expanded.has(officeKey);
+                      const officeName = off.officeId
+                        ? (findOffice(off.officeId)?.name || off.officeId)
+                        : t("trv2_assets_no_office");
                       return (
-                        <React.Fragment key={curKey}>
+                        <React.Fragment key={officeKey}>
+                          {/* Level 2 — office */}
                           <tr
                             className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
-                            onClick={() => toggle(curKey)}
+                            onClick={() => toggle(officeKey)}
                           >
                             <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
-                                {curOpen
+                                {officeOpen
                                   ? <ChevronDown className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
                                   : <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />}
-                                <CurrencyIcon ccy={cur.currency} size="sm" />
-                                <span className="text-caption font-semibold text-ink-soft tracking-wider">
-                                  {cur.currency}
-                                </span>
+                                <span className="text-body-sm font-semibold text-ink-soft truncate">{officeName}</span>
                               </div>
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">
-                              {nativeFmt(cur.total, cur.currency)}
+                            <td className="text-right px-card py-2 border-r border-border-soft">
+                              <span className="text-tiny text-muted-soft">—</span>
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                              {fmtBase(cur.totalInBase)}
+                            <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap">
+                              {fmtBase(off.totalInBase)}
                             </td>
                           </tr>
 
-                          {curOpen && cur.accounts.map((a) => (
-                            <tr
-                              key={`${curKey}|acc:${a.accountId}`}
-                              className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
-                              onClick={() => setDetailAccountId(a.accountId)}
-                              title="Открыть детали счёта"
-                            >
-                              <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
-                                <div className="flex items-center gap-2">
-                                  <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-                                  <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
-                                  <span className="text-body-sm text-ink truncate">{a.name}</span>
-                                </div>
-                              </td>
-                              <td
-                                className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <InlineBalanceEditor
-                                  account={{
-                                    code: a.code,
-                                    currency: a.currency,
-                                    type: "equity",
-                                    subtype: sect.subtype,
-                                    balance: a.balance,
-                                  }}
-                                  displayMul={1}
-                                  accounts={ctx?.accounts || []}
-                                  suffix={a.currency}
-                                />
-                              </td>
-                              <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                {fmtBase(a.balanceInBase)}
-                              </td>
-                            </tr>
-                          ))}
+                          {officeOpen && off.currencies.map((cur) => {
+                            const curKey = `${officeKey}|cur:${cur.currency}`;
+                            const curOpen = expanded.has(curKey);
+                            return (
+                              <React.Fragment key={curKey}>
+                                {/* Level 3 — currency */}
+                                <tr
+                                  className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                                  onClick={() => toggle(curKey)}
+                                >
+                                  <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
+                                    <div className="flex items-center gap-2">
+                                      {curOpen
+                                        ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                        : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />}
+                                      <CurrencyIcon ccy={cur.currency} size="sm" />
+                                      <span className="text-caption font-semibold text-ink-soft tracking-wider">
+                                        {cur.currency}
+                                      </span>
+                                    </div>
+                                  </td>
+                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
+                                    {nativeFmt(cur.total, cur.currency)}
+                                  </td>
+                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                    {fmtBase(cur.totalInBase)}
+                                  </td>
+                                </tr>
+
+                                {curOpen && cur.accounts.map((a) => (
+                                  <tr
+                                    key={`${curKey}|acc:${a.accountId}`}
+                                    className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                                    onClick={() => setDetailAccountId(a.accountId)}
+                                    title="Открыть детали счёта"
+                                  >
+                                    <td className="pl-[88px] pr-card py-1.5 border-r border-border-soft">
+                                      <div className="flex items-center gap-2">
+                                        <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                        <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
+                                        <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                      </div>
+                                    </td>
+                                    <td
+                                      className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <InlineBalanceEditor
+                                        account={{
+                                          code: a.code,
+                                          currency: a.currency,
+                                          type: "equity",
+                                          subtype: sect.subtype,
+                                          balance: a.balance,
+                                        }}
+                                        displayMul={1}
+                                        accounts={ctx?.accounts || []}
+                                        suffix={a.currency}
+                                      />
+                                    </td>
+                                    <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                      {fmtBase(a.balanceInBase)}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </React.Fragment>
+                            );
+                          })}
                         </React.Fragment>
                       );
                     })}
@@ -310,24 +350,31 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
   );
 }
 
-function doExportEquity(tree, baseCurrency, t) {
+function doExportEquity(tree, baseCurrency, t, findOffice) {
   const rows = [];
   for (const sect of tree) {
-    for (const cur of sect.currencies) {
-      for (const a of cur.accounts) {
-        rows.push({
-          subtype: t(sect.labelKey),
-          accountCode: a.code,
-          accountName: a.name,
-          currency: cur.currency,
-          balance: a.balance,
-          balanceInBase: a.balanceInBase,
-        });
+    for (const off of sect.offices) {
+      const officeName = off.officeId
+        ? (findOffice?.(off.officeId)?.name || off.officeId)
+        : t("trv2_assets_no_office");
+      for (const cur of off.currencies) {
+        for (const a of cur.accounts) {
+          rows.push({
+            subtype: t(sect.labelKey),
+            office: officeName,
+            accountCode: a.code,
+            accountName: a.name,
+            currency: cur.currency,
+            balance: a.balance,
+            balanceInBase: a.balanceInBase,
+          });
+        }
       }
     }
   }
   const cols = [
     { key: "subtype", label: "subtype" },
+    { key: "office", label: "office" },
     { key: "accountCode", label: "account_code" },
     { key: "accountName", label: "account_name" },
     { key: "currency", label: "currency" },
