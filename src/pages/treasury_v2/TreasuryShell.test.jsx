@@ -72,14 +72,15 @@ describe("TreasuryShell integration smoke", () => {
     expect(screen.getByText("1110")).toBeInTheDocument();
   });
 
-  it("expands a leaf account to reveal its inline Dr/Cr entries", () => {
-    const { container } = render(<TreasuryShell />);
+  it("clicking a leaf account opens the AccountDetailModal with its source-doc link", () => {
+    render(<TreasuryShell />);
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
-    expect(container.textContent).not.toContain("D-7");
+    expect(document.body.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
     fireEvent.click(screen.getByText("USD"));
     fireEvent.click(screen.getByText("1110"));
-    expect(container.textContent).toContain("D-7"); // source-doc link in the inline entry table
+    // Modal renders entries via portal to document.body — D-7 is the sourceRefId of the seed tx
+    expect(document.body.textContent).toContain("D-7");
   });
 
   it("switches to Журнал and drills into the transaction-detail modal", () => {

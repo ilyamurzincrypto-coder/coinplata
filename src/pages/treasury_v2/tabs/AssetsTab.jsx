@@ -14,7 +14,7 @@ import { useOffices } from "../../../store/offices.jsx";
 import { assetsByOfficeCurrency } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { exportCSV } from "../../../utils/csv.js";
-import AccountInlineEntries from "../parts/AccountInlineEntries.jsx";
+import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
@@ -32,6 +32,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
   const tree = useMemo(() => assetsByOfficeCurrency(ctx), [ctx]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [detailAccountId, setDetailAccountId] = useState(null);
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
   });
@@ -204,52 +205,41 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
 
                           {curOpen && cur.accounts.map((a) => {
                             const accKey = `${curKey}|acc:${a.accountId}`;
-                            const accOpen = expanded.has(accKey);
                             return (
-                              <React.Fragment key={accKey}>
-                                {/* Level 3 — leaf account */}
-                                <tr
-                                  className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
-                                  onClick={() => toggle(accKey)}
+                              <tr
+                                key={accKey}
+                                className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                                onClick={() => setDetailAccountId(a.accountId)}
+                                title="Открыть детали счёта"
+                              >
+                                <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
+                                  <div className="flex items-center gap-2">
+                                    <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                    <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
+                                    <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                  </div>
+                                </td>
+                                <td
+                                  className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
-                                    <div className="flex items-center gap-2">
-                                      {accOpen
-                                        ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-                                        : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />}
-                                      <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
-                                      <span className="text-body-sm text-ink truncate">{a.name}</span>
-                                    </div>
-                                  </td>
-                                  <td
-                                    className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <InlineBalanceEditor
-                                      account={{
-                                        code: a.code,
-                                        currency: a.currency,
-                                        type: "asset",
-                                        subtype: null,
-                                        balance: a.balance,
-                                      }}
-                                      displayMul={1}
-                                      accounts={ctx?.accounts || []}
-                                      suffix={a.currency}
-                                    />
-                                  </td>
-                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                    {formatBase(a.balanceInBase, baseCurrency)}
-                                  </td>
-                                </tr>
-                                {accOpen && (
-                                  <tr>
-                                    <td colSpan={3} className="p-0">
-                                      <AccountInlineEntries ctx={ctx} accountId={a.accountId} onOpenTx={onOpenTx} />
-                                    </td>
-                                  </tr>
-                                )}
-                              </React.Fragment>
+                                  <InlineBalanceEditor
+                                    account={{
+                                      code: a.code,
+                                      currency: a.currency,
+                                      type: "asset",
+                                      subtype: null,
+                                      balance: a.balance,
+                                    }}
+                                    displayMul={1}
+                                    accounts={ctx?.accounts || []}
+                                    suffix={a.currency}
+                                  />
+                                </td>
+                                <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                  {formatBase(a.balanceInBase, baseCurrency)}
+                                </td>
+                              </tr>
                             );
                           })}
                         </React.Fragment>
@@ -283,6 +273,16 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
           defaultOfficeId={officeFilter && officeFilter !== "all" ? officeFilter : null}
         />
       )}
+
+      <AccountDetailModal
+        open={!!detailAccountId}
+        onClose={() => setDetailAccountId(null)}
+        ctx={ctx}
+        accountId={detailAccountId}
+        formatBase={formatBase}
+        baseCurrency={baseCurrency}
+        onOpenTx={onOpenTx}
+      />
     </div>
   );
 }

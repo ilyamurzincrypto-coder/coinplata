@@ -21,9 +21,9 @@ vi.mock("../../../lib/supabaseWrite.js", () => ({
   rpcCreateLedgerAccount: vi.fn(async () => "1901"),
   withToast: vi.fn(async (fn) => { try { return { ok: true, result: await fn() }; } catch (e) { return { ok: false, error: String(e) }; } }),
 }));
-vi.mock("../parts/AccountInlineEntries.jsx", () => ({
+vi.mock("../parts/AccountDetailModal.jsx", () => ({
   __esModule: true,
-  default: ({ accountId }) => <div data-testid="inline-entries">{accountId}</div>,
+  default: ({ open, accountId }) => open ? <div data-testid="detail-modal">{accountId}</div> : null,
 }));
 const exportCSVSpy = vi.fn();
 vi.mock("../../../utils/csv.js", () => ({ exportCSV: (...a) => exportCSVSpy(...a) }));
@@ -65,12 +65,12 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     expect(screen.getByText("Cash · Mark Antalya · USD")).toBeInTheDocument();
   });
 
-  it("клик по листу разворачивает AccountInlineEntries", () => {
+  it("клик по листу открывает AccountDetailModal", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
     fireEvent.click(screen.getByText("USD"));
     fireEvent.click(screen.getByText("Cash · Mark Antalya · USD"));
-    expect(screen.getByTestId("inline-entries")).toHaveTextContent("ac_cash_usd_mark");
+    expect(screen.getByTestId("detail-modal")).toHaveTextContent("ac_cash_usd_mark");
   });
 
   it("строка ИТОГО внизу с grand-total в base", () => {
