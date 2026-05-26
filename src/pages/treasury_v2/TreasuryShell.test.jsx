@@ -3,7 +3,7 @@
 // modal) that the per-tab render smokes don't cover.
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 
 const fx = vi.hoisted(() => {
   const NOW = new Date().toISOString();
@@ -65,13 +65,13 @@ describe("TreasuryShell integration smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     // ac_cash has officeId null → "no office" row is the only office row; currency/leaves hidden until expanded
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
-    expect(screen.queryByText("USD")).toBeNull();
     expect(screen.queryByText("1110")).toBeNull();
-    // expand office → currency row visible
+    // expand office → currency row visible (USD в tbody, не в base-picker)
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
-    expect(screen.getByText("USD")).toBeInTheDocument();
+    const tbody1 = document.querySelector("tbody");
+    expect(within(tbody1).getByText("USD")).toBeInTheDocument();
     // expand currency → leaf account visible
-    fireEvent.click(screen.getByText("USD"));
+    fireEvent.click(within(tbody1).getByText("USD"));
     expect(screen.getByText("1110")).toBeInTheDocument();
   });
 
@@ -80,7 +80,8 @@ describe("TreasuryShell integration smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     expect(document.body.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
-    fireEvent.click(screen.getByText("USD"));
+    const tbody2 = document.querySelector("tbody");
+    fireEvent.click(within(tbody2).getByText("USD"));
     fireEvent.click(screen.getByText("1110"));
     // Modal renders entries via portal to document.body — D-7 is the sourceRefId of the seed tx
     expect(document.body.textContent).toContain("D-7");

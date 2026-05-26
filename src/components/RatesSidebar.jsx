@@ -1,25 +1,19 @@
 // src/components/RatesSidebar.jsx
-// Виджет «Курсы» — левая колонка главной (Касса). Шаг 4.12 финал.
+// Виджет «Курсы» — левая колонка главной (Касса). Табличный вид через
+// общий компонент RatesTable (см. components/rates/RatesTable.jsx).
 //
-// КРИТИЧНО: виджет НЕ оборачивается в bg-surface карточку. Header,
-// office switcher, rate-карточки, foot — всё рендерится прямо на bg-bg
-// (#FAFAF7). Это убирает «белый хвост» когда правая колонка длиннее.
-// Сетка-контейнер в CashierPage должна иметь items-start.
-//
-// Структура и состав данных не менялись: пары, обе стороны курса,
-// age-индикатор, OFC-маркер, office switcher, favorites, edit, expand.
-// Логика favorites/office override/search/freshness — anchor, не тронута.
+// Карточка-обёртка (header + office switcher + search + foot expand/collapse)
+// и логика favorites/fitCount/expand остаются здесь — RatesTable отвечает
+// только за отрисовку строк.
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { TrendingUp, ArrowRight, Star, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, Pencil, Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
-import { freshnessOf, shortAge, tooltipFor } from "../utils/rateFreshness.jsx";
 import { useNow } from "../hooks/useNow.js";
-import { displayRate, formatRate } from "../lib/rates.js";
-import CurrencyIcon from "./ui/CurrencyIcon.jsx";
+import RatesTable from "./rates/RatesTable.jsx";
 
 const DASHBOARD_FAV_KEY = "dashboardFavorites";
 const EXPAND_STORAGE_KEY = "coinplata:rates-expanded";
@@ -34,13 +28,10 @@ const FALLBACK_PAIRS = [
 ];
 
 const GLOBAL_TAB = "__global__";
-// Минимум пар в свёрнутом state (даже если высоты не хватает — ровно 5
-// рендерим, последние могут уйти под overflow-hidden). Реальное число
-// вычисляется ResizeObserver'ом по доступной высоте pairs-контейнера.
 const COMPACT_MIN = 5;
-// Approx высота одной rate-карточки в px (padding + header + quotes
-// + space-y между карточками). Используется для расчёта fitCount.
-const PAIR_ROW_HEIGHT = 64;
+// Высота одной строки таблицы (px + padding + space-y). Используется
+// ResizeObserver'ом для расчёта fitCount.
+const ROW_HEIGHT = 34;
 
 function timeAgoShort(date, nowMs = Date.now()) {
   if (!date) return "—";
@@ -57,90 +48,36 @@ function shortOfficeName(name) {
   return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
 }
 
-// Age-pill: семантические цвета по ТЗ 4.12.
-function AgePill({ updatedAt }) {
-  const { ageMs } = freshnessOf(updatedAt);
-  if (!Number.isFinite(ageMs)) {
-    return (
-      <span className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold bg-surface-sunk text-muted">
-        —
-      </span>
-    );
-  }
-  const days = ageMs / (24 * 60 * 60 * 1000);
-  const tone = days <= 1
-    ? "bg-success-soft text-success"
-    : days <= 3
-      ? "bg-warning-soft text-warning"
-      : "bg-danger-soft text-danger";
-  const label = days < 1
-    ? `${Math.max(0, Math.round(days * 24))}h`
-    : `${Math.round(days)}d`;
-  return (
-    <span
-      className={`inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold ${tone}`}
-      title={tooltipFor(updatedAt)}
-    >
-      {label}
-    </span>
-  );
-}
-
-// QuoteSide — одна из двух колонок quotes-блока: [mini⚪ mini⚪] + value.
-// Принимает rawRate + from/to. Если raw < 1, displayRate инвертирует
-// (1/raw + swap from↔to). Иконки парных мини-кружков рендерятся в порядке
-// d.from → d.to — это и есть единственный визуальный «след» инверсии.
-function QuoteSide({ from, to, rawRate, ringColorClass }) {
-  const d = displayRate(rawRate, from, to);
-  return (
-    <div className="flex items-center justify-between gap-1">
-      <span className="inline-flex items-center gap-0.5 shrink-0">
-        <CurrencyIcon ccy={d.from} pair={d.to} size="xs" ringColorClass={ringColorClass} />
-      </span>
-      <span className="font-mono tabular text-body-sm font-bold text-ink tracking-tight shrink-0">
-        {formatRate(d.rate)}
-      </span>
-    </div>
-  );
-}
-
-// Inline-разделитель групп («★ Избранные · 5» + hairline)
-function GroupSeparator({ label }) {
-  return (
-    <div className="px-3 pt-3 pb-1.5 flex items-center gap-2">
-      <span className="text-tiny font-bold tracking-wider text-muted-soft uppercase whitespace-nowrap shrink-0">
-        {label}
-      </span>
-      <span className="flex-1 h-px bg-border-soft" />
-    </div>
-  );
-}
-
 export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
   const { getRate: getRateRaw, lastUpdated, getOfficeOverride, allTradePairs, pairs, channels } = useRates();
 
-  const pairUpdatedAt = React.useCallback((a, b) => {
-    if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
-    const matches = pairs.filter((p) => {
-      const fromCh = channels.find((c) => c.id === p.fromChannelId);
-      const toCh = channels.find((c) => c.id === p.toChannelId);
-      const fromCur = fromCh?.currencyCode;
-      const toCur = toCh?.currencyCode;
-      return p.isDefault && (
-        (fromCur === a && toCur === b) || (fromCur === b && toCur === a)
-      );
-    });
-    if (matches.length === 0) return null;
-    let latest = null;
-    matches.forEach((m) => {
-      if (!m.updatedAt) return;
-      const t = new Date(m.updatedAt).getTime();
-      if (Number.isFinite(t) && (!latest || t > latest)) latest = t;
-    });
-    return latest ? new Date(latest) : null;
-  }, [pairs, channels]);
+  const pairUpdatedAt = React.useCallback(
+    (a, b) => {
+      if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
+      const matches = pairs.filter((p) => {
+        const fromCh = channels.find((c) => c.id === p.fromChannelId);
+        const toCh = channels.find((c) => c.id === p.toChannelId);
+        const fromCur = fromCh?.currencyCode;
+        const toCur = toCh?.currencyCode;
+        return (
+          p.isDefault &&
+          ((fromCur === a && toCur === b) || (fromCur === b && toCur === a))
+        );
+      });
+      if (matches.length === 0) return null;
+      let latest = null;
+      matches.forEach((m) => {
+        if (!m.updatedAt) return;
+        const t = new Date(m.updatedAt).getTime();
+        if (Number.isFinite(t) && (!latest || t > latest)) latest = t;
+      });
+      return latest ? new Date(latest) : null;
+    },
+    [pairs, channels]
+  );
 
-  const tradePairs = allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
+  const tradePairs =
+    allTradePairs && allTradePairs.length > 0 ? allTradePairs : FALLBACK_PAIRS;
   const { activeOffices } = useOffices();
   const { currentUser, updatePreferences } = useAuth();
   const { t } = useTranslation();
@@ -165,26 +102,34 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     const raw = currentUser?.preferences?.[DASHBOARD_FAV_KEY];
     if (!Array.isArray(raw)) return [];
     return raw.filter(
-      (p) => Array.isArray(p) && p.length === 2 && typeof p[0] === "string" && typeof p[1] === "string"
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        typeof p[0] === "string" &&
+        typeof p[1] === "string"
     );
   }, [currentUser]);
+
   const favKeys = useMemo(() => {
     const set = new Set();
     dashboardFavorites.forEach(([a, b]) => set.add([a, b].sort().join("_")));
     return set;
   }, [dashboardFavorites]);
+
   const isFavorite = React.useCallback(
     (a, b) => favKeys.has([a, b].sort().join("_")),
     [favKeys]
   );
+
   const toggleFavorite = React.useCallback(
-    async (a, b, e) => {
-      if (e) { e.stopPropagation(); e.preventDefault(); }
+    async (a, b) => {
       if (!updatePreferences) return;
       const key = [a, b].sort().join("_");
       const exists = favKeys.has(key);
       const next = exists
-        ? dashboardFavorites.filter((p) => [p[0], p[1]].sort().join("_") !== key)
+        ? dashboardFavorites.filter(
+            (p) => [p[0], p[1]].sort().join("_") !== key
+          )
         : [...dashboardFavorites, [a, b]];
       await updatePreferences({ [DASHBOARD_FAV_KEY]: next });
     },
@@ -242,12 +187,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       if (isFavorite(p[0], p[1])) favs.push(p);
       else rest.push(p);
     });
-    return { favoritesList: favs, othersList: rest, totalCount: tradePairs.length };
+    return {
+      favoritesList: favs,
+      othersList: rest,
+      totalCount: tradePairs.length,
+    };
   }, [tradePairs, query, isFavorite]);
 
-  // ResizeObserver — измеряет доступную высоту pairs-контейнера и
-  // вычисляет сколько rate-карточек поместится (COMPACT_MIN минимум).
-  // При раскрытии — не мерим, COMPACT_MIN остаётся (не используется).
   const pairsRef = useRef(null);
   const [fitCount, setFitCount] = useState(COMPACT_MIN);
 
@@ -259,7 +205,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     const compute = () => {
       const h = el.clientHeight;
       if (h <= 0) return;
-      const count = Math.max(COMPACT_MIN, Math.floor(h / PAIR_ROW_HEIGHT));
+      const count = Math.max(COMPACT_MIN, Math.floor(h / ROW_HEIGHT));
       setFitCount((prev) => (prev === count ? prev : count));
     };
     compute();
@@ -268,89 +214,41 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     return () => ro.disconnect();
   }, [expanded, tradePairs.length]);
 
-  // Compact: favorites сверху + догрузка из others до fitCount.
-  // Если favorites > fitCount — обрезаем favorites.
   const collapsedList = useMemo(() => {
     if (favoritesList.length >= fitCount) return favoritesList.slice(0, fitCount);
     const fill = othersList.slice(0, fitCount - favoritesList.length);
     return [...favoritesList, ...fill];
   }, [favoritesList, othersList, fitCount]);
 
-  // Foot-кнопка показывается только если есть скрытые пары.
   const hiddenCount = Math.max(0, totalCount - collapsedList.length);
   const showFootButton = expanded || hiddenCount > 0;
 
-  const renderRateCard = ([a, b]) => {
-    const fav = isFavorite(a, b);
-    const rateAB = getRateForTab(a, b);
-    const rateBA = getRateForTab(b, a);
-    const pairHasOverride = hasOverride(a, b) || hasOverride(b, a);
-    const updated = pairUpdatedAt(a, b);
-
-    // Цвета фона и обводки иконок — рифмуются между картой и кругами.
-    const cardBg = fav
-      ? "bg-fav-bg hover:bg-fav-bg-hover"
-      : "bg-transparent hover:bg-surface-soft";
-    const ringColorClass = fav
-      ? "border-fav-bg group-hover:border-fav-bg-hover"
-      : "border-bg group-hover:border-surface-soft";
-    const dividerBg = fav ? "bg-fav-divider" : "bg-border";
-
-    return (
-      <div
-        key={`${a}-${b}`}
-        className={`group rounded-[9px] px-3 py-2.5 transition-colors duration-150 ease-apple ${cardBg}`}
-      >
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-1.5">
-          <button
-            type="button"
-            onClick={(e) => toggleFavorite(a, b, e)}
-            className={`shrink-0 transition-colors ${
-              fav ? "text-[#FBBF24] hover:text-warning" : "text-border hover:text-amber-400"
-            }`}
-            title={fav ? "Убрать из избранного" : "В избранное"}
-            aria-label={fav ? "Убрать из избранного" : "В избранное"}
-          >
-            <Star className="w-3 h-3" strokeWidth={2} fill={fav ? "currentColor" : "none"} />
-          </button>
-          <CurrencyIcon ccy={a} pair={b} size="sm" ringColorClass={ringColorClass} />
-          <span className="font-mono font-bold text-tiny text-ink tracking-tight">
-            {a}<span className="text-muted-soft mx-0.5">·</span>{b}
-          </span>
-          <span className="flex-1" />
-          {pairHasOverride && (
-            <span
-              className="inline-flex items-center h-4 px-1.5 rounded-[3px] font-mono text-micro font-bold bg-surface-sunk text-muted tracking-wide"
-              title="Office override активен"
-            >
-              OFC
-            </span>
-          )}
-          <AgePill updatedAt={updated} />
-        </div>
-
-        {/* Quotes — две колонки через 1px vertical divider.
-            rawRate напрямую (без formatRate) — внутри QuoteSide
-            displayRate инвертирует если < 1 + formatRate округляет. */}
-        <div className="pl-4 grid grid-cols-[1fr_1px_1fr] gap-2 items-center">
-          <QuoteSide from={a} to={b} rawRate={rateAB} ringColorClass={ringColorClass} />
-          <div className={`self-stretch min-h-[20px] ${dividerBg}`} />
-          <QuoteSide from={b} to={a} rawRate={rateBA} ringColorClass={ringColorClass} />
-        </div>
-      </div>
-    );
-  };
+  // Expanded mode: соединяем favorites + others в один список с разделителем
+  // между группами через groupSeparators.
+  const { expandedPairs, expandedSeparators } = useMemo(() => {
+    const out = [];
+    const seps = [];
+    if (favoritesList.length > 0) {
+      seps.push({
+        beforeIndex: 0,
+        label: "★ Избранные",
+        count: favoritesList.length,
+      });
+      out.push(...favoritesList);
+    }
+    if (othersList.length > 0) {
+      seps.push({
+        beforeIndex: out.length,
+        label: "Все пары",
+        count: othersList.length,
+      });
+      out.push(...othersList);
+    }
+    return { expandedPairs: out, expandedSeparators: seps };
+  }, [favoritesList, othersList]);
 
   return (
-    // Карточка с белым фоном, p-1.5 — компактный внешний padding.
-    // h-full + flex flex-col — карточка растягивается до высоты grid-cell
-    // (grid items-stretch by default), а внутренний spacer flex-1 перед
-    // footer'ом съедает свободное пространство → низ выровнен с балансами.
     <aside className="bg-surface rounded-card p-1.5 flex flex-col h-full">
-      {/* Header виджета: 📈 КУРСЫ + live-dot + relative time + Изм.
-          pt-2 на header'е + p-1.5 (6px) на корне = 14px от top-edge
-          карточки до текста — выравнивается с заголовком «Балансы». */}
       <header className="px-2 pt-2 pb-1.5 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -383,7 +281,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       </header>
 
-      {/* Office switcher — pill style на DS-токенах, h-6 */}
+      {/* Office switcher */}
       <div className="mx-2 my-1.5 inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill overflow-x-auto shrink-0">
         <button
           type="button"
@@ -417,7 +315,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         })}
       </div>
 
-      {/* Search — только в expanded mode */}
+      {/* Search — только в expanded */}
       {expanded && (
         <div className="px-2 pb-1 shrink-0">
           <div className="flex items-center gap-1.5 bg-surface-sunk rounded-input px-2 py-1.5 ring-1 ring-inset ring-transparent focus-within:ring-accent focus-within:bg-surface transition-all">
@@ -443,47 +341,47 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       )}
 
-      {/* Список пар.
-          • Compact: flex-1 — растёт до доступной высоты cell, ResizeObserver
-            на pairsRef измеряет clientHeight и пересчитывает fitCount.
-          • Expanded: max-h-[70vh] overflow-y-auto — скроллим внутри, выше
-            footer/spacer-нет (он не нужен — pairs не flex-1 в этом режиме). */}
+      {/* Таблица курсов */}
       <div
         ref={pairsRef}
-        className={`px-1.5 py-1 space-y-0.5 ${expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"}`}
+        className={`px-1 py-1 ${
+          expanded ? "max-h-[70vh] overflow-y-auto" : "flex-1 overflow-hidden"
+        }`}
       >
         {expanded ? (
-          <>
-            {favoritesList.length > 0 && (
-              <>
-                <GroupSeparator label={`★ Избранные · ${favoritesList.length}`} />
-                {favoritesList.map(renderRateCard)}
-              </>
-            )}
-            {othersList.length > 0 && (
-              <>
-                <GroupSeparator label={`Все пары · ${othersList.length}`} />
-                {othersList.map(renderRateCard)}
-              </>
-            )}
-            {query && favoritesList.length === 0 && othersList.length === 0 && (
-              <div className="text-center py-6 text-caption text-muted">
-                ничего не найдено
-              </div>
-            )}
-          </>
+          expandedPairs.length === 0 ? (
+            <div className="text-center py-6 text-caption text-muted">
+              ничего не найдено
+            </div>
+          ) : (
+            <RatesTable
+              mode="view"
+              pairs={expandedPairs}
+              favorites={favKeys}
+              onToggleFavorite={toggleFavorite}
+              getRate={getRateForTab}
+              hasOverride={hasOverride}
+              pairUpdatedAt={pairUpdatedAt}
+              groupSeparators={expandedSeparators}
+              showHeader={false}
+            />
+          )
         ) : (
-          collapsedList.map(renderRateCard)
+          <RatesTable
+            mode="view"
+            pairs={collapsedList}
+            favorites={favKeys}
+            onToggleFavorite={toggleFavorite}
+            getRate={getRateForTab}
+            hasOverride={hasOverride}
+            pairUpdatedAt={pairUpdatedAt}
+            showHeader={false}
+          />
         )}
       </div>
 
-      {/* Spacer — только в expanded mode (pairs не flex-1 там, max-h-70vh).
-          Если cell выше — spacer заполнит остаток, footer прижмётся к низу.
-          В compact pairs сам flex-1, spacer не нужен. */}
       {expanded && <div className="flex-1" />}
 
-      {/* Footer — collapse/expand. border-t визуально отделяет от
-          пустого пространства/последней rate-карточки. */}
       {showFootButton && (
         <div className="px-2 py-2 mt-1 border-t border-border-soft flex items-center justify-center shrink-0">
           <button

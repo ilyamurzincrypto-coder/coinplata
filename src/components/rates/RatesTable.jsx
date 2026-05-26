@@ -12,7 +12,7 @@
 // (RatesSidebar / RatesPage) — этот компонент только рендерит строки.
 
 import React, { useState, useEffect, useRef } from "react";
-import { Star } from "lucide-react";
+import { Star, RotateCcw, X } from "lucide-react";
 import { freshnessOf, shortAge, tooltipFor } from "../../utils/rateFreshness.jsx";
 
 // Стиль точки «возраста». Зелёная если < 1ч, янтарная 1-6ч, красная >6ч.
@@ -151,6 +151,8 @@ function Row({
   spreadPercent,
   onCommitBase,
   onCommitSpread,
+  onResetOverride,
+  onDelete,
   gridCols,
 }) {
   const { state, ageMs } = freshnessOf(updatedAt);
@@ -194,12 +196,24 @@ function Row({
           {b}
         </span>
         {hasOverride && (
-          <span
-            className="inline-flex items-center h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-accent-bg text-accent tracking-wide"
-            title="Office override активен"
-          >
-            OFC
-          </span>
+          onResetOverride ? (
+            <button
+              type="button"
+              onClick={() => onResetOverride(a, b)}
+              title="Курс офиса — клик чтобы вернуть на глобал"
+              className="inline-flex items-center gap-0.5 h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-accent-bg text-accent tracking-wide hover:bg-indigo-100"
+            >
+              OFC
+              <RotateCcw className="w-2.5 h-2.5" strokeWidth={2.5} />
+            </button>
+          ) : (
+            <span
+              className="inline-flex items-center h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-accent-bg text-accent tracking-wide"
+              title="Office override активен"
+            >
+              OFC
+            </span>
+          )
         )}
       </div>
 
@@ -237,15 +251,28 @@ function Row({
         {formatNum(inverseRate)}
       </div>
 
-      {/* ● Age */}
+      {/* ● Age (+ опциональный × delete) */}
       <div
-        className="flex items-center gap-1 justify-end"
+        className="flex items-center gap-1 justify-end group"
         title={tooltipFor(updatedAt)}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
         <span className="font-mono tabular-nums text-tiny text-muted">
           {ageLabel}
         </span>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(a, b);
+            }}
+            title="Удалить пару"
+            className="opacity-0 group-hover:opacity-100 ml-0.5 p-0.5 rounded text-muted-soft hover:text-danger hover:bg-danger-soft transition-opacity"
+          >
+            <X className="w-2.5 h-2.5" strokeWidth={2.5} />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -263,6 +290,9 @@ export default function RatesTable({
   pairUpdatedAt,
   onCommitBase,
   onCommitSpread,
+  onResetOverride,
+  onDelete,
+  canDelete,
   groupSeparators = null,
   emptyText = "ничего не найдено",
   showHeader = true,
@@ -357,6 +387,12 @@ export default function RatesTable({
                 spreadPercent={spreadPercent}
                 onCommitBase={onCommitBase}
                 onCommitSpread={onCommitSpread}
+                onResetOverride={onResetOverride}
+                onDelete={
+                  onDelete && (canDelete ? canDelete(a, b) : true)
+                    ? onDelete
+                    : null
+                }
                 gridCols={gridCols}
               />
             </React.Fragment>

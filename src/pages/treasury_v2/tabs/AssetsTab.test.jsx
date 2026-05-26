@@ -17,6 +17,7 @@ vi.mock("../../../store/offices.jsx", () => ({
   }),
 }));
 vi.mock("../../../store/currencies.jsx", () => ({ useCurrencies: () => ({ codes: ["USD", "USDT", "TRY"] }) }));
+vi.mock("../../../store/rates.jsx", () => ({ useRates: () => ({ getRate: (f, t) => (f === t ? 1 : 1) }) }));
 vi.mock("../../../lib/supabaseWrite.js", () => ({
   rpcCreateLedgerAccount: vi.fn(async () => "1901"),
   withToast: vi.fn(async (fn) => { try { return { ok: true, result: await fn() }; } catch (e) { return { ok: false, error: String(e) }; } }),
@@ -39,28 +40,30 @@ function renderTab(ctx = makeLedgerCtx()) {
 describe("AssetsTab — дерево Office → Currency → Account", () => {
   beforeEach(() => { canAccountingEdit = true; exportCSVSpy.mockClear(); });
 
-  it("рендерит таблицу с шапкой 'Касса' + 'Native' + '≈ USD' и строки-офисы", () => {
+  it("рендерит таблицу с шапкой 'Касса' + 'Native' + base-picker и строки-офисы", () => {
     renderTab();
     const thead = document.querySelector("thead");
     expect(thead).not.toBeNull();
     expect(within(thead).getByText("trv2_assets_col_office")).toBeInTheDocument();
     expect(within(thead).getByText("Native")).toBeInTheDocument();
-    expect(within(thead).getByText("≈ USD")).toBeInTheDocument();
+    // base-picker <select> с дефолтом USD
+    const baseSelect = within(thead).getByTitle("Сменить валюту приведения");
+    expect(baseSelect.value).toBe("USD");
     expect(screen.getByText("Mark Antalya")).toBeInTheDocument();
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
-    // листья и валюты скрыты до раскрытия
-    expect(screen.queryByText("USD")).toBeNull();
+    // листья и валюты-строки скрыты до раскрытия (USD в шапке как option — не учитываем)
     expect(screen.queryByText("1110")).toBeNull();
   });
 
   it("клик по офису раскрывает валюты; клик по валюте раскрывает листья", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
-    expect(screen.getByText("USD")).toBeInTheDocument();
-    expect(screen.getByText("USDT")).toBeInTheDocument();
-    // листья всё ещё скрыты
+    const tbody = document.querySelector("tbody");
+    // USD строка валюты в tbody
+    expect(within(tbody).getByText("USD")).toBeInTheDocument();
+    expect(within(tbody).getByText("USDT")).toBeInTheDocument();
     expect(screen.queryByText("1110")).toBeNull();
-    fireEvent.click(screen.getByText("USD"));
+    fireEvent.click(within(tbody).getByText("USD"));
     expect(screen.getByText("1110")).toBeInTheDocument();
     expect(screen.getByText("Cash · Mark Antalya · USD")).toBeInTheDocument();
   });
@@ -68,7 +71,8 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
   it("клик по листу открывает AccountDetailModal", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
-    fireEvent.click(screen.getByText("USD"));
+    const tbody = document.querySelector("tbody");
+    fireEvent.click(within(tbody).getByText("USD"));
     fireEvent.click(screen.getByText("Cash · Mark Antalya · USD"));
     expect(screen.getByTestId("detail-modal")).toHaveTextContent("ac_cash_usd_mark");
   });

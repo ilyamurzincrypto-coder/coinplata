@@ -11,14 +11,18 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Plus, Download, ChevronRight, ChevronDown, Building2 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
+import { useRates } from "../../../store/rates.jsx";
 import { exportCSV } from "../../../utils/csv.js";
 import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
+import { convert } from "../../../utils/convert.js";
 import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:liabilities-nonzero";
+const DISPLAY_BASE_KEY = "coinplata:liabilities-display-base";
+const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -27,19 +31,32 @@ function nativeFmt(amount, currency) {
 export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx }) {
   const { t } = useTranslation();
   const can = useCan();
+  const { getRate } = useRates();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
-  // Модал: либо CP (clientId/partnerId), либо лист (accountId+dim)
   const [detailOpen, setDetailOpen] = useState(null);
-  // detailOpen = { accountId?, clientId?, partnerId? }
 
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
   });
   const setNonZeroPersist = (v) => { setNonZeroOnly(v); try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {} };
 
-  const clientGroups = useMemo(() => liabilitiesByCounterparty(ctx, "client"), [ctx]);
-  const partnerGroups = useMemo(() => liabilitiesByCounterparty(ctx, "partner"), [ctx]);
+  const [displayBase, setDisplayBase] = useState(() => {
+    try {
+      const v = localStorage.getItem(DISPLAY_BASE_KEY);
+      return BASE_OPTIONS.includes(v) ? v : (baseCurrency || "USD");
+    } catch { return baseCurrency || "USD"; }
+  });
+  const setDisplayBasePersist = (v) => { setDisplayBase(v); try { localStorage.setItem(DISPLAY_BASE_KEY, v); } catch {} };
+
+  const localCtx = useMemo(() => {
+    if (displayBase === ctx?.baseCurrency) return ctx;
+    return { ...ctx, baseCurrency: displayBase, toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0 };
+  }, [ctx, displayBase, getRate]);
+  const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
+
+  const clientGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "client"), [localCtx]);
+  const partnerGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "partner"), [localCtx]);
 
   // Реферал сверху → потом |totalInBase| desc; все типы CP вместе (как Активы — все офисы вместе).
   const visibleGroups = useMemo(() => {
@@ -85,7 +102,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
             {visibleGroups.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
-            ≈ {formatBase(grandTotalInBase, baseCurrency)}
+            ≈ {fmtBase(grandTotalInBase)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -101,7 +118,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
           </button>
           <button
             type="button"
-            onClick={() => doExport(visibleGroups, baseCurrency)}
+            onClick={() => doExport(visibleGroups, displayBase)}
             disabled={visibleGroups.length === 0}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
             title="Экспорт всех видимых контрагентов в CSV"
@@ -148,7 +165,18 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                   Native
                 </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
-                  ≈ {baseCurrency}
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    <span>≈</span>
+                    <select
+                      value={displayBase}
+                      onChange={(e) => setDisplayBasePersist(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="appearance-none bg-surface-sunk text-ink font-bold tracking-wider px-2 py-0.5 rounded-button text-caption cursor-pointer hover:bg-surface-soft transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-accent"
+                      title="Сменить валюту приведения"
+                    >
+                      {BASE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -192,7 +220,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                       <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
                         cp.totalInBase < 0 ? "text-danger" : "text-ink"
                       }`}>
-                        {formatBase(cp.totalInBase, baseCurrency)}
+                        {fmtBase(cp.totalInBase)}
                       </td>
                     </tr>
 
@@ -226,7 +254,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                             <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
                               cur.balanceInBase < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
-                              {formatBase(cur.balanceInBase, baseCurrency)}
+                              {fmtBase(cur.balanceInBase)}
                             </td>
                           </tr>
 
@@ -276,7 +304,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                 <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
                   grandTotalInBase < 0 ? "text-danger" : "text-ink"
                 }`}>
-                  {formatBase(grandTotalInBase, baseCurrency)}
+                  {fmtBase(grandTotalInBase)}
                 </td>
               </tr>
             </tfoot>
@@ -299,8 +327,8 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
         accountId={detailOpen?.accountId || null}
         clientId={detailOpen?.clientId || null}
         partnerId={detailOpen?.partnerId || null}
-        formatBase={formatBase}
-        baseCurrency={baseCurrency}
+        formatBase={fmtBase}
+        baseCurrency={displayBase}
         onOpenTx={onOpenTx}
       />
     </div>

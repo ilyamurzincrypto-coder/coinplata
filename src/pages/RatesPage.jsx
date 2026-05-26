@@ -16,14 +16,10 @@ import {
   Coins,
   Network as NetworkIcon,
   ArrowLeft,
-  ArrowLeftRight,
   AlertTriangle,
   CheckCircle2,
   Building2,
   Download,
-  Star,
-  Pencil,
-  RotateCcw,
 } from "lucide-react";
 
 // Per-user favorites для editor курсов — отдельный ключ от dashboardFavorites.
@@ -54,60 +50,10 @@ import {
 import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
 import ExternalRatesWidget from "../components/ExternalRatesWidget.jsx";
-import Modal from "../components/ui/Modal.jsx";
+import RatesTable from "../components/rates/RatesTable.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
-import {
-  computeSpread,
-  computeRateFromSpread,
-  getMidRate,
-  formatSpread,
-} from "../utils/spread.js";
 import { rateKey } from "../store/rates.jsx";
-import { fmt } from "../utils/money.js";
 import { exportCSV } from "../utils/csv.js";
-import { useNow } from "../hooks/useNow.js";
-
-// "обновлён 5 мин назад" — относительная метка через Intl.RelativeTimeFormat
-// для авто-i18n (ru/en/tr подхватываются по navigator.language). Старше
-// недели — показываем абсолютную дату DD MMM.
-function formatRelativeTime(dt, nowMs = Date.now(), locale) {
-  if (!dt) return null;
-  const ms = typeof dt === "string" || typeof dt === "number" ? new Date(dt).getTime() : dt?.getTime?.();
-  if (!Number.isFinite(ms)) return null;
-  const diffSec = Math.floor((nowMs - ms) / 1000);
-  const lc = locale || (typeof navigator !== "undefined" ? navigator.language : "en");
-  let rtf;
-  try {
-    rtf = new Intl.RelativeTimeFormat(lc, { numeric: "auto" });
-  } catch {
-    rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-  }
-  if (diffSec < 5) return rtf.format(0, "second");
-  if (diffSec < 60) return rtf.format(-diffSec, "second");
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return rtf.format(-diffMin, "minute");
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return rtf.format(-diffHour, "hour");
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 7) return rtf.format(-diffDay, "day");
-  try {
-    return new Date(ms).toLocaleDateString(lc, { day: "2-digit", month: "short" });
-  } catch {
-    return new Date(ms).toLocaleDateString("en", { day: "2-digit", month: "short" });
-  }
-}
-
-// Форматирование "обратного" курса (1/rate) с достаточной точностью для
-// мелких десятичных — чтобы не показывать "0.0000". Большие числа — 4 знака;
-// мелкие — 6 значащих цифр (без хвостовых нулей).
-function formatInverseRate(v) {
-  if (!Number.isFinite(v) || v <= 0) return "—";
-  if (v >= 1) return v.toFixed(4);
-  const s = v.toPrecision(6);
-  // toPrecision может вернуть экспоненту для очень мелких — в этом случае
-  // оставляем как есть; иначе убираем хвостовые нули.
-  return s.includes("e") ? s : s.replace(/\.?0+$/, "");
-}
 
 export default function RatesPage({ onBack }) {
   const { t } = useTranslation();
@@ -627,120 +573,31 @@ export default function RatesPage({ onBack }) {
               <BulkSpreadControl onApply={handleBulkSpread} />
             )}
 
-            {/* Favorites — sticky top-секция. Каждый юзер сам выбирает свои
-                избранные пары (per-user, server-persisted в preferences).
-                Отдельно от dashboardFavorites — RatesSidebar и редактор не
-                делят список. ⭐ toggle есть и здесь и на каждой паре в общем
-                списке снизу. */}
-            {editorFavorites.length > 0 && (() => {
-              // Берём только те favorites которые реально существуют в pairs
-              const favRows = editorFavorites
-                .map(([from, to]) => existingPairs.find((p) => p.from === from && p.to === to))
-                .filter(Boolean);
-              if (favRows.length === 0) return null;
-              return (
-                <section className="bg-warning-soft/40 rounded-card-lg border border-warning/20 overflow-hidden">
-                  <div className="px-4 py-2.5 border-b border-warning/20 bg-amber-100/40 flex items-center gap-2">
-                    <Star className="w-4 h-4 text-warning fill-amber-400" />
-                    <span className="text-body-sm font-bold text-warning">
-                      Избранное
-                    </span>
-                    <span className="text-tiny text-warning/70 uppercase tracking-wider">
-                      {favRows.length} · быстрое редактирование
-                    </span>
-                  </div>
-                  <div className="divide-y divide-amber-100 bg-white">
-                    {favRows.map((p) => {
-                      const isOfficeTab = activeOffice !== "all";
-                      const override = isOfficeTab
-                        ? getOfficeOverride(activeOffice, p.from, p.to)
-                        : null;
-                      const globalPair = allPairs.find((pp) => {
-                        const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
-                        const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
-                        return pp.isDefault && f === p.from && t2 === p.to;
-                      });
-                      return (
-                        <PairRow
-                          key={`fav_${p.key}`}
-                          from={p.from}
-                          to={p.to}
-                          globalValue={getRate(p.from, p.to, "all")}
-                          globalPair={globalPair}
-                          officeOverride={override}
-                          isOfficeTab={isOfficeTab}
-                          canReset={isOfficeTab && !!override}
-                          onUpdate={(patch) => handleSetRate(p.from, p.to, patch)}
-                          onApplyGlobal={() => handleApplyGlobal(p.from, p.to)}
-                          onDelete={() => handleDeletePair(p.from, p.to)}
-                          onResetOverride={() => handleResetOverride(p.from, p.to)}
-                          canDelete={(isOwner || isAdmin) && !isOfficeTab}
-                          isFavorite={true}
-                          onToggleFavorite={() => toggleEditorFav(p.from, p.to)}
-                        />
-                      );
-                    })}
-                  </div>
-                </section>
-              );
-            })()}
-
-            {/* Groups (pairs table by FROM currency) */}
-            {groups.length === 0 ? (
-              <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center text-body-sm text-muted-soft">
-                {t("rates_no_pairs") ||
-                  "No pairs yet. Add a currency, then channels, then a pair."}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {groups.map((g) => (
-                  <section
-                    key={g.from}
-                    className="bg-white rounded-card-lg border border-border-soft overflow-hidden"
-                  >
-                    <div className="px-4 py-2.5 border-b border-border-soft bg-surface-soft/40 flex items-center gap-2">
-                      <span className="text-body-sm font-bold text-ink">{g.from}</span>
-                      <span className="text-tiny text-muted uppercase tracking-wider">
-                        {g.pairs.length} {t("rates_pairs_count") || "pairs"}
-                      </span>
-                    </div>
-                    <div className="divide-y divide-border-soft">
-                      {g.pairs.map((p) => {
-                        const isOfficeTab = activeOffice !== "all";
-                        const override = isOfficeTab
-                          ? getOfficeOverride(activeOffice, p.from, p.to)
-                          : null;
-                        // Global pair объект (для baseRate / spreadPercent)
-                        const globalPair = allPairs.find((pp) => {
-                          const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
-                          const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
-                          return pp.isDefault && f === p.from && t2 === p.to;
-                        });
-                        return (
-                          <PairRow
-                            key={p.key}
-                            from={p.from}
-                            to={p.to}
-                            globalValue={getRate(p.from, p.to, "all")}
-                            globalPair={globalPair}
-                            officeOverride={override}
-                            isOfficeTab={isOfficeTab}
-                            canReset={isOfficeTab && !!override}
-                            onUpdate={(patch) => handleSetRate(p.from, p.to, patch)}
-                            onApplyGlobal={() => handleApplyGlobal(p.from, p.to)}
-                            onDelete={() => handleDeletePair(p.from, p.to)}
-                            onResetOverride={() => handleResetOverride(p.from, p.to)}
-                            canDelete={(isOwner || isAdmin) && !isOfficeTab}
-                            isFavorite={isEditorFav(p.from, p.to)}
-                            onToggleFavorite={() => toggleEditorFav(p.from, p.to)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            )}
+            {/* Единая табличная сетка для всех пар.
+                Сортировка: ★ Избранные сверху, дальше по FROM → TO
+                (curIndex). Inline-редактирование Курса/Spread% в каждой
+                строке. OFC-чип в строках с office override (клик = вернуть
+                на global). × delete показывается на hover (только owner/admin
+                в global-tab — публичные пары удаляются глобально). */}
+            <RatesPageEditTable
+              activeOffice={activeOffice}
+              activeOffices={activeOffices}
+              existingPairs={existingPairs}
+              allPairs={allPairs}
+              channels={channels}
+              groups={groups}
+              getRate={getRate}
+              getOfficeOverride={getOfficeOverride}
+              isEditorFav={isEditorFav}
+              editorFavorites={editorFavorites}
+              editorFavKeys={editorFavKeys}
+              toggleEditorFav={toggleEditorFav}
+              handleSetRate={handleSetRate}
+              handleResetOverride={handleResetOverride}
+              handleDeletePair={handleDeletePair}
+              canDelete={isOwner || isAdmin}
+              t={t}
+            />
           </>
         )}
 
@@ -842,287 +699,194 @@ function BulkSpreadControl({ onApply }) {
   );
 }
 
-// ---------------- Pair row — обменная логика ----------------
-// Global (read-only) · Apply global btn · Office base · Spread % · Effective
-// В "all" tab: только одна колонка Rate + Spread (редактирует global pair).
-// В office tab: global read-only + office base (edit) + spread (edit) +
-//   кнопка ← apply global · reset override (↺) · индикатор override chip.
-function PairRow({
-  from,
-  to,
-  globalValue,        // текущий global rate
-  globalPair,         // pair object (для base/spread global)
-  officeOverride,     // {baseRate, spreadPercent, rate, updatedAt} | null
-  isOfficeTab,        // true если active tab ≠ "all"
-  canReset,
-  onUpdate,           // ({baseRate?, spreadPercent?}) => void
-  onApplyGlobal,      // () => void (копирует global в office override)
-  onResetOverride,    // () => void
-  onDelete,
+// ---------------- Edit-таблица курсов ----------------
+// Адаптер между state RatesPage и общим компонентом RatesTable. Строит
+// единый список пар (избранные сверху + группа «Все пары»), вычисляет
+// base/spread/effective с учётом активного офис-таба, прокидывает commit
+// handlers и onResetOverride/onDelete.
+function RatesPageEditTable({
+  activeOffice,
+  existingPairs,
+  allPairs,
+  channels,
+  groups,
+  getRate,
+  getOfficeOverride,
+  isEditorFav,
+  editorFavorites,
+  editorFavKeys,
+  toggleEditorFav,
+  handleSetRate,
+  handleResetOverride,
+  handleDeletePair,
   canDelete,
-  isFavorite = false,
-  onToggleFavorite,
+  t,
 }) {
-  const { t } = useTranslation();
-  // Тикер на 30s — пересчитывает "5 мин назад" без полного reload страницы.
-  const nowMs = useNow(30_000);
+  const isOfficeTab = activeOffice !== "all";
 
-  // В office-режиме источник значений = override > global fallback
-  // В global-режиме — из globalPair (base/spread/rate)
-  const effectiveBase = isOfficeTab
-    ? (officeOverride?.baseRate ?? officeOverride?.rate ?? globalPair?.baseRate ?? globalValue ?? "")
-    : (globalPair?.baseRate ?? globalValue ?? "");
-  const effectiveSpread = isOfficeTab
-    ? (officeOverride?.spreadPercent ?? 0)
-    : (globalPair?.spreadPercent ?? 0);
-  const effectiveRate = isOfficeTab
-    ? (officeOverride?.rate ?? globalValue)
-    : globalPair?.rate ?? globalValue;
+  // Лукап global pair объекта по from/to — берётся base_rate / spread_percent
+  // / updated_at когда нет office override.
+  const findGlobalPair = React.useCallback(
+    (from, to) =>
+      allPairs.find((pp) => {
+        const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
+        const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
+        return pp.isDefault && f === from && t2 === to;
+      }),
+    [allPairs, channels]
+  );
 
-  const [baseStr, setBaseStr] = useState(String(effectiveBase ?? ""));
-  const [spreadStr, setSpreadStr] = useState(String(effectiveSpread ?? ""));
-  const [editingBase, setEditingBase] = useState(false);
-  const [editingSpread, setEditingSpread] = useState(false);
+  // Flat ordered list: ★ favorites (в порядке как юзер сохранил) → остальные
+  // (по группам как было: from → to via curIndex).
+  const { orderedPairs, groupSeparators } = React.useMemo(() => {
+    const favRows = editorFavorites
+      .map(([from, to]) =>
+        existingPairs.find((p) => p.from === from && p.to === to)
+      )
+      .filter(Boolean)
+      .map((p) => [p.from, p.to]);
 
-  React.useEffect(() => {
-    if (!editingBase) setBaseStr(String(effectiveBase ?? ""));
-  }, [effectiveBase, editingBase]);
-  React.useEffect(() => {
-    if (!editingSpread) setSpreadStr(String(effectiveSpread ?? ""));
-  }, [effectiveSpread, editingSpread]);
+    const restRows = [];
+    groups.forEach((g) => {
+      g.pairs.forEach((p) => {
+        if (!editorFavKeys.has(`${p.from}_${p.to}`)) {
+          restRows.push([p.from, p.to]);
+        }
+      });
+    });
 
-  const hasOverride = !!officeOverride;
-
-  const commitBase = () => {
-    setEditingBase(false);
-    const n = Number(baseStr);
-    if (Number.isFinite(n) && n > 0 && n !== Number(effectiveBase)) {
-      onUpdate({ baseRate: n });
+    const seps = [];
+    if (favRows.length > 0) {
+      seps.push({
+        beforeIndex: 0,
+        label: "★ Избранные",
+        count: favRows.length,
+      });
     }
-  };
-  const commitSpread = () => {
-    setEditingSpread(false);
-    const n = Number(spreadStr);
-    if (Number.isFinite(n) && n !== Number(effectiveSpread)) {
-      onUpdate({ spreadPercent: n });
+    if (restRows.length > 0) {
+      seps.push({
+        beforeIndex: favRows.length,
+        label: "Все пары",
+        count: restRows.length,
+      });
     }
-  };
+
+    return {
+      orderedPairs: [...favRows, ...restRows],
+      groupSeparators: seps,
+    };
+  }, [editorFavorites, editorFavKeys, existingPairs, groups]);
+
+  const favoritesSet = React.useMemo(() => {
+    // Конвертация в формат «sorted key» для RatesTable.
+    const s = new Set();
+    editorFavorites.forEach(([a, b]) => s.add([a, b].sort().join("_")));
+    return s;
+  }, [editorFavorites]);
+
+  // Обёртка над isEditorFav, чтобы toggle работал по точному порядку (a,b),
+  // а не по sorted-варианту — иначе при ★ на «TRY/USD» сохранится «TRY,USD»,
+  // а в данных существует «USD/TRY».
+  const onToggleFav = React.useCallback(
+    (a, b) => {
+      // Если пара уже favorite в обратном порядке, тогглим её.
+      if (editorFavKeys.has(`${b}_${a}`)) {
+        toggleEditorFav(b, a);
+      } else {
+        toggleEditorFav(a, b);
+      }
+    },
+    [editorFavKeys, toggleEditorFav]
+  );
+
+  const effectiveGetRate = React.useCallback(
+    (a, b) => Number(getRate(a, b, isOfficeTab ? activeOffice : "all")),
+    [getRate, isOfficeTab, activeOffice]
+  );
+
+  const getBaseRate = React.useCallback(
+    (a, b) => {
+      const gp = findGlobalPair(a, b);
+      if (isOfficeTab) {
+        const ovr = getOfficeOverride(activeOffice, a, b);
+        if (ovr && Number.isFinite(ovr.baseRate)) return ovr.baseRate;
+        if (ovr && Number.isFinite(ovr.rate)) return ovr.rate;
+      }
+      return gp?.baseRate ?? gp?.rate ?? getRate(a, b, "all");
+    },
+    [isOfficeTab, activeOffice, getOfficeOverride, findGlobalPair, getRate]
+  );
+
+  const getSpreadPercent = React.useCallback(
+    (a, b) => {
+      if (isOfficeTab) {
+        const ovr = getOfficeOverride(activeOffice, a, b);
+        if (ovr) return Number(ovr.spreadPercent ?? 0);
+      }
+      const gp = findGlobalPair(a, b);
+      return Number(gp?.spreadPercent ?? 0);
+    },
+    [isOfficeTab, activeOffice, getOfficeOverride, findGlobalPair]
+  );
+
+  const pairUpdatedAt = React.useCallback(
+    (a, b) => {
+      if (isOfficeTab) {
+        const ovr = getOfficeOverride(activeOffice, a, b);
+        if (ovr?.updatedAt) return new Date(ovr.updatedAt);
+      }
+      const gp = findGlobalPair(a, b);
+      return gp?.updatedAt ? new Date(gp.updatedAt) : null;
+    },
+    [isOfficeTab, activeOffice, getOfficeOverride, findGlobalPair]
+  );
+
+  const pairHasOverride = React.useCallback(
+    (a, b) => {
+      if (!isOfficeTab) return false;
+      return !!getOfficeOverride(activeOffice, a, b);
+    },
+    [isOfficeTab, activeOffice, getOfficeOverride]
+  );
+
+  if (existingPairs.length === 0) {
+    return (
+      <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center text-body-sm text-muted-soft">
+        {t("rates_no_pairs") ||
+          "No pairs yet. Add a currency, then channels, then a pair."}
+      </div>
+    );
+  }
 
   return (
-    <div
-      className={`px-4 py-3 hover:bg-surface-soft/40 ${
-        hasOverride && isOfficeTab ? "bg-accent-bg/30" : ""
-      }`}
-    >
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Pair label */}
-        <div className="flex items-center gap-2 min-w-[110px]">
-          {onToggleFavorite && (
-            <button
-              type="button"
-              onClick={onToggleFavorite}
-              className={`shrink-0 transition-colors ${
-                isFavorite
-                  ? "text-warning hover:text-warning"
-                  : "text-muted-soft hover:text-warning"
-              }`}
-              title={isFavorite ? "Убрать из избранного" : "В избранное"}
-            >
-              <Star className={`w-3.5 h-3.5 ${isFavorite ? "fill-amber-400" : ""}`} />
-            </button>
-          )}
-          <span className="text-body-sm font-bold text-ink tabular-nums">{from}</span>
-          <span className="text-muted-soft">→</span>
-          <span className="text-body-sm font-bold text-ink tabular-nums">{to}</span>
-          {/* Status pill: показываем для офис-таба, чтобы было ясно — это
-              офисный или общий курс. Без pill юзер раньше путался какая из
-              двух соседних кнопок что-то с офисом, а какая — с глобал. */}
-          {isOfficeTab && hasOverride && (
-            <span
-              className="inline-flex items-center px-1 py-0 rounded text-micro font-bold text-accent bg-indigo-100 uppercase tracking-wider"
-              title={t("rates_override_tip") || "У этого офиса свой курс поверх глобального"}
-            >
-              OFC
-            </span>
-          )}
-          {isOfficeTab && !hasOverride && (
-            <span
-              className="inline-flex items-center px-1 py-0 rounded text-micro font-bold text-muted bg-surface-sunk uppercase tracking-wider"
-              title={t("rates_status_global_tip") || "Этот офис использует общий глобальный курс"}
-            >
-              {t("rates_status_global") || "ГЛОБАЛ"}
-            </span>
-          )}
-        </div>
-
-        {/* Global (read-only в office-режиме) */}
-        {isOfficeTab && (
-          <div
-            className="flex flex-col items-start"
-            title={t("rates_global_tip") || "Общий курс для всех офисов"}
-          >
-            <span className="text-micro font-bold text-muted-soft uppercase tracking-wider">
-              {t("rates_global_label") || "Global"}
-            </span>
-            <span className="text-caption font-semibold text-ink-soft tabular-nums">
-              {globalValue != null ? Number(globalValue).toFixed(4) : "—"}
-            </span>
-          </div>
-        )}
-
-        {/* Одна кнопка в зависимости от состояния. Текст описывает РЕЗУЛЬТАТ:
-            • Без override → "✏️ Свой курс офиса" — создаёт office override,
-              стартует от global; юзер потом может править base/spread.
-            • С override → "↺ Использовать глобал" — удаляет office override;
-              офис снова работает на общем глобальном курсе.
-            Раньше было "Apply global" / "Use global" — две почти одинаковых
-            фразы про global, делающие противоположное → путаница. */}
-        {isOfficeTab && !hasOverride && (
-          <button
-            type="button"
-            onClick={onApplyGlobal}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-tiny font-semibold text-accent bg-accent-bg hover:bg-indigo-100 border border-indigo-200"
-            title={t("rates_customize_for_office_tip") || "Создать собственный курс офиса. Стартовое значение — глобальный курс, потом можно изменить базу и спред."}
-          >
-            <Pencil className="w-3 h-3" strokeWidth={2.5} />
-            {t("rates_customize_for_office") || "Свой курс офиса"}
-          </button>
-        )}
-        {isOfficeTab && hasOverride && (
-          <button
-            type="button"
-            onClick={onResetOverride}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-tiny font-semibold text-ink-soft hover:text-ink bg-surface-sunk hover:bg-surface-sunk border border-border-soft"
-            title={t("rates_remove_override_tip") || "Убрать офисный курс. Этот офис снова будет использовать общий глобальный курс."}
-          >
-            <RotateCcw className="w-3 h-3" strokeWidth={2.5} />
-            {t("rates_remove_override") || "Использовать глобал"}
-          </button>
-        )}
-
-        {/* Base rate input */}
-        <div className="flex flex-col items-start">
-          <span className="text-micro font-bold text-muted-soft uppercase tracking-wider">
-            {isOfficeTab ? (t("rates_office_base") || "Office base") : (t("rates_base_rate") || "Base rate")}
-          </span>
-          <div className="flex items-center gap-1">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={baseStr}
-              onChange={(e) => {
-                setEditingBase(true);
-                setBaseStr(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."));
-              }}
-              onBlur={commitBase}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className={`w-[120px] bg-surface-soft border rounded-button px-2.5 py-1 text-body-sm tabular-nums outline-none focus:bg-white ${
-                hasOverride && isOfficeTab
-                  ? "border-indigo-300 focus:border-indigo-500"
-                  : "border-border-soft focus:border-accent"
-              }`}
-            />
-            {/* Force re-sync обратной пары = 1/этой. Только в global ("all")
-                табе — у офисных override'ов нет чистой "обратной пары".
-                Обычное редактирование base уже синхронит reverse server-side;
-                эта кнопка нужна когда обратная пара дрейфанула со старых
-                данных. */}
-            {!isOfficeTab && Number.isFinite(Number(effectiveBase)) && Number(effectiveBase) > 0 && (
-              <button
-                type="button"
-                onClick={() => onUpdate({ baseRate: Number(effectiveBase), syncReverse: true })}
-                className="shrink-0 p-1 rounded-[6px] text-muted-soft hover:text-ink-soft hover:bg-surface-sunk"
-                title={t("rates_sync_reverse_tip") || "Пересчитать обратную пару = 1/этой"}
-              >
-                <ArrowLeftRight className="w-3 h-3" strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Spread input — редактируется на КАЖДОЙ паре (не на блок). */}
-        <div className="flex flex-col items-start">
-          <span className="text-micro font-bold text-muted-soft uppercase tracking-wider">
-            {t("rates_spread") || "Spread %"}
-          </span>
-          <div className="relative">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={spreadStr}
-              onChange={(e) => {
-                setEditingSpread(true);
-                setSpreadStr(e.target.value.replace(/[^\d.,-]/g, "").replace(",", "."));
-              }}
-              onBlur={commitSpread}
-              onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-              className="w-[80px] bg-surface-soft border border-border-soft focus:border-accent focus:bg-white rounded-button pl-2.5 pr-5 py-1 text-body-sm tabular-nums outline-none"
-            />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-tiny text-muted-soft">%</span>
-          </div>
-        </div>
-
-        {/* Effective rate (computed) + inverse direction hint */}
-        <div className="flex flex-col items-start">
-          <span
-            className="text-micro font-bold text-muted-soft uppercase tracking-wider cursor-help"
-            title={t("rates_effective_tip") || "Итоговый курс который применяется в сделках = Base × (1 + Spread/100)"}
-          >
-            {t("rates_effective") || "Effective"} ⓘ
-          </span>
-          <span className="text-body font-bold text-ink tabular-nums">
-            {effectiveRate != null ? Number(effectiveRate).toFixed(4) : "—"}
-          </span>
-          {effectiveRate != null && Number(effectiveRate) > 0 && (
-            <span className="text-tiny text-muted-soft tabular-nums whitespace-nowrap">
-              {(t("rates_inverse_hint") || "↔ 1 {to} = {rate} {from}")
-                .replace("{to}", to)
-                .replace("{rate}", formatInverseRate(1 / Number(effectiveRate)))
-                .replace("{from}", from)}
-            </span>
-          )}
-        </div>
-
-        {/* Updated at — когда курс был последний раз изменён.
-            В office-tab с override берём officeOverride.updatedAt;
-            иначе — globalPair.updatedAt. Hover показывает точную дату. */}
-        {(() => {
-          const updatedAt = isOfficeTab && officeOverride?.updatedAt
-            ? officeOverride.updatedAt
-            : globalPair?.updatedAt;
-          if (!updatedAt) return null;
-          const rel = formatRelativeTime(updatedAt, nowMs);
-          let abs = "";
-          try {
-            abs = new Date(updatedAt).toLocaleString();
-          } catch {}
-          return (
-            <div className="flex flex-col items-start" title={abs}>
-              <span className="text-micro font-bold text-muted-soft uppercase tracking-wider">
-                {t("rates_updated") || "Обновлён"}
-              </span>
-              <span className="text-caption text-muted tabular-nums whitespace-nowrap">
-                {rel || "—"}
-              </span>
-            </div>
-          );
-        })()}
-
-        <div className="ml-auto flex items-center gap-1">
-          {canDelete && (
-            <button
-              onClick={onDelete}
-              className="text-body text-danger hover:text-danger font-semibold"
-              title={t("delete") || "Delete"}
-            >
-              ×
-            </button>
-          )}
-        </div>
+    <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
+      <div className="px-3 pt-3 pb-1">
+        <RatesTable
+          mode="edit"
+          pairs={orderedPairs}
+          favorites={favoritesSet}
+          onToggleFavorite={onToggleFav}
+          getRate={effectiveGetRate}
+          getBaseRate={getBaseRate}
+          getSpreadPercent={getSpreadPercent}
+          hasOverride={pairHasOverride}
+          pairUpdatedAt={pairUpdatedAt}
+          onCommitBase={(a, b, n) => handleSetRate(a, b, { baseRate: n })}
+          onCommitSpread={(a, b, n) =>
+            handleSetRate(a, b, { spreadPercent: n })
+          }
+          onResetOverride={
+            isOfficeTab ? (a, b) => handleResetOverride(a, b) : undefined
+          }
+          onDelete={!isOfficeTab ? (a, b) => handleDeletePair(a, b) : undefined}
+          canDelete={!isOfficeTab && canDelete ? () => true : undefined}
+          groupSeparators={groupSeparators}
+        />
       </div>
-    </div>
+    </section>
   );
 }
+
 
 // ---------------- Add Pair form ----------------
 function AddPairForm({ initFrom, initTo, onDone }) {

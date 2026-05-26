@@ -11,8 +11,10 @@ import { ChevronRight, ChevronDown, Plus, Building2, Download } from "lucide-rea
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { useOffices } from "../../../store/offices.jsx";
+import { useRates } from "../../../store/rates.jsx";
 import { assetsByOfficeCurrency } from "../../../lib/treasury/v2selectors.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
+import { convert } from "../../../utils/convert.js";
 import { exportCSV } from "../../../utils/csv.js";
 import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
@@ -20,6 +22,8 @@ import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:assets-nonzero";
+const DISPLAY_BASE_KEY = "coinplata:assets-display-base";
+const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -29,7 +33,24 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
   const { t } = useTranslation();
   const can = useCan();
   const { findOffice } = useOffices();
-  const tree = useMemo(() => assetsByOfficeCurrency(ctx), [ctx]);
+  const { getRate } = useRates();
+  const [displayBase, setDisplayBase] = useState(() => {
+    try {
+      const v = localStorage.getItem(DISPLAY_BASE_KEY);
+      return BASE_OPTIONS.includes(v) ? v : (baseCurrency || "USD");
+    } catch { return baseCurrency || "USD"; }
+  });
+  const setDisplayBasePersist = (v) => {
+    setDisplayBase(v);
+    try { localStorage.setItem(DISPLAY_BASE_KEY, v); } catch {}
+  };
+  // localCtx с переопределённым toBase под displayBase — селектор пересчитает все ≈ значения.
+  const localCtx = useMemo(() => {
+    if (displayBase === ctx?.baseCurrency) return ctx;
+    return { ...ctx, baseCurrency: displayBase, toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0 };
+  }, [ctx, displayBase, getRate]);
+  const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
+  const tree = useMemo(() => assetsByOfficeCurrency(localCtx), [localCtx]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
   const [detailAccountId, setDetailAccountId] = useState(null);
@@ -77,7 +98,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
             {filteredTree.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
-            ≈ {formatBase(grandTotal, baseCurrency)}
+            ≈ {fmtBase(grandTotal)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -140,7 +161,18 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                   Native
                 </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
-                  ≈ {baseCurrency}
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    <span>≈</span>
+                    <select
+                      value={displayBase}
+                      onChange={(e) => setDisplayBasePersist(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="appearance-none bg-surface-sunk text-ink font-bold tracking-wider px-2 py-0.5 rounded-button text-caption cursor-pointer hover:bg-surface-soft transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-accent"
+                      title="Сменить валюту приведения"
+                    >
+                      {BASE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -170,7 +202,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                         <span className="text-tiny text-muted-soft">—</span>
                       </td>
                       <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                        {formatBase(office.totalInBase, baseCurrency)}
+                        {fmtBase(office.totalInBase)}
                       </td>
                     </tr>
 
@@ -199,7 +231,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                               {nativeFmt(cur.total, cur.currency)}
                             </td>
                             <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                              {formatBase(cur.totalInBase, baseCurrency)}
+                              {fmtBase(cur.totalInBase)}
                             </td>
                           </tr>
 
@@ -237,7 +269,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                   />
                                 </td>
                                 <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                  {formatBase(a.balanceInBase, baseCurrency)}
+                                  {fmtBase(a.balanceInBase)}
                                 </td>
                               </tr>
                             );
@@ -258,7 +290,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                   <span className="text-tiny text-muted-soft">—</span>
                 </td>
                 <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                  {formatBase(grandTotal, baseCurrency)}
+                  {fmtBase(grandTotal)}
                 </td>
               </tr>
             </tfoot>
@@ -279,8 +311,8 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         onClose={() => setDetailAccountId(null)}
         ctx={ctx}
         accountId={detailAccountId}
-        formatBase={formatBase}
-        baseCurrency={baseCurrency}
+        formatBase={fmtBase}
+        baseCurrency={displayBase}
         onOpenTx={onOpenTx}
       />
     </div>
