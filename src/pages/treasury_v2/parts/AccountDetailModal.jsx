@@ -611,52 +611,23 @@ export default function AccountDetailModal({
         </div>
       </div>
 
-      {/* ОСВ — оборотно-сальдовая ведомость за период */}
-      <div className="px-5 py-3 border-b border-border-soft bg-surface-soft/40">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {[
-            {
-              label: "Остаток на начало",
-              base: osv.opening,
-              native: !isCpMode && !isGroupMode ? osv.openingNative : null,
-              tone: "muted",
-            },
-            {
-              label: "Обороты Дт",
-              base: osv.drBase,
-              native: !isCpMode && !isGroupMode ? osv.dr : null,
-              tone: "ink",
-            },
-            {
-              label: "Обороты Кт",
-              base: osv.crBase,
-              native: !isCpMode && !isGroupMode ? osv.cr : null,
-              tone: "ink",
-            },
-            {
-              label: "Остаток на конец",
-              base: osv.closing,
-              native: !isCpMode && !isGroupMode ? osv.closingNative : null,
-              tone: "success",
-              bold: true,
-            },
-          ].map((it) => {
-            const toneCls = it.tone === "success" ? "text-success" : it.tone === "muted" ? "text-muted" : "text-ink";
-            return (
-              <div key={it.label} className="bg-surface rounded-card border border-border-soft p-2.5">
-                <div className="text-tiny text-muted-soft uppercase tracking-wider font-bold mb-1">{it.label}</div>
-                <div className={`font-mono tabular ${it.bold ? "font-bold text-body" : "font-semibold text-body-sm"} ${toneCls}`}>
-                  {fmtBase(it.base)}
-                </div>
-                {it.native != null && !isCpMode && !isGroupMode && account && (
-                  <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
-                    {fmtAmount(it.native)} {account.currency}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+      {/* Остаток на начало периода — горизонтальная полоса как в 1С */}
+      <div className="px-5 py-2 border-b border-border-soft bg-surface-soft/40 flex items-baseline justify-between gap-3 flex-wrap">
+        <span className="text-tiny text-muted uppercase tracking-wider font-bold">
+          Остаток на {period ? new Date(period.from).toISOString().slice(0, 10) : "начало"}
+        </span>
+        <span className="font-mono tabular text-body-sm font-bold text-ink-soft">
+          {!isCpMode && !isGroupMode && account ? (
+            <>
+              <span>{fmtAmount(osv.openingNative)} {account.currency}</span>
+              {account.currency !== displayBase && (
+                <span className="text-muted-soft ml-2">≈ {fmtBase(osv.opening)}</span>
+              )}
+            </>
+          ) : (
+            <span>{fmtBase(osv.opening)}</span>
+          )}
+        </span>
       </div>
 
       {/* Entries table — жёсткая сетка с vertical dividers */}
@@ -737,24 +708,40 @@ export default function AccountDetailModal({
         )}
       </div>
 
-      {/* Turnover footer — native (если одна валюта) + base всегда */}
-      <div className="px-5 py-3 border-t border-border-soft bg-surface-sunk flex items-center justify-between gap-4 flex-wrap text-caption">
-        <span className="text-muted">
-          {t("trv2_detail_entries_count")}: <span className="font-bold text-ink font-mono tabular">{filteredEntries.length}</span>
+      {/* Обороты за период — компактная строка */}
+      <div className="px-5 py-2 border-t border-border-soft bg-surface-soft/40 flex items-baseline justify-between gap-3 flex-wrap text-caption">
+        <span className="text-tiny text-muted uppercase tracking-wider font-bold">
+          Обороты за период · {filteredEntries.length} проводок
         </span>
-        <div className="flex items-center gap-4 font-mono tabular">
+        <div className="flex items-baseline gap-4 font-mono tabular">
           {turnover.singleCcy && (
             <>
-              <span className="text-muted-soft">{t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {turnover.singleCcy}</span></span>
-              <span className="text-muted-soft">{t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {turnover.singleCcy}</span></span>
+              <span className="text-muted-soft">Дт: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {turnover.singleCcy}</span></span>
+              <span className="text-muted-soft">Кт: <span className="text-ink font-bold">{fmtAmount(turnover.cr)} {turnover.singleCcy}</span></span>
             </>
           )}
-          <span className="text-muted-soft">≈ {t("trv2_col_dr")}: <span className="text-ink font-bold">{fmtBase(turnover.drBase)}</span></span>
-          <span className="text-muted-soft">≈ {t("trv2_col_cr")}: <span className="text-ink font-bold">{fmtBase(turnover.crBase)}</span></span>
-          <span className={`font-bold ${turnover.deltaBase >= 0 ? "text-success" : "text-danger"}`}>
-            Δ: {turnover.deltaBase >= 0 ? "+" : ""}{fmtBase(turnover.deltaBase)}
-          </span>
+          <span className="text-muted-soft">≈ Дт: <span className="text-ink font-bold">{fmtBase(turnover.drBase)}</span></span>
+          <span className="text-muted-soft">≈ Кт: <span className="text-ink font-bold">{fmtBase(turnover.crBase)}</span></span>
         </div>
+      </div>
+
+      {/* Остаток на конец периода — финальная подсветка как в 1С */}
+      <div className="px-5 py-2.5 border-t border-border-soft bg-success-soft flex items-baseline justify-between gap-3 flex-wrap">
+        <span className="text-tiny text-success uppercase tracking-wider font-bold">
+          Остаток на {period ? new Date(period.to).toISOString().slice(0, 10) : "конец"}
+        </span>
+        <span className="font-mono tabular text-body font-bold text-success">
+          {!isCpMode && !isGroupMode && account ? (
+            <>
+              <span>{fmtAmount(osv.closingNative)} {account.currency}</span>
+              {account.currency !== displayBase && (
+                <span className="opacity-70 ml-2">≈ {fmtBase(osv.closing)}</span>
+              )}
+            </>
+          ) : (
+            <span>{fmtBase(osv.closing)}</span>
+          )}
+        </span>
       </div>
       {isGroupMode && addCurrencyOpen && (
         <ChartAccountModal

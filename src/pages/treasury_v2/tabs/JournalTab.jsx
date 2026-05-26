@@ -5,11 +5,11 @@
 // + Inline-форма «+ Ручная проводка» сверху, развёрнута по умолчанию.
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Search, Plus, ChevronDown, ChevronUp, Check } from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronUp, Check, Undo2 } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { transactionTree, nodeMatchesSearch } from "../../../lib/treasury/v2selectors.js";
-import { rpcConfirmLedgerTransaction, withToast } from "../../../lib/supabaseWrite.js";
+import { rpcConfirmLedgerTransaction, rpcUnconfirmLedgerTransaction, withToast } from "../../../lib/supabaseWrite.js";
 import { emitToast } from "../../../lib/toast.jsx";
 import PeriodPicker, { presetWindow } from "../PeriodPicker.jsx";
 import TransactionRow from "../parts/TransactionRow.jsx";
@@ -275,6 +275,12 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
       { success: "Транзакция подтверждена", errorPrefix: "Подтверждение" }
     );
   };
+  const onUnconfirm = async (txId) => {
+    await withToast(
+      () => rpcUnconfirmLedgerTransaction(txId),
+      { success: "Подтверждение снято", errorPrefix: "Undo" }
+    );
+  };
 
   return (
     <div className="overflow-x-auto">
@@ -349,16 +355,30 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
                   )}
                 </td>
                 <td className="px-2 py-1.5 text-center whitespace-nowrap">
-                  {row.tx.metadata?.confirmed_at ? (
-                    <span
-                      className="inline-flex items-center gap-1 text-tiny font-bold text-success"
-                      title={`Подтверждено ${new Date(row.tx.metadata.confirmed_at).toLocaleString()}${row.tx.metadata.confirmed_by ? ` · ${row.tx.metadata.confirmed_by}` : ""}`}
-                    >
-                      <Check className="w-3 h-3" strokeWidth={3} />
-                      ✓
-                    </span>
-                  ) : firstSeen.has(row.id) ? (
-                    canConfirm ? (
+                  {firstSeen.has(row.id) ? (
+                    row.tx.metadata?.confirmed_at ? (
+                      canConfirm ? (
+                        <button
+                          type="button"
+                          onClick={() => onUnconfirm(row.tx.id)}
+                          className="inline-flex items-center gap-1 h-6 px-2 rounded-button bg-success-soft text-success hover:bg-danger-soft hover:text-danger text-tiny font-bold transition-colors group"
+                          title={`Подтверждено ${new Date(row.tx.metadata.confirmed_at).toLocaleString()} · Клик чтобы снять`}
+                        >
+                          <Check className="w-3 h-3 group-hover:hidden" strokeWidth={3} />
+                          <Undo2 className="w-3 h-3 hidden group-hover:inline" strokeWidth={3} />
+                          <span className="group-hover:hidden">Подтв.</span>
+                          <span className="hidden group-hover:inline">Снять</span>
+                        </button>
+                      ) : (
+                        <span
+                          className="inline-flex items-center gap-1 text-tiny font-bold text-success"
+                          title={`Подтверждено ${new Date(row.tx.metadata.confirmed_at).toLocaleString()}`}
+                        >
+                          <Check className="w-3 h-3" strokeWidth={3} />
+                          Подтв.
+                        </span>
+                      )
+                    ) : canConfirm ? (
                       <button
                         type="button"
                         onClick={() => onConfirm(row.tx.id)}

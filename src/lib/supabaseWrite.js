@@ -468,6 +468,17 @@ export async function rpcConfirmLedgerTransaction(txId) {
   bumpDataVersion();
 }
 
+// Снятие подтверждения (undo). Удаляет metadata.confirmed_at/confirmed_by.
+export async function rpcUnconfirmLedgerTransaction(txId) {
+  assertConfigured();
+  if (!txId || typeof txId !== "string") throw new Error(`txId required (got ${txId})`);
+  unwrap(
+    await supabase.rpc("unconfirm_ledger_transaction", { p_tx_id: txId }),
+    "unconfirm_ledger_transaction"
+  );
+  bumpDataVersion();
+}
+
 export async function rpcConfirmDealLeg(dealId, legIndex) {
   assertConfigured();
   const id = requirePositive(dealId, "dealId");
