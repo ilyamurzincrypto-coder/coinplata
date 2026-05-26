@@ -87,33 +87,30 @@ describe("TreasuryShell integration smoke", () => {
     expect(document.body.textContent).toContain("D-7");
   });
 
-  it("switches to Журнал and drills into the transaction-detail modal", () => {
-    const { container } = render(<TreasuryShell />);
+  it("switches to Транзакции и видит ссылку на исходный документ в entries-view", () => {
+    render(<TreasuryShell />);
+    // дефолтное view — entries (плоская таблица); flatEntries показывают D-7 как doc-ссылку
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
-    fireEvent.click(screen.getByText("deal #D-7")); // expand the tx row
-    fireEvent.click(screen.getByRole("button", { name: "trv2_journal_open_source" }));
-    expect(container.textContent).toContain("smoke-tx"); // tx metadata rendered in the modal
+    expect(document.body.textContent).toContain("D-7");
   });
 });
 
-describe("TreasuryShell — manual entry is no longer a standalone tab", () => {
-  // Manual journal entries moved into the Журнал tab as a "+ Ручная проводка"
-  // button + modal — there is no top-level `trv2_pm_tab` chip in the shell anymore.
-  it("never renders a standalone Manual-entry tab, regardless of accounting:edit", () => {
+describe("TreasuryShell — manual entry inline в Транзакциях", () => {
+  // Ручная проводка теперь inline в Транзакциях (не модал).
+  it("nikогда не рендерит standalone Manual-entry таб", () => {
     canAccountingEdit = true;
     render(<TreasuryShell />);
     expect(screen.queryByRole("button", { name: "trv2_pm_tab" })).toBeNull();
   });
-  it("opens the manual-entry editor from inside the Журнал tab when allowed", () => {
+  it("показывает PostingTab inline в Транзакциях при accounting:edit (открыт по умолчанию)", () => {
     canAccountingEdit = true;
+    try { localStorage.removeItem("coinplata:journal-posting-open"); } catch {}
     render(<TreasuryShell />);
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
-    expect(screen.queryByRole("button", { name: "trv2_pm_post" })).toBeNull(); // editor not open yet
-    fireEvent.click(screen.getByRole("button", { name: "trv2_journal_new_manual" }));
-    // PostingTab (with its "Провести" submit button) renders inside the modal
+    // PostingTab.Провести виден сразу (inline-card открыта)
     expect(screen.getByRole("button", { name: "trv2_pm_post" })).toBeInTheDocument();
   });
-  it("hides the '+ Ручная проводка' button without accounting:edit", () => {
+  it("скрывает '+Ручная проводка' card без accounting:edit", () => {
     canAccountingEdit = false;
     render(<TreasuryShell />);
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));

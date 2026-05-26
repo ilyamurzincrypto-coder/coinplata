@@ -40,30 +40,31 @@ const DEFAULT_SUBTYPE = {
 };
 const NO_OFFICE = "__none__";
 
-export default function ChartAccountModal({ open, onClose, defaultOfficeId = null, defaultType = "asset" }) {
+export default function ChartAccountModal({ open, onClose, defaultOfficeId = null, defaultType = "asset", defaultSubtype = null }) {
   const { t } = useTranslation();
   const { codes } = useCurrencies();
   const { activeOffices, findOffice } = useOffices();
   const initType = TYPES.includes(defaultType) ? defaultType : "asset";
+  const initSubtype = defaultSubtype || DEFAULT_SUBTYPE[initType] || DEFAULT_SUBTYPE.asset;
 
   const [type, setType] = useState(initType);
-  const [subtype, setSubtype] = useState(DEFAULT_SUBTYPE[initType] || DEFAULT_SUBTYPE.asset);
+  const [subtype, setSubtype] = useState(initSubtype);
   const [currency, setCurrency] = useState(codes[0] || "USD");
   const [officeId, setOfficeId] = useState(defaultOfficeId || NO_OFFICE);
   const [name, setName] = useState("");
   const [nameTouched, setNameTouched] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Reset на открытии (тип/подтип — из defaultType вызывающего таба).
+  // Reset на открытии (тип/подтип — из default* вызывающего таба).
   useEffect(() => {
     if (!open) return;
     setType(initType);
-    setSubtype(DEFAULT_SUBTYPE[initType] || DEFAULT_SUBTYPE.asset);
+    setSubtype(initSubtype);
     setCurrency(codes[0] || "USD");
     setOfficeId(defaultOfficeId || NO_OFFICE);
     setNameTouched(false);
     setBusy(false);
-  }, [open, defaultOfficeId, initType, codes]);
+  }, [open, defaultOfficeId, initType, initSubtype, codes]);
 
   const subtypeOptions = useMemo(
     () => (SUBTYPES_BY_TYPE[type] || Object.keys(SUBTYPE_LABEL_KEYS)).map((k) => ({ id: k, name: t(SUBTYPE_LABEL_KEYS[k] || "trv2_subtype_other") })),

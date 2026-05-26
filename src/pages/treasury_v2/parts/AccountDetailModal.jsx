@@ -13,11 +13,12 @@
 //   clientId? partnerId? — dim или (без accountId) — CP-mode
 
 import React, { useMemo, useState } from "react";
-import { Search, Calendar } from "lucide-react";
+import { Search, Calendar, Plus } from "lucide-react";
 import Modal from "../../../components/ui/Modal.jsx";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { useRates } from "../../../store/rates.jsx";
+import { useCan } from "../../../store/permissions.jsx";
 import {
   accountEntries, counterpartyEntries, liabilitiesByCounterparty,
   accountGroupContext, groupEntries, SUBTYPE_LABEL_KEYS,
@@ -25,6 +26,7 @@ import {
 import { convert } from "../../../utils/convert.js";
 import { curSymbol } from "../../../utils/money.js";
 import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
+import ChartAccountModal from "./ChartAccountModal.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
@@ -56,6 +58,9 @@ export default function AccountDetailModal({
   const { t } = useTranslation();
   const { findOffice } = useOffices();
   const { getRate } = useRates();
+  const can = useCan();
+  const canAddAccount = can("accounting", "edit");
+  const [addCurrencyOpen, setAddCurrencyOpen] = useState(false);
   // Date range — старт: последний месяц.
   const [from, setFrom] = useState(() => daysAgoISO(30));
   const [to, setTo] = useState(() => todayISO());
@@ -322,8 +327,21 @@ export default function AccountDetailModal({
     // Multi-currency KPI per sibling account — каждая ячейка кликабельна для inline-edit
     balanceNode = (
       <div>
-        <div className="text-tiny text-muted uppercase tracking-wider font-semibold mb-2">
-          {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(groupCtx.totalInBase, baseCurrency)}</span>
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <div className="text-tiny text-muted uppercase tracking-wider font-semibold">
+            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(groupCtx.totalInBase, baseCurrency)}</span>
+          </div>
+          {canAddAccount && (
+            <button
+              type="button"
+              onClick={() => setAddCurrencyOpen(true)}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-button bg-ink text-white text-caption font-semibold hover:bg-black transition-colors"
+              title="Добавить новую валюту в эту кассу"
+            >
+              <Plus className="w-3 h-3" strokeWidth={2.5} />
+              Валюта
+            </button>
+          )}
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
           {groupCtx.accounts.map((a) => {
@@ -612,6 +630,15 @@ export default function AccountDetailModal({
           </span>
         </div>
       </div>
+      {isGroupMode && addCurrencyOpen && (
+        <ChartAccountModal
+          open
+          onClose={() => setAddCurrencyOpen(false)}
+          defaultOfficeId={groupCtx.officeId}
+          defaultType={groupCtx.type}
+          defaultSubtype={groupCtx.subtype}
+        />
+      )}
     </Modal>
   );
 }
