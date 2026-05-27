@@ -17,7 +17,7 @@ import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js"
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { convert } from "../../../utils/convert.js";
 import AccountDetailModal from "../parts/AccountDetailModal.jsx";
-import CreateLiabilityDialog from "../parts/CreateLiabilityDialog.jsx";
+import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:liabilities-nonzero";
@@ -32,7 +32,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   const { t } = useTranslation();
   const can = useCan();
   const { getRate } = useRates();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
   const [expanded, setExpanded] = useState(() => new Set());
   const [detailOpen, setDetailOpen] = useState(null);
 
@@ -129,11 +129,11 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
           {can("accounting", "edit") && (
             <button
               type="button"
-              onClick={() => setDialogOpen(true)}
+              onClick={() => setAddOpen(true)}
               className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black hover:-translate-y-px shadow-cta-glow transition-all"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-              Обязательство
+              {t("trv2_chart_add_btn")}
             </button>
           )}
         </div>
@@ -186,25 +186,24 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                 const cpOpen = expanded.has(cpKey);
                 return (
                   <React.Fragment key={cpKey}>
-                    {/* Level 1 — counterparty: click row → open CP modal; chevron → expand */}
+                    {/* Level 1 — counterparty: click row → expand (1:1 с Активами).
+                        Для «открыть карточку клиента» — клик по самому имени (открывает CP-modal). */}
                     <tr
                       className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
-                      onClick={() => openCp(cp)}
-                      title="Открыть карточку контрагента"
+                      onClick={() => toggle(cpKey)}
                     >
                       <td className="px-card py-2.5 border-r border-border-soft">
                         <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); toggle(cpKey); }}
-                            className="p-0.5 -m-0.5 rounded hover:bg-surface-sunk transition-colors"
-                            title={cpOpen ? "Свернуть" : "Развернуть"}
+                          {cpOpen
+                            ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
+                            : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+                          <span
+                            className="text-h3 text-ink font-semibold truncate hover:underline decoration-dotted underline-offset-4"
+                            onClick={(e) => { e.stopPropagation(); openCp(cp); }}
+                            title="Открыть карточку контрагента"
                           >
-                            {cpOpen
-                              ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
-                              : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
-                          </button>
-                          <span className="text-h3 text-ink font-semibold truncate">{cp.name}</span>
+                            {cp.name}
+                          </span>
                           {cp.isReferral && (
                             <span className="text-tiny font-semibold text-success uppercase tracking-wider shrink-0">реф</span>
                           )}
@@ -312,13 +311,14 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
         </div>
       )}
 
-      <CreateLiabilityDialog
-        open={dialogOpen}
-        onClose={() => setDialogOpen(false)}
-        ctx={ctx}
-        clients={ctx?.clients || []}
-        partners={ctx?.partners || []}
-      />
+      {addOpen && (
+        <ChartAccountModal
+          open
+          onClose={() => setAddOpen(false)}
+          defaultType="liability"
+          lockType
+        />
+      )}
 
       <AccountDetailModal
         open={!!detailOpen}
