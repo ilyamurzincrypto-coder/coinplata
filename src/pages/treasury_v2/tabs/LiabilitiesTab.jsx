@@ -55,8 +55,11 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   }, [ctx, displayBase, getRate]);
   const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
 
-  const clientGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "client"), [localCtx]);
-  const partnerGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "partner"), [localCtx]);
+  // includeZero=!nonZeroOnly — когда фильтр «Ненулевые» выключен, показываем
+  // ВСЕХ клиентов/партнёров (включая с нулевым обязательством). Это решает
+  // проблему «список пустой пока в леджере нет проводок».
+  const clientGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "client", { includeZero: !nonZeroOnly }), [localCtx, nonZeroOnly]);
+  const partnerGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "partner", { includeZero: !nonZeroOnly }), [localCtx, nonZeroOnly]);
 
   // Реферал сверху → потом |totalInBase| desc; все типы CP вместе (как Активы — все офисы вместе).
   const visibleGroups = useMemo(() => {

@@ -213,6 +213,32 @@ export function liabilitiesByCounterparty(ctx, cpKind = "client", { includeZero 
     cp.totalInBase += inBase;
   }
 
+  // Если includeZero — добавляем «пустых» CP (без liability-балансов) чтобы UI
+  // показал список клиентов/партнёров для дальнейшего управления. Полезно когда
+  // деалов ещё не было и «Ненулевые» выключен.
+  if (includeZero) {
+    const cpList = cpKind === "client" ? (clients || []) : (partners || []);
+    for (const c of cpList) {
+      if (cpMap.has(c.id)) continue;
+      if (c.archived) continue;
+      cpMap.set(c.id, {
+        id: c.id,
+        kind: cpKind,
+        name: c.nickname || c.name || String(c.id).slice(0, 8),
+        full_name: c.full_name || null,
+        telegram: c.telegram || null,
+        tag: c.tag || null,
+        isReferral: !!(
+          c.isReferral === true ||
+          (c.tag && /referral|реферал/i.test(c.tag))
+        ),
+        referrer_id: c.referrer_id || null,
+        totalInBase: 0,
+        byCurrency: new Map(),
+      });
+    }
+  }
+
   return [...cpMap.values()]
     .map((cp) => ({
       ...cp,
