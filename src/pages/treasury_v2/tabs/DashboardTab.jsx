@@ -64,6 +64,18 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
     return { ...ctx, baseCurrency: displayBase, toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0 };
   }, [ctx, displayBase, getRate]);
   const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
+  // Компактный формат для KPI (₺19.9M вместо ₺19,900,296) — крупные числа
+  // читаемее как короткие. Под капотом всё то же значение, тултип показывает full.
+  const fmtBaseCompact = useMemo(() => (amt) => {
+    const n = Number(amt) || 0;
+    const a = Math.abs(n);
+    const sign = n < 0 ? "−" : "";
+    const sym = curSymbol(displayBase);
+    if (a >= 1_000_000_000) return `${sign}${sym}${(a / 1_000_000_000).toFixed(2)}B`;
+    if (a >= 1_000_000) return `${sign}${sym}${(a / 1_000_000).toFixed(2)}M`;
+    if (a >= 10_000) return `${sign}${sym}${(a / 1_000).toFixed(1)}K`;
+    return `${sign}${sym}${Math.round(a).toLocaleString("en-US")}`;
+  }, [displayBase]);
 
   const totals = useMemo(() => balanceCheckTotals(localCtx, officeFilter), [localCtx, officeFilter]);
   const pnl = useMemo(() => pnlForPeriod(localCtx, { from: win.from, to: win.to }, officeFilter), [localCtx, win.from, win.to, officeFilter]);
@@ -183,29 +195,35 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
         </div>
       </div>
 
-      {/* KPI grid — 4 крупных карточки */}
+      {/* KPI grid — 4 крупных карточки. Используем compact-формат
+          для крупных чисел (TRY-base даёт ₺-миллионы — компактный вид
+          читается лучше). Full-значение — в tooltip. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KPI
           label="Активы (наши)"
-          value={fmtBase(totals.assets)}
+          value={fmtBaseCompact(totals.assets)}
+          fullValue={fmtBase(totals.assets)}
           sub="касса · банк · крипто"
           tone="ink"
         />
         <KPI
           label="Клиенты (мы должны)"
-          value={fmtBase(totals.liabilities)}
+          value={fmtBaseCompact(totals.liabilities)}
+          fullValue={fmtBase(totals.liabilities)}
           sub={`${activeClients} активных клиентов`}
           tone={totals.liabilities > 0 ? "danger" : "muted"}
         />
         <KPI
           label="Капитал (чистый)"
-          value={fmtBase(totals.equity)}
+          value={fmtBaseCompact(totals.equity)}
+          fullValue={fmtBase(totals.equity)}
           sub="= Активы − Обязательства"
           tone="success"
         />
         <KPI
           label="Прибыль за период"
-          value={fmtBase(pnl.netProfit)}
+          value={fmtBaseCompact(pnl.netProfit)}
+          fullValue={fmtBase(pnl.netProfit)}
           sub={`${txCount} транзакций`}
           tone={pnl.netProfit >= 0 ? "success" : "danger"}
         />
@@ -324,10 +342,8 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
               </div>
             )}
           </Card>
-          <Card title="Открытые обязательства">
-            {(obligationItems || []).length === 0 ? (
-              <div className="text-caption text-muted-soft text-center py-4">Нет открытых обязательств</div>
-            ) : (
+          {(obligationItems || []).length > 0 && (
+            <Card title="Открытые обязательства">
               <div className="space-y-1.5">
                 {[
                   { key: "overdue", label: "Просрочено", n: obligationBuckets.overdue?.length || 0, tone: "danger" },
@@ -341,8 +357,8 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                   </div>
                 ))}
               </div>
-            )}
-          </Card>
+            </Card>
+          )}
         </div>
       </div>
 
@@ -374,7 +390,13 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                         <span className="text-tiny font-bold uppercase tracking-wider text-ink-soft">{node.tx.kind}</span>
                       </td>
                       <td className="px-2 py-1.5 text-body-sm text-ink truncate">
-                        {node.tx.description || `${node.tx.kind} #${node.tx.sourceRefId || node.tx.id.slice(0, 8)}`}
+                        {(() => {
+                          const d = node.tx.description || `${node.tx.kind} #${node.tx.sourceRefId || node.tx.id.slice(0, 8)}`;
+                          // Чистим Treasury-инлайн-корректировки: «Treasury · 1130: 0 → 12930» → «Корректировка остатка 1130»
+                          const m = String(d).match(/^Treasury · (\S+):/);
+                          if (m) return `Корректировка остатка ${m[1]}`;
+                          return d;
+                        })()}
                         {confirmed && <span className="ml-1.5 text-tiny font-bold text-success" title="Подтверждено">✓</span>}
                       </td>
                       <td className="px-2 py-1.5 text-right">
@@ -407,13 +429,13 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
   );
 }
 
-function KPI({ label, value, sub, tone }) {
+function KPI({ label, value, fullValue, sub, tone }) {
   const toneCls = tone === "success" ? "text-success"
     : tone === "danger" ? "text-danger"
     : tone === "muted" ? "text-muted"
     : "text-ink";
   return (
-    <div className="bg-surface rounded-card-lg border border-border-soft p-4 hover:shadow-sm transition-shadow">
+    <div className="bg-surface rounded-card-lg border border-border-soft p-4 hover:shadow-sm transition-shadow" title={fullValue || undefined}>
       <div className="text-tiny text-muted-soft uppercase tracking-wider font-bold mb-1.5">{label}</div>
       <div className={`text-[22px] font-bold font-mono tabular leading-tight ${toneCls}`}>{value}</div>
       <div className="text-tiny text-muted-soft mt-1 truncate">{sub}</div>

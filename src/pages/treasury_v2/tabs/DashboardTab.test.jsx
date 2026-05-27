@@ -68,10 +68,10 @@ describe("DashboardTab v2 — KPI + funds table + sidebar", () => {
     expect(screen.getByText(/Σ Дт = Σ Кт/)).toBeInTheDocument();
   });
 
-  it("Open obligations — empty state", () => {
+  it("Open obligations — карточка скрыта когда пусто", () => {
     obligHook.mockReturnValue({ items: [], loading: false });
     renderTab();
-    expect(screen.getByText("Нет открытых обязательств")).toBeInTheDocument();
+    expect(screen.queryByText("Открытые обязательства")).toBeNull();
   });
 
   it("Base picker рендерит USD/EUR/TRY/RUB", () => {

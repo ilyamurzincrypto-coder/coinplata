@@ -141,8 +141,8 @@ export function assetsByOfficeCurrency(ctx) {
  *     sourceAccounts: Array<{ accountId, code, name, subtype, balance }> }>
  * }>
  */
-export function liabilitiesByCounterparty(ctx, cpKind = "client") {
-  const { accounts, balances, toBase, clientById, partnerById, officeFilter } = ctx;
+export function liabilitiesByCounterparty(ctx, cpKind = "client", { includeZero = false } = {}) {
+  const { accounts, balances, toBase, clientById, partnerById, clients, partners, officeFilter } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));
 
   // Какие subtypes допустимы:
