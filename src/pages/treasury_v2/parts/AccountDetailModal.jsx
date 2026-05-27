@@ -109,10 +109,11 @@ export default function AccountDetailModal({
     }
   }, [open, accountId, isGroupMode, account?.currency]);
 
-  // Resolve CP (для cp-mode)
+  // Resolve CP (для cp-mode). includeZero=true чтобы найти даже клиента с
+  // нулевым обязательством (которого нет в ledger.balances).
   const cpData = useMemo(() => {
     if (!isCpMode) return null;
-    const list = liabilitiesByCounterparty(ctx, cpKind);
+    const list = liabilitiesByCounterparty(ctx, cpKind, { includeZero: true });
     return list.find((g) => g.id === cpId) || null;
   }, [ctx, cpKind, cpId, isCpMode]);
 
