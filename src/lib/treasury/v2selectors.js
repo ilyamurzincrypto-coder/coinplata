@@ -220,7 +220,7 @@ export function liabilitiesByCounterparty(ctx, cpKind = "client", { includeZero 
     const cpList = cpKind === "client" ? (clients || []) : (partners || []);
     for (const c of cpList) {
       if (cpMap.has(c.id)) continue;
-      if (c.archived) continue;
+      if (c.archivedAt || c.active === false) continue;
       cpMap.set(c.id, {
         id: c.id,
         kind: cpKind,
