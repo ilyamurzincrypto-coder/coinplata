@@ -55,11 +55,11 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   }, [ctx, displayBase, getRate]);
   const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
 
-  // includeZero=!nonZeroOnly — когда фильтр «Ненулевые» выключен, показываем
-  // ВСЕХ клиентов/партнёров (включая с нулевым обязательством). Это решает
-  // проблему «список пустой пока в леджере нет проводок».
-  const clientGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "client", { includeZero: !nonZeroOnly }), [localCtx, nonZeroOnly]);
-  const partnerGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "partner", { includeZero: !nonZeroOnly }), [localCtx, nonZeroOnly]);
+  // Селектор ВСЕГДА возвращает полный список CP (includeZero=true) — фильтрация
+  // «Ненулевые» применяется ниже к visibleGroups. Так UI всегда видит сколько
+  // всего контрагентов есть в системе и может предложить сбросить фильтр.
+  const clientGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "client", { includeZero: true }), [localCtx]);
+  const partnerGroups = useMemo(() => liabilitiesByCounterparty(localCtx, "partner", { includeZero: true }), [localCtx]);
 
   // Реферал сверху → потом |totalInBase| desc; все типы CP вместе (как Активы — все офисы вместе).
   const visibleGroups = useMemo(() => {
@@ -148,7 +148,25 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
             <div className="inline-flex w-11 h-11 rounded-full bg-surface-sunk text-muted-soft items-center justify-center mb-3">
               <Building2 className="w-5 h-5" strokeWidth={2} />
             </div>
-            <div className="text-body font-semibold text-ink mb-1">{t("trv2_no_accounts")}</div>
+            <div className="text-body font-semibold text-ink mb-2">
+              {nonZeroOnly
+                ? "Нет контрагентов с ненулевым обязательством"
+                : t("trv2_no_accounts")}
+            </div>
+            {nonZeroOnly && (clientGroups.length + partnerGroups.length) > 0 && (
+              <div className="space-y-2">
+                <div className="text-caption text-muted-soft">
+                  Всего в системе: {clientGroups.length} клиентов, {partnerGroups.length} партнёров — но у всех баланс 0.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNonZeroPersist(false)}
+                  className="h-9 px-4 rounded-button bg-ink text-white text-body-sm font-semibold hover:bg-black transition-colors"
+                >
+                  Показать всех контрагентов
+                </button>
+              </div>
+            )}
           </div>
         </div>
       ) : (
