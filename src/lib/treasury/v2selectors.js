@@ -217,8 +217,16 @@ export function liabilitiesByCounterparty(ctx, cpKind = "client", { includeZero 
   // показал список клиентов/партнёров для дальнейшего управления. Полезно когда
   // деалов ещё не было и «Ненулевые» выключен.
   if (includeZero) {
-    const cpList = cpKind === "client" ? (clients || []) : (partners || []);
+    // Источник списка CP — full-records если есть, иначе fallback на
+    // counterpartyOptions(kind) (picker-friendly данные id+name из
+    // loadCounterpartyNames, которые точно загружены — на них работает picker).
+    const fullList = cpKind === "client" ? (clients || []) : (partners || []);
+    const fallbackList = (typeof ctx.counterpartyOptions === "function")
+      ? (ctx.counterpartyOptions(cpKind) || [])
+      : [];
+    const cpList = fullList.length > 0 ? fullList : fallbackList;
     for (const c of cpList) {
+      if (!c?.id) continue;
       if (cpMap.has(c.id)) continue;
       if (c.archivedAt || c.active === false) continue;
       cpMap.set(c.id, {
