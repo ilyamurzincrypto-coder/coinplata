@@ -27,6 +27,7 @@ import { convert } from "../../../utils/convert.js";
 import { curSymbol } from "../../../utils/money.js";
 import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 import ChartAccountModal from "./ChartAccountModal.jsx";
+import CreateLiabilityDialog from "./CreateLiabilityDialog.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
@@ -393,26 +394,46 @@ export default function AccountDetailModal({
   // === Balance block ===
   let balanceNode;
   if (isCpMode) {
-    // Multi-currency KPI grid
+    // Multi-currency KPI grid + кнопка «+ Валюта» (открывает CreateLiabilityDialog
+    // с preselected клиентом/партнёром для добавления нового остатка).
     balanceNode = (
       <div>
-        <div className="text-tiny text-muted uppercase tracking-wider font-semibold mb-2">
-          {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(cpData.totalInBase, baseCurrency)}</span>
+        <div className="flex items-center justify-between mb-2 gap-3">
+          <div className="text-tiny text-muted uppercase tracking-wider font-semibold">
+            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(cpData.totalInBase, baseCurrency)}</span>
+          </div>
+          {canAddAccount && (
+            <button
+              type="button"
+              onClick={() => setAddCurrencyOpen(true)}
+              className="inline-flex items-center gap-1 h-7 px-2.5 rounded-button bg-ink text-white text-caption font-semibold hover:bg-black transition-colors"
+              title="Добавить новую валюту/начальный остаток"
+            >
+              <Plus className="w-3 h-3" strokeWidth={2.5} />
+              Валюта
+            </button>
+          )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-          {cpData.byCurrency.map((c) => (
-            <div key={c.currency} className="bg-surface rounded-card p-2.5 border border-border-soft">
-              <div className="flex items-center gap-1.5 mb-1">
-                <CurrencyIcon ccy={c.currency} size="sm" />
-                <span className="text-caption font-bold text-ink-soft tracking-wider">{c.currency}</span>
+        {cpData.byCurrency.length === 0 ? (
+          <div className="text-caption text-muted-soft text-center py-3">
+            У контрагента нет балансов. Жми «+ Валюта» чтобы создать начальный остаток.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {cpData.byCurrency.map((c) => (
+              <div key={c.currency} className="bg-surface rounded-card p-2.5 border border-border-soft">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <CurrencyIcon ccy={c.currency} size="sm" />
+                  <span className="text-caption font-bold text-ink-soft tracking-wider">{c.currency}</span>
+                </div>
+                <div className="font-mono tabular text-body font-bold text-ink">{fmtAmount(c.balance)}</div>
+                <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                  ≈ {formatBase(c.balanceInBase, baseCurrency)}
+                </div>
               </div>
-              <div className="font-mono tabular text-body font-bold text-ink">{fmtAmount(c.balance)}</div>
-              <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
-                ≈ {formatBase(c.balanceInBase, baseCurrency)}
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   } else if (isGroupMode) {
@@ -764,6 +785,17 @@ export default function AccountDetailModal({
           defaultOfficeId={groupCtx.officeId}
           defaultType={groupCtx.type}
           defaultSubtype={groupCtx.subtype}
+        />
+      )}
+      {isCpMode && addCurrencyOpen && (
+        <CreateLiabilityDialog
+          open
+          onClose={() => setAddCurrencyOpen(false)}
+          ctx={ctx}
+          clients={ctx?.clients || []}
+          partners={ctx?.partners || []}
+          defaultKind={cpKind}
+          defaultCounterpartyId={cpId}
         />
       )}
     </Modal>

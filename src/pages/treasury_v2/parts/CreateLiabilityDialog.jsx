@@ -31,10 +31,17 @@ function uniqueLiabilityCurrencies(accounts, kind) {
   return Array.from(seen);
 }
 
-export default function CreateLiabilityDialog({ open, onClose, ctx, clients, partners }) {
-  const [kind, setKind] = useState("client");
-  const [counterpartyId, setCounterpartyId] = useState("");
+export default function CreateLiabilityDialog({ open, onClose, ctx, clients, partners, defaultKind = "client", defaultCounterpartyId = "" }) {
+  const [kind, setKind] = useState(defaultKind);
+  const [counterpartyId, setCounterpartyId] = useState(defaultCounterpartyId);
   const [currency, setCurrency] = useState("USD");
+
+  // При повторном открытии (open: false→true) с другими defaults — перезаписываем.
+  React.useEffect(() => {
+    if (!open) return;
+    setKind(defaultKind);
+    setCounterpartyId(defaultCounterpartyId);
+  }, [open, defaultKind, defaultCounterpartyId]);
   // direction: 'we_owe' = мы должны (Кт liab, amount<0) | 'they_owe' = они должны (Дт liab, amount>0)
   const [direction, setDirection] = useState("we_owe");
   // adjustmentKind: 'opening' — стартовый остаток (балансирующий = Opening Equity);
