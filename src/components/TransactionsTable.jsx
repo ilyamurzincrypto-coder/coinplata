@@ -31,6 +31,7 @@ import { useBaseCurrency } from "../store/baseCurrency.js";
 import { useTransactions } from "../store/transactions.jsx";
 import { useAuth } from "../store/auth.jsx";
 import { useAccounts } from "../store/accounts.jsx";
+import { useLedger } from "../store/ledger.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useMonitoring } from "../store/monitoring.jsx";
@@ -73,6 +74,18 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
   } = useAccounts();
   const { codes: CURRENCIES } = useCurrencies();
   const { base: baseCurrency, toBase } = useBaseCurrency();
+  const { transactions: ledgerTxs = [] } = useLedger();
+  // Map: deal.id (source_ref_id) → ledger tx metadata.confirmed_at
+  // Когда бухгалтер подтвердил ledger-транзакцию в Treasury → Транзакции,
+  // на кассирской строке появляется зелёный «Бух» badge.
+  const ledgerConfirmByDealId = useMemo(() => {
+    const m = new Map();
+    for (const ltx of ledgerTxs) {
+      if (!ltx?.sourceRefId) continue;
+      if (ltx.metadata?.confirmed_at) m.set(ltx.sourceRefId, ltx.metadata.confirmed_at);
+    }
+    return m;
+  }, [ledgerTxs]);
   const { addEntry: logAudit } = useAudit();
   const { simulateIncoming } = useMonitoring();
   const { obligations, cancelObligation } = useObligations();
@@ -1070,6 +1083,15 @@ export default function TransactionsTable({ currentOffice, justCreatedId, onEdit
                         >
                           <CheckCircle2 className="w-2.5 h-2.5" />
                           {t("badge_confirmed")}
+                        </span>
+                      )}
+                      {ledgerConfirmByDealId.get(tx.id) && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-tiny font-bold bg-success text-white"
+                          title={`Бухгалтер подтвердил ${new Date(ledgerConfirmByDealId.get(tx.id)).toLocaleString()}`}
+                        >
+                          <CheckCircle2 className="w-2.5 h-2.5" />
+                          Бух ✓
                         </span>
                       )}
                       {isDeleted && (
