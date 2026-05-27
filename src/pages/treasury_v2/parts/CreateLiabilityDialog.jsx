@@ -9,8 +9,10 @@
 // Balancing — opening_balance equity (резолвится в самой RPC если не задан).
 
 import React, { useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { rpcCreateAdjustmentV2 } from "../../../lib/newLedger.js";
+import { insertClient } from "../../../lib/supabaseWrite.js";
+import { usePartners } from "../../../store/partners.jsx";
 import { bumpDataVersion } from "../../../lib/dataVersion.jsx";
 import { emitToast } from "../../../lib/toast.jsx";
 
@@ -50,6 +52,43 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Inline-create нового CP
+  const { addPartner } = usePartners();
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newTelegram, setNewTelegram] = useState("");
+  const [creatingBusy, setCreatingBusy] = useState(false);
+
+  const startCreate = () => { setCreating(true); setNewName(""); setNewTelegram(""); };
+  const cancelCreate = () => { setCreating(false); setNewName(""); setNewTelegram(""); };
+  const commitCreate = async () => {
+    const name = newName.trim();
+    if (!name) return;
+    setCreatingBusy(true);
+    try {
+      let createdId = null;
+      if (kind === "client") {
+        const row = await insertClient({ nickname: name, telegram: newTelegram.trim() || undefined });
+        createdId = row?.id;
+      } else {
+        const row = await addPartner({ name });
+        createdId = row?.id;
+      }
+      if (createdId) {
+        setCounterpartyId(createdId);
+        setCreating(false);
+        setNewName("");
+        setNewTelegram("");
+        emitToast("success", kind === "client" ? "Клиент создан" : "Партнёр создан");
+        bumpDataVersion();
+      }
+    } catch (err) {
+      emitToast("error", err?.message || "Не удалось создать");
+    } finally {
+      setCreatingBusy(false);
+    }
+  };
 
   const counterpartyList = useMemo(() => {
     if (kind === "client") {
@@ -160,25 +199,82 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
             </button>
           </div>
 
-          {/* Counterparty select */}
-          <label className="block">
-            <span className="block text-micro text-muted uppercase mb-1">
-              {kind === "client" ? "Клиент *" : "Партнёр *"}
-            </span>
-            <select
-              value={counterpartyId}
-              onChange={(e) => setCounterpartyId(e.target.value)}
-              disabled={submitting}
-              className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
-            >
-              <option value="">— выбери —</option>
-              {counterpartyList.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {kind === "client" ? (c.nickname || c.fullName || c.id.slice(0, 8)) : (c.name || c.id.slice(0, 8))}
-                </option>
-              ))}
-            </select>
-          </label>
+          {/* Counterparty select + inline-create нового CP */}
+          <div>
+            <div className="flex items-baseline justify-between mb-1">
+              <span className="text-micro text-muted uppercase">
+                {kind === "client" ? "Клиент *" : "Партнёр *"}
+              </span>
+              {!creating && (
+                <button
+                  type="button"
+                  onClick={startCreate}
+                  disabled={submitting}
+                  className="inline-flex items-center gap-1 text-tiny font-semibold text-accent hover:text-accent-hover transition-colors disabled:opacity-40"
+                >
+                  <Plus className="w-3 h-3" strokeWidth={2.5} />
+                  {kind === "client" ? "Новый клиент" : "Новый партнёр"}
+                </button>
+              )}
+            </div>
+            {creating ? (
+              <div className="space-y-2 p-2 rounded-input bg-accent-bg ring-1 ring-inset ring-accent/20">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") commitCreate(); if (e.key === "Escape") cancelCreate(); }}
+                  placeholder={kind === "client" ? "Никнейм клиента" : "Имя партнёра"}
+                  disabled={creatingBusy}
+                  autoFocus
+                  className="w-full h-9 px-2 rounded-input bg-surface text-ink text-caption border-0 ring-1 ring-inset ring-border-soft focus:ring-accent focus:outline-none transition-all"
+                />
+                {kind === "client" && (
+                  <input
+                    type="text"
+                    value={newTelegram}
+                    onChange={(e) => setNewTelegram(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") commitCreate(); if (e.key === "Escape") cancelCreate(); }}
+                    placeholder="@telegram (опционально)"
+                    disabled={creatingBusy}
+                    className="w-full h-9 px-2 rounded-input bg-surface text-ink text-caption border-0 ring-1 ring-inset ring-border-soft focus:ring-accent focus:outline-none transition-all"
+                  />
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={commitCreate}
+                    disabled={!newName.trim() || creatingBusy}
+                    className="h-8 px-3 rounded-button bg-ink text-white text-tiny font-semibold hover:bg-black disabled:opacity-40 transition-colors"
+                  >
+                    {creatingBusy ? "Создание…" : "Создать"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelCreate}
+                    disabled={creatingBusy}
+                    className="h-8 px-3 rounded-button text-tiny font-semibold text-muted hover:text-ink hover:bg-surface-soft transition-colors"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <select
+                value={counterpartyId}
+                onChange={(e) => setCounterpartyId(e.target.value)}
+                disabled={submitting}
+                className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+              >
+                <option value="">— выбери —</option>
+                {counterpartyList.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {kind === "client" ? (c.nickname || c.fullName || c.id.slice(0, 8)) : (c.name || c.id.slice(0, 8))}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
           {/* Currency + Direction row */}
           <div className="grid grid-cols-2 gap-2">

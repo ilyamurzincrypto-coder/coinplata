@@ -4,6 +4,7 @@
 // Стиль наш (rounded-card-lg, наши токены), информативность как у 1С.
 
 import React, { useState, useMemo } from "react";
+import { ChevronRight, ChevronDown } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { useOpenObligations } from "../../../store/openObligations.js";
@@ -84,7 +85,8 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
   // клиентские (customer_liab) + итого = наши − клиентские. native + base.
   const fundsTable = useMemo(() => {
     const accById = new Map((ctx.accounts || []).map((a) => [a.id, a]));
-    const byCcy = new Map(); // ccy → { ourNat, ourBase, clientNat, clientBase }
+    const byCcy = new Map(); // ccy → { ourNat, ourBase, clientNat, clientBase, byOffice: Map }
+    const NULL_OFFICE = "__none__";
     for (const b of ctx.balances || []) {
       const acc = accById.get(b.accountId);
       if (!acc) continue;
@@ -93,23 +95,45 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
       if (Math.abs(native) < 1e-9) continue;
       const ccy = b.currency;
       const inBase = convert(native, ccy, displayBase, getRate) || 0;
-      const row = byCcy.get(ccy) || { ccy, ourNat: 0, ourBase: 0, clientNat: 0, clientBase: 0 };
+      const row = byCcy.get(ccy) || { ccy, ourNat: 0, ourBase: 0, clientNat: 0, clientBase: 0, byOffice: new Map() };
+      const officeKey = acc.officeId || NULL_OFFICE;
+      const officeBucket = row.byOffice.get(officeKey) || { officeId: acc.officeId || null, ourNat: 0, ourBase: 0, clientNat: 0, clientBase: 0 };
       if (acc.type === "asset" && AVAILABLE_SUBTYPES.has(acc.subtype)) {
         row.ourNat += native;
         row.ourBase += inBase;
+        officeBucket.ourNat += native;
+        officeBucket.ourBase += inBase;
       } else if (acc.type === "liability" && acc.subtype === "customer_liab") {
         row.clientNat += native;
         row.clientBase += inBase;
+        officeBucket.clientNat += native;
+        officeBucket.clientBase += inBase;
       }
+      row.byOffice.set(officeKey, officeBucket);
       byCcy.set(ccy, row);
     }
-    const rows = [...byCcy.values()].sort((a, b) => Math.abs(b.ourBase) - Math.abs(a.ourBase));
+    const rows = [...byCcy.values()].map((r) => ({
+      ...r,
+      offices: [...r.byOffice.values()].sort((a, b) => {
+        if (a.officeId === null && b.officeId !== null) return 1;
+        if (b.officeId === null && a.officeId !== null) return -1;
+        return Math.abs(b.ourBase + b.clientBase) - Math.abs(a.ourBase + a.clientBase);
+      }),
+    })).sort((a, b) => Math.abs(b.ourBase) - Math.abs(a.ourBase));
     const total = rows.reduce((s, r) => ({
       ourBase: s.ourBase + r.ourBase,
       clientBase: s.clientBase + r.clientBase,
     }), { ourBase: 0, clientBase: 0 });
     return { rows, total };
   }, [ctx, officeFilter, displayBase, getRate]);
+
+  // Раскрытие funds-table строк по валютам — клик → видим разбивку по офисам.
+  const [expandedCcy, setExpandedCcy] = useState(() => new Set());
+  const toggleCcy = (ccy) => setExpandedCcy((prev) => {
+    const next = new Set(prev);
+    if (next.has(ccy)) next.delete(ccy); else next.add(ccy);
+    return next;
+  });
 
   // Active clients count
   const activeClients = useMemo(() => {
@@ -250,28 +274,76 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                 </tr>
               </thead>
               <tbody>
-                {fundsTable.rows.map((r, idx) => (
-                  <tr key={r.ccy} className={`border-b border-border-soft ${idx % 2 === 1 ? "bg-surface-soft/30" : ""} hover:bg-surface-soft`}>
-                    <td className="px-3 py-2 border-r border-border-soft">
-                      <div className="flex items-center gap-2">
-                        <CurrencyIcon ccy={r.ccy} size="sm" />
-                        <span className="font-bold text-ink-soft tracking-wider">{r.ccy}</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono tabular text-ink whitespace-nowrap border-r border-border-soft">
-                      {Math.abs(r.ourNat) > 0.005 ? fmtCur(r.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono tabular text-ink-soft whitespace-nowrap border-r border-border-soft">
-                      {Math.abs(r.ourBase) > 0.005 ? fmtBase(r.ourBase) : <span className="text-muted-soft">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap border-r border-border-soft">
-                      {Math.abs(r.clientNat) > 0.005 ? <span className="text-danger">{fmtCur(r.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap">
-                      {Math.abs(r.clientBase) > 0.005 ? <span className="text-danger">{fmtBase(r.clientBase)}</span> : <span className="text-muted-soft">—</span>}
-                    </td>
-                  </tr>
-                ))}
+                {fundsTable.rows.map((r, idx) => {
+                  const isOpen = expandedCcy.has(r.ccy);
+                  const canExpand = r.offices && r.offices.length > 1;
+                  return (
+                    <React.Fragment key={r.ccy}>
+                      <tr
+                        className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/30" : ""} hover:bg-surface-soft ${canExpand ? "cursor-pointer" : ""}`}
+                        onClick={() => canExpand && toggleCcy(r.ccy)}
+                        title={canExpand ? "Раскрыть по офисам" : undefined}
+                      >
+                        <td className="px-3 py-2 border-r border-border-soft">
+                          <div className="flex items-center gap-2">
+                            {canExpand ? (
+                              isOpen
+                                ? <ChevronDown className="w-3 h-3 text-muted" strokeWidth={2.2} />
+                                : <ChevronRight className="w-3 h-3 text-muted" strokeWidth={2.2} />
+                            ) : <span className="w-3 h-3 inline-block" aria-hidden />}
+                            <CurrencyIcon ccy={r.ccy} size="sm" />
+                            <span className="font-bold text-ink-soft tracking-wider">{r.ccy}</span>
+                            {canExpand && (
+                              <span className="text-tiny text-muted-soft">· {r.offices.length} офисов</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular text-ink whitespace-nowrap border-r border-border-soft">
+                          {Math.abs(r.ourNat) > 0.005 ? fmtCur(r.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular text-ink-soft whitespace-nowrap border-r border-border-soft">
+                          {Math.abs(r.ourBase) > 0.005 ? fmtBase(r.ourBase) : <span className="text-muted-soft">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap border-r border-border-soft">
+                          {Math.abs(r.clientNat) > 0.005 ? <span className="text-danger">{fmtCur(r.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap">
+                          {Math.abs(r.clientBase) > 0.005 ? <span className="text-danger">{fmtBase(r.clientBase)}</span> : <span className="text-muted-soft">—</span>}
+                        </td>
+                      </tr>
+                      {isOpen && r.offices.map((o) => {
+                        const officeName = o.officeId
+                          ? (findOffice(o.officeId)?.name || o.officeId)
+                          : "Без офиса";
+                        const share = r.ourBase > 0 ? (o.ourBase / r.ourBase) * 100 : 0;
+                        return (
+                          <tr key={`${r.ccy}|${o.officeId || "none"}`} className="border-b border-border-soft bg-surface-soft/20">
+                            <td className="pl-10 pr-3 py-1.5 border-r border-border-soft">
+                              <div className="flex items-center gap-2">
+                                <span className="text-tiny text-muted-soft">{officeName}</span>
+                                {share > 0 && (
+                                  <span className="text-tiny text-muted-soft font-mono">· {share.toFixed(1)}%</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny text-ink-soft whitespace-nowrap border-r border-border-soft">
+                              {Math.abs(o.ourNat) > 0.005 ? fmtCur(o.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny text-muted whitespace-nowrap border-r border-border-soft">
+                              {Math.abs(o.ourBase) > 0.005 ? fmtBase(o.ourBase) : <span className="text-muted-soft">—</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
+                              {Math.abs(o.clientNat) > 0.005 ? <span className="text-danger">{fmtCur(o.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny whitespace-nowrap">
+                              {Math.abs(o.clientBase) > 0.005 ? <span className="text-danger">{fmtBase(o.clientBase)}</span> : <span className="text-muted-soft">—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
                 <tr className="bg-surface-sunk border-t-2 border-border-soft font-bold">
                   <td className="px-3 py-2 text-ink uppercase tracking-wider border-r border-border-soft">ИТОГО</td>
                   <td className="px-3 py-2 border-r border-border-soft">
