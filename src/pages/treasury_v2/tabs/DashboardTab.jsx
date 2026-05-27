@@ -263,7 +263,14 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
           {fundsTable.rows.length === 0 ? (
             <div className="px-4 py-10 text-center text-caption text-muted">Балансов нет</div>
           ) : (
-            <table className="w-full text-caption">
+            <table className="w-full text-caption border-collapse table-fixed">
+              <colgroup>
+                <col />
+                <col className="w-[180px]" />
+                <col className="w-[140px]" />
+                <col className="w-[180px]" />
+                <col className="w-[140px]" />
+              </colgroup>
               <thead className="bg-surface-soft/40">
                 <tr className="border-b border-border-soft">
                   <th className="text-left text-tiny font-bold text-muted uppercase tracking-wider px-3 py-2 border-r border-border-soft">Валюта</th>
@@ -317,26 +324,27 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                           : "Без офиса";
                         const share = r.ourBase > 0 ? (o.ourBase / r.ourBase) * 100 : 0;
                         return (
-                          <tr key={`${r.ccy}|${o.officeId || "none"}`} className="border-b border-border-soft bg-surface-soft/20">
-                            <td className="pl-10 pr-3 py-1.5 border-r border-border-soft">
+                          <tr key={`${r.ccy}|${o.officeId || "none"}`} className="border-b border-border-soft bg-surface-sunk">
+                            <td className="pl-10 pr-3 py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
-                                <span className="text-tiny text-muted-soft">{officeName}</span>
+                                <span className="inline-block w-1 h-3 rounded-full bg-accent" aria-hidden />
+                                <span className="text-caption font-semibold text-ink">{officeName}</span>
                                 {share > 0 && (
-                                  <span className="text-tiny text-muted-soft font-mono">· {share.toFixed(1)}%</span>
+                                  <span className="text-tiny font-mono tabular text-accent font-bold">{share.toFixed(0)}%</span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny text-ink-soft whitespace-nowrap border-r border-border-soft">
+                            <td className="px-3 py-2 text-right font-mono tabular text-caption text-ink whitespace-nowrap border-r border-border-soft">
                               {Math.abs(o.ourNat) > 0.005 ? fmtCur(o.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny text-muted whitespace-nowrap border-r border-border-soft">
+                            <td className="px-3 py-2 text-right font-mono tabular text-caption text-ink-soft whitespace-nowrap border-r border-border-soft">
                               {Math.abs(o.ourBase) > 0.005 ? fmtBase(o.ourBase) : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
-                              {Math.abs(o.clientNat) > 0.005 ? <span className="text-danger">{fmtCur(o.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
+                            <td className="px-3 py-2 text-right font-mono tabular text-caption whitespace-nowrap border-r border-border-soft">
+                              {Math.abs(o.clientNat) > 0.005 ? <span className="text-danger font-semibold">{fmtCur(o.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-1.5 text-right font-mono tabular text-tiny whitespace-nowrap">
-                              {Math.abs(o.clientBase) > 0.005 ? <span className="text-danger">{fmtBase(o.clientBase)}</span> : <span className="text-muted-soft">—</span>}
+                            <td className="px-3 py-2 text-right font-mono tabular text-caption whitespace-nowrap">
+                              {Math.abs(o.clientBase) > 0.005 ? <span className="text-danger font-semibold">{fmtBase(o.clientBase)}</span> : <span className="text-muted-soft">—</span>}
                             </td>
                           </tr>
                         );
