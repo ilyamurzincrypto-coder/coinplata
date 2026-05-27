@@ -7,8 +7,8 @@
 //
 // Toolbar (как было): CP-type filter, sort, nonzero, search, +Обязательство.
 
-import React, { useState, useMemo, useCallback } from "react";
-import { Plus, Download, ChevronRight, ChevronDown, Building2 } from "lucide-react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { Plus, Download, ChevronRight, ChevronDown, Building2, Search } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { useCan } from "../../../store/permissions.jsx";
 import { useRates } from "../../../store/rates.jsx";
@@ -41,6 +41,14 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   });
   const setNonZeroPersist = (v) => { setNonZeroOnly(v); try { localStorage.setItem(NONZERO_KEY, v ? "1" : "0"); } catch {} };
 
+  // Поиск по имени контрагента, debounced 150ms — не пересчитываем на каждый keystroke.
+  const [searchRaw, setSearchRaw] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchRaw.trim().toLowerCase()), 150);
+    return () => clearTimeout(id);
+  }, [searchRaw]);
+
   const [displayBase, setDisplayBase] = useState(() => {
     try {
       const v = localStorage.getItem(DISPLAY_BASE_KEY);
@@ -65,12 +73,18 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   const visibleGroups = useMemo(() => {
     let list = [...clientGroups, ...partnerGroups];
     if (nonZeroOnly) list = list.filter((g) => Math.abs(g.totalInBase) > 0.005);
+    if (search) {
+      list = list.filter((g) => {
+        const hay = [g.name, g.telegram, g.tag, g.full_name].filter(Boolean).map((s) => String(s).toLowerCase());
+        return hay.some((s) => s.includes(search));
+      });
+    }
     list.sort((a, b) => {
       if (a.isReferral !== b.isReferral) return a.isReferral ? -1 : 1;
       return Math.abs(b.totalInBase) - Math.abs(a.totalInBase);
     });
     return list;
-  }, [clientGroups, partnerGroups, nonZeroOnly]);
+  }, [clientGroups, partnerGroups, nonZeroOnly, search]);
 
   const grandTotalInBase = useMemo(
     () => visibleGroups.reduce((s, g) => s + g.totalInBase, 0),
@@ -109,6 +123,16 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-soft pointer-events-none" strokeWidth={2.2} />
+            <input
+              type="text"
+              value={searchRaw}
+              onChange={(e) => setSearchRaw(e.target.value)}
+              placeholder="Поиск по клиенту"
+              className="h-9 pl-8 pr-3 w-[220px] rounded-button bg-surface-sunk text-ink text-body-sm placeholder:text-muted-soft border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+            />
+          </div>
           <button
             type="button"
             onClick={() => setNonZeroPersist(!nonZeroOnly)}
@@ -207,24 +231,31 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                 const cpOpen = expanded.has(cpKey);
                 return (
                   <React.Fragment key={cpKey}>
-                    {/* Level 1 — counterparty: click row → expand (1:1 с Активами).
-                        Для «открыть карточку клиента» — клик по самому имени (открывает CP-modal). */}
+                    {/* Level 1 — counterparty: click anywhere on row → CP-modal
+                        (даже когда баланс 0). Chevron-кнопка слева — отдельный
+                        toggle для expand (рисуется только если есть валюты). */}
                     <tr
                       className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
-                      onClick={() => toggle(cpKey)}
+                      onClick={() => openCp(cp)}
+                      title="Открыть карточку контрагента"
                     >
                       <td className="px-card py-2.5 border-r border-border-soft">
                         <div className="flex items-center gap-2">
-                          {cpOpen
-                            ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
-                            : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
-                          <span
-                            className="text-h3 text-ink font-semibold truncate hover:underline decoration-dotted underline-offset-4"
-                            onClick={(e) => { e.stopPropagation(); openCp(cp); }}
-                            title="Открыть карточку контрагента"
-                          >
-                            {cp.name}
-                          </span>
+                          {cp.byCurrency.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggle(cpKey); }}
+                              className="p-0.5 -m-0.5 rounded hover:bg-surface-sunk transition-colors"
+                              title={cpOpen ? "Свернуть" : "Развернуть валюты"}
+                            >
+                              {cpOpen
+                                ? <ChevronDown className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
+                                : <ChevronRight className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+                            </button>
+                          ) : (
+                            <span className="w-3.5 h-3.5 inline-block" aria-hidden />
+                          )}
+                          <span className="text-h3 text-ink font-semibold truncate">{cp.name}</span>
                           {cp.isReferral && (
                             <span className="text-tiny font-semibold text-success uppercase tracking-wider shrink-0">реф</span>
                           )}
