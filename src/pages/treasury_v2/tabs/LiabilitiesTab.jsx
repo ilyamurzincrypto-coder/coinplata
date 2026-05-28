@@ -362,7 +362,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                     <span className="text-body-sm text-ink truncate">{a.name}</span>
                                   </div>
                                 </td>
-                                <td className="px-card py-1.5 font-mono text-tiny text-muted-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                                <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
                                 <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                                   a.balance < 0 ? "text-danger" : "text-ink-soft"
