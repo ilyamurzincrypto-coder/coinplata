@@ -55,7 +55,7 @@ vi.mock("../../lib/newLedger.js", () => ({ rpcCreateManualEntryV2: () => Promise
 import TreasuryShell from "./TreasuryShell.jsx";
 
 describe("TreasuryShell integration smoke", () => {
-  it("renders the tabs, opens on the Dashboard, and the Assets tab shows the office→currency→accounts tree on click", () => {
+  it("renders the tabs, opens on the Dashboard, and the Assets tab merges single-account currencies into one row on office click", () => {
     render(<TreasuryShell />);
     for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_transactions"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
@@ -63,15 +63,11 @@ describe("TreasuryShell integration smoke", () => {
     // Dashboard is the landing tab → видим KPI «Капитал (чистый)» из новой шапки
     expect(screen.getByText("Капитал (чистый)")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
-    // ac_cash has officeId null → "no office" row is the only office row; currency/leaves hidden until expanded
+    // ac_cash has officeId null → "no office" row is the only office row; leaves hidden until expanded
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
     expect(screen.queryByText("1110")).toBeNull();
-    // expand office → currency row visible (USD в tbody, не в base-picker)
+    // expand office → 1 счёт в USD → merged-строка, код 1110 сразу виден
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
-    const tbody1 = document.querySelector("tbody");
-    expect(within(tbody1).getByText("USD")).toBeInTheDocument();
-    // expand currency → leaf account visible
-    fireEvent.click(within(tbody1).getByText("USD"));
     expect(screen.getByText("1110")).toBeInTheDocument();
   });
 
@@ -80,8 +76,7 @@ describe("TreasuryShell integration smoke", () => {
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
     expect(document.body.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
-    const tbody2 = document.querySelector("tbody");
-    fireEvent.click(within(tbody2).getByText("USD"));
+    // merged-строка → клик по № счёта 1110 → модал
     fireEvent.click(screen.getByText("1110"));
     // Modal renders entries via portal to document.body — D-7 is the sourceRefId of the seed tx
     expect(document.body.textContent).toContain("D-7");

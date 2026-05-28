@@ -270,9 +270,48 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                           {officeOpen && off.currencies.map((cur) => {
                             const curKey = `${officeKey}|cur:${cur.currency}`;
                             const curOpen = expanded.has(curKey);
+                            // Один счёт в валюте — мерж currency-row и leaf в одну строку.
+                            if (cur.accounts.length === 1) {
+                              const a = cur.accounts[0];
+                              return (
+                                <tr
+                                  key={curKey}
+                                  className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                                  onClick={() => setDetailAccountId(a.accountId)}
+                                  title="Открыть детали счёта"
+                                >
+                                  <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
+                                    <div className="flex items-center gap-2">
+                                      <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+                                      <CurrencyIcon ccy={cur.currency} size="sm" />
+                                      <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                                  <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>
+                                  <td
+                                    className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <InlineBalanceEditor
+                                      account={{ code: a.code, currency: a.currency, type: "equity", subtype: sect.subtype, balance: a.balance }}
+                                      displayMul={1}
+                                      accounts={ctx?.accounts || []}
+                                      suffix={a.currency}
+                                    />
+                                  </td>
+                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                                    {fmtIn(a.balanceInBase, "USD")}
+                                  </td>
+                                  <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                    {fmtIn(toAlt(a.balance, a.currency), displayBase)}
+                                  </td>
+                                </tr>
+                              );
+                            }
                             return (
                               <React.Fragment key={curKey}>
-                                {/* Level 3 — currency */}
+                                {/* Level 3 — currency (>1 счетов) */}
                                 <tr
                                   className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
                                   onClick={() => toggle(curKey)}

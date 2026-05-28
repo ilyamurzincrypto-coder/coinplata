@@ -58,24 +58,19 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     expect(screen.queryByText("1110")).toBeNull();
   });
 
-  it("клик по офису раскрывает валюты; клик по валюте раскрывает листья", () => {
+  it("клик по офису раскрывает валюты — валюта с 1 счётом сразу мержится с leaf-строкой", () => {
     renderTab();
-    fireEvent.click(screen.getByText("Mark Antalya"));
-    const tbody = document.querySelector("tbody");
-    // USD строка валюты в tbody
-    expect(within(tbody).getByText("USD")).toBeInTheDocument();
-    expect(within(tbody).getByText("USDT")).toBeInTheDocument();
+    // до клика — листья и коды не видны
     expect(screen.queryByText("1110")).toBeNull();
-    fireEvent.click(within(tbody).getByText("USD"));
+    fireEvent.click(screen.getByText("Mark Antalya"));
+    // после раскрытия офиса видим уже merged-строки: code счёта + name
     expect(screen.getByText("1110")).toBeInTheDocument();
     expect(screen.getByText("Cash · Mark Antalya · USD")).toBeInTheDocument();
   });
 
-  it("клик по листу открывает AccountDetailModal", () => {
+  it("клик по merged-строке открывает AccountDetailModal", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
-    const tbody = document.querySelector("tbody");
-    fireEvent.click(within(tbody).getByText("USD"));
     fireEvent.click(screen.getByText("Cash · Mark Antalya · USD"));
     expect(screen.getByTestId("detail-modal")).toHaveTextContent("ac_cash_usd_mark");
   });

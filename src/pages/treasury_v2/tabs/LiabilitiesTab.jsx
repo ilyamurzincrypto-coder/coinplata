@@ -308,6 +308,45 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                       const curKey = `${cpKey}|cur:${cur.currency}`;
                       const curExpanded = expanded.has(curKey);
                       const isBase = cur.currency === baseCurrency;
+                      // Если у этого CP в валюте один source-аккаунт — мерж в одну строку.
+                      if ((cur.sourceAccounts || []).length === 1) {
+                        const a = cur.sourceAccounts[0];
+                        const accUsd = convert(Number(a.balance) || 0, cur.currency, "USD", getRate) || 0;
+                        const accAlt = toAlt(a.balance, cur.currency);
+                        return (
+                          <tr
+                            key={curKey}
+                            className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
+                            onClick={() => openLeaf(cp, a.accountId)}
+                            title="Открыть детали счёта"
+                          >
+                            <td className="pl-9 pr-card py-2 border-r border-border-soft">
+                              <div className="flex items-center gap-2">
+                                <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
+                                <CurrencyIcon ccy={cur.currency} size="sm" />
+                                <span className="text-body-sm text-ink truncate">{a.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-card py-2 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                            <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
+                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
+                              a.balance < 0 ? "text-danger" : "text-ink"
+                            }`}>
+                              {nativeFmt(a.balance, cur.currency)}
+                            </td>
+                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                              accUsd < 0 ? "text-danger" : "text-ink-soft"
+                            }`}>
+                              {fmtIn(accUsd, "USD")}
+                            </td>
+                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
+                              accAlt < 0 ? "text-danger" : "text-ink-soft"
+                            }`}>
+                              {fmtIn(accAlt, displayBase)}
+                            </td>
+                          </tr>
+                        );
+                      }
                       return (
                         <React.Fragment key={curKey}>
                           {/* Level 2 — currency: click row → expand source accounts */}
