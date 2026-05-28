@@ -40,18 +40,19 @@ function renderTab(ctx = makeLedgerCtx()) {
 describe("AssetsTab — дерево Office → Currency → Account", () => {
   beforeEach(() => { canAccountingEdit = true; exportCSVSpy.mockClear(); });
 
-  it("рендерит таблицу с шапкой 'Касса' + 'Native' + base-picker и строки-офисы", () => {
+  it("рендерит шапку с колонками: офис / № счёта / валюта / остаток / ≈USD / ≈EUR", () => {
     renderTab();
     const thead = document.querySelector("thead");
     expect(thead).not.toBeNull();
     expect(within(thead).getByText("trv2_assets_col_office")).toBeInTheDocument();
-    expect(within(thead).getByText("Native")).toBeInTheDocument();
-    // base-picker <select> с дефолтом USD
-    const baseSelect = within(thead).getByTitle("Сменить валюту приведения");
-    expect(baseSelect.value).toBe("USD");
+    expect(within(thead).getByText("№ счёта")).toBeInTheDocument();
+    expect(within(thead).getByText("Валюта")).toBeInTheDocument();
+    expect(within(thead).getByText("Остаток")).toBeInTheDocument();
+    expect(within(thead).getByText("≈ USD")).toBeInTheDocument();
+    expect(within(thead).getByText("≈ EUR")).toBeInTheDocument();
     expect(screen.getByText("Mark Antalya")).toBeInTheDocument();
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
-    // листья и валюты-строки скрыты до раскрытия (USD в шапке как option — не учитываем)
+    // листья скрыты до раскрытия
     expect(screen.queryByText("1110")).toBeNull();
   });
 
@@ -104,14 +105,14 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     expect(screen.queryByText("trv2_assets_no_office")).toBeNull();
   });
 
-  it("CSV-экспорт — flat per-account (office, code, name, currency, native, base)", () => {
+  it("CSV-экспорт — flat per-account (office, code, name, currency, native, USD, EUR)", () => {
     renderTab();
     fireEvent.click(screen.getByText(/^CSV$/));
     expect(exportCSVSpy).toHaveBeenCalledTimes(1);
     const arg = exportCSVSpy.mock.calls[0][0];
     expect(arg.filename).toMatch(/^assets_\d{4}-\d{2}-\d{2}\.csv$/);
     expect(arg.columns.map((c) => c.key)).toEqual([
-      "office", "accountCode", "accountName", "currency", "balance", "balanceInBase",
+      "office", "accountCode", "accountName", "currency", "balance", "balanceInBase", "balanceInEur",
     ]);
     // три asset-счёта = три строки
     expect(arg.rows).toHaveLength(3);

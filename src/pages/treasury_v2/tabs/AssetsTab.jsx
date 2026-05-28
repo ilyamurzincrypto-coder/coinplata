@@ -22,11 +22,13 @@ import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:assets-nonzero";
-const DISPLAY_BASE_KEY = "coinplata:assets-display-base";
-const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
+}
+
+function fmtIn(amount, ccy) {
+  return `${curSymbol(ccy)}${Math.round(Number(amount) || 0).toLocaleString("en-US")}`;
 }
 
 export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency, onOpenTx }) {
@@ -34,23 +36,13 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
   const can = useCan();
   const { findOffice } = useOffices();
   const { getRate } = useRates();
-  const [displayBase, setDisplayBase] = useState(() => {
-    try {
-      const v = localStorage.getItem(DISPLAY_BASE_KEY);
-      return BASE_OPTIONS.includes(v) ? v : (baseCurrency || "USD");
-    } catch { return baseCurrency || "USD"; }
-  });
-  const setDisplayBasePersist = (v) => {
-    setDisplayBase(v);
-    try { localStorage.setItem(DISPLAY_BASE_KEY, v); } catch {}
-  };
-  // localCtx с переопределённым toBase под displayBase — селектор пересчитает все ≈ значения.
-  const localCtx = useMemo(() => {
-    if (displayBase === ctx?.baseCurrency) return ctx;
-    return { ...ctx, baseCurrency: displayBase, toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0 };
-  }, [ctx, displayBase, getRate]);
-  const fmtBase = useMemo(() => (amt) => `${curSymbol(displayBase)}${Math.round(Number(amt) || 0).toLocaleString("en-US")}`, [displayBase]);
-  const tree = useMemo(() => assetsByOfficeCurrency(localCtx), [localCtx]);
+  // Селектор всегда строим под USD-base — у нас две фикс-колонки (≈USD и ≈EUR),
+  // EUR пересчитываем из native через `convert` на лету.
+  const usdCtx = useMemo(() => (
+    { ...ctx, baseCurrency: "USD", toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, "USD", getRate) || 0 }
+  ), [ctx, getRate]);
+  const toEur = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, "EUR", getRate) || 0, [getRate]);
+  const tree = useMemo(() => assetsByOfficeCurrency(usdCtx), [usdCtx]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
   const [detailAccountId, setDetailAccountId] = useState(null);
@@ -86,7 +78,14 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
       return next;
     });
 
-  const grandTotal = filteredTree.reduce((s, o) => s + o.totalInBase, 0);
+  const grandTotalUsd = filteredTree.reduce((s, o) => s + o.totalInBase, 0);
+  const grandTotalEur = useMemo(
+    () => filteredTree.reduce(
+      (s, o) => s + o.currencies.reduce((s2, c) => s2 + toEur(c.total, c.currency), 0),
+      0
+    ),
+    [filteredTree, toEur]
+  );
 
   return (
     <div className="space-y-3">
@@ -98,7 +97,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
             {filteredTree.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
-            ≈ {fmtBase(grandTotal)}
+            ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalEur, "EUR")}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -114,7 +113,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
           </button>
           <button
             type="button"
-            onClick={() => doExportAssets(filteredTree, baseCurrency, findOffice, t)}
+            onClick={() => doExportAssets(filteredTree, toEur, findOffice, t)}
             disabled={filteredTree.length === 0}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
             title="Экспорт всех видимых активов в CSV"
@@ -149,30 +148,31 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
           <table className="w-full border-collapse table-fixed">
             <colgroup>
               <col />
-              <col className="w-[240px]" />
-              <col className="w-[160px]" />
+              <col className="w-[110px]" />
+              <col className="w-[80px]" />
+              <col className="w-[170px]" />
+              <col className="w-[130px]" />
+              <col className="w-[130px]" />
             </colgroup>
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b-2 border-border-soft">
                 <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
                   {t("trv2_assets_col_office")}
                 </th>
+                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
+                  № счёта
+                </th>
+                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
+                  Валюта
+                </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
-                  Native
+                  Остаток
+                </th>
+                <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
+                  ≈ USD
                 </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
-                  <div className="inline-flex items-center justify-end gap-1.5">
-                    <span>≈</span>
-                    <select
-                      value={displayBase}
-                      onChange={(e) => setDisplayBasePersist(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="appearance-none bg-surface-sunk text-ink font-bold tracking-wider px-2 py-0.5 rounded-button text-caption cursor-pointer hover:bg-surface-soft transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-accent"
-                      title="Сменить валюту приведения"
-                    >
-                      {BASE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
+                  ≈ EUR
                 </th>
               </tr>
             </thead>
@@ -198,11 +198,14 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                           <span className="text-h3 text-ink font-semibold truncate">{officeName}</span>
                         </div>
                       </td>
-                      <td className="text-right px-card py-2.5 border-r border-border-soft">
-                        <span className="text-tiny text-muted-soft">—</span>
+                      <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                      <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                      <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                      <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
+                        {fmtIn(office.totalInBase, "USD")}
                       </td>
                       <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                        {fmtBase(office.totalInBase)}
+                        {fmtIn(office.currencies.reduce((s, c) => s + toEur(c.total, c.currency), 0), "EUR")}
                       </td>
                     </tr>
 
@@ -227,11 +230,16 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 </span>
                               </div>
                             </td>
+                            <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                            <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                             <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">
                               {nativeFmt(cur.total, cur.currency)}
                             </td>
+                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                              {fmtIn(cur.totalInBase, "USD")}
+                            </td>
                             <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                              {fmtBase(cur.totalInBase)}
+                              {fmtIn(toEur(cur.total, cur.currency), "EUR")}
                             </td>
                           </tr>
 
@@ -247,10 +255,11 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-                                    <span className="font-mono text-tiny text-muted-soft">{a.code}</span>
                                     <span className="text-body-sm text-ink truncate">{a.name}</span>
                                   </div>
                                 </td>
+                                <td className="px-card py-1.5 font-mono text-tiny text-muted-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                                <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>
                                 <td
                                   className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
                                   onClick={(e) => e.stopPropagation()}
@@ -268,8 +277,11 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                     suffix={a.currency}
                                   />
                                 </td>
+                                <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                                  {fmtIn(a.balanceInBase, "USD")}
+                                </td>
                                 <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                  {fmtBase(a.balanceInBase)}
+                                  {fmtIn(toEur(a.balance, a.currency), "EUR")}
                                 </td>
                               </tr>
                             );
@@ -286,11 +298,14 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                 <td className="px-card py-2.5 text-body-sm font-bold text-ink uppercase tracking-wider border-r border-border-soft">
                   {t("trv2_assets_grand_total")}
                 </td>
-                <td className="text-right px-card py-2.5 border-r border-border-soft">
-                  <span className="text-tiny text-muted-soft">—</span>
+                <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
+                  {fmtIn(grandTotalUsd, "USD")}
                 </td>
                 <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                  {fmtBase(grandTotal)}
+                  {fmtIn(grandTotalEur, "EUR")}
                 </td>
               </tr>
             </tfoot>
@@ -313,16 +328,16 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
         onClose={() => setDetailAccountId(null)}
         ctx={ctx}
         accountId={detailAccountId}
-        formatBase={fmtBase}
-        baseCurrency={displayBase}
+        formatBase={(amt) => fmtIn(amt, "USD")}
+        baseCurrency="USD"
         onOpenTx={onOpenTx}
       />
     </div>
   );
 }
 
-// Один row на каждый leaf account (office × currency × account). Native + base.
-function doExportAssets(tree, baseCurrency, findOffice, t) {
+// Один row на каждый leaf account (office × currency × account). Native + USD + EUR.
+function doExportAssets(tree, toEur, findOffice, t) {
   const rows = [];
   for (const office of tree) {
     const officeName = office.officeId
@@ -337,6 +352,7 @@ function doExportAssets(tree, baseCurrency, findOffice, t) {
           currency: cur.currency,
           balance: a.balance,
           balanceInBase: a.balanceInBase,
+          balanceInEur: toEur(a.balance, a.currency),
         });
       }
     }
@@ -347,7 +363,8 @@ function doExportAssets(tree, baseCurrency, findOffice, t) {
     { key: "accountName", label: "account_name" },
     { key: "currency", label: "currency" },
     { key: "balance", label: "balance_native" },
-    { key: "balanceInBase", label: `balance_${baseCurrency.toLowerCase()}` },
+    { key: "balanceInBase", label: "balance_usd" },
+    { key: "balanceInEur", label: "balance_eur" },
   ];
   const stamp = new Date().toISOString().slice(0, 10);
   exportCSV({ filename: `assets_${stamp}.csv`, columns: cols, rows });
