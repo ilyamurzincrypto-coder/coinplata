@@ -22,6 +22,8 @@ import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:equity-nonzero";
+const DISPLAY_BASE_KEY = "coinplata:equity-display-base";
+const BASE_OPTIONS = ["EUR", "TRY", "RUB", "USD"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -37,11 +39,18 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
   const can = useCan();
   const { getRate } = useRates();
   const { findOffice } = useOffices();
-  // Дерево всегда строим под USD-base (≈USD-колонка); EUR пересчитываем из native через `convert`.
+  // ≈USD-колонка фикс, вторая ≈-колонка — пикер (default EUR).
+  const [displayBase, setDisplayBase] = useState(() => {
+    try {
+      const v = localStorage.getItem(DISPLAY_BASE_KEY);
+      return BASE_OPTIONS.includes(v) ? v : "EUR";
+    } catch { return "EUR"; }
+  });
+  const setDisplayBasePersist = (v) => { setDisplayBase(v); try { localStorage.setItem(DISPLAY_BASE_KEY, v); } catch {} };
   const usdCtx = useMemo(() => (
     { ...ctx, baseCurrency: "USD", toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, "USD", getRate) || 0 }
   ), [ctx, getRate]);
-  const toEur = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, "EUR", getRate) || 0, [getRate]);
+  const toAlt = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0, [getRate, displayBase]);
   const tree = useMemo(() => equityBySubtypeCurrency(usdCtx), [usdCtx]);
   const totals = useMemo(() => balanceCheckTotals(usdCtx, officeFilter), [usdCtx, officeFilter]);
 
@@ -83,15 +92,15 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
     });
 
   const grandTotalUsd = filteredTree.reduce((s, x) => s + x.totalInBase, 0);
-  const grandTotalEur = useMemo(
+  const grandTotalAlt = useMemo(
     () => filteredTree.reduce(
       (s, sect) => s + sect.offices.reduce(
         (s2, off) => s2 + off.currencies.reduce(
-          (s3, cur) => s3 + toEur(cur.total, cur.currency), 0
+          (s3, cur) => s3 + toAlt(cur.total, cur.currency), 0
         ), 0
       ), 0
     ),
-    [filteredTree, toEur]
+    [filteredTree, toAlt]
   );
 
   return (
@@ -103,7 +112,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
             {filteredTree.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
-            ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalEur, "EUR")}
+            ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalAlt, displayBase)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -119,7 +128,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
           </button>
           <button
             type="button"
-            onClick={() => doExportEquity(filteredTree, toEur, t, findOffice)}
+            onClick={() => doExportEquity(filteredTree, toAlt, displayBase, t, findOffice)}
             disabled={filteredTree.length === 0}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
             title="Экспорт капитала в CSV"
@@ -178,7 +187,18 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                   ≈ USD
                 </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
-                  ≈ EUR
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    <span>≈</span>
+                    <select
+                      value={displayBase}
+                      onChange={(e) => setDisplayBasePersist(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="appearance-none bg-surface-sunk text-ink font-bold tracking-wider px-2 py-0.5 rounded-button text-caption cursor-pointer hover:bg-surface-soft transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-accent"
+                      title="Сменить валюту приведения"
+                    >
+                      {BASE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -186,8 +206,8 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
               {filteredTree.map((sect) => {
                 const sKey = `sub:${sect.subtype}`;
                 const sOpen = expanded.has(sKey);
-                const sectEur = sect.offices.reduce(
-                  (s, o) => s + o.currencies.reduce((s2, c) => s2 + toEur(c.total, c.currency), 0),
+                const sectAlt = sect.offices.reduce(
+                  (s, o) => s + o.currencies.reduce((s2, c) => s2 + toAlt(c.total, c.currency), 0),
                   0
                 );
                 return (
@@ -211,7 +231,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                         {fmtIn(sect.totalInBase, "USD")}
                       </td>
                       <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                        {fmtIn(sectEur, "EUR")}
+                        {fmtIn(sectAlt, displayBase)}
                       </td>
                     </tr>
 
@@ -243,7 +263,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                               {fmtIn(off.totalInBase, "USD")}
                             </td>
                             <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap">
-                              {fmtIn(off.currencies.reduce((s, c) => s + toEur(c.total, c.currency), 0), "EUR")}
+                              {fmtIn(off.currencies.reduce((s, c) => s + toAlt(c.total, c.currency), 0), displayBase)}
                             </td>
                           </tr>
 
@@ -277,7 +297,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                                     {fmtIn(cur.totalInBase, "USD")}
                                   </td>
                                   <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                    {fmtIn(toEur(cur.total, cur.currency), "EUR")}
+                                    {fmtIn(toAlt(cur.total, cur.currency), displayBase)}
                                   </td>
                                 </tr>
 
@@ -317,7 +337,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                                       {fmtIn(a.balanceInBase, "USD")}
                                     </td>
                                     <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
-                                      {fmtIn(toEur(a.balance, a.currency), "EUR")}
+                                      {fmtIn(toAlt(a.balance, a.currency), displayBase)}
                                     </td>
                                   </tr>
                                 ))}
@@ -343,7 +363,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
                   {fmtIn(grandTotalUsd, "USD")}
                 </td>
                 <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
-                  {fmtIn(grandTotalEur, "EUR")}
+                  {fmtIn(grandTotalAlt, displayBase)}
                 </td>
               </tr>
             </tfoot>
@@ -379,7 +399,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
   );
 }
 
-function doExportEquity(tree, toEur, t, findOffice) {
+function doExportEquity(tree, toAlt, altCurrency, t, findOffice) {
   const rows = [];
   for (const sect of tree) {
     for (const off of sect.offices) {
@@ -396,7 +416,7 @@ function doExportEquity(tree, toEur, t, findOffice) {
             currency: cur.currency,
             balance: a.balance,
             balanceInUsd: a.balanceInBase,
-            balanceInEur: toEur(a.balance, a.currency),
+            balanceInAlt: toAlt(a.balance, a.currency),
           });
         }
       }
@@ -410,7 +430,7 @@ function doExportEquity(tree, toEur, t, findOffice) {
     { key: "currency", label: "currency" },
     { key: "balance", label: "balance_native" },
     { key: "balanceInUsd", label: "balance_usd" },
-    { key: "balanceInEur", label: "balance_eur" },
+    { key: "balanceInAlt", label: `balance_${altCurrency.toLowerCase()}` },
   ];
   const stamp = new Date().toISOString().slice(0, 10);
   exportCSV({ filename: `equity_${stamp}.csv`, columns: cols, rows });

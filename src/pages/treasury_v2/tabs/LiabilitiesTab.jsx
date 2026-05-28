@@ -21,6 +21,8 @@ import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const NONZERO_KEY = "coinplata:liabilities-nonzero";
+const DISPLAY_BASE_KEY = "coinplata:liabilities-display-base";
+const BASE_OPTIONS = ["EUR", "TRY", "RUB", "USD"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
@@ -52,11 +54,18 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
     return () => clearTimeout(id);
   }, [searchRaw]);
 
-  // Дерево всегда строим под USD-base (≈USD-колонка); EUR пересчитываем из native через `convert`.
+  // ≈USD-колонка фикс, вторая ≈-колонка — пикер (default EUR).
+  const [displayBase, setDisplayBase] = useState(() => {
+    try {
+      const v = localStorage.getItem(DISPLAY_BASE_KEY);
+      return BASE_OPTIONS.includes(v) ? v : "EUR";
+    } catch { return "EUR"; }
+  });
+  const setDisplayBasePersist = (v) => { setDisplayBase(v); try { localStorage.setItem(DISPLAY_BASE_KEY, v); } catch {} };
   const usdCtx = useMemo(() => (
     { ...ctx, baseCurrency: "USD", toBase: (amt, ccy) => convert(Number(amt) || 0, ccy, "USD", getRate) || 0 }
   ), [ctx, getRate]);
-  const toEur = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, "EUR", getRate) || 0, [getRate]);
+  const toAlt = useMemo(() => (amt, ccy) => convert(Number(amt) || 0, ccy, displayBase, getRate) || 0, [getRate, displayBase]);
 
   // Селектор ВСЕГДА возвращает полный список CP (includeZero=true) — фильтрация
   // «Ненулевые» применяется ниже к visibleGroups. Так UI всегда видит сколько
@@ -85,12 +94,12 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
     () => visibleGroups.reduce((s, g) => s + g.totalInBase, 0),
     [visibleGroups]
   );
-  const grandTotalEur = useMemo(
+  const grandTotalAlt = useMemo(
     () => visibleGroups.reduce(
-      (s, g) => s + g.byCurrency.reduce((s2, cur) => s2 + toEur(cur.balance, cur.currency), 0),
+      (s, g) => s + g.byCurrency.reduce((s2, cur) => s2 + toAlt(cur.balance, cur.currency), 0),
       0
     ),
-    [visibleGroups, toEur]
+    [visibleGroups, toAlt]
   );
 
   const toggle = useCallback((key) => {
@@ -121,7 +130,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
             {visibleGroups.length}
           </span>
           <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
-            ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalEur, "EUR")}
+            ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalAlt, displayBase)}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -147,7 +156,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
           </button>
           <button
             type="button"
-            onClick={() => doExport(visibleGroups, toEur, (amt, ccy) => convert(Number(amt) || 0, ccy, "USD", getRate) || 0)}
+            onClick={() => doExport(visibleGroups, toAlt, displayBase, (amt, ccy) => convert(Number(amt) || 0, ccy, "USD", getRate) || 0)}
             disabled={visibleGroups.length === 0}
             className="inline-flex items-center gap-1.5 h-9 px-3 rounded-button bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-soft transition-colors disabled:opacity-40"
             title="Экспорт всех видимых контрагентов в CSV"
@@ -224,7 +233,18 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                   ≈ USD
                 </th>
                 <th className="text-right text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap">
-                  ≈ EUR
+                  <div className="inline-flex items-center justify-end gap-1.5">
+                    <span>≈</span>
+                    <select
+                      value={displayBase}
+                      onChange={(e) => setDisplayBasePersist(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="appearance-none bg-surface-sunk text-ink font-bold tracking-wider px-2 py-0.5 rounded-button text-caption cursor-pointer hover:bg-surface-soft transition-colors border-0 focus:outline-none focus:ring-1 focus:ring-accent"
+                      title="Сменить валюту приведения"
+                    >
+                      {BASE_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </th>
               </tr>
             </thead>
@@ -232,7 +252,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
               {visibleGroups.map((cp) => {
                 const cpKey = `cp:${cp.kind}:${cp.id}`;
                 const cpOpen = expanded.has(cpKey);
-                const cpEur = cp.byCurrency.reduce((s, c) => s + toEur(c.balance, c.currency), 0);
+                const cpAlt = cp.byCurrency.reduce((s, c) => s + toAlt(c.balance, c.currency), 0);
                 return (
                   <React.Fragment key={cpKey}>
                     {/* Level 1 — counterparty: click anywhere on row → CP-modal
@@ -278,9 +298,9 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                         {fmtIn(cp.totalInBase, "USD")}
                       </td>
                       <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
-                        cpEur < 0 ? "text-danger" : "text-ink"
+                        cpAlt < 0 ? "text-danger" : "text-ink"
                       }`}>
-                        {fmtIn(cpEur, "EUR")}
+                        {fmtIn(cpAlt, displayBase)}
                       </td>
                     </tr>
 
@@ -319,16 +339,16 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                               {fmtIn(cur.balanceInBase, "USD")}
                             </td>
                             <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
-                              toEur(cur.balance, cur.currency) < 0 ? "text-danger" : "text-ink-soft"
+                              toAlt(cur.balance, cur.currency) < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
-                              {fmtIn(toEur(cur.balance, cur.currency), "EUR")}
+                              {fmtIn(toAlt(cur.balance, cur.currency), displayBase)}
                             </td>
                           </tr>
 
                           {curExpanded && cur.sourceAccounts.map((a) => {
                             const accKey = `${curKey}|acc:${a.accountId}`;
                             const accUsd = convert(Number(a.balance) || 0, cur.currency, "USD", getRate) || 0;
-                            const accEur = toEur(a.balance, cur.currency);
+                            const accAlt = toAlt(a.balance, cur.currency);
                             return (
                               <tr
                                 key={accKey}
@@ -355,9 +375,9 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                   {fmtIn(accUsd, "USD")}
                                 </td>
                                 <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap ${
-                                  accEur < 0 ? "text-danger" : "text-ink-soft"
+                                  accAlt < 0 ? "text-danger" : "text-ink-soft"
                                 }`}>
-                                  {fmtIn(accEur, "EUR")}
+                                  {fmtIn(accAlt, displayBase)}
                                 </td>
                               </tr>
                             );
@@ -383,9 +403,9 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                   {fmtIn(grandTotalUsd, "USD")}
                 </td>
                 <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
-                  grandTotalEur < 0 ? "text-danger" : "text-ink"
+                  grandTotalAlt < 0 ? "text-danger" : "text-ink"
                 }`}>
-                  {fmtIn(grandTotalEur, "EUR")}
+                  {fmtIn(grandTotalAlt, displayBase)}
                 </td>
               </tr>
             </tfoot>
@@ -417,7 +437,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
   );
 }
 
-function doExport(groups, toEur, toUsd) {
+function doExport(groups, toAlt, altCurrency, toUsd) {
   const rows = [];
   for (const cp of groups) {
     for (const cur of cp.byCurrency) {
@@ -427,7 +447,7 @@ function doExport(groups, toEur, toUsd) {
           isReferral: cp.isReferral ? "true" : "false",
           currency: cur.currency, balance: cur.balance,
           balanceInUsd: cur.balanceInBase,
-          balanceInEur: toEur(cur.balance, cur.currency),
+          balanceInAlt: toAlt(cur.balance, cur.currency),
           accountCode: "", accountName: "",
         });
         continue;
@@ -438,7 +458,7 @@ function doExport(groups, toEur, toUsd) {
           isReferral: cp.isReferral ? "true" : "false",
           currency: cur.currency, balance: acc.balance,
           balanceInUsd: toUsd(acc.balance, cur.currency),
-          balanceInEur: toEur(acc.balance, cur.currency),
+          balanceInAlt: toAlt(acc.balance, cur.currency),
           accountCode: acc.code, accountName: acc.name,
         });
       }
@@ -454,7 +474,7 @@ function doExport(groups, toEur, toUsd) {
     { key: "currency", label: "currency" },
     { key: "balance", label: "balance_native" },
     { key: "balanceInUsd", label: "balance_usd" },
-    { key: "balanceInEur", label: "balance_eur" },
+    { key: "balanceInAlt", label: `balance_${altCurrency.toLowerCase()}` },
   ];
   const stamp = new Date().toISOString().slice(0, 10);
   exportCSV({ filename: `liabilities_${stamp}.csv`, columns: cols, rows });

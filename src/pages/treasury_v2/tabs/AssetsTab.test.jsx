@@ -40,7 +40,7 @@ function renderTab(ctx = makeLedgerCtx()) {
 describe("AssetsTab — дерево Office → Currency → Account", () => {
   beforeEach(() => { canAccountingEdit = true; exportCSVSpy.mockClear(); });
 
-  it("рендерит шапку с колонками: офис / № счёта / валюта / остаток / ≈USD / ≈EUR", () => {
+  it("рендерит шапку: офис / № счёта / валюта / остаток / ≈USD-fixed / ≈<picker default EUR>", () => {
     renderTab();
     const thead = document.querySelector("thead");
     expect(thead).not.toBeNull();
@@ -49,7 +49,9 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     expect(within(thead).getByText("Валюта")).toBeInTheDocument();
     expect(within(thead).getByText("Остаток")).toBeInTheDocument();
     expect(within(thead).getByText("≈ USD")).toBeInTheDocument();
-    expect(within(thead).getByText("≈ EUR")).toBeInTheDocument();
+    // вторая ≈-колонка — пикер, default EUR
+    const baseSelect = within(thead).getByTitle("Сменить валюту приведения");
+    expect(baseSelect.value).toBe("EUR");
     expect(screen.getByText("Mark Antalya")).toBeInTheDocument();
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
     // листья скрыты до раскрытия
@@ -105,14 +107,14 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     expect(screen.queryByText("trv2_assets_no_office")).toBeNull();
   });
 
-  it("CSV-экспорт — flat per-account (office, code, name, currency, native, USD, EUR)", () => {
+  it("CSV-экспорт — flat per-account (office, code, name, currency, native, USD, alt-picker)", () => {
     renderTab();
     fireEvent.click(screen.getByText(/^CSV$/));
     expect(exportCSVSpy).toHaveBeenCalledTimes(1);
     const arg = exportCSVSpy.mock.calls[0][0];
     expect(arg.filename).toMatch(/^assets_\d{4}-\d{2}-\d{2}\.csv$/);
     expect(arg.columns.map((c) => c.key)).toEqual([
-      "office", "accountCode", "accountName", "currency", "balance", "balanceInBase", "balanceInEur",
+      "office", "accountCode", "accountName", "currency", "balance", "balanceInBase", "balanceInAlt",
     ]);
     // три asset-счёта = три строки
     expect(arg.rows).toHaveLength(3);
