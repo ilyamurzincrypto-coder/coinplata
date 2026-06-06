@@ -102,7 +102,7 @@ export function assetsByOfficeCurrency(ctx) {
     const off = byOffice.get(officeKey) || { officeId: acc.officeId || null, totalInBase: 0, byCurrency: new Map() };
     const ccyKey = acc.currency || "?";
     const cur = off.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
-    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase });
+    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, subtype: acc.subtype || null, balance, balanceInBase });
     cur.total += balance;
     cur.totalInBase += balanceInBase;
     off.byCurrency.set(ccyKey, cur);
@@ -340,7 +340,7 @@ export function equityBySubtypeCurrency(ctx) {
     const off = sect.byOffice.get(officeKey) || { officeId: acc.officeId || null, totalInBase: 0, byCurrency: new Map() };
     const ccyKey = acc.currency || "?";
     const cur = off.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
-    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, balance, balanceInBase });
+    cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, subtype: acc.subtype || null, balance, balanceInBase });
     cur.total += balance;
     cur.totalInBase += balanceInBase;
     off.byCurrency.set(ccyKey, cur);
