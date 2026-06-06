@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { I18nProvider } from "../../../i18n/translations.jsx";
 
@@ -24,6 +24,18 @@ function renderTab() {
 }
 
 describe("PnLTab", () => {
+  // PnLTab строит дефолтное окно ("month") от системных часов через presetWindow(),
+  // а фикстура makeLedgerCtx() датирована маем 2026 (NOW = 2026-05-10). Без заморозки
+  // часов данные оказываются вне окна (today-bound) и таблица показывает пустое
+  // состояние. Фиксируем только Date, чтобы не трогать таймеры RTL/fireEvent.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-05-10T12:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders net profit row without throwing (smoke)", () => {
     const { container } = renderTab();
     expect(container.textContent).toMatch(/Net Profit|Чистая прибыль|Net kâr/i);

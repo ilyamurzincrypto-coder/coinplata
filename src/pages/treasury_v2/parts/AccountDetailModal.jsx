@@ -139,8 +139,12 @@ export default function AccountDetailModal({
   // period: null когда обе границы пустые («Всё время»); иначе ISO from/to
   const period = useMemo(() => {
     if (!from && !to) return null;
-    const fromIso = from ? new Date(`${from}T00:00:00`).toISOString() : new Date(0).toISOString();
-    const toIso = to ? new Date(`${to}T23:59:59`).toISOString() : new Date().toISOString();
+    // from/to — это UTC-даты (todayISO/daysAgoISO берут .toISOString().slice(0,10)
+    // и date-input отдаёт календарную дату), поэтому границы парсим тоже в UTC (суффикс Z).
+    // Без Z строка трактуется как локальное время — в +03:00 конец дня уезжал на 20:59:59Z
+    // и поздние (по UTC) проводки сегодняшнего дня выпадали из дефолтного окна.
+    const fromIso = from ? new Date(`${from}T00:00:00Z`).toISOString() : new Date(0).toISOString();
+    const toIso = to ? new Date(`${to}T23:59:59.999Z`).toISOString() : new Date().toISOString();
     return { from: fromIso, to: toIso };
   }, [from, to]);
 
