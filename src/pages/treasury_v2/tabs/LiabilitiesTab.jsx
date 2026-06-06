@@ -208,8 +208,8 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
         <div className="bg-surface rounded-card overflow-hidden">
           <table className="w-full border-collapse table-fixed">
             <colgroup>
-              <col />
               <col className="w-[110px]" />
+              <col />
               <col className="w-[80px]" />
               <col className="w-[170px]" />
               <col className="w-[130px]" />
@@ -217,11 +217,11 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
             </colgroup>
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b-2 border-border-soft">
-                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
-                  Контрагент
-                </th>
                 <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
                   № счёта
+                </th>
+                <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 border-r border-border-soft">
+                  Контрагент
                 </th>
                 <th className="text-left text-caption font-semibold text-muted tracking-wider px-card py-2.5 whitespace-nowrap border-r border-border-soft">
                   Валюта
@@ -263,6 +263,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                       onClick={() => openCp(cp)}
                       title="Открыть карточку контрагента"
                     >
+                      <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className="px-card py-2.5 border-r border-border-soft">
                         <div className="flex items-center gap-2">
                           {cp.byCurrency.length > 0 ? (
@@ -289,7 +290,6 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                           </span>
                         </div>
                       </td>
-                      <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
@@ -320,6 +320,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                             onClick={() => openLeaf(cp, a.accountId)}
                             title="Открыть детали счёта"
                           >
+                            <td className="px-card py-2 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                             <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
                                 <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
@@ -327,7 +328,6 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                 <span className="text-body-sm text-ink truncate">{a.name}</span>
                               </div>
                             </td>
-                            <td className="px-card py-2 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                             <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
                             <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
                               a.balance < 0 ? "text-danger" : "text-ink"
@@ -354,6 +354,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                             className="border-t border-border-soft hover:bg-surface-soft cursor-pointer transition-colors"
                             onClick={() => toggle(curKey)}
                           >
+                            <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                             <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
                                 {curExpanded
@@ -365,7 +366,6 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                 </span>
                               </div>
                             </td>
-                            <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                             <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                             <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
                               cur.balance < 0 ? "text-danger" : "text-ink"
@@ -395,13 +395,13 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                 onClick={() => openLeaf(cp, a.accountId)}
                                 title="Открыть детали счёта"
                               >
+                                <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
                                     <span className="text-body-sm text-ink truncate">{a.name}</span>
                                   </div>
                                 </td>
-                                <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
                                 <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                                   a.balance < 0 ? "text-danger" : "text-ink-soft"
@@ -430,10 +430,10 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
             </tbody>
             <tfoot className="sticky bottom-0 z-10 bg-surface-sunk">
               <tr className="border-t-2 border-border-soft">
+                <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className="px-card py-2.5 text-body-sm font-bold text-ink uppercase tracking-wider border-r border-border-soft">
                   ИТОГО
                 </td>
-                <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
