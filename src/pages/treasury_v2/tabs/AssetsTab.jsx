@@ -13,6 +13,7 @@ import { useCan } from "../../../store/permissions.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { useRates } from "../../../store/rates.jsx";
 import { assetsByOfficeCurrency } from "../../../lib/treasury/v2selectors.js";
+import { leafLabel } from "../../../lib/treasury/leafLabel.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { convert } from "../../../utils/convert.js";
 import { exportCSV } from "../../../utils/csv.js";
@@ -27,28 +28,6 @@ const BASE_OPTIONS = ["EUR", "TRY", "RUB", "USD"];
 
 function nativeFmt(amount, currency) {
   return `${curSymbol(currency)}${fmt(amount, currency)}`;
-}
-
-// Короткий лейбл листа: офис уже в заголовке группы, валюта — в своей колонке,
-// поэтому из имени счёта вырезаем токены офиса и валюты (имена вида
-// «Cash · Istanbul · USD», «Hot · USDT TRC20 · Istanbul»). Если остаётся один
-// токен (Cash/Bank) — показываем локализованный подтип («Касса»); если остаётся
-// различитель (сеть) — оставляем его («Hot · TRC20»).
-function leafLabel(a, officeName, t) {
-  const ccy = a.currency || "";
-  const kept = [];
-  for (const raw of String(a.name || "").split("·")) {
-    const tok = raw.trim();
-    if (!tok || (officeName && tok === officeName)) continue;
-    const cleaned = tok.split(/\s+/).filter((w) => w !== ccy).join(" ").trim();
-    if (cleaned) kept.push(cleaned);
-  }
-  if (kept.length <= 1 && a.subtype) {
-    const key = `trv2_subtype_${a.subtype}`;
-    const tr = t(key);
-    if (tr && tr !== key) return tr;
-  }
-  return kept.join(" · ") || a.name;
 }
 
 function fmtIn(amount, ccy) {
@@ -274,7 +253,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                               <div className="flex items-center gap-2">
                                 <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
                                 <CurrencyIcon ccy={cur.currency} size="sm" />
-                                <span className="text-body-sm text-ink truncate">{leafLabel(a, officeName, t)}</span>
+                                <span className="text-body-sm text-ink truncate">{leafLabel({ ...a, officeName }, t)}</span>
                               </div>
                             </td>
                             <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>
@@ -342,7 +321,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-                                    <span className="text-body-sm text-ink truncate">{leafLabel(a, officeName, t)}</span>
+                                    <span className="text-body-sm text-ink truncate">{leafLabel({ ...a, officeName }, t)}</span>
                                   </div>
                                 </td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>

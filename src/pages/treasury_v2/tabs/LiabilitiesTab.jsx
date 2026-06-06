@@ -14,6 +14,7 @@ import { useCan } from "../../../store/permissions.jsx";
 import { useRates } from "../../../store/rates.jsx";
 import { exportCSV } from "../../../utils/csv.js";
 import { liabilitiesByCounterparty } from "../../../lib/treasury/v2selectors.js";
+import { leafLabel } from "../../../lib/treasury/leafLabel.js";
 import { fmt, curSymbol } from "../../../utils/money.js";
 import { convert } from "../../../utils/convert.js";
 import AccountDetailModal from "../parts/AccountDetailModal.jsx";
@@ -325,7 +326,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                               <div className="flex items-center gap-2">
                                 <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
                                 <CurrencyIcon ccy={cur.currency} size="sm" />
-                                <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                <span className="text-body-sm text-ink truncate">{leafLabel({ ...a, currency: cur.currency }, t)}</span>
                               </div>
                             </td>
                             <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
@@ -399,7 +400,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-                                    <span className="text-body-sm text-ink truncate">{a.name}</span>
+                                    <span className="text-body-sm text-ink truncate">{leafLabel({ ...a, currency: cur.currency }, t)}</span>
                                   </div>
                                 </td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
