@@ -26,6 +26,7 @@ import {
 import { convert } from "../../../utils/convert.js";
 import { curSymbol } from "../../../utils/money.js";
 import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
+import TransactionEntries from "./TransactionEntries.jsx";
 import ChartAccountModal from "./ChartAccountModal.jsx";
 import CreateLiabilityDialog from "./CreateLiabilityDialog.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
@@ -66,6 +67,9 @@ export default function AccountDetailModal({
   const [from, setFrom] = useState(() => daysAgoISO(30));
   const [to, setTo] = useState(() => todayISO());
   const [search, setSearch] = useState("");
+  // Клик по документу разворачивает проводки этого документа прямо в строке
+  // (а не открывает отдельную модалку поверх/за попапом).
+  const [expandedTxId, setExpandedTxId] = useState(null);
   // activeCcy инициализируется на «Все», но в useEffect ниже при открытии модала
   // подсветим валюту кликнутого счёта (если group-mode).
   const [activeCcy, setActiveCcy] = useState("__all__");
@@ -200,6 +204,21 @@ export default function AccountDetailModal({
     if (!best) return null;
     const acc = accById.get(best.accountId);
     return acc ? { code: acc.code, name: acc.name } : null;
+  }
+
+  // Все ножки документа (для inline-разворота под строкой).
+  function legsFor(txId) {
+    return (txEntriesMap.get(txId) || []).map((l) => {
+      const acc = accById.get(l.accountId);
+      return {
+        id: l.id,
+        direction: l.direction,
+        accountCode: acc?.code || "?",
+        accountName: acc?.name || l.accountId,
+        amount: Number(l.amount) || 0,
+        currency: l.currency,
+      };
+    });
   }
 
   const filteredEntries = useMemo(() => {
@@ -705,8 +724,10 @@ export default function AccountDetailModal({
                 const contra = contraOf(e);
                 const inBase = toDisplayBase(e.amount, e.currency);
                 const baseStr = fmtBase(inBase);
+                const isExpanded = expandedTxId === e.txId;
                 return (
-                  <tr key={e.id} className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} hover:bg-surface-soft`}>
+                  <React.Fragment key={e.id}>
+                  <tr className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} ${isExpanded ? "bg-accent-bg" : "hover:bg-surface-soft"}`}>
                     <td className="px-3 py-1.5 text-muted font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
                       {new Date(e.createdAt).toISOString().slice(0, 10)}
                     </td>
@@ -733,13 +754,25 @@ export default function AccountDetailModal({
                     <td className="px-2 py-1.5 whitespace-nowrap">
                       <button
                         type="button"
-                        onClick={() => onOpenTx?.(e.txId)}
+                        onClick={() => setExpandedTxId(isExpanded ? null : e.txId)}
                         className="text-accent hover:text-accent-hover transition-colors font-mono text-tiny"
+                        title={isExpanded ? "Свернуть проводки" : "Показать проводки документа"}
                       >
-                        {e.sourceRefId || e.txId.slice(0, 8)} →
+                        {e.sourceRefId || e.txId.slice(0, 8)} {isExpanded ? "▾" : "→"}
                       </button>
                     </td>
                   </tr>
+                  {isExpanded && (
+                    <tr className="bg-accent-bg/40">
+                      <td colSpan={7} className="px-3 pb-2 border-b border-border-soft">
+                        <div className="text-tiny text-muted uppercase tracking-wider font-bold pt-2 pb-0.5">
+                          Проводки документа · {e.txKind}{e.sourceRefId ? ` · #${e.sourceRefId}` : ""}
+                        </div>
+                        <TransactionEntries entries={legsFor(e.txId)} />
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
