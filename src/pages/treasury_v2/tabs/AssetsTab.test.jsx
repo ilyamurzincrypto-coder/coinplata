@@ -63,18 +63,17 @@ describe("AssetsTab — дерево Office → Currency → Account", () => {
     // до клика — листья и коды не видны
     expect(screen.queryByText("1110")).toBeNull();
     fireEvent.click(screen.getByText("Mark Antalya"));
-    // после раскрытия офиса видим merged-строки: code счёта + короткий лейбл
-    // (офис в заголовке группы, валюта в своей колонке → имя не дублирует их).
-    // Подтип переводится через t(`trv2_subtype_*`); под мок t:(k)=>k ключа нет,
-    // поэтому fallback — очищенное имя «Cash» (в проде это «Касса»).
+    // после раскрытия офиса видим merged-строки: код счёта + название валюты
+    // (офис в заголовке группы, валюта-код в своей колонке). Под мок t:(k)=>k
+    // ccyName_* нет → fallback на код; крипто получает сеть → «USDT · TRC20».
     expect(screen.getByText("1110")).toBeInTheDocument();
-    expect(screen.getByText("Cash")).toBeInTheDocument();
+    expect(screen.getByText("USDT · TRC20")).toBeInTheDocument();
   });
 
   it("клик по merged-строке открывает AccountDetailModal", () => {
     renderTab();
     fireEvent.click(screen.getByText("Mark Antalya"));
-    fireEvent.click(screen.getByText("Cash"));
+    fireEvent.click(screen.getByText("1110"));
     expect(screen.getByTestId("detail-modal")).toHaveTextContent("ac_cash_usd_mark");
   });
 
