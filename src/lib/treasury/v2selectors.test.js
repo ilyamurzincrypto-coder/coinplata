@@ -605,6 +605,30 @@ describe("assetsByOfficeCurrency — иерархическое дерево Off
     expect(tree[0].officeId).toBe("office-mark");
   });
 
+  it("счёт-родитель (касса) даёт office.cashboxCode и исключается из листьев", () => {
+    const ctx = makeLedgerCtx({
+      accounts: [
+        { id: "p_ist", code: "113", name: "Касса · Istanbul", type: "asset", subtype: null, currency: "USD", officeId: "ist" },
+        { id: "a_usd", code: "1130", name: "Cash · Istanbul · USD", type: "asset", subtype: "cash", currency: "USD", officeId: "ist", parentAccountId: "p_ist" },
+        { id: "a_eur", code: "1131", name: "Cash · Istanbul · EUR", type: "asset", subtype: "cash", currency: "EUR", officeId: "ist", parentAccountId: "p_ist" },
+      ],
+      balances: [
+        { accountId: "a_usd", currency: "USD", clientId: null, partnerId: null, balance: 100 },
+        { accountId: "a_eur", currency: "EUR", clientId: null, partnerId: null, balance: 50 },
+      ],
+      toBase: (amt) => Number(amt),
+      baseCurrency: "USD",
+      officeFilter: "all",
+    });
+    const tree = assetsByOfficeCurrency(ctx);
+    const ist = tree.find((o) => o.officeId === "ist");
+    expect(ist.cashboxCode).toBe("113");
+    // родитель не должен попасть в листья ни в одной валюте
+    const allAccIds = ist.currencies.flatMap((c) => c.accounts.map((a) => a.accountId));
+    expect(allAccIds).not.toContain("p_ist");
+    expect(allAccIds.sort()).toEqual(["a_eur", "a_usd"]);
+  });
+
   it("null-office sinks to end даже при большем totalInBase", () => {
     const ctx = makeLedgerCtx({
       accounts: [

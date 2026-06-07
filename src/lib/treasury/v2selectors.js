@@ -88,18 +88,26 @@ export function assetsByOfficeCurrency(ctx) {
     arr.push(b);
     balByAccount.set(b.accountId, arr);
   }
-  const byOffice = new Map(); // officeId|"__none__" -> { officeId, totalInBase, byCurrency: Map }
+  // Счета-группы (кассы-родители): на них кто-то ссылается через parent_account_id.
+  // Сами они не листья — дают номер строке офиса (cashboxCode) и исключаются из дерева.
+  const parentIds = new Set(accounts.map((a) => a.parentAccountId).filter(Boolean));
+  const byOffice = new Map(); // officeId|"__none__" -> { officeId, cashboxCode, totalInBase, byCurrency: Map }
   for (const acc of accounts) {
     if (acc.type !== "asset") continue;
     if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const officeKey = acc.officeId || "__none__";
+    const off = byOffice.get(officeKey) || { officeId: acc.officeId || null, cashboxCode: null, totalInBase: 0, byCurrency: new Map() };
+    if (parentIds.has(acc.id)) {
+      off.cashboxCode = acc.code; // номер кассы для строки офиса; не лист
+      byOffice.set(officeKey, off);
+      continue;
+    }
     const rows = balByAccount.get(acc.id) || [];
     let balance = 0, balanceInBase = 0;
     for (const b of rows) {
       balance += Number(b.balance) || 0;
       balanceInBase += toBase(b.balance, b.currency) || 0;
     }
-    const officeKey = acc.officeId || "__none__";
-    const off = byOffice.get(officeKey) || { officeId: acc.officeId || null, totalInBase: 0, byCurrency: new Map() };
     const ccyKey = acc.currency || "?";
     const cur = off.byCurrency.get(ccyKey) || { currency: ccyKey, total: 0, totalInBase: 0, accounts: [] };
     cur.accounts.push({ accountId: acc.id, code: acc.code, name: acc.name, currency: acc.currency, subtype: acc.subtype || null, balance, balanceInBase });
@@ -112,6 +120,7 @@ export function assetsByOfficeCurrency(ctx) {
   return [...byOffice.values()]
     .map((off) => ({
       officeId: off.officeId,
+      cashboxCode: off.cashboxCode || null,
       totalInBase: off.totalInBase,
       currencies: [...off.byCurrency.values()]
         .map((c) => ({ ...c, accounts: c.accounts.slice().sort((x, y) => Math.abs(y.balanceInBase) - Math.abs(x.balanceInBase)) }))

@@ -225,9 +225,9 @@ export default function InlineBalanceEditor({
   }
 
   const ro = (
-    <span className="font-mono tabular whitespace-nowrap">
+    <span className="font-mono tabular whitespace-nowrap font-semibold">
       {fmtNum(displayed)}
-      {suffix ? <span className="text-muted-soft"> {suffix}</span> : null}
+      {suffix ? <span className="text-muted-soft font-normal"> {suffix}</span> : null}
     </span>
   );
 
@@ -258,14 +258,14 @@ export default function InlineBalanceEditor({
       ref={triggerRef}
       onClick={startEdit}
       title="Кликни чтобы вбить новый остаток"
-      className={`${className} inline-flex items-center justify-end gap-1 cursor-pointer rounded-badge px-1.5 py-0.5 -mx-1 transition-colors ${
+      className={`${className} inline-flex items-center justify-end gap-1.5 cursor-pointer rounded-badge px-2 py-0.5 -mx-1 transition-colors ${
         editing
           ? "bg-warning-soft ring-1 ring-warning/40 text-warning"
-          : "bg-warning-soft/60 ring-1 ring-warning/20 text-warning hover:bg-warning-soft"
+          : "text-ink ring-1 ring-transparent hover:bg-surface-sunk hover:ring-border-soft"
       }`}
     >
       {ro}
-      <Pencil className="w-3 h-3 text-warning shrink-0" strokeWidth={2.5} />
+      <Pencil className={`w-3 h-3 shrink-0 ${editing ? "text-warning" : "text-muted-soft"}`} strokeWidth={2.5} />
     </button>
   );
 

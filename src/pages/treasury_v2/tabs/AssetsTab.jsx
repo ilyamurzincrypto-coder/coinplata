@@ -215,7 +215,9 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                       className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
                       onClick={() => toggle(officeKey)}
                     >
-                      <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
+                      <td className="px-card py-2.5 font-mono text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                        {office.cashboxCode || <span className="text-tiny text-muted-soft">—</span>}
+                      </td>
                       <td className="px-card py-2.5 border-r border-border-soft">
                         <div className="flex items-center gap-2">
                           {officeOpen
@@ -265,7 +267,6 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 account={{ code: a.code, currency: a.currency, type: "asset", subtype: null, balance: a.balance }}
                                 displayMul={1}
                                 accounts={ctx?.accounts || []}
-                                suffix={a.currency}
                               />
                             </td>
                             <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
@@ -339,7 +340,6 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                     }}
                                     displayMul={1}
                                     accounts={ctx?.accounts || []}
-                                    suffix={a.currency}
                                   />
                                 </td>
                                 <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">

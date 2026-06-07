@@ -29,8 +29,12 @@ export function deriveCurrencies(accounts) {
 // Accounts offered in the picker for a given line currency: active and matching currency.
 // Dimensioned accounts (customer_liab / partner_liab) are included — the line then
 // requires a counterparty (see validatePostingDraft).
+// Группы-родители (счета-кассы: parent_account_id ссылается на них) исключаются —
+// это узлы дерева плана, на них нельзя проводить напрямую.
 export function accountsForCurrency(accounts, currency) {
-  return (accounts || []).filter((a) => a.active && a.currency === currency);
+  const list = accounts || [];
+  const parentIds = new Set(list.map((a) => a.parentAccountId).filter(Boolean));
+  return list.filter((a) => a.active && a.currency === currency && !parentIds.has(a.id));
 }
 
 // Distinct line currencies present in a draft's lines.
