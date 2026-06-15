@@ -158,3 +158,14 @@ export function buildMorningUpdates(parsed, kindOf) {
   }
   return { updates, skipped };
 }
+
+// lookup(a,b) -> number|undefined: ТОЛЬКО прямой курс (без пивота).
+// Возвращает производный кросс через USDT или undefined.
+export function pivotRate(from, to, lookup) {
+  if (from === to) return 1;
+  if (from === "USDT" || to === "USDT") return undefined;
+  const leg1 = lookup(from, "USDT");
+  const leg2 = lookup("USDT", to);
+  if (Number.isFinite(leg1) && Number.isFinite(leg2)) return leg1 * leg2;
+  return undefined;
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseNumber, resolveRateValue, CITY_OFFICE_MAP, parseMorningRates, buildMorningUpdates } from "./morningRatesParser.js";
+import { parseNumber, resolveRateValue, CITY_OFFICE_MAP, parseMorningRates, buildMorningUpdates, pivotRate } from "./morningRatesParser.js";
 
 describe("parseNumber", () => {
   it("запятая как десятичный разделитель", () => {
@@ -141,5 +141,22 @@ USD -> EUR  1,1`);
 USDT -> USD  -0,80%`);
     const { updates } = buildMorningUpdates(parsed, KIND);
     expect(updates[0].rate).toBeCloseTo(0.992, 6);
+  });
+});
+
+describe("pivotRate", () => {
+  const direct = { USD_USDT: 1, USDT_TRY: 45.5, USDT_USD: 0.992 };
+  const lookup = (a, b) => direct[`${a}_${b}`];
+  it("USD→TRY через USDT", () => {
+    expect(pivotRate("USD", "TRY", lookup)).toBeCloseTo(45.5, 6);
+  });
+  it("одна сторона USDT → undefined (пивот не нужен)", () => {
+    expect(pivotRate("USDT", "TRY", lookup)).toBeUndefined();
+  });
+  it("нет ноги → undefined", () => {
+    expect(pivotRate("EUR", "TRY", lookup)).toBeUndefined();
+  });
+  it("from===to → 1", () => {
+    expect(pivotRate("USD", "USD", lookup)).toBe(1);
   });
 });
