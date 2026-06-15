@@ -1062,6 +1062,15 @@ const DICT = {
     rimport_err_no_sheets: "Workbook has no sheets.",
     rimport_err_empty: "File is empty or has no data rows.",
     rimport_err_headers: 'Header row must contain columns: "From", "To", "Rate". Case-insensitive.',
+    rimport_tab_file: "XLSX file",
+    rimport_tab_text: "Text",
+    rimport_text_hint: "Paste the morning rates document (Paramon)",
+    rimport_text_placeholder: "ANT\nUSDT -> TRY  45,50\n...",
+    rimport_text_parse: "Parse",
+    rimport_text_apply: "Apply",
+    rimport_anchors_title: "Anchors to apply",
+    rimport_special_title: "Special rates (SBP / non-res)",
+    rimport_skipped_title: "Skipped",
 
     // === Rates coverage ===
     cov_back: "Back",
@@ -2546,6 +2555,15 @@ const DICT = {
     rimport_err_no_sheets: "В книге нет листов.",
     rimport_err_empty: "Файл пустой или не содержит данных.",
     rimport_err_headers: 'Первая строка должна содержать колонки: "From", "To", "Rate". Регистр не важен.',
+    rimport_tab_file: "Файл XLSX",
+    rimport_tab_text: "Текст",
+    rimport_text_hint: "Вставьте утренний документ с курсами (Paramon)",
+    rimport_text_placeholder: "ANT\nUSDT -> TRY  45,50\n...",
+    rimport_text_parse: "Разобрать",
+    rimport_text_apply: "Применить",
+    rimport_anchors_title: "Якоря к применению",
+    rimport_special_title: "Спец-курсы (СБП / НЕРЕЗ)",
+    rimport_skipped_title: "Пропущено",
 
     // === Rates coverage ===
     cov_back: "Назад",
@@ -4028,6 +4046,15 @@ const DICT = {
     rimport_err_no_sheets: "Kitapta sayfa yok.",
     rimport_err_empty: "Dosya boş veya veri yok.",
     rimport_err_headers: 'İlk satırda şu sütunlar olmalı: "From", "To", "Rate". Büyük/küçük harf fark etmez.',
+    rimport_tab_file: "XLSX dosyası",
+    rimport_tab_text: "Metin",
+    rimport_text_hint: "Sabah kur belgesini yapıştırın (Paramon)",
+    rimport_text_placeholder: "ANT\nUSDT -> TRY  45,50\n...",
+    rimport_text_parse: "Ayrıştır",
+    rimport_text_apply: "Uygula",
+    rimport_anchors_title: "Uygulanacak çapalar",
+    rimport_special_title: "Özel kurlar (SBP / yerleşik değil)",
+    rimport_skipped_title: "Atlandı",
 
     // === Rates coverage ===
     cov_back: "Geri",
