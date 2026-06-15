@@ -33,6 +33,10 @@ const INLINE_CITY_RE = /^(ANT|IST|MSK|SPB)\s+(.+)$/i;
 const STANDALONE_CITY_RE = /^(ANT|IST|MSK|SPB)\s*:?\s*$/i;
 const META_RE = /^\[\d{1,2}[.\d]*\s+[\d:]+\]\s*/; // [DD.MM(.YYYY) HH:MM]
 const PARAMON_RE = /^(?:Paramon:\s*)+/i;
+const SBP_RE = /^([A-Za-z]{2,6})\s+QR\s+СБП\s*>>\s*([A-Za-z]{2,6})\s+([+-]?\d+(?:[.,]\d+)?)$/i;
+const NEREZ_HEADER_RE = /\(\s*НЕРЕЗ\s*\)/i;
+const NEREZ_SIDE_RE = /^(Sell|Buy)\s*:?\s*$/i;
+const NEREZ_SETTLE_RE = /^(TOD-TOD|TOD-TOM|TOM-TOM)\s+([+-]?\d+(?:[.,]\d+)?)$/i;
 
 function stripMetadata(line) {
   let s = line.replace(META_RE, "");
@@ -45,6 +49,8 @@ export function parseMorningRates(text) {
   const special = []; // заполнится в Task 3
   const skipped = [];
   let currentCity = null;
+  let nerezPair = null; // напр. "USDT/RUB" когда активен блок НЕРЕЗ
+  let nerezSide = null; // "sell" | "buy"
 
   for (const rawLine of String(text).split(/\r?\n/)) {
     const original = rawLine.trim();
@@ -57,12 +63,49 @@ export function parseMorningRates(text) {
     const stand = STANDALONE_CITY_RE.exec(line);
     if (stand) {
       currentCity = stand[1].toUpperCase();
+      nerezPair = null; nerezSide = null;
       continue;
     }
     const inline = INLINE_CITY_RE.exec(line);
     if (inline) {
       currentCity = inline[1].toUpperCase();
       line = inline[2].trim();
+    }
+
+    // СБП: «RUB QR СБП>> USDT 75,50»
+    const sbp = SBP_RE.exec(line);
+    if (sbp) {
+      const v = parseNumber(sbp[3]);
+      if (Number.isFinite(v)) {
+        special.push({ kind: "sbp", from: sbp[1].toUpperCase(), to: sbp[2].toUpperCase(), value: v, raw: original });
+      } else {
+        skipped.push({ line: original, reason: "invalid number" });
+      }
+      continue;
+    }
+    // Заголовок блока НЕРЕЗ: «USDT - RUB (НЕРЕЗ)»
+    if (NEREZ_HEADER_RE.test(line)) {
+      const codes = (line.match(/[A-Za-z]{2,6}/g) || []).slice(0, 2);
+      nerezPair = codes.length === 2 ? `${codes[0].toUpperCase()}/${codes[1].toUpperCase()}` : "USDT/RUB";
+      nerezSide = null;
+      continue;
+    }
+    if (nerezPair) {
+      const side = NEREZ_SIDE_RE.exec(line);
+      if (side) { nerezSide = side[1].toLowerCase(); continue; }
+      const st = NEREZ_SETTLE_RE.exec(line);
+      if (st) {
+        const v = parseNumber(st[2]);
+        if (Number.isFinite(v) && nerezSide) {
+          special.push({ kind: "nerez", pair: nerezPair, side: nerezSide, settle: st[1].toUpperCase(), value: v, raw: original });
+        } else {
+          skipped.push({ line: original, reason: "nerez: нет side/число" });
+        }
+        continue;
+      }
+      // строка не относится к НЕРЕЗ — выходим из режима и обрабатываем обычно
+      nerezPair = null;
+      nerezSide = null;
     }
 
     const m = RATE_RE.exec(line);

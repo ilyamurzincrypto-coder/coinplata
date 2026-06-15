@@ -77,3 +77,41 @@ describe("parseMorningRates — якоря", () => {
     expect(skipped.some((s) => /unparseable/.test(s.reason))).toBe(true);
   });
 });
+
+const SPECIAL = `RUB QR СБП>> USDT  75,50
+USDT - RUB (НЕРЕЗ)
+
+Sell
+TOD-TOD  73,28
+TOD-TOM  73,23
+TOM-TOM  73,33
+
+Buy
+TOD-TOD  71,87
+TOD-TOM  71,79
+TOM-TOM  71,92`;
+
+describe("parseMorningRates — special", () => {
+  it("СБП-строка", () => {
+    const { special } = parseMorningRates(SPECIAL);
+    const sbp = special.filter((s) => s.kind === "sbp");
+    expect(sbp).toHaveLength(1);
+    expect(sbp[0]).toMatchObject({ kind: "sbp", from: "RUB", to: "USDT", value: 75.5 });
+  });
+  it("блок НЕРЕЗ: 3 settle × 2 side = 6", () => {
+    const { special } = parseMorningRates(SPECIAL);
+    const nerez = special.filter((s) => s.kind === "nerez");
+    expect(nerez).toHaveLength(6);
+    expect(nerez).toContainEqual(
+      expect.objectContaining({ kind: "nerez", side: "sell", settle: "TOD-TOD", value: 73.28 })
+    );
+    expect(nerez).toContainEqual(
+      expect.objectContaining({ kind: "nerez", side: "buy", settle: "TOM-TOM", value: 71.92 })
+    );
+  });
+  it("спец-строки не попадают в anchors/skipped как мусор", () => {
+    const { anchors, skipped } = parseMorningRates(SPECIAL);
+    expect(anchors).toHaveLength(0);
+    expect(skipped.some((s) => /СБП|TOD|НЕРЕЗ/.test(s.line))).toBe(false);
+  });
+});
