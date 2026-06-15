@@ -29,6 +29,7 @@ import {
 } from "react";
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
+import { pivotRate } from "../utils/morningRatesParser.js";
 import { loadPairs, loadOfficeRateOverrides } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { rpcCreatePair } from "../lib/supabaseWrite.js";
@@ -136,6 +137,8 @@ export function RatesProvider({ children }) {
   const [lastUpdated, setLastUpdated] = useState(new Date());
   // Per-office overrides (0021). Map<officeId, Map<"FROM_TO", {rate, baseRate, spreadPercent}>>
   const [officeOverrides, setOfficeOverrides] = useState(new Map());
+  // НЕРЕЗ/СБП-снимок последнего импорта (информационно, не в движке сделок).
+  const [specialRates, setSpecialRates] = useState([]); // [{kind,...,importedAt}]
 
   // DB overlay: для каждой DB-пары (from_currency → to_currency, rate) находим
   // default frontend-пару по валютам (через channels) и обновляем её rate.
@@ -288,19 +291,36 @@ export function RatesProvider({ children }) {
 
   // ---------- getRate / setRate / deleteRate (обратная совместимость) ----------
 
-  // getRate: если officeId указан и есть office override для этой пары — use it.
-  // Иначе fallback на global default rate.
+  // getRate: office override → office USDT-пивот → global → global USDT-пивот.
   const getRate = useCallback(
     (from, to, officeId) => {
       if (from === to) return 1;
-      if (officeId && officeOverrides instanceof Map) {
-        const officeMap = officeOverrides.get(officeId);
-        if (officeMap) {
-          const ovr = officeMap.get(rateKey(from, to));
-          if (ovr && Number.isFinite(ovr.rate)) return ovr.rate;
-        }
+      const officeMap =
+        officeId && officeOverrides instanceof Map ? officeOverrides.get(officeId) : null;
+
+      // 1. Прямой office-override
+      if (officeMap) {
+        const ovr = officeMap.get(rateKey(from, to));
+        if (ovr && Number.isFinite(ovr.rate)) return ovr.rate;
       }
-      return rates[rateKey(from, to)];
+      // 2. Office USDT-пивот (только офисные якоря-ноги)
+      if (officeMap) {
+        const officeLeg = (a, b) => {
+          const o = officeMap.get(rateKey(a, b));
+          return o && Number.isFinite(o.rate) ? o.rate : undefined;
+        };
+        const p = pivotRate(from, to, officeLeg);
+        if (Number.isFinite(p)) return p;
+      }
+      // 3. Global default
+      const direct = rates[rateKey(from, to)];
+      if (Number.isFinite(direct)) return direct;
+      // 4. Global USDT-пивот
+      const globalLeg = (a, b) => rates[rateKey(a, b)];
+      const gp = pivotRate(from, to, globalLeg);
+      if (Number.isFinite(gp)) return gp;
+
+      return undefined;
     },
     [rates, officeOverrides]
   );
@@ -335,6 +355,10 @@ export function RatesProvider({ children }) {
       else next.set(officeId, officeMap);
       return next;
     });
+  }, []);
+
+  const setSpecialRatesSnapshot = useCallback((entries) => {
+    setSpecialRates(Array.isArray(entries) ? entries : []);
   }, []);
 
   // setRate — меняет rate у default pair (from → to).
@@ -646,6 +670,8 @@ export function RatesProvider({ children }) {
       officeOverrides,
       getOfficeOverride,
       applyOfficeOverrideLocal,
+      specialRates,
+      setSpecialRatesSnapshot,
       // pair/channel API
       pairs,
       channels,
@@ -678,6 +704,8 @@ export function RatesProvider({ children }) {
       officeOverrides,
       getOfficeOverride,
       applyOfficeOverrideLocal,
+      specialRates,
+      setSpecialRatesSnapshot,
       pairs,
       channels,
       getChannel,
