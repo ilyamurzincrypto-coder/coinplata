@@ -34,7 +34,7 @@ const STANDALONE_CITY_RE = /^(ANT|IST|MSK|SPB)\s*:?\s*$/i;
 const META_RE = /^\[\d{1,2}[.\d]*\s+[\d:]+\]\s*/; // [DD.MM(.YYYY) HH:MM]
 const PARAMON_RE = /^(?:Paramon:\s*)+/i;
 const SBP_RE = /^([A-Za-z]{2,6})\s+QR\s+СБП\s*>>\s*([A-Za-z]{2,6})\s+([+-]?\d+(?:[.,]\d+)?)$/i;
-const NEREZ_HEADER_RE = /\(\s*НЕРЕЗ\s*\)/i;
+const NEREZ_HEADER_RE = /^[A-Za-z]{2,6}\s*[-–]\s*[A-Za-z]{2,6}\s*\(\s*НЕРЕЗ\s*\)/i;
 const NEREZ_SIDE_RE = /^(Sell|Buy)\s*:?\s*$/i;
 const NEREZ_SETTLE_RE = /^(TOD-TOD|TOD-TOM|TOM-TOM)\s+([+-]?\d+(?:[.,]\d+)?)$/i;
 
@@ -46,7 +46,7 @@ function stripMetadata(line) {
 
 export function parseMorningRates(text) {
   const anchors = [];
-  const special = []; // заполнится в Task 3
+  const special = []; // СБП + НЕРЕЗ-записи
   const skipped = [];
   let currentCity = null;
   let nerezPair = null; // напр. "USDT/RUB" когда активен блок НЕРЕЗ
@@ -166,6 +166,6 @@ export function pivotRate(from, to, lookup) {
   if (from === "USDT" || to === "USDT") return undefined;
   const leg1 = lookup(from, "USDT");
   const leg2 = lookup("USDT", to);
-  if (Number.isFinite(leg1) && Number.isFinite(leg2)) return leg1 * leg2;
+  if (Number.isFinite(leg1) && leg1 > 0 && Number.isFinite(leg2) && leg2 > 0) return leg1 * leg2;
   return undefined;
 }

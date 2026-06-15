@@ -159,4 +159,69 @@ describe("pivotRate", () => {
   it("from===to → 1", () => {
     expect(pivotRate("USD", "USD", lookup)).toBe(1);
   });
+  it("нулевая нога → undefined (не 0)", () => {
+    const lk = (a, b) => ({ USD_USDT: 0, USDT_TRY: 45.5 })[`${a}_${b}`];
+    expect(pivotRate("USD", "TRY", lk)).toBeUndefined();
+  });
+});
+
+const FULL = `[15.06.2026 10:44] Paramon: ANT
+USDT -> USD  -0,80%
+USD -> USDT  0,00%
+USDT -> TRY  45,50
+TRY -> USDT  46,5
+USDT -> EUR  1,171
+EUR -> USDT  1,152
+
+IST
+USDT -> USD  -0,60%
+USD -> USDT  0,10%
+USDT -> TRY  45,50
+TRY -> USDT  45,6
+USDT -> EUR  1,171
+EUR -> USDT  1,152
+[15.06.2026 10:44] Paramon: RUB QR СБП>> USDT  75,50
+[15.06.2026 10:46] Paramon: MSK
+USDT -> RUB  75,75
+RUB -> USDT  76,92
+
+SPB
+USDT -> RUB  75,55
+RUB -> USDT  77,12
+[15.06.2026 11:38] Paramon: USDT - RUB (НЕРЕЗ)
+
+Sell
+TOD-TOD  73,28
+TOD-TOM  73,23
+TOM-TOM  73,33
+
+Buy
+TOD-TOD  71,87
+TOD-TOM  71,79
+TOM-TOM  71,92`;
+
+describe("интеграция — полный документ", () => {
+  const KIND = (code) => (code === "USDT" ? "crypto" : "cash");
+  it("разбирает все 4 города + СБП + НЕРЕЗ без мусора", () => {
+    const p = parseMorningRates(FULL);
+    expect(p.anchors.filter((a) => a.city === "ANT")).toHaveLength(6);
+    expect(p.anchors.filter((a) => a.city === "IST")).toHaveLength(6);
+    expect(p.anchors.filter((a) => a.city === "MSK")).toHaveLength(2);
+    expect(p.anchors.filter((a) => a.city === "SPB")).toHaveLength(2);
+    expect(p.special.filter((s) => s.kind === "sbp")).toHaveLength(1);
+    expect(p.special.filter((s) => s.kind === "nerez")).toHaveLength(6);
+    expect(p.skipped).toHaveLength(0);
+  });
+  it("buildMorningUpdates: MSK/SPB → skipped, ANT×2 офиса", () => {
+    const p = parseMorningRates(FULL);
+    const { updates, skipped } = buildMorningUpdates(p, KIND);
+    // только якоря с USDT-стороной; ANT=6 пар ×2 офиса + IST=6 ×1
+    expect(updates.every((u) => u.from === "USDT" || u.to === "USDT")).toBe(true);
+    expect(updates.some((u) => u.officeId === "mark")).toBe(true);
+    expect(updates.some((u) => u.officeId === "terra")).toBe(true);
+    expect(updates.some((u) => u.officeId === "ist")).toBe(true);
+    expect(updates.some((u) => ["mark", "terra", "ist"].includes(u.officeId) === false)).toBe(false);
+    expect(skipped.some((s) => /MSK/.test(s.reason))).toBe(true);
+    expect(skipped.some((s) => /SPB/.test(s.reason))).toBe(true);
+  });
 });
