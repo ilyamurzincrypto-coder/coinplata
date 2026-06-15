@@ -32,7 +32,7 @@ import {
   buildTemplateBlob,
   downloadBlob,
 } from "../utils/xlsxRates.js";
-import { parseMorningRates, buildMorningUpdates } from "../utils/morningRatesParser.js";
+import { parseMorningRates, buildMorningUpdates, resolveRateValue } from "../utils/morningRatesParser.js";
 
 // Безопасный рендер i18n строк формата `<strong>label:</strong> body`.
 // Раньше использовали dangerouslySetInnerHTML — это работало (источник
@@ -208,10 +208,14 @@ export default function RatesImportModal({ open, onClose }) {
 
   const ensureSbpPair = async (s) => {
     const SBP_CH = "ch_rub_sbp";
+    // СБП-строка даёт RUB-за-USDT (напр. 75,50). Пара RUB→USDT хранит USDT-за-RUB,
+    // поэтому конвертируем как cash→crypto (= 1/value), как и офисные якоря.
+    const rate = resolveRateValue({ value: s.value, pct: false }, "cash", "crypto");
+    if (rate == null || !Number.isFinite(rate) || rate <= 0) return;
     if (!(channels || []).some((c) => c.id === SBP_CH)) {
       addChannel({ id: SBP_CH, currencyCode: "RUB", kind: "sbp", isDefaultForCurrency: false });
     }
-    await addPair({ fromChannelId: SBP_CH, toChannelId: "ch_usdt_trc20", rate: s.value, priority: 60 });
+    await addPair({ fromChannelId: SBP_CH, toChannelId: "ch_usdt_trc20", rate, priority: 60 });
   };
 
   const handleApplyText = async () => {
