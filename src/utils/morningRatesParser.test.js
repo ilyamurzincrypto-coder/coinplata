@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseNumber, resolveRateValue, CITY_OFFICE_MAP } from "./morningRatesParser.js";
+import { parseNumber, resolveRateValue, CITY_OFFICE_MAP, parseMorningRates } from "./morningRatesParser.js";
 
 describe("parseNumber", () => {
   it("запятая как десятичный разделитель", () => {
@@ -34,5 +34,46 @@ describe("CITY_OFFICE_MAP", () => {
     expect(CITY_OFFICE_MAP.IST).toEqual(["ist"]);
     expect(CITY_OFFICE_MAP.MSK).toEqual([]);
     expect(CITY_OFFICE_MAP.SPB).toEqual([]);
+  });
+});
+
+const SAMPLE = `[15.06.2026 10:44] Paramon: ANT
+USDT -> USD  -0,80%
+USD -> USDT  0,00%
+USDT -> TRY  45,50
+TRY -> USDT  46,5
+USDT -> EUR  1,171
+EUR -> USDT  1,152
+
+IST
+USDT -> USD  -0,60%
+USDT -> TRY  45,50`;
+
+describe("parseMorningRates — якоря", () => {
+  it("разбирает города и курсы", () => {
+    const { anchors } = parseMorningRates(SAMPLE);
+    const ant = anchors.filter((a) => a.city === "ANT");
+    const ist = anchors.filter((a) => a.city === "IST");
+    expect(ant).toHaveLength(6);
+    expect(ist).toHaveLength(2);
+    expect(ant[0]).toMatchObject({ city: "ANT", from: "USDT", to: "USD", value: -0.8, pct: true });
+    expect(ant[2]).toMatchObject({ city: "ANT", from: "USDT", to: "TRY", value: 45.5, pct: false });
+  });
+  it("inline-city: «ANT USDT -> USD ...»", () => {
+    const { anchors } = parseMorningRates("ANT USDT -> TRY 45,5");
+    expect(anchors[0]).toMatchObject({ city: "ANT", from: "USDT", to: "TRY", value: 45.5 });
+  });
+  it("повторный префикс Paramon: срезается", () => {
+    const { anchors } = parseMorningRates("[20.05 10:40] Paramon: Paramon:\nANT  USDT -> TRY  44,9");
+    expect(anchors[0]).toMatchObject({ city: "ANT", from: "USDT", to: "TRY", value: 44.9 });
+  });
+  it("строка без города → skipped no-city", () => {
+    const { anchors, skipped } = parseMorningRates("USDT -> TRY 45,5");
+    expect(anchors).toHaveLength(0);
+    expect(skipped[0].reason).toMatch(/no-city/);
+  });
+  it("мусор → skipped unparseable", () => {
+    const { skipped } = parseMorningRates("ANT\nкакая-то ерунда");
+    expect(skipped.some((s) => /unparseable/.test(s.reason))).toBe(true);
   });
 });
