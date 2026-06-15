@@ -25,13 +25,14 @@ import { useCurrencies } from "../store/currencies.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcImportRates, withToast } from "../lib/supabaseWrite.js";
+import { rpcImportRates, rpcUpsertOfficeRate, withToast } from "../lib/supabaseWrite.js";
 import {
   parseXlsxFile,
   validateRows,
   buildTemplateBlob,
   downloadBlob,
 } from "../utils/xlsxRates.js";
+import { parseMorningRates, buildMorningUpdates } from "../utils/morningRatesParser.js";
 
 // Безопасный рендер i18n строк формата `<strong>label:</strong> body`.
 // Раньше использовали dangerouslySetInnerHTML — это работало (источник
@@ -51,8 +52,16 @@ function renderBoldPrefix(s) {
 
 export default function RatesImportModal({ open, onClose }) {
   const { t } = useTranslation();
-  const { codes } = useCurrencies();
-  const { pairs, channels, getRate } = useRates();
+  const { codes, dict: currencyDict } = useCurrencies();
+  const {
+    pairs,
+    channels,
+    getRate,
+    applyOfficeOverrideLocal,
+    setSpecialRatesSnapshot,
+    addChannel,
+    addPair,
+  } = useRates();
   const { addEntry: logAudit } = useAudit();
 
   const [step, setStep] = useState(1);
@@ -62,7 +71,12 @@ export default function RatesImportModal({ open, onClose }) {
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
+  const [source, setSource] = useState("file"); // "file" | "text"
+  const [bulkText, setBulkText] = useState("");
+  const [textParsed, setTextParsed] = useState(null);
   const fileInputRef = useRef(null);
+
+  const kindOf = (code) => (currencyDict?.[code]?.type === "crypto" ? "crypto" : "cash");
 
   // Map из текущих pairs для diff: key = "FROM_TO"
   const currentRatesMap = useMemo(() => {
@@ -85,6 +99,9 @@ export default function RatesImportModal({ open, onClose }) {
     setDragOver(false);
     setSubmitting(false);
     setAcknowledged(false);
+    setSource("file");
+    setBulkText("");
+    setTextParsed(null);
   };
 
   const handleClose = () => {
@@ -181,6 +198,52 @@ export default function RatesImportModal({ open, onClose }) {
     }
   };
 
+  // --------- Text import (утренний документ) ---------
+  const handleParseText = () => {
+    const parsed = parseMorningRates(bulkText);
+    const { updates, skipped } = buildMorningUpdates(parsed, kindOf);
+    setTextParsed({ updates, skipped, special: parsed.special });
+    setStep(2);
+  };
+
+  const ensureSbpPair = async (s) => {
+    const SBP_CH = "ch_rub_sbp";
+    if (!(channels || []).some((c) => c.id === SBP_CH)) {
+      addChannel({ id: SBP_CH, currencyCode: "RUB", kind: "sbp", isDefaultForCurrency: false });
+    }
+    await addPair({ fromChannelId: SBP_CH, toChannelId: "ch_usdt_trc20", rate: s.value, priority: 60 });
+  };
+
+  const handleApplyText = async () => {
+    if (!textParsed || submitting) return;
+    setSubmitting(true);
+    try {
+      for (const u of textParsed.updates) {
+        if (isSupabaseConfigured) {
+          await rpcUpsertOfficeRate({ officeId: u.officeId, from: u.from, to: u.to, rate: u.rate });
+        }
+        applyOfficeOverrideLocal(u.officeId, u.from, u.to, { rate: u.rate });
+      }
+      const specials = textParsed.special || [];
+      for (const s of specials.filter((x) => x.kind === "sbp")) {
+        await ensureSbpPair(s);
+      }
+      const nerez = specials
+        .filter((x) => x.kind === "nerez")
+        .map((s) => ({ ...s, importedAt: new Date().toISOString() }));
+      setSpecialRatesSnapshot(nerez);
+      logAudit({
+        action: "update",
+        entity: "rates",
+        entityId: "bulk",
+        summary: `morning-import: ${textParsed.updates.length} якорей, ${specials.length} спец, ${textParsed.skipped.length} пропущено`,
+      });
+      handleClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -209,6 +272,29 @@ export default function RatesImportModal({ open, onClose }) {
       {/* Step 1 — Upload */}
       {step === 1 && (
         <div className="p-5 space-y-4">
+          {/* Source tabs: XLSX file / Text */}
+          <div className="flex items-center gap-1 p-1 rounded-card bg-surface-sunk">
+            {[
+              { id: "file", label: t("rimport_tab_file") },
+              { id: "text", label: t("rimport_tab_text") },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setSource(tab.id)}
+                className={`flex-1 px-3 py-1.5 rounded-button text-caption font-semibold transition-colors ${
+                  source === tab.id
+                    ? "bg-white text-ink shadow-sm"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {source === "file" && (
+            <>
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -282,11 +368,118 @@ export default function RatesImportModal({ open, onClose }) {
               </div>
             </div>
           </details>
+            </>
+          )}
+
+          {source === "text" && (
+            <div className="space-y-3">
+              <div className="text-caption text-ink-soft">{t("rimport_text_hint")}</div>
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={t("rimport_text_placeholder")}
+                rows={12}
+                className="w-full rounded-card border border-border bg-surface-soft/60 px-3 py-2 text-caption font-mono text-ink focus:border-ink focus:outline-none resize-y"
+              />
+              <button
+                type="button"
+                onClick={handleParseText}
+                disabled={!bulkText.trim()}
+                className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 rounded-button text-caption font-semibold bg-ink text-white hover:bg-ink disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {t("rimport_text_parse")}
+                <ChevronRight className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 2 — Preview (text mode) */}
+      {step === 2 && source === "text" && textParsed && (
+        <div className="p-5 space-y-4">
+          {/* Anchors */}
+          <div className="border border-border-soft rounded-card overflow-hidden">
+            <div className="px-3 py-2 bg-surface-soft border-b border-border-soft text-tiny font-bold text-muted tracking-[0.1em] uppercase">
+              {t("rimport_anchors_title")} · {textParsed.updates.length}
+            </div>
+            <div className="max-h-[240px] overflow-auto divide-y divide-border-soft">
+              {textParsed.updates.map((u, i) => (
+                <div key={i} className="flex items-center justify-between px-3 py-1.5 text-caption">
+                  <span className="text-ink-soft">
+                    <span className="font-semibold text-ink">{u.officeId}</span> · {u.from}→{u.to}
+                  </span>
+                  <span className="tabular-nums font-semibold text-ink">{u.rate}</span>
+                </div>
+              ))}
+              {textParsed.updates.length === 0 && (
+                <div className="px-3 py-2 text-caption text-muted">—</div>
+              )}
+            </div>
+          </div>
+
+          {/* Special rates */}
+          {(textParsed.special || []).length > 0 && (
+            <div className="border border-border-soft rounded-card overflow-hidden">
+              <div className="px-3 py-2 bg-surface-soft border-b border-border-soft text-tiny font-bold text-muted tracking-[0.1em] uppercase">
+                {t("rimport_special_title")} · {textParsed.special.length}
+              </div>
+              <div className="max-h-[200px] overflow-auto divide-y divide-border-soft">
+                {textParsed.special.map((s, i) => (
+                  <div key={i} className="flex items-center justify-between px-3 py-1.5 text-caption">
+                    <span className="text-ink-soft">
+                      {s.kind === "sbp"
+                        ? `СБП ${s.from}→${s.to}`
+                        : `НЕРЕЗ ${s.side} ${s.settle}`}
+                    </span>
+                    <span className="tabular-nums font-semibold text-ink">{s.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Skipped */}
+          {(textParsed.skipped || []).length > 0 && (
+            <details className="border border-warning/20 rounded-card overflow-hidden bg-warning-soft/40">
+              <summary className="cursor-pointer px-3 py-2 text-caption font-bold text-warning hover:bg-warning-soft">
+                <AlertTriangle className="inline w-3.5 h-3.5 mr-1" />
+                {t("rimport_skipped_title")} · {textParsed.skipped.length}
+              </summary>
+              <div className="max-h-[200px] overflow-auto divide-y divide-border-soft">
+                {textParsed.skipped.map((s, i) => (
+                  <div key={i} className="px-3 py-1.5 text-tiny text-ink-soft">
+                    «{s.line}» — <span className="text-warning">{s.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t border-border-soft">
+            <button
+              type="button"
+              onClick={() => reset()}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold text-ink-soft hover:text-ink hover:bg-surface-sunk"
+            >
+              <ChevronLeft className="w-3 h-3" />
+              {t("rimport_upload_another")}
+            </button>
+            <button
+              type="button"
+              onClick={handleApplyText}
+              disabled={submitting || textParsed.updates.length === 0}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-button text-caption font-semibold bg-success text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+              {t("rimport_text_apply")}
+            </button>
+          </div>
         </div>
       )}
 
       {/* Step 2 — Preview */}
-      {step === 2 && parsed && (
+      {step === 2 && source === "file" && parsed && (
         <div className="p-5 space-y-4">
           <SummaryBar summary={parsed.summary} fileName={file?.name} t={t} />
 
