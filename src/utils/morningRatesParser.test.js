@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseNumber, resolveRateValue, CITY_OFFICE_MAP, parseMorningRates } from "./morningRatesParser.js";
+import { parseNumber, resolveRateValue, CITY_OFFICE_MAP, parseMorningRates, buildMorningUpdates } from "./morningRatesParser.js";
 
 describe("parseNumber", () => {
   it("запятая как десятичный разделитель", () => {
@@ -113,5 +113,33 @@ describe("parseMorningRates — special", () => {
     const { anchors, skipped } = parseMorningRates(SPECIAL);
     expect(anchors).toHaveLength(0);
     expect(skipped.some((s) => /СБП|TOD|НЕРЕЗ/.test(s.line))).toBe(false);
+  });
+});
+
+const KIND = (code) => (code === "USDT" ? "crypto" : "cash");
+
+describe("buildMorningUpdates", () => {
+  it("ANT-якорь → две записи (mark, terra), MSK → skipped", () => {
+    const parsed = parseMorningRates(`ANT
+USDT -> TRY  45,50
+MSK
+USDT -> RUB  75,75`);
+    const { updates, skipped } = buildMorningUpdates(parsed, KIND);
+    const tryUpd = updates.filter((u) => u.to === "TRY");
+    expect(tryUpd.map((u) => u.officeId).sort()).toEqual(["mark", "terra"]);
+    expect(tryUpd[0]).toMatchObject({ from: "USDT", to: "TRY", rate: 45.5 });
+    expect(skipped.some((s) => /MSK/.test(s.reason))).toBe(true);
+  });
+  it("пишем только якоря с USDT-стороной", () => {
+    const parsed = parseMorningRates(`ANT
+USD -> EUR  1,1`);
+    const { updates } = buildMorningUpdates(parsed, KIND);
+    expect(updates).toHaveLength(0);
+  });
+  it("процент USDT->USD резолвится в rate", () => {
+    const parsed = parseMorningRates(`ANT
+USDT -> USD  -0,80%`);
+    const { updates } = buildMorningUpdates(parsed, KIND);
+    expect(updates[0].rate).toBeCloseTo(0.992, 6);
   });
 });

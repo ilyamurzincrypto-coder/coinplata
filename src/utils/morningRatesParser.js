@@ -134,3 +134,27 @@ export function parseMorningRates(text) {
 
   return { anchors, special, skipped };
 }
+
+// kindOf(code) -> "crypto" | "cash"
+export function buildMorningUpdates(parsed, kindOf) {
+  const updates = [];
+  const skipped = [...(parsed.skipped || [])];
+  for (const a of parsed.anchors) {
+    // только якоря: одна сторона USDT
+    if (a.from !== "USDT" && a.to !== "USDT") continue;
+    const offices = CITY_OFFICE_MAP[a.city] || [];
+    if (offices.length === 0) {
+      skipped.push({ line: a.raw, reason: `нет офиса для ${a.city}` });
+      continue;
+    }
+    const rate = resolveRateValue(a, kindOf(a.from), kindOf(a.to));
+    if (rate == null || !Number.isFinite(rate) || rate <= 0) {
+      skipped.push({ line: a.raw, reason: "invalid rate" });
+      continue;
+    }
+    for (const officeId of offices) {
+      updates.push({ officeId, from: a.from, to: a.to, rate, city: a.city, raw: a.raw });
+    }
+  }
+  return { updates, skipped };
+}
