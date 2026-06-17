@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import Modal from "./ui/Modal.jsx";
 import { useRates } from "../store/rates.jsx";
+import { useOffices } from "../store/offices.jsx";
 import { useCurrencies } from "../store/currencies.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -62,6 +63,7 @@ export default function RatesImportModal({ open, onClose }) {
     addChannel,
     addPair,
   } = useRates();
+  const { offices } = useOffices();
   const { addEntry: logAudit } = useAudit();
 
   const [step, setStep] = useState(1);
@@ -201,7 +203,7 @@ export default function RatesImportModal({ open, onClose }) {
   // --------- Text import (утренний документ) ---------
   const handleParseText = () => {
     const parsed = parseMorningRates(bulkText);
-    const { updates, skipped } = buildMorningUpdates(parsed, kindOf);
+    const { updates, skipped } = buildMorningUpdates(parsed, kindOf, offices);
     setTextParsed({ updates, skipped, special: parsed.special });
     setStep(2);
   };
@@ -222,27 +224,37 @@ export default function RatesImportModal({ open, onClose }) {
     if (!textParsed || submitting) return;
     setSubmitting(true);
     try {
-      for (const u of textParsed.updates) {
-        if (isSupabaseConfigured) {
-          await rpcUpsertOfficeRate({ officeId: u.officeId, from: u.from, to: u.to, rate: u.rate });
+      // Оборачиваем всю запись в withToast: сбой в середине цикла (RPC/пара/snapshot)
+      // теперь всплывает тостом, а не молча подвешивает модалку.
+      const res = await withToast(
+        async () => {
+          for (const u of textParsed.updates) {
+            if (isSupabaseConfigured) {
+              await rpcUpsertOfficeRate({ officeId: u.officeId, from: u.from, to: u.to, rate: u.rate });
+            }
+            applyOfficeOverrideLocal(u.officeId, u.from, u.to, { rate: u.rate });
+          }
+          const specials = textParsed.special || [];
+          for (const s of specials.filter((x) => x.kind === "sbp")) {
+            await ensureSbpPair(s);
+          }
+          const nerez = specials
+            .filter((x) => x.kind === "nerez")
+            .map((s) => ({ ...s, importedAt: new Date().toISOString() }));
+          setSpecialRatesSnapshot(nerez);
+          logAudit({
+            action: "update",
+            entity: "rates",
+            entityId: "bulk",
+            summary: `morning-import: ${textParsed.updates.length} якорей, ${specials.length} спец, ${textParsed.skipped.length} пропущено`,
+          });
+        },
+        {
+          success: `Импорт: ${textParsed.updates.length} якорей`,
+          errorPrefix: "Импорт не удался",
         }
-        applyOfficeOverrideLocal(u.officeId, u.from, u.to, { rate: u.rate });
-      }
-      const specials = textParsed.special || [];
-      for (const s of specials.filter((x) => x.kind === "sbp")) {
-        await ensureSbpPair(s);
-      }
-      const nerez = specials
-        .filter((x) => x.kind === "nerez")
-        .map((s) => ({ ...s, importedAt: new Date().toISOString() }));
-      setSpecialRatesSnapshot(nerez);
-      logAudit({
-        action: "update",
-        entity: "rates",
-        entityId: "bulk",
-        summary: `morning-import: ${textParsed.updates.length} якорей, ${specials.length} спец, ${textParsed.skipped.length} пропущено`,
-      });
-      handleClose();
+      );
+      if (res.ok) handleClose();
     } finally {
       setSubmitting(false);
     }
