@@ -620,7 +620,7 @@ export default function RatesPage({ onBack }) {
                   ))}
                 </div>
                 <p className="mt-3 text-caption text-muted-soft">
-                  Информационно. В сделках пока не участвует.
+                  {t("rimport_special_note")}
                 </p>
               </div>
             )}

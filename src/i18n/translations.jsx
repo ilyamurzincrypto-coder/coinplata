@@ -1071,6 +1071,7 @@ const DICT = {
     rimport_anchors_title: "Anchors to apply",
     rimport_special_title: "Special rates (SBP / non-res)",
     rimport_skipped_title: "Skipped",
+    rimport_special_note: "Informational. Not used in deals yet.",
 
     // === Rates coverage ===
     cov_back: "Back",
@@ -2564,6 +2565,7 @@ const DICT = {
     rimport_anchors_title: "Якоря к применению",
     rimport_special_title: "Спец-курсы (СБП / НЕРЕЗ)",
     rimport_skipped_title: "Пропущено",
+    rimport_special_note: "Информационно. В сделках пока не участвует.",
 
     // === Rates coverage ===
     cov_back: "Назад",
@@ -4055,6 +4057,7 @@ const DICT = {
     rimport_anchors_title: "Uygulanacak çapalar",
     rimport_special_title: "Özel kurlar (SBP / yerleşik değil)",
     rimport_skipped_title: "Atlandı",
+    rimport_special_note: "Bilgi amaçlı. Henüz işlemlerde kullanılmıyor.",
 
     // === Rates coverage ===
     cov_back: "Geri",
