@@ -3,13 +3,22 @@
 
 export const KNOWN_CITIES = ["ANT", "IST", "MSK", "SPB"];
 
-// city → список officeId. Пустой массив → строки города уходят в skipped.
-export const CITY_OFFICE_MAP = {
-  ANT: ["mark", "terra"],
-  IST: ["ist"],
-  MSK: [],
-  SPB: [],
+// Сопоставление city-кода документа с офисами — динамически по живому списку
+// (в проде office.id это UUID, а не строки). Матчим по city ИЛИ name офиса.
+export const CITY_OFFICE_MATCHERS = {
+  ANT: (o) => /antal/i.test(`${o.city || ""} ${o.name || ""}`),
+  IST: (o) => /istanbul|стамбул/i.test(`${o.city || ""} ${o.name || ""}`),
+  // только «Moscow» — исключаем «Москва Вася» (city «Москва»)
+  MSK: (o) => `${o.city || ""}`.trim().toLowerCase() === "moscow" || `${o.name || ""}`.trim().toLowerCase() === "moscow",
+  SPB: (o) => /st\.?\s*pt|spb|peterburg|petersburg|питер|спб/i.test(`${o.city || ""} ${o.name || ""}`),
 };
+
+// resolveCityOffices(city, offices) -> [officeId,...]
+export function resolveCityOffices(city, offices) {
+  const match = CITY_OFFICE_MATCHERS[city];
+  if (!match || !Array.isArray(offices)) return [];
+  return offices.filter((o) => o && match(o)).map((o) => o.id);
+}
 
 export function parseNumber(str) {
   if (typeof str !== "string") return NaN;
@@ -135,15 +144,15 @@ export function parseMorningRates(text) {
   return { anchors, special, skipped };
 }
 
-// kindOf(code) -> "crypto" | "cash"
-export function buildMorningUpdates(parsed, kindOf) {
+// kindOf(code) -> "crypto" | "cash"; offices — живой список из useOffices()
+export function buildMorningUpdates(parsed, kindOf, offices) {
   const updates = [];
   const skipped = [...(parsed.skipped || [])];
   for (const a of parsed.anchors) {
     // только якоря: одна сторона USDT
     if (a.from !== "USDT" && a.to !== "USDT") continue;
-    const offices = CITY_OFFICE_MAP[a.city] || [];
-    if (offices.length === 0) {
+    const officeIds = resolveCityOffices(a.city, offices);
+    if (officeIds.length === 0) {
       skipped.push({ line: a.raw, reason: `нет офиса для ${a.city}` });
       continue;
     }
@@ -152,7 +161,7 @@ export function buildMorningUpdates(parsed, kindOf) {
       skipped.push({ line: a.raw, reason: "invalid rate" });
       continue;
     }
-    for (const officeId of offices) {
+    for (const officeId of officeIds) {
       updates.push({ officeId, from: a.from, to: a.to, rate, city: a.city, raw: a.raw });
     }
   }
