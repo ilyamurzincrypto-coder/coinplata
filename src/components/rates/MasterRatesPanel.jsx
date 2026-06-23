@@ -4,7 +4,7 @@
 // в том же формате; commit → onCommit(from,to,absoluteRate).
 
 import React, { useState, useRef, useEffect } from "react";
-import { isPercentPair, percentToRate, formatRateValue } from "../../utils/ratesFormat.js";
+import { isPercentPair, percentToRate, displayValue, toStoredRate, formatRateValue } from "../../utils/ratesFormat.js";
 
 export const MASTER_ROWS = [
   ["USDT", "USD"],
@@ -26,7 +26,11 @@ function ValueCell({ from, to, rate, onCommit }) {
   }, [editing]);
 
   const start = () => {
-    const shown = pct ? ((Number(rate) - 1) * 100).toFixed(2) : String(rate ?? "");
+    // Редактируем в «читаемой» шкале (% для USD, иначе число >1).
+    const disp = displayValue(from, to, rate);
+    const shown = Number.isFinite(disp)
+      ? (pct ? disp.toFixed(2) : String(disp))
+      : "";
     setDraft(shown.replace(".", ","));
     setEditing(true);
   };
@@ -36,7 +40,7 @@ function ValueCell({ from, to, rate, onCommit }) {
     if (raw === "") return;
     const n = Number(raw);
     if (!Number.isFinite(n)) return;
-    const next = pct ? percentToRate(n) : n;
+    const next = pct ? percentToRate(n) : toStoredRate(from, to, n, rate);
     if (Math.abs(next - Number(rate)) < 1e-9) return;
     onCommit?.(from, to, next);
   };

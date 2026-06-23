@@ -31,7 +31,15 @@ export function parseRatesPaste(text, { known, currentRate } = {}) {
       return { raw: line, from, to, status: "error", error: "число" };
     }
     const isPercent = hasPct || isPercentPair(from, to);
-    const rate = isPercent ? percentToRate(value) : value;
+    let rate;
+    if (isPercent) {
+      rate = percentToRate(value);
+    } else {
+      // Абсолютная пара: вводимое число — «читаемое» (>1). Если текущий stored
+      // < 1 (реципрокное направление, напр. TRY→USDT), храним 1/value.
+      const cur = currentRate ? Number(currentRate(from, to)) : NaN;
+      rate = Number.isFinite(cur) && cur > 0 && cur < 1 ? 1 / value : value;
+    }
     let status = "new";
     if (currentRate) {
       const prev = currentRate(from, to);
