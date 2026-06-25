@@ -14,11 +14,10 @@ import { useNow } from "../hooks/useNow.js";
 import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import AutoRatesPanel from "./rates/AutoRatesPanel.jsx";
 import NerezPanel from "./rates/NerezPanel.jsx";
-import PasteRatesModal from "./rates/PasteRatesModal.jsx";
+import RatesImportModal from "./RatesImportModal.jsx";
 import { CITY_OFFICE_MATCHERS, KNOWN_CITIES } from "../utils/morningRatesParser.js";
 
 const GLOBAL_TAB = "__global__";
-const KNOWN_CCYS = new Set(["USDT", "USD", "TRY", "EUR", "RUB"]);
 
 // Мастер-валюты по городу офиса: турецкие → USD/TRY/EUR, российские → RUB.
 const CITY_QUOTES = {
@@ -56,7 +55,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     getRate: getRateRaw,
     lastUpdated,
     getOfficeOverride,
-    setRate,
     specialRates,
   } = useRates();
   const { activeOffices } = useOffices();
@@ -102,15 +100,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     [selectedOfficeId, getOfficeOverride, getRateRaw]
   );
 
-  // Блок read-only: правка через «Изм.» / «Вставить курсы». Паст пишет в стор
-  // (NB: персист в Supabase — follow-up через RPC, см. план).
-  const applyPaste = useCallback(
-    (rows) => {
-      rows.forEach((r) => setRate(r.from, r.to, r.rate));
-    },
-    [setRate]
-  );
-
+  // Блок read-only: правка через «Изм.» / «Вставить курсы». «Вставить курсы»
+  // открывает настоящий импорт-модал (вкладка «Текст») — он парсит города/НЕРЕЗ
+  // и персистит в Supabase через RPC.
   const [pasteOpen, setPasteOpen] = useState(false);
 
   return (
@@ -204,12 +196,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </button>
       </div>
 
-      <PasteRatesModal
+      <RatesImportModal
         open={pasteOpen}
         onClose={() => setPasteOpen(false)}
-        getRate={getRateForTab}
-        onApply={applyPaste}
-        known={KNOWN_CCYS}
+        initialSource="text"
       />
     </aside>
   );

@@ -6,7 +6,7 @@
 //
 // Валидация полностью клиентская (utils/xlsxRates.js). Запись — через RPC.
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Upload,
   Download,
@@ -51,7 +51,7 @@ function renderBoldPrefix(s) {
   );
 }
 
-export default function RatesImportModal({ open, onClose }) {
+export default function RatesImportModal({ open, onClose, initialSource }) {
   const { t } = useTranslation();
   const { codes, dict: currencyDict } = useCurrencies();
   const {
@@ -73,8 +73,13 @@ export default function RatesImportModal({ open, onClose }) {
   const [dragOver, setDragOver] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [source, setSource] = useState("file"); // "file" | "text"
+  const [source, setSource] = useState(initialSource || "file"); // "file" | "text"
   const [bulkText, setBulkText] = useState("");
+
+  // Открытие с предзаданной вкладкой (дашборд «Вставить курсы» → сразу «Текст»).
+  useEffect(() => {
+    if (open && initialSource) setSource(initialSource);
+  }, [open, initialSource]);
   const [textParsed, setTextParsed] = useState(null);
   const fileInputRef = useRef(null);
 
