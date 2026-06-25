@@ -58,7 +58,7 @@ function ValueCell({ from, to, rate, onCommit }) {
           if (e.key === "Enter") e.currentTarget.blur();
           if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
         }}
-        className="w-[92px] bg-white border border-accent rounded-[6px] px-1.5 py-0.5 text-right text-body-sm font-mono tabular-nums outline-none"
+        className="w-[72px] bg-white border border-accent rounded-[6px] px-1.5 py-0.5 text-right text-body-sm font-mono tabular-nums outline-none"
       />
     );
   }
@@ -68,7 +68,7 @@ function ValueCell({ from, to, rate, onCommit }) {
       type="button"
       onClick={start}
       title="Клик — изменить"
-      className={`w-[92px] text-right font-mono tabular-nums text-body-sm font-semibold cursor-text rounded-[4px] hover:bg-amber-50 px-1 ${
+      className={`w-[72px] text-right font-mono tabular-nums text-body-sm font-semibold cursor-text rounded-[4px] hover:bg-amber-50 px-1 ${
         pct ? (neg ? "text-danger" : "text-success") : "text-ink"
       }`}
     >
@@ -84,18 +84,17 @@ export default function MasterRatesPanel({ getRate, onCommit, pairUpdatedAt, has
         <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">Мастер · USDT кеш-кеш</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
-      <div className="space-y-0.5">
+      <div>
         {MASTER_ROWS.map(([from, to]) => {
           const rate = Number(getRate?.(from, to));
           const ovr = hasOverride?.(from, to);
           return (
-            <div key={`${from}_${to}`} className="grid items-center gap-2 px-1.5 py-1 rounded-[6px] hover:bg-surface-soft"
-                 style={{ gridTemplateColumns: "minmax(96px,1fr) 92px" }}>
-              <span className="font-mono font-bold text-body-sm text-ink whitespace-nowrap">
+            <div key={`${from}_${to}`} className="flex items-center gap-1.5 px-1.5 py-[2px] rounded-[6px] hover:bg-surface-soft">
+              <span className="w-[78px] font-mono font-bold text-body-sm text-ink whitespace-nowrap">
                 {from}<span className="text-muted-soft mx-0.5">→</span>{to}
-                {ovr && <span className="ml-1 text-micro font-bold text-accent">OFC</span>}
               </span>
               <ValueCell from={from} to={to} rate={rate} onCommit={onCommit} />
+              {ovr && <span className="text-micro font-bold text-accent">OFC</span>}
             </div>
           );
         })}
