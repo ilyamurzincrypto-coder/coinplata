@@ -461,8 +461,8 @@ export default function CashierPage({
                 (рядом с Balances), height stretch до Balances height.
                 Expanded: row 2+3 (sidebar занимает оба row слева). */}
             <aside
-              className={`lg:[grid-area:sidebar] ${
-                sidebarExpanded ? "lg:sticky lg:top-[88px] lg:self-start" : ""
+              className={`lg:[grid-area:sidebar] lg:self-start ${
+                sidebarExpanded ? "lg:sticky lg:top-[88px]" : ""
               }`}
             >
               <RatesSidebar

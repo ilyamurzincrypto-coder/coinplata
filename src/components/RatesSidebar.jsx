@@ -122,7 +122,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const [pasteOpen, setPasteOpen] = useState(false);
 
   return (
-    <aside className="bg-surface rounded-card p-1.5 flex flex-col h-full">
+    <aside className="bg-surface rounded-card p-1.5 flex flex-col">
       <header className="px-2 pt-2 pb-1.5 shrink-0">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -190,7 +190,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       </div>
 
       {/* Секции курсов */}
-      <div className="flex-1 min-h-0 overflow-y-auto py-1">
+      <div className="py-1">
         <MasterRatesPanel
           getRate={getRateForTab}
           onCommit={commitMaster}
