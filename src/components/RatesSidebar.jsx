@@ -188,8 +188,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           hasOverride={hasOverride}
           quotes={masterQuotes}
         />
-        <AutoRatesPanel getRate={getRateForTab} />
         {masterQuotes.includes("RUB") && <NerezPanel specialRates={specialRates} />}
+        <AutoRatesPanel getRate={getRateForTab} />
       </div>
 
       {/* Паст-ввод */}
