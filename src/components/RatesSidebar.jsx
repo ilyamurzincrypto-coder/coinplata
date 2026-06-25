@@ -13,6 +13,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { useNow } from "../hooks/useNow.js";
 import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import AutoRatesPanel from "./rates/AutoRatesPanel.jsx";
+import NerezPanel from "./rates/NerezPanel.jsx";
 import PasteRatesModal from "./rates/PasteRatesModal.jsx";
 import { CITY_OFFICE_MATCHERS, KNOWN_CITIES } from "../utils/morningRatesParser.js";
 
@@ -55,9 +56,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     getRate: getRateRaw,
     lastUpdated,
     getOfficeOverride,
-    pairs,
-    channels,
     setRate,
+    specialRates,
   } = useRates();
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
@@ -67,31 +67,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   useEffect(() => {
     onExpandedChange?.(false);
   }, [onExpandedChange]);
-
-  // Дата последнего апдейта пары (для значка «возраста») — из default pairs.
-  const pairUpdatedAt = useCallback(
-    (a, b) => {
-      if (!Array.isArray(pairs) || !Array.isArray(channels)) return null;
-      const matches = pairs.filter((p) => {
-        const fromCh = channels.find((c) => c.id === p.fromChannelId);
-        const toCh = channels.find((c) => c.id === p.toChannelId);
-        const fromCur = fromCh?.currencyCode;
-        const toCur = toCh?.currencyCode;
-        return (
-          p.isDefault &&
-          ((fromCur === a && toCur === b) || (fromCur === b && toCur === a))
-        );
-      });
-      let latest = null;
-      matches.forEach((m) => {
-        if (!m.updatedAt) return;
-        const ts = new Date(m.updatedAt).getTime();
-        if (Number.isFinite(ts) && (!latest || ts > latest)) latest = ts;
-      });
-      return latest ? new Date(latest) : null;
-    },
-    [pairs, channels]
-  );
 
   const [selectedTab, setSelectedTab] = useState(currentOffice || GLOBAL_TAB);
   useEffect(() => {
@@ -127,15 +102,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     [selectedOfficeId, getOfficeOverride, getRateRaw]
   );
 
-  // Запись курса. NB: на проде персист в Supabase идёт через RPC (см. план,
-  // follow-up). Здесь — модель стора (setRate меняет default pair).
-  const commitMaster = useCallback(
-    (from, to, rate) => {
-      setRate(from, to, rate);
-    },
-    [setRate]
-  );
-
+  // Блок read-only: правка через «Изм.» / «Вставить курсы». Паст пишет в стор
+  // (NB: персист в Supabase — follow-up через RPC, см. план).
   const applyPaste = useCallback(
     (rows) => {
       rows.forEach((r) => setRate(r.from, r.to, r.rate));
@@ -217,11 +185,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       <div className="py-1">
         <MasterRatesPanel
           getRate={getRateForTab}
-          onCommit={commitMaster}
           hasOverride={hasOverride}
           quotes={masterQuotes}
         />
         <AutoRatesPanel getRate={getRateForTab} />
+        {masterQuotes.includes("RUB") && <NerezPanel specialRates={specialRates} />}
       </div>
 
       {/* Паст-ввод */}

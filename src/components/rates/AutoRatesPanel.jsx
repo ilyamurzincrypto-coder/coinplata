@@ -21,9 +21,9 @@ export default function AutoRatesPanel({ getRate }) {
     <section className="px-1 pt-2">
       <div className="flex items-center gap-2 px-1.5 pb-1">
         <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
-          Авто
+          Кросс
         </span>
-        <span className="text-tiny font-mono text-muted-soft">производные · кросс</span>
+        <span className="text-tiny font-mono text-muted-soft">кеш-кеш · производные</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
 
