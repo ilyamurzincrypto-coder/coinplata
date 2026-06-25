@@ -1,19 +1,22 @@
 // src/components/rates/MasterRatesPanel.jsx
-// Секция «Мастер» — USDT кеш-кеш, 6 направленных строк (их лист).
-// USDT↔USD → проценты, TRY/EUR → абсолют. Клик по значению — inline-правка
-// в том же формате; commit → onCommit(from,to,absoluteRate).
+// Секция «Мастер» — табло курсов обменника против USDT (кеш-кеш).
+// 3 строки-валюты (USD/TRY/EUR), две колонки направлений: USDT→X и X→USDT
+// (bid/ask). USDT↔USD котируется в процентах, TRY/EUR — абсолютом >1.
+// Клик по значению — inline-правка в той же шкале; commit → onCommit(from,to,rate).
 
 import React, { useState, useRef, useEffect } from "react";
-import { isPercentPair, percentToRate, displayValue, toStoredRate, formatRateValue } from "../../utils/ratesFormat.js";
+import {
+  isPercentPair,
+  percentToRate,
+  displayValue,
+  toStoredRate,
+  formatRateValue,
+} from "../../utils/ratesFormat.js";
 
-export const MASTER_ROWS = [
-  ["USDT", "USD"],
-  ["USD", "USDT"],
-  ["USDT", "TRY"],
-  ["TRY", "USDT"],
-  ["USDT", "EUR"],
-  ["EUR", "USDT"],
-];
+// Валюты, котируемые против USDT (строки табло).
+export const MASTER_QUOTES = ["USD", "TRY", "EUR"];
+
+const GRID = { gridTemplateColumns: "46px 78px 78px" };
 
 function ValueCell({ from, to, rate, onCommit }) {
   const [editing, setEditing] = useState(false);
@@ -22,18 +25,24 @@ function ValueCell({ from, to, rate, onCommit }) {
   const pct = isPercentPair(from, to);
 
   useEffect(() => {
-    if (editing && ref.current) { ref.current.focus(); ref.current.select(); }
+    if (editing && ref.current) {
+      ref.current.focus();
+      ref.current.select();
+    }
   }, [editing]);
 
   const start = () => {
     // Редактируем в «читаемой» шкале (% для USD, иначе число >1).
     const disp = displayValue(from, to, rate);
     const shown = Number.isFinite(disp)
-      ? (pct ? disp.toFixed(2) : String(disp))
+      ? pct
+        ? disp.toFixed(2)
+        : String(disp)
       : "";
     setDraft(shown.replace(".", ","));
     setEditing(true);
   };
+
   const commit = () => {
     setEditing(false);
     const raw = String(draft).trim().replace("−", "-").replace(",", ".").replace("%", "");
@@ -56,19 +65,23 @@ function ValueCell({ from, to, rate, onCommit }) {
         onBlur={commit}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setEditing(false);
+          }
         }}
-        className="w-[72px] bg-white border border-accent rounded-[6px] px-1.5 py-0.5 text-right text-body-sm font-mono tabular-nums outline-none"
+        className="w-full bg-surface border border-accent rounded-[6px] px-1.5 py-0.5 text-right text-body-sm font-mono tabular-nums outline-none shadow-input-focus"
       />
     );
   }
+
   const neg = pct && Number(rate) < 1;
   return (
     <button
       type="button"
       onClick={start}
       title="Клик — изменить"
-      className={`w-[72px] text-right font-mono tabular-nums text-body-sm font-semibold cursor-text rounded-[4px] hover:bg-amber-50 px-1 ${
+      className={`w-full text-right font-mono tabular-nums text-body-sm font-semibold cursor-text rounded-[6px] px-1.5 py-0.5 transition-colors hover:bg-surface-sunk ${
         pct ? (neg ? "text-danger" : "text-success") : "text-ink"
       }`}
     >
@@ -77,28 +90,52 @@ function ValueCell({ from, to, rate, onCommit }) {
   );
 }
 
-export default function MasterRatesPanel({ getRate, onCommit, pairUpdatedAt, hasOverride }) {
+export default function MasterRatesPanel({ getRate, onCommit, hasOverride }) {
   return (
-    <div className="px-1">
-      <div className="flex items-center gap-2 px-1 pb-1">
-        <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">Мастер · USDT кеш-кеш</span>
+    <section className="px-1">
+      {/* Заголовок секции */}
+      <div className="flex items-center gap-2 px-1.5 pb-1">
+        <span className="text-micro font-bold uppercase tracking-wider text-muted">
+          Мастер
+        </span>
+        <span className="text-tiny font-mono text-muted-soft">USDT · кеш-кеш</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
-      <div>
-        {MASTER_ROWS.map(([from, to]) => {
-          const rate = Number(getRate?.(from, to));
-          const ovr = hasOverride?.(from, to);
+
+      {/* Заголовки колонок-направлений */}
+      <div className="grid items-center px-1.5 pb-1" style={GRID}>
+        <span />
+        <span className="text-right text-tiny font-mono text-muted-soft pr-1.5">USDT→</span>
+        <span className="text-right text-tiny font-mono text-muted-soft pr-1.5">→USDT</span>
+      </div>
+
+      {/* Строки-валюты: два направления (bid/ask) */}
+      <div className="space-y-px">
+        {MASTER_QUOTES.map((q) => {
+          const fRate = Number(getRate?.("USDT", q));
+          const rRate = Number(getRate?.(q, "USDT"));
+          const ovr = hasOverride?.("USDT", q) || hasOverride?.(q, "USDT");
           return (
-            <div key={`${from}_${to}`} className="flex items-center gap-1.5 px-1.5 py-[2px] rounded-[6px] hover:bg-surface-soft">
-              <span className="w-[78px] font-mono font-bold text-body-sm text-ink whitespace-nowrap">
-                {from}<span className="text-muted-soft mx-0.5">→</span>{to}
+            <div
+              key={q}
+              className="grid items-center px-1.5 py-0.5 rounded-[8px] hover:bg-surface-soft transition-colors"
+              style={GRID}
+            >
+              <span className="flex items-center gap-1 font-mono font-bold text-body-sm text-ink">
+                {q}
+                {ovr && (
+                  <span
+                    className="w-1 h-1 rounded-full bg-accent"
+                    title="Переопределено для офиса"
+                  />
+                )}
               </span>
-              <ValueCell from={from} to={to} rate={rate} onCommit={onCommit} />
-              {ovr && <span className="text-micro font-bold text-accent">OFC</span>}
+              <ValueCell from="USDT" to={q} rate={fRate} onCommit={onCommit} />
+              <ValueCell from={q} to="USDT" rate={rRate} onCommit={onCommit} />
             </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }
