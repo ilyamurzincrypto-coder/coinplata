@@ -15,24 +15,17 @@ import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import AutoRatesPanel from "./rates/AutoRatesPanel.jsx";
 import NerezPanel from "./rates/NerezPanel.jsx";
 import RatesImportModal from "./RatesImportModal.jsx";
-import { CITY_OFFICE_MATCHERS, KNOWN_CITIES } from "../utils/morningRatesParser.js";
-
 const GLOBAL_TAB = "__global__";
 
-// Мастер-валюты по городу офиса: турецкие → USD/TRY/EUR, российские → RUB.
-const CITY_QUOTES = {
-  ANT: ["USD", "TRY", "EUR"],
-  IST: ["USD", "TRY", "EUR"],
-  MSK: ["RUB"],
-  SPB: ["RUB"],
-};
+// Валюты курса по офису: российские (Москва/СПб) → RUB, иначе турецкий набор.
+// Детект по городу/названию (ловит и «Москва Вася», которую узкий импорт-матчер
+// пропускает — он матчит только английское «Moscow»).
+const RU_OFFICE_RE = /москв|moscow|питер|петербург|санкт|spb|st\.?\s*pt|peterburg/i;
 
 function quotesForOffice(office) {
   if (!office) return ["USD", "TRY", "EUR", "RUB"]; // Global — весь набор
-  for (const city of KNOWN_CITIES) {
-    if (CITY_OFFICE_MATCHERS[city]?.(office)) return CITY_QUOTES[city];
-  }
-  return ["USD", "TRY", "EUR"]; // неопознанный офис — турецкий набор по умолчанию
+  const hay = `${office.city || ""} ${office.name || ""}`;
+  return RU_OFFICE_RE.test(hay) ? ["RUB"] : ["USD", "TRY", "EUR"];
 }
 
 function timeAgoShort(date, nowMs = Date.now()) {
