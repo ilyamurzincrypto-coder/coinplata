@@ -1216,3 +1216,22 @@ export async function loadCurrentUserProfile(authUserId) {
   if (error) throw error;
   return data ? mapUser(data) : null;
 }
+
+// ---------- special rates (НЕРЕЗ TOD/TOM, СБП) ----------
+// Снимок из последнего утреннего импорта. Shape совпадает с тем, что кладёт
+// клиентский setSpecialRatesSnapshot, чтобы NerezPanel/RatesPage не меняли код.
+export async function loadSpecialRates() {
+  const sb = ensureSupabase();
+  const { data, error } = await sb.from("special_rates").select("*");
+  if (error) throw error;
+  return (data || []).map((r) => ({
+    kind: r.kind,
+    pair: r.pair || undefined,
+    side: r.side || undefined,
+    settle: r.settle || undefined,
+    from: r.from_currency || undefined,
+    to: r.to_currency || undefined,
+    value: Number(r.value),
+    importedAt: r.imported_at,
+  }));
+}

@@ -1444,6 +1444,26 @@ export async function rpcUpsertOfficeRate({ officeId, from, to, rate, spreadPerc
   bumpDataVersion();
 }
 
+// Заменить весь снимок спец-курсов (НЕРЕЗ TOD/TOM, СБП). rows: [{kind,pair,side,
+// settle,from,to,value}]. Снимок заменяется целиком (как клиентский snapshot).
+export async function rpcReplaceSpecialRates(rows) {
+  assertConfigured();
+  const payload = (Array.isArray(rows) ? rows : [])
+    .filter((r) => r && Number.isFinite(Number(r.value)))
+    .map((r) => ({
+      kind: String(r.kind || ""),
+      pair: r.pair ?? null,
+      side: r.side ?? null,
+      settle: r.settle ?? null,
+      from: r.from ?? null,
+      to: r.to ?? null,
+      value: Number(r.value),
+    }));
+  const { error } = await supabase.rpc("replace_special_rates", { p_rows: payload });
+  if (error) throw new Error(formatSupabaseError(error, "replace special rates"));
+  bumpDataVersion();
+}
+
 // Сбросить override (вернуться на global).
 export async function rpcDeleteOfficeRate({ officeId, from, to }) {
   assertConfigured();

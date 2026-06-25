@@ -26,7 +26,7 @@ import { useCurrencies } from "../store/currencies.jsx";
 import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
-import { rpcImportRates, rpcUpsertOfficeRate, withToast } from "../lib/supabaseWrite.js";
+import { rpcImportRates, rpcUpsertOfficeRate, rpcReplaceSpecialRates, withToast } from "../lib/supabaseWrite.js";
 import {
   parseXlsxFile,
   validateRows,
@@ -246,6 +246,10 @@ export default function RatesImportModal({ open, onClose, initialSource }) {
           const nerez = specials
             .filter((x) => x.kind === "nerez")
             .map((s) => ({ ...s, importedAt: new Date().toISOString() }));
+          // Персист снимка НЕРЕЗ в Supabase (переживает рефреш), + локально.
+          if (isSupabaseConfigured) {
+            await rpcReplaceSpecialRates(nerez);
+          }
           setSpecialRatesSnapshot(nerez);
           logAudit({
             action: "update",

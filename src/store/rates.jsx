@@ -30,7 +30,7 @@ import {
 import { SEED_CHANNELS, currencyByCode } from "./data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { pivotRate } from "../utils/morningRatesParser.js";
-import { loadPairs, loadOfficeRateOverrides } from "../lib/supabaseReaders.js";
+import { loadPairs, loadOfficeRateOverrides, loadSpecialRates } from "../lib/supabaseReaders.js";
 import { onDataBump } from "../lib/dataVersion.jsx";
 import { rpcCreatePair } from "../lib/supabaseWrite.js";
 import { emitToast } from "../lib/toast.jsx";
@@ -252,6 +252,27 @@ export function RatesProvider({ children }) {
         .catch((err) => {
           // eslint-disable-next-line no-console
           console.warn("[office rate overrides] load failed", err);
+        });
+    reload();
+    const unsub = onDataBump(reload);
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, []);
+
+  // Special rates loader (НЕРЕЗ TOD/TOM, СБП) — снимок последнего импорта.
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    const reload = () =>
+      loadSpecialRates()
+        .then((rows) => {
+          if (!cancelled && Array.isArray(rows)) setSpecialRates(rows);
+        })
+        .catch((err) => {
+          // eslint-disable-next-line no-console
+          console.warn("[special rates] load failed", err);
         });
     reload();
     const unsub = onDataBump(reload);
