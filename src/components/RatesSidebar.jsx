@@ -14,9 +14,26 @@ import { useNow } from "../hooks/useNow.js";
 import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import AutoRatesPanel from "./rates/AutoRatesPanel.jsx";
 import PasteRatesModal from "./rates/PasteRatesModal.jsx";
+import { CITY_OFFICE_MATCHERS, KNOWN_CITIES } from "../utils/morningRatesParser.js";
 
 const GLOBAL_TAB = "__global__";
 const KNOWN_CCYS = new Set(["USDT", "USD", "TRY", "EUR", "RUB"]);
+
+// Мастер-валюты по городу офиса: турецкие → USD/TRY/EUR, российские → RUB.
+const CITY_QUOTES = {
+  ANT: ["USD", "TRY", "EUR"],
+  IST: ["USD", "TRY", "EUR"],
+  MSK: ["RUB"],
+  SPB: ["RUB"],
+};
+
+function quotesForOffice(office) {
+  if (!office) return ["USD", "TRY", "EUR", "RUB"]; // Global — весь набор
+  for (const city of KNOWN_CITIES) {
+    if (CITY_OFFICE_MATCHERS[city]?.(office)) return CITY_QUOTES[city];
+  }
+  return ["USD", "TRY", "EUR"]; // неопознанный офис — турецкий набор по умолчанию
+}
 
 function timeAgoShort(date, nowMs = Date.now()) {
   if (!date) return "—";
@@ -82,6 +99,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   }, [currentOffice]);
 
   const selectedOfficeId = selectedTab !== GLOBAL_TAB ? selectedTab : null;
+
+  const masterQuotes = useMemo(() => {
+    const office = selectedOfficeId
+      ? (activeOffices || []).find((o) => o.id === selectedOfficeId)
+      : null;
+    return quotesForOffice(office);
+  }, [selectedOfficeId, activeOffices]);
 
   const getRateForTab = useCallback(
     (from, to) => getRateRaw(from, to, selectedOfficeId),
@@ -194,8 +218,8 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         <MasterRatesPanel
           getRate={getRateForTab}
           onCommit={commitMaster}
-          pairUpdatedAt={pairUpdatedAt}
           hasOverride={hasOverride}
+          quotes={masterQuotes}
         />
         <AutoRatesPanel getRate={getRateForTab} />
       </div>

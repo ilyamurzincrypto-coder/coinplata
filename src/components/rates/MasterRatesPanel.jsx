@@ -13,15 +13,16 @@ import {
   formatRateValue,
 } from "../../utils/ratesFormat.js";
 
-// Направленные строки листа: пара USDT→X, затем X→USDT — по каждой валюте.
-export const MASTER_ROWS = [
-  ["USDT", "USD"],
-  ["USD", "USDT"],
-  ["USDT", "TRY"],
-  ["TRY", "USDT"],
-  ["USDT", "EUR"],
-  ["EUR", "USDT"],
-];
+// Валюты мастера зависят от офиса (турецкие → USD/TRY/EUR, российские → RUB).
+// Из списка валют строим направленные строки: USDT→X, затем X→USDT.
+const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
+
+function rowsFromQuotes(quotes) {
+  return (quotes || DEFAULT_QUOTES).flatMap((q) => [
+    ["USDT", q],
+    [q, "USDT"],
+  ]);
+}
 
 function ValueCell({ from, to, rate, onCommit }) {
   const [editing, setEditing] = useState(false);
@@ -87,7 +88,8 @@ function ValueCell({ from, to, rate, onCommit }) {
   );
 }
 
-export default function MasterRatesPanel({ getRate, onCommit, hasOverride }) {
+export default function MasterRatesPanel({ getRate, onCommit, hasOverride, quotes }) {
+  const rows = rowsFromQuotes(quotes);
   return (
     <section className="px-1">
       {/* Заголовок секции */}
@@ -101,7 +103,7 @@ export default function MasterRatesPanel({ getRate, onCommit, hasOverride }) {
 
       {/* Направленные строки листа, сгруппированы по валюте */}
       <div>
-        {MASTER_ROWS.map(([from, to], i) => {
+        {rows.map(([from, to], i) => {
           const rate = Number(getRate?.(from, to));
           const ovr = hasOverride?.(from, to);
           const groupBreak = i !== 0 && i % 2 === 0; // новая валюта — каждые 2 строки
