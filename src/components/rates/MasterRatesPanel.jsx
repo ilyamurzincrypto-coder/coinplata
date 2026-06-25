@@ -1,8 +1,8 @@
 // src/components/rates/MasterRatesPanel.jsx
-// Секция «Мастер» — табло курсов обменника против USDT (кеш-кеш).
-// 3 строки-валюты (USD/TRY/EUR), две котировки направлений тесной парой
-// справа: USDT→X и X→USDT (bid/ask). USDT↔USD — в процентах, TRY/EUR —
-// абсолютом >1. Клик по значению — inline-правка; commit → onCommit(from,to,rate).
+// Секция «Мастер» — рабочий лист курсов против USDT (как у менеджеров в чате):
+// 6 направленных строк «ОТКУДА → КУДА  значение», сгруппированных по валюте.
+// Направления НЕ совпадают — это bid/ask со спредом (USDT→TRY ≠ TRY→USDT).
+// USDT↔USD — в процентах, TRY/EUR — абсолютом. Клик по значению — inline-правка.
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -13,10 +13,15 @@ import {
   formatRateValue,
 } from "../../utils/ratesFormat.js";
 
-// Валюты, котируемые против USDT (строки табло).
-export const MASTER_QUOTES = ["USD", "TRY", "EUR"];
-
-const CELL_W = "w-[84px]";
+// Направленные строки листа: пара USDT→X, затем X→USDT — по каждой валюте.
+export const MASTER_ROWS = [
+  ["USDT", "USD"],
+  ["USD", "USDT"],
+  ["USDT", "TRY"],
+  ["TRY", "USDT"],
+  ["USDT", "EUR"],
+  ["EUR", "USDT"],
+];
 
 function ValueCell({ from, to, rate, onCommit }) {
   const [editing, setEditing] = useState(false);
@@ -65,20 +70,17 @@ function ValueCell({ from, to, rate, onCommit }) {
             setEditing(false);
           }
         }}
-        className={`${CELL_W} bg-surface border border-accent rounded-[6px] px-1.5 py-1 text-right text-body-sm font-mono tabular-nums outline-none shadow-input-focus`}
+        className="w-[88px] bg-surface border border-accent rounded-[6px] px-1.5 py-1 text-right text-body-sm font-mono tabular-nums outline-none shadow-input-focus"
       />
     );
   }
 
-  const neg = pct && Number(rate) < 1;
   return (
     <button
       type="button"
       onClick={start}
       title="Клик — изменить"
-      className={`${CELL_W} text-right font-mono tabular-nums text-body-sm font-semibold cursor-text rounded-[6px] px-1.5 py-1 transition-colors hover:bg-surface-sunk ${
-        pct ? (neg ? "text-danger" : "text-success") : "text-ink"
-      }`}
+      className="w-[88px] text-right font-mono tabular-nums text-body-sm font-semibold text-ink cursor-text rounded-[6px] px-1.5 py-1 transition-colors hover:bg-surface-sunk"
     >
       {formatRateValue(from, to, rate)}
     </button>
@@ -97,40 +99,31 @@ export default function MasterRatesPanel({ getRate, onCommit, hasOverride }) {
         <span className="flex-1 h-px bg-border-soft" />
       </div>
 
-      {/* Заголовки колонок-направлений (выровнены над значениями справа) */}
-      <div className="flex items-center justify-end gap-1.5 px-2 pb-1">
-        <span className={`${CELL_W} text-right text-tiny font-mono text-muted-soft pr-1.5`}>
-          USDT→
-        </span>
-        <span className={`${CELL_W} text-right text-tiny font-mono text-muted-soft pr-1.5`}>
-          →USDT
-        </span>
-      </div>
-
-      {/* Строки-валюты: валюта слева, две котировки (bid/ask) тесной парой справа */}
-      <div className="space-y-0.5">
-        {MASTER_QUOTES.map((q) => {
-          const fRate = Number(getRate?.("USDT", q));
-          const rRate = Number(getRate?.(q, "USDT"));
-          const ovr = hasOverride?.("USDT", q) || hasOverride?.(q, "USDT");
+      {/* Направленные строки листа, сгруппированы по валюте */}
+      <div>
+        {MASTER_ROWS.map(([from, to], i) => {
+          const rate = Number(getRate?.(from, to));
+          const ovr = hasOverride?.(from, to);
+          const groupBreak = i !== 0 && i % 2 === 0; // новая валюта — каждые 2 строки
           return (
             <div
-              key={q}
-              className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-[8px] hover:bg-surface-soft transition-colors"
+              key={`${from}_${to}`}
+              className={`flex items-center justify-between gap-2 px-2 py-[3px] rounded-[8px] hover:bg-surface-soft transition-colors ${
+                groupBreak ? "mt-1.5" : ""
+              }`}
             >
-              <span className="flex items-center gap-1.5 font-mono font-bold text-body text-ink">
-                {q}
+              <span className="flex items-center gap-1 font-mono text-body-sm whitespace-nowrap">
+                <span className="font-bold text-ink">{from}</span>
+                <span className="text-muted-soft">→</span>
+                <span className="font-bold text-ink">{to}</span>
                 {ovr && (
                   <span
-                    className="w-1.5 h-1.5 rounded-full bg-accent"
+                    className="ml-1 w-1.5 h-1.5 rounded-full bg-accent"
                     title="Переопределено для офиса"
                   />
                 )}
               </span>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <ValueCell from="USDT" to={q} rate={fRate} onCommit={onCommit} />
-                <ValueCell from={q} to="USDT" rate={rRate} onCommit={onCommit} />
-              </div>
+              <ValueCell from={from} to={to} rate={rate} onCommit={onCommit} />
             </div>
           );
         })}

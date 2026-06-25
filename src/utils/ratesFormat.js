@@ -25,8 +25,14 @@ function ru(n, digits) {
   return fixed.replace("-", "−").replace(".", ",");
 }
 
-function absDigits(rate) {
-  return Math.abs(Number(rate)) >= 10 ? 2 : 3;
+// Абсолютный курс «по-человечески»: значимые знаки сохраняем (до 4),
+// хвостовые нули убираем, но не меньше 2 знаков после запятой.
+// 46 → "46,00", 46,8 → "46,80", 1,142 → "1,142", 1,1305 → "1,1305".
+function formatAbs(n) {
+  let s = Number(n).toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  const [int, dec = ""] = s.split(".");
+  const dec2 = dec.length < 2 ? (dec + "00").slice(0, 2) : dec;
+  return `${int},${dec2}`;
 }
 
 // «Читаемое» значение строки: для percent-пар — процент; для абсолютных —
@@ -54,6 +60,5 @@ export function formatRateValue(from, to, rate) {
     const sign = pct >= 0 ? "+" : "";
     return `${sign}${ru(pct, 2)} %`.replace("+−", "−");
   }
-  const disp = displayValue(from, to, rate);
-  return ru(disp, absDigits(disp));
+  return formatAbs(displayValue(from, to, rate));
 }
