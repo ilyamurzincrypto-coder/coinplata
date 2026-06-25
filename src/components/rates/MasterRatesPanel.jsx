@@ -13,16 +13,7 @@ const GRID = { gridTemplateColumns: "1fr 84px 84px" };
 export default function MasterRatesPanel({ getRate, hasOverride, quotes }) {
   const list = quotes && quotes.length ? quotes : DEFAULT_QUOTES;
   return (
-    <section className="px-1">
-      {/* Заголовок секции */}
-      <div className="flex items-center gap-2 px-2 pb-1">
-        <span className="text-micro font-bold uppercase tracking-wider text-muted">
-          USDT
-        </span>
-        <span className="text-tiny font-mono text-muted-soft">кеш-кеш</span>
-        <span className="flex-1 h-px bg-border-soft" />
-      </div>
-
+    <section className="px-1 pt-1">
       {/* Заголовки колонок-направлений */}
       <div className="grid items-center px-2 pb-0.5" style={GRID}>
         <span />

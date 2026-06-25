@@ -23,7 +23,6 @@ export default function AutoRatesPanel({ getRate }) {
         <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
           Кросс
         </span>
-        <span className="text-tiny font-mono text-muted-soft">кеш-кеш · производные</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
 

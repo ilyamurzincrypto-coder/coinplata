@@ -37,9 +37,8 @@ export default function NerezPanel({ specialRates }) {
     <section className="px-1 pt-2">
       <div className="flex items-center gap-2 px-2 pb-1">
         <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
-          {pair.replace("/", "↔")}
+          {pair.replace("/", "↔")} · НЕРЕЗ
         </span>
-        <span className="text-tiny font-mono text-muted-soft">TOD/TOM · НЕРЕЗ</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
 
