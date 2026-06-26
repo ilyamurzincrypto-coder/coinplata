@@ -11,6 +11,7 @@
 import React, { useMemo, useState, useCallback } from "react";
 import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock, Clock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
+import OfficeSwitcher from "./OfficeSwitcher.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import BalanceSubLine from "./balances/BalanceSubLine.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -547,7 +548,9 @@ function MiniStat({ label, value, sym, tone, icon: Icon }) {
 
 // ------- Main -------
 
-export default function Balances({ currentOffice, scope, onScopeChange }) {
+const ALL_OFFICES_ID = "__all__";
+
+export default function Balances({ currentOffice, onOfficeChange, scope, onScopeChange }) {
   const { t } = useTranslation();
   const { accounts, balanceOf, reservedOf, deltaOf } = useAccounts();
   const { activeOffices, findOffice } = useOffices();
@@ -711,15 +714,26 @@ export default function Balances({ currentOffice, scope, onScopeChange }) {
                 <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
               </button>
             )}
-            <SegmentedControl
-              options={[
-                { id: "selected", name: t("selected_office") },
-                { id: "all", name: t("all_offices") },
-              ]}
-              value={scope}
-              onChange={onScopeChange}
-              size="sm"
-            />
+            {/* Селектор офиса (перенесён из шапки кассы) — заменяет тогл
+                «Выбранный/Все офисы»: выбор офиса ставит scope=selected +
+                currentOffice, пункт «Все офисы» → scope=all. */}
+            <div className="w-[190px]">
+              <OfficeSwitcher
+                value={scope === "all" ? ALL_OFFICES_ID : currentOffice}
+                onChange={(id) => {
+                  if (id === ALL_OFFICES_ID) {
+                    onScopeChange?.("all");
+                  } else {
+                    onOfficeChange?.(id);
+                    onScopeChange?.("selected");
+                  }
+                }}
+                offices={[
+                  { id: ALL_OFFICES_ID, name: t("all_offices") },
+                  ...activeOffices.map((o) => ({ id: o.id, name: o.name })),
+                ]}
+              />
+            </div>
             <SegmentedControl
               options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
               value={displayBase}

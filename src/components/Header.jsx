@@ -1,9 +1,7 @@
 // src/components/Header.jsx
 import React, { useMemo } from "react";
-import { Globe, Building2 } from "lucide-react";
-import SegmentedControl from "./ui/SegmentedControl.jsx";
+import { Globe } from "lucide-react";
 import Select from "./ui/Select.jsx";
-import OfficeSwitcher from "./OfficeSwitcher.jsx";
 import CashClosureBadge from "./CashClosureBadge.jsx";
 import ProfileMenu from "./ProfileMenu.jsx";
 import NotificationsBell from "./NotificationsBell.jsx";
@@ -35,7 +33,6 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   // Раньше manager scoping принудительно ограничивал менеджера его
   // собственным офисом. Задумка пересмотрена: менеджер видит счета и
   // балансы ВСЕХ офисов (RLS расширен в 0034). Scoping отключён.
-  const isScopedManager = false;
   const scopedOffices = activeOffices;
 
   // Если currentOffice не совпадает ни с одним активным офисом — падаем
@@ -76,23 +73,10 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           ))}
         </nav>
 
-        {/* Office + closure (только на Cashier) */}
+        {/* Закрытие кассы (только на Cashier). Селектор офиса переехал в
+            шапку панели «Балансы» (заменяет тогл «Выбранный/Все офисы»). */}
         {page === "cashier" && (
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            {isScopedManager ? (
-              <div className="inline-flex items-center gap-1.5 bg-white border border-border-soft rounded-card px-3 py-1.5 text-body-sm font-semibold text-ink-soft">
-                <Building2 className="w-3.5 h-3.5 text-muted-soft" />
-                {scopedOffices[0]?.name || "—"}
-              </div>
-            ) : (
-              <div className="w-[200px]">
-                <OfficeSwitcher
-                  value={currentOffice}
-                  onChange={onOfficeChange}
-                  offices={scopedOffices}
-                />
-              </div>
-            )}
             <CashClosureBadge currentOffice={currentOffice} />
           </div>
         )}
@@ -133,14 +117,9 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
         ))}
       </div>
 
-      {/* Mobile office switcher + badge */}
+      {/* Mobile: только закрытие кассы (селектор офиса — в «Балансах») */}
       {page === "cashier" && (
         <div className="md:hidden px-4 pb-3 pt-1 flex items-center gap-2">
-          {!isScopedManager && (
-            <div className="flex-1 min-w-0">
-              <SegmentedControl options={scopedOffices} value={currentOffice} onChange={onOfficeChange} size="sm" />
-            </div>
-          )}
           <CashClosureBadge currentOffice={currentOffice} />
         </div>
       )}

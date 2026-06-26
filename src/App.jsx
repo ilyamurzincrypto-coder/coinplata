@@ -212,6 +212,7 @@ function Root() {
       {page === "cashier" && canShow("cashier") && (
         <CashierPage
           currentOffice={currentOffice}
+          onOfficeChange={setCurrentOffice}
           mode={exchangeMode}
           setMode={setExchangeMode}
           formMounted={formMounted}

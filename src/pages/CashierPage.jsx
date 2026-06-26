@@ -44,6 +44,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 
 export default function CashierPage({
   currentOffice,
+  onOfficeChange = () => {},
   mode = "dashboard",
   setMode = () => {},
   formMounted = false,
@@ -563,6 +564,7 @@ export default function CashierPage({
             <div className="min-w-0 lg:[grid-area:bal] space-y-4">
               <Balances
                 currentOffice={currentOffice}
+                onOfficeChange={onOfficeChange}
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
