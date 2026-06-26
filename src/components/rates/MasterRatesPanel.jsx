@@ -7,7 +7,7 @@ import { formatRateValue } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
 
 const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
-const GRID = { gridTemplateColumns: "1fr 86px 86px" };
+const GRID = { gridTemplateColumns: "1fr 76px 76px" };
 
 // Символ + цвета чипа по валюте (light-тема макета coinpoint).
 export const CCY_META = {
