@@ -1,18 +1,17 @@
 // src/components/rates/CrossRatesPanel.jsx
-// Кросс-курсы (кеш-кеш) офиса — между валютами этого офиса, через USDT.
-// ВАЖНО про конвенцию хранения: TRY/RUB котируются «валюта за USDT» (читаемое
-// 46,2 = TRY за USDT), а USD/EUR — «USDT за валюту» (читаемое 1,142 = USDT за EUR,
-// т.к. они крепче USDT). Поэтому считаем кросс через «USDT за 1 единицу валюты»
-// (usdtPer) с учётом ориентации, иначе направления/значения врут.
-// Bank-view: всегда сторона ≥1. Офис с одной фиат-валютой (Москва) кросса не имеет.
+// Кросс-курсы (кеш-кеш) офиса между его валютами, через USDT. Показываем ОБА
+// направления каждой пары (USD→TRY И TRY→USD) — каждое со своим значением.
+// Конвенция хранения: TRY/RUB котируются «валюта за USDT» (46,2 = TRY за USDT),
+// USD/EUR — «USDT за валюту» (1,142 = USDT за EUR). Чтобы направления не врали,
+// считаем через «USDT за единицу валюты» (usdtPer). Москва (один RUB) — без кросса.
 
 import React from "react";
-import { isPercentPair, formatRateValue } from "../../utils/ratesFormat.js";
+import { isPercentPair } from "../../utils/ratesFormat.js";
 
 // Валюты, котируемые «USDT за X» (крепче/паритет USDT): читаемое = usdtPer.
 const STRONG = new Set(["USD", "EUR"]);
 
-// USDT за 1 единицу валюты X (приводим всё к одной шкале).
+// USDT за 1 единицу валюты X.
 function usdtPer(x, getRate) {
   if (x === "USDT") return 1;
   const raw = Number(getRate?.("USDT", x));
@@ -20,6 +19,20 @@ function usdtPer(x, getRate) {
   if (isPercentPair("USDT", x)) return 1 / raw; // USD ~ паритет
   const readable = raw < 1 ? 1 / raw : raw; // «читаемое» >1
   return STRONG.has(x) ? readable : 1 / readable;
+}
+
+// Формат значения в свою сторону (без реципрока): и крупные (46,5), и мелкие (0,0215).
+function fmtCross(n) {
+  if (!Number.isFinite(n) || n <= 0) return "—";
+  let d;
+  if (n >= 100) d = 2;
+  else if (n >= 10) d = 3;
+  else if (n >= 1) d = 4;
+  else if (n >= 0.1) d = 4;
+  else if (n >= 0.01) d = 5;
+  else d = 6;
+  let s = n.toFixed(d).replace(/0+$/, "").replace(/\.$/, "");
+  return s.replace(".", ",");
 }
 
 function uniquePairs(ccys) {
@@ -31,22 +44,16 @@ function uniquePairs(ccys) {
 
 export default function CrossRatesPanel({ getRate, ccys }) {
   const fiats = (ccys || []).filter((c) => c !== "USDT");
-  const rows = uniquePairs(fiats)
-    .map(([a, b]) => {
-      const pa = usdtPer(a, getRate);
-      const pb = usdtPer(b, getRate);
-      if (!Number.isFinite(pa) || !Number.isFinite(pb) || pb === 0) return null;
-      let rate = pa / pb; // B за A
-      let from = a;
-      let to = b;
-      if (rate > 0 && rate < 1) {
-        rate = 1 / rate;
-        from = b;
-        to = a;
-      }
-      return { from, to, rate };
-    })
-    .filter((r) => r && Number.isFinite(r.rate) && r.rate > 0);
+
+  // Для каждой уникальной пары — обе стороны подряд (forward слева, reverse справа).
+  const rows = [];
+  uniquePairs(fiats).forEach(([a, b]) => {
+    const pa = usdtPer(a, getRate);
+    const pb = usdtPer(b, getRate);
+    if (!Number.isFinite(pa) || !Number.isFinite(pb) || pa <= 0 || pb <= 0) return;
+    rows.push({ from: a, to: b, rate: pa / pb });
+    rows.push({ from: b, to: a, rate: pb / pa });
+  });
 
   if (rows.length === 0) return null; // один фиат (Москва) → кросса нет
 
@@ -67,7 +74,7 @@ export default function CrossRatesPanel({ getRate, ccys }) {
               {to}
             </span>
             <span className="font-mono tabular-nums text-[11px] text-ink-soft">
-              {formatRateValue(from, to, rate)}
+              {fmtCross(rate)}
             </span>
           </div>
         ))}
