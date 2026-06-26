@@ -34,25 +34,25 @@ export default function MasterRatesPanel({ getRate, hasOverride, quotes }) {
   const anySpread = rows.some((r) => r.spread);
 
   return (
-    <section className="px-1 pt-1">
+    <section className="px-1">
       {anySpread && (
-        <div className="grid items-center px-2 pb-0.5" style={GRID2}>
+        <div className="grid items-center px-2 leading-none pb-px" style={GRID2}>
           <span />
-          <span className="text-right text-tiny font-mono text-muted-soft">→USDT</span>
-          <span className="text-right text-tiny font-mono text-muted-soft">USDT→</span>
+          <span className="text-right text-[10px] font-mono text-muted-soft">→USDT</span>
+          <span className="text-right text-[10px] font-mono text-muted-soft">USDT→</span>
         </div>
       )}
 
-      <div className="space-y-0.5">
+      <div>
         {rows.map(({ q, fwd, rev, ovr }) => (
           <div
             key={q}
-            className={`items-center px-2 py-1 rounded-[8px] hover:bg-surface-soft transition-colors ${
+            className={`items-center px-2 py-[2px] rounded-[6px] hover:bg-surface-soft transition-colors ${
               anySpread ? "grid" : "flex justify-between"
             }`}
             style={anySpread ? GRID2 : undefined}
           >
-            <span className="flex items-center gap-1.5 font-mono font-bold text-body text-ink">
+            <span className="flex items-center gap-1.5 font-mono font-bold text-body-sm text-ink">
               {q}
               {ovr && (
                 <span

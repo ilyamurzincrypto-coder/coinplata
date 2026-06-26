@@ -34,22 +34,22 @@ export default function NerezPanel({ specialRates }) {
   });
 
   return (
-    <section className="px-1 pt-2">
-      <div className="flex items-center gap-2 px-2 pb-1">
-        <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
+    <section className="px-1 pt-0.5">
+      <div className="flex items-center gap-2 px-2 pb-px">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-soft">
           {pair.replace("/", "↔")} · НЕРЕЗ
         </span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
 
-      <div className="rounded-[10px] bg-surface-sunk/60 px-2 py-1.5">
+      <div className="rounded-[8px] bg-surface-sunk/60 px-2 py-1">
         {/* Заголовки расчётов */}
-        <div className="grid items-center pb-1" style={GRID}>
+        <div className="grid items-center pb-px leading-none" style={GRID}>
           <span />
           {SETTLES.map(([code, label]) => (
             <span
               key={code}
-              className="text-right text-tiny font-mono text-muted-soft"
+              className="text-right text-[10px] font-mono text-muted-soft"
               title={code}
             >
               {label}
@@ -58,8 +58,8 @@ export default function NerezPanel({ specialRates }) {
         </div>
         {/* Строки сторон */}
         {SIDES.map(([key, label]) => (
-          <div key={key} className="grid items-center py-0.5" style={GRID}>
-            <span className="text-tiny font-semibold text-muted">{label}</span>
+          <div key={key} className="grid items-center py-px" style={GRID}>
+            <span className="text-[11px] font-semibold text-muted">{label}</span>
             {SETTLES.map(([code]) => (
               <span
                 key={code}

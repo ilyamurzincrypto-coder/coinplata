@@ -98,7 +98,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
       </header>
 
       {/* Все города сразу — текущий первым */}
-      <div className="py-1 space-y-2.5">
+      <div className="py-0.5 space-y-1">
         {offices.map((office, i) => {
           const quotes = quotesForOffice(office);
           const getRate = (from, to) => getRateRaw(from, to, office.id);
@@ -111,7 +111,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           return (
             <div key={office.id}>
               {/* Заголовок города + свежесть */}
-              <div className="flex items-center gap-1.5 px-2 pb-0.5">
+              <div className="flex items-center gap-1.5 px-2 pb-px pt-0.5">
                 <MapPin
                   className={`w-3 h-3 shrink-0 ${isCurrent ? "text-accent" : "text-muted-soft"}`}
                   strokeWidth={2.2}
