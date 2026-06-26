@@ -414,8 +414,10 @@ export default function CashierPage({
     if (r?.ok) closeCreate();
   };
 
-  const isDashboard = mode === "dashboard";
-  const isCreate = mode === "create";
+  // Форма сделки и перемещение убраны — дашборд показываем всегда, кроме режима
+  // правки курсов (rates). «create» больше не достижим, но на всякий случай не
+  // оставляем пустой экран.
+  const isDashboard = mode !== "rates";
   const isRates = mode === "rates";
 
   const openRates = () => setMode("rates");
@@ -479,85 +481,18 @@ export default function CashierPage({
                 частое действие после сделки с клиентом; OTC-сделки с
                 партнёрами создаются из обычной формы сделки через выбор
                 партнёрского счёта в IN/OUT). */}
-            <section className="min-w-0 lg:[grid-area:cta] flex items-stretch gap-2">
-              <div className="flex-1 min-w-0">
-            {formMounted ? (
-              <button
-                onClick={openCreate}
-                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-ink shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="relative w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
-                    <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
-                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
-                      С клиентом
-                    </div>
-                    <div className="text-[16px] font-bold tracking-tight">
-                      {t("cta_resume_exchange_title")}
-                    </div>
-                    <div className="text-caption text-muted">
-                      {t("cta_resume_exchange_hint")}
-                    </div>
-                  </div>
-                </div>
-                <ArrowUpRight className="w-4 h-4 text-success group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-              </button>
-            ) : (
-              <button
-                onClick={openCreate}
-                className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-ink text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-ink active:scale-[0.995] transition-all duration-200"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
-                    <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left">
-                    <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
-                      С клиентом
-                    </div>
-                    <div className="text-[16px] font-bold tracking-tight">
-                      {t("cta_new_exchange_title")}
-                    </div>
-                    <div className="text-caption text-muted-soft">
-                      {t("cta_new_exchange_hint")}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="hidden sm:inline-flex items-center gap-1 text-tiny font-semibold text-muted-soft">
-                    {t("cta_press_key")}
-                    <kbd className="px-1.5 py-0.5 rounded-md bg-ink border border-ink text-white/80 tracking-wider">
-                      N
-                    </kbd>
-                  </span>
-                  <ArrowUpRight className="w-4 h-4 text-muted-soft group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                </div>
-              </button>
-            )}
-              </div>
-              <button
-                onClick={() => setTransferModalOpen(true)}
-                title="Создать перемещение — перевод между нашими счетами (касса → банк, офис → офис, кросс-валютный с курсом)"
-                className="group flex flex-col items-center justify-center px-4 py-3 rounded-[16px] bg-white border-2 border-indigo-300 text-accent hover:bg-accent-bg hover:border-indigo-400 transition-colors shrink-0"
-              >
-                <ArrowRightLeft className="w-5 h-5 mb-1" strokeWidth={2.5} />
-                <span className="text-tiny font-bold tracking-tight">Перемещение</span>
-                <span className="text-micro text-accent font-semibold mt-0.5">между счетами</span>
-              </button>
-              {onOpenHelp && (
+            {onOpenHelp && (
+              <section className="min-w-0 lg:[grid-area:cta] flex items-center justify-end">
                 <button
                   type="button"
                   onClick={() => onOpenHelp({ sectionId: "cashier" })}
-                  title="Справка по Кассе — горячие клавиши, формы, частые сценарии"
-                  className="self-start flex items-center justify-center w-9 h-9 mt-1 rounded-full text-muted-soft hover:text-success hover:bg-success-soft transition-colors shrink-0"
+                  title="Справка по Кассе — горячие клавиши, частые сценарии"
+                  className="flex items-center justify-center w-9 h-9 rounded-full text-muted-soft hover:text-success hover:bg-success-soft transition-colors shrink-0"
                 >
                   <HelpCircle className="w-5 h-5" strokeWidth={2.5} />
                 </button>
-              )}
-            </section>
+              </section>
+            )}
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
                 него (col1) той же высоты. */}
@@ -583,107 +518,7 @@ export default function CashierPage({
         </div>
       )}
 
-      {/* ====== CREATE MODE ====== */}
-      {/* Sticky rates слева + форма справа. Balances/transactions скрыты. */}
-      {/* Форма mount'нута всегда пока formMounted=true — переключение mode не
-          теряет её state. В dashboard mode обёртка display:none. */}
-      <div
-        style={{ display: isCreate ? "block" : "none" }}
-        className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
-          {/* LEFT: sticky rates */}
-          <aside className="lg:sticky lg:top-[88px]">
-            <RatesSidebar currentOffice={currentOffice} />
-          </aside>
-
-          {/* RIGHT: header + ExchangeForm */}
-          <section>
-            <div className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
-              <header className="px-5 py-3.5 border-b border-border-soft flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success text-white shrink-0">
-                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-body font-bold text-ink tracking-tight">
-                      {t("cta_new_exchange_title")}
-                    </div>
-                    <div className="text-tiny text-muted truncate">
-                      {t("drawer_minimize_hint")}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={minimizeCreate}
-                    title={`${t("btn_minimize")} (Esc)`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t("btn_minimize")}</span>
-                  </button>
-                  <button
-                    onClick={closeCreate}
-                    title={t("btn_close_discard")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t("btn_close")}</span>
-                  </button>
-                </div>
-              </header>
-
-              <div className="p-5">
-                {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
-                  <div className="mb-3 flex items-start gap-2 text-caption text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
-                    <span aria-hidden>🎓</span>
-                    <span>
-                      Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.
-                      Поправьте под свою сделку и проведите, либо закройте форму без сохранения.
-                    </span>
-                  </div>
-                )}
-                {formMounted && (
-                  USE_NEW_DEAL_FORM_REDESIGN ? (
-                    // Phase 1 redesign — новая форма, использует тот же
-                    // handleFormSubmit что и ExchangeForm (один контракт payload).
-                    <NewDealForm
-                      currentOffice={currentOffice}
-                      initialData={demoDealSeed || undefined}
-                      onSubmit={handleFormSubmit}
-                      onCancel={() => setFormMounted(false)}
-                      submitting={submitting}
-                    />
-                  ) : USE_NEW_DEAL_FORM ? (
-                    // Legacy v2 DealForm — отключена по запросу юзера.
-                    <DealForm
-                      mode="create"
-                      currentOffice={currentOffice}
-                      onSubmit={() => closeCreate()}
-                      submitting={submitting}
-                      onCancel={() => setFormMounted(false)}
-                    />
-                  ) : (
-                    <ExchangeForm
-                      mode="create"
-                      currentOffice={currentOffice}
-                      initialData={demoDealSeed || undefined}
-                      onSubmit={handleFormSubmit}
-                      submitting={submitting}
-                    />
-                  )
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
-      </div>
-
-      <TransferModal
-        open={transferModalOpen}
-        onClose={() => setTransferModalOpen(false)}
-      />
+      {/* CREATE MODE и форма сделки убраны. Перемещение между счетами тоже. */}
 
       {/* CashClosureModal вынесен в Header через CashClosureBadge — здесь
           оставляем fallback-открытие из старого state для обратной совместимости. */}

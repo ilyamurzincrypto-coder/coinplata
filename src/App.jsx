@@ -152,14 +152,6 @@ function Root() {
   //   G+C cashier, G+K treasury, G+A accounts, G+P counterparties,
   //   G+T treasury, G+S settings
   useKeyboardShortcuts({
-    n: () => {
-      if (!canShow("cashier")) return;
-      if (page !== "cashier") setPage("cashier");
-      // ВАЖНО: открыть форму = setFormMounted(true) + setMode("create").
-      // Без mounted=true ExchangeForm не рендерится (см. CashierPage.openCreate).
-      setFormMounted(true);
-      setExchangeMode("create");
-    },
     "/": () => {
       const el = document.querySelector('input[placeholder*="Search" i], input[placeholder*="Поиск" i]');
       if (el) el.focus();
