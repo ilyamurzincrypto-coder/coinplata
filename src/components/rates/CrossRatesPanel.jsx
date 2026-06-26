@@ -1,14 +1,12 @@
 // src/components/rates/CrossRatesPanel.jsx
-// Кросс-курсы (кеш-кеш) офиса между ВСЕМИ фиат-валютами (USD/EUR/TRY/RUB),
-// выведенные через USDT-пивот (convert) по курсам этого офиса. Bank-view:
-// всегда сторона ≥1 (если <1 — инвертируем и меняем направление), без
-// дублей-реципроков → 6 пар вместо свалки из 12. Read-only, вторичный вес.
+// Кросс-курсы (кеш-кеш) офиса — ТОЛЬКО между валютами этого офиса, выведенные
+// на лету через USDT-пивот по его же курсам (getRate офиса сам триангулирует
+// через USDT). Bank-view: всегда сторона ≥1 (если <1 — инвертируем направление).
+// Офис с одной фиат-валютой (Москва = RUB) кросса не имеет. Read-only.
 
 import React from "react";
 import { convert } from "../../utils/convert.js";
 import { formatRateValue } from "../../utils/ratesFormat.js";
-
-const FIAT = ["USD", "EUR", "TRY", "RUB"];
 
 function uniquePairs(ccys) {
   const out = [];
@@ -17,8 +15,9 @@ function uniquePairs(ccys) {
   return out;
 }
 
-export default function CrossRatesPanel({ getRate }) {
-  const rows = uniquePairs(FIAT)
+export default function CrossRatesPanel({ getRate, ccys }) {
+  const fiats = (ccys || []).filter((c) => c !== "USDT");
+  const rows = uniquePairs(fiats)
     .map(([a, b]) => {
       let rate = convert(1, a, b, getRate);
       let from = a;
@@ -32,7 +31,7 @@ export default function CrossRatesPanel({ getRate }) {
     })
     .filter((r) => Number.isFinite(r.rate) && r.rate > 0);
 
-  if (rows.length === 0) return null;
+  if (rows.length === 0) return null; // один фиат (Москва) → кросса нет
 
   return (
     <div className="px-1 pt-1">
@@ -43,12 +42,9 @@ export default function CrossRatesPanel({ getRate }) {
         <span className="text-tiny font-mono text-muted-soft">кеш-кеш</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
-      <div className="rounded-[10px] bg-surface-sunk/50 px-1.5 py-1 grid grid-cols-2 gap-x-3 gap-y-0.5">
+      <div className="rounded-[10px] bg-surface-sunk/50 px-2 py-1 space-y-0.5">
         {rows.map(({ from, to, rate }) => (
-          <div
-            key={`${from}_${to}`}
-            className="flex items-center justify-between gap-1.5 px-1 py-0.5"
-          >
+          <div key={`${from}_${to}`} className="flex items-center justify-between px-1.5 py-0.5">
             <span className="font-mono text-tiny text-muted whitespace-nowrap">
               {from}
               <span className="text-muted-soft mx-0.5">→</span>

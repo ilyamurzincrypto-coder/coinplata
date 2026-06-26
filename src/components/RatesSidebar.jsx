@@ -134,7 +134,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
                 )}
               </div>
               <MasterRatesPanel getRate={getRate} quotes={quotes} />
-              <CrossRatesPanel getRate={getRate} />
+              <CrossRatesPanel getRate={getRate} ccys={quotes} />
               {isRu && <NerezPanel specialRates={specialRates} />}
             </div>
           );
