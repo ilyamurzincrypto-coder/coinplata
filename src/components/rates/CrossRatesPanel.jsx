@@ -1,26 +1,24 @@
 // src/components/rates/CrossRatesPanel.jsx
-// Кросс-курсы (кеш-кеш) ОДНОГО офиса: только пары между фиат-валютами этого
-// офиса, выведенные через USDT-пивот (convert). Bank-view: всегда показываем
-// сторону ≥1 (если курс <1 — инвертируем и меняем направление местами),
-// как в coinpoint. Read-only, вторичный вес.
+// Кросс-курсы (кеш-кеш) офиса между ВСЕМИ фиат-валютами (USD/EUR/TRY/RUB),
+// выведенные через USDT-пивот (convert) по курсам этого офиса. Bank-view:
+// всегда сторона ≥1 (если <1 — инвертируем и меняем направление), без
+// дублей-реципроков → 6 пар вместо свалки из 12. Read-only, вторичный вес.
 
 import React from "react";
 import { convert } from "../../utils/convert.js";
 import { formatRateValue } from "../../utils/ratesFormat.js";
 
-function fiatPairs(ccys) {
+const FIAT = ["USD", "EUR", "TRY", "RUB"];
+
+function uniquePairs(ccys) {
   const out = [];
   for (let i = 0; i < ccys.length; i++)
     for (let j = i + 1; j < ccys.length; j++) out.push([ccys[i], ccys[j]]);
   return out;
 }
 
-export default function CrossRatesPanel({ getRate, ccys }) {
-  const fiats = (ccys || []).filter((c) => c !== "USDT");
-  const pairs = fiatPairs(fiats);
-  if (pairs.length === 0) return null; // один фиат (RU) → кросса нет
-
-  const rows = pairs
+export default function CrossRatesPanel({ getRate }) {
+  const rows = uniquePairs(FIAT)
     .map(([a, b]) => {
       let rate = convert(1, a, b, getRate);
       let from = a;
@@ -42,13 +40,14 @@ export default function CrossRatesPanel({ getRate, ccys }) {
         <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
           Кросс
         </span>
+        <span className="text-tiny font-mono text-muted-soft">кеш-кеш</span>
         <span className="flex-1 h-px bg-border-soft" />
       </div>
-      <div className="rounded-[10px] bg-surface-sunk/50 px-2 py-1 space-y-0.5">
+      <div className="rounded-[10px] bg-surface-sunk/50 px-1.5 py-1 grid grid-cols-2 gap-x-3 gap-y-0.5">
         {rows.map(({ from, to, rate }) => (
           <div
             key={`${from}_${to}`}
-            className="flex items-center justify-between px-1.5 py-0.5"
+            className="flex items-center justify-between gap-1.5 px-1 py-0.5"
           >
             <span className="font-mono text-tiny text-muted whitespace-nowrap">
               {from}

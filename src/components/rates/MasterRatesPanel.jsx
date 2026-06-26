@@ -38,8 +38,8 @@ export default function MasterRatesPanel({ getRate, hasOverride, quotes }) {
       {anySpread && (
         <div className="grid items-center px-2 pb-0.5" style={GRID2}>
           <span />
-          <span className="text-right text-tiny font-mono text-muted-soft">USDT→</span>
           <span className="text-right text-tiny font-mono text-muted-soft">→USDT</span>
+          <span className="text-right text-tiny font-mono text-muted-soft">USDT→</span>
         </div>
       )}
 
@@ -61,12 +61,13 @@ export default function MasterRatesPanel({ getRate, hasOverride, quotes }) {
                 />
               )}
             </span>
+            {/* Логичный порядок: сначала X→USDT, затем обратное USDT→X */}
             <span className="text-right font-mono tabular-nums text-body-sm font-semibold text-ink">
-              {formatRateValue("USDT", q, fwd)}
+              {formatRateValue(anySpread ? q : "USDT", anySpread ? "USDT" : q, anySpread ? rev : fwd)}
             </span>
             {anySpread && (
               <span className="text-right font-mono tabular-nums text-body-sm font-semibold text-ink">
-                {formatRateValue(q, "USDT", rev)}
+                {formatRateValue("USDT", q, fwd)}
               </span>
             )}
           </div>
