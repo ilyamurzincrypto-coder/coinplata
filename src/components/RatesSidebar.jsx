@@ -80,7 +80,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     "0 1px 2px rgba(16,24,40,.06), 0 14px 34px -16px rgba(16,24,40,.18)";
 
   return (
-    <aside className="flex flex-col gap-3">
+    <aside className="flex flex-col gap-2">
       {/* Шапка */}
       <header className="flex items-center justify-between gap-3 px-1 pt-0.5">
         <div className="flex items-center gap-2 min-w-0">
@@ -122,11 +122,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         return (
           <article
             key={office.id}
-            className="bg-white border border-[#e7e9f1] rounded-[20px] p-4"
+            className="bg-white border border-[#e7e9f1] rounded-[16px] px-3 py-2.5"
             style={{ boxShadow: cardShadow }}
           >
             {/* Заголовок карточки */}
-            <header className="flex items-center justify-between gap-2.5 pb-3 mb-1 border-b border-[#e7e9f1]">
+            <header className="flex items-center justify-between gap-2.5 pb-2 mb-0.5 border-b border-[#e7e9f1]">
               <span className="flex items-center gap-2 min-w-0">
                 <MapPin className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.3} />
                 <span className="text-[15px] font-bold tracking-tight text-ink truncate">
@@ -154,10 +154,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           </article>
         );
       })}
-
-      <p className="text-center text-[11px] text-muted-soft px-2 pt-0.5">
-        Нажми на значение, чтобы <b className="font-semibold text-muted">скопировать</b>
-      </p>
 
       {/* Тост */}
       <div

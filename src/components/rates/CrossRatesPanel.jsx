@@ -49,11 +49,11 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="mt-3 bg-[#f4f5fa] border border-[#e7e9f1] rounded-[13px] px-3 py-2.5">
-      <div className="text-[10px] font-bold tracking-[1.4px] text-[#8a8fa6] uppercase mb-2">
+    <div className="mt-2 bg-[#f4f5fa] border border-[#e7e9f1] rounded-[12px] px-2.5 py-1.5">
+      <div className="text-[9.5px] font-bold tracking-[1.4px] text-[#8a8fa6] uppercase mb-1">
         Кросс
       </div>
-      <div className="grid grid-cols-2 gap-x-[18px] gap-y-[7px]">
+      <div className="grid grid-cols-2 gap-x-[18px] gap-y-[2px]">
         {rows.map(({ from, to, rate }) => (
           <div key={`${from}_${to}`} className="flex items-baseline justify-between gap-2">
             <span className="text-[11.5px] font-semibold text-[#454a68] whitespace-nowrap">

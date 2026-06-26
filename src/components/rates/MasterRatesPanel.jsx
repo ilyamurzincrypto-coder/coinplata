@@ -20,9 +20,9 @@ export const CCY_META = {
 export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
   const list = quotes && quotes.length ? quotes : DEFAULT_QUOTES;
   return (
-    <div className="pt-1">
+    <div className="pt-0.5">
       {/* Заголовки направлений */}
-      <div className="grid items-center px-2 pb-1.5" style={GRID}>
+      <div className="grid items-center px-2 pb-1" style={GRID}>
         <span />
         <span className="text-right text-[10.5px] font-bold tracking-wide text-[#0fa56f]">→USDT</span>
         <span className="text-right text-[10.5px] font-bold tracking-wide text-[#e2536d]">USDT→</span>
@@ -35,20 +35,20 @@ export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
         return (
           <div
             key={q}
-            className="grid items-center gap-2.5 px-2 py-[6px] rounded-[11px] transition-colors hover:bg-[#f4f5fa]"
+            className="grid items-center gap-2 px-2 py-[3px] rounded-[10px] transition-colors hover:bg-[#f4f5fa]"
             style={GRID}
           >
-            <span className="flex items-center gap-2.5 min-w-0">
+            <span className="flex items-center gap-2 min-w-0">
               <span
-                className="w-[26px] h-[26px] rounded-[8px] grid place-items-center font-extrabold text-[13px] leading-none shrink-0"
+                className="w-[23px] h-[23px] rounded-[7px] grid place-items-center font-extrabold text-[12px] leading-none shrink-0"
                 style={{ background: meta.bg, color: meta.fg }}
               >
                 {meta.sym}
               </span>
-              <span className="text-[14.5px] font-bold tracking-wide text-ink">{q}</span>
+              <span className="text-[13.5px] font-bold tracking-wide text-ink">{q}</span>
             </span>
-            <RateNum value={into} onCopy={onCopy} className="text-[15px]" />
-            <RateNum value={out} onCopy={onCopy} className="text-[15px]" />
+            <RateNum value={into} onCopy={onCopy} className="text-[14px]" />
+            <RateNum value={out} onCopy={onCopy} className="text-[14px]" />
           </div>
         );
       })}
