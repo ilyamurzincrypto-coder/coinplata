@@ -481,18 +481,6 @@ export default function CashierPage({
                 частое действие после сделки с клиентом; OTC-сделки с
                 партнёрами создаются из обычной формы сделки через выбор
                 партнёрского счёта в IN/OUT). */}
-            {onOpenHelp && (
-              <section className="min-w-0 lg:[grid-area:cta] flex items-center justify-end">
-                <button
-                  type="button"
-                  onClick={() => onOpenHelp({ sectionId: "cashier" })}
-                  title="Справка по Кассе — горячие клавиши, частые сценарии"
-                  className="flex items-center justify-center w-9 h-9 rounded-full text-muted-soft hover:text-success hover:bg-success-soft transition-colors shrink-0"
-                >
-                  <HelpCircle className="w-5 h-5" strokeWidth={2.5} />
-                </button>
-              </section>
-            )}
 
             {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
                 него (col1) той же высоты. */}
