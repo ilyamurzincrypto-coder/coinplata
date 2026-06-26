@@ -18,7 +18,6 @@ const NAV_PAGES = [
   // страницы «Капитал» больше нет — её дашборд переехал сюда).
   { id: "treasury", key: "nav_treasury", section: "capital" },
   { id: "settings", key: "nav_settings", section: "settings" },
-  { id: "info", key: "nav_info", section: "transactions" },
 ];
 
 export default function Header({ currentOffice, onOfficeChange, page, onPageChange }) {
