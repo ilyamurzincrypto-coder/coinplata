@@ -12,6 +12,7 @@ import React, { useMemo, useState, useCallback } from "react";
 import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock, Clock } from "lucide-react";
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import OfficeSwitcher from "./OfficeSwitcher.jsx";
+import DateSelector from "./ui/DateSelector.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import BalanceSubLine from "./balances/BalanceSubLine.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -561,10 +562,12 @@ export default function Balances({ currentOffice, onOfficeChange, scope, onScope
 
   // Локальный display override — переключатель USD/EUR в шапке. По
   // умолчанию = settings.baseCurrency. Не пишет в БД, чисто visual.
-  const [displayBase, setDisplayBase] = useState(() =>
+  const [displayBase] = useState(() =>
     DISPLAY_OPTIONS.includes(settingsBase) ? settingsBase : "USD"
   );
   const base = displayBase;
+  // Селектор даты (заменил тогл USD/EUR) — пока только UI, на данные не влияет.
+  const [asOfDate, setAsOfDate] = useState(() => new Date());
   // toBase использует БИРЖЕВОЙ курс из settings.fxRates (приоритетно)
   // через getRateFx. Если для пары нет fx-курса — fallback на офисный
   // getRate. Это даёт чистую агрегированную метрику без офисной маржи.
@@ -734,12 +737,7 @@ export default function Balances({ currentOffice, onOfficeChange, scope, onScope
                 ]}
               />
             </div>
-            <SegmentedControl
-              options={DISPLAY_OPTIONS.map((c) => ({ id: c, name: c }))}
-              value={displayBase}
-              onChange={setDisplayBase}
-              size="sm"
-            />
+            <DateSelector value={asOfDate} onChange={setAsOfDate} />
           </div>
         </div>
 
