@@ -48,22 +48,29 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   });
   if (rows.length === 0) return null;
 
+  // Левая колонка — «прямые» (a→b), правая — «обратные» (b→a). Между ними
+  // вертикальный разделитель, значения выровнены по правому краю каждой колонки.
+  const left = rows.filter((_, i) => i % 2 === 0);
+  const right = rows.filter((_, i) => i % 2 === 1);
+  const renderItem = ({ from, to, rate }) => (
+    <div key={`${from}_${to}`} className="grid grid-cols-[1fr_auto] items-baseline gap-2 py-[1px]">
+      <span className="text-[11px] font-medium text-[#8a8fa6] whitespace-nowrap tabular-nums">
+        {from}
+        <span className="text-muted-soft/70 mx-0.5">→</span>
+        <span className="text-[#454a68] font-semibold">{to}</span>
+      </span>
+      <RateNum value={fmtCross(rate)} onCopy={onCopy} className="text-[12.5px] text-ink !w-auto" />
+    </div>
+  );
+
   return (
     <div className="mt-2 bg-[#f4f5fa] border border-[#e7e9f1] rounded-[12px] px-2.5 py-1.5">
       <div className="text-[9.5px] font-bold tracking-[1.4px] text-[#8a8fa6] uppercase mb-1">
         Кросс
       </div>
-      <div className="grid grid-cols-2 gap-x-[18px] gap-y-[2px]">
-        {rows.map(({ from, to, rate }) => (
-          <div key={`${from}_${to}`} className="flex items-baseline justify-between gap-2">
-            <span className="text-[11.5px] font-semibold text-[#454a68] whitespace-nowrap">
-              {from}
-              <span className="text-[#8a8fa6] mx-px">→</span>
-              {to}
-            </span>
-            <RateNum value={fmtCross(rate)} onCopy={onCopy} className="text-[12.5px] !w-auto" />
-          </div>
-        ))}
+      <div className="grid grid-cols-2">
+        <div className="pr-3 space-y-px">{left.map(renderItem)}</div>
+        <div className="pl-3 space-y-px border-l border-[#e7e9f1]">{right.map(renderItem)}</div>
       </div>
     </div>
   );
