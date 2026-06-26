@@ -1,12 +1,11 @@
 // src/components/RatesSidebar.jsx
-// Виджет «Курсы» — левая колонка главной (Касса). Две секции:
-//   • Мастер (USDT кеш-кеш, их 6 строк, % для USD / абсолют TRY/EUR) —
-//     правка inline + паст.
-//   • Авто (производные кросс-курсы кеш-кеш) — read-only.
-// Шапка (время + «Изм.») и офис-свитчер остаются здесь.
+// Виджет «Курсы» — левая колонка главной (Касса). Информативный, read-only:
+// показывает курсы ПО ВСЕМ городам сразу (без переключения). По каждому офису —
+// USDT-курсы (со спредом), под российскими — НЕРЕЗ TOD/TOM. Внизу один раз —
+// производные кросс-автокурсы. Правка — через «Изм.» / «Вставить курсы».
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { TrendingUp, Pencil, ClipboardPaste } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { TrendingUp, Pencil, ClipboardPaste, MapPin } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -15,7 +14,6 @@ import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import AutoRatesPanel from "./rates/AutoRatesPanel.jsx";
 import NerezPanel from "./rates/NerezPanel.jsx";
 import RatesImportModal from "./RatesImportModal.jsx";
-const GLOBAL_TAB = "__global__";
 
 // Валюты курса по офису: российские (Москва/СПб) → RUB, иначе турецкий набор.
 // Детект по городу/названию (ловит и «Москва Вася», которую узкий импорт-матчер
@@ -23,8 +21,7 @@ const GLOBAL_TAB = "__global__";
 const RU_OFFICE_RE = /москв|moscow|питер|петербург|санкт|spb|st\.?\s*pt|peterburg/i;
 
 function quotesForOffice(office) {
-  if (!office) return ["USD", "TRY", "EUR", "RUB"]; // Global — весь набор
-  const hay = `${office.city || ""} ${office.name || ""}`;
+  const hay = `${office?.city || ""} ${office?.name || ""}`;
   return RU_OFFICE_RE.test(hay) ? ["RUB"] : ["USD", "TRY", "EUR"];
 }
 
@@ -37,66 +34,24 @@ function timeAgoShort(date, nowMs = Date.now()) {
   return `${Math.floor(diff / 86400)}d`;
 }
 
-function shortOfficeName(name) {
-  if (!name) return "Office";
-  const firstWord = String(name).trim().split(/\s+/)[0];
-  return firstWord.length > 10 ? firstWord.slice(0, 10) : firstWord;
+function cityLabel(office) {
+  const name = office?.name || office?.city || "Office";
+  return String(name).trim();
 }
 
-export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedChange }) {
-  const {
-    getRate: getRateRaw,
-    lastUpdated,
-    getOfficeOverride,
-    specialRates,
-  } = useRates();
+export default function RatesSidebar({ onOpenRates, onExpandedChange }) {
+  const { getRate: getRateRaw, lastUpdated, specialRates } = useRates();
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
   const nowMs = useNow(30_000);
 
-  // Виджет всегда компактный (фикс. набор строк) — гасим expand у родителя.
   useEffect(() => {
     onExpandedChange?.(false);
   }, [onExpandedChange]);
 
-  const [selectedTab, setSelectedTab] = useState(currentOffice || GLOBAL_TAB);
-  useEffect(() => {
-    if (currentOffice) setSelectedTab(currentOffice);
-  }, [currentOffice]);
-
-  const selectedOfficeId = selectedTab !== GLOBAL_TAB ? selectedTab : null;
-
-  const masterQuotes = useMemo(() => {
-    const office = selectedOfficeId
-      ? (activeOffices || []).find((o) => o.id === selectedOfficeId)
-      : null;
-    return quotesForOffice(office);
-  }, [selectedOfficeId, activeOffices]);
-
-  const getRateForTab = useCallback(
-    (from, to) => getRateRaw(from, to, selectedOfficeId),
-    [getRateRaw, selectedOfficeId]
-  );
-
-  const hasOverride = useCallback(
-    (from, to) => {
-      if (!selectedOfficeId) return false;
-      const ovr = getOfficeOverride?.(selectedOfficeId, from, to);
-      const global = getRateRaw(from, to, null);
-      return (
-        !!ovr &&
-        Number.isFinite(ovr.rate) &&
-        Number.isFinite(global) &&
-        Math.abs(ovr.rate - global) > 1e-9
-      );
-    },
-    [selectedOfficeId, getOfficeOverride, getRateRaw]
-  );
-
-  // Блок read-only: правка через «Изм.» / «Вставить курсы». «Вставить курсы»
-  // открывает настоящий импорт-модал (вкладка «Текст») — он парсит города/НЕРЕЗ
-  // и персистит в Supabase через RPC.
   const [pasteOpen, setPasteOpen] = useState(false);
+
+  const offices = activeOffices || [];
 
   return (
     <aside className="bg-surface rounded-card p-1.5 flex flex-col">
@@ -132,49 +87,30 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       </header>
 
-      {/* Office switcher */}
-      <div className="mx-2 my-1.5 inline-flex gap-0.5 p-0.5 bg-surface-sunk rounded-pill overflow-x-auto shrink-0">
-        <button
-          type="button"
-          onClick={() => setSelectedTab(GLOBAL_TAB)}
-          className={`h-6 px-2 rounded-pill text-tiny font-medium font-mono tracking-wider transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
-            selectedTab === GLOBAL_TAB
-              ? "bg-surface text-ink shadow-seg"
-              : "text-muted hover:text-ink"
-          }`}
-          title="Global rates"
-        >
-          Global
-        </button>
-        {(activeOffices || []).map((off) => {
-          const isSel = selectedTab === off.id;
+      {/* Все города сразу — стопкой, без переключения */}
+      <div className="py-1 space-y-2">
+        {offices.map((office) => {
+          const quotes = quotesForOffice(office);
+          const getRate = (from, to) => getRateRaw(from, to, office.id);
+          const isRu = quotes.includes("RUB");
           return (
-            <button
-              key={off.id}
-              type="button"
-              onClick={() => setSelectedTab(off.id)}
-              className={`h-6 px-2 rounded-pill text-tiny font-medium tracking-wide transition-all duration-150 ease-apple whitespace-nowrap shrink-0 ${
-                isSel
-                  ? "bg-surface text-ink shadow-seg"
-                  : "text-muted hover:text-ink"
-              }`}
-              title={off.name || "Office"}
-            >
-              {shortOfficeName(off.name)}
-            </button>
+            <div key={office.id}>
+              {/* Заголовок города */}
+              <div className="flex items-center gap-1.5 px-2 pb-0.5">
+                <MapPin className="w-3 h-3 text-muted-soft shrink-0" strokeWidth={2.2} />
+                <span className="text-caption font-bold text-ink-soft tracking-wide truncate">
+                  {cityLabel(office)}
+                </span>
+                <span className="flex-1 h-px bg-border-soft" />
+              </div>
+              <MasterRatesPanel getRate={getRate} quotes={quotes} />
+              {isRu && <NerezPanel specialRates={specialRates} />}
+            </div>
           );
         })}
-      </div>
 
-      {/* Секции курсов */}
-      <div className="py-1">
-        <MasterRatesPanel
-          getRate={getRateForTab}
-          hasOverride={hasOverride}
-          quotes={masterQuotes}
-        />
-        {masterQuotes.includes("RUB") && <NerezPanel specialRates={specialRates} />}
-        <AutoRatesPanel getRate={getRateForTab} />
+        {/* Производные кросс-автокурсы — один раз внизу (глобальные) */}
+        <AutoRatesPanel getRate={(from, to) => getRateRaw(from, to, null)} />
       </div>
 
       {/* Паст-ввод */}
