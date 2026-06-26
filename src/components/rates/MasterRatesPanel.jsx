@@ -1,78 +1,57 @@
 // src/components/rates/MasterRatesPanel.jsx
-// Табло курсов USDT (read-only, информационное). Валюты зависят от офиса.
-// Адаптивно: если у направлений нет спреда (обратный = 1/прямого), показываем
-// ОДНО значение на валюту; если спред задан (прямой ≠ обратный) — две колонки
-// USDT→X и X→USDT (bid/ask), как в листе менеджеров.
-// Правка курсов — НЕ здесь (через «Изм.» / «Вставить курсы»).
+// Тело карточки офиса: строки валют против USDT. Колонки: →USDT (зелёная, X→USDT)
+// и USDT→ (красная, USDT→X). Чип валюты + код + два копируемых числа. Read-only.
 
 import React from "react";
-import { formatRateValue, displayValue } from "../../utils/ratesFormat.js";
+import { formatRateValue } from "../../utils/ratesFormat.js";
+import RateNum from "./RateNum.jsx";
 
 const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
-const GRID2 = { gridTemplateColumns: "1fr 84px 84px" };
+const GRID = { gridTemplateColumns: "1fr 86px 86px" };
 
-// Спред считаем значимым, если стороны расходятся больше чем на ~0,08%.
-function hasSpread(fwdDisp, revDisp) {
-  if (!Number.isFinite(fwdDisp) || !Number.isFinite(revDisp) || fwdDisp === 0) return false;
-  return Math.abs(fwdDisp - revDisp) / Math.abs(fwdDisp) > 0.0008;
-}
+// Символ + цвета чипа по валюте (light-тема макета coinpoint).
+export const CCY_META = {
+  USD: { sym: "$", bg: "rgba(17,176,122,.12)", fg: "#0d8f63" },
+  TRY: { sym: "₺", bg: "rgba(226,83,109,.12)", fg: "#cf3d59" },
+  EUR: { sym: "€", bg: "rgba(56,128,235,.12)", fg: "#2f6fd0" },
+  RUB: { sym: "₽", bg: "rgba(139,108,240,.13)", fg: "#6f53d4" },
+};
 
-export default function MasterRatesPanel({ getRate, hasOverride, quotes }) {
+export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
   const list = quotes && quotes.length ? quotes : DEFAULT_QUOTES;
-
-  const rows = list.map((q) => {
-    const fwd = Number(getRate?.("USDT", q));
-    const rev = Number(getRate?.(q, "USDT"));
-    return {
-      q,
-      fwd,
-      rev,
-      spread: hasSpread(displayValue("USDT", q, fwd), displayValue(q, "USDT", rev)),
-      ovr: hasOverride?.("USDT", q) || hasOverride?.(q, "USDT"),
-    };
-  });
-  const anySpread = rows.some((r) => r.spread);
-
   return (
-    <section className="px-1">
-      {anySpread && (
-        <div className="grid items-center px-2 leading-none pb-px" style={GRID2}>
-          <span />
-          <span className="text-right text-[10px] font-mono text-muted-soft">→USDT</span>
-          <span className="text-right text-[10px] font-mono text-muted-soft">USDT→</span>
-        </div>
-      )}
+    <div className="pt-1">
+      {/* Заголовки направлений */}
+      <div className="grid items-center px-2 pb-1.5" style={GRID}>
+        <span />
+        <span className="text-right text-[10.5px] font-bold tracking-wide text-[#0fa56f]">→USDT</span>
+        <span className="text-right text-[10.5px] font-bold tracking-wide text-[#e2536d]">USDT→</span>
+      </div>
 
-      <div>
-        {rows.map(({ q, fwd, rev, ovr }) => (
+      {list.map((q) => {
+        const meta = CCY_META[q] || { sym: q[0], bg: "var(--surface-sunk)", fg: "#8a8fa6" };
+        const into = formatRateValue(q, "USDT", Number(getRate?.(q, "USDT"))); // X→USDT
+        const out = formatRateValue("USDT", q, Number(getRate?.("USDT", q))); // USDT→X
+        return (
           <div
             key={q}
-            className={`items-center px-2 py-[2px] rounded-[6px] hover:bg-surface-soft transition-colors ${
-              anySpread ? "grid" : "flex justify-between"
-            }`}
-            style={anySpread ? GRID2 : undefined}
+            className="grid items-center gap-2.5 px-2 py-[6px] rounded-[11px] transition-colors hover:bg-[#f4f5fa]"
+            style={GRID}
           >
-            <span className="flex items-center gap-1.5 font-mono font-bold text-body-sm text-ink">
-              {q}
-              {ovr && (
-                <span
-                  className="w-1.5 h-1.5 rounded-full bg-accent"
-                  title="Переопределено для офиса"
-                />
-              )}
-            </span>
-            {/* Логичный порядок: сначала X→USDT, затем обратное USDT→X */}
-            <span className="text-right font-mono tabular-nums text-body-sm font-semibold text-ink">
-              {formatRateValue(anySpread ? q : "USDT", anySpread ? "USDT" : q, anySpread ? rev : fwd)}
-            </span>
-            {anySpread && (
-              <span className="text-right font-mono tabular-nums text-body-sm font-semibold text-ink">
-                {formatRateValue("USDT", q, fwd)}
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span
+                className="w-[26px] h-[26px] rounded-[8px] grid place-items-center font-extrabold text-[13px] leading-none shrink-0"
+                style={{ background: meta.bg, color: meta.fg }}
+              >
+                {meta.sym}
               </span>
-            )}
+              <span className="text-[14.5px] font-bold tracking-wide text-ink">{q}</span>
+            </span>
+            <RateNum value={into} onCopy={onCopy} className="text-[15px]" />
+            <RateNum value={out} onCopy={onCopy} className="text-[15px]" />
           </div>
-        ))}
-      </div>
-    </section>
+        );
+      })}
+    </div>
   );
 }
