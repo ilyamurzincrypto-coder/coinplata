@@ -193,12 +193,12 @@ export default function DealsLedger({ officeId }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full min-w-[760px] select-none">
+        <table className="border-collapse w-full table-fixed min-w-[1000px] select-none">
           <thead>
             <tr>
               <th
                 rowSpan={2}
-                className="text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-3 py-2 border-b border-[#e7e9f1]"
+                className="w-[150px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-3 py-2 border-b border-[#e7e9f1]"
               >
                 Контрагент
               </th>
@@ -252,7 +252,9 @@ export default function DealsLedger({ officeId }) {
               return (
                 <tr key={d.id} className="hover:bg-[#fafbff]">
                   <td className="bg-[#f6f7fb] text-left px-3 py-1.5 border-t border-[#e7e9f1]">
-                    <span className="text-[12.5px] font-bold text-ink">{d.party}</span>
+                    <span className="block text-[12.5px] font-bold text-ink truncate" title={d.party}>
+                      {d.party}
+                    </span>
                   </td>
                   {cols.map((c) => (
                     <td
