@@ -454,7 +454,7 @@ export default function CashierPage({
               transactions. Внутри sidebar динамически считается сколько
               пар поместится через ResizeObserver — пустоты нет. */}
           <div
-            className={`grid grid-cols-1 gap-6 lg:grid-cols-[minmax(264px,290px)_1fr] ${
+            className={`grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,258px)_1fr] ${
               sidebarExpanded
                 ? "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'sidebar_tx']"
                 : "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'tx_tx']"
@@ -491,7 +491,6 @@ export default function CashierPage({
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
-              <OpenObligationsWidget officeId={currentOffice} />
             </div>
 
             {/* Transactions — grid-area "tx". Compact: row 3 full-width.
