@@ -66,13 +66,13 @@ export default function DateSelector({ value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-pill text-caption font-semibold transition-colors ${
+        className={`inline-flex items-center gap-1.5 h-8 px-3 min-w-[122px] rounded-pill text-caption font-semibold transition-colors ${
           isToday ? "bg-surface-sunk text-ink hover:bg-surface-soft" : "bg-accent-bg text-accent hover:bg-emerald-100"
         }`}
       >
-        <Calendar className="w-3.5 h-3.5 opacity-70" strokeWidth={2} />
-        <span>{label}</span>
-        <ChevronDown className={`w-3.5 h-3.5 opacity-60 transition-transform ${open ? "rotate-180" : ""}`} />
+        <Calendar className="w-3.5 h-3.5 opacity-70 shrink-0" strokeWidth={2} />
+        <span className="flex-1 text-center whitespace-nowrap">{label}</span>
+        <ChevronDown className={`w-3.5 h-3.5 opacity-60 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
