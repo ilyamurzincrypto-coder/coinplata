@@ -173,7 +173,7 @@ export default function BalancesPanel({ currentOffice, scope }) {
 
       {/* Таблица: валюты в колонки */}
       <div ref={wrapRef} className="overflow-x-auto px-4 pt-2 pb-1">
-        <table className="border-collapse w-full">
+        <table className="border-collapse w-full table-fixed min-w-[680px]">
           <thead>
             <tr>
               <th className="w-[80px] text-left" />
