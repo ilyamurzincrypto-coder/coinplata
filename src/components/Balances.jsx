@@ -675,9 +675,12 @@ export default function Balances({ currentOffice, onOfficeChange, scope, onScope
 
   const sym = curSymbol(base);
 
+  // Фрагмент (не оборачивающая секция): контролы и карточка «Остатки» становятся
+  // прямыми детьми колонки дашборда, где ниже лежат «Сделки» — это даёт карточке
+  // высокого родителя, чтобы sticky держался, пока список сделок скроллится под ней.
   return (
-    <section className="w-full space-y-2.5">
-      {/* Контролы: селектор офиса (+ обязательства) · дата */}
+    <>
+      {/* Контролы: селектор офиса (+ обязательства) · дата — НЕ sticky */}
       <div className="flex items-center justify-between gap-2 flex-wrap px-0.5">
         <div className="flex items-center gap-2">
           <div className="w-[190px]">
@@ -717,7 +720,7 @@ export default function Balances({ currentOffice, onOfficeChange, scope, onScope
       <BalancesPanel currentOffice={currentOffice} scope={scope} />
 
       <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
-    </section>
+    </>
   );
 }
 
