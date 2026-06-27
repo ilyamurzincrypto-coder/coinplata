@@ -99,11 +99,15 @@ export async function cancelOrder(id) {
   if (error) throw error;
 }
 
-// Realtime-подписка. Возвращает unsubscribe.
+// Realtime-подписка. Уникальное имя канала на каждую подписку — иначе два
+// подписчика (лента + остатки) с одним именем дают «cannot add postgres_changes
+// callbacks after subscribe()». Возвращает unsubscribe.
+let _chSeq = 0;
 export function subscribeOrders(onChange) {
   if (!supabase || !MANAGER_ORDERS_ENABLED) return () => {};
+  _chSeq += 1;
   const ch = supabase
-    .channel("manager-orders")
+    .channel(`manager-orders-${_chSeq}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "manager_orders" }, onChange)
     .subscribe();
   return () => supabase.removeChannel(ch);
