@@ -1,8 +1,10 @@
 // src/components/rates/CrossRatesPanel.jsx
-// Панель «Кросс» внутри карточки офиса: обе стороны каждой пары валют офиса,
-// через USDT (orientation-aware). Москва (один RUB) — без кросса.
+// Кросс-курсы офиса: строка на пару (USD / TRY), оба направления в строке —
+// → прямой (a→b, зелёная стрелка) и ← обратный (b→a, приглушённая). Через USDT
+// (orientation-aware). Москва (один RUB) — без кросса. Значения копируемые.
 
 import React from "react";
+import { ArrowRightLeft } from "lucide-react";
 import { isPercentPair } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
 
@@ -36,42 +38,50 @@ function uniquePairs(ccys) {
   return out;
 }
 
+const GRID = { gridTemplateColumns: "minmax(62px,auto) 1fr 1fr" };
+
 export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   const fiats = (ccys || []).filter((c) => c !== "USDT");
-  const rows = [];
-  uniquePairs(fiats).forEach(([a, b]) => {
-    const pa = usdtPer(a, getRate);
-    const pb = usdtPer(b, getRate);
-    if (!Number.isFinite(pa) || !Number.isFinite(pb) || pa <= 0 || pb <= 0) return;
-    rows.push({ from: a, to: b, rate: pa / pb });
-    rows.push({ from: b, to: a, rate: pb / pa });
-  });
-  if (rows.length === 0) return null;
+  const rows = uniquePairs(fiats)
+    .map(([a, b]) => {
+      const pa = usdtPer(a, getRate);
+      const pb = usdtPer(b, getRate);
+      if (!Number.isFinite(pa) || !Number.isFinite(pb) || pa <= 0 || pb <= 0) return null;
+      return { a, b, fwd: pa / pb, rev: pb / pa };
+    })
+    .filter(Boolean);
 
-  // Левая колонка — «прямые» (a→b), правая — «обратные» (b→a). Между ними
-  // вертикальный разделитель, значения выровнены по правому краю каждой колонки.
-  const left = rows.filter((_, i) => i % 2 === 0);
-  const right = rows.filter((_, i) => i % 2 === 1);
-  const renderItem = ({ from, to, rate }) => (
-    <div key={`${from}_${to}`} className="grid grid-cols-[1fr_auto] items-baseline gap-2 py-[1px]">
-      <span className="text-[11px] font-medium text-[#8a8fa6] whitespace-nowrap tabular-nums">
-        {from}
-        <span className="text-muted-soft/70 mx-0.5">→</span>
-        <span className="text-[#454a68] font-semibold">{to}</span>
-      </span>
-      <RateNum value={fmtCross(rate)} onCopy={onCopy} className="text-[12.5px] text-ink !w-auto" />
-    </div>
-  );
+  if (rows.length === 0) return null; // один фиат (Москва) → кросса нет
 
   return (
-    <div className="mt-2 bg-[#f4f5fa] border border-[#e7e9f1] rounded-[12px] px-2.5 py-1.5">
-      <div className="text-[9.5px] font-bold tracking-[1.4px] text-[#8a8fa6] uppercase mb-1">
-        Кросс
+    <div className="mt-2 pt-1.5">
+      <div className="flex items-center gap-1.5 px-1 pb-0.5">
+        <ArrowRightLeft className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
+        <span className="text-[9.5px] font-bold tracking-[1.2px] text-[#8a8fa6] uppercase">
+          Кросс-курсы
+        </span>
       </div>
-      <div className="grid grid-cols-2">
-        <div className="pr-3 space-y-px">{left.map(renderItem)}</div>
-        <div className="pl-3 space-y-px border-l border-[#e7e9f1]">{right.map(renderItem)}</div>
-      </div>
+      {rows.map(({ a, b, fwd, rev }) => (
+        <div
+          key={`${a}_${b}`}
+          className="grid items-center gap-2 px-1 py-[5px] border-t border-[#eef0f4]"
+          style={GRID}
+        >
+          <span className="text-[12px] font-semibold text-[#454a68] whitespace-nowrap">
+            {a}
+            <span className="text-muted-soft/70 mx-1 font-normal">/</span>
+            {b}
+          </span>
+          <span className="flex items-baseline justify-end gap-1">
+            <span className="text-[#0fa56f] font-bold text-[12px]" aria-hidden>→</span>
+            <RateNum value={fmtCross(fwd)} onCopy={onCopy} className="text-[12.5px] text-ink !w-auto" />
+          </span>
+          <span className="flex items-baseline justify-end gap-1">
+            <span className="text-muted-soft font-bold text-[12px]" aria-hidden>←</span>
+            <RateNum value={fmtCross(rev)} onCopy={onCopy} className="text-[12.5px] text-muted !w-auto" />
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
