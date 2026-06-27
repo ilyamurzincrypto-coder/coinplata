@@ -4,7 +4,7 @@
 // обрезает). 3 состояния: СПИСОК | НАЙДЕННАЯ СДЕЛКА ПО КОДУ | ФОРМА НОВОГО.
 // Дизайн/поведение — из docs-макета coinplata-cashier. Токены/шрифты кассы.
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Search, Plus } from "lucide-react";
 import {
@@ -22,7 +22,11 @@ const initial = (n) => (String(n || "?")[0] || "?").toUpperCase();
 export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFillFromDeal }) {
   const popRef = useRef(null);
   const inputRef = useRef(null);
-  const [pos, setPos] = useState({ left: 8, top: 8 });
+  // place: { left, top } (открытие вниз) или { left, bottom } (вверх). Якорим
+  // КРАЙ у ячейки — рост поповера по высоте (подгрузка «Недавних») не двигает
+  // видимую часть и не вызывает «прыжок». ready — прячем до позиционирования.
+  const [place, setPlace] = useState(null);
+  const [ready, setReady] = useState(false);
   const [mode, setMode] = useState("list");
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState([]);
@@ -58,16 +62,20 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
   const reposition = useCallback(() => {
     if (!anchorEl) return;
     const r = anchorEl.getBoundingClientRect();
-    const popH = popRef.current?.offsetHeight || 360;
     const left = Math.max(8, Math.min(r.left, window.innerWidth - POP_W - 8));
-    let top = r.bottom + 6;
-    if (top + popH > window.innerHeight - 8) top = Math.max(8, r.top - popH - 6);
-    setPos({ left, top });
+    // Открываем вниз, если хватает места под ячейкой; иначе вверх (низ якорим
+    // к верху ячейки → рост по высоте идёт вверх, без прыжка). Оценка ~360px.
+    const openUp = r.bottom + 360 > window.innerHeight - 8 && r.top > window.innerHeight - r.bottom;
+    if (openUp) setPlace({ left, bottom: window.innerHeight - r.top + 6 });
+    else setPlace({ left, top: r.bottom + 6 });
+    setReady(true);
   }, [anchorEl]);
 
-  useEffect(() => {
+  // Позиционируем ДО отрисовки (нет видимого прыжка); зависит только от якоря,
+  // не от высоты контента.
+  useLayoutEffect(() => {
     reposition();
-  }, [reposition, mode, results, recents, query]);
+  }, [reposition]);
 
   useEffect(() => {
     const h = () => reposition();
@@ -382,7 +390,12 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
       role="dialog"
       aria-label="Выбор контрагента"
       className="fixed z-[130] w-[346px] bg-surface border border-[#dde0ea] rounded-[14px] shadow-[0_24px_60px_-18px_rgba(16,24,40,.4),0_6px_18px_-8px_rgba(16,24,40,.18)] overflow-hidden"
-      style={{ left: pos.left, top: pos.top }}
+      style={{
+        left: place?.left ?? -9999,
+        top: place?.top,
+        bottom: place?.bottom,
+        visibility: ready ? "visible" : "hidden",
+      }}
     >
       {body}
     </div>,
