@@ -458,7 +458,12 @@ export default function CashierPage({
               колонка (Остатки + Сделки стопкой вплотную — ОДНА grid-ячейка).
               items-start, чтобы высокий сайдбар не растягивал основную колонку. */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,258px)_1fr] items-start">
-            <aside className="lg:sticky lg:top-[88px]">
+            {/* Курсы — самостоятельный скролл: sticky под топбаром + max-h по
+                вьюпорту + overflow-y. Иначе высокая панель курсов раздувает
+                высоту страницы, и при скролле короткий список сделок уезжает
+                под залипшую карточку «Остатки». Теперь высоту скролла задаёт
+                только колонка сделок. */}
+            <aside className="lg:sticky lg:top-[56px] lg:max-h-[calc(100vh-64px)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
               <RatesSidebar
                 currentOffice={currentOffice}
                 onOpenRates={openRates}
