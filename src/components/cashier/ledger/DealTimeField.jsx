@@ -69,11 +69,10 @@ export default function DealTimeField({ value, onChange }) {
           e.preventDefault();
           setOpen((v) => !v);
         }}
-        className="w-full flex items-center gap-1 px-1.5 min-h-[31px] text-left hover:bg-[#f3f5ff] transition-colors"
-        title="Дата и время сделки"
+        className="w-full flex items-center justify-center px-1 min-h-[31px] hover:bg-[#f3f5ff] transition-colors"
+        title="Время сделки"
       >
-        <Clock className="w-3 h-3 text-muted-soft shrink-0" strokeWidth={2} />
-        <span className="font-mono text-[11px] text-[#454a66] truncate">{fmtLabel(date)}</span>
+        <span className="font-mono text-[12px] text-[#454a66] tabular-nums">{fmtLabel(date)}</span>
       </button>
 
       {open &&
