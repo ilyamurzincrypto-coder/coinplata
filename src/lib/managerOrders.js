@@ -71,11 +71,12 @@ export async function createOrder(payload) {
   return mapOrder(data);
 }
 
-export async function markArrived(id) {
+// Переключаемая отметка «клиент пришёл» (вкл = ставим время, выкл = снимаем).
+export async function setArrived(id, arrived) {
   if (!supabase) return;
   const { error } = await supabase
     .from("manager_orders")
-    .update({ arrived_at: new Date().toISOString() })
+    .update({ arrived_at: arrived ? new Date().toISOString() : null })
     .eq("id", id);
   if (error) throw error;
 }

@@ -19,11 +19,11 @@ import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
   createOrder,
-  markArrived,
-  markDone,
+  setArrived,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
-import { Hourglass, CircleDashed, CheckCircle2, ArrowRight } from "lucide-react";
+import { Hourglass, CircleDashed, CheckCircle2, Eye } from "lucide-react";
+import OrderDetailsModal from "./OrderDetailsModal.jsx";
 
 function fmtDealTime(iso) {
   if (!iso) return "";
@@ -116,7 +116,7 @@ export default function DealsLedger({ officeId }) {
   const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
   const [pickerOpen, setPickerOpen] = useState(false);
   const partyCellRef = useRef(null);
-  const provestiRef = useRef(null); // id заявки, которую «проводим» текущей строкой
+  const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -126,7 +126,6 @@ export default function DealsLedger({ officeId }) {
   );
 
   const resetDraft = () => {
-    provestiRef.current = null;
     setDraft({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
   };
   const partyContact = (p) => p?.contact || p?.name || p?.label || null;
@@ -203,16 +202,6 @@ export default function DealsLedger({ officeId }) {
           console.warn("[deals] set created_at failed", e2);
         }
       }
-      // Если этой строкой «проводили» заявку — закрываем её (идемпотентно).
-      if (provestiRef.current) {
-        try {
-          await markDone(provestiRef.current);
-        } catch (e3) {
-          // eslint-disable-next-line no-console
-          console.warn("[orders] markDone failed", e3);
-        }
-        await refetchOrders();
-      }
       resetDraft();
       await refetch();
     } catch (e) {
@@ -267,35 +256,17 @@ export default function DealsLedger({ officeId }) {
     closePicker();
   };
 
-  // «Клиент пришёл» — отметка времени на заявке.
-  const arrived = async (order) => {
+  // «Клиент пришёл» — переключаемая отметка (вкл/выкл). Менеджер сам проставил
+  // суммы в строке заявки → этого достаточно; «провести» не нужно (бухгалтер
+  // увидит незаполненное).
+  const toggleArrived = async (order) => {
     try {
-      await markArrived(order.id);
+      await setArrived(order.id, !order.arrivedAt);
       await refetchOrders();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[orders] arrived failed", e);
+      console.warn("[orders] arrived toggle failed", e);
     }
-  };
-  // «Провести» — заполнить строку ввода из заявки; Enter → создаст сделку и
-  // закроет заявку (provestiRef). Визит — без сумм, только контакт.
-  const provesti = (order) => {
-    provestiRef.current = order.id;
-    const nd = {
-      party: order.contact
-        ? { kind: "contact", contact: order.contact, label: order.contact, clientId: order.clientId || undefined }
-        : null,
-      at: new Date(),
-      rate: order.rate || "",
-      in: {},
-      out: {},
-      isReq: false,
-    };
-    if (order.kind !== "visit") {
-      if (order.fromCurrency) nd.in[order.fromCurrency] = fmtRu(order.fromAmount, ccyMeta(order.fromCurrency).dp);
-      if (order.toCurrency) nd.out[order.toCurrency] = fmtRu(order.toAmount, ccyMeta(order.toCurrency).dp);
-    }
-    setDraft(nd);
   };
 
   const cell =
@@ -390,14 +361,14 @@ export default function DealsLedger({ officeId }) {
                   <div className="flex items-center gap-1.5 min-h-[31px]">
                     <button
                       type="button"
-                      onClick={() => arrived(o)}
-                      title={o.arrivedAt ? "Клиент пришёл" : "Отметить: клиент пришёл"}
+                      onClick={() => toggleArrived(o)}
+                      title={o.arrivedAt ? "Пришёл — снять отметку" : "Отметить: клиент пришёл"}
                       className="shrink-0"
                     >
                       {o.arrivedAt ? (
-                        <CheckCircle2 className="w-4 h-4 text-[#0b8a54]" strokeWidth={2.2} />
+                        <CheckCircle2 className="w-[18px] h-[18px] text-[#0b8a54]" strokeWidth={2.2} />
                       ) : (
-                        <CircleDashed className="w-4 h-4 text-[#c9a14a]" strokeWidth={2.2} />
+                        <CircleDashed className="w-[18px] h-[18px] text-[#c9a14a] hover:text-[#0b8a54]" strokeWidth={2.2} />
                       )}
                     </button>
                     <Hourglass className="w-3 h-3 text-[#c9a14a] shrink-0" strokeWidth={2.2} />
@@ -413,12 +384,11 @@ export default function DealsLedger({ officeId }) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => provesti(o)}
-                      title="Провести заявку в сделку"
-                      className="hidden group-hover:inline-flex items-center gap-0.5 text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 shrink-0"
+                      onClick={() => setDetailOrder(o)}
+                      title="Подробности заявки"
+                      className="shrink-0 text-[#b8923a] hover:text-[#9a6b00] p-0.5"
                     >
-                      провести
-                      <ArrowRight className="w-3 h-3" strokeWidth={2.4} />
+                      <Eye className="w-[15px] h-[15px]" strokeWidth={2} />
                     </button>
                   </div>
                 </td>
@@ -654,6 +624,14 @@ export default function DealsLedger({ officeId }) {
           onClose={closePicker}
           onSelect={onSelectParty}
           onFillFromDeal={onFillFromDeal}
+        />
+      )}
+
+      {detailOrder && (
+        <OrderDetailsModal
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
+          onRefetch={refetchOrders}
         />
       )}
     </div>

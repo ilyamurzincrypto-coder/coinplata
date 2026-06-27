@@ -85,7 +85,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
 
         {/* Right cluster: lang + bell + profile */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <div className="w-20">
+          <div className="w-[92px]">
             <Select
               value={lang}
               onChange={setLang}
