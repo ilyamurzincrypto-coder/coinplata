@@ -13,6 +13,18 @@ import { useAccounts } from "../../../store/accounts.jsx";
 import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
+import DealTimeField from "./DealTimeField.jsx";
+import { rpcSetDealCreatedAt } from "../../../lib/supabaseWrite.js";
+
+const MONTHS_S = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+function fmtDealTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const p2 = (n) => String(n).padStart(2, "0");
+  const t = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+  const today = d.toDateString() === new Date().toDateString();
+  return today ? t : `${p2(d.getDate())} ${MONTHS_S[d.getMonth()]} · ${t}`;
+}
 
 function todayStartIso() {
   const d = new Date();
@@ -77,7 +89,7 @@ export default function DealsLedger({ officeId }) {
   // ── Инлайн-ввод ──
   const rowRef = useRef(null);
   // party — объект контрагента из пикера: { kind, clientId?, accountingCode?, name?, contact?, label } | null
-  const [draft, setDraft] = useState({ party: null, rate: "", in: {}, out: {} });
+  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", in: {}, out: {} });
   const [pickerOpen, setPickerOpen] = useState(false);
   const partyCellRef = useRef(null);
   const [saving, setSaving] = useState(false);
@@ -88,7 +100,7 @@ export default function DealsLedger({ officeId }) {
     [accounts, officeId]
   );
 
-  const resetDraft = () => setDraft({ party: null, rate: "", in: {}, out: {} });
+  const resetDraft = () => setDraft({ party: null, at: new Date(), rate: "", in: {}, out: {} });
 
   const commit = useCallback(async () => {
     if (saving) return;
@@ -119,7 +131,21 @@ export default function DealsLedger({ officeId }) {
           },
         ],
       });
-      // Успех подтверждён БД → чистим строку; realtime подтянет новую сделку.
+      // Успех подтверждён БД. Если время изменили с «сейчас» — применяем его к
+      // только что созданной сделке (она последняя в today-списке). Best-effort.
+      const at = draft.at;
+      if (at instanceof Date && Math.abs(at.getTime() - Date.now()) > 60000) {
+        try {
+          const fresh = await loadCashierDeals({ officeId, fromIso });
+          const last = fresh[fresh.length - 1];
+          if (last?.id != null) {
+            await rpcSetDealCreatedAt({ dealId: last.id, createdAt: at.toISOString() });
+          }
+        } catch (e2) {
+          // eslint-disable-next-line no-console
+          console.warn("[deals] set created_at failed", e2);
+        }
+      }
       resetDraft();
       await refetch();
     } catch (e) {
@@ -193,7 +219,7 @@ export default function DealsLedger({ officeId }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full table-fixed min-w-[1000px] select-none">
+        <table className="border-collapse w-full table-fixed min-w-[1140px] select-none">
           <thead>
             <tr>
               <th
@@ -201,6 +227,12 @@ export default function DealsLedger({ officeId }) {
                 className="w-[150px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-3 py-2 border-b border-[#e7e9f1]"
               >
                 Контрагент
+              </th>
+              <th
+                rowSpan={2}
+                className="w-[118px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-2.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
+              >
+                Дата / время
               </th>
               <th
                 colSpan={cols.length}
@@ -255,6 +287,9 @@ export default function DealsLedger({ officeId }) {
                     <span className="block text-[12.5px] font-bold text-ink truncate" title={d.party}>
                       {d.party}
                     </span>
+                  </td>
+                  <td className="bg-[#f6f7fb] text-left px-2.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
+                    {fmtDealTime(d.createdAt)}
                   </td>
                   {cols.map((c) => (
                     <td
@@ -342,6 +377,12 @@ export default function DealsLedger({ officeId }) {
                     <span className="text-[#b6bacb] text-[12px]">контрагент</span>
                   </div>
                 )}
+              </td>
+              <td className="bg-[#f6f7fb] text-left border-t border-l border-[#e7e9f1] p-0 align-middle">
+                <DealTimeField
+                  value={draft.at}
+                  onChange={(at) => setDraft((d) => ({ ...d, at }))}
+                />
               </td>
               {cols.map((c) => {
                 const v = draft.in[c] || "";
