@@ -10,6 +10,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { supabase } from "../../../lib/supabase.js";
 import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
 import { useAccounts } from "../../../store/accounts.jsx";
+import { useRates } from "../../../store/rates.jsx";
+import { convert } from "../../../utils/convert.js";
 import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
@@ -72,8 +74,19 @@ function Amt({ value, ccy }) {
   );
 }
 
+function fmtAmt(n, ccy) {
+  const dp = ccyMeta(ccy)?.dp ?? 2;
+  return Number(n).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: dp });
+}
+function fmtRate(r) {
+  const a = Math.abs(Number(r) || 0);
+  const dp = a >= 100 ? 2 : a >= 1 ? 4 : 6;
+  return Number(r).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: dp });
+}
+
 export default function DealsLedger({ officeId }) {
   const { accounts } = useAccounts();
+  const { getRate } = useRates();
   // Тот же набор валют, что и в «Остатках» (а не все активные из справочника).
   const cols = BAL_COLUMNS;
   const fromIso = useMemo(() => todayStartIso(), []);
@@ -254,8 +267,67 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
-  const setIn = (c, v) => setDraft((d) => ({ ...d, in: { ...d.in, [c]: v } }));
-  const setOut = (c, v) => setDraft((d) => ({ ...d, out: { ...d.out, [c]: v } }));
+  // ── Авто-калькуляция прихода/курса/расхода ──
+  // Приход (in) — якорь. Клик по ячейке расхода → авто-курс (рыночный) + сумма.
+  // Правка курса → пересчёт расхода. Правка расхода → пересчёт курса (курс менеджера).
+  const inLeg = (d) => {
+    const c = cols.find((x) => parseRu(d.in[x]) > 0);
+    return c ? { ccy: c, amt: parseRu(d.in[c]) } : null;
+  };
+  const outCcyOf = (d) => cols.find((x) => parseRu(d.out[x]) > 0) || null;
+
+  const setIn = (c, v) =>
+    setDraft((d) => {
+      const next = { ...d, in: { ...d.in, [c]: v } };
+      // якорь-приход изменился → если есть курс и расход, пересчитать расход
+      const inAmt = parseRu(v);
+      const outC = outCcyOf(next);
+      const rateN = parseRu(next.rate);
+      if (inAmt > 0 && outC && rateN > 0) {
+        next.out = { ...next.out, [outC]: fmtAmt(inAmt * rateN, outC) };
+      }
+      return next;
+    });
+
+  // Фокус по ячейке расхода: подставить рыночный курс + сумму (если приход задан,
+  // курс ещё не введён, и ячейка пустая).
+  const focusOut = (c) =>
+    setDraft((d) => {
+      const leg = inLeg(d);
+      if (!leg || leg.amt <= 0) return d;
+      if (parseRu(d.out[c]) > 0) return d; // уже заполнено — не трогаем
+      const outAmt = convert(leg.amt, leg.ccy, c, getRate);
+      if (!outAmt || !Number.isFinite(outAmt)) return d; // нет курса — ручной ввод
+      return {
+        ...d,
+        rate: fmtRate(outAmt / leg.amt),
+        out: { ...d.out, [c]: fmtAmt(outAmt, c) },
+      };
+    });
+
+  const setRate = (v) =>
+    setDraft((d) => {
+      const next = { ...d, rate: v };
+      const leg = inLeg(d);
+      const outC = outCcyOf(d);
+      const rateN = parseRu(v);
+      if (leg && leg.amt > 0 && outC && rateN > 0) {
+        next.out = { ...next.out, [outC]: fmtAmt(leg.amt * rateN, outC) };
+      }
+      return next;
+    });
+
+  const setOut = (c, v) =>
+    setDraft((d) => {
+      const next = { ...d, out: { ...d.out, [c]: v } };
+      // правка расхода → курс пересчитывается из приход/расход (курс менеджера)
+      const leg = inLeg(d);
+      const outAmt = parseRu(v);
+      if (leg && leg.amt > 0 && outAmt > 0) {
+        next.rate = fmtRate(outAmt / leg.amt);
+      }
+      return next;
+    });
 
   const onSelectParty = (party) => {
     setDraft((d) => ({ ...d, party }));
@@ -591,7 +663,7 @@ export default function DealsLedger({ officeId }) {
               <td className="text-center border-l border-t border-[#e7e9f1] bg-[#f7f8fb] px-2 py-1.5">
                 <input
                   value={draft.rate}
-                  onChange={(e) => setDraft((d) => ({ ...d, rate: e.target.value.replace(/[^\d.,]/g, "") }))}
+                  onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, ""))}
                   onKeyDown={onKeyDown}
                   inputMode="decimal"
                   placeholder="курс"
@@ -610,6 +682,7 @@ export default function DealsLedger({ officeId }) {
                     <input
                       value={v}
                       onChange={(e) => setOut(c, e.target.value.replace(/[^\d\s.,]/g, ""))}
+                      onFocus={() => focusOut(c)}
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
