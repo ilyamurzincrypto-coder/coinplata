@@ -36,8 +36,7 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
   const [kbd, setKbd] = useState(0);
   const [foundCode, setFoundCode] = useState(null);
   const [foundDeal, setFoundDeal] = useState(undefined); // undefined=loading | null=нет | obj
-  const [newKind, setNewKind] = useState("account");
-  const [nf, setNf] = useState({ code: "", name: "", tg: "" });
+  const [nf, setNf] = useState({ name: "", tg: "", phone: "" });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
 
@@ -183,8 +182,8 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
     try {
       const c = await createCounterparty({
         name: nf.name,
-        accountingCode: newKind === "account" ? nf.code : "",
         telegram: nf.tg,
+        phone: nf.phone,
       });
       onSelect?.(partyOf(c));
       onClose?.();
@@ -198,7 +197,9 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
   // ── строки списка ──
   const Row = ({ c, idx }) => {
     const active = kbd === idx;
-    const sub = c.accountingCode ? `счёт · ${c.telegram || "—"}` : c.telegram || "контрагент";
+    const sub = c.accountingCode
+      ? `счёт · ${c.telegram || c.phone || "—"}`
+      : c.telegram || c.phone || "контрагент";
     return (
       <button
         type="button"
@@ -257,7 +258,6 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
       </div>
     );
   } else if (mode === "new") {
-    const acc = newKind === "account";
     body = (
       <div className="p-[13px]">
         <div className="flex items-center justify-between mb-2.5">
@@ -267,25 +267,8 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
           </button>
         </div>
         <div className="flex flex-col gap-2.5">
-          <div className="flex bg-[#f6f7fb] border border-[#e7e9f1] rounded-[9px] p-[3px] gap-[3px]">
-            {[["account", "Счёт"], ["person", "Контрагент"]].map(([k, lbl]) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setNewKind(k)}
-                className={`flex-1 text-[12px] font-bold rounded-[6px] py-1.5 transition-colors ${
-                  newKind === k ? "bg-white text-ink shadow-sm" : "text-[#454a66]"
-                }`}
-              >
-                {lbl}
-              </button>
-            ))}
-          </div>
-          {acc && (
-            <Field label="№ счёта" mono value={nf.code} onChange={(v) => setNf((s) => ({ ...s, code: v }))} placeholder="w___" />
-          )}
           <Field
-            label={`Имя${acc ? " (необязательно)" : ""}`}
+            label="Имя"
             value={nf.name}
             onChange={(v) => setNf((s) => ({ ...s, name: v }))}
             placeholder="например, memet"
@@ -295,6 +278,12 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
             value={nf.tg}
             onChange={(v) => setNf((s) => ({ ...s, tg: v }))}
             placeholder="@username"
+          />
+          <Field
+            label="Телефон (необязательно)"
+            value={nf.phone}
+            onChange={(v) => setNf((s) => ({ ...s, phone: v }))}
+            placeholder="+90 5__ ___ __ __"
           />
           {err && <div className="text-[11px] font-semibold text-[#cf3b40]">⚠ {err}</div>}
           <div className="flex gap-2 mt-0.5">
@@ -380,7 +369,11 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
             type="button"
             onClick={() => {
               setErr("");
-              setNf({ code: "", name: query.trim().startsWith("@") ? "" : "", tg: query.trim().startsWith("@") ? query.trim() : "" });
+              setNf({
+                name: query.trim().startsWith("@") ? "" : query.trim(),
+                tg: query.trim().startsWith("@") ? query.trim() : "",
+                phone: "",
+              });
               setMode("new");
             }}
             className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[9px] text-[12.5px] font-bold text-[#5b6cff] hover:bg-[#f1f4ff]"

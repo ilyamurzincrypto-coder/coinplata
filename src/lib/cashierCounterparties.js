@@ -16,10 +16,11 @@ function mapClient(r) {
     name: r.nickname || r.full_name || null,
     accountingCode: r.accounting_code || null,
     telegram: r.telegram || null,
+    phone: r.phone || null,
   };
 }
 
-const SELECT_COLS = "id,nickname,full_name,accounting_code,telegram";
+const SELECT_COLS = "id,nickname,full_name,accounting_code,telegram,phone";
 
 // Последние использованные (по последним сделкам) → fallback: свежие clients.
 export async function recentClients(limit = 6) {
@@ -50,9 +51,8 @@ export async function recentClients(limit = 6) {
   return (data || []).map(mapClient);
 }
 
-// Серверный поиск: имя (nickname/full_name), код счёта (accounting_code) или
-// telegram. Телефона в clients нет (поле phone отсутствует) — поиск по номеру
-// невозможен без новой колонки (миграция, см. docs/orders-in-ledger-compat.md).
+// Серверный поиск: имя (nickname/full_name), код счёта (accounting_code),
+// telegram или телефон (часто WhatsApp).
 export async function searchClients(q, limit = 20) {
   if (!supabase) return [];
   const s = String(q || "").trim().replace(/[%,()]/g, "");
@@ -61,7 +61,7 @@ export async function searchClients(q, limit = 20) {
     .from("clients")
     .select(SELECT_COLS)
     .or(
-      `nickname.ilike.%${s}%,full_name.ilike.%${s}%,accounting_code.ilike.%${s}%,telegram.ilike.%${s}%`
+      `nickname.ilike.%${s}%,full_name.ilike.%${s}%,accounting_code.ilike.%${s}%,telegram.ilike.%${s}%,phone.ilike.%${s}%`
     )
     .is("archived_at", null)
     .limit(limit);
@@ -76,15 +76,17 @@ export async function findDealByCode(/* code */) {
 }
 
 // Создать контрагента. RLS: clients INSERT доступен authenticated (manager).
-export async function createCounterparty({ name, accountingCode, telegram }) {
+// № счёта тут не заводим (его назначает бухгалтер) — нужно хотя бы одно из
+// имя/telegram/телефон.
+export async function createCounterparty({ name, telegram, phone }) {
   if (!supabase) throw new Error("Supabase не настроен");
   const row = {
     nickname: name ? String(name).trim() : null,
-    accounting_code: accountingCode ? String(accountingCode).trim() : null,
     telegram: telegram ? String(telegram).trim() : null,
+    phone: phone ? String(phone).trim() : null,
   };
-  if (!row.nickname && !row.accounting_code) {
-    throw new Error("Нужно имя или № счёта");
+  if (!row.nickname && !row.telegram && !row.phone) {
+    throw new Error("Укажите имя, telegram или телефон");
   }
   const { data, error } = await supabase
     .from("clients")
