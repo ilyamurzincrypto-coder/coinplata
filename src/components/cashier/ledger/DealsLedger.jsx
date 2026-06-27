@@ -315,9 +315,15 @@ export default function DealsLedger({ officeId }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full table-fixed min-w-[1040px] select-none">
+        <table className="border-collapse w-full table-fixed min-w-[1090px] select-none">
           <thead>
             <tr>
+              <th
+                rowSpan={2}
+                className="w-[32px] text-center align-middle bg-[#f6f7fb] text-[#8d92a8] font-bold text-[10px] px-1 py-2 border-b border-[#e7e9f1]"
+              >
+                №
+              </th>
               <th
                 rowSpan={2}
                 className="w-[150px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-3 py-2 border-b border-[#e7e9f1]"
@@ -373,8 +379,11 @@ export default function DealsLedger({ officeId }) {
 
           <tbody>
             {/* Заявки (pending) — жёлтые строки сверху */}
-            {orders.map((o) => (
+            {orders.map((o, oi) => (
               <tr key={`ord_${o.id}`} className="group bg-[#fff8e6] hover:bg-[#fff3cf]">
+                <td className="bg-[#fff8e6] text-center border-t border-[#f0e2b8] font-mono text-[11px] font-bold text-[#b8923a] px-1 py-1.5">
+                  {oi + 1}
+                </td>
                 <td className="bg-[#fff8e6] text-left border-t border-[#f0e2b8] px-2 py-1.5">
                   <div className="flex items-center gap-1.5 min-h-[31px]">
                     <button
@@ -389,17 +398,22 @@ export default function DealsLedger({ officeId }) {
                         <CircleDashed className="w-4 h-4 text-[#c9a14a]" strokeWidth={2.2} />
                       )}
                     </button>
-                    <span className="font-mono text-[9px] font-bold text-[#9a6b00] bg-[#fde9b8] rounded-[4px] px-1 py-px shrink-0" title="заявка">
-                      ⧖
-                    </span>
-                    <span className="text-[12px] font-bold text-ink truncate flex-1 min-w-0" title={o.contact}>
-                      {o.contact || "—"}
+                    <Hourglass className="w-3 h-3 text-[#c9a14a] shrink-0" strokeWidth={2.2} />
+                    <span className="flex flex-col min-w-0 flex-1 leading-tight">
+                      <span className="text-[12px] font-bold text-ink truncate" title={o.contact}>
+                        {o.contact || "—"}
+                      </span>
+                      <span className="text-[9.5px] font-mono text-[#b8923a] truncate">
+                        {o.meetingCode ? `№ ${o.meetingCode}` : "заявка"}
+                        {o.meetingAt ? ` · к ${fmtDealTime(o.meetingAt)}` : ""}
+                        {o.note ? ` · ${o.note}` : ""}
+                      </span>
                     </span>
                     <button
                       type="button"
                       onClick={() => provesti(o)}
                       title="Провести заявку в сделку"
-                      className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-0.5 text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 shrink-0 transition-opacity"
+                      className="hidden group-hover:inline-flex items-center gap-0.5 text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 shrink-0"
                     >
                       провести
                       <ArrowRight className="w-3 h-3" strokeWidth={2.4} />
@@ -435,13 +449,16 @@ export default function DealsLedger({ officeId }) {
               </tr>
             ))}
 
-            {rows.map((d) => {
+            {rows.map((d, di) => {
               const outByCcy = {};
               d.outs.forEach((o) => {
                 outByCcy[o.ccy] = (outByCcy[o.ccy] || 0) + o.amount;
               });
               return (
                 <tr key={d.id} className="hover:bg-[#fafbff]">
+                  <td className="bg-[#f6f7fb] text-center border-t border-[#e7e9f1] font-mono text-[11px] font-bold text-[#b6bacb] px-1 py-1.5">
+                    {orders.length + di + 1}
+                  </td>
                   <td className="bg-[#f6f7fb] text-left px-3 py-1.5 border-t border-[#e7e9f1]">
                     <span className="block text-[12.5px] font-bold text-ink truncate" title={d.party}>
                       {d.party}
@@ -479,6 +496,9 @@ export default function DealsLedger({ officeId }) {
 
             {/* Инлайн-ввод новой сделки */}
             <tr ref={rowRef} onBlur={onRowBlur} className={draft.isReq ? "bg-[#fff8e6]" : "bg-white"}>
+              <td className={`text-center border-t border-[#e7e9f1] text-[#cdd1de] text-[13px] ${draft.isReq ? "bg-[#fff8e6]" : "bg-[#f6f7fb]"}`}>
+                +
+              </td>
               <td
                 ref={partyCellRef}
                 className="bg-[#f6f7fb] text-left border-t border-[#e7e9f1] p-0 align-middle"
@@ -511,7 +531,7 @@ export default function DealsLedger({ officeId }) {
                           cash
                         </span>
                       ) : draft.party.kind === "contact" ? (
-                        <span className="font-mono text-[10.5px] font-bold text-[#2f6fd0] bg-[#e8f0fd] border border-[#d6e4fb] rounded-[5px] px-1.5 py-px whitespace-nowrap">
+                        <span className="font-semibold text-[12px] text-[#2f6fd0] truncate min-w-0">
                           {draft.party.label}
                         </span>
                       ) : draft.party.accountingCode ? (

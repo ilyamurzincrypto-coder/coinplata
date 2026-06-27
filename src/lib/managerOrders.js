@@ -27,6 +27,8 @@ function mapOrder(r) {
     arrivedAt: r.arrived_at || null,
     dealId: r.deal_id || null,
     note: r.note || null,
+    meetingCode: r.meeting_code || null,
+    meetingAt: r.meeting_at || null,
     createdAt: r.created_at,
   };
 }
@@ -57,6 +59,8 @@ export async function createOrder(payload) {
     rate: payload.rate || null,
     to_currency: payload.toCurrency || null,
     to_amount: payload.toAmount ?? null,
+    meeting_code: payload.meetingCode || null,
+    meeting_at: payload.meetingAt || null,
   };
   const { data, error } = await supabase
     .from("manager_orders")

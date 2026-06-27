@@ -205,14 +205,19 @@ export async function rpcCreateDealV2(payload) {
   const params = {
     p_idempotency_key: key,
     p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
-    p_client_id: payload.clientId,
+    // ВСЕГДА явный null, а не undefined: иначе ключ выпадает из JSON и PostgREST
+    // не находит перегрузку create_deal_v2 (p_client_id — required-параметр).
+    p_client_id: payload.clientId ?? null,
     p_office_id: payload.officeId,
     p_in_legs: inLegs,
     p_out_legs: outLegs,
     p_commission: payload.commission,
+    // Время сделки (из поля «Время»). Не задано → функция возьмёт now().
+    p_effective_date: payload.effectiveDate ?? undefined,
     p_description: payload.description ?? null,
     p_metadata: payload.metadata ?? {},
   };
+  if (params.p_effective_date === undefined) delete params.p_effective_date;
   const data = await invokeLedger("create_deal_v2", params);
   // RETURNS TABLE → Supabase возвращает массив одной строки
   return Array.isArray(data) ? data[0] : data;
