@@ -30,6 +30,8 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
   const [mode, setMode] = useState("list");
   const [query, setQuery] = useState("");
   const [recents, setRecents] = useState([]);
+  const [recentsLoaded, setRecentsLoaded] = useState(false);
+  const dirRef = useRef(null); // 'up' | 'down' — решаем ОДИН раз, чтобы не прыгало
   const [results, setResults] = useState([]);
   const [kbd, setKbd] = useState(0);
   const [foundCode, setFoundCode] = useState(null);
@@ -40,7 +42,10 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    recentClients(6).then(setRecents).catch(() => setRecents([]));
+    recentClients(6)
+      .then(setRecents)
+      .catch(() => setRecents([]))
+      .finally(() => setRecentsLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -63,19 +68,25 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
     if (!anchorEl) return;
     const r = anchorEl.getBoundingClientRect();
     const left = Math.max(8, Math.min(r.left, window.innerWidth - POP_W - 8));
-    // Открываем вниз, если хватает места под ячейкой; иначе вверх (низ якорим
-    // к верху ячейки → рост по высоте идёт вверх, без прыжка). Оценка ~360px.
-    const openUp = r.bottom + 360 > window.innerHeight - 8 && r.top > window.innerHeight - r.bottom;
-    if (openUp) setPlace({ left, bottom: window.innerHeight - r.top + 6 });
+    // Направление решаем ОДИН раз по РЕАЛЬНОЙ высоте поповера: вниз, если
+    // помещается под ячейкой; иначе вверх (низ якорим к верху ячейки → рост
+    // идёт вверх, без прыжка).
+    if (!dirRef.current) {
+      const popH = popRef.current?.offsetHeight || 460;
+      const spaceBelow = window.innerHeight - r.bottom - 8;
+      dirRef.current = popH > spaceBelow && r.top - 8 > spaceBelow ? "up" : "down";
+    }
+    if (dirRef.current === "up") setPlace({ left, bottom: window.innerHeight - r.top + 6 });
     else setPlace({ left, top: r.bottom + 6 });
-    setReady(true);
   }, [anchorEl]);
 
-  // Позиционируем ДО отрисовки (нет видимого прыжка); зависит только от якоря,
-  // не от высоты контента.
+  // Позиционируем ДО отрисовки, но направление считаем только КОГДА загружены
+  // «Недавние» (реальная высота известна) — тогда же показываем (без прыжка).
   useLayoutEffect(() => {
+    if (!recentsLoaded) return;
     reposition();
-  }, [reposition]);
+    setReady(true);
+  }, [reposition, recentsLoaded, mode]);
 
   useEffect(() => {
     const h = () => reposition();
