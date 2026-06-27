@@ -45,10 +45,12 @@ function parseRu(v) {
 
 function Amt({ value, ccy }) {
   const { int, dec } = splitParts(fmtRu(value, ccyMeta(ccy).dp));
+  // Прячем нулевые десятичные («12 000,00» → «12 000»), значащие оставляем («,50»).
+  const showDec = dec && !/^,0*$/.test(dec);
   return (
     <>
       {int}
-      {dec && <span className="opacity-[0.42]">{dec}</span>}
+      {showDec && <span className="opacity-[0.42]">{dec}</span>}
     </>
   );
 }
