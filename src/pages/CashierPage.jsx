@@ -454,37 +454,11 @@ export default function CashierPage({
               Sidebar в row 2 = высота Balances (стретчится). Не до
               transactions. Внутри sidebar динамически считается сколько
               пар поместится через ResizeObserver — пустоты нет. */}
-          <div
-            className={`grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,258px)_1fr] ${
-              sidebarExpanded
-                ? "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'sidebar_tx']"
-                : "lg:[grid-template-areas:'cta_cta'_'sidebar_bal'_'tx_tx']"
-            }`}
-          >
-            {/* Sidebar — grid-area "sidebar". Compact: только row 2
-                (рядом с Balances), height stretch до Balances height.
-                Expanded: row 2+3 (sidebar занимает оба row слева). */}
-            <aside
-              className={`lg:[grid-area:sidebar] lg:self-start ${
-                sidebarExpanded ? "lg:sticky lg:top-[88px]" : ""
-              }`}
-            >
-              <RatesSidebar
-                currentOffice={currentOffice}
-                onOpenRates={openRates}
-                onExpandedChange={setSidebarExpanded}
-              />
-            </aside>
-
-            {/* CTA "+ New exchange" / "Resume" — большая основная кнопка
-                с подзаголовком «С КЛИЕНТОМ». Справа — компактная кнопка
-                «Перемещение» для перевода между нашими счетами (это самое
-                частое действие после сделки с клиентом; OTC-сделки с
-                партнёрами создаются из обычной формы сделки через выбор
-                партнёрского счёта в IN/OUT). */}
-
-            {/* Balances — grid-area "bal", row 2 col2. Sidebar справа от
-                него (col1) той же высоты. */}
+          {/* Раскладка: слева основная колонка (Остатки → Сделки стопкой),
+              справа узкий sticky-сайдбар Курсов. На мобиле — стопкой:
+              Остатки → Сделки → Курсы (порядок в разметке). */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(240px,258px)] lg:[grid-template-areas:'bal_rates'_'tx_rates']">
+            {/* Остатки — верх основной колонки */}
             <div className="min-w-0 lg:[grid-area:bal] space-y-4">
               <Balances
                 currentOffice={currentOffice}
@@ -494,14 +468,19 @@ export default function CashierPage({
               />
             </div>
 
-            {/* Transactions — grid-area "tx". Compact: row 3 full-width.
-                Expanded: row 3 col2 (рядом с продолжением sidebar).
-                Список читается из v2-леджера (ledger.transactions/journal_entries),
-                чтобы оператор видел только что созданные сделки. Старый
-                TransactionsTable (поверх замороженной public.deals) отключён. */}
+            {/* Сделки за день — под остатками, основная колонка */}
             <div className="min-w-0 lg:[grid-area:tx]">
               <DealsLedger officeId={currentOffice} />
             </div>
+
+            {/* Курсы — узкий sticky-сайдбар справа на всю высоту */}
+            <aside className="lg:[grid-area:rates] lg:self-start lg:sticky lg:top-[88px]">
+              <RatesSidebar
+                currentOffice={currentOffice}
+                onOpenRates={openRates}
+                onExpandedChange={setSidebarExpanded}
+              />
+            </aside>
           </div>
         </div>
       )}
