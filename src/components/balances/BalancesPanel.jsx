@@ -152,7 +152,7 @@ export default function BalancesPanel({ currentOffice, scope }) {
   return (
     <section
       ref={cardRef}
-      className="relative z-[5] bg-surface border border-[#e7e9f1] rounded-[16px]"
+      className="relative lg:sticky lg:top-[56px] z-20 bg-surface border border-[#e7e9f1] rounded-[16px]"
       style={{ boxShadow: "0 1px 2px rgba(16,24,40,.06), 0 14px 34px -16px rgba(16,24,40,.18)" }}
     >
       {/* Шапка */}
