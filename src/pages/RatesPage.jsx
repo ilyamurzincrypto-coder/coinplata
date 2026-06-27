@@ -373,7 +373,7 @@ export default function RatesPage({ onBack }) {
 
   if (!canEdit) {
     return (
-      <main className="max-w-[1400px] mx-auto px-6 py-10 text-center">
+      <main className="max-w-[1760px] mx-auto px-4 py-10 text-center">
         <div className="bg-white rounded-card-lg border border-border-soft p-8 max-w-md mx-auto">
           <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-3" />
           <div className="text-[15px] font-bold text-ink mb-1">
@@ -389,7 +389,7 @@ export default function RatesPage({ onBack }) {
 
   return (
     <main className="min-h-screen">
-      <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-5">
+      <div className="max-w-[1760px] mx-auto px-4 py-6 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">

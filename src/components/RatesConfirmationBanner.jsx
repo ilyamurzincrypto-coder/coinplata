@@ -146,7 +146,7 @@ function BannerShell({ tone, icon: Icon, children }) {
       : "bg-warning-soft border-warning/20 text-warning";
   return (
     <div className={`border-b ${toneClass} sticky top-0 z-20`}>
-      <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
+      <div className="max-w-[1760px] mx-auto px-4 py-2 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-caption font-medium">
           <Icon className="w-3.5 h-3.5 shrink-0" />
           {children}
