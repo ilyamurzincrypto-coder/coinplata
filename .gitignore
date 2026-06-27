@@ -8,3 +8,4 @@ dist-ssr
 .vercel
 .claude/
 supabase/.temp/
+reference-photos/
