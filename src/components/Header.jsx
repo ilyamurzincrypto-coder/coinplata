@@ -44,7 +44,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
 
   return (
     <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-border-soft">
-      <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center gap-4">
+      <div className="max-w-[1680px] mx-auto px-4 h-14 flex items-center gap-4">
         {/* Logo — coinpoint mark, без текстовой подписи */}
         <div className="flex items-center shrink-0">
           <img
