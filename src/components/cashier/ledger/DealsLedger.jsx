@@ -385,7 +385,7 @@ export default function DealsLedger({ officeId }) {
                     <button
                       type="button"
                       onClick={() => setDetailOrder(o)}
-                      title="Подробности заявки"
+                      title="Открыть и править заявку"
                       className="shrink-0 text-[#b8923a] hover:text-[#9a6b00] p-0.5"
                     >
                       <Eye className="w-[15px] h-[15px]" strokeWidth={2} />
@@ -613,7 +613,9 @@ export default function DealsLedger({ officeId }) {
           <span className="text-[11.5px] font-semibold text-muted">Сохранение…</span>
         ) : (
           <span className="text-[11px] text-muted">
-            Впишите суммы в ячейки прихода и расхода + курс, затем Enter — сделка сохранится
+            {draft.isReq
+              ? "Режим заявки (⧖): впишите суммы + контрагента, затем Enter — заявка сохранится (потом можно править)"
+              : "Впишите суммы в ячейки прихода и расхода + курс, затем Enter — сделка сохранится"}
           </span>
         )}
       </div>

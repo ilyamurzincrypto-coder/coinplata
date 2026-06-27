@@ -9,6 +9,12 @@ import { supabase } from "./supabase.js";
 export const MANAGER_ORDERS_ENABLED =
   import.meta.env?.VITE_MANAGER_ORDERS_ENABLED === "true";
 
+// Короткий читаемый код заявки/встречи (для устной координации и привязки).
+export function genOrderCode() {
+  const s = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `CP-${s}`;
+}
+
 function mapOrder(r) {
   return {
     id: r.id,
@@ -59,7 +65,8 @@ export async function createOrder(payload) {
     rate: payload.rate || null,
     to_currency: payload.toCurrency || null,
     to_amount: payload.toAmount ?? null,
-    meeting_code: payload.meetingCode || null,
+    // Заявкам из кассы тоже присваиваем код (если не передан внешний).
+    meeting_code: payload.meetingCode || genOrderCode(),
     meeting_at: payload.meetingAt || null,
   };
   const { data, error } = await supabase
@@ -92,6 +99,30 @@ export async function markDone(id, { dealId, note } = {}) {
     .update(patch)
     .eq("id", id)
     .eq("status", "pending");
+  if (error) throw error;
+}
+
+// Править заявку по факту (когда клиент пришёл — суммы/курс/контакт могут
+// измениться). Принимает camelCase-патч, шлёт только переданные поля.
+export async function updateOrder(id, patch = {}) {
+  if (!supabase) return;
+  const map = {
+    contact: "contact",
+    clientId: "client_id",
+    fromCurrency: "from_currency",
+    fromAmount: "from_amount",
+    rate: "rate",
+    toCurrency: "to_currency",
+    toAmount: "to_amount",
+    meetingCode: "meeting_code",
+    note: "note",
+  };
+  const row = {};
+  for (const [k, col] of Object.entries(map)) {
+    if (patch[k] !== undefined) row[col] = patch[k] === "" ? null : patch[k];
+  }
+  if (!Object.keys(row).length) return;
+  const { error } = await supabase.from("manager_orders").update(row).eq("id", id);
   if (error) throw error;
 }
 
