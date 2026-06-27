@@ -13,6 +13,7 @@ import { Banknote, Building2, Coins, Layers, CheckCircle2, Lock, Clock } from "l
 import SegmentedControl from "./ui/SegmentedControl.jsx";
 import OfficeSwitcher from "./OfficeSwitcher.jsx";
 import DateSelector from "./ui/DateSelector.jsx";
+import BalancesPanel from "./balances/BalancesPanel.jsx";
 import CurrencyIcon from "./ui/CurrencyIcon.jsx";
 import BalanceSubLine from "./balances/BalanceSubLine.jsx";
 import { useAccounts } from "../store/accounts.jsx";
@@ -675,140 +676,45 @@ export default function Balances({ currentOffice, onOfficeChange, scope, onScope
   const sym = curSymbol(base);
 
   return (
-    <section className="w-full">
-      {/* Всё внутри ОДНОЙ карточки — header (Балансы + офис + controls)
-          → stat-strip (Total + Available + border-b) → office blocks.
-          pt-3.5 (14px) от top-edge до заголовка — синхронизировано с
-          RatesSidebar. БЕЗ h-full — Balances делит cell с Obligations
-          через space-y-4; растягивать его на всю высоту cell сломает
-          stack под ним. */}
-      <div className="w-full bg-surface rounded-card flex flex-col">
-        {/* Header */}
-        <div className="px-card pt-3.5 pb-3 flex items-center justify-between gap-3 flex-wrap">
-          <div className="text-h2 text-ink flex items-center gap-2 min-w-0">
-            {t("balances")}
-            <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
-              {accountsInScope}
-            </span>
-            <span className="text-body-sm text-muted font-normal ml-2 inline-flex items-center gap-1.5 truncate">
-              {scope === "selected" ? (
-                <>
-                  <Building2 className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
-                  <span className="truncate">{findOffice(currentOffice)?.name || "—"}</span>
-                </>
-              ) : (
-                <>
-                  <Layers className="w-3.5 h-3.5 text-muted shrink-0" strokeWidth={1.75} />
-                  <span className="truncate">{t("all_offices")} · {activeOffices.length}</span>
-                </>
-              )}
-            </span>
+    <section className="w-full space-y-2.5">
+      {/* Контролы: селектор офиса (+ обязательства) · дата */}
+      <div className="flex items-center justify-between gap-2 flex-wrap px-0.5">
+        <div className="flex items-center gap-2">
+          <div className="w-[190px]">
+            <OfficeSwitcher
+              value={scope === "all" ? ALL_OFFICES_ID : currentOffice}
+              onChange={(id) => {
+                if (id === ALL_OFFICES_ID) {
+                  onScopeChange?.("all");
+                } else {
+                  onOfficeChange?.(id);
+                  onScopeChange?.("selected");
+                }
+              }}
+              offices={[
+                { id: ALL_OFFICES_ID, name: t("all_offices") },
+                ...activeOffices.map((o) => ({ id: o.id, name: o.name })),
+              ]}
+            />
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {grand.hasObligations && (
-              <button
-                type="button"
-                onClick={() => setObligationsOpen(true)}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-badge bg-danger-soft text-danger text-caption font-semibold hover:bg-danger-soft/70 transition-colors"
-                title="Open obligations — click to settle"
-              >
-                <Lock className="w-3 h-3" strokeWidth={2} />
-                <span>Obligations · {openObligationsCount}</span>
-                <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
-              </button>
-            )}
-            {/* Селектор офиса (перенесён из шапки кассы) — заменяет тогл
-                «Выбранный/Все офисы»: выбор офиса ставит scope=selected +
-                currentOffice, пункт «Все офисы» → scope=all. */}
-            <div className="w-[190px]">
-              <OfficeSwitcher
-                value={scope === "all" ? ALL_OFFICES_ID : currentOffice}
-                onChange={(id) => {
-                  if (id === ALL_OFFICES_ID) {
-                    onScopeChange?.("all");
-                  } else {
-                    onOfficeChange?.(id);
-                    onScopeChange?.("selected");
-                  }
-                }}
-                offices={[
-                  { id: ALL_OFFICES_ID, name: t("all_offices") },
-                  ...activeOffices.map((o) => ({ id: o.id, name: o.name })),
-                ]}
-              />
-            </div>
-            <DateSelector value={asOfDate} onChange={setAsOfDate} />
-          </div>
-        </div>
-
-        {/* Stat-strip: Total + Available + delta. Border-b на всю ширину
-            карточки, контент ограничен max-w-2xl. */}
-        <div className="px-card pb-5 border-b border-border">
-          <div className="grid grid-cols-2 gap-10 max-w-2xl">
-            <div className="flex flex-col gap-1">
-              <div className="text-micro text-muted uppercase">Total balance</div>
-              <div className="font-mono tabular text-display-lg text-ink leading-none">
-                {sym}{fmt(grand.total)}
-                <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
-              </div>
-              <div className="text-caption">
-                <DeltaPair
-                  today={grand.delta}
-                  yesterday={grand.deltaYesterday}
-                  currency={base}
-                  size="sm"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-1">
-              <div className="text-micro text-muted uppercase inline-flex items-center gap-1.5">
-                <CheckCircle2 className="w-3 h-3 text-success" strokeWidth={2.2} />
-                Available
-              </div>
-              <div className="font-mono tabular text-display-lg text-ink leading-none">
-                {sym}{fmt(grand.available)}
-                <span className="text-muted-soft text-h2 ml-1.5 font-semibold">{base}</span>
-              </div>
-              <div className="text-caption text-muted">
-                {accountsInScope} счетов{grand.hasReserved ? ` · ${sym}${fmt(grand.reserved)} pending` : ""}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Office blocks */}
-        <div className="px-card py-5">
-          {officesToRender.length === 0 ? (
-            <div className="py-6 text-center text-body-sm text-muted">No active offices</div>
-          ) : (
-            <div className="space-y-6">
-              {officesToRender.map((office) => {
-                const officeAccs = accounts.filter((a) => a.officeId === office.id && a.active);
-                return (
-                  <OfficeBlock
-                    key={office.id}
-                    office={office}
-                    accounts={officeAccs}
-                    balanceOf={balanceOf}
-                    reservedOf={reservedOf}
-                    deltaOf={deltaOf}
-                    dayStartMs={dayStartMs}
-                    yesterdayStartMs={yesterdayStartMs}
-                    currencyDict={currencyDict}
-                    toBase={toBase}
-                    toUsdt={toUsdt}
-                    base={base}
-                    globalCryptoTotal={globalCrypto.total}
-                    globalCryptoDelta={globalCrypto.delta}
-                    globalCryptoDeltaYesterday={globalCrypto.deltaYesterday}
-                    hideTotals={officesToRender.length === 1}
-                  />
-                );
-              })}
-            </div>
+          {grand.hasObligations && (
+            <button
+              type="button"
+              onClick={() => setObligationsOpen(true)}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-badge bg-danger-soft text-danger text-caption font-semibold hover:bg-danger-soft/70 transition-colors"
+              title="Open obligations — click to settle"
+            >
+              <Lock className="w-3 h-3" strokeWidth={2} />
+              <span>Obligations · {openObligationsCount}</span>
+              <span className="font-mono tabular font-bold">{sym}{fmt(grand.obligations)}</span>
+            </button>
           )}
         </div>
+        <DateSelector value={asOfDate} onChange={setAsOfDate} />
       </div>
+
+      {/* Остатки в кассе (новый дизайн) */}
+      <BalancesPanel currentOffice={currentOffice} scope={scope} />
 
       <ObligationsModal open={obligationsOpen} onClose={() => setObligationsOpen(false)} />
     </section>
