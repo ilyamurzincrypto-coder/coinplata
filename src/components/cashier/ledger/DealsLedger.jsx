@@ -9,19 +9,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase.js";
 import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
-import { useCurrencies } from "../../../store/currencies.jsx";
 import { useAccounts } from "../../../store/accounts.jsx";
 import { createDeal } from "../../../lib/dealOperations.js";
-import { ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
-
-const PREF = ["USDT", "USD", "EUR", "TRY", "RUB", "GBP", "CHF"];
-
-function orderCcys(codes) {
-  const set = (codes || []).filter(Boolean);
-  const pref = PREF.filter((c) => set.includes(c));
-  const rest = set.filter((c) => !PREF.includes(c)).sort();
-  return [...pref, ...rest];
-}
+import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 
 function todayStartIso() {
   const d = new Date();
@@ -45,9 +35,9 @@ function Amt({ value, ccy }) {
 }
 
 export default function DealsLedger({ officeId }) {
-  const { codes } = useCurrencies();
   const { accounts } = useAccounts();
-  const cols = useMemo(() => orderCcys(codes), [codes]);
+  // Тот же набор валют, что и в «Остатках» (а не все активные из справочника).
+  const cols = BAL_COLUMNS;
   const fromIso = useMemo(() => todayStartIso(), []);
 
   const [rows, setRows] = useState([]);

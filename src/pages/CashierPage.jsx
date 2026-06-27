@@ -454,27 +454,21 @@ export default function CashierPage({
               Sidebar в row 2 = высота Balances (стретчится). Не до
               transactions. Внутри sidebar динамически считается сколько
               пар поместится через ResizeObserver — пустоты нет. */}
-          {/* Раскладка: слева основная колонка (Остатки → Сделки стопкой),
-              справа узкий sticky-сайдбар Курсов. На мобиле — стопкой:
-              Остатки → Сделки → Курсы (порядок в разметке). */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(240px,258px)] lg:[grid-template-areas:'bal_rates'_'tx_rates']">
-            {/* Остатки — верх основной колонки */}
-            <div className="min-w-0 lg:[grid-area:bal] space-y-4">
+          {/* Раскладка: слева основная колонка (Остатки + Сделки стопкой
+              вплотную — ОДНА grid-ячейка), справа узкий sticky-сайдбар Курсов.
+              items-start, чтобы высокий сайдбар не растягивал левую колонку. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(240px,258px)] items-start">
+            <div className="min-w-0 space-y-4">
               <Balances
                 currentOffice={currentOffice}
                 onOfficeChange={onOfficeChange}
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
-            </div>
-
-            {/* Сделки за день — под остатками, основная колонка */}
-            <div className="min-w-0 lg:[grid-area:tx]">
               <DealsLedger officeId={currentOffice} />
             </div>
 
-            {/* Курсы — узкий sticky-сайдбар справа на всю высоту */}
-            <aside className="lg:[grid-area:rates] lg:self-start lg:sticky lg:top-[88px]">
+            <aside className="lg:sticky lg:top-[88px]">
               <RatesSidebar
                 currentOffice={currentOffice}
                 onOpenRates={openRates}
