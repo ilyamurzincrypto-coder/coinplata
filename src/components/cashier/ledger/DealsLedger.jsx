@@ -278,7 +278,7 @@ export default function DealsLedger({ officeId }) {
 
   const setIn = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, in: { ...d.in, [c]: v } };
+      const next = { ...d, in: { [c]: v } }; // приход — единственная нога
       // якорь-приход изменился → если есть курс и расход, пересчитать расход
       const inAmt = parseRu(v);
       const outC = outCcyOf(next);
@@ -295,13 +295,14 @@ export default function DealsLedger({ officeId }) {
     setDraft((d) => {
       const leg = inLeg(d);
       if (!leg || leg.amt <= 0) return d;
-      if (parseRu(d.out[c]) > 0) return d; // уже заполнено — не трогаем
+      if (outCcyOf(d)) return d; // расход уже задан → не автозаполняем другие ячейки (single-out)
       const outAmt = convert(leg.amt, leg.ccy, c, getRate);
       if (!outAmt || !Number.isFinite(outAmt)) return d; // нет курса — ручной ввод
+      // расход — единственная нога: только эта валюта
       return {
         ...d,
         rate: fmtRate(outAmt / leg.amt),
-        out: { ...d.out, [c]: fmtAmt(outAmt, c) },
+        out: { [c]: fmtAmt(outAmt, c) },
       };
     });
 
@@ -319,7 +320,7 @@ export default function DealsLedger({ officeId }) {
 
   const setOut = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, out: { ...d.out, [c]: v } };
+      const next = { ...d, out: { [c]: v } }; // расход — единственная нога
       // правка расхода → курс пересчитывается из приход/расход (курс менеджера)
       const leg = inLeg(d);
       const outAmt = parseRu(v);
