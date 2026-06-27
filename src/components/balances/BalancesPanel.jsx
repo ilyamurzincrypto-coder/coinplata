@@ -148,9 +148,6 @@ export default function BalancesPanel({ currentOffice, scope }) {
   const dCls = dG > 0 ? "text-[#0b8a54]" : dG < 0 ? "text-[#cf3b40]" : "text-muted";
   const dTxt = `${dG >= 0 ? "+$" : "−$"}${fmtRu(Math.abs(Math.round(dG)), 0)}`;
 
-  const thSel = (ccy) => (sel === ccy ? "bg-[#eef0ff]" : "");
-  const tdUtroSel = (ccy) => (sel === ccy ? "bg-[#eef0ff]" : "");
-  const tdTekSel = (ccy) => (sel === ccy ? "bg-[#e3e7ff]" : "bg-[#f6f7fb]");
 
   return (
     <section
@@ -184,7 +181,7 @@ export default function BalancesPanel({ currentOffice, scope }) {
                     key={c.ccy}
                     data-bal-ccy={c.ccy}
                     onClick={(e) => onCellClick(c.ccy, e)}
-                    className={`relative px-[13px] pt-[18px] pb-[9px] align-bottom text-center whitespace-nowrap border-l border-[#e7e9f1] cursor-pointer ${thSel(c.ccy)}`}
+                    className="relative px-[13px] pt-[18px] pb-[9px] align-bottom text-center whitespace-nowrap border-l border-[#e7e9f1] cursor-pointer"
                   >
                     {c.allOffices && (
                       <span className="absolute top-[3px] inset-x-0 text-center text-[8px] font-extrabold tracking-wide uppercase text-[#0b8a54] whitespace-nowrap">
@@ -198,7 +195,11 @@ export default function BalancesPanel({ currentOffice, scope }) {
                       >
                         {m.sym}
                       </span>
-                      <span className="text-[12.5px] font-bold text-ink tracking-wide">
+                      <span
+                        className={`text-[12.5px] font-bold tracking-wide transition-colors ${
+                          sel === c.ccy ? "text-[#5b6cff]" : "text-ink"
+                        }`}
+                      >
                         {c.ccy}
                       </span>
                     </span>
@@ -220,7 +221,7 @@ export default function BalancesPanel({ currentOffice, scope }) {
                   onClick={(e) => onCellClick(c.ccy, e)}
                   className={`text-center whitespace-nowrap border-l border-t border-[#e7e9f1] px-[13px] py-[7px] font-mono tabular-nums text-[12.5px] font-semibold cursor-pointer ${
                     c.utro === 0 ? "text-[#b6bacb]" : "text-muted"
-                  } ${tdUtroSel(c.ccy)}`}
+                  }`}
                 >
                   <Num value={c.utro} dp={m_dp(c.ccy)} />
                 </td>
@@ -236,9 +237,9 @@ export default function BalancesPanel({ currentOffice, scope }) {
                   key={c.ccy}
                   data-bal-ccy={c.ccy}
                   onClick={(e) => onCellClick(c.ccy, e)}
-                  className={`text-center whitespace-nowrap border-l border-t border-[#e7e9f1] px-[13px] py-[7px] font-mono tabular-nums text-[16.5px] font-bold cursor-pointer ${
+                  className={`text-center whitespace-nowrap border-l border-t border-[#e7e9f1] px-[13px] py-[7px] font-mono tabular-nums text-[16.5px] font-bold cursor-pointer bg-[#f6f7fb] ${
                     c.tek === 0 ? "text-[#b6bacb]" : "text-ink"
-                  } ${tdTekSel(c.ccy)}`}
+                  }`}
                 >
                   <Num value={c.tek} dp={m_dp(c.ccy)} />
                 </td>
