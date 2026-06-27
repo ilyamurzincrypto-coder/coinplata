@@ -44,16 +44,28 @@ function parseRu(v) {
 }
 
 function Amt({ value, ccy }) {
+  const v = Number(value) || 0;
+  const abs = Math.abs(v);
   const full = fmtRu(value, ccyMeta(ccy).dp);
+  // От миллиона — сокращаем (млн/млрд), чтобы влезало ОДНИМ шрифтом. Точное — в тултипе.
+  if (abs >= 1e6) {
+    const div = abs >= 1e9 ? 1e9 : 1e6;
+    const suf = abs >= 1e9 ? "млрд" : "млн";
+    const n = v / div;
+    const dp = abs / div < 10 ? 2 : abs / div < 100 ? 1 : 0;
+    const num = n.toLocaleString("ru-RU", { maximumFractionDigits: dp });
+    return (
+      <span title={`${full} ${ccy}`}>
+        {num}
+        <span className="opacity-60 ml-[2px] text-[0.8em]">{suf}</span>
+      </span>
+    );
+  }
   const { int, dec } = splitParts(full);
   // Прячем нулевые десятичные («12 000,00» → «12 000»), значащие оставляем («,50»).
   const showDec = dec && !/^,0*$/.test(dec);
-  // Длинные числа (миллионы/миллиарды) — мельче шрифтом, чтобы влезли точно
-  // (без сокращений типа «млн» — для денег важна точность). Полное — в тултипе.
-  const len = int.length + (showDec ? dec.length : 0);
-  const size = len >= 11 ? "text-[9.5px]" : len >= 9 ? "text-[10.5px]" : len >= 8 ? "text-[11.5px]" : "";
   return (
-    <span className={size} title={`${full} ${ccy}`}>
+    <span title={`${full} ${ccy}`}>
       {int}
       {showDec && <span className="opacity-[0.42]">{dec}</span>}
     </span>
@@ -279,10 +291,7 @@ export default function DealsLedger({ officeId }) {
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
   const cellEmpty = "text-[#b6bacb]";
   const inputCls =
-    "w-full bg-transparent text-right font-mono tabular-nums outline-none placeholder:text-[#cdd1de] placeholder:text-[13px] select-text";
-  // Размер шрифта инпута под длину значения (длинные суммы не вылезают).
-  const inSize = (v) =>
-    String(v).length >= 11 ? "text-[9.5px]" : String(v).length >= 9 ? "text-[10.5px]" : "text-[13px]";
+    "w-full bg-transparent text-right font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cdd1de] select-text";
 
   return (
     <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
@@ -574,7 +583,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${inSize(v)} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
                     />
                   </td>
                 );
@@ -604,7 +613,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${inSize(v)} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
                     />
                   </td>
                 );
