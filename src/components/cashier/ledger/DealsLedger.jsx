@@ -44,14 +44,19 @@ function parseRu(v) {
 }
 
 function Amt({ value, ccy }) {
-  const { int, dec } = splitParts(fmtRu(value, ccyMeta(ccy).dp));
+  const full = fmtRu(value, ccyMeta(ccy).dp);
+  const { int, dec } = splitParts(full);
   // Прячем нулевые десятичные («12 000,00» → «12 000»), значащие оставляем («,50»).
   const showDec = dec && !/^,0*$/.test(dec);
+  // Длинные числа (миллионы/миллиарды) — мельче шрифтом, чтобы влезли точно
+  // (без сокращений типа «млн» — для денег важна точность). Полное — в тултипе.
+  const len = int.length + (showDec ? dec.length : 0);
+  const size = len >= 11 ? "text-[9.5px]" : len >= 9 ? "text-[10.5px]" : len >= 8 ? "text-[11.5px]" : "";
   return (
-    <>
+    <span className={size} title={`${full} ${ccy}`}>
       {int}
       {showDec && <span className="opacity-[0.42]">{dec}</span>}
-    </>
+    </span>
   );
 }
 
@@ -270,11 +275,14 @@ export default function DealsLedger({ officeId }) {
   };
 
   const cell =
-    "text-right whitespace-nowrap border-l border-[#e7e9f1] px-2.5 py-1.5 font-mono tabular-nums text-[13px]";
+    "text-right whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
   const cellEmpty = "text-[#b6bacb]";
   const inputCls =
-    "w-full bg-transparent text-right font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cdd1de] select-text";
+    "w-full bg-transparent text-right font-mono tabular-nums outline-none placeholder:text-[#cdd1de] placeholder:text-[13px] select-text";
+  // Размер шрифта инпута под длину значения (длинные суммы не вылезают).
+  const inSize = (v) =>
+    String(v).length >= 11 ? "text-[9.5px]" : String(v).length >= 9 ? "text-[10.5px]" : "text-[13px]";
 
   return (
     <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
@@ -566,7 +574,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${inSize(v)} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
                     />
                   </td>
                 );
@@ -596,7 +604,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${inSize(v)} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
                     />
                   </td>
                 );
