@@ -127,12 +127,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               key={office.id}
               className={i > 0 ? "mt-3 pt-3 border-t border-[#e7e9f1]" : ""}
             >
-              <div className="flex items-center justify-between gap-2.5 px-1">
-                <span className="flex items-center gap-2 min-w-0">
-                  <MapPin className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.3} />
-                  <span className="text-[14.5px] font-bold tracking-tight text-ink truncate">
-                    {office.name || office.city || "Office"}
-                  </span>
+              <div className="flex items-center gap-2 px-1 min-w-0">
+                <MapPin className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.3} />
+                <span className="text-[14.5px] font-bold tracking-tight text-ink truncate min-w-0">
+                  {office.name || office.city || "Office"}
                 </span>
                 {fresh && (
                   <span
