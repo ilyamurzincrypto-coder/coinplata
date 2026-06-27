@@ -33,8 +33,8 @@ export default function NerezPanel({ specialRates, onCopy }) {
   });
 
   return (
-    <div className="mt-2 bg-[#f4f5fa] border border-[#e7e9f1] rounded-[12px] px-2.5 py-1.5">
-      <div className="text-[9.5px] font-bold tracking-[1.4px] text-[#8a8fa6] uppercase mb-1">
+    <div className="px-1">
+      <div className="text-[10px] font-bold tracking-[1.2px] text-[#8a8fa6] uppercase mb-1.5">
         {pair.replace("/", " ↔ ")} · НЕРЕЗ
       </div>
       <div className="grid items-center gap-y-0.5 gap-x-2" style={GRID}>
