@@ -8,16 +8,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Clock } from "lucide-react";
 
-const MONTHS = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 const p2 = (n) => String(n).padStart(2, "0");
-const sameDay = (a, b) =>
-  a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
-
-function fmtLabel(d) {
-  const t = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
-  return sameDay(d, new Date()) ? t : `${p2(d.getDate())} ${MONTHS[d.getMonth()]} · ${t}`;
-}
-const toDateInput = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+const fmtLabel = (d) => `${p2(d.getHours())}:${p2(d.getMinutes())}`;
 const toTimeInput = (d) => `${p2(d.getHours())}:${p2(d.getMinutes())}`;
 
 export default function DealTimeField({ value, onChange }) {
@@ -60,13 +52,6 @@ export default function DealTimeField({ value, onChange }) {
     };
   }, [open]);
 
-  const setDatePart = (v) => {
-    const [y, m, d] = (v || "").split("-").map(Number);
-    if (!y) return;
-    const nd = new Date(date);
-    nd.setFullYear(y, m - 1, d);
-    onChange?.(nd);
-  };
   const setTimePart = (v) => {
     const [h, mi] = (v || "").split(":").map(Number);
     if (Number.isNaN(h)) return;
@@ -84,11 +69,11 @@ export default function DealTimeField({ value, onChange }) {
           e.preventDefault();
           setOpen((v) => !v);
         }}
-        className="w-full flex items-center gap-1.5 px-2 min-h-[31px] text-left hover:bg-[#f3f5ff] transition-colors"
+        className="w-full flex items-center gap-1 px-1.5 min-h-[31px] text-left hover:bg-[#f3f5ff] transition-colors"
         title="Дата и время сделки"
       >
-        <Clock className="w-3.5 h-3.5 text-muted-soft shrink-0" strokeWidth={2} />
-        <span className="font-mono text-[11.5px] text-[#454a66] truncate">{fmtLabel(date)}</span>
+        <Clock className="w-3 h-3 text-muted-soft shrink-0" strokeWidth={2} />
+        <span className="font-mono text-[11px] text-[#454a66] truncate">{fmtLabel(date)}</span>
       </button>
 
       {open &&
@@ -97,30 +82,24 @@ export default function DealTimeField({ value, onChange }) {
           <div
             ref={popRef}
             role="dialog"
-            className="fixed z-[130] w-[232px] bg-surface border border-[#dde0ea] rounded-[12px] shadow-[0_20px_48px_-18px_rgba(16,24,40,.4)] p-2.5"
+            className="fixed z-[130] w-[180px] bg-surface border border-[#dde0ea] rounded-[12px] shadow-[0_20px_48px_-18px_rgba(16,24,40,.4)] p-2.5"
             style={{ left: place.left, top: place.top, bottom: place.bottom }}
           >
-            <button
-              type="button"
-              onClick={() => onChange?.(new Date())}
-              className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 mb-2 rounded-button text-body-sm font-semibold text-ink-soft hover:bg-surface-soft"
-            >
-              <Clock className="w-3.5 h-3.5 opacity-70" strokeWidth={2} />
-              Сейчас
-            </button>
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={toDateInput(date)}
-                onChange={(e) => setDatePart(e.target.value)}
-                className="flex-1 min-w-0 border border-[#dde0ea] rounded-[8px] px-2 py-1.5 text-[12.5px] font-mono outline-none focus:border-[#5b6cff]"
-              />
+            <div className="flex gap-2 items-center">
               <input
                 type="time"
                 value={toTimeInput(date)}
                 onChange={(e) => setTimePart(e.target.value)}
-                className="w-[84px] border border-[#dde0ea] rounded-[8px] px-2 py-1.5 text-[12.5px] font-mono outline-none focus:border-[#5b6cff]"
+                className="flex-1 min-w-0 border border-[#dde0ea] rounded-[8px] px-2 py-1.5 text-[13px] font-mono outline-none focus:border-[#5b6cff]"
               />
+              <button
+                type="button"
+                onClick={() => onChange?.(new Date())}
+                title="Текущее время"
+                className="shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-[8px] text-ink-soft hover:bg-surface-soft"
+              >
+                <Clock className="w-4 h-4 opacity-70" strokeWidth={2} />
+              </button>
             </div>
           </div>,
           document.body

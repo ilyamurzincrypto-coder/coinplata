@@ -25,14 +25,11 @@ import {
 } from "../../../lib/managerOrders.js";
 import { Hourglass, CircleDashed, CheckCircle2, ArrowRight } from "lucide-react";
 
-const MONTHS_S = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 function fmtDealTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   const p2 = (n) => String(n).padStart(2, "0");
-  const t = `${p2(d.getHours())}:${p2(d.getMinutes())}`;
-  const today = d.toDateString() === new Date().toDateString();
-  return today ? t : `${p2(d.getDate())} ${MONTHS_S[d.getMonth()]} · ${t}`;
+  return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
 function todayStartIso() {
@@ -318,7 +315,7 @@ export default function DealsLedger({ officeId }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full table-fixed min-w-[1140px] select-none">
+        <table className="border-collapse w-full table-fixed min-w-[1040px] select-none">
           <thead>
             <tr>
               <th
@@ -329,9 +326,9 @@ export default function DealsLedger({ officeId }) {
               </th>
               <th
                 rowSpan={2}
-                className="w-[118px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-2.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
+                className="w-[58px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[10.5px] px-1.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
               >
-                Дата / время
+                Время
               </th>
               <th
                 colSpan={cols.length}
@@ -450,7 +447,7 @@ export default function DealsLedger({ officeId }) {
                       {d.party}
                     </span>
                   </td>
-                  <td className="bg-[#f6f7fb] text-left px-2.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
+                  <td className="bg-[#f6f7fb] text-left px-1.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
                     {fmtDealTime(d.createdAt)}
                   </td>
                   {cols.map((c) => (
