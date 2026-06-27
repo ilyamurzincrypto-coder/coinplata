@@ -327,7 +327,7 @@ export default function CounterpartyPicker({ anchorEl, onClose, onSelect, onFill
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKey}
-            placeholder="Имя, счёт или код сделки…"
+            placeholder="Имя, счёт, телеграм или код…"
             autoComplete="off"
             className="w-full border-0 outline-none text-[13px] text-ink bg-transparent placeholder:text-[#b6bacb]"
           />

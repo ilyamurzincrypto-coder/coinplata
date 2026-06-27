@@ -50,7 +50,9 @@ export async function recentClients(limit = 6) {
   return (data || []).map(mapClient);
 }
 
-// Серверный поиск: имя (nickname/full_name) или код счёта (accounting_code).
+// Серверный поиск: имя (nickname/full_name), код счёта (accounting_code) или
+// telegram. Телефона в clients нет (поле phone отсутствует) — поиск по номеру
+// невозможен без новой колонки (миграция, см. docs/orders-in-ledger-compat.md).
 export async function searchClients(q, limit = 20) {
   if (!supabase) return [];
   const s = String(q || "").trim().replace(/[%,()]/g, "");
@@ -58,7 +60,9 @@ export async function searchClients(q, limit = 20) {
   const { data, error } = await supabase
     .from("clients")
     .select(SELECT_COLS)
-    .or(`nickname.ilike.%${s}%,full_name.ilike.%${s}%,accounting_code.ilike.%${s}%`)
+    .or(
+      `nickname.ilike.%${s}%,full_name.ilike.%${s}%,accounting_code.ilike.%${s}%,telegram.ilike.%${s}%`
+    )
     .is("archived_at", null)
     .limit(limit);
   if (error) throw error;
