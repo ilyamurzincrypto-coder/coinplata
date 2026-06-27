@@ -15,6 +15,15 @@ import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currency
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
 import { rpcSetDealCreatedAt } from "../../../lib/supabaseWrite.js";
+import {
+  MANAGER_ORDERS_ENABLED,
+  loadPendingOrders,
+  createOrder,
+  markArrived,
+  markDone,
+  subscribeOrders,
+} from "../../../lib/managerOrders.js";
+import { Hourglass, CircleDashed, CheckCircle2, ArrowRight } from "lucide-react";
 
 const MONTHS_S = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 function fmtDealTime(iso) {
@@ -86,12 +95,29 @@ export default function DealsLedger({ officeId }) {
     };
   }, [refetch]);
 
+  // ── Заявки менеджера (за фиче-флагом) ──
+  const [orders, setOrders] = useState([]);
+  const refetchOrders = useCallback(async () => {
+    if (!MANAGER_ORDERS_ENABLED) return;
+    try {
+      setOrders(await loadPendingOrders(officeId));
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[orders] load failed", e);
+    }
+  }, [officeId]);
+  useEffect(() => {
+    refetchOrders();
+  }, [refetchOrders]);
+  useEffect(() => subscribeOrders(refetchOrders), [refetchOrders]);
+
   // ── Инлайн-ввод ──
   const rowRef = useRef(null);
   // party — объект контрагента из пикера: { kind, clientId?, accountingCode?, name?, contact?, label } | null
-  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", in: {}, out: {} });
+  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
   const [pickerOpen, setPickerOpen] = useState(false);
   const partyCellRef = useRef(null);
+  const provestiRef = useRef(null); // id заявки, которую «проводим» текущей строкой
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -100,7 +126,11 @@ export default function DealsLedger({ officeId }) {
     [accounts, officeId]
   );
 
-  const resetDraft = () => setDraft({ party: null, at: new Date(), rate: "", in: {}, out: {} });
+  const resetDraft = () => {
+    provestiRef.current = null;
+    setDraft({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
+  };
+  const partyContact = (p) => p?.contact || p?.name || p?.label || null;
 
   const commit = useCallback(async () => {
     if (saving) return;
@@ -108,6 +138,34 @@ export default function DealsLedger({ officeId }) {
     const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
     if (!inCcy || !outCcy) return; // нечего коммитить
     setErr("");
+
+    // ── Сохранение как ЗАЯВКА (тоггл «⧖ заявка») — без счетов, без create_deal ──
+    if (draft.isReq) {
+      setSaving(true);
+      try {
+        await createOrder({
+          officeId,
+          kind: "exchange",
+          contact: partyContact(draft.party),
+          clientId: draft.party?.clientId || null,
+          fromCurrency: inCcy,
+          fromAmount: parseRu(draft.in[inCcy]),
+          rate: draft.rate || null,
+          toCurrency: outCcy,
+          toAmount: parseRu(draft.out[outCcy]),
+        });
+        resetDraft();
+        await refetchOrders();
+      } catch (e2) {
+        // eslint-disable-next-line no-console
+        console.warn("[orders] create failed", e2);
+        setErr(e2?.message || "Не удалось сохранить заявку");
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const inAcc = acctFor(inCcy);
     const outAcc = acctFor(outCcy);
     if (!inAcc) return setErr(`Нет счёта ${inCcy} в этом офисе`);
@@ -146,6 +204,16 @@ export default function DealsLedger({ officeId }) {
           console.warn("[deals] set created_at failed", e2);
         }
       }
+      // Если этой строкой «проводили» заявку — закрываем её (идемпотентно).
+      if (provestiRef.current) {
+        try {
+          await markDone(provestiRef.current);
+        } catch (e3) {
+          // eslint-disable-next-line no-console
+          console.warn("[orders] markDone failed", e3);
+        }
+        await refetchOrders();
+      }
       resetDraft();
       await refetch();
     } catch (e) {
@@ -155,7 +223,7 @@ export default function DealsLedger({ officeId }) {
     } finally {
       setSaving(false);
     }
-  }, [saving, cols, draft, acctFor, officeId, refetch]);
+  }, [saving, cols, draft, acctFor, officeId, fromIso, refetch, refetchOrders]);
 
   // Пикер контрагента: ref-флаг, чтобы blur строки не коммитил при открытии пикера.
   const pickerOpenRef = useRef(false);
@@ -198,6 +266,37 @@ export default function DealsLedger({ officeId }) {
       return nd;
     });
     closePicker();
+  };
+
+  // «Клиент пришёл» — отметка времени на заявке.
+  const arrived = async (order) => {
+    try {
+      await markArrived(order.id);
+      await refetchOrders();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[orders] arrived failed", e);
+    }
+  };
+  // «Провести» — заполнить строку ввода из заявки; Enter → создаст сделку и
+  // закроет заявку (provestiRef). Визит — без сумм, только контакт.
+  const provesti = (order) => {
+    provestiRef.current = order.id;
+    const nd = {
+      party: order.contact
+        ? { kind: "contact", contact: order.contact, label: order.contact, clientId: order.clientId || undefined }
+        : null,
+      at: new Date(),
+      rate: order.rate || "",
+      in: {},
+      out: {},
+      isReq: false,
+    };
+    if (order.kind !== "visit") {
+      if (order.fromCurrency) nd.in[order.fromCurrency] = fmtRu(order.fromAmount, ccyMeta(order.fromCurrency).dp);
+      if (order.toCurrency) nd.out[order.toCurrency] = fmtRu(order.toAmount, ccyMeta(order.toCurrency).dp);
+    }
+    setDraft(nd);
   };
 
   const cell =
@@ -276,6 +375,69 @@ export default function DealsLedger({ officeId }) {
           </thead>
 
           <tbody>
+            {/* Заявки (pending) — жёлтые строки сверху */}
+            {orders.map((o) => (
+              <tr key={`ord_${o.id}`} className="group bg-[#fff8e6] hover:bg-[#fff3cf]">
+                <td className="bg-[#fff8e6] text-left border-t border-[#f0e2b8] px-2 py-1.5">
+                  <div className="flex items-center gap-1.5 min-h-[31px]">
+                    <button
+                      type="button"
+                      onClick={() => arrived(o)}
+                      title={o.arrivedAt ? "Клиент пришёл" : "Отметить: клиент пришёл"}
+                      className="shrink-0"
+                    >
+                      {o.arrivedAt ? (
+                        <CheckCircle2 className="w-4 h-4 text-[#0b8a54]" strokeWidth={2.2} />
+                      ) : (
+                        <CircleDashed className="w-4 h-4 text-[#c9a14a]" strokeWidth={2.2} />
+                      )}
+                    </button>
+                    <span className="font-mono text-[9px] font-bold text-[#9a6b00] bg-[#fde9b8] rounded-[4px] px-1 py-px shrink-0" title="заявка">
+                      ⧖
+                    </span>
+                    <span className="text-[12px] font-bold text-ink truncate flex-1 min-w-0" title={o.contact}>
+                      {o.contact || "—"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => provesti(o)}
+                      title="Провести заявку в сделку"
+                      className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-0.5 text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 shrink-0 transition-opacity"
+                    >
+                      провести
+                      <ArrowRight className="w-3 h-3" strokeWidth={2.4} />
+                    </button>
+                  </div>
+                </td>
+                <td className="bg-[#fff8e6] text-left px-2.5 py-1.5 border-t border-l border-[#f0e2b8] font-mono text-[11.5px] text-[#9a6b00] whitespace-nowrap">
+                  {fmtDealTime(o.createdAt)}
+                </td>
+                {cols.map((c) => (
+                  <td
+                    key={`oi_${o.id}_${c}`}
+                    className={`${cell} border-t border-[#f0e2b8] ${
+                      o.fromCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
+                    }`}
+                  >
+                    {o.fromCurrency === c ? <Amt value={o.fromAmount} ccy={c} /> : "·"}
+                  </td>
+                ))}
+                <td className="text-center border-l border-t border-[#f0e2b8] bg-[#fdf3d6] text-[#9a6b00] font-semibold font-mono text-[12.5px] px-2 py-1.5">
+                  {o.rate || ""}
+                </td>
+                {cols.map((c) => (
+                  <td
+                    key={`oo_${o.id}_${c}`}
+                    className={`${cell} border-t border-[#f0e2b8] ${
+                      o.toCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
+                    }`}
+                  >
+                    {o.toCurrency === c ? <Amt value={o.toAmount} ccy={c} /> : "·"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+
             {rows.map((d) => {
               const outByCcy = {};
               d.outs.forEach((o) => {
@@ -319,11 +481,25 @@ export default function DealsLedger({ officeId }) {
             })}
 
             {/* Инлайн-ввод новой сделки */}
-            <tr ref={rowRef} onBlur={onRowBlur} className="bg-white">
+            <tr ref={rowRef} onBlur={onRowBlur} className={draft.isReq ? "bg-[#fff8e6]" : "bg-white"}>
               <td
                 ref={partyCellRef}
                 className="bg-[#f6f7fb] text-left border-t border-[#e7e9f1] p-0 align-middle"
               >
+                <div className="flex items-stretch min-h-[31px]">
+                  {MANAGER_ORDERS_ENABLED && (
+                    <button
+                      type="button"
+                      title={draft.isReq ? "Заявка — снять" : "Заявка: клиент придёт позже"}
+                      onClick={() => setDraft((d) => ({ ...d, isReq: !d.isReq }))}
+                      className={`shrink-0 w-7 grid place-items-center border-r border-[#e7e9f1] transition-colors ${
+                        draft.isReq ? "bg-[#fde9b8] text-[#9a6b00]" : "text-muted-soft hover:bg-[#f3f5ff]"
+                      }`}
+                    >
+                      <Hourglass className="w-3.5 h-3.5" strokeWidth={2} />
+                    </button>
+                  )}
+                  <div className="flex-1 min-w-0">
                 {draft.party ? (
                   <div
                     onMouseDown={(e) => {
@@ -377,6 +553,8 @@ export default function DealsLedger({ officeId }) {
                     <span className="text-[#b6bacb] text-[12px]">контрагент</span>
                   </div>
                 )}
+                  </div>
+                </div>
               </td>
               <td className="bg-[#f6f7fb] text-left border-t border-l border-[#e7e9f1] p-0 align-middle">
                 <DealTimeField

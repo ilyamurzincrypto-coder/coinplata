@@ -12,6 +12,7 @@ import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { convert } from "../../utils/convert.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "./currencyMeta.js";
 import CurrencyByOfficePopover from "./CurrencyByOfficePopover.jsx";
+import { MANAGER_ORDERS_ENABLED, loadPendingOrders, subscribeOrders } from "../../lib/managerOrders.js";
 
 function Num({ value, dp, className = "" }) {
   const { int, dec } = splitParts(fmtRu(value, dp));
@@ -90,6 +91,32 @@ export default function BalancesPanel({ currentOffice, scope }) {
     });
     return { gT: t, dG: t - u };
   }, [columns, toUsd]);
+
+  // «Под заявки» — сумма расхода (to_amount) по незакрытым заявкам офиса, по
+  // валютам. За фиче-флагом (manager_orders). Realtime.
+  const [orders, setOrders] = useState([]);
+  useEffect(() => {
+    if (!MANAGER_ORDERS_ENABLED) return undefined;
+    let alive = true;
+    const load = () =>
+      loadPendingOrders(scopeAll ? null : currentOffice)
+        .then((o) => alive && setOrders(o))
+        .catch(() => {});
+    load();
+    const unsub = subscribeOrders(load);
+    return () => {
+      alive = false;
+      unsub();
+    };
+  }, [currentOffice, scopeAll]);
+  const orderByCcy = useMemo(() => {
+    const m = {};
+    orders.forEach((o) => {
+      if (o.toCurrency && o.toAmount) m[o.toCurrency] = (m[o.toCurrency] || 0) + o.toAmount;
+    });
+    return m;
+  }, [orders]);
+  const hasOrders = orders.length > 0;
 
   // Разбивка выбранной валюты по офисам — для поповера.
   const popView = useMemo(() => {
@@ -245,6 +272,29 @@ export default function BalancesPanel({ currentOffice, scope }) {
                 </td>
               ))}
             </tr>
+
+            {/* Под заявки — расход по незакрытым заявкам; красное при нехватке */}
+            {MANAGER_ORDERS_ENABLED && hasOrders && (
+              <tr>
+                <td className="w-[80px] text-left uppercase tracking-wide text-[9px] font-extrabold text-[#b86b00] px-[13px] py-[6px] border-t border-dashed border-[#e3c98a]">
+                  Под заявки
+                </td>
+                {columns.map((c) => {
+                  const need = orderByCcy[c.ccy] || 0;
+                  const short = need > 0 && need > c.tek;
+                  return (
+                    <td
+                      key={c.ccy}
+                      className={`text-center whitespace-nowrap border-l border-t border-dashed border-[#e3c98a] px-[13px] py-[6px] font-mono tabular-nums text-[12px] font-semibold ${
+                        need > 0 ? (short ? "text-[#cf3b40]" : "text-[#9a6b00]") : "text-[#c9ccd8]"
+                      }`}
+                    >
+                      {need > 0 ? <Num value={need} dp={m_dp(c.ccy)} /> : "·"}
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
