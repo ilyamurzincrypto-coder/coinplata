@@ -301,7 +301,7 @@ export default function DealsLedger({ officeId }) {
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
   const cellEmpty = "text-[#b6bacb]";
   const inputCls =
-    "w-full bg-transparent text-right font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cdd1de]";
+    "w-full bg-transparent text-right font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cdd1de] select-text";
 
   return (
     <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
@@ -586,7 +586,7 @@ export default function DealsLedger({ officeId }) {
                   onKeyDown={onKeyDown}
                   inputMode="decimal"
                   placeholder="курс"
-                  className="w-full bg-transparent text-center font-mono text-[12.5px] text-[#454a66] outline-none placeholder:text-[#cdd1de]"
+                  className="w-full bg-transparent text-center font-mono text-[12.5px] text-[#454a66] outline-none placeholder:text-[#cdd1de] select-text"
                 />
               </td>
               {cols.map((c) => {
