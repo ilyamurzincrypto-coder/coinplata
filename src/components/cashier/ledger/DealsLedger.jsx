@@ -16,7 +16,6 @@ import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
-import { rpcSetDealCreatedAt } from "../../../lib/supabaseWrite.js";
 import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
@@ -111,13 +110,13 @@ export default function DealsLedger({ officeId }) {
     refetch();
   }, [refetch]);
 
-  // Realtime: любое изменение deals/deal_legs → перезагрузка.
+  // Realtime: сделки v2 в ledger.transactions/journal_entries → перезагрузка.
   useEffect(() => {
     if (!supabase) return undefined;
     const ch = supabase
       .channel("cashier-deals-ledger")
-      .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, refetch)
-      .on("postgres_changes", { event: "*", schema: "public", table: "deal_legs" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "ledger", table: "transactions" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "ledger", table: "journal_entries" }, refetch)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -208,6 +207,8 @@ export default function DealsLedger({ officeId }) {
         currencyIn: inCcy,
         amountIn: parseRu(draft.in[inCcy]),
         inAccountId: inAcc.id,
+        // Время сделки из поля «Время» → effective_date в v2.
+        effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
         outputs: [
           {
             currency: outCcy,
@@ -217,21 +218,6 @@ export default function DealsLedger({ officeId }) {
           },
         ],
       });
-      // Успех подтверждён БД. Если время изменили с «сейчас» — применяем его к
-      // только что созданной сделке (она последняя в today-списке). Best-effort.
-      const at = draft.at;
-      if (at instanceof Date && Math.abs(at.getTime() - Date.now()) > 60000) {
-        try {
-          const fresh = await loadCashierDeals({ officeId, fromIso });
-          const last = fresh[fresh.length - 1];
-          if (last?.id != null) {
-            await rpcSetDealCreatedAt({ dealId: last.id, createdAt: at.toISOString() });
-          }
-        } catch (e2) {
-          // eslint-disable-next-line no-console
-          console.warn("[deals] set created_at failed", e2);
-        }
-      }
       resetDraft();
       await refetch();
     } catch (e) {

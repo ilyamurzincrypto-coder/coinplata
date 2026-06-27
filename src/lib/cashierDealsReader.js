@@ -1,51 +1,70 @@
 // src/lib/cashierDealsReader.js
-// Чтение сделок за день для кассирского леджера (Зона C). Читаем напрямую из
-// deals + deal_legs (RLS включён, realtime на обеих). Сделка = 1 приход
-// (deals.currency_in/amount_in) + N легов расхода (deal_legs). verify-first:
-// поля сверены со схемой, ничего не выдумываем.
+// Чтение сделок за день для кассирского леджера (Зона C).
+//
+// ВАЖНО: сделки создаются через v2-леджер (create_deal_v2) и живут в
+// ledger.transactions(source_kind='deal') + ledger.journal_entries — НЕ в
+// public.deals (та заморожена). Поэтому читаем из ledger:
+//   • приход (что клиент дал нам)  = нога note ~ '^IN:'  & direction='dr'
+//   • расход (что мы выдали)       = ноги note ~ '^OUT:' & direction='cr'
+//   • контрагент / office_id       = transactions.metadata
+// Реконструкция сверена с реальными проводками create_deal_v2.
 
 import { supabase } from "./supabase.js";
 
+const lg = () => supabase.schema("ledger");
+
 export async function loadCashierDeals({ officeId, fromIso } = {}) {
   if (!supabase) return [];
-  let q = supabase
-    .from("deals")
-    .select("id, client_nickname, currency_in, amount_in, created_at, office_id")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true });
-  if (officeId) q = q.eq("office_id", officeId);
-  if (fromIso) q = q.gte("created_at", fromIso);
-  const { data: deals, error } = await q;
+
+  // Время сделки для кассы — effective_date (когда сделка произошла; create_deal_v2
+  // ставит её из поля «Время», по умолчанию now). Фильтр дня — тоже по нему.
+  let q = lg()
+    .from("transactions")
+    .select("id, created_at, effective_date, status, metadata")
+    .eq("source_kind", "deal")
+    .order("effective_date", { ascending: true });
+  if (fromIso) q = q.gte("effective_date", fromIso);
+  const { data: txs, error } = await q;
   if (error) throw error;
 
-  const ids = (deals || []).map((d) => d.id);
-  const legsByDeal = {};
-  if (ids.length) {
-    const { data: legs, error: e2 } = await supabase
-      .from("deal_legs")
-      .select("deal_id, currency, amount, rate, leg_index")
-      .in("deal_id", ids)
-      .order("leg_index", { ascending: true });
-    if (e2) throw e2;
-    (legs || []).forEach((l) => {
-      (legsByDeal[l.deal_id] || (legsByDeal[l.deal_id] = [])).push(l);
-    });
-  }
+  // Только проведённые; офис фильтруем по metadata (надёжнее jsonb-фильтра PostgREST).
+  const posted = (txs || []).filter(
+    (t) => t.status === "posted" && (!officeId || t.metadata?.office_id === officeId)
+  );
+  const ids = posted.map((t) => t.id);
+  if (!ids.length) return [];
 
-  return (deals || []).map((d) => {
-    const outs = (legsByDeal[d.id] || []).map((l) => ({
-      ccy: String(l.currency || "").toUpperCase(),
+  const { data: legs, error: e2 } = await lg()
+    .from("journal_entries")
+    .select("transaction_id, direction, amount, currency_code, note")
+    .in("transaction_id", ids);
+  if (e2) throw e2;
+
+  const byTx = {};
+  (legs || []).forEach((l) => {
+    (byTx[l.transaction_id] || (byTx[l.transaction_id] = [])).push(l);
+  });
+
+  return posted.map((t) => {
+    const L = byTx[t.id] || [];
+    const inLeg = L.find((l) => /^IN:/.test(l.note || "") && l.direction === "dr");
+    const outLegs = L.filter((l) => /^OUT:/.test(l.note || "") && l.direction === "cr");
+    const inCcy = String(inLeg?.currency_code || "").toUpperCase();
+    const inAmount = Number(inLeg?.amount) || 0;
+    const outs = outLegs.map((l) => ({
+      ccy: String(l.currency_code || "").toUpperCase(),
       amount: Number(l.amount) || 0,
     }));
-    const rate = (legsByDeal[d.id] || [])[0]?.rate;
+    const outTotal = outs.reduce((s, o) => s + o.amount, 0);
+    const rate = inAmount > 0 && outTotal > 0 ? outTotal / inAmount : null;
     return {
-      id: d.id,
-      party: d.client_nickname || "—",
-      inCcy: String(d.currency_in || "").toUpperCase(),
-      inAmount: Number(d.amount_in) || 0,
-      rate: rate != null ? Number(rate) : null,
+      id: t.id,
+      party: t.metadata?.client_nickname || "—",
+      inCcy,
+      inAmount,
+      rate,
       outs,
-      createdAt: d.created_at,
+      createdAt: t.effective_date || t.created_at,
     };
   });
 }

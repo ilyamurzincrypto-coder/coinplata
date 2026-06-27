@@ -271,6 +271,8 @@ export async function adaptLegacyDealPayload(legacy) {
     inLegs,
     outLegs,
     commission,
+    // Время сделки из поля «Время» (ISO). Нет → create_deal_v2 возьмёт now().
+    effectiveDate: legacy.effectiveDate || undefined,
     description: legacy.comment || null,
     metadata: {
       legacy_form: true,
