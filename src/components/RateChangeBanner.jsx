@@ -111,7 +111,7 @@ export default function RateChangeBanner() {
 
   return (
     <div className="sticky top-0 z-30 bg-warning-soft border-b border-warning/20 shadow-[0_2px_8px_-4px_rgba(245,158,11,0.25)] animate-[slideDown_180ms_ease-out]">
-      <div className="max-w-[1760px] mx-auto px-4 py-2.5 flex items-center gap-3 flex-wrap">
+      <div className="max-w-[1400px] mx-auto px-6 py-2.5 flex items-center gap-3 flex-wrap">
         <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-warning text-white shrink-0 relative">
           <TrendingUp className="w-3.5 h-3.5" />
           <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-danger animate-pulse" />
