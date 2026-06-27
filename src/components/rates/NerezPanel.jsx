@@ -3,6 +3,7 @@
 // Значения копируемые. Данные — снимок specialRates (kind=nerez).
 
 import React from "react";
+import { Landmark, Clock } from "lucide-react";
 import RateNum from "./RateNum.jsx";
 
 const SETTLES = [
@@ -21,7 +22,7 @@ function fmt(v) {
   return Number.isFinite(n) ? n.toFixed(2).replace(".", ",") : "—";
 }
 
-export default function NerezPanel({ specialRates, onCopy }) {
+export default function NerezPanel({ specialRates, onCopy, fresh }) {
   const nerez = (specialRates || []).filter((s) => s && s.kind === "nerez");
   if (!nerez.length) return null;
 
@@ -33,11 +34,26 @@ export default function NerezPanel({ specialRates, onCopy }) {
   });
 
   return (
-    <div className="px-1">
-      <div className="text-[10px] font-bold tracking-[1.2px] text-[#8a8fa6] uppercase mb-1.5">
-        {pair.replace("/", " ↔ ")} · НЕРЕЗ
+    <div>
+      {/* Заголовок блока — в офис-стиле (как город) */}
+      <div className="flex items-center justify-between gap-2.5 px-1 pb-2 mb-1.5 border-b border-[#e7e9f1]">
+        <span className="flex items-center gap-2 min-w-0">
+          <Landmark className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.2} />
+          <span className="text-[14.5px] font-bold tracking-tight text-ink truncate">
+            {pair.replace("/", " ↔ ")} · НЕРЕЗ
+          </span>
+        </span>
+        {fresh && (
+          <span
+            className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold text-[#8a8fa6] bg-[#f4f5fa] border border-[#e7e9f1] px-2.5 py-[3px] rounded-full"
+            title="Когда обновлён НЕРЕЗ"
+          >
+            <Clock className="w-3 h-3 opacity-85" strokeWidth={2.2} />
+            {fresh}
+          </span>
+        )}
       </div>
-      <div className="grid items-center gap-y-0.5 gap-x-2" style={GRID}>
+      <div className="grid items-center gap-y-0.5 gap-x-2 px-1" style={GRID}>
         <span />
         {SETTLES.map(([code, label]) => (
           <span key={code} className="text-right text-[10.5px] font-semibold text-[#8a8fa6]" title={code}>

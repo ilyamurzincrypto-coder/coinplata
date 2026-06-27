@@ -79,6 +79,11 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const cardShadow =
     "0 1px 2px rgba(16,24,40,.06), 0 14px 34px -16px rgba(16,24,40,.18)";
   const hasNerez = (specialRates || []).some((s) => s && s.kind === "nerez");
+  const nerezAt = (specialRates || []).reduce((acc, s) => {
+    const ts = s?.importedAt ? new Date(s.importedAt).getTime() : NaN;
+    return Number.isFinite(ts) && ts > acc ? ts : acc;
+  }, 0);
+  const nerezFresh = nerezAt ? timeAgoShort(new Date(nerezAt), nowMs) : null;
 
   return (
     <aside className="flex flex-col gap-2">
@@ -151,13 +156,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         })}
       </div>
 
-      {/* ── Контейнер 2: ТОД/ТОМ (НЕРЕЗ) ── */}
+      {/* ── Контейнер 2: спец-блоки межд. офиса (НЕРЕЗ; позже RUB QR, Юань) ── */}
       {hasNerez && (
         <div
           className="bg-white border border-[#e7e9f1] rounded-[16px] px-3 pt-2.5 pb-2.5"
           style={{ boxShadow: cardShadow }}
         >
-          <NerezPanel specialRates={specialRates} onCopy={handleCopy} />
+          <NerezPanel specialRates={specialRates} onCopy={handleCopy} fresh={nerezFresh} />
         </div>
       )}
 
