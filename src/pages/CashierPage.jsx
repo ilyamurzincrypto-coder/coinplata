@@ -454,10 +454,18 @@ export default function CashierPage({
               Sidebar в row 2 = высота Balances (стретчится). Не до
               transactions. Внутри sidebar динамически считается сколько
               пар поместится через ResizeObserver — пустоты нет. */}
-          {/* Раскладка: слева основная колонка (Остатки + Сделки стопкой
-              вплотную — ОДНА grid-ячейка), справа узкий sticky-сайдбар Курсов.
-              items-start, чтобы высокий сайдбар не растягивал левую колонку. */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_minmax(240px,258px)] items-start">
+          {/* Раскладка: слева узкий sticky-сайдбар Курсов, справа основная
+              колонка (Остатки + Сделки стопкой вплотную — ОДНА grid-ячейка).
+              items-start, чтобы высокий сайдбар не растягивал основную колонку. */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(240px,258px)_1fr] items-start">
+            <aside className="lg:sticky lg:top-[88px]">
+              <RatesSidebar
+                currentOffice={currentOffice}
+                onOpenRates={openRates}
+                onExpandedChange={setSidebarExpanded}
+              />
+            </aside>
+
             <div className="min-w-0 space-y-4">
               <Balances
                 currentOffice={currentOffice}
@@ -467,14 +475,6 @@ export default function CashierPage({
               />
               <DealsLedger officeId={currentOffice} />
             </div>
-
-            <aside className="lg:sticky lg:top-[88px]">
-              <RatesSidebar
-                currentOffice={currentOffice}
-                onOpenRates={openRates}
-                onExpandedChange={setSidebarExpanded}
-              />
-            </aside>
           </div>
         </div>
       )}
