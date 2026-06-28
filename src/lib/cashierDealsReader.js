@@ -78,6 +78,16 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
       createdAt: t.effective_date || t.created_at,
       // Подтверждение бухгалтера (Казначейство → «Подтвердить»). Зелёная, если сверено.
       confirmed: !!t.metadata?.confirmed_at,
+      // Отложенная сделка (долг): сторона/сумма/дата/коммент — для бейджа.
+      deferred: t.metadata?.deferred_side
+        ? {
+            side: t.metadata.deferred_side, // 'in' = клиент должен нам, 'out' = мы должны
+            currency: String(t.metadata.deferred_currency || "").toUpperCase(),
+            amount: Number(t.metadata.deferred_amount) || 0,
+            dueDate: t.metadata.due_date || t.metadata.planned_at || null,
+            comment: t.metadata.obligation_comment || null,
+          }
+        : null,
     };
   });
 }

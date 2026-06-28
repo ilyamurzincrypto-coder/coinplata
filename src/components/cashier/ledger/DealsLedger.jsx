@@ -26,14 +26,23 @@ import {
   cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
-import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2 } from "lucide-react";
+import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2, CalendarClock } from "lucide-react";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
+import DeferredDealModal from "./DeferredDealModal.jsx";
 
 function fmtDealTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   const p2 = (n) => String(n).padStart(2, "0");
   return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+function fmtDue(s) {
+  if (!s) return "";
+  const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}.${m[2]}`;
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? "" : `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function todayStartIso() {
@@ -164,6 +173,7 @@ export default function DealsLedger({ officeId }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const partyCellRef = useRef(null);
   const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
+  const [deferredOpen, setDeferredOpen] = useState(false); // модалка отложенной сделки
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
@@ -385,6 +395,78 @@ export default function DealsLedger({ officeId }) {
       window.alert(`Не удалось удалить сделку:\n${e?.message || e}`);
     }
   };
+
+  // ── Отложенная сделка (долг) ──
+  const deferredSummary = () => {
+    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
+    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
+    return {
+      inCcy,
+      outCcy,
+      inAmount: inCcy ? parseRu(draft.in[inCcy]) : 0,
+      outAmount: outCcy ? parseRu(draft.out[outCcy]) : 0,
+      party: draft.party?.label || draft.party?.name || null,
+    };
+  };
+  const openDeferred = () => {
+    setErr("");
+    const s = deferredSummary();
+    if (!s.inCcy || !s.outCcy) return setErr("Заполните приход и расход (обе валюты сделки)");
+    if (!draft.party?.clientId) return setErr("Долг — только с контрагентом (не «Наличные»)");
+    setDeferredOpen(true);
+  };
+  const commitDeferred = async ({ side, dueDate, comment }) => {
+    const s = deferredSummary();
+    const inAcc = acctFor(s.inCcy);
+    const outAcc = acctFor(s.outCcy);
+    const clientId = draft.party?.clientId;
+    const base = {
+      officeId,
+      clientId,
+      clientNickname: draft.party?.label || draft.party?.name || "—",
+      currencyIn: s.inCcy,
+      amountIn: s.inAmount,
+      effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
+      comment,
+      obligationComment: comment,
+      plannedAt: dueDate,
+      dueDate,
+      deferredSide: side,
+      deferredCurrency: side === "in" ? s.inCcy : s.outCcy,
+      deferredAmount: side === "in" ? s.inAmount : s.outAmount,
+    };
+    setSaving(true);
+    try {
+      if (side === "in") {
+        // Клиент должен нам: приход отложен (со счёта клиента), расход выдаём сейчас.
+        if (!outAcc) throw new Error(`Нет счёта ${s.outCcy} в этом офисе`);
+        await createDeal({
+          ...base,
+          deferredIn: true,
+          outputs: [{ currency: s.outCcy, amount: s.outAmount, accountId: outAcc.id, rate: parseRu(draft.rate) || undefined }],
+        });
+      } else {
+        // Мы должны клиенту: приход получаем сейчас, расход отложен (payNow:0).
+        if (!inAcc) throw new Error(`Нет счёта ${s.inCcy} в этом офисе`);
+        if (!outAcc) throw new Error(`Нет счёта ${s.outCcy} в этом офисе`);
+        await createDeal({
+          ...base,
+          inAccountId: inAcc.id,
+          outputs: [{ currency: s.outCcy, amount: s.outAmount, accountId: outAcc.id, rate: parseRu(draft.rate) || undefined, payNow: 0 }],
+        });
+      }
+      setDeferredOpen(false);
+      resetDraft();
+      await refetch();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[deals] deferred create failed", e);
+      window.alert(`Не удалось сохранить долг:\n${e?.message || e}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteOrder = async (o) => {
     if (!window.confirm("Удалить заявку?")) return;
     try {
@@ -577,11 +659,20 @@ export default function DealsLedger({ officeId }) {
                         <span className="text-[12.5px] font-bold text-ink truncate" title={d.party}>
                           {d.party}
                         </span>
-                        {!d.confirmed && (
+                        {d.deferred ? (
+                          <span
+                            className="text-[9.5px] font-bold text-[#b8923a] truncate"
+                            title={d.deferred.comment || ""}
+                          >
+                            ⏳ {d.deferred.side === "in" ? "клиент должен" : "мы должны"} {fmtRu(d.deferred.amount)}{" "}
+                            {d.deferred.currency}
+                            {d.deferred.dueDate ? ` · до ${fmtDue(d.deferred.dueDate)}` : ""}
+                          </span>
+                        ) : !d.confirmed ? (
                           <span className="text-[9px] font-bold uppercase tracking-wide text-[#8d92a8]">
                             не подтв.
                           </span>
-                        )}
+                        ) : null}
                       </span>
                       <button
                         type="button"
@@ -645,6 +736,17 @@ export default function DealsLedger({ officeId }) {
                       <Hourglass className="w-3.5 h-3.5" strokeWidth={2} />
                     </button>
                   )}
+                  <button
+                    type="button"
+                    title="Отложенная сделка (долг) — клиент/мы отдаём позже с датой"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      openDeferred();
+                    }}
+                    className="shrink-0 w-7 grid place-items-center border-r border-[#e7e9f1] text-muted-soft hover:bg-[#f3f5ff] hover:text-[#c9a14a] transition-colors"
+                  >
+                    <CalendarClock className="w-3.5 h-3.5" strokeWidth={2} />
+                  </button>
                   <div className="flex-1 min-w-0">
                 {draft.party ? (
                   <div
@@ -792,6 +894,14 @@ export default function DealsLedger({ officeId }) {
           order={detailOrder}
           onClose={() => setDetailOrder(null)}
           onRefetch={refetchOrders}
+        />
+      )}
+
+      {deferredOpen && (
+        <DeferredDealModal
+          summary={deferredSummary()}
+          onClose={() => setDeferredOpen(false)}
+          onConfirm={commitDeferred}
         />
       )}
     </div>
