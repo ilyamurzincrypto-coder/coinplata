@@ -193,13 +193,13 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
       <div className="p-5 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-              Currency
+            <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide">
+              Валюта
             </label>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-semibold outline-none"
+              className="w-full bg-white border border-[#dde0ea] rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-ink outline-none focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)]"
             >
               {currencies.map((c) => (
                 <option key={c.code} value={c.code}>
@@ -209,27 +209,27 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             </select>
           </div>
           <div>
-            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-              Channel
+            <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide">
+              Канал
             </label>
             <select
               value={channelId}
               onChange={(e) => setChannelId(e.target.value)}
               disabled={currencyChannels.length === 0}
-              className="w-full bg-surface-soft border border-border-soft hover:border-border focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-semibold outline-none disabled:opacity-60"
+              className="w-full bg-white border border-[#dde0ea] rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-ink outline-none focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] disabled:opacity-60"
             >
-              {currencyChannels.length === 0 && <option>— no channels —</option>}
+              {currencyChannels.length === 0 && <option>— нет каналов —</option>}
               {currencyChannels.map((c) => (
                 <option key={c.id} value={c.id}>
                   {channelShortLabel(c)}
-                  {c.isDefaultForCurrency ? " · default" : ""}
+                  {c.isDefaultForCurrency ? " · по умолчанию" : ""}
                   {c.gasFee != null ? ` (gas $${c.gasFee})` : ""}
                 </option>
               ))}
             </select>
             {currencyChannels.length === 0 && (
-              <p className="text-tiny text-warning mt-1">
-                Add a channel for {currency} in Dashboard → Edit rates first.
+              <p className="text-[11px] text-[#b8923a] mt-1">
+                Сначала добавь канал для {currency} в Курсы → Изменить.
               </p>
             )}
           </div>
@@ -243,9 +243,9 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
           <div className="border border-border-soft rounded-card bg-surface-soft/60 overflow-hidden">
             <div className="px-3 py-1.5 border-b border-border-soft bg-surface-sunk/60 flex items-center justify-between">
               <span className="text-tiny font-bold text-muted tracking-[0.12em] uppercase">
-                {currency} · {existingSameCurrency.length} existing
+                {currency} · {existingSameCurrency.length} уже есть
               </span>
-              <span className="text-tiny text-muted-soft">Click Clone to copy config</span>
+              <span className="text-tiny text-muted-soft">«Копировать» — взять настройку</span>
             </div>
             <div className="max-h-[140px] overflow-y-auto divide-y divide-border-soft">
               {existingSameCurrency.map((a) => {
@@ -283,7 +283,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
                       title="Скопировать конфиг: channel, name, адрес/реквизиты"
                     >
                       <Copy className="w-3 h-3" />
-                      Clone
+                      Копировать
                     </button>
                   </div>
                 );
@@ -302,7 +302,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
             onChange={(e) => setName(e.target.value)}
             placeholder={isCryptoChannel ? "TRC20 Main" : "Cash · Safe A"}
             autoFocus
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
+            className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-body outline-none"
           />
         </div>
 
@@ -310,14 +310,14 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
           <>
             <div>
               <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-                Wallet address
+                Адрес кошелька
               </label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={selectedChannel?.network === "ERC20" ? "0x…" : "T…"}
-                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-caption font-mono outline-none"
+                className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-caption font-mono outline-none"
               />
               <p className="text-tiny text-muted mt-1">
                 Used by polling to auto-detect incoming transactions.
@@ -347,8 +347,8 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               type="text"
               value={bankRef}
               onChange={(e) => setBankRef(e.target.value)}
-              placeholder={isQrChannel ? "https://… or QR data string" : "IBAN / account number"}
-              className={`w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 outline-none ${
+              placeholder={isQrChannel ? "https://… или строка QR" : "IBAN / номер счёта"}
+              className={`w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 outline-none ${
                 isQrChannel ? "text-caption font-mono" : "text-body-sm"
               }`}
             />
@@ -372,7 +372,7 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
               setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
             }
             placeholder="0"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
+            className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-body tabular-nums outline-none"
           />
         </div>
 
