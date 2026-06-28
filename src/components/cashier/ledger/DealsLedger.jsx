@@ -376,8 +376,12 @@ export default function DealsLedger({ officeId }) {
     "text-right whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
   const cellEmpty = "text-[#b6bacb]";
+  // Единый маркер пустой ячейки — серая точка ПО ЦЕНТРУ (в любой строке).
+  const dot = <span className="block text-center text-[#cbd0dd]">·</span>;
+  // Инпут: пустой — плейсхолдер по центру, с числом — вправо (как в заполненных).
   const inputCls =
-    "w-full bg-transparent text-right font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cdd1de] select-text";
+    "w-full bg-transparent font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cbd0dd] select-text";
+  const inAlign = (v) => (parseRu(v) > 0 ? "text-right text-[#0b8a54] font-semibold" : "text-center");
 
   return (
     <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
@@ -513,7 +517,7 @@ export default function DealsLedger({ officeId }) {
                       o.fromCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
                     }`}
                   >
-                    {o.fromCurrency === c ? <Amt value={o.fromAmount} ccy={c} /> : "·"}
+                    {o.fromCurrency === c ? <Amt value={o.fromAmount} ccy={c} /> : dot}
                   </td>
                 ))}
                 <td className="text-center border-l border-t border-[#f0e2b8] bg-[#fdf3d6] text-[#9a6b00] font-semibold font-mono text-[12.5px] px-2 py-1.5">
@@ -526,7 +530,7 @@ export default function DealsLedger({ officeId }) {
                       o.toCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
                     }`}
                   >
-                    {o.toCurrency === c ? <Amt value={o.toAmount} ccy={c} /> : "·"}
+                    {o.toCurrency === c ? <Amt value={o.toAmount} ccy={c} /> : dot}
                   </td>
                 ))}
               </tr>
@@ -567,7 +571,7 @@ export default function DealsLedger({ officeId }) {
                         d.inCcy === c ? cellHas : cellEmpty
                       }`}
                     >
-                      {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : "·"}
+                      {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : dot}
                     </td>
                   ))}
                   <td className="text-center border-l border-t border-[#e7e9f1] bg-[#f7f8fb] text-[#454a66] font-semibold font-mono text-[12.5px] px-2 py-1.5">
@@ -580,7 +584,7 @@ export default function DealsLedger({ officeId }) {
                         outByCcy[c] ? cellHas : cellEmpty
                       }`}
                     >
-                      {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : "·"}
+                      {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : dot}
                     </td>
                   ))}
                 </tr>
@@ -687,7 +691,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${inAlign(v)}`}
                     />
                   </td>
                 );
@@ -718,7 +722,7 @@ export default function DealsLedger({ officeId }) {
                       onKeyDown={onKeyDown}
                       inputMode="decimal"
                       placeholder="·"
-                      className={`${inputCls} ${parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : ""}`}
+                      className={`${inputCls} ${inAlign(v)}`}
                     />
                   </td>
                 );
