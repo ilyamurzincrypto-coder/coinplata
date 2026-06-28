@@ -922,7 +922,12 @@ export default function DealsLedger({ officeId }) {
                     <button
                       type="button"
                       title={draft.isReq ? "Заявка — снять" : "Заявка: клиент придёт позже"}
-                      onClick={() => setDraft((d) => ({ ...d, isReq: !d.isReq }))}
+                      onMouseDown={(e) => {
+                        // preventDefault: не блюрить инпут (иначе onRowBlur в Safari
+                        // успеет закоммитить СДЕЛКУ до переключения isReq).
+                        e.preventDefault();
+                        setDraft((d) => ({ ...d, isReq: !d.isReq }));
+                      }}
                       className={`shrink-0 w-7 grid place-items-center border-r border-[#e7e9f1] transition-colors ${
                         draft.isReq ? "bg-[#fde9b8] text-[#9a6b00]" : "text-muted-soft hover:bg-[#f3f5ff]"
                       }`}
