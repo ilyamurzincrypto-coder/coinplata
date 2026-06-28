@@ -357,6 +357,20 @@ export async function rpcReverseTransactionV2(payload) {
 }
 
 /**
+ * ledger.void_deal — ФИЗИЧЕСКОЕ удаление НЕпроведённой сделки (без сторно).
+ * Удаляет сделку + recognition/settle + проводки + idempotency, пересчитывает
+ * балансы. Только если deal не подтверждён бухгалтером и не сторнирован.
+ * Проведённую/подтверждённую — нельзя (БД отбьёт), используем reverse.
+ *
+ * @param {string} dealTxId — ledger.transactions.id сделки
+ */
+export async function rpcVoidDeal(dealTxId) {
+  if (!supabase) throw new Error("Supabase не настроен");
+  const { error } = await supabase.rpc("void_deal", { p_tx_id: dealTxId });
+  if (error) throw new Error(error.message || String(error));
+}
+
+/**
  * ledger.update_deal_v2 — atomic edit (reverse cascade + create new).
  * Replay через own idempotency_key возвращает cached result.
  *

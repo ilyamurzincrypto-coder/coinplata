@@ -22,6 +22,7 @@ import {
   rpcCompleteDealLegV2,
   rpcCreateTopupV2,
   rpcCreateWithdrawalV2,
+  rpcVoidDeal,
 } from "../../../lib/newLedger.js";
 import { resolveAccountCode } from "../../../lib/newLedgerAdapter.js";
 import {
@@ -408,16 +409,30 @@ export default function DealsLedger({ officeId }) {
   // — предупреждаем об этом отдельно.
   const deleteDeal = async (d) => {
     setErr("");
-    const msg = d.confirmed
-      ? "Сделку уже подтвердил бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
-      : "Удалить сделку? Будет создано сторно (обратная проводка).";
-    if (!window.confirm(msg)) return;
+    const oneLeg = !!d.deferred?.oneLeg;
     try {
-      await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
+      if (d.confirmed) {
+        // Подтверждена бухгалтером → проводки сверены → только СТОРНО.
+        if (
+          !window.confirm(
+            "Сделку уже подтвердил бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
+          )
+        )
+          return;
+        await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
+      } else if (oneLeg) {
+        // Одноногая (topup/withdrawal) — физического void пока нет → сторно.
+        if (!window.confirm("Удалить долг? Будет создано сторно (обратная проводка).")) return;
+        await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена из кассы", cascade: true });
+      } else {
+        // Непроведённая сделка → физическое удаление БЕЗ сторно.
+        if (!window.confirm("Удалить сделку? Бухгалтер ещё не провёл — удалится без сторно.")) return;
+        await rpcVoidDeal(d.id);
+      }
       await refetch();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[deals] reverse failed", e);
+      console.warn("[deals] delete failed", e);
       window.alert(`Не удалось удалить сделку:\n${e?.message || e}`);
     }
   };
