@@ -279,6 +279,7 @@ export async function adaptLegacyDealPayload(legacy) {
     metadata: {
       legacy_form: true,
       manager_id: legacy.managerId,
+      client_id: legacy.clientId || null,
       client_nickname: legacy.clientNickname || null,
       status: legacy.status || "completed",
       kind: legacy.kind || "regular",
