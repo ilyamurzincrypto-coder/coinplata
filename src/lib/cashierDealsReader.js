@@ -76,6 +76,8 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
       rate,
       outs,
       createdAt: t.effective_date || t.created_at,
+      // Подтверждение бухгалтера (Казначейство → «Подтвердить»). Зелёная, если сверено.
+      confirmed: !!t.metadata?.confirmed_at,
     };
   });
 }

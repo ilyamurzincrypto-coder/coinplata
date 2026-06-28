@@ -8,16 +8,8 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase.js";
-import {
-  loadCashierDealDrafts,
-  createDealDraft,
-  markDealConfirmed,
-  deleteDealDraft,
-  markDealCancelled,
-  subscribeCashierDeals,
-} from "../../../lib/cashierDeals.js";
+import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
 import { useAccounts } from "../../../store/accounts.jsx";
-import { useAuth } from "../../../store/auth.jsx";
 import { useOffices } from "../../../store/offices.jsx";
 import { useRates } from "../../../store/rates.jsx";
 import { convert } from "../../../utils/convert.js";
@@ -97,9 +89,7 @@ function fmtRate(r) {
 export default function DealsLedger({ officeId }) {
   const { accounts } = useAccounts();
   const { getRate } = useRates();
-  const { isAccountant, isAdmin, isOwner, currentUser } = useAuth();
   const { activeOffices } = useOffices();
-  const canConfirm = isAccountant || isAdmin || isOwner;
 
   // Наличные → cash-клиент офиса (v2-сделка требует client_id). Совпадение по
   // первому слову названия офиса: «Mark Antalya» → «Mark Cash».
@@ -123,7 +113,7 @@ export default function DealsLedger({ officeId }) {
 
   const refetch = useCallback(async () => {
     try {
-      const r = await loadCashierDealDrafts({ officeId, fromIso });
+      const r = await loadCashierDeals({ officeId, fromIso });
       setRows(r);
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -138,8 +128,18 @@ export default function DealsLedger({ officeId }) {
     refetch();
   }, [refetch]);
 
-  // Realtime: черновики/подтверждения сделок кассира.
-  useEffect(() => subscribeCashierDeals(refetch), [refetch]);
+  // Realtime: сделки v2 в ledger.transactions/journal_entries → перезагрузка.
+  useEffect(() => {
+    if (!supabase) return undefined;
+    const ch = supabase
+      .channel("cashier-deals-ledger")
+      .on("postgres_changes", { event: "*", schema: "ledger", table: "transactions" }, refetch)
+      .on("postgres_changes", { event: "*", schema: "ledger", table: "journal_entries" }, refetch)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [refetch]);
 
   // ── Заявки менеджера (за фиче-флагом) ──
   const [orders, setOrders] = useState([]);
@@ -211,31 +211,46 @@ export default function DealsLedger({ officeId }) {
       return;
     }
 
-    // Сделка кассира = ЧЕРНОВИК (без проводок). Проводки сделает бухгалтер при
-    // подтверждении. Счета тут не нужны — резолвятся на подтверждении.
+    // Сделка проводится сразу (create_deal_v2). Подтверждает бухгалтер у себя
+    // (Казначейство → «Подтвердить»), касса отражает зелёным. Наличные → cash-клиент офиса.
+    const inAcc = acctFor(inCcy);
+    const outAcc = acctFor(outCcy);
+    if (!inAcc) return setErr(`Нет счёта ${inCcy} в этом офисе`);
+    if (!outAcc) return setErr(`Нет счёта ${outCcy} в этом офисе`);
+    let clientId = draft.party?.clientId || null;
+    if (!clientId) {
+      clientId = await resolveCashClient();
+      if (!clientId) return setErr("Нет cash-клиента офиса (напр. «Mark Cash») — выберите контрагента");
+    }
     setSaving(true);
     try {
-      await createDealDraft({
+      await createDeal({
         officeId,
-        partyLabel: draft.party?.label || draft.party?.name || "cash",
-        clientId: draft.party?.clientId || null,
-        inCurrency: inCcy,
-        inAmount: parseRu(draft.in[inCcy]),
-        rate: draft.rate || null,
-        outCurrency: outCcy,
-        outAmount: parseRu(draft.out[outCcy]),
-        effectiveAt: draft.at instanceof Date ? draft.at.toISOString() : null,
+        clientId,
+        clientNickname: draft.party?.label || draft.party?.name || "cash",
+        currencyIn: inCcy,
+        amountIn: parseRu(draft.in[inCcy]),
+        inAccountId: inAcc.id,
+        effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
+        outputs: [
+          {
+            currency: outCcy,
+            amount: parseRu(draft.out[outCcy]),
+            accountId: outAcc.id,
+            rate: parseRu(draft.rate) || undefined,
+          },
+        ],
       });
       resetDraft();
       await refetch();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[deals] draft create failed", e);
+      console.warn("[deals] create failed", e);
       setErr(e?.message || "Не удалось сохранить сделку");
     } finally {
       setSaving(false);
     }
-  }, [saving, cols, draft, officeId, refetch, refetchOrders]);
+  }, [saving, cols, draft, acctFor, officeId, refetch, refetchOrders, resolveCashClient]);
 
   // Пикер контрагента: ref-флаг, чтобы blur строки не коммитил при открытии пикера.
   const pickerOpenRef = useRef(false);
@@ -353,77 +368,21 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
-  // Подтверждение черновика бухгалтером → проводки (create_deal_v2). Идемпотентно
-  // по id черновика (повторный confirm не задвоит).
-  const confirmDeal = async (d) => {
-    setErr("");
-    const inAcc = acctFor(d.inCcy);
-    const outAcc = acctFor(d.outCcy);
-    if (!inAcc) return window.alert(`Нет счёта ${d.inCcy} в этом офисе`);
-    if (!outAcc) return window.alert(`Нет счёта ${d.outCcy} в этом офисе`);
-    // v2 требует client_id: для наличных подставляем cash-клиента офиса.
-    let clientId = d.clientId || null;
-    if (!clientId) {
-      clientId = await resolveCashClient();
-      if (!clientId) {
-        return window.alert(
-          "Для наличной сделки нужен cash-клиент офиса (напр. «Mark Cash»). Не нашёлся — выберите контрагента или заведите его."
-        );
-      }
-    }
-    try {
-      const txId = await createDeal({
-        officeId,
-        idempotencyKey: d.id,
-        clientId,
-        clientNickname: d.party,
-        currencyIn: d.inCcy,
-        amountIn: d.inAmount,
-        inAccountId: inAcc.id,
-        effectiveDate: d.createdAt,
-        outputs: [{ currency: d.outCcy, amount: d.outAmount, accountId: outAcc.id, rate: d.rate || undefined }],
-      });
-      await markDealConfirmed(d.id, txId, currentUser?.id);
-      await refetch();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[deals] confirm failed", e);
-      window.alert(`Не удалось провести сделку:\n${e?.message || e}`);
-    }
-  };
-
-  // Удаление: черновик — физически (проводок не было); подтверждённая — сторно
-  // (обратная проводка) + алерт, что её уже провёл бухгалтер.
+  // Удаление сделки = сторно (обратная проводка). Если уже подтверждена бухгалтером
+  // — предупреждаем об этом отдельно.
   const deleteDeal = async (d) => {
     setErr("");
-    if (d.confirmed) {
-      if (
-        !window.confirm(
-          "Сделку уже провёл бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
-        )
-      )
-        return;
-      try {
-        if (d.ledgerTxId) {
-          await rpcReverseTransactionV2({ targetTxId: d.ledgerTxId, reason: "Отмена сделки из кассы", cascade: true });
-        }
-        await markDealCancelled(d.id);
-        await refetch();
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("[deals] reverse failed", e);
-        setErr(e?.message || "Не удалось сторнировать сделку");
-      }
-      return;
-    }
-    if (!window.confirm("Удалить черновик сделки?")) return;
+    const msg = d.confirmed
+      ? "Сделку уже подтвердил бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
+      : "Удалить сделку? Будет создано сторно (обратная проводка).";
+    if (!window.confirm(msg)) return;
     try {
-      await deleteDealDraft(d.id);
+      await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
       await refetch();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[deals] delete draft failed", e);
-      setErr(e?.message || "Не удалось удалить");
+      console.warn("[deals] reverse failed", e);
+      window.alert(`Не удалось удалить сделку:\n${e?.message || e}`);
     }
   };
   const deleteOrder = async (o) => {
@@ -618,28 +577,16 @@ export default function DealsLedger({ officeId }) {
                         <span className="text-[12.5px] font-bold text-ink truncate" title={d.party}>
                           {d.party}
                         </span>
-                        <span className="text-[9px] font-bold uppercase tracking-wide">
-                          {d.confirmed ? (
-                            <span className="text-[#0b8a54]">✓ проведено</span>
-                          ) : (
-                            <span className="text-[#8d92a8]">черновик</span>
-                          )}
-                        </span>
+                        {!d.confirmed && (
+                          <span className="text-[9px] font-bold uppercase tracking-wide text-[#8d92a8]">
+                            не подтв.
+                          </span>
+                        )}
                       </span>
-                      {canConfirm && !d.confirmed && (
-                        <button
-                          type="button"
-                          onClick={() => confirmDeal(d)}
-                          title="Подтвердить сделку (провести)"
-                          className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-white bg-[#159a5d] hover:bg-[#0f8a50] rounded-[5px] px-1.5 py-0.5"
-                        >
-                          провести
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={() => deleteDeal(d)}
-                        title={d.confirmed ? "Удалить (сторно)" : "Удалить черновик"}
+                        title="Удалить сделку (сторно)"
                         className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
                       >
                         <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
