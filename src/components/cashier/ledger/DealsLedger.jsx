@@ -176,7 +176,7 @@ export default function DealsLedger({ officeId }) {
   // ── Инлайн-ввод ──
   const rowRef = useRef(null);
   // party — объект контрагента из пикера: { kind, clientId?, accountingCode?, name?, contact?, label } | null
-  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
+  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", rateManual: false, in: {}, out: {}, isReq: false });
   const [pickerOpen, setPickerOpen] = useState(false);
   const partyCellRef = useRef(null);
   const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
@@ -190,7 +190,7 @@ export default function DealsLedger({ officeId }) {
   );
 
   const resetDraft = () => {
-    setDraft({ party: null, at: new Date(), rate: "", in: {}, out: {}, isReq: false });
+    setDraft({ party: null, at: new Date(), rate: "", rateManual: false, in: {}, out: {}, isReq: false });
   };
   const partyContact = (p) => p?.contact || p?.name || p?.label || null;
 
@@ -380,7 +380,8 @@ export default function DealsLedger({ officeId }) {
 
   const setRate = (v) =>
     setDraft((d) => {
-      const next = { ...d, rate: v };
+      // Ручной курс: помечаем, чтобы правка сумм его НЕ пересчитывала (нужно для сплита).
+      const next = { ...d, rate: v, rateManual: !!String(v).trim() };
       const inCs = inCcysOf(d);
       const outCs = outCcysOf(d);
       const rateN = parseRu(v);
@@ -396,7 +397,9 @@ export default function DealsLedger({ officeId }) {
       const inCs = inCcysOf(next);
       const outCs = outCcysOf(next);
       const outAmt = parseRu(v);
-      if (inCs.length === 1 && outCs.length === 1 && outAmt > 0) {
+      // Курс из суммы выводим ТОЛЬКО если он не задан вручную и одна нога с каждой
+      // стороны. Если курс ручной (сплит) — НЕ трогаем его при правке сумм.
+      if (!d.rateManual && inCs.length === 1 && outCs.length === 1 && outAmt > 0) {
         next.rate = fmtRate(outAmt / parseRu(next.in[inCs[0]]));
       }
       return next;
