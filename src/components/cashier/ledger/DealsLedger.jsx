@@ -16,14 +16,16 @@ import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
+import { rpcReverseTransactionV2 } from "../../../lib/newLedger.js";
 import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
   createOrder,
   setArrived,
+  cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
-import { Hourglass, CircleDashed, CheckCircle2, Eye } from "lucide-react";
+import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2 } from "lucide-react";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
 
 function fmtDealTime(iso) {
@@ -345,6 +347,31 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
+  // Удалить сделку = сторно (обратная проводка с каскадом). Не хард-делит —
+  // двойная запись: создаётся реверс, лента скрывает сделку.
+  const deleteDeal = async (d) => {
+    if (!window.confirm(`Удалить сделку «${d.party}»? Будет создано сторно (обратная проводка).`)) return;
+    setErr("");
+    try {
+      await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
+      await refetch();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[deals] reverse failed", e);
+      setErr(e?.message || "Не удалось удалить сделку");
+    }
+  };
+  const deleteOrder = async (o) => {
+    if (!window.confirm("Удалить заявку?")) return;
+    try {
+      await cancelOrder(o.id);
+      await refetchOrders();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[orders] delete failed", e);
+    }
+  };
+
   const cell =
     "text-right whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
@@ -466,6 +493,14 @@ export default function DealsLedger({ officeId }) {
                     >
                       <Eye className="w-[15px] h-[15px]" strokeWidth={2} />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteOrder(o)}
+                      title="Удалить заявку"
+                      className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
+                    >
+                      <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
+                    </button>
                   </div>
                 </td>
                 <td className="bg-[#fff8e6] text-left px-2.5 py-1.5 border-t border-l border-[#f0e2b8] font-mono text-[11.5px] text-[#9a6b00] whitespace-nowrap">
@@ -503,14 +538,24 @@ export default function DealsLedger({ officeId }) {
                 outByCcy[o.ccy] = (outByCcy[o.ccy] || 0) + o.amount;
               });
               return (
-                <tr key={d.id} className="hover:bg-[#fafbff]">
+                <tr key={d.id} className="group hover:bg-[#fafbff]">
                   <td className="bg-[#f6f7fb] text-center border-t border-[#e7e9f1] font-mono text-[11px] font-bold text-[#b6bacb] px-1 py-1.5">
                     {orders.length + di + 1}
                   </td>
                   <td className="bg-[#f6f7fb] text-left px-3 py-1.5 border-t border-[#e7e9f1]">
-                    <span className="block text-[12.5px] font-bold text-ink truncate" title={d.party}>
-                      {d.party}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="block text-[12.5px] font-bold text-ink truncate flex-1 min-w-0" title={d.party}>
+                        {d.party}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => deleteDeal(d)}
+                        title="Удалить сделку (сторно)"
+                        className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
+                      >
+                        <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
+                      </button>
+                    </div>
                   </td>
                   <td className="bg-[#f6f7fb] text-left px-1.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
                     {fmtDealTime(d.createdAt)}

@@ -31,7 +31,18 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
   const posted = (txs || []).filter(
     (t) => t.status === "posted" && (!officeId || t.metadata?.office_id === officeId)
   );
-  const ids = posted.map((t) => t.id);
+  if (!posted.length) return [];
+
+  // Сторно: сделка считается удалённой, если есть транзакция, реверсящая её
+  // (reverses_transaction_id = id сделки). Такие исключаем из ленты.
+  const postedIds = posted.map((t) => t.id);
+  const { data: revs } = await lg()
+    .from("transactions")
+    .select("reverses_transaction_id")
+    .in("reverses_transaction_id", postedIds);
+  const reversed = new Set((revs || []).map((r) => r.reverses_transaction_id));
+  const active = posted.filter((t) => !reversed.has(t.id));
+  const ids = active.map((t) => t.id);
   if (!ids.length) return [];
 
   const { data: legs, error: e2 } = await lg()
@@ -45,7 +56,7 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
     (byTx[l.transaction_id] || (byTx[l.transaction_id] = [])).push(l);
   });
 
-  return posted.map((t) => {
+  return active.map((t) => {
     const L = byTx[t.id] || [];
     const inLeg = L.find((l) => /^IN:/.test(l.note || "") && l.direction === "dr");
     const outLegs = L.filter((l) => /^OUT:/.test(l.note || "") && l.direction === "cr");
