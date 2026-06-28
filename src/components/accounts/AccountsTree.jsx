@@ -1,0 +1,270 @@
+// src/components/accounts/AccountsTree.jsx
+// Редизайн «Счета»: вертикальное дерево Офис → Валюта → Счёт (как «Активы» в
+// Казначействе), но это УПРАВЛЕНИЕ КАССАМИ — корректировки остатков, переводы
+// между офисами/счетами, пополнение/изъятие. Данные из useAccounts (movements);
+// операции — переиспуют готовые модалки (проводки v2: create_transfer/adjustment).
+
+import React, { useMemo, useState } from "react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  Building2,
+  SlidersHorizontal,
+  ArrowLeftRight,
+  History,
+  ArrowDownToLine,
+} from "lucide-react";
+import { useAccounts } from "../../store/accounts.jsx";
+import { useOffices } from "../../store/offices.jsx";
+import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { BAL_COLUMNS, ccyMeta, fmtRu } from "../balances/currencyMeta.js";
+import { curSymbol } from "../../utils/money.js";
+import TopUpModal from "./TopUpModal.jsx";
+import BalanceAdjustmentModal from "./BalanceAdjustmentModal.jsx";
+import TransferModal from "./TransferModal.jsx";
+import AccountHistoryModal from "./AccountHistoryModal.jsx";
+import AddAccountModal from "./AddAccountModal.jsx";
+
+const ccyOrder = (c) => {
+  const i = BAL_COLUMNS.indexOf(c);
+  return i < 0 ? 99 : i;
+};
+const native = (amt, ccy) => `${curSymbol(ccy)}${fmtRu(amt, ccyMeta(ccy).dp ?? 2)}`;
+
+function CcyChip({ ccy }) {
+  const m = ccyMeta(ccy);
+  return (
+    <span
+      className="inline-grid place-items-center w-[22px] h-[22px] rounded-[7px] text-[11px] font-bold shrink-0"
+      style={{ background: m.bg, color: m.fg }}
+    >
+      {m.sym}
+    </span>
+  );
+}
+
+function IconBtn({ title, onClick, children, danger }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`shrink-0 inline-grid place-items-center w-7 h-7 rounded-[8px] transition-colors ${
+        danger ? "text-[#cf3b40] hover:bg-[#fdecec]" : "text-muted hover:bg-[#eef0f7] hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+export default function AccountsTree() {
+  const { accounts, balanceOf, reservedOf, availableOf } = useAccounts();
+  const { activeOffices } = useOffices();
+  const { toBase, formatBase } = useBaseCurrency();
+
+  const [openOffices, setOpenOffices] = useState(() => new Set());
+  const [openCcy, setOpenCcy] = useState(() => new Set()); // ключ `${officeId}|${ccy}`
+
+  const [topUpFor, setTopUpFor] = useState(null);
+  const [adjustFor, setAdjustFor] = useState(null);
+  const [transferFrom, setTransferFrom] = useState(null);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [historyFor, setHistoryFor] = useState(null);
+  const [addAccountFor, setAddAccountFor] = useState(null);
+
+  // Дерево: офис → валюта → счета.
+  const tree = useMemo(() => {
+    return activeOffices.map((office) => {
+      const accs = accounts.filter((a) => a.active && a.officeId === office.id);
+      const byCcy = {};
+      accs.forEach((a) => (byCcy[a.currency] || (byCcy[a.currency] = [])).push(a));
+      const ccys = Object.keys(byCcy)
+        .sort((x, y) => ccyOrder(x) - ccyOrder(y))
+        .map((ccy) => {
+          const list = byCcy[ccy];
+          const total = list.reduce((s, a) => s + balanceOf(a.id), 0);
+          const reserved = list.reduce((s, a) => s + reservedOf(a.id), 0);
+          return { ccy, list, total, reserved, available: total - reserved };
+        });
+      const baseTotal = ccys.reduce((s, c) => s + toBase(c.total, c.ccy), 0);
+      return { office, ccys, baseTotal, accsCount: accs.length };
+    });
+  }, [accounts, activeOffices, balanceOf, reservedOf, toBase]);
+
+  const grandBase = tree.reduce((s, o) => s + o.baseTotal, 0);
+
+  const openTransfer = (acc) => {
+    setTransferFrom(acc);
+    setTransferOpen(true);
+  };
+  const toggle = (set, setSet, key) => {
+    const n = new Set(set);
+    n.has(key) ? n.delete(key) : n.add(key);
+    setSet(n);
+  };
+
+  return (
+    <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
+      {/* Шапка дерева */}
+      <div className="grid grid-cols-[1fr_140px_120px_120px] items-center px-4 py-2.5 border-b border-[#e7e9f1] bg-[#fbfcfe] text-[10px] font-bold uppercase tracking-wide text-muted">
+        <span>Касса / валюта / счёт</span>
+        <span className="text-right">Остаток</span>
+        <span className="text-right">Доступно</span>
+        <span className="text-right">≈ {formatBase ? "" : ""}итого</span>
+      </div>
+
+      {tree.map((ob) => {
+        const oOpen = openOffices.has(ob.office.id);
+        return (
+          <div key={ob.office.id} className="border-b border-[#eef0f4] last:border-0">
+            {/* Офис */}
+            <div
+              onClick={() => toggle(openOffices, setOpenOffices, ob.office.id)}
+              className="grid grid-cols-[1fr_140px_120px_120px] items-center px-4 py-2.5 cursor-pointer hover:bg-[#f6f7fb] group"
+            >
+              <span className="flex items-center gap-2 min-w-0">
+                {oOpen ? (
+                  <ChevronDown className="w-4 h-4 text-muted shrink-0" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-muted shrink-0" />
+                )}
+                <Building2 className="w-4 h-4 text-[#5b6cff] shrink-0" strokeWidth={2} />
+                <span className="text-[13.5px] font-bold text-ink truncate">{ob.office.name}</span>
+                <span className="text-[11px] text-muted">· {ob.accsCount}</span>
+                <IconBtn
+                  title="Добавить счёт в этот офис"
+                  onClick={() => setAddAccountFor({ officeId: ob.office.id, officeName: ob.office.name })}
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
+                </IconBtn>
+              </span>
+              <span className="text-right" />
+              <span className="text-right" />
+              <span className="text-right text-[13px] font-bold text-ink font-mono">{formatBase(ob.baseTotal, undefined) || ""}</span>
+            </div>
+
+            {/* Валюты офиса */}
+            {oOpen &&
+              ob.ccys.map((cb) => {
+                const ckey = `${ob.office.id}|${cb.ccy}`;
+                const cOpen = openCcy.has(ckey);
+                const single = cb.list.length === 1;
+                const acc0 = cb.list[0];
+                return (
+                  <div key={ckey}>
+                    <div
+                      onClick={() => (single ? null : toggle(openCcy, setOpenCcy, ckey))}
+                      className={`grid grid-cols-[1fr_140px_120px_120px] items-center pl-9 pr-4 py-2 border-t border-[#f3f4f8] group ${
+                        single ? "" : "cursor-pointer hover:bg-[#f6f7fb]"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        {!single &&
+                          (cOpen ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-muted shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-muted shrink-0" />
+                          ))}
+                        <CcyChip ccy={cb.ccy} />
+                        <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
+                        {!single && <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>}
+                        {/* Действия для одно-счётной валюты — прямо здесь */}
+                        {single && (
+                          <span className="hidden group-hover:flex items-center gap-0.5 ml-1">
+                            <IconBtn title="Корректировка остатка" onClick={() => setAdjustFor(acc0)}>
+                              <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
+                            </IconBtn>
+                            <IconBtn title="Перевод (между офисами/счетами)" onClick={() => openTransfer(acc0)}>
+                              <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2} />
+                            </IconBtn>
+                            <IconBtn title="Пополнить / изъять" onClick={() => setTopUpFor(acc0)}>
+                              <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={2} />
+                            </IconBtn>
+                            <IconBtn title="История" onClick={() => setHistoryFor(acc0)}>
+                              <History className="w-3.5 h-3.5" strokeWidth={2} />
+                            </IconBtn>
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-right text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
+                      <span
+                        className={`text-right text-[12.5px] font-mono ${
+                          cb.reserved > 0 ? "text-[#b8923a]" : "text-muted"
+                        }`}
+                      >
+                        {native(cb.available, cb.ccy)}
+                      </span>
+                      <span className="text-right text-[12px] font-mono text-muted">{formatBase(toBase(cb.total, cb.ccy), undefined) || ""}</span>
+                    </div>
+
+                    {/* Счета внутри валюты (если несколько) */}
+                    {!single &&
+                      cOpen &&
+                      cb.list.map((a) => (
+                        <div
+                          key={a.id}
+                          className="grid grid-cols-[1fr_140px_120px_120px] items-center pl-[68px] pr-4 py-1.5 border-t border-[#f6f7fb] hover:bg-[#f6f7fb] group"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span className="text-[12.5px] text-ink-soft truncate">{a.name || a.label || a.id}</span>
+                            <span className="hidden group-hover:flex items-center gap-0.5 ml-1">
+                              <IconBtn title="Корректировка" onClick={() => setAdjustFor(a)}>
+                                <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
+                              </IconBtn>
+                              <IconBtn title="Перевод" onClick={() => openTransfer(a)}>
+                                <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2} />
+                              </IconBtn>
+                              <IconBtn title="Пополнить / изъять" onClick={() => setTopUpFor(a)}>
+                                <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={2} />
+                              </IconBtn>
+                              <IconBtn title="История" onClick={() => setHistoryFor(a)}>
+                                <History className="w-3.5 h-3.5" strokeWidth={2} />
+                              </IconBtn>
+                            </span>
+                          </span>
+                          <span className="text-right text-[12.5px] font-mono text-ink">{native(balanceOf(a.id), a.currency)}</span>
+                          <span className="text-right text-[12px] font-mono text-muted">{native(availableOf(a.id), a.currency)}</span>
+                          <span className="text-right text-[11.5px] font-mono text-muted">{formatBase(toBase(balanceOf(a.id), a.currency), undefined) || ""}</span>
+                        </div>
+                      ))}
+                  </div>
+                );
+              })}
+          </div>
+        );
+      })}
+
+      {/* Итого */}
+      <div className="grid grid-cols-[1fr_140px_120px_120px] items-center px-4 py-2.5 border-t-2 border-[#e7e9f1] bg-[#fbfcfe]">
+        <span className="text-[12px] font-extrabold uppercase tracking-wide text-[#454a66]">Итого по кассам</span>
+        <span />
+        <span />
+        <span className="text-right text-[14px] font-extrabold text-ink font-mono">{formatBase(grandBase, undefined) || ""}</span>
+      </div>
+
+      {/* Модалки операций (готовые) */}
+      <TopUpModal account={topUpFor} onClose={() => setTopUpFor(null)} />
+      <BalanceAdjustmentModal open={!!adjustFor} account={adjustFor} onClose={() => setAdjustFor(null)} />
+      <TransferModal
+        open={transferOpen}
+        fromAccount={transferFrom}
+        onClose={() => {
+          setTransferOpen(false);
+          setTransferFrom(null);
+        }}
+      />
+      <AccountHistoryModal account={historyFor} onClose={() => setHistoryFor(null)} />
+      <AddAccountModal
+        open={!!addAccountFor}
+        officeId={addAccountFor?.officeId}
+        officeName={addAccountFor?.officeName}
+        onClose={() => setAddAccountFor(null)}
+      />
+    </div>
+  );
+}
