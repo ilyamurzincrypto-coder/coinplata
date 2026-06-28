@@ -20,16 +20,20 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
   // ставит её из поля «Время», по умолчанию now). Фильтр дня — тоже по нему.
   let q = lg()
     .from("transactions")
-    .select("id, created_at, effective_date, status, metadata")
-    .eq("source_kind", "deal")
+    .select("id, created_at, effective_date, status, source_kind, metadata")
+    .in("source_kind", ["deal", "topup", "withdrawal"])
     .order("effective_date", { ascending: true });
   if (fromIso) q = q.gte("effective_date", fromIso);
   const { data: txs, error } = await q;
   if (error) throw error;
 
-  // Только проведённые; офис фильтруем по metadata (надёжнее jsonb-фильтра PostgREST).
+  // Сделки + одноногие кассовые (topup/withdrawal с cashier_one_leg). Проведённые,
+  // офис — по metadata.
   const posted = (txs || []).filter(
-    (t) => t.status === "posted" && (!officeId || t.metadata?.office_id === officeId)
+    (t) =>
+      t.status === "posted" &&
+      (t.source_kind === "deal" || t.metadata?.cashier_one_leg) &&
+      (!officeId || t.metadata?.office_id === officeId)
   );
   if (!posted.length) return [];
 
@@ -70,6 +74,33 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
   }
 
   return active.map((t) => {
+    const m = t.metadata || {};
+    // Одноногая (topup/withdrawal): реконструируем из метаданных, без леги-нот.
+    if (m.cashier_one_leg) {
+      const ccy = String(m.deferred_currency || "").toUpperCase();
+      const amt = Number(m.deferred_amount) || 0;
+      const isIn = m.phys_side === "in";
+      return {
+        id: t.id,
+        clientId: m.client_id || null,
+        party: m.client_nickname || "—",
+        inCcy: isIn ? ccy : "",
+        inAmount: isIn ? amt : 0,
+        rate: null,
+        outs: isIn ? [] : [{ ccy, amount: amt }],
+        createdAt: t.effective_date || t.created_at,
+        confirmed: !!m.confirmed_at,
+        deferred: {
+          oneLeg: true,
+          side: m.deferred_side,
+          currency: ccy,
+          amount: amt,
+          dueDate: m.due_date || null,
+          comment: m.obligation_comment || null,
+          open: true, // точный статус — в сводке «Незавершённое»
+        },
+      };
+    }
     const L = byTx[t.id] || [];
     const inLeg = L.find((l) => /^IN:/.test(l.note || "") && l.direction === "dr");
     const outLegs = L.filter((l) => /^OUT:/.test(l.note || "") && l.direction === "cr");
@@ -118,8 +149,8 @@ export async function loadOpenObligations({ officeId, sinceIso } = {}) {
 
   let q = lg()
     .from("transactions")
-    .select("id, effective_date, status, metadata")
-    .eq("source_kind", "deal")
+    .select("id, effective_date, status, source_kind, metadata")
+    .in("source_kind", ["deal", "topup", "withdrawal"])
     .order("effective_date", { ascending: true });
   if (sinceIso) q = q.gte("effective_date", sinceIso);
   const { data: txs, error } = await q;
@@ -149,15 +180,18 @@ export async function loadOpenObligations({ officeId, sinceIso } = {}) {
   } catch {
     /* нет вьюхи — считаем открытыми */
   }
-  // Балансы клиентов (для in-стороны: открыт, если клиент всё ещё в минусе).
+  // Балансы клиентов: <0 — клиент должен нам; >0 — мы должны клиенту.
   const negByClientCcy = new Set();
+  const posByClientCcy = new Set();
   try {
     const { data: bals } = await lg().from("v_client_balances").select("client_id, currency_code, balance");
     (bals || []).forEach((b) => {
-      if (Number(b.balance) < 0) negByClientCcy.add(`${b.client_id}|${String(b.currency_code).toUpperCase()}`);
+      const key = `${b.client_id}|${String(b.currency_code).toUpperCase()}`;
+      if (Number(b.balance) < 0) negByClientCcy.add(key);
+      else if (Number(b.balance) > 0) posByClientCcy.add(key);
     });
   } catch {
-    /* нет вьюхи — in считаем открытыми */
+    /* нет вьюхи */
   }
 
   const weOwe = [];
@@ -168,8 +202,14 @@ export async function loadOpenObligations({ officeId, sinceIso } = {}) {
     const side = m.deferred_side;
     const currency = String(m.deferred_currency || "").toUpperCase();
     const clientId = m.client_id || null;
-    const open =
-      side === "out" ? openSet.has(t.id) : !clientId || negByClientCcy.has(`${clientId}|${currency}`);
+    const key = `${clientId}|${currency}`;
+    let open;
+    if (m.cashier_one_leg) {
+      // одноногая: открыта, пока баланс клиента не погашен.
+      open = side === "out" ? posByClientCcy.has(key) : negByClientCcy.has(key);
+    } else {
+      open = side === "out" ? openSet.has(t.id) : !clientId || negByClientCcy.has(key);
+    }
     if (!open) continue;
     const item = {
       dealId: t.id,

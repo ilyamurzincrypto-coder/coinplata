@@ -17,7 +17,12 @@ import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
-import { rpcReverseTransactionV2, rpcCompleteDealLegV2, rpcCreateTopupV2 } from "../../../lib/newLedger.js";
+import {
+  rpcReverseTransactionV2,
+  rpcCompleteDealLegV2,
+  rpcCreateTopupV2,
+  rpcCreateWithdrawalV2,
+} from "../../../lib/newLedger.js";
 import { resolveAccountCode } from "../../../lib/newLedgerAdapter.js";
 import {
   MANAGER_ORDERS_ENABLED,
@@ -188,11 +193,24 @@ export default function DealsLedger({ officeId }) {
   };
   const partyContact = (p) => p?.contact || p?.name || p?.label || null;
 
-  const commit = useCallback(async () => {
+  const commit = useCallback(async (allowOneLeg = false) => {
     if (saving) return;
     const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
     const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
-    if (!inCcy || !outCcy) return; // нечего коммитить
+    if (!inCcy || !outCcy) {
+      // Одна нога (не заявка) + Enter → одноногая сделка-долг: сначала контрагент,
+      // потом направление/дата/коммент в модалке. Пустая строка — просто выходим.
+      if (allowOneLeg && !draft.isReq && (inCcy || outCcy)) {
+        if (!draft.party?.clientId) {
+          setErr("Одна нога — это сделка в долг. Выберите контрагента (не «Наличные»).");
+          setPickerOpen(true);
+        } else {
+          setErr("");
+          setDeferredOpen(true);
+        }
+      }
+      return;
+    }
     setErr("");
 
     // ── Сохранение как ЗАЯВКА (тоггл «⧖ заявка») — без счетов, без create_deal ──
@@ -283,7 +301,7 @@ export default function DealsLedger({ officeId }) {
   const onKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      commit();
+      commit(true); // Enter разрешает одноногую сделку-долг
     }
   };
 
@@ -353,6 +371,13 @@ export default function DealsLedger({ officeId }) {
   const onSelectParty = (party) => {
     setDraft((d) => ({ ...d, party }));
     closePicker();
+    // Если уже введена ОДНА нога и выбрали контрагента — сразу к оформлению долга.
+    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
+    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
+    if (!!inCcy !== !!outCcy && party?.clientId && !draft.isReq) {
+      setErr("");
+      setDeferredOpen(true);
+    }
   };
   const onFillFromDeal = (deal) => {
     setDraft((d) => {
@@ -411,7 +436,29 @@ export default function DealsLedger({ officeId }) {
     if (!window.confirm(human)) return;
     try {
       const accountCode = await resolveAccountCode(acc.id);
-      if (def.side === "out") {
+      if (def.oneLeg) {
+        // Одноногая: закрытие = ПРОТИВОПОЛОЖНЫЙ примитив, гасит баланс клиента.
+        if (!d.clientId) return window.alert("Нет контрагента для закрытия (client_id)");
+        if (def.side === "out") {
+          // мы должны (был topup) → выдаём (withdrawal)
+          await rpcCreateWithdrawalV2({
+            clientId: d.clientId,
+            currencyCode: def.currency,
+            amount: def.amount,
+            destinationAccount: accountCode,
+            description: "Закрытие долга: выдали клиенту",
+          });
+        } else {
+          // клиент должен (был withdrawal) → клиент доносит (topup)
+          await rpcCreateTopupV2({
+            clientId: d.clientId,
+            accountCode,
+            amount: def.amount,
+            currencyCode: def.currency,
+            description: "Закрытие долга: клиент донёс",
+          });
+        }
+      } else if (def.side === "out") {
         await rpcCompleteDealLegV2({
           dealId: d.id,
           currencyCode: def.currency,
@@ -451,15 +498,58 @@ export default function DealsLedger({ officeId }) {
   const openDeferred = () => {
     setErr("");
     const s = deferredSummary();
-    if (!s.inCcy || !s.outCcy) return setErr("Заполните приход и расход (обе валюты сделки)");
+    if (!s.inCcy && !s.outCcy) return setErr("Впишите сумму прихода или расхода");
     if (!draft.party?.clientId) return setErr("Долг — только с контрагентом (не «Наличные»)");
     setDeferredOpen(true);
   };
   const commitDeferred = async ({ side, dueDate, comment }) => {
     const s = deferredSummary();
+    const clientId = draft.party?.clientId;
+    const oneLegged = !(s.inCcy && s.outCcy);
+
+    // ── ОДНОНОГАЯ: только приход (клиент занёс → мы должны, topup) ИЛИ только
+    //    расход (мы выдали → клиент должен, withdrawal). ──
+    if (oneLegged) {
+      const isIn = !!s.inCcy;
+      const ccy = isIn ? s.inCcy : s.outCcy;
+      const amt = isIn ? s.inAmount : s.outAmount;
+      const acc = acctFor(ccy);
+      setSaving(true);
+      try {
+        if (!acc) throw new Error(`Нет счёта ${ccy} в этом офисе`);
+        const accountCode = await resolveAccountCode(acc.id);
+        const meta = {
+          cashier_one_leg: true,
+          deferred_side: isIn ? "out" : "in", // out = мы должны, in = клиент должен
+          deferred_currency: ccy,
+          deferred_amount: amt,
+          phys_side: isIn ? "in" : "out",
+          due_date: dueDate,
+          obligation_comment: comment,
+          client_id: clientId,
+          client_nickname: draft.party?.label || draft.party?.name || "—",
+          office_id: officeId,
+        };
+        if (isIn) {
+          await rpcCreateTopupV2({ clientId, accountCode, amount: amt, currencyCode: ccy, description: comment, metadata: meta });
+        } else {
+          await rpcCreateWithdrawalV2({ clientId, currencyCode: ccy, amount: amt, destinationAccount: accountCode, description: comment, metadata: meta });
+        }
+        setDeferredOpen(false);
+        resetDraft();
+        await refetch();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[deals] one-leg create failed", e);
+        window.alert(`Не удалось сохранить долг:\n${e?.message || e}`);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const inAcc = acctFor(s.inCcy);
     const outAcc = acctFor(s.outCcy);
-    const clientId = draft.party?.clientId;
     const base = {
       officeId,
       clientId,
@@ -811,9 +901,7 @@ export default function DealsLedger({ officeId }) {
                   >
                     <span className="inline-flex items-center gap-1.5 text-[12px] min-w-0 flex-1">
                       {draft.party.kind === "cash" ? (
-                        <span className="font-mono text-[10.5px] font-bold text-[#0b8a54] bg-[#e7f6ee] border border-[#daf0e4] rounded-[5px] px-1.5 py-px">
-                          cash
-                        </span>
+                        <span className="font-bold text-[12px] text-[#0b8a54]">Наличные</span>
                       ) : draft.party.kind === "contact" ? (
                         <span className="font-semibold text-[12px] text-[#2f6fd0] truncate min-w-0">
                           {draft.party.label}
@@ -825,9 +913,6 @@ export default function DealsLedger({ officeId }) {
                       ) : null}
                       {draft.party.name && (
                         <span className="font-bold text-ink truncate">{draft.party.name}</span>
-                      )}
-                      {draft.party.kind === "cash" && (
-                        <span className="font-bold text-ink">Наличные</span>
                       )}
                     </span>
                     <span
@@ -928,7 +1013,7 @@ export default function DealsLedger({ officeId }) {
           <span className="text-[11px] text-muted">
             {draft.isReq
               ? "Режим заявки (⧖): впишите суммы + контрагента, затем Enter — заявка сохранится (потом можно править)"
-              : "Впишите суммы в ячейки прихода и расхода + курс, затем Enter — сделка сохранится"}
+              : "Приход + расход + курс → Enter (сделка). Одна нога (долг) — впиши одну сторону + контрагент → Enter, оформим обязательство"}
           </span>
         )}
       </div>
