@@ -13,7 +13,13 @@ const labelCls = "block text-[10px] font-bold text-muted uppercase tracking-wide
 
 export default function DeferredDealModal({ summary, onClose, onConfirm }) {
   // summary: { party, inCcy, inAmount, outCcy, outAmount }
-  const [side, setSide] = useState("out"); // 'in' = клиент должен нам, 'out' = мы должны
+  // Одноногая: только приход (клиент занёс → мы должны) ИЛИ только расход
+  // (мы выдали → клиент должен). Направление тогда фиксировано.
+  const oneLegged = !(summary.inCcy && summary.outCcy);
+  const onlyIn = oneLegged && !!summary.inCcy;
+  const fixedSide = oneLegged ? (onlyIn ? "out" : "in") : null; // out=мы должны, in=клиент должен
+
+  const [side, setSide] = useState(fixedSide || "out");
   const [dueDate, setDueDate] = useState("");
   const [comment, setComment] = useState("");
   const [err, setErr] = useState("");
@@ -24,15 +30,16 @@ export default function DeferredDealModal({ summary, onClose, onConfirm }) {
     return () => document.removeEventListener("keydown", onEsc);
   }, [onClose]);
 
+  const eff = fixedSide || side;
   const submit = () => {
     if (!dueDate) return setErr("Укажите дату обязательства");
     if (!comment.trim()) return setErr("Добавьте комментарий");
-    onConfirm({ side, dueDate, comment: comment.trim() });
+    onConfirm({ side: eff, dueDate, comment: comment.trim() });
   };
 
   // Что именно отложено и кто кому должен.
-  const owedCcy = side === "in" ? summary.inCcy : summary.outCcy;
-  const owedAmt = side === "in" ? summary.inAmount : summary.outAmount;
+  const owedCcy = eff === "in" ? summary.inCcy : summary.outCcy;
+  const owedAmt = eff === "in" ? summary.inAmount : summary.outAmount;
 
   return createPortal(
     <div
@@ -55,42 +62,49 @@ export default function DeferredDealModal({ summary, onClose, onConfirm }) {
         </div>
 
         <div className="px-5 py-4 flex flex-col gap-3">
-          <div>
-            <span className={labelCls}>Что откладываем</span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setSide("in")}
-                className={`text-left rounded-[10px] border px-3 py-2 transition-colors ${
-                  side === "in"
-                    ? "border-[#5b6cff] bg-[#eef0ff]"
-                    : "border-[#dde0ea] hover:bg-[#f6f7fb]"
-                }`}
-              >
-                <span className="block text-[12px] font-bold text-ink">Клиент должен нам</span>
-                <span className="block text-[10.5px] text-muted">приход {summary.inCcy} позже</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSide("out")}
-                className={`text-left rounded-[10px] border px-3 py-2 transition-colors ${
-                  side === "out"
-                    ? "border-[#5b6cff] bg-[#eef0ff]"
-                    : "border-[#dde0ea] hover:bg-[#f6f7fb]"
-                }`}
-              >
-                <span className="block text-[12px] font-bold text-ink">Мы должны клиенту</span>
-                <span className="block text-[10.5px] text-muted">расход {summary.outCcy} позже</span>
-              </button>
+          {oneLegged ? (
+            <div className="rounded-[10px] border border-[#5b6cff] bg-[#eef0ff] px-3 py-2">
+              <span className="block text-[12px] font-bold text-ink">
+                {eff === "in" ? "Клиент должен нам" : "Мы должны клиенту"}
+              </span>
+              <span className="block text-[10.5px] text-muted">
+                одна нога: {eff === "in" ? "выдали" : "получили"} {owedCcy}, вторую сторону не вносим
+              </span>
             </div>
-          </div>
+          ) : (
+            <div>
+              <span className={labelCls}>Что откладываем</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSide("in")}
+                  className={`text-left rounded-[10px] border px-3 py-2 transition-colors ${
+                    side === "in" ? "border-[#5b6cff] bg-[#eef0ff]" : "border-[#dde0ea] hover:bg-[#f6f7fb]"
+                  }`}
+                >
+                  <span className="block text-[12px] font-bold text-ink">Клиент должен нам</span>
+                  <span className="block text-[10.5px] text-muted">приход {summary.inCcy} позже</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSide("out")}
+                  className={`text-left rounded-[10px] border px-3 py-2 transition-colors ${
+                    side === "out" ? "border-[#5b6cff] bg-[#eef0ff]" : "border-[#dde0ea] hover:bg-[#f6f7fb]"
+                  }`}
+                >
+                  <span className="block text-[12px] font-bold text-ink">Мы должны клиенту</span>
+                  <span className="block text-[10.5px] text-muted">расход {summary.outCcy} позже</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="rounded-[10px] bg-[#f6f7fb] border border-[#e7e9f1] px-3 py-2 text-[12px]">
             <span className="text-muted">Долг: </span>
             <span className="font-bold text-ink font-mono">
               {Number(owedAmt).toLocaleString("ru-RU")} {owedCcy}
             </span>
-            <span className="text-muted">{side === "in" ? " — клиент нам" : " — мы клиенту"}</span>
+            <span className="text-muted">{eff === "in" ? " — клиент нам" : " — мы клиенту"}</span>
           </div>
 
           <div className="grid grid-cols-[1fr_1.4fr] gap-2">

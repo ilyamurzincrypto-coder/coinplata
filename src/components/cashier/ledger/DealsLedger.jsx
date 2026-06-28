@@ -17,7 +17,12 @@ import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
-import { rpcReverseTransactionV2, rpcCompleteDealLegV2, rpcCreateTopupV2 } from "../../../lib/newLedger.js";
+import {
+  rpcReverseTransactionV2,
+  rpcCompleteDealLegV2,
+  rpcCreateTopupV2,
+  rpcCreateWithdrawalV2,
+} from "../../../lib/newLedger.js";
 import { resolveAccountCode } from "../../../lib/newLedgerAdapter.js";
 import {
   MANAGER_ORDERS_ENABLED,
@@ -411,7 +416,29 @@ export default function DealsLedger({ officeId }) {
     if (!window.confirm(human)) return;
     try {
       const accountCode = await resolveAccountCode(acc.id);
-      if (def.side === "out") {
+      if (def.oneLeg) {
+        // Одноногая: закрытие = ПРОТИВОПОЛОЖНЫЙ примитив, гасит баланс клиента.
+        if (!d.clientId) return window.alert("Нет контрагента для закрытия (client_id)");
+        if (def.side === "out") {
+          // мы должны (был topup) → выдаём (withdrawal)
+          await rpcCreateWithdrawalV2({
+            clientId: d.clientId,
+            currencyCode: def.currency,
+            amount: def.amount,
+            destinationAccount: accountCode,
+            description: "Закрытие долга: выдали клиенту",
+          });
+        } else {
+          // клиент должен (был withdrawal) → клиент доносит (topup)
+          await rpcCreateTopupV2({
+            clientId: d.clientId,
+            accountCode,
+            amount: def.amount,
+            currencyCode: def.currency,
+            description: "Закрытие долга: клиент донёс",
+          });
+        }
+      } else if (def.side === "out") {
         await rpcCompleteDealLegV2({
           dealId: d.id,
           currencyCode: def.currency,
@@ -451,15 +478,58 @@ export default function DealsLedger({ officeId }) {
   const openDeferred = () => {
     setErr("");
     const s = deferredSummary();
-    if (!s.inCcy || !s.outCcy) return setErr("Заполните приход и расход (обе валюты сделки)");
+    if (!s.inCcy && !s.outCcy) return setErr("Впишите сумму прихода или расхода");
     if (!draft.party?.clientId) return setErr("Долг — только с контрагентом (не «Наличные»)");
     setDeferredOpen(true);
   };
   const commitDeferred = async ({ side, dueDate, comment }) => {
     const s = deferredSummary();
+    const clientId = draft.party?.clientId;
+    const oneLegged = !(s.inCcy && s.outCcy);
+
+    // ── ОДНОНОГАЯ: только приход (клиент занёс → мы должны, topup) ИЛИ только
+    //    расход (мы выдали → клиент должен, withdrawal). ──
+    if (oneLegged) {
+      const isIn = !!s.inCcy;
+      const ccy = isIn ? s.inCcy : s.outCcy;
+      const amt = isIn ? s.inAmount : s.outAmount;
+      const acc = acctFor(ccy);
+      setSaving(true);
+      try {
+        if (!acc) throw new Error(`Нет счёта ${ccy} в этом офисе`);
+        const accountCode = await resolveAccountCode(acc.id);
+        const meta = {
+          cashier_one_leg: true,
+          deferred_side: isIn ? "out" : "in", // out = мы должны, in = клиент должен
+          deferred_currency: ccy,
+          deferred_amount: amt,
+          phys_side: isIn ? "in" : "out",
+          due_date: dueDate,
+          obligation_comment: comment,
+          client_id: clientId,
+          client_nickname: draft.party?.label || draft.party?.name || "—",
+          office_id: officeId,
+        };
+        if (isIn) {
+          await rpcCreateTopupV2({ clientId, accountCode, amount: amt, currencyCode: ccy, description: comment, metadata: meta });
+        } else {
+          await rpcCreateWithdrawalV2({ clientId, currencyCode: ccy, amount: amt, destinationAccount: accountCode, description: comment, metadata: meta });
+        }
+        setDeferredOpen(false);
+        resetDraft();
+        await refetch();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[deals] one-leg create failed", e);
+        window.alert(`Не удалось сохранить долг:\n${e?.message || e}`);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     const inAcc = acctFor(s.inCcy);
     const outAcc = acctFor(s.outCcy);
-    const clientId = draft.party?.clientId;
     const base = {
       officeId,
       clientId,
