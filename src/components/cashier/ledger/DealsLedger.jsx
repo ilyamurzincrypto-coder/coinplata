@@ -372,16 +372,16 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
+  // Всё содержимое валютных ячеек — ПО ЦЕНТРУ (и числа, и точки, и ввод), чтобы
+  // позиция не «прыгала» между заполненными и пустыми ячейками/строками.
   const cell =
-    "text-right whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
+    "text-center whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
   const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
   const cellEmpty = "text-[#b6bacb]";
-  // Единый маркер пустой ячейки — серая точка ПО ЦЕНТРУ (в любой строке).
-  const dot = <span className="block text-center text-[#cbd0dd]">·</span>;
-  // Инпут: пустой — плейсхолдер по центру, с числом — вправо (как в заполненных).
+  const dot = <span className="text-[#cbd0dd]">·</span>;
   const inputCls =
-    "w-full bg-transparent font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cbd0dd] select-text";
-  const inAlign = (v) => (parseRu(v) > 0 ? "text-right text-[#0b8a54] font-semibold" : "text-center");
+    "w-full bg-transparent text-center font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cbd0dd] select-text";
+  const inAlign = (v) => (parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : "");
 
   return (
     <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
