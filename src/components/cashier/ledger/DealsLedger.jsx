@@ -244,11 +244,16 @@ export default function DealsLedger({ officeId }) {
 
     // Сделка проводится сразу (create_deal_v2). Подтверждает бухгалтер у себя
     // (Казначейство → «Подтвердить»), касса отражает зелёным. Наличные → cash-клиент офиса.
-    const inAcc = acctFor(inCcy);
-    if (!inAcc) return setErr(`Нет счёта ${inCcy} в этом офисе`);
-    // Несколько ног расхода (сплит). Курс берём из поля только при ОДНОЙ ноге,
-    // иначе — рыночный по каждой паре.
-    const single = outCcys.length === 1;
+    // Несколько ног прихода (мульти-вход) и расхода (сплит). Курс из поля —
+    // только при ОДНОЙ ноге с каждой стороны, иначе рыночный по парам.
+    const inCcys = cols.filter((c) => parseRu(draft.in[c]) > 0);
+    const single = inCcys.length === 1 && outCcys.length === 1;
+    const inPayments = [];
+    for (const ic of inCcys) {
+      const ia = acctFor(ic);
+      if (!ia) return setErr(`Нет счёта ${ic} в этом офисе`);
+      inPayments.push({ currency: ic, amount: parseRu(draft.in[ic]), accountId: ia.id });
+    }
     const outputs = [];
     for (const oc of outCcys) {
       const oa = acctFor(oc);
@@ -257,7 +262,7 @@ export default function DealsLedger({ officeId }) {
         currency: oc,
         amount: parseRu(draft.out[oc]),
         accountId: oa.id,
-        rate: single ? parseRu(draft.rate) || undefined : convert(1, inCcy, oc, getRate) || undefined,
+        rate: single ? parseRu(draft.rate) || undefined : convert(1, inCcys[0], oc, getRate) || undefined,
       });
     }
     let clientId = draft.party?.clientId || null;
@@ -271,9 +276,7 @@ export default function DealsLedger({ officeId }) {
         officeId,
         clientId,
         clientNickname: draft.party?.label || draft.party?.name || "cash",
-        currencyIn: inCcy,
-        amountIn: parseRu(draft.in[inCcy]),
-        inAccountId: inAcc.id,
+        inPayments,
         effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
         outputs,
       });
@@ -315,78 +318,86 @@ export default function DealsLedger({ officeId }) {
   // ── Авто-калькуляция прихода/курса/расхода ──
   // Приход (in) — якорь. Клик по ячейке расхода → авто-курс (рыночный) + сумма.
   // Правка курса → пересчёт расхода. Правка расхода → пересчёт курса (курс менеджера).
-  const inLeg = (d) => {
-    const c = cols.find((x) => parseRu(d.in[x]) > 0);
-    return c ? { ccy: c, amt: parseRu(d.in[c]) } : null;
-  };
+  const inCcysOf = (d) => cols.filter((x) => parseRu(d.in[x]) > 0);
   const outCcysOf = (d) => cols.filter((x) => parseRu(d.out[x]) > 0);
-  // Сумма уже заполненных расходов, переведённая в валюту прихода (кроме exceptCcy).
+  const inLeg = (d) => {
+    const c = inCcysOf(d)[0];
+    return c ? { ccy: c, amt: parseRu(d.in[c]) } : null; // первая нога — база конвертаций
+  };
+  // Суммарная стоимость прихода в валюте ПЕРВОЙ ноги (для мульти-входа/остатка).
+  const totalInVal = (d) => {
+    const base = inLeg(d);
+    if (!base) return null;
+    const amt = cols.reduce((s, c) => {
+      const a = parseRu(d.in[c]);
+      if (a <= 0) return s;
+      return s + (c === base.ccy ? a : convert(a, c, base.ccy, getRate) || 0);
+    }, 0);
+    return { ccy: base.ccy, amt };
+  };
+  // Сумма заполненных расходов, переведённая в валюту inCcy (кроме exceptCcy).
   const filledOutInIn = (d, inCcy, exceptCcy) =>
     cols.reduce((sum, c) => {
       if (c === exceptCcy) return sum;
       const amt = parseRu(d.out[c]);
       return amt > 0 ? sum + (convert(amt, c, inCcy, getRate) || 0) : sum;
     }, 0);
-  // Остаток прихода, ещё не распределённый по расходам (для авто-«досыпки» и индикатора).
   const remainingIn = (d) => {
-    const leg = inLeg(d);
-    if (!leg) return 0;
-    return leg.amt - filledOutInIn(d, leg.ccy, null);
+    const tot = totalInVal(d);
+    if (!tot) return 0;
+    return tot.amt - filledOutInIn(d, tot.ccy, null);
   };
+  const oneToOne = (d) => inCcysOf(d).length === 1 && outCcysOf(d).length === 1;
 
   const setIn = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, in: { [c]: v } }; // приход — единственная нога (якорь)
-      // курс осмыслен только при ОДНОЙ ноге расхода → пересчитать её
-      const inAmt = parseRu(v);
+      const next = { ...d, in: { ...d.in, [c]: v } }; // мульти-приход: добавляем/правим ногу
+      const inCs = inCcysOf(next);
       const outCs = outCcysOf(next);
       const rateN = parseRu(next.rate);
-      if (inAmt > 0 && outCs.length === 1 && rateN > 0) {
-        next.out = { ...next.out, [outCs[0]]: fmtAmt(inAmt * rateN, outCs[0]) };
+      // курс правит расход только при ОДНОЙ ноге прихода И ОДНОЙ расхода
+      if (inCs.length === 1 && outCs.length === 1 && rateN > 0) {
+        next.out = { ...next.out, [outCs[0]]: fmtAmt(parseRu(next.in[inCs[0]]) * rateN, outCs[0]) };
       }
       return next;
     });
 
   // Клик по ячейке расхода: досыпать ОСТАТОК прихода в эту валюту (рыночный курс).
-  // Так работает сплит: задал конкретную сумму в одной валюте → клик по другой
-  // досыпает остаток. Ячейку с уже введённой суммой не трогаем.
+  // Работает и со сплитом расхода, и с мульти-входом (берётся суммарная стоимость).
   const focusOut = (c) =>
     setDraft((d) => {
-      const leg = inLeg(d);
-      if (!leg || leg.amt <= 0) return d;
+      const tot = totalInVal(d);
+      if (!tot || tot.amt <= 0) return d;
       if (parseRu(d.out[c]) > 0) return d;
-      const remaining = leg.amt - filledOutInIn(d, leg.ccy, c);
-      if (remaining <= 1e-9) return d; // распределять нечего
-      const outAmt = convert(remaining, leg.ccy, c, getRate);
+      const remaining = tot.amt - filledOutInIn(d, tot.ccy, c);
+      if (remaining <= 1e-9) return d;
+      const outAmt = convert(remaining, tot.ccy, c, getRate);
       if (!outAmt || !Number.isFinite(outAmt)) return d;
       const next = { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } }; // ДОБАВЛЯЕМ ногу
-      // курс показываем только если расход в одной валюте
-      if (outCcysOf(next).length === 1) next.rate = fmtRate(outAmt / leg.amt);
+      if (inCcysOf(next).length === 1 && outCcysOf(next).length === 1) next.rate = fmtRate(outAmt / tot.amt);
       return next;
     });
 
   const setRate = (v) =>
     setDraft((d) => {
       const next = { ...d, rate: v };
-      const leg = inLeg(d);
+      const inCs = inCcysOf(d);
       const outCs = outCcysOf(d);
       const rateN = parseRu(v);
-      // курс правит сумму расхода только когда расход в ОДНОЙ валюте
-      if (leg && leg.amt > 0 && outCs.length === 1 && rateN > 0) {
-        next.out = { ...next.out, [outCs[0]]: fmtAmt(leg.amt * rateN, outCs[0]) };
+      if (inCs.length === 1 && outCs.length === 1 && rateN > 0) {
+        next.out = { ...next.out, [outCs[0]]: fmtAmt(parseRu(d.in[inCs[0]]) * rateN, outCs[0]) };
       }
       return next;
     });
 
   const setOut = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, out: { ...d.out, [c]: v } }; // мульти-расход: правим/добавляем ногу
-      // курс пересчитываем из приход/расход только при ОДНОЙ ноге расхода
-      const leg = inLeg(d);
+      const next = { ...d, out: { ...d.out, [c]: v } }; // мульти-расход
+      const inCs = inCcysOf(next);
       const outCs = outCcysOf(next);
       const outAmt = parseRu(v);
-      if (leg && leg.amt > 0 && outCs.length === 1 && outAmt > 0) {
-        next.rate = fmtRate(outAmt / leg.amt);
+      if (inCs.length === 1 && outCs.length === 1 && outAmt > 0) {
+        next.rate = fmtRate(outAmt / parseRu(next.in[inCs[0]]));
       }
       return next;
     });
