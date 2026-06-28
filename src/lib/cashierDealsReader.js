@@ -47,7 +47,7 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
 
   const { data: legs, error: e2 } = await lg()
     .from("journal_entries")
-    .select("transaction_id, direction, amount, currency_code, note")
+    .select("transaction_id, direction, amount, currency_code, note, client_id")
     .in("transaction_id", ids);
   if (e2) throw e2;
 
@@ -55,6 +55,19 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
   (legs || []).forEach((l) => {
     (byTx[l.transaction_id] || (byTx[l.transaction_id] = [])).push(l);
   });
+
+  // Открытые отложенные ноги расхода («мы должны») — из operations.v_open_deals.
+  // Если сделки там нет → нога закрыта (рассчитались).
+  let openSet = new Set();
+  try {
+    const { data: open } = await supabase
+      .schema("operations")
+      .from("v_open_deals")
+      .select("ledger_tx_id");
+    openSet = new Set((open || []).map((o) => o.ledger_tx_id));
+  } catch {
+    /* вьюхи может не быть в exposed-schemas — бейдж просто будет «открыт» */
+  }
 
   return active.map((t) => {
     const L = byTx[t.id] || [];
@@ -68,8 +81,10 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
     }));
     const outTotal = outs.reduce((s, o) => s + o.amount, 0);
     const rate = inAmount > 0 && outTotal > 0 ? outTotal / inAmount : null;
+    const clientId = (L.find((l) => l.client_id) || {}).client_id || null;
     return {
       id: t.id,
+      clientId,
       party: t.metadata?.client_nickname || "—",
       inCcy,
       inAmount,
@@ -86,6 +101,9 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
             amount: Number(t.metadata.deferred_amount) || 0,
             dueDate: t.metadata.due_date || t.metadata.planned_at || null,
             comment: t.metadata.obligation_comment || null,
+            // Открыт ли долг. Для «мы должны» (out) — по v_open_deals; для «клиент
+            // должен» (in) точного per-сделочного признака пока нет → считаем открытым.
+            open: t.metadata.deferred_side === "out" ? openSet.has(t.id) : true,
           }
         : null,
     };
