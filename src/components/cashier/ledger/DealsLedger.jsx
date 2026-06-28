@@ -1038,7 +1038,10 @@ export default function DealsLedger({ officeId }) {
       {deferredOpen && (
         <DeferredDealModal
           summary={deferredSummary()}
-          onClose={() => setDeferredOpen(false)}
+          onClose={() => {
+            setDeferredOpen(false);
+            resetDraft(); // чистый выход — не оставляем долг-черновик в строке
+          }}
           onConfirm={commitDeferred}
         />
       )}

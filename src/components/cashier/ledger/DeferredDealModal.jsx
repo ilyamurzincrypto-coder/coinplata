@@ -37,9 +37,9 @@ export default function DeferredDealModal({ summary, onClose, onConfirm }) {
     onConfirm({ side: eff, dueDate, comment: comment.trim() });
   };
 
-  // Что именно отложено и кто кому должен.
-  const owedCcy = eff === "in" ? summary.inCcy : summary.outCcy;
-  const owedAmt = eff === "in" ? summary.inAmount : summary.outAmount;
+  // Что именно отложено и кто кому должен. Для одной ноги — заполненная сторона.
+  const owedCcy = oneLegged ? (onlyIn ? summary.inCcy : summary.outCcy) : eff === "in" ? summary.inCcy : summary.outCcy;
+  const owedAmt = oneLegged ? (onlyIn ? summary.inAmount : summary.outAmount) : eff === "in" ? summary.inAmount : summary.outAmount;
 
   return createPortal(
     <div
