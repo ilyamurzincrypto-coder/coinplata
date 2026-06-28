@@ -271,6 +271,8 @@ export async function adaptLegacyDealPayload(legacy) {
     inLegs,
     outLegs,
     commission,
+    // Идемпотентность подтверждения черновика (повторный confirm не задвоит проводку).
+    idempotencyKey: legacy.idempotencyKey || undefined,
     // Время сделки из поля «Время» (ISO). Нет → create_deal_v2 возьмёт now().
     effectiveDate: legacy.effectiveDate || undefined,
     description: legacy.comment || null,

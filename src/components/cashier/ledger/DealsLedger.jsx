@@ -8,8 +8,16 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabase.js";
-import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
+import {
+  loadCashierDealDrafts,
+  createDealDraft,
+  markDealConfirmed,
+  deleteDealDraft,
+  markDealCancelled,
+  subscribeCashierDeals,
+} from "../../../lib/cashierDeals.js";
 import { useAccounts } from "../../../store/accounts.jsx";
+import { useAuth } from "../../../store/auth.jsx";
 import { useRates } from "../../../store/rates.jsx";
 import { convert } from "../../../utils/convert.js";
 import { createDeal } from "../../../lib/dealOperations.js";
@@ -88,6 +96,8 @@ function fmtRate(r) {
 export default function DealsLedger({ officeId }) {
   const { accounts } = useAccounts();
   const { getRate } = useRates();
+  const { isAccountant, isAdmin, isOwner, currentUser } = useAuth();
+  const canConfirm = isAccountant || isAdmin || isOwner;
   // Тот же набор валют, что и в «Остатках» (а не все активные из справочника).
   const cols = BAL_COLUMNS;
   const fromIso = useMemo(() => todayStartIso(), []);
@@ -97,7 +107,7 @@ export default function DealsLedger({ officeId }) {
 
   const refetch = useCallback(async () => {
     try {
-      const r = await loadCashierDeals({ officeId, fromIso });
+      const r = await loadCashierDealDrafts({ officeId, fromIso });
       setRows(r);
     } catch (e) {
       // eslint-disable-next-line no-console
@@ -112,18 +122,8 @@ export default function DealsLedger({ officeId }) {
     refetch();
   }, [refetch]);
 
-  // Realtime: сделки v2 в ledger.transactions/journal_entries → перезагрузка.
-  useEffect(() => {
-    if (!supabase) return undefined;
-    const ch = supabase
-      .channel("cashier-deals-ledger")
-      .on("postgres_changes", { event: "*", schema: "ledger", table: "transactions" }, refetch)
-      .on("postgres_changes", { event: "*", schema: "ledger", table: "journal_entries" }, refetch)
-      .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
-  }, [refetch]);
+  // Realtime: черновики/подтверждения сделок кассира.
+  useEffect(() => subscribeCashierDeals(refetch), [refetch]);
 
   // ── Заявки менеджера (за фиче-флагом) ──
   const [orders, setOrders] = useState([]);
@@ -195,41 +195,31 @@ export default function DealsLedger({ officeId }) {
       return;
     }
 
-    const inAcc = acctFor(inCcy);
-    const outAcc = acctFor(outCcy);
-    if (!inAcc) return setErr(`Нет счёта ${inCcy} в этом офисе`);
-    if (!outAcc) return setErr(`Нет счёта ${outCcy} в этом офисе`);
-
+    // Сделка кассира = ЧЕРНОВИК (без проводок). Проводки сделает бухгалтер при
+    // подтверждении. Счета тут не нужны — резолвятся на подтверждении.
     setSaving(true);
     try {
-      await createDeal({
+      await createDealDraft({
         officeId,
-        clientId: draft.party?.clientId || undefined,
-        clientNickname: draft.party?.label || draft.party?.name || "cash",
-        currencyIn: inCcy,
-        amountIn: parseRu(draft.in[inCcy]),
-        inAccountId: inAcc.id,
-        // Время сделки из поля «Время» → effective_date в v2.
-        effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
-        outputs: [
-          {
-            currency: outCcy,
-            amount: parseRu(draft.out[outCcy]),
-            accountId: outAcc.id,
-            rate: parseRu(draft.rate) || undefined,
-          },
-        ],
+        partyLabel: draft.party?.label || draft.party?.name || "cash",
+        clientId: draft.party?.clientId || null,
+        inCurrency: inCcy,
+        inAmount: parseRu(draft.in[inCcy]),
+        rate: draft.rate || null,
+        outCurrency: outCcy,
+        outAmount: parseRu(draft.out[outCcy]),
+        effectiveAt: draft.at instanceof Date ? draft.at.toISOString() : null,
       });
       resetDraft();
       await refetch();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[deals] create failed", e);
+      console.warn("[deals] draft create failed", e);
       setErr(e?.message || "Не удалось сохранить сделку");
     } finally {
       setSaving(false);
     }
-  }, [saving, cols, draft, acctFor, officeId, fromIso, refetch, refetchOrders]);
+  }, [saving, cols, draft, officeId, refetch, refetchOrders]);
 
   // Пикер контрагента: ref-флаг, чтобы blur строки не коммитил при открытии пикера.
   const pickerOpenRef = useRef(false);
@@ -347,18 +337,67 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
-  // Удалить сделку = сторно (обратная проводка с каскадом). Не хард-делит —
-  // двойная запись: создаётся реверс, лента скрывает сделку.
-  const deleteDeal = async (d) => {
-    if (!window.confirm(`Удалить сделку «${d.party}»? Будет создано сторно (обратная проводка).`)) return;
+  // Подтверждение черновика бухгалтером → проводки (create_deal_v2). Идемпотентно
+  // по id черновика (повторный confirm не задвоит).
+  const confirmDeal = async (d) => {
     setErr("");
+    const inAcc = acctFor(d.inCcy);
+    const outAcc = acctFor(d.outCcy);
+    if (!inAcc) return setErr(`Нет счёта ${d.inCcy} в этом офисе`);
+    if (!outAcc) return setErr(`Нет счёта ${d.outCcy} в этом офисе`);
     try {
-      await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
+      const txId = await createDeal({
+        officeId,
+        idempotencyKey: d.id,
+        clientId: d.clientId || undefined,
+        clientNickname: d.party,
+        currencyIn: d.inCcy,
+        amountIn: d.inAmount,
+        inAccountId: inAcc.id,
+        effectiveDate: d.createdAt,
+        outputs: [{ currency: d.outCcy, amount: d.outAmount, accountId: outAcc.id, rate: d.rate || undefined }],
+      });
+      await markDealConfirmed(d.id, txId, currentUser?.id);
       await refetch();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[deals] reverse failed", e);
-      setErr(e?.message || "Не удалось удалить сделку");
+      console.warn("[deals] confirm failed", e);
+      setErr(e?.message || "Не удалось подтвердить сделку");
+    }
+  };
+
+  // Удаление: черновик — физически (проводок не было); подтверждённая — сторно
+  // (обратная проводка) + алерт, что её уже провёл бухгалтер.
+  const deleteDeal = async (d) => {
+    setErr("");
+    if (d.confirmed) {
+      if (
+        !window.confirm(
+          "Сделку уже провёл бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
+        )
+      )
+        return;
+      try {
+        if (d.ledgerTxId) {
+          await rpcReverseTransactionV2({ targetTxId: d.ledgerTxId, reason: "Отмена сделки из кассы", cascade: true });
+        }
+        await markDealCancelled(d.id);
+        await refetch();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn("[deals] reverse failed", e);
+        setErr(e?.message || "Не удалось сторнировать сделку");
+      }
+      return;
+    }
+    if (!window.confirm("Удалить черновик сделки?")) return;
+    try {
+      await deleteDealDraft(d.id);
+      await refetch();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[deals] delete draft failed", e);
+      setErr(e?.message || "Не удалось удалить");
     }
   };
   const deleteOrder = async (o) => {
@@ -541,6 +580,7 @@ export default function DealsLedger({ officeId }) {
               d.outs.forEach((o) => {
                 outByCcy[o.ccy] = (outByCcy[o.ccy] || 0) + o.amount;
               });
+              const filled = d.confirmed ? cellHas : "bg-[#eef1f7] text-[#3a4a6b] font-semibold";
               return (
                 <tr key={d.id} className="group hover:bg-[#fafbff]">
                   <td className="bg-[#f6f7fb] text-center border-t border-[#e7e9f1] font-mono text-[11px] font-bold text-[#b6bacb] px-1 py-1.5">
@@ -548,13 +588,32 @@ export default function DealsLedger({ officeId }) {
                   </td>
                   <td className="bg-[#f6f7fb] text-left px-3 py-1.5 border-t border-[#e7e9f1]">
                     <div className="flex items-center gap-1.5">
-                      <span className="block text-[12.5px] font-bold text-ink truncate flex-1 min-w-0" title={d.party}>
-                        {d.party}
+                      <span className="flex flex-col min-w-0 flex-1 leading-tight">
+                        <span className="text-[12.5px] font-bold text-ink truncate" title={d.party}>
+                          {d.party}
+                        </span>
+                        <span className="text-[9px] font-bold uppercase tracking-wide">
+                          {d.confirmed ? (
+                            <span className="text-[#0b8a54]">✓ проведено</span>
+                          ) : (
+                            <span className="text-[#8d92a8]">черновик</span>
+                          )}
+                        </span>
                       </span>
+                      {canConfirm && !d.confirmed && (
+                        <button
+                          type="button"
+                          onClick={() => confirmDeal(d)}
+                          title="Подтвердить сделку (провести)"
+                          className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-bold text-white bg-[#159a5d] hover:bg-[#0f8a50] rounded-[5px] px-1.5 py-0.5"
+                        >
+                          провести
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => deleteDeal(d)}
-                        title="Удалить сделку (сторно)"
+                        title={d.confirmed ? "Удалить (сторно)" : "Удалить черновик"}
                         className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
                       >
                         <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
@@ -568,7 +627,7 @@ export default function DealsLedger({ officeId }) {
                     <td
                       key={`i_${d.id}_${c}`}
                       className={`${cell} border-t border-[#e7e9f1] ${
-                        d.inCcy === c ? cellHas : cellEmpty
+                        d.inCcy === c ? filled : cellEmpty
                       }`}
                     >
                       {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : dot}
@@ -581,7 +640,7 @@ export default function DealsLedger({ officeId }) {
                     <td
                       key={`o_${d.id}_${c}`}
                       className={`${cell} border-t border-[#e7e9f1] ${
-                        outByCcy[c] ? cellHas : cellEmpty
+                        outByCcy[c] ? filled : cellEmpty
                       }`}
                     >
                       {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : dot}
