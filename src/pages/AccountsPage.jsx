@@ -46,6 +46,7 @@ import EditAccountModal from "../components/accounts/EditAccountModal.jsx";
 import DeleteDealButton from "../components/DeleteDealButton.jsx";
 import DeleteTransferButton from "../components/DeleteTransferButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
+import AccountsTree from "../components/accounts/AccountsTree.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -422,7 +423,9 @@ export default function AccountsPage({ onOpenHelp = null }) {
       </div>
 
       {/* TAB: Операции (default) — current grid по офисам/валютам/каналам */}
-      {activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
+      {activeTab === "operations" && <AccountsTree />}
+
+      {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;
         const isFirstBlock = blockIdx === 0;
         const isLastBlock = blockIdx === officeBlocks.length - 1;
