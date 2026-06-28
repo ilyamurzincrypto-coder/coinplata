@@ -44,7 +44,8 @@ function CcyChip({ ccy }) {
   );
 }
 
-function IconBtn({ title, onClick, children, danger }) {
+// Подписанная кнопка действия (иконка + текст), компактная.
+function ActBtn({ title, label, onClick, children }) {
   return (
     <button
       type="button"
@@ -53,12 +54,20 @@ function IconBtn({ title, onClick, children, danger }) {
         e.stopPropagation();
         onClick();
       }}
-      className={`shrink-0 inline-grid place-items-center w-7 h-7 rounded-[8px] transition-colors ${
-        danger ? "text-[#cf3b40] hover:bg-[#fdecec]" : "text-muted hover:bg-[#eef0f7] hover:text-ink"
-      }`}
+      className="shrink-0 inline-flex items-center gap-1 h-6 rounded-[6px] px-1.5 text-[10.5px] font-semibold text-[#5a6072] bg-[#eef0f7] hover:bg-[#e1e4ee] hover:text-ink transition-colors"
     >
       {children}
+      <span>{label}</span>
     </button>
+  );
+}
+
+// Группа действий: место зарезервировано (нет resize строки), видно по ховеру.
+function Actions({ children }) {
+  return (
+    <span className="flex items-center gap-1 ml-1.5 opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity">
+      {children}
+    </span>
   );
 }
 
@@ -136,12 +145,17 @@ export default function AccountsTree() {
                 <Building2 className="w-4 h-4 text-[#5b6cff] shrink-0" strokeWidth={2} />
                 <span className="text-[13.5px] font-bold text-ink truncate">{ob.office.name}</span>
                 <span className="text-[11px] text-muted">· {ob.accsCount}</span>
-                <IconBtn
+                <button
+                  type="button"
                   title="Добавить счёт в этот офис"
-                  onClick={() => setAddAccountFor({ officeId: ob.office.id, officeName: ob.office.name })}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAddAccountFor({ officeId: ob.office.id, officeName: ob.office.name });
+                  }}
+                  className="shrink-0 inline-flex items-center gap-1 h-6 rounded-[6px] px-1.5 text-[10.5px] font-semibold text-[#5b6cff] hover:bg-[#eef0ff] transition-colors"
                 >
-                  <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
-                </IconBtn>
+                  <Plus className="w-3 h-3" strokeWidth={2.6} /> счёт
+                </button>
               </span>
               <span className="text-right" />
               <span className="text-right" />
@@ -175,20 +189,20 @@ export default function AccountsTree() {
                         {!single && <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>}
                         {/* Действия для одно-счётной валюты — прямо здесь */}
                         {single && (
-                          <span className="hidden group-hover:flex items-center gap-0.5 ml-1">
-                            <IconBtn title="Корректировка остатка" onClick={() => setAdjustFor(acc0)}>
-                              <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
-                            </IconBtn>
-                            <IconBtn title="Перевод (между офисами/счетами)" onClick={() => openTransfer(acc0)}>
-                              <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2} />
-                            </IconBtn>
-                            <IconBtn title="Пополнить / изъять" onClick={() => setTopUpFor(acc0)}>
-                              <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={2} />
-                            </IconBtn>
-                            <IconBtn title="История" onClick={() => setHistoryFor(acc0)}>
-                              <History className="w-3.5 h-3.5" strokeWidth={2} />
-                            </IconBtn>
-                          </span>
+                          <Actions>
+                            <ActBtn title="Корректировка остатка (инвентаризация)" label="Корректировка" onClick={() => setAdjustFor(acc0)}>
+                              <SlidersHorizontal className="w-3 h-3" strokeWidth={2} />
+                            </ActBtn>
+                            <ActBtn title="Перевод между офисами/счетами" label="Перевод" onClick={() => openTransfer(acc0)}>
+                              <ArrowLeftRight className="w-3 h-3" strokeWidth={2} />
+                            </ActBtn>
+                            <ActBtn title="Пополнить / изъять" label="Пополнить" onClick={() => setTopUpFor(acc0)}>
+                              <ArrowDownToLine className="w-3 h-3" strokeWidth={2} />
+                            </ActBtn>
+                            <ActBtn title="История операций" label="История" onClick={() => setHistoryFor(acc0)}>
+                              <History className="w-3 h-3" strokeWidth={2} />
+                            </ActBtn>
+                          </Actions>
                         )}
                       </span>
                       <span className="text-right text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
@@ -212,20 +226,20 @@ export default function AccountsTree() {
                         >
                           <span className="flex items-center gap-2 min-w-0">
                             <span className="text-[12.5px] text-ink-soft truncate">{a.name || a.label || a.id}</span>
-                            <span className="hidden group-hover:flex items-center gap-0.5 ml-1">
-                              <IconBtn title="Корректировка" onClick={() => setAdjustFor(a)}>
-                                <SlidersHorizontal className="w-3.5 h-3.5" strokeWidth={2} />
-                              </IconBtn>
-                              <IconBtn title="Перевод" onClick={() => openTransfer(a)}>
-                                <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2} />
-                              </IconBtn>
-                              <IconBtn title="Пополнить / изъять" onClick={() => setTopUpFor(a)}>
-                                <ArrowDownToLine className="w-3.5 h-3.5" strokeWidth={2} />
-                              </IconBtn>
-                              <IconBtn title="История" onClick={() => setHistoryFor(a)}>
-                                <History className="w-3.5 h-3.5" strokeWidth={2} />
-                              </IconBtn>
-                            </span>
+                            <Actions>
+                              <ActBtn title="Корректировка остатка" label="Корректировка" onClick={() => setAdjustFor(a)}>
+                                <SlidersHorizontal className="w-3 h-3" strokeWidth={2} />
+                              </ActBtn>
+                              <ActBtn title="Перевод" label="Перевод" onClick={() => openTransfer(a)}>
+                                <ArrowLeftRight className="w-3 h-3" strokeWidth={2} />
+                              </ActBtn>
+                              <ActBtn title="Пополнить / изъять" label="Пополнить" onClick={() => setTopUpFor(a)}>
+                                <ArrowDownToLine className="w-3 h-3" strokeWidth={2} />
+                              </ActBtn>
+                              <ActBtn title="История" label="История" onClick={() => setHistoryFor(a)}>
+                                <History className="w-3 h-3" strokeWidth={2} />
+                              </ActBtn>
+                            </Actions>
                           </span>
                           <span className="text-right text-[12.5px] font-mono text-ink">{native(balanceOf(a.id), a.currency)}</span>
                           <span className="text-right text-[12px] font-mono text-muted">{native(availableOf(a.id), a.currency)}</span>
