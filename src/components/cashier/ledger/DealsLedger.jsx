@@ -1056,8 +1056,10 @@ export default function DealsLedger({ officeId }) {
         {(() => {
           const inC = cols.find((c) => parseRu(draft.in[c]) > 0);
           const rem = inC ? remainingIn(draft) : 0;
-          const hasOut = outCcysOf(draft).length > 0;
-          if (inC && hasOut && Math.abs(rem) > 0.5) {
+          // Только при СПЛИТЕ (2+ ног расхода) и положительном остатке: при одной
+          // ноге это полная сделка по курсу менеджера, никакого «остатка» нет.
+          const split = outCcysOf(draft).length >= 2;
+          if (inC && split && rem > 0.5) {
             return (
               <span className="text-[11.5px] font-bold text-[#b8923a]">
                 Остаток к распределению: {fmtRu(rem)} {inC} — кликни по валюте расхода, чтобы досыпать
