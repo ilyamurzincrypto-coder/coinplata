@@ -17,7 +17,8 @@ import { createDeal } from "../../../lib/dealOperations.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
 import CounterpartyPicker from "./CounterpartyPicker.jsx";
 import DealTimeField from "./DealTimeField.jsx";
-import { rpcReverseTransactionV2 } from "../../../lib/newLedger.js";
+import { rpcReverseTransactionV2, rpcCompleteDealLegV2, rpcCreateTopupV2 } from "../../../lib/newLedger.js";
+import { resolveAccountCode } from "../../../lib/newLedgerAdapter.js";
 import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
@@ -396,6 +397,45 @@ export default function DealsLedger({ officeId }) {
     }
   };
 
+  // Закрытие долга: «мы должны» (out) → complete_deal_leg (выдаём ногу расхода);
+  // «клиент должен» (in) → create_topup (клиент доносит приход на наш счёт).
+  const settleDeferred = async (d) => {
+    const def = d.deferred;
+    if (!def) return;
+    const acc = acctFor(def.currency);
+    if (!acc) return window.alert(`Нет счёта ${def.currency} в этом офисе для закрытия`);
+    const human =
+      def.side === "in"
+        ? `Закрыть долг: клиент донёс ${fmtRu(def.amount)} ${def.currency}?`
+        : `Закрыть долг: мы выдаём ${fmtRu(def.amount)} ${def.currency}?`;
+    if (!window.confirm(human)) return;
+    try {
+      const accountCode = await resolveAccountCode(acc.id);
+      if (def.side === "out") {
+        await rpcCompleteDealLegV2({
+          dealId: d.id,
+          currencyCode: def.currency,
+          amount: def.amount,
+          accountCode,
+        });
+      } else {
+        if (!d.clientId) return window.alert("Нет контрагента для закрытия (client_id)");
+        await rpcCreateTopupV2({
+          clientId: d.clientId,
+          accountCode,
+          amount: def.amount,
+          currencyCode: def.currency,
+          description: "Закрытие долга: клиент донёс приход",
+        });
+      }
+      await refetch();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[deals] settle failed", e);
+      window.alert(`Не удалось закрыть долг:\n${e?.message || e}`);
+    }
+  };
+
   // ── Отложенная сделка (долг) ──
   const deferredSummary = () => {
     const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
@@ -660,20 +700,33 @@ export default function DealsLedger({ officeId }) {
                           {d.party}
                         </span>
                         {d.deferred ? (
-                          <span
-                            className="text-[9.5px] font-bold text-[#b8923a] truncate"
-                            title={d.deferred.comment || ""}
-                          >
-                            ⏳ {d.deferred.side === "in" ? "клиент должен" : "мы должны"} {fmtRu(d.deferred.amount)}{" "}
-                            {d.deferred.currency}
-                            {d.deferred.dueDate ? ` · до ${fmtDue(d.deferred.dueDate)}` : ""}
-                          </span>
+                          d.deferred.open ? (
+                            <span className="text-[9.5px] font-bold text-[#b8923a] truncate" title={d.deferred.comment || ""}>
+                              ⏳ {d.deferred.side === "in" ? "клиент должен" : "мы должны"} {fmtRu(d.deferred.amount)}{" "}
+                              {d.deferred.currency}
+                              {d.deferred.dueDate ? ` · до ${fmtDue(d.deferred.dueDate)}` : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#0b8a54]">
+                              ✓ долг закрыт
+                            </span>
+                          )
                         ) : !d.confirmed ? (
                           <span className="text-[9px] font-bold uppercase tracking-wide text-[#8d92a8]">
                             не подтв.
                           </span>
                         ) : null}
                       </span>
+                      {d.deferred?.open && (
+                        <button
+                          type="button"
+                          onClick={() => settleDeferred(d)}
+                          title="Закрыть долг (рассчитались)"
+                          className="shrink-0 inline-flex items-center text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 hover:bg-[#d6f0e0]"
+                        >
+                          закрыть
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => deleteDeal(d)}
