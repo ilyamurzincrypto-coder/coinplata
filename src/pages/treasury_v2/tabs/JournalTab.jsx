@@ -312,7 +312,7 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
             const isDr = row.direction === "dr";
             const amtStr = `${Number(row.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${row.currency}`;
             const dt = new Date(row.tx.effectiveDate);
-            const sourceLabel = row.tx.sourceRefId || row.tx.id.slice(0, 8);
+            const sourceLabel = (row.tx.sourceRefId || row.tx.id).slice(0, 8);
             return (
               <tr key={row.id} className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} hover:bg-surface-soft`}>
                 <td className="px-3 py-1.5 text-muted-soft font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
@@ -321,15 +321,15 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
                 <td className="px-2 py-1.5 border-r border-border-soft">
                   <span className="text-tiny font-bold uppercase tracking-wider text-ink-soft">{row.tx.kind}</span>
                 </td>
-                <td className="px-2 py-1.5 border-r border-border-soft">
-                  <span className="flex items-baseline gap-1.5 truncate">
+                <td className="px-2 py-1.5 border-r border-border-soft overflow-hidden">
+                  <span className="flex items-baseline gap-1.5 min-w-0">
                     <span className="font-mono text-tiny text-muted-soft shrink-0">{row.accountCode || ""}</span>
                     <span className="text-body-sm text-ink truncate">{row.accountName || row.note || ""}</span>
                   </span>
                 </td>
-                <td className="px-2 py-1.5 border-r border-border-soft">
+                <td className="px-2 py-1.5 border-r border-border-soft overflow-hidden">
                   {row.contra ? (
-                    <span className="flex items-baseline gap-1.5 truncate">
+                    <span className="flex items-baseline gap-1.5 min-w-0">
                       <span className="font-mono text-tiny text-muted-soft shrink-0">{row.contra.accountCode || ""}</span>
                       <span className="text-body-sm text-ink-soft truncate">{row.contra.accountName || ""}</span>
                     </span>
