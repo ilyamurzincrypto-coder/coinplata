@@ -287,6 +287,13 @@ export async function adaptLegacyDealPayload(legacy) {
       ...(legacy.deferredIn ? { adjustment_type: "legacy_pending_payment" } : {}),
       ...(legacy.inTxHash ? { tx_hash: legacy.inTxHash } : {}),
       ...(legacy.plannedAt ? { planned_at: legacy.plannedAt } : {}),
+      // Отложенная сделка (долг): сторона ('in' = клиент должен нам, 'out' = мы
+      // должны клиенту), дата обязательства и комментарий — для бейджа в кассе.
+      ...(legacy.deferredSide ? { deferred_side: legacy.deferredSide } : {}),
+      ...(legacy.dueDate ? { due_date: legacy.dueDate } : {}),
+      ...(legacy.obligationComment ? { obligation_comment: legacy.obligationComment } : {}),
+      ...(legacy.deferredCurrency ? { deferred_currency: legacy.deferredCurrency } : {}),
+      ...(legacy.deferredAmount != null ? { deferred_amount: legacy.deferredAmount } : {}),
     },
   };
 }
