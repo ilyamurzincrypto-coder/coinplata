@@ -109,3 +109,77 @@ export async function loadCashierDeals({ officeId, fromIso } = {}) {
     };
   });
 }
+
+// Сводка незавершённых обязательств (долги) — для витрины «Незавершённое».
+// Источник: отложенные сделки (со сторонами/датами/комментами) за широкое окно,
+// статус открытости: out → v_open_deals; in → баланс клиента по валюте < 0.
+export async function loadOpenObligations({ officeId, sinceIso } = {}) {
+  if (!supabase) return { weOwe: [], theyOwe: [] };
+
+  let q = lg()
+    .from("transactions")
+    .select("id, effective_date, status, metadata")
+    .eq("source_kind", "deal")
+    .order("effective_date", { ascending: true });
+  if (sinceIso) q = q.gte("effective_date", sinceIso);
+  const { data: txs, error } = await q;
+  if (error) throw error;
+
+  const deferred = (txs || []).filter(
+    (t) =>
+      t.status === "posted" &&
+      t.metadata?.deferred_side &&
+      (!officeId || t.metadata?.office_id === officeId)
+  );
+  if (!deferred.length) return { weOwe: [], theyOwe: [] };
+
+  // Исключаем сторнированные.
+  const ids = deferred.map((t) => t.id);
+  const { data: revs } = await lg()
+    .from("transactions")
+    .select("reverses_transaction_id")
+    .in("reverses_transaction_id", ids);
+  const reversed = new Set((revs || []).map((r) => r.reverses_transaction_id));
+
+  // Открытость out-ноги.
+  let openSet = new Set();
+  try {
+    const { data: open } = await supabase.schema("operations").from("v_open_deals").select("ledger_tx_id");
+    openSet = new Set((open || []).map((o) => o.ledger_tx_id));
+  } catch {
+    /* нет вьюхи — считаем открытыми */
+  }
+  // Балансы клиентов (для in-стороны: открыт, если клиент всё ещё в минусе).
+  const negByClientCcy = new Set();
+  try {
+    const { data: bals } = await lg().from("v_client_balances").select("client_id, currency_code, balance");
+    (bals || []).forEach((b) => {
+      if (Number(b.balance) < 0) negByClientCcy.add(`${b.client_id}|${String(b.currency_code).toUpperCase()}`);
+    });
+  } catch {
+    /* нет вьюхи — in считаем открытыми */
+  }
+
+  const weOwe = [];
+  const theyOwe = [];
+  for (const t of deferred) {
+    if (reversed.has(t.id)) continue;
+    const m = t.metadata;
+    const side = m.deferred_side;
+    const currency = String(m.deferred_currency || "").toUpperCase();
+    const clientId = m.client_id || null;
+    const open =
+      side === "out" ? openSet.has(t.id) : !clientId || negByClientCcy.has(`${clientId}|${currency}`);
+    if (!open) continue;
+    const item = {
+      dealId: t.id,
+      party: m.client_nickname || "—",
+      currency,
+      amount: Number(m.deferred_amount) || 0,
+      dueDate: m.due_date || m.planned_at || null,
+      comment: m.obligation_comment || null,
+    };
+    (side === "out" ? weOwe : theyOwe).push(item);
+  }
+  return { weOwe, theyOwe };
+}

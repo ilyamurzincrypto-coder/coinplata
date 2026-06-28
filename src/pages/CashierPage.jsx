@@ -24,6 +24,7 @@ import TransferModal from "../components/accounts/TransferModal.jsx";
 import CashClosureModal from "../components/CashClosureModal.jsx";
 import CashierLedgerDeals from "../components/cashier/CashierLedgerDeals.jsx";
 import DealsLedger from "../components/cashier/ledger/DealsLedger.jsx";
+import ObligationsPanel from "../components/cashier/ledger/ObligationsPanel.jsx";
 // PendingTransfersBar (legacy public.transfers, frozen) and EditTransactionModal
 // (legacy edit, disabled under v2) are no longer mounted in the Cashier — v2
 // transfers are immediate and have no "pending" state, and deal edit/undo is
@@ -479,6 +480,7 @@ export default function CashierPage({
                 onScopeChange={setBalanceScope}
               />
               <DealsLedger officeId={currentOffice} />
+              <ObligationsPanel officeId={currentOffice} />
             </div>
           </div>
         </div>
