@@ -193,11 +193,24 @@ export default function DealsLedger({ officeId }) {
   };
   const partyContact = (p) => p?.contact || p?.name || p?.label || null;
 
-  const commit = useCallback(async () => {
+  const commit = useCallback(async (allowOneLeg = false) => {
     if (saving) return;
     const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
     const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
-    if (!inCcy || !outCcy) return; // нечего коммитить
+    if (!inCcy || !outCcy) {
+      // Одна нога (не заявка) + Enter → одноногая сделка-долг: сначала контрагент,
+      // потом направление/дата/коммент в модалке. Пустая строка — просто выходим.
+      if (allowOneLeg && !draft.isReq && (inCcy || outCcy)) {
+        if (!draft.party?.clientId) {
+          setErr("Одна нога — это сделка в долг. Выберите контрагента (не «Наличные»).");
+          setPickerOpen(true);
+        } else {
+          setErr("");
+          setDeferredOpen(true);
+        }
+      }
+      return;
+    }
     setErr("");
 
     // ── Сохранение как ЗАЯВКА (тоггл «⧖ заявка») — без счетов, без create_deal ──
@@ -288,7 +301,7 @@ export default function DealsLedger({ officeId }) {
   const onKeyDown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      commit();
+      commit(true); // Enter разрешает одноногую сделку-долг
     }
   };
 
@@ -358,6 +371,13 @@ export default function DealsLedger({ officeId }) {
   const onSelectParty = (party) => {
     setDraft((d) => ({ ...d, party }));
     closePicker();
+    // Если уже введена ОДНА нога и выбрали контрагента — сразу к оформлению долга.
+    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
+    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
+    if (!!inCcy !== !!outCcy && party?.clientId && !draft.isReq) {
+      setErr("");
+      setDeferredOpen(true);
+    }
   };
   const onFillFromDeal = (deal) => {
     setDraft((d) => {
@@ -881,9 +901,7 @@ export default function DealsLedger({ officeId }) {
                   >
                     <span className="inline-flex items-center gap-1.5 text-[12px] min-w-0 flex-1">
                       {draft.party.kind === "cash" ? (
-                        <span className="font-mono text-[10.5px] font-bold text-[#0b8a54] bg-[#e7f6ee] border border-[#daf0e4] rounded-[5px] px-1.5 py-px">
-                          cash
-                        </span>
+                        <span className="font-bold text-[12px] text-[#0b8a54]">Наличные</span>
                       ) : draft.party.kind === "contact" ? (
                         <span className="font-semibold text-[12px] text-[#2f6fd0] truncate min-w-0">
                           {draft.party.label}
@@ -895,9 +913,6 @@ export default function DealsLedger({ officeId }) {
                       ) : null}
                       {draft.party.name && (
                         <span className="font-bold text-ink truncate">{draft.party.name}</span>
-                      )}
-                      {draft.party.kind === "cash" && (
-                        <span className="font-bold text-ink">Наличные</span>
                       )}
                     </span>
                     <span
@@ -998,7 +1013,7 @@ export default function DealsLedger({ officeId }) {
           <span className="text-[11px] text-muted">
             {draft.isReq
               ? "Режим заявки (⧖): впишите суммы + контрагента, затем Enter — заявка сохранится (потом можно править)"
-              : "Впишите суммы в ячейки прихода и расхода + курс, затем Enter — сделка сохранится"}
+              : "Приход + расход + курс → Enter (сделка). Одна нога (долг) — впиши одну сторону + контрагент → Enter, оформим обязательство"}
           </span>
         )}
       </div>
