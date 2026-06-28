@@ -408,7 +408,7 @@ export default function DealsLedger({ officeId }) {
               </th>
               <th
                 rowSpan={2}
-                className="w-[58px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[10.5px] px-1.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
+                className="w-[58px] text-center align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[10.5px] px-1.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
               >
                 Время
               </th>
@@ -503,7 +503,7 @@ export default function DealsLedger({ officeId }) {
                     </button>
                   </div>
                 </td>
-                <td className="bg-[#fff8e6] text-left px-2.5 py-1.5 border-t border-l border-[#f0e2b8] font-mono text-[11.5px] text-[#9a6b00] whitespace-nowrap">
+                <td className="bg-[#fff8e6] text-center px-1.5 py-1.5 border-t border-l border-[#f0e2b8] font-mono text-[11.5px] text-[#9a6b00] whitespace-nowrap">
                   {fmtDealTime(o.createdAt)}
                 </td>
                 {cols.map((c) => (
@@ -557,7 +557,7 @@ export default function DealsLedger({ officeId }) {
                       </button>
                     </div>
                   </td>
-                  <td className="bg-[#f6f7fb] text-left px-1.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
+                  <td className="bg-[#f6f7fb] text-center px-1.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
                     {fmtDealTime(d.createdAt)}
                   </td>
                   {cols.map((c) => (
@@ -567,7 +567,7 @@ export default function DealsLedger({ officeId }) {
                         d.inCcy === c ? cellHas : cellEmpty
                       }`}
                     >
-                      {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : ""}
+                      {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : "·"}
                     </td>
                   ))}
                   <td className="text-center border-l border-t border-[#e7e9f1] bg-[#f7f8fb] text-[#454a66] font-semibold font-mono text-[12.5px] px-2 py-1.5">
@@ -580,7 +580,7 @@ export default function DealsLedger({ officeId }) {
                         outByCcy[c] ? cellHas : cellEmpty
                       }`}
                     >
-                      {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : ""}
+                      {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : "·"}
                     </td>
                   ))}
                 </tr>
