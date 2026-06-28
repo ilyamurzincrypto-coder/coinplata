@@ -197,11 +197,12 @@ export default function DealsLedger({ officeId }) {
   const commit = useCallback(async (allowOneLeg = false) => {
     if (saving) return;
     const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
-    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
-    if (!inCcy || !outCcy) {
+    const outCcys = cols.filter((c) => parseRu(draft.out[c]) > 0); // мульти-расход
+    const outCcy = outCcys[0];
+    if (!inCcy || outCcys.length === 0) {
       // Одна нога (не заявка) + Enter → одноногая сделка-долг: сначала контрагент,
       // потом направление/дата/коммент в модалке. Пустая строка — просто выходим.
-      if (allowOneLeg && !draft.isReq && (inCcy || outCcy)) {
+      if (allowOneLeg && !draft.isReq && (inCcy || outCcys.length > 0)) {
         if (!draft.party?.clientId) {
           setErr("Одна нога — это сделка в долг. Выберите контрагента (не «Наличные»).");
           setPickerOpen(true);
@@ -244,9 +245,21 @@ export default function DealsLedger({ officeId }) {
     // Сделка проводится сразу (create_deal_v2). Подтверждает бухгалтер у себя
     // (Казначейство → «Подтвердить»), касса отражает зелёным. Наличные → cash-клиент офиса.
     const inAcc = acctFor(inCcy);
-    const outAcc = acctFor(outCcy);
     if (!inAcc) return setErr(`Нет счёта ${inCcy} в этом офисе`);
-    if (!outAcc) return setErr(`Нет счёта ${outCcy} в этом офисе`);
+    // Несколько ног расхода (сплит). Курс берём из поля только при ОДНОЙ ноге,
+    // иначе — рыночный по каждой паре.
+    const single = outCcys.length === 1;
+    const outputs = [];
+    for (const oc of outCcys) {
+      const oa = acctFor(oc);
+      if (!oa) return setErr(`Нет счёта ${oc} в этом офисе`);
+      outputs.push({
+        currency: oc,
+        amount: parseRu(draft.out[oc]),
+        accountId: oa.id,
+        rate: single ? parseRu(draft.rate) || undefined : convert(1, inCcy, oc, getRate) || undefined,
+      });
+    }
     let clientId = draft.party?.clientId || null;
     if (!clientId) {
       clientId = await resolveCashClient();
@@ -262,14 +275,7 @@ export default function DealsLedger({ officeId }) {
         amountIn: parseRu(draft.in[inCcy]),
         inAccountId: inAcc.id,
         effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
-        outputs: [
-          {
-            currency: outCcy,
-            amount: parseRu(draft.out[outCcy]),
-            accountId: outAcc.id,
-            rate: parseRu(draft.rate) || undefined,
-          },
-        ],
+        outputs,
       });
       resetDraft();
       await refetch();
@@ -280,7 +286,7 @@ export default function DealsLedger({ officeId }) {
     } finally {
       setSaving(false);
     }
-  }, [saving, cols, draft, acctFor, officeId, refetch, refetchOrders, resolveCashClient]);
+  }, [saving, cols, draft, acctFor, officeId, refetch, refetchOrders, resolveCashClient, getRate]);
 
   // Пикер контрагента: ref-флаг, чтобы blur строки не коммитил при открытии пикера.
   const pickerOpenRef = useRef(false);
@@ -313,57 +319,73 @@ export default function DealsLedger({ officeId }) {
     const c = cols.find((x) => parseRu(d.in[x]) > 0);
     return c ? { ccy: c, amt: parseRu(d.in[c]) } : null;
   };
-  const outCcyOf = (d) => cols.find((x) => parseRu(d.out[x]) > 0) || null;
+  const outCcysOf = (d) => cols.filter((x) => parseRu(d.out[x]) > 0);
+  // Сумма уже заполненных расходов, переведённая в валюту прихода (кроме exceptCcy).
+  const filledOutInIn = (d, inCcy, exceptCcy) =>
+    cols.reduce((sum, c) => {
+      if (c === exceptCcy) return sum;
+      const amt = parseRu(d.out[c]);
+      return amt > 0 ? sum + (convert(amt, c, inCcy, getRate) || 0) : sum;
+    }, 0);
+  // Остаток прихода, ещё не распределённый по расходам (для авто-«досыпки» и индикатора).
+  const remainingIn = (d) => {
+    const leg = inLeg(d);
+    if (!leg) return 0;
+    return leg.amt - filledOutInIn(d, leg.ccy, null);
+  };
 
   const setIn = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, in: { [c]: v } }; // приход — единственная нога
-      // якорь-приход изменился → если есть курс и расход, пересчитать расход
+      const next = { ...d, in: { [c]: v } }; // приход — единственная нога (якорь)
+      // курс осмыслен только при ОДНОЙ ноге расхода → пересчитать её
       const inAmt = parseRu(v);
-      const outC = outCcyOf(next);
+      const outCs = outCcysOf(next);
       const rateN = parseRu(next.rate);
-      if (inAmt > 0 && outC && rateN > 0) {
-        next.out = { ...next.out, [outC]: fmtAmt(inAmt * rateN, outC) };
+      if (inAmt > 0 && outCs.length === 1 && rateN > 0) {
+        next.out = { ...next.out, [outCs[0]]: fmtAmt(inAmt * rateN, outCs[0]) };
       }
       return next;
     });
 
-  // Фокус по ячейке расхода: подставить рыночный курс + сумму (если приход задан,
-  // курс ещё не введён, и ячейка пустая).
+  // Клик по ячейке расхода: досыпать ОСТАТОК прихода в эту валюту (рыночный курс).
+  // Так работает сплит: задал конкретную сумму в одной валюте → клик по другой
+  // досыпает остаток. Ячейку с уже введённой суммой не трогаем.
   const focusOut = (c) =>
     setDraft((d) => {
       const leg = inLeg(d);
       if (!leg || leg.amt <= 0) return d;
-      if (outCcyOf(d)) return d; // расход уже задан → не автозаполняем другие ячейки (single-out)
-      const outAmt = convert(leg.amt, leg.ccy, c, getRate);
-      if (!outAmt || !Number.isFinite(outAmt)) return d; // нет курса — ручной ввод
-      // расход — единственная нога: только эта валюта
-      return {
-        ...d,
-        rate: fmtRate(outAmt / leg.amt),
-        out: { [c]: fmtAmt(outAmt, c) },
-      };
+      if (parseRu(d.out[c]) > 0) return d;
+      const remaining = leg.amt - filledOutInIn(d, leg.ccy, c);
+      if (remaining <= 1e-9) return d; // распределять нечего
+      const outAmt = convert(remaining, leg.ccy, c, getRate);
+      if (!outAmt || !Number.isFinite(outAmt)) return d;
+      const next = { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } }; // ДОБАВЛЯЕМ ногу
+      // курс показываем только если расход в одной валюте
+      if (outCcysOf(next).length === 1) next.rate = fmtRate(outAmt / leg.amt);
+      return next;
     });
 
   const setRate = (v) =>
     setDraft((d) => {
       const next = { ...d, rate: v };
       const leg = inLeg(d);
-      const outC = outCcyOf(d);
+      const outCs = outCcysOf(d);
       const rateN = parseRu(v);
-      if (leg && leg.amt > 0 && outC && rateN > 0) {
-        next.out = { ...next.out, [outC]: fmtAmt(leg.amt * rateN, outC) };
+      // курс правит сумму расхода только когда расход в ОДНОЙ валюте
+      if (leg && leg.amt > 0 && outCs.length === 1 && rateN > 0) {
+        next.out = { ...next.out, [outCs[0]]: fmtAmt(leg.amt * rateN, outCs[0]) };
       }
       return next;
     });
 
   const setOut = (c, v) =>
     setDraft((d) => {
-      const next = { ...d, out: { [c]: v } }; // расход — единственная нога
-      // правка расхода → курс пересчитывается из приход/расход (курс менеджера)
+      const next = { ...d, out: { ...d.out, [c]: v } }; // мульти-расход: правим/добавляем ногу
+      // курс пересчитываем из приход/расход только при ОДНОЙ ноге расхода
       const leg = inLeg(d);
+      const outCs = outCcysOf(next);
       const outAmt = parseRu(v);
-      if (leg && leg.amt > 0 && outAmt > 0) {
+      if (leg && leg.amt > 0 && outCs.length === 1 && outAmt > 0) {
         next.rate = fmtRate(outAmt / leg.amt);
       }
       return next;
@@ -1020,6 +1042,19 @@ export default function DealsLedger({ officeId }) {
       </div>
 
       <div className="px-[18px] py-2 flex items-center gap-3 min-h-[34px]">
+        {(() => {
+          const inC = cols.find((c) => parseRu(draft.in[c]) > 0);
+          const rem = inC ? remainingIn(draft) : 0;
+          const hasOut = outCcysOf(draft).length > 0;
+          if (inC && hasOut && Math.abs(rem) > 0.5) {
+            return (
+              <span className="text-[11.5px] font-bold text-[#b8923a]">
+                Остаток к распределению: {fmtRu(rem)} {inC} — кликни по валюте расхода, чтобы досыпать
+              </span>
+            );
+          }
+          return null;
+        })()}
         {err ? (
           <span className="text-[11.5px] font-semibold text-[#cf3b40]">⚠ {err}</span>
         ) : saving ? (
@@ -1028,7 +1063,7 @@ export default function DealsLedger({ officeId }) {
           <span className="text-[11px] text-muted">
             {draft.isReq
               ? "Режим заявки (⧖): впишите суммы + контрагента, затем Enter — заявка сохранится (потом можно править)"
-              : "Приход + расход + курс → Enter (сделка). Одна нога (долг) — впиши одну сторону + контрагент → Enter, оформим обязательство"}
+              : "Приход → задай суммы расхода (можно НЕСКОЛЬКО валют — клик по валюте досыпает остаток) → Enter. Одна нога = долг"}
           </span>
         )}
       </div>
