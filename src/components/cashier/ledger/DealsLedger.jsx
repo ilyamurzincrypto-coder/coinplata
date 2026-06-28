@@ -18,6 +18,7 @@ import {
 } from "../../../lib/cashierDeals.js";
 import { useAccounts } from "../../../store/accounts.jsx";
 import { useAuth } from "../../../store/auth.jsx";
+import { useOffices } from "../../../store/offices.jsx";
 import { useRates } from "../../../store/rates.jsx";
 import { convert } from "../../../utils/convert.js";
 import { createDeal } from "../../../lib/dealOperations.js";
@@ -97,7 +98,22 @@ export default function DealsLedger({ officeId }) {
   const { accounts } = useAccounts();
   const { getRate } = useRates();
   const { isAccountant, isAdmin, isOwner, currentUser } = useAuth();
+  const { activeOffices } = useOffices();
   const canConfirm = isAccountant || isAdmin || isOwner;
+
+  // Наличные → cash-клиент офиса (v2-сделка требует client_id). Совпадение по
+  // первому слову названия офиса: «Mark Antalya» → «Mark Cash».
+  const resolveCashClient = useCallback(async () => {
+    const off = activeOffices.find((o) => o.id === officeId);
+    const token = String(off?.name || "").split(/\s+/)[0];
+    if (!token) return null;
+    const { data } = await supabase
+      .from("clients")
+      .select("id")
+      .ilike("nickname", `${token}%Cash%`)
+      .limit(1);
+    return data?.[0]?.id || null;
+  }, [activeOffices, officeId]);
   // Тот же набор валют, что и в «Остатках» (а не все активные из справочника).
   const cols = BAL_COLUMNS;
   const fromIso = useMemo(() => todayStartIso(), []);
@@ -343,13 +359,23 @@ export default function DealsLedger({ officeId }) {
     setErr("");
     const inAcc = acctFor(d.inCcy);
     const outAcc = acctFor(d.outCcy);
-    if (!inAcc) return setErr(`Нет счёта ${d.inCcy} в этом офисе`);
-    if (!outAcc) return setErr(`Нет счёта ${d.outCcy} в этом офисе`);
+    if (!inAcc) return window.alert(`Нет счёта ${d.inCcy} в этом офисе`);
+    if (!outAcc) return window.alert(`Нет счёта ${d.outCcy} в этом офисе`);
+    // v2 требует client_id: для наличных подставляем cash-клиента офиса.
+    let clientId = d.clientId || null;
+    if (!clientId) {
+      clientId = await resolveCashClient();
+      if (!clientId) {
+        return window.alert(
+          "Для наличной сделки нужен cash-клиент офиса (напр. «Mark Cash»). Не нашёлся — выберите контрагента или заведите его."
+        );
+      }
+    }
     try {
       const txId = await createDeal({
         officeId,
         idempotencyKey: d.id,
-        clientId: d.clientId || undefined,
+        clientId,
         clientNickname: d.party,
         currencyIn: d.inCcy,
         amountIn: d.inAmount,
@@ -362,7 +388,7 @@ export default function DealsLedger({ officeId }) {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn("[deals] confirm failed", e);
-      setErr(e?.message || "Не удалось подтвердить сделку");
+      window.alert(`Не удалось провести сделку:\n${e?.message || e}`);
     }
   };
 

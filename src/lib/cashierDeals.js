@@ -60,16 +60,19 @@ export async function createDealDraft(p) {
 
 // Пометить черновик подтверждённым (после успешного create_deal_v2). Идемпотентно
 // по status='draft'.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export async function markDealConfirmed(id, ledgerTxId, confirmedBy) {
   if (!supabase) return;
+  const patch = {
+    status: "confirmed",
+    ledger_tx_id: UUID_RE.test(String(ledgerTxId || "")) ? ledgerTxId : null,
+    confirmed_at: new Date().toISOString(),
+  };
+  // confirmed_by — только валидный uuid (иначе update упадёт на типе колонки).
+  if (UUID_RE.test(String(confirmedBy || ""))) patch.confirmed_by = confirmedBy;
   const { error } = await supabase
     .from("cashier_deals")
-    .update({
-      status: "confirmed",
-      ledger_tx_id: ledgerTxId || null,
-      confirmed_by: confirmedBy || null,
-      confirmed_at: new Date().toISOString(),
-    })
+    .update(patch)
     .eq("id", id)
     .eq("status", "draft");
   if (error) throw error;
