@@ -1,12 +1,12 @@
 // src/components/RatesSidebar.jsx
-// Виджет «Курсы» — информативная панель (read-only) по образцу coinpoint-rates.
-// Белые карточки-офисы (текущий первым) на лёгком фоне: пин+город+свежесть,
-// строки валют (→USDT зелёная / USDT→ красная) с копированием по клику, ниже —
-// кросс (или НЕРЕЗ для RU). Клик по числу копирует в буфер (тост). Light-тема.
-// Правка/импорт — на странице «Изм.».
+// Виджет «Курсы» — белый терминал (read-only). Плоский: hairline-границы, без
+// теней/чипов/плашек. Офисы — аккордеон (текущий открыт), внутри MasterRatesPanel
+// (→USDT / USDT→) + CrossRatesPanel, ниже — НЕРЕЗ для RU. Один акцент — зелёная
+// точка live/свежести. Клик по числу копирует. Структура/порядок/направления и
+// расчёты — без изменений; правка/импорт — на странице «Изм.».
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { TrendingUp, Pencil, MapPin, Clock, Check } from "lucide-react";
+import { ChevronRight, Check } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -16,6 +16,7 @@ import CrossRatesPanel from "./rates/CrossRatesPanel.jsx";
 import NerezPanel from "./rates/NerezPanel.jsx";
 
 const RU_OFFICE_RE = /москв|moscow|питер|петербург|санкт|spb|st\.?\s*pt|peterburg/i;
+const FRESH_MS = 60 * 60 * 1000; // <1ч = live (зелёная точка)
 
 function quotesForOffice(office) {
   const hay = `${office?.city || ""} ${office?.name || ""}`;
@@ -68,7 +69,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   }, []);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-  // Текущий офис первым
+  // Текущий офис первым (порядок как был)
   const offices = React.useMemo(() => {
     const list = [...(activeOffices || [])];
     const idx = currentOffice ? list.findIndex((o) => o.id === currentOffice) : -1;
@@ -76,8 +77,21 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
     return list;
   }, [activeOffices, currentOffice]);
 
-  const cardShadow =
-    "0 1px 2px rgba(16,24,40,.06), 0 14px 34px -16px rgba(16,24,40,.18)";
+  // Аккордеон: по умолчанию открыт текущий офис (или первый). Локальный state.
+  const [openOffices, setOpenOffices] = useState(null);
+  useEffect(() => {
+    if (openOffices !== null) return;
+    const first = currentOffice || offices[0]?.id;
+    if (first) setOpenOffices(new Set([first]));
+  }, [openOffices, currentOffice, offices]);
+  const openSet = openOffices || new Set(currentOffice ? [currentOffice] : []);
+  const toggleOffice = (id) =>
+    setOpenOffices((s) => {
+      const n = new Set(s || []);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+
   const hasNerez = (specialRates || []).some((s) => s && s.kind === "nerez");
   const nerezAt = (specialRates || []).reduce((acc, s) => {
     const ts = s?.importedAt ? new Date(s.importedAt).getTime() : NaN;
@@ -85,88 +99,86 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   }, 0);
   const nerezFresh = nerezAt ? timeAgoShort(new Date(nerezAt), nowMs) : null;
 
+  const cardCls = "bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden";
+
   return (
     <aside className="flex flex-col gap-2">
-      {/* ── Контейнер 1: КУРСЫ (все города стопкой с разделителями) ── */}
-      <div
-        className="bg-white border border-[#e7e9f1] rounded-[16px] px-3 pt-3 pb-2.5"
-        style={{ boxShadow: cardShadow }}
-      >
-        <header className="flex items-center justify-between gap-3 pb-2.5 mb-1 border-b border-[#e7e9f1]">
-          <div className="flex items-center gap-2 min-w-0">
-            <TrendingUp className="w-4 h-4 text-[#11b07a] shrink-0" strokeWidth={2.4} />
-            <h2 className="text-[16px] font-extrabold tracking-[1.4px] text-ink uppercase">
-              {t("rates") || "КУРСЫ"}
-            </h2>
-            <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold tracking-wide text-[#11b07a] uppercase ml-0.5">
-              <span
-                className="w-[6px] h-[6px] rounded-full bg-[#11b07a] animate-pulse-dot"
-                style={{ boxShadow: "0 0 6px rgba(17,176,122,0.6)" }}
-                aria-hidden
-              />
-              Live
-            </span>
-          </div>
+      {/* ── Контейнер 1: КУРСЫ — белый терминал, офисы аккордеоном ── */}
+      <div className={cardCls}>
+        <header className="flex items-center gap-2.5 px-3.5 py-3 border-b border-[rgba(18,22,26,0.08)]">
+          <h2 className="text-[12.5px] font-extrabold tracking-[1.6px] text-[#15191d]">
+            {t("rates") || "КУРСЫ"}
+          </h2>
+          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold tracking-[1px] uppercase text-[#0c9c6b]">
+            <span className="w-[6px] h-[6px] rounded-full bg-[#0c9c6b] animate-pulse-dot" aria-hidden />
+            Live
+          </span>
           {onOpenRates && (
             <button
               type="button"
               onClick={onOpenRates}
-              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-[10px] bg-white border border-[#e7e9f1] text-ink-soft text-[12.5px] font-bold hover:border-[#d7dbe9] hover:text-ink transition-colors shrink-0"
+              className="ml-auto text-[11px] font-medium text-[#6a717a] border-b border-dotted border-[#aeb4bb] pb-px hover:text-[#15191d] hover:border-[#6a717a] transition-colors focus-visible:outline-none focus-visible:text-[#15191d]"
               title={t("edit_rates") || "Редактировать курсы"}
             >
-              <Pencil className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />
-              <span>Изм.</span>
+              редактировать
             </button>
           )}
         </header>
 
-        {offices.map((office, i) => {
+        {offices.map((office) => {
           const quotes = quotesForOffice(office);
           const getRate = (from, to) => getRateRaw(from, to, office.id);
-          const fresh = timeAgoShort(
-            officeFreshness(getOfficeOverride, office.id, quotes),
-            nowMs
-          );
+          const freshDate = officeFreshness(getOfficeOverride, office.id, quotes);
+          const ageMs = freshDate ? nowMs - freshDate.getTime() : Infinity;
+          const isFresh = ageMs < FRESH_MS;
+          const fresh = timeAgoShort(freshDate, nowMs);
+          const isOpen = openSet.has(office.id);
           return (
-            <div
-              key={office.id}
-              className={i > 0 ? "mt-3 pt-3 border-t border-[#e7e9f1]" : ""}
-            >
-              <div className="flex items-center justify-between gap-2.5 px-1">
-                <span className="flex items-center gap-2 min-w-0">
-                  <MapPin className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.3} />
-                  <span className="text-[14.5px] font-bold tracking-tight text-ink truncate">
-                    {office.name || office.city || "Office"}
-                  </span>
+            <div key={office.id} className="border-b border-[rgba(18,22,26,0.08)] last:border-b-0">
+              <button
+                type="button"
+                onClick={() => toggleOffice(office.id)}
+                aria-expanded={isOpen}
+                className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 hover:bg-[rgba(18,22,26,0.018)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c9c6b]/30 focus-visible:ring-inset"
+              >
+                <ChevronRight
+                  className={`w-3 h-3 text-[#aeb4bb] shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                  strokeWidth={2.4}
+                />
+                <span className="text-[13px] font-bold tracking-tight text-[#15191d] truncate">
+                  {office.name || office.city || "Office"}
                 </span>
-                {fresh && (
-                  <span
-                    className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold text-[#8a8fa6] bg-[#f4f5fa] border border-[#e7e9f1] px-2.5 py-[3px] rounded-full"
-                    title="Когда обновлён курс офиса"
-                  >
-                    <Clock className="w-3 h-3 opacity-85" strokeWidth={2.2} />
-                    {fresh}
-                  </span>
+                {office.city && office.name && (
+                  <span className="text-[11px] font-medium text-[#6a717a] truncate">· {office.city}</span>
                 )}
-              </div>
-              <MasterRatesPanel getRate={getRate} quotes={quotes} onCopy={handleCopy} />
-              <CrossRatesPanel getRate={getRate} ccys={quotes} onCopy={handleCopy} />
+                <span className="ml-auto inline-flex items-center gap-1.5 shrink-0 text-[10px] tracking-[0.3px] text-[#aeb4bb]">
+                  <span
+                    className={`w-[5px] h-[5px] rounded-full ${isFresh ? "bg-[#0c9c6b]" : "bg-[#aeb4bb]"}`}
+                    aria-hidden
+                  />
+                  {fresh || "—"}
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="pb-2.5">
+                  <MasterRatesPanel getRate={getRate} quotes={quotes} onCopy={handleCopy} />
+                  <CrossRatesPanel getRate={getRate} ccys={quotes} onCopy={handleCopy} />
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* ── Контейнер 2: спец-блоки межд. офиса (НЕРЕЗ; позже RUB QR, Юань) ── */}
+      {/* ── Контейнер 2: спец-блоки (НЕРЕЗ) ── */}
       {hasNerez && (
-        <div
-          className="bg-white border border-[#e7e9f1] rounded-[16px] px-3 pt-2.5 pb-2.5"
-          style={{ boxShadow: cardShadow }}
-        >
+        <div className={`${cardCls} px-3.5 py-3`}>
           <NerezPanel specialRates={specialRates} onCopy={handleCopy} fresh={nerezFresh} />
         </div>
       )}
 
-      {/* Тост */}
+      {/* Тост копирования */}
       <div
         className={`fixed left-1/2 bottom-6 -translate-x-1/2 z-50 flex items-center gap-2 bg-ink text-white text-[13px] font-semibold px-4 py-2.5 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)] transition-all duration-200 ${
           toast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"

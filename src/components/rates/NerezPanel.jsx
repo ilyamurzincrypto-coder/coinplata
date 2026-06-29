@@ -1,9 +1,9 @@
 // src/components/rates/NerezPanel.jsx
-// Панель НЕРЕЗ TOD/TOM внутри карточки RU-офиса. Матрица: Прод./Покуп. × Т-Т/Т-М/М-М.
-// Значения копируемые. Данные — снимок specialRates (kind=nerez).
+// Панель НЕРЕЗ TOD/TOM внутри RU-блока. Матрица: Прод./Покуп. × Т-Т/Т-М/М-М.
+// Терминальный вид: hairline-заголовок, точка свежести, копируемые числа.
+// Структура матрицы/порядок — без изменений.
 
 import React from "react";
-import { Landmark, Clock } from "lucide-react";
 import RateNum from "./RateNum.jsx";
 
 const SETTLES = [
@@ -35,40 +35,38 @@ export default function NerezPanel({ specialRates, onCopy, fresh }) {
 
   return (
     <div>
-      {/* Заголовок блока — в офис-стиле (как город) */}
-      <div className="flex items-center justify-between gap-2.5 px-1 pb-2 mb-1.5 border-b border-[#e7e9f1]">
-        <span className="flex items-center gap-2 min-w-0">
-          <Landmark className="w-3.5 h-3.5 text-[#0fa56f] shrink-0" strokeWidth={2.2} />
-          <span className="text-[14.5px] font-bold tracking-tight text-ink truncate">
-            {pair.replace("/", " ↔ ")} · НЕРЕЗ
-          </span>
+      {/* Заголовок блока — hairline + точка свежести */}
+      <div className="flex items-center gap-2 pb-2 mb-1.5 border-b border-[rgba(18,22,26,0.08)]">
+        <span className="text-[12.5px] font-bold tracking-tight text-[#15191d] truncate">
+          {pair.replace("/", " ↔ ")} <span className="text-[#aeb4bb] font-semibold">· НЕРЕЗ</span>
         </span>
         {fresh && (
-          <span
-            className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-semibold text-[#8a8fa6] bg-[#f4f5fa] border border-[#e7e9f1] px-2.5 py-[3px] rounded-full"
-            title="Когда обновлён НЕРЕЗ"
-          >
-            <Clock className="w-3 h-3 opacity-85" strokeWidth={2.2} />
+          <span className="ml-auto inline-flex items-center gap-1.5 shrink-0 text-[10px] text-[#aeb4bb]">
+            <span className="w-[5px] h-[5px] rounded-full bg-[#aeb4bb]" />
             {fresh}
           </span>
         )}
       </div>
-      <div className="grid items-center gap-y-0.5 gap-x-2 px-1" style={GRID}>
+      <div className="grid items-baseline gap-y-0.5 gap-x-2" style={GRID}>
         <span />
         {SETTLES.map(([code, label]) => (
-          <span key={code} className="text-right text-[10.5px] font-semibold text-[#8a8fa6]" title={code}>
+          <span
+            key={code}
+            className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]"
+            title={code}
+          >
             {label}
           </span>
         ))}
         {SIDES.map(([key, label]) => (
           <React.Fragment key={key}>
-            <span className="text-[12px] font-semibold text-[#454a68]">{label}</span>
+            <span className="text-[12px] font-semibold text-[#6a717a]">{label}</span>
             {SETTLES.map(([code]) => (
               <RateNum
                 key={code}
                 value={fmt(lookup[`${key}_${code}`])}
                 onCopy={onCopy}
-                className="text-[13px]"
+                className="text-[13px] text-[#15191d]"
               />
             ))}
           </React.Fragment>
