@@ -7,6 +7,7 @@
 import React from "react";
 import { isPercentPair } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
+import PairCoins from "./PairCoins.jsx";
 
 const STRONG = new Set(["USD", "EUR"]); // котируются «USDT за X»
 
@@ -56,19 +57,22 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   return (
     <div>
       {/* Секция — мелкий label + hairline на всю ширину */}
-      <div className="flex items-center gap-2 pl-[26px] pr-2 pt-2 pb-1">
+      <div className="flex items-center gap-2 pl-3 pr-2 pt-2 pb-1">
         <span className="text-[8.5px] font-bold tracking-[1.3px] uppercase text-[#6a717a]">Кросс</span>
         <span className="flex-1 h-px bg-[rgba(18,22,26,0.08)]" />
       </div>
       {rows.map(({ a, b, fwd, rev }) => (
         <div
           key={`${a}_${b}`}
-          className="grid items-baseline pl-[26px] pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
+          className="grid items-center pl-3 pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
           style={GRID}
         >
-          <span className="text-[12.5px] font-semibold text-[#15191d] whitespace-nowrap">
-            {a}
-            <span className="text-[#aeb4bb] font-medium">/{b}</span>
+          <span className="flex items-center gap-2 min-w-0">
+            <PairCoins a={a} b={b} />
+            <span className="text-[12.5px] font-semibold text-[#15191d] whitespace-nowrap">
+              {a}
+              <span className="text-[#aeb4bb] font-medium">/{b}</span>
+            </span>
           </span>
           <span className="flex items-baseline justify-end gap-1">
             <span className="text-[#aeb4bb] text-[11px]" aria-hidden>→</span>

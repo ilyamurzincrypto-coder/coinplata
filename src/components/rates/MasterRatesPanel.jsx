@@ -6,6 +6,7 @@
 import React from "react";
 import { formatRateValue } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
+import PairCoins from "./PairCoins.jsx";
 
 const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
 const GRID = { gridTemplateColumns: "1fr 74px 74px" };
@@ -15,7 +16,7 @@ export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
   return (
     <div>
       {/* Колонки направлений — нейтральный uppercase (акцент только на live) */}
-      <div className="grid items-center pl-[26px] pr-2 pb-1" style={GRID}>
+      <div className="grid items-center pl-3 pr-2 pb-1" style={GRID}>
         <span />
         <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">→USDT</span>
         <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">USDT→</span>
@@ -27,12 +28,15 @@ export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
         return (
           <div
             key={q}
-            className="grid items-baseline pl-[26px] pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
+            className="grid items-center pl-3 pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
             style={GRID}
           >
-            <span className="text-[12.5px] font-semibold tracking-[-0.1px] text-[#15191d] whitespace-nowrap">
-              {q}
-              <span className="text-[#aeb4bb] font-medium">/USDT</span>
+            <span className="flex items-center gap-2 min-w-0">
+              <PairCoins a={q} b="USDT" />
+              <span className="text-[12.5px] font-semibold tracking-[-0.1px] text-[#15191d] whitespace-nowrap">
+                {q}
+                <span className="text-[#aeb4bb] font-medium">/USDT</span>
+              </span>
             </span>
             <RateNum value={into} onCopy={onCopy} className="text-[13px] text-[#15191d]" />
             <RateNum value={out} onCopy={onCopy} className="text-[13px] text-[#6a717a]" />
