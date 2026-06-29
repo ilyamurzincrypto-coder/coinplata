@@ -135,6 +135,10 @@ export async function loadPairs() {
     baseRate: num(r.base_rate),
     spreadPercent: num(r.spread_percent),
     rate: num(r.rate),
+    // Модель «рынок + маржа» (rate = marketRate + buyMargin). См. set_pair_margins.
+    marketRate: num(r.market_rate),
+    buyMargin: num(r.buy_margin),
+    sellMargin: num(r.sell_margin),
     isDefault: r.is_default,
     isMaster: r.is_master === true,
     priority: r.priority ?? 50,
