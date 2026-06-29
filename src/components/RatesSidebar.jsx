@@ -109,10 +109,6 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           <h2 className="text-[12.5px] font-extrabold tracking-[1.6px] text-[#15191d]">
             {t("rates") || "КУРСЫ"}
           </h2>
-          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold tracking-[1px] uppercase text-[#0c9c6b]">
-            <span className="w-[6px] h-[6px] rounded-full bg-[#0c9c6b] animate-pulse-dot" aria-hidden />
-            Live
-          </span>
           {onOpenRates && (
             <button
               type="button"
