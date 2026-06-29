@@ -54,6 +54,9 @@
   .animate-pulse-dot {
     animation: pulse-dot 2s ease-out infinite;
   }
+  @media (prefers-reduced-motion: reduce) {
+    .animate-pulse-dot { animation: none; }
+  }
 }
 
 /* ── Legacy keyframes (используются в существующих компонентах) ───────── */

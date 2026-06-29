@@ -1,10 +1,10 @@
 // src/components/rates/CrossRatesPanel.jsx
-// Кросс-курсы офиса: строка на пару (USD / TRY), оба направления в строке —
-// → прямой (a→b, зелёная стрелка) и ← обратный (b→a, приглушённая). Через USDT
-// (orientation-aware). Москва (один RUB) — без кросса. Значения копируемые.
+// Кросс-курсы офиса: строка на пару (USD / TRY), оба направления — → прямой
+// (a→b) и ← обратный (b→a). Через USDT (orientation-aware). Москва (один RUB) —
+// без кросса. Терминальный вид: секция-hairline, нейтральные стрелки, копируемо.
+// Порядок пар, направления и расчёт — без изменений.
 
 import React from "react";
-import { ArrowRightLeft } from "lucide-react";
 import { isPercentPair } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
 
@@ -38,7 +38,7 @@ function uniquePairs(ccys) {
   return out;
 }
 
-const GRID = { gridTemplateColumns: "minmax(62px,auto) 1fr 1fr" };
+const GRID = { gridTemplateColumns: "1fr 74px 74px" };
 
 export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   const fiats = (ccys || []).filter((c) => c !== "USDT");
@@ -54,31 +54,29 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   if (rows.length === 0) return null; // один фиат (Москва) → кросса нет
 
   return (
-    <div className="mt-2 pt-1.5">
-      <div className="flex items-center gap-1.5 px-1 pb-0.5">
-        <ArrowRightLeft className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
-        <span className="text-[9.5px] font-bold tracking-[1.2px] text-[#8a8fa6] uppercase">
-          Кросс-курсы
-        </span>
+    <div>
+      {/* Секция — мелкий label + hairline на всю ширину */}
+      <div className="flex items-center gap-2 pl-[26px] pr-2 pt-2 pb-1">
+        <span className="text-[8.5px] font-bold tracking-[1.3px] uppercase text-[#6a717a]">Кросс</span>
+        <span className="flex-1 h-px bg-[rgba(18,22,26,0.08)]" />
       </div>
       {rows.map(({ a, b, fwd, rev }) => (
         <div
           key={`${a}_${b}`}
-          className="grid items-center gap-2 px-1 py-[5px] border-t border-[#eef0f4]"
+          className="grid items-baseline pl-[26px] pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
           style={GRID}
         >
-          <span className="text-[12px] font-semibold text-[#454a68] whitespace-nowrap">
+          <span className="text-[12.5px] font-semibold text-[#15191d] whitespace-nowrap">
             {a}
-            <span className="text-muted-soft/70 mx-1 font-normal">/</span>
-            {b}
+            <span className="text-[#aeb4bb] font-medium">/{b}</span>
           </span>
           <span className="flex items-baseline justify-end gap-1">
-            <span className="text-[#0fa56f] font-bold text-[12px]" aria-hidden>→</span>
-            <RateNum value={fmtCross(fwd)} onCopy={onCopy} className="text-[12.5px] text-ink !w-auto" />
+            <span className="text-[#aeb4bb] text-[11px]" aria-hidden>→</span>
+            <RateNum value={fmtCross(fwd)} onCopy={onCopy} className="text-[12.5px] text-[#15191d] !w-auto" />
           </span>
           <span className="flex items-baseline justify-end gap-1">
-            <span className="text-muted-soft font-bold text-[12px]" aria-hidden>←</span>
-            <RateNum value={fmtCross(rev)} onCopy={onCopy} className="text-[12.5px] text-muted !w-auto" />
+            <span className="text-[#aeb4bb] text-[11px]" aria-hidden>←</span>
+            <RateNum value={fmtCross(rev)} onCopy={onCopy} className="text-[12.5px] text-[#6a717a] !w-auto" />
           </span>
         </div>
       ))}
