@@ -17,9 +17,8 @@ import { freshnessOf, shortAge, tooltipFor } from "../../utils/rateFreshness.jsx
 
 // Стиль точки «возраста». Зелёная если < 1ч, янтарная 1-6ч, красная >6ч.
 function ageDotClass(state) {
-  if (state === "fresh") return "bg-success";
-  if (state === "stale") return "bg-warning";
-  return "bg-danger";
+  // Терминал: один акцент — зелёная точка только для свежего (<1ч), иначе faint.
+  return state === "fresh" ? "bg-[#0c9c6b]" : "bg-[#aeb4bb]";
 }
 
 // Форматирование курса: ≥ 1 — 4 знака, < 1 — 6 значащих цифр без хвостовых
@@ -94,7 +93,7 @@ function NumCell({
               cancel();
             }
           }}
-          className={`w-full bg-white border border-accent rounded-[6px] px-1.5 py-0.5 text-body-sm font-mono tabular-nums outline-none ${
+          className={`w-full bg-transparent border-0 border-b border-[#0c9c6b] rounded-none px-1 py-0.5 text-[13px] font-mono tabular-nums outline-none ${
             align === "right" ? "text-right" : "text-left"
           } ${suffix ? "pr-4" : ""}`}
         />
@@ -113,11 +112,11 @@ function NumCell({
       onClick={startEdit}
       disabled={!editable}
       title={editable ? "Клик — редактировать" : undefined}
-      className={`${width} font-mono tabular-nums text-body-sm ${
+      className={`${width} font-mono tabular-nums text-[13px] transition-colors ${
         align === "right" ? "text-right" : "text-left"
       } ${
         editable
-          ? "cursor-text rounded-[4px] hover:bg-amber-50 -mx-1 px-1"
+          ? "cursor-text border-b border-dotted border-[rgba(18,22,26,0.15)] hover:border-[#0c9c6b] hover:text-[#0c9c6b]"
           : "cursor-default text-muted"
       }`}
     >
@@ -161,8 +160,8 @@ function Row({
 
   return (
     <div
-      className={`grid items-center gap-2 px-2 py-1.5 rounded-[6px] transition-colors ${
-        isFavorite ? "bg-fav-bg hover:bg-fav-bg-hover" : "hover:bg-surface-soft"
+      className={`grid items-center gap-2 px-2 py-1.5 transition-colors ${
+        isFavorite ? "bg-[rgba(12,156,107,0.05)]" : "hover:bg-[rgba(18,22,26,0.022)]"
       }`}
       style={{ gridTemplateColumns: gridCols }}
     >
@@ -201,14 +200,14 @@ function Row({
               type="button"
               onClick={() => onResetOverride(a, b)}
               title="Курс офиса — клик чтобы вернуть на глобал"
-              className="inline-flex items-center gap-0.5 h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-accent-bg text-accent tracking-wide hover:bg-indigo-100"
+              className="inline-flex items-center gap-0.5 h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-[rgba(18,22,26,0.05)] text-[#6a717a] tracking-wide hover:bg-[rgba(18,22,26,0.09)]"
             >
               OFC
               <RotateCcw className="w-2.5 h-2.5" strokeWidth={2.5} />
             </button>
           ) : (
             <span
-              className="inline-flex items-center h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-accent-bg text-accent tracking-wide"
+              className="inline-flex items-center h-4 px-1 rounded-[3px] font-mono text-micro font-bold bg-[rgba(18,22,26,0.05)] text-[#6a717a] tracking-wide"
               title="Office override активен"
             >
               OFC
