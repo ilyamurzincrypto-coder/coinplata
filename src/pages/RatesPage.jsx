@@ -533,7 +533,7 @@ export default function RatesPage({ onBack, drawer = false }) {
             )}
 
             {/* Counts + action buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-2 border border-[rgba(18,22,26,0.08)] rounded-[10px] px-4 py-2.5">
+            <div className="flex items-center justify-between flex-wrap gap-2 px-1 py-2 border-b border-[rgba(18,22,26,0.08)]">
               <div className="text-caption text-ink-soft tabular-nums">
                 <span className="font-bold text-ink">{currencies.length}</span>{" "}
                 {t("rates_currencies_count") || "currencies"} ·{" "}
@@ -694,8 +694,8 @@ function BulkSpreadControl({ onApply }) {
   };
 
   return (
-    <div className="bg-white border border-border-soft rounded-card px-4 py-3 flex items-center gap-3 flex-wrap">
-      <span className="text-caption font-semibold text-ink-soft">
+    <div className="px-1 py-2 border-b border-[rgba(18,22,26,0.08)] flex items-center gap-3 flex-wrap">
+      <span className="text-caption font-semibold text-[#6a717a]">
         {t("rates_bulk_spread_label") || "Spread on all pairs"}
       </span>
       <div className="relative">
