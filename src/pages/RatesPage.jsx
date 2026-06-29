@@ -374,7 +374,7 @@ export default function RatesPage({ onBack, drawer = false }) {
   if (!canEdit) {
     return (
       <main className="max-w-[1400px] mx-auto px-6 py-10 text-center">
-        <div className="bg-white rounded-card-lg border border-border-soft p-8 max-w-md mx-auto">
+        <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-8 max-w-md mx-auto">
           <AlertTriangle className="w-8 h-8 text-warning mx-auto mb-3" />
           <div className="text-[15px] font-bold text-ink mb-1">
             {t("rates_page_no_access") || "No access"}
@@ -423,10 +423,8 @@ export default function RatesPage({ onBack, drawer = false }) {
             <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setView("coverage")}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-caption font-semibold border ${
-                  coverageSummary.hasIssues
-                    ? "bg-warning-soft text-warning border-warning/20 hover:bg-amber-100"
-                    : "bg-success-soft text-success border-success/20 hover:bg-emerald-100"
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-caption font-bold border border-[rgba(18,22,26,0.12)] hover:bg-[rgba(18,22,26,0.03)] ${
+                  coverageSummary.hasIssues ? "text-[#b8923a]" : "text-[#0c9c6b]"
                 }`}
               >
                 {coverageSummary.hasIssues ? (
@@ -439,14 +437,14 @@ export default function RatesPage({ onBack, drawer = false }) {
               <button
                 onClick={handleExportCSV}
                 disabled={existingPairs.length === 0}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-caption font-semibold text-ink-soft hover:text-ink bg-white border border-border-soft hover:border-border disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-caption font-bold text-[#6a717a] hover:text-[#15191d] border border-[rgba(18,22,26,0.12)] hover:bg-[rgba(18,22,26,0.03)] disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
                 {t("export_csv")}
               </button>
               <button
                 onClick={handleOpenImport}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-card text-caption font-semibold text-white bg-ink hover:bg-ink"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-caption font-bold text-white bg-[#0c9c6b] hover:bg-[#0b8c60]"
               >
                 <Upload className="w-3.5 h-3.5" />
                 {t("cov_import_xlsx") || "Import xlsx"}
@@ -474,13 +472,13 @@ export default function RatesPage({ onBack, drawer = false }) {
 
         {/* Office tabs (visible only in list view) */}
         {view === "list" && (
-          <div className="bg-white border border-border-soft rounded-card p-1 flex items-center gap-0.5 overflow-x-auto">
+          <div className="flex items-center gap-1 overflow-x-auto border-b border-[rgba(18,22,26,0.08)] pb-1.5">
             <button
               onClick={() => setActiveOffice("all")}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-caption font-semibold whitespace-nowrap transition-colors ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[7px] text-[11.5px] font-bold whitespace-nowrap transition-colors ${
                 activeOffice === "all"
-                  ? "bg-ink text-white"
-                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
+                  ? "bg-[rgba(18,22,26,0.06)] text-[#15191d]"
+                  : "text-[#6a717a] hover:bg-[rgba(18,22,26,0.03)] hover:text-[#15191d]"
               }`}
             >
               <TrendingUp className="w-3 h-3" />
@@ -490,10 +488,10 @@ export default function RatesPage({ onBack, drawer = false }) {
               <button
                 key={o.id}
                 onClick={() => setActiveOffice(o.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-caption font-semibold whitespace-nowrap transition-colors ${
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[7px] text-[11.5px] font-bold whitespace-nowrap transition-colors ${
                   activeOffice === o.id
-                    ? "bg-ink text-white"
-                    : "text-ink-soft hover:bg-surface-soft hover:text-ink"
+                    ? "bg-[rgba(18,22,26,0.06)] text-[#15191d]"
+                    : "text-[#6a717a] hover:bg-[rgba(18,22,26,0.03)] hover:text-[#15191d]"
                 }`}
               >
                 <Building2 className="w-3 h-3" />
@@ -505,7 +503,7 @@ export default function RatesPage({ onBack, drawer = false }) {
 
         {/* Sub-view: Coverage */}
         {view === "coverage" && (
-          <div className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
+          <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden">
             <RatesCoveragePanel
               onBack={backToList}
               onQuickAdd={(from, to) => gotoAddPair(from, to)}
@@ -535,7 +533,7 @@ export default function RatesPage({ onBack, drawer = false }) {
             )}
 
             {/* Counts + action buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-2 bg-white border border-border-soft rounded-card px-4 py-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 border border-[rgba(18,22,26,0.08)] rounded-[10px] px-4 py-2.5">
               <div className="text-caption text-ink-soft tabular-nums">
                 <span className="font-bold text-ink">{currencies.length}</span>{" "}
                 {t("rates_currencies_count") || "currencies"} ·{" "}
@@ -561,7 +559,7 @@ export default function RatesPage({ onBack, drawer = false }) {
                 </button>
                 <button
                   onClick={() => gotoAddPair()}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-caption font-semibold bg-ink text-white hover:bg-ink"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-[7px] text-caption font-bold text-white bg-[#0c9c6b] hover:bg-[#0b8c60]"
                 >
                   <Plus className="w-3 h-3" />
                   {t("add_pair") || "Add pair"}
@@ -606,7 +604,7 @@ export default function RatesPage({ onBack, drawer = false }) {
             {/* Спец-курсы (НЕРЕЗ / СБП) — информационная панель из утреннего
                 импорта. В сделках пока не участвует. */}
             {specialRates && specialRates.length > 0 && (
-              <div className="bg-white rounded-card-lg border border-border-soft p-5">
+              <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-5">
                 <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-3">
                   {t("rimport_special_title")}
                 </div>
@@ -633,7 +631,7 @@ export default function RatesPage({ onBack, drawer = false }) {
         {/* Sub-views: addPair / addCurrency / addChannel — используем ту же логику
             что в RatesBar, но оборачиваем в card вместо модалки */}
         {view === "addPair" && (
-          <div className="bg-white rounded-card-lg border border-border-soft p-5">
+          <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-5">
             <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-4">
               {t("add_pair") || "Add pair"}
             </div>
@@ -646,7 +644,7 @@ export default function RatesPage({ onBack, drawer = false }) {
         )}
 
         {view === "addCurrency" && (
-          <div className="bg-white rounded-card-lg border border-border-soft p-5">
+          <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-5">
             <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-4">
               {t("currency_add") || "Add currency"}
             </div>
@@ -655,7 +653,7 @@ export default function RatesPage({ onBack, drawer = false }) {
         )}
 
         {view === "addChannel" && (
-          <div className="bg-white rounded-card-lg border border-border-soft p-5">
+          <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-5">
             <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-4">
               {t("channel_add") || "Add channel"}
             </div>
@@ -880,7 +878,7 @@ function RatesPageEditTable({
 
   if (existingPairs.length === 0) {
     return (
-      <div className="bg-white rounded-card-lg border border-border-soft p-10 text-center text-body-sm text-muted-soft">
+      <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-10 text-center text-body-sm text-muted-soft">
         {t("rates_no_pairs") ||
           "No pairs yet. Add a currency, then channels, then a pair."}
       </div>
@@ -888,7 +886,7 @@ function RatesPageEditTable({
   }
 
   return (
-    <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
+    <section className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden">
       <div className="px-3 pt-3 pb-1">
         <RatesTable
           mode="edit"
