@@ -362,20 +362,46 @@ export default function DealsLedger({ officeId }) {
       return next;
     });
 
-  // Клик по ячейке расхода: досыпать ОСТАТОК прихода в эту валюту (рыночный курс).
-  // Работает и со сплитом расхода, и с мульти-входом (берётся суммарная стоимость).
+  // Клик по ячейке расхода (сплит):
+  //  • первая нога — весь приход в эту валюту;
+  //  • есть нераспределённый остаток — досыпаем его в новую валюту;
+  //  • остатка нет (первая нога забрала всё) — делим приход РОВНО между всеми
+  //    ногами расхода (это и есть «двойной аут»: кликнул вторую валюту → сплит).
   const focusOut = (c) =>
     setDraft((d) => {
       const tot = totalInVal(d);
       if (!tot || tot.amt <= 0) return d;
-      if (parseRu(d.out[c]) > 0) return d;
+      if (parseRu(d.out[c]) > 0) return d; // ячейка уже заполнена — не трогаем
+      const existing = outCcysOf(d);
+
+      // Первая нога расхода — весь приход сюда, показываем курс.
+      if (existing.length === 0) {
+        const outAmt = convert(tot.amt, tot.ccy, c, getRate);
+        if (!outAmt || !Number.isFinite(outAmt)) return d;
+        const next = { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } };
+        if (inCcysOf(next).length === 1) next.rate = fmtRate(outAmt / tot.amt);
+        return next;
+      }
+
+      // Есть нераспределённый остаток → досыпаем его в новую валюту.
       const remaining = tot.amt - filledOutInIn(d, tot.ccy, c);
-      if (remaining <= 1e-9) return d;
-      const outAmt = convert(remaining, tot.ccy, c, getRate);
-      if (!outAmt || !Number.isFinite(outAmt)) return d;
-      const next = { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } }; // ДОБАВЛЯЕМ ногу
-      if (inCcysOf(next).length === 1 && outCcysOf(next).length === 1) next.rate = fmtRate(outAmt / tot.amt);
-      return next;
+      if (remaining > 1e-9) {
+        const outAmt = convert(remaining, tot.ccy, c, getRate);
+        return outAmt && Number.isFinite(outAmt)
+          ? { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } }
+          : d;
+      }
+
+      // Остатка нет → делим приход поровну между всеми ногами (вкл. новую).
+      const legs = [...existing, c];
+      const share = tot.amt / legs.length;
+      const out = { ...d.out };
+      legs.forEach((lc) => {
+        const v = convert(share, tot.ccy, lc, getRate);
+        if (v && Number.isFinite(v)) out[lc] = fmtAmt(v, lc);
+      });
+      // Несколько ног → единый курс не применим, сбрасываем ручной флаг.
+      return { ...d, out, rate: "", rateManual: false };
     });
 
   const setRate = (v) =>
