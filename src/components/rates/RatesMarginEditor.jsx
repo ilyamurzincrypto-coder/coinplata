@@ -68,7 +68,7 @@ function Inp({ value, onCommit, sign = null, width = "w-[60px]" }) {
 
 function Sect({ label, src }) {
   return (
-    <div className="flex items-center gap-2.5 pt-5 pb-2">
+    <div className="flex items-center gap-2.5 pt-3.5 pb-1.5">
       <span className="text-[10px] font-extrabold tracking-[1.4px] uppercase text-[#6a717a]">{label}</span>
       {src && <span className="text-[10.5px] text-[#aeb4bb]">· {src}</span>}
       <span className="flex-1 h-px bg-[rgba(18,22,26,0.08)]" />
@@ -128,7 +128,7 @@ export default function RatesMarginEditor({
             const bm = Number(getBuyMargin(from, to));
             const sm = Number(getSellMargin(from, to));
             return (
-              <div key={`${from}_${to}`} className="grid items-center py-2 border-t border-[rgba(18,22,26,0.08)]" style={AUTO_GRID}>
+              <div key={`${from}_${to}`} className="grid items-center py-1.5 border-t border-[rgba(18,22,26,0.08)]" style={AUTO_GRID}>
                 <Pair a={from} b={to} />
                 <span className="text-right font-mono text-[12.5px] text-[#6a717a]">
                   <Inp value={m} onCommit={(n) => set(from, to, { market: n })} width="w-[64px]" />
@@ -166,7 +166,7 @@ export default function RatesMarginEditor({
             const bm = Number(getBuyMargin(from, to));
             const sm = Number(getSellMargin(from, to));
             return (
-              <div key={`${from}_${to}`} className="grid items-center py-2 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
+              <div key={`${from}_${to}`} className="grid items-center py-1.5 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
                 <Pair a={from} b={to} />
                 {/* покупка = market + buy_margin (== rate сделок). Правка → buy_margin */}
                 <span className="text-right">
@@ -194,7 +194,7 @@ export default function RatesMarginEditor({
           {buckets.cross.map(({ from, to }) => {
             const r = Number(getRate(from, to));
             return (
-              <div key={`${from}_${to}`} className="grid items-center py-2 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
+              <div key={`${from}_${to}`} className="grid items-center py-1.5 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
                 <Pair a={from} b={to} />
                 <span className="text-right font-mono tabular-nums text-[13px]">
                   <Zeros value={r} />
@@ -222,7 +222,7 @@ export default function RatesMarginEditor({
             const m = Number(getMarketRate(from, to));
             const bm = Number(getBuyMargin(from, to));
             return (
-              <div key={`${from}_${to}`} className="grid items-center py-2 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
+              <div key={`${from}_${to}`} className="grid items-center py-1.5 border-t border-[rgba(18,22,26,0.08)]" style={TWO_GRID}>
                 <Pair a={from} b={to} />
                 <span className="text-right">
                   <Inp value={m} onCommit={(n) => set(from, to, { market: n })} width="w-[72px]" />
