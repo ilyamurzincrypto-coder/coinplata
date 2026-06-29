@@ -1043,6 +1043,29 @@ export async function rpcUpdatePair({ fromCurrency, toCurrency, baseRate, spread
   bumpDataVersion();
 }
 
+// Правка пары через модель «рынок + маржа»: rate = market + buy_margin.
+// Тот же эффективный курс, что читает getRate (→ сделки). set_pair_margins —
+// SECURITY INVOKER, RLS пар та же что у update_pair.
+export async function rpcSetPairMargins({ fromCurrency, toCurrency, marketRate, buyMargin, sellMargin }) {
+  assertConfigured();
+  const from = requireCurrency(fromCurrency, "fromCurrency");
+  const to = requireCurrency(toCurrency, "toCurrency");
+  const m = Number(marketRate);
+  if (!Number.isFinite(m) || m <= 0) throw new Error("marketRate: must be > 0");
+  const bm = Number(buyMargin);
+  if (!Number.isFinite(bm)) throw new Error("buyMargin: invalid");
+  const sm = sellMargin != null && Number.isFinite(Number(sellMargin)) ? Number(sellMargin) : null;
+  const { error } = await supabase.rpc("set_pair_margins", {
+    p_from: from,
+    p_to: to,
+    p_market: m,
+    p_buy_margin: bm,
+    p_sell_margin: sm,
+  });
+  if (error) throw new Error(formatSupabaseError(error, "set_pair_margins"));
+  bumpDataVersion();
+}
+
 // Массовая установка spread_percent на ВСЕ default-пары. Возвращает число
 // обновлённых пар (RPC set_all_pair_spreads → integer).
 export async function rpcSetAllPairSpreads(spreadPercent) {

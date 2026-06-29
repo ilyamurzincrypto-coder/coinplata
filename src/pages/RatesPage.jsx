@@ -45,6 +45,7 @@ import {
   rpcSetAllPairSpreads,
   rpcUpsertOfficeRate,
   rpcDeleteOfficeRate,
+  rpcSetPairMargins,
   withToast,
 } from "../lib/supabaseWrite.js";
 import RatesImportModal from "../components/RatesImportModal.jsx";
@@ -302,6 +303,36 @@ export default function RatesPage({ onBack, drawer = false }) {
         entity: "pair",
         entityId: "all",
         summary: `Bulk spread ${n}% applied to ${count} pairs`,
+      });
+    }
+  };
+
+  // Правка через модель «рынок + маржа» (global-таб). rate = market + buyMargin.
+  // market/buyMargin берутся текущие, если не переданы, чтобы правка одного поля
+  // не обнуляла другое.
+  const handleSetMargins = async (from, to, { market, buyMargin } = {}) => {
+    if (!isSupabaseConfigured) return;
+    const gp = allPairs.find((pp) => {
+      const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
+      const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
+      return pp.isDefault && f === from && t2 === to;
+    });
+    const curMarket = Number(gp?.marketRate ?? gp?.baseRate ?? getRate(from, to, "all"));
+    const curMargin = Number(gp?.buyMargin ?? 0);
+    const nextMarket = market != null ? Number(market) : curMarket;
+    const nextMargin = buyMargin != null ? Number(buyMargin) : curMargin;
+    if (!Number.isFinite(nextMarket) || nextMarket <= 0) return;
+    if (!Number.isFinite(nextMargin)) return;
+    const res = await withToast(
+      () => rpcSetPairMargins({ fromCurrency: from, toCurrency: to, marketRate: nextMarket, buyMargin: nextMargin }),
+      { success: null, errorPrefix: "Update failed" }
+    );
+    if (res.ok) {
+      logAudit({
+        action: "update",
+        entity: "pair",
+        entityId: rateKey(from, to),
+        summary: `${from}→${to}: market=${nextMarket} margin=${nextMargin} → rate=${nextMarket + nextMargin}`,
       });
     }
   };
@@ -595,6 +626,7 @@ export default function RatesPage({ onBack, drawer = false }) {
               editorFavKeys={editorFavKeys}
               toggleEditorFav={toggleEditorFav}
               handleSetRate={handleSetRate}
+              handleSetMargins={handleSetMargins}
               handleResetOverride={handleResetOverride}
               handleDeletePair={handleDeletePair}
               canDelete={isOwner || isAdmin}
@@ -744,6 +776,7 @@ function RatesPageEditTable({
   editorFavKeys,
   toggleEditorFav,
   handleSetRate,
+  handleSetMargins,
   handleResetOverride,
   handleDeletePair,
   canDelete,
@@ -856,6 +889,22 @@ function RatesPageEditTable({
     [isOfficeTab, activeOffice, getOfficeOverride, findGlobalPair]
   );
 
+  // Модель «рынок + маржа» (global-таб). rate = market + buyMargin.
+  const getMarketRate = React.useCallback(
+    (a, b) => {
+      const gp = findGlobalPair(a, b);
+      return Number(gp?.marketRate ?? gp?.baseRate ?? gp?.rate ?? getRate(a, b, "all"));
+    },
+    [findGlobalPair, getRate]
+  );
+  const getBuyMargin = React.useCallback(
+    (a, b) => {
+      const gp = findGlobalPair(a, b);
+      return Number(gp?.buyMargin ?? 0);
+    },
+    [findGlobalPair]
+  );
+
   const pairUpdatedAt = React.useCallback(
     (a, b) => {
       if (isOfficeTab) {
@@ -889,19 +938,23 @@ function RatesPageEditTable({
     <section className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden">
       <div className="px-3 pt-3 pb-1">
         <RatesTable
-          mode="edit"
+          mode={isOfficeTab ? "edit" : "editMargin"}
           pairs={orderedPairs}
           favorites={favoritesSet}
           onToggleFavorite={onToggleFav}
           getRate={effectiveGetRate}
           getBaseRate={getBaseRate}
           getSpreadPercent={getSpreadPercent}
+          getMarketRate={getMarketRate}
+          getBuyMargin={getBuyMargin}
           hasOverride={pairHasOverride}
           pairUpdatedAt={pairUpdatedAt}
           onCommitBase={(a, b, n) => handleSetRate(a, b, { baseRate: n })}
           onCommitSpread={(a, b, n) =>
             handleSetRate(a, b, { spreadPercent: n })
           }
+          onCommitMarket={(a, b, n) => handleSetMargins(a, b, { market: n })}
+          onCommitMargin={(a, b, n) => handleSetMargins(a, b, { buyMargin: n })}
           onResetOverride={
             isOfficeTab ? (a, b) => handleResetOverride(a, b) : undefined
           }

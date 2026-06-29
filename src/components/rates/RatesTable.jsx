@@ -148,8 +148,12 @@ function Row({
   mode,
   baseRate,
   spreadPercent,
+  marketRate,
+  buyMargin,
   onCommitBase,
   onCommitSpread,
+  onCommitMarket,
+  onCommitMargin,
   onResetOverride,
   onDelete,
   gridCols,
@@ -216,33 +220,56 @@ function Row({
         )}
       </div>
 
-      {/* Rate — editable в edit-mode (показываем baseRate; spread отдельно).
-          В view-mode показываем effective rate. */}
-      {mode === "edit" ? (
-        <NumCell
-          value={Number(baseRate)}
-          editable
-          onCommit={(n) => onCommitBase?.(a, b, n)}
-          width="w-full"
-          align="right"
-        />
+      {/* editMargin: Рынок (edit) | Маржа (edit) | Курс (computed readonly) */}
+      {mode === "editMargin" ? (
+        <>
+          <NumCell
+            value={Number(marketRate)}
+            editable
+            onCommit={(n) => onCommitMarket?.(a, b, n)}
+            width="w-full"
+            align="right"
+          />
+          <NumCell
+            value={Number(buyMargin)}
+            editable
+            onCommit={(n) => onCommitMargin?.(a, b, n)}
+            width="w-full"
+            align="right"
+            format={(v) => (Number.isFinite(v) ? (v > 0 ? "+" : "") + v : "0")}
+          />
+          <div className="font-mono tabular-nums text-body-sm font-bold text-ink text-right">
+            {formatNum(Number(marketRate) + Number(buyMargin))}
+          </div>
+        </>
       ) : (
-        <div className="font-mono tabular-nums text-body-sm font-bold text-ink text-right">
-          {formatNum(rate)}
-        </div>
-      )}
-
-      {/* Spread% — только в edit */}
-      {mode === "edit" && (
-        <NumCell
-          value={Number(spreadPercent)}
-          editable
-          onCommit={(n) => onCommitSpread?.(a, b, n)}
-          width="w-full"
-          align="right"
-          suffix="%"
-          format={(v) => (Number.isFinite(v) ? v.toString() : "0")}
-        />
+        <>
+          {/* Rate — editable в edit-mode (baseRate). View — effective rate. */}
+          {mode === "edit" ? (
+            <NumCell
+              value={Number(baseRate)}
+              editable
+              onCommit={(n) => onCommitBase?.(a, b, n)}
+              width="w-full"
+              align="right"
+            />
+          ) : (
+            <div className="font-mono tabular-nums text-body-sm font-bold text-ink text-right">
+              {formatNum(rate)}
+            </div>
+          )}
+          {mode === "edit" && (
+            <NumCell
+              value={Number(spreadPercent)}
+              editable
+              onCommit={(n) => onCommitSpread?.(a, b, n)}
+              width="w-full"
+              align="right"
+              suffix="%"
+              format={(v) => (Number.isFinite(v) ? v.toString() : "0")}
+            />
+          )}
+        </>
       )}
 
       {/* Inverse rate (read-only всегда) */}
@@ -285,10 +312,14 @@ export default function RatesTable({
   getRate,
   getBaseRate,
   getSpreadPercent,
+  getMarketRate,
+  getBuyMargin,
   hasOverride,
   pairUpdatedAt,
   onCommitBase,
   onCommitSpread,
+  onCommitMarket,
+  onCommitMargin,
   onResetOverride,
   onDelete,
   canDelete,
@@ -296,9 +327,14 @@ export default function RatesTable({
   emptyText = "ничего не найдено",
   showHeader = true,
 }) {
-  // Column template: ★(20) | pair(1fr) | rate(80) [| spread(72)] | inverse(80) | age(60)
+  // Column template: ★(20) | pair(1fr) | ...
+  //  view:       rate | inverse | age
+  //  edit:       rate | spread | inverse | age
+  //  editMargin: market | margin | rate(computed) | inverse | age
   const gridCols =
-    mode === "edit"
+    mode === "editMargin"
+      ? "20px minmax(96px,1fr) 86px 74px 86px 84px 58px"
+      : mode === "edit"
       ? "20px minmax(110px,1fr) 96px 80px 90px 64px"
       : "20px minmax(110px,1fr) 96px 90px 64px";
 
@@ -330,13 +366,19 @@ export default function RatesTable({
           <span className="text-micro font-bold uppercase tracking-wider text-muted-soft">
             Пара
           </span>
-          <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">
-            Курс
-          </span>
-          {mode === "edit" && (
-            <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">
-              Spread
-            </span>
+          {mode === "editMargin" ? (
+            <>
+              <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">Рынок</span>
+              <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">Маржа</span>
+              <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">Курс</span>
+            </>
+          ) : (
+            <>
+              <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">Курс</span>
+              {mode === "edit" && (
+                <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">Spread</span>
+              )}
+            </>
           )}
           <span className="text-micro font-bold uppercase tracking-wider text-muted-soft text-right">
             Обратный
@@ -355,6 +397,8 @@ export default function RatesTable({
           const spreadPercent = getSpreadPercent
             ? Number(getSpreadPercent(a, b))
             : 0;
+          const marketRate = getMarketRate ? Number(getMarketRate(a, b)) : baseRate;
+          const buyMargin = getBuyMargin ? Number(getBuyMargin(a, b)) : 0;
           const inverse = Number.isFinite(rate) && rate > 0 ? 1 / rate : NaN;
           const ovr = hasOverride ? !!hasOverride(a, b) : false;
           const updatedAt = pairUpdatedAt ? pairUpdatedAt(a, b) : null;
@@ -384,8 +428,12 @@ export default function RatesTable({
                 mode={mode}
                 baseRate={baseRate}
                 spreadPercent={spreadPercent}
+                marketRate={marketRate}
+                buyMargin={buyMargin}
                 onCommitBase={onCommitBase}
                 onCommitSpread={onCommitSpread}
+                onCommitMarket={onCommitMarket}
+                onCommitMargin={onCommitMargin}
                 onResetOverride={onResetOverride}
                 onDelete={
                   onDelete && (canDelete ? canDelete(a, b) : true)
