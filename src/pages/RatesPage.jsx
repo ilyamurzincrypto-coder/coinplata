@@ -517,14 +517,14 @@ export default function RatesPage({ onBack, drawer = false }) {
           <>
             {/* Scope notice — редактирование override для конкретного офиса */}
             {activeOffice !== "all" && (
-              <div className="bg-accent-bg border border-indigo-200 rounded-card px-4 py-3 text-caption text-indigo-800 flex items-start gap-2">
-                <Building2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="border border-[rgba(18,22,26,0.12)] rounded-[10px] px-4 py-3 text-caption text-[#6a717a] flex items-start gap-2">
+                <Building2 className="w-4 h-4 shrink-0 mt-0.5 text-[#0c9c6b]" />
                 <div>
-                  <div className="font-bold">
+                  <div className="font-bold text-[#15191d]">
                     {t("rates_office_override_title") ||
                       "Редактирование курсов для этого офиса"}
                   </div>
-                  <div className="text-accent mt-0.5">
+                  <div className="text-[#6a717a] mt-0.5">
                     {t("rates_office_override_body") ||
                       "Изменение курса создаёт override только для этого офиса — global остаётся как есть. Пары с override подсвечены индиго. Кнопка ↺ рядом — вернуть на global."}
                   </div>

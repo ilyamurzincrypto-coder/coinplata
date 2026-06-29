@@ -267,12 +267,12 @@ export default function ExternalRatesWidget({ compact = false }) {
   });
 
   return (
-    <section className="bg-white rounded-card-lg border border-border-soft/80 shadow-[0_1px_2px_rgba(15,23,42,0.03)] overflow-hidden">
+    <section className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden">
       {/* Шапка кликабельная — сворачивает / разворачивает блок. Кнопки
           обновления и chevron справа; клик в любую часть шапки toggle'ит. */}
       <header
         onClick={() => setCollapsed((v) => !v)}
-        className="px-4 py-3 border-b border-border-soft bg-gradient-to-b from-surface-soft/40 to-transparent cursor-pointer select-none hover:bg-surface-soft/60 transition-colors"
+        className="px-4 py-3 border-b border-[rgba(18,22,26,0.08)] cursor-pointer select-none hover:bg-[rgba(18,22,26,0.022)] transition-colors"
       >
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-muted shrink-0" />
