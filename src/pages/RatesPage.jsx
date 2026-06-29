@@ -52,6 +52,7 @@ import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
 import ExternalRatesWidget from "../components/ExternalRatesWidget.jsx";
 import RatesTable from "../components/rates/RatesTable.jsx";
+import RatesMarginEditor from "../components/rates/RatesMarginEditor.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
@@ -310,7 +311,7 @@ export default function RatesPage({ onBack, drawer = false }) {
   // Правка через модель «рынок + маржа» (global-таб). rate = market + buyMargin.
   // market/buyMargin берутся текущие, если не переданы, чтобы правка одного поля
   // не обнуляла другое.
-  const handleSetMargins = async (from, to, { market, buyMargin } = {}) => {
+  const handleSetMargins = async (from, to, { market, buyMargin, sellMargin } = {}) => {
     if (!isSupabaseConfigured) return;
     const gp = allPairs.find((pp) => {
       const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
@@ -318,13 +319,22 @@ export default function RatesPage({ onBack, drawer = false }) {
       return pp.isDefault && f === from && t2 === to;
     });
     const curMarket = Number(gp?.marketRate ?? gp?.baseRate ?? getRate(from, to, "all"));
-    const curMargin = Number(gp?.buyMargin ?? 0);
+    const curBuy = Number(gp?.buyMargin ?? 0);
+    const curSell = Number(gp?.sellMargin ?? 0);
     const nextMarket = market != null ? Number(market) : curMarket;
-    const nextMargin = buyMargin != null ? Number(buyMargin) : curMargin;
+    const nextBuy = buyMargin != null ? Number(buyMargin) : curBuy;
+    const nextSell = sellMargin != null ? Number(sellMargin) : curSell;
     if (!Number.isFinite(nextMarket) || nextMarket <= 0) return;
-    if (!Number.isFinite(nextMargin)) return;
+    if (!Number.isFinite(nextBuy) || !Number.isFinite(nextSell)) return;
     const res = await withToast(
-      () => rpcSetPairMargins({ fromCurrency: from, toCurrency: to, marketRate: nextMarket, buyMargin: nextMargin }),
+      () =>
+        rpcSetPairMargins({
+          fromCurrency: from,
+          toCurrency: to,
+          marketRate: nextMarket,
+          buyMargin: nextBuy,
+          sellMargin: nextSell,
+        }),
       { success: null, errorPrefix: "Update failed" }
     );
     if (res.ok) {
@@ -332,10 +342,28 @@ export default function RatesPage({ onBack, drawer = false }) {
         action: "update",
         entity: "pair",
         entityId: rateKey(from, to),
-        summary: `${from}→${to}: market=${nextMarket} margin=${nextMargin} → rate=${nextMarket + nextMargin}`,
+        summary: `${from}→${to}: market=${nextMarket} buy=${nextBuy} sell=${nextSell} → rate=${nextMarket + nextBuy}`,
       });
     }
   };
+
+  // Accessors модели «рынок + маржа» (global) для мок-редактора.
+  const findGP = React.useCallback(
+    (from, to) =>
+      allPairs.find((pp) => {
+        const f = channels.find((c) => c.id === pp.fromChannelId)?.currencyCode;
+        const t2 = channels.find((c) => c.id === pp.toChannelId)?.currencyCode;
+        return pp.isDefault && f === from && t2 === to;
+      }),
+    [allPairs, channels]
+  );
+  const mGetMarket = React.useCallback(
+    (a, b) => Number(findGP(a, b)?.marketRate ?? findGP(a, b)?.baseRate ?? getRate(a, b, "all")),
+    [findGP, getRate]
+  );
+  const mGetBuy = React.useCallback((a, b) => Number(findGP(a, b)?.buyMargin ?? 0), [findGP]);
+  const mGetSell = React.useCallback((a, b) => Number(findGP(a, b)?.sellMargin ?? 0), [findGP]);
+  const mGetRate = React.useCallback((a, b) => Number(getRate(a, b, "all")), [getRate]);
 
   // "Apply global to office" — копирует global rate в office override
   const handleApplyGlobal = async (from, to) => {
@@ -612,26 +640,38 @@ export default function RatesPage({ onBack, drawer = false }) {
                 строке. OFC-чип в строках с office override (клик = вернуть
                 на global). × delete показывается на hover (только owner/admin
                 в global-tab — публичные пары удаляются глобально). */}
-            <RatesPageEditTable
-              activeOffice={activeOffice}
-              activeOffices={activeOffices}
-              existingPairs={existingPairs}
-              allPairs={allPairs}
-              channels={channels}
-              groups={groups}
-              getRate={getRate}
-              getOfficeOverride={getOfficeOverride}
-              isEditorFav={isEditorFav}
-              editorFavorites={editorFavorites}
-              editorFavKeys={editorFavKeys}
-              toggleEditorFav={toggleEditorFav}
-              handleSetRate={handleSetRate}
-              handleSetMargins={handleSetMargins}
-              handleResetOverride={handleResetOverride}
-              handleDeletePair={handleDeletePair}
-              canDelete={isOwner || isAdmin}
-              t={t}
-            />
+            {activeOffice === "all" ? (
+              <RatesMarginEditor
+                pairs={existingPairs}
+                getMarketRate={mGetMarket}
+                getBuyMargin={mGetBuy}
+                getSellMargin={mGetSell}
+                getRate={mGetRate}
+                onSetMargins={handleSetMargins}
+                onOpenImport={handleOpenImport}
+              />
+            ) : (
+              <RatesPageEditTable
+                activeOffice={activeOffice}
+                activeOffices={activeOffices}
+                existingPairs={existingPairs}
+                allPairs={allPairs}
+                channels={channels}
+                groups={groups}
+                getRate={getRate}
+                getOfficeOverride={getOfficeOverride}
+                isEditorFav={isEditorFav}
+                editorFavorites={editorFavorites}
+                editorFavKeys={editorFavKeys}
+                toggleEditorFav={toggleEditorFav}
+                handleSetRate={handleSetRate}
+                handleSetMargins={handleSetMargins}
+                handleResetOverride={handleResetOverride}
+                handleDeletePair={handleDeletePair}
+                canDelete={isOwner || isAdmin}
+                t={t}
+              />
+            )}
 
             {/* Спец-курсы (НЕРЕЗ / СБП) — информационная панель из утреннего
                 импорта. В сделках пока не участвует. */}
