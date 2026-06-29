@@ -55,7 +55,7 @@ import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
 
-export default function RatesPage({ onBack }) {
+export default function RatesPage({ onBack, drawer = false }) {
   const { t } = useTranslation();
   const {
     rates,
@@ -388,10 +388,12 @@ export default function RatesPage({ onBack }) {
   }
 
   return (
-    <main className="min-h-screen">
-      <div className="max-w-[1400px] mx-auto px-6 py-6 space-y-5">
+    <main className={drawer ? "" : "min-h-screen"}>
+      <div className={drawer ? "px-5 py-4 space-y-4" : "max-w-[1400px] mx-auto px-6 py-6 space-y-5"}>
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
+          {/* В drawer страничную шапку (назад + заголовок) даёт обёртка — скрываем */}
+          {!drawer && (
           <div className="flex items-center gap-3">
             {onBack && view === "list" && (
               <button
@@ -416,6 +418,7 @@ export default function RatesPage({ onBack }) {
               </p>
             </div>
           </div>
+          )}
           {view === "list" && (
             <div className="flex items-center gap-2 flex-wrap">
               <button

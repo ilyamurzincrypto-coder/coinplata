@@ -4,7 +4,7 @@ import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowRightLeft, HelpCircle } f
 import Balances from "../components/Balances.jsx";
 import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
-import RatesPage from "./RatesPage.jsx";
+import RatesEditorDrawer from "../components/rates/RatesEditorDrawer.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
@@ -419,7 +419,9 @@ export default function CashierPage({
   // Форма сделки и перемещение убраны — дашборд показываем всегда, кроме режима
   // правки курсов (rates). «create» больше не достижим, но на всякий случай не
   // оставляем пустой экран.
-  const isDashboard = mode !== "rates";
+  // Дашборд рендерится всегда; редактор курсов — выезжающим drawer'ом поверх
+  // правой колонки (mode==="rates"). Так strip курсов слева остаётся виден.
+  const isDashboard = true;
   const isRates = mode === "rates";
 
   const openRates = () => setMode("rates");
@@ -427,15 +429,6 @@ export default function CashierPage({
 
   return (
     <main className="min-h-screen">
-      {/* ====== DASHBOARD MODE ====== */}
-      {/* Rendered когда mode=dashboard. Плавный fade через key remount
-          внутри animate-fadeIn. */}
-      {isRates && (
-        <div key="rates" className="animate-[fadeIn_180ms_ease-out]">
-          <RatesPage onBack={closeRates} />
-        </div>
-      )}
-
       {isDashboard && (
         <div
           key="dashboard"
@@ -472,7 +465,7 @@ export default function CashierPage({
               />
             </aside>
 
-            <div className="min-w-0 space-y-4">
+            <div className="min-w-0 space-y-4 relative">
               <Balances
                 currentOffice={currentOffice}
                 onOfficeChange={onOfficeChange}
@@ -481,6 +474,8 @@ export default function CashierPage({
               />
               <DealsLedger officeId={currentOffice} />
               <ObligationsPanel officeId={currentOffice} />
+              {/* Выезжающий редактор курсов — поверх этой колонки */}
+              <RatesEditorDrawer open={isRates} onClose={closeRates} />
             </div>
           </div>
         </div>
