@@ -50,7 +50,6 @@ import {
 } from "../lib/supabaseWrite.js";
 import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
-import ExternalRatesWidget from "../components/ExternalRatesWidget.jsx";
 import RatesTable from "../components/rates/RatesTable.jsx";
 import RatesMarginEditor from "../components/rates/RatesMarginEditor.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
@@ -521,12 +520,8 @@ export default function RatesPage({ onBack, drawer = false }) {
           )}
         </div>
 
-        {/* Двухколоночный layout: слева внешние котировки (Binance/Harem/
-            TCMB) — sticky-sidebar; справа основной контент. */}
-        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5 items-start">
-          <aside className="lg:sticky lg:top-[76px] space-y-4">
-            <ExternalRatesWidget />
-          </aside>
+        {/* Контент редактора на всю ширину (внешние котировки убраны). */}
+        <div>
           <div className="min-w-0 space-y-5">
 
         {/* Office tabs (visible only in list view) */}

@@ -35,7 +35,7 @@ export default function RatesEditorDrawer({ open, onClose }) {
 
   return (
     <div
-      className={`absolute inset-0 overflow-hidden z-30 ${open ? "" : "pointer-events-none"}`}
+      className={`fixed left-0 right-0 top-[56px] bottom-0 z-40 overflow-hidden ${open ? "" : "pointer-events-none"}`}
       aria-hidden={!open}
     >
       <div

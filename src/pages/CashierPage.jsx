@@ -465,7 +465,7 @@ export default function CashierPage({
               />
             </aside>
 
-            <div className={`min-w-0 space-y-4 relative ${isRates ? "lg:min-h-[calc(100vh-92px)]" : ""}`}>
+            <div className="min-w-0 space-y-4 relative">
               <Balances
                 currentOffice={currentOffice}
                 onOfficeChange={onOfficeChange}
