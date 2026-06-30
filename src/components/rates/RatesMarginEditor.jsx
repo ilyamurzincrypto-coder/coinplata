@@ -106,11 +106,11 @@ export default function RatesMarginEditor({
 
   // Грид НАЛ↔TRY: пара | рынок | +марж.пок | −марж.прод | покупка | продажа
   const AUTO_GRID = { gridTemplateColumns: "1fr 96px 78px 78px 76px 76px" };
-  // Грид USDT/КРОСС: пара | покупка | продажа
-  const TWO_GRID = { gridTemplateColumns: "1fr 1fr 1fr" };
+  // Грид USDT/КРОСС: пара | покупка | продажа (значения справа, рядом)
+  const TWO_GRID = { gridTemplateColumns: "1fr 130px 130px" };
 
   return (
-    <div className="text-[#15191d]">
+    <div className="text-[#15191d] max-w-[820px]">
       {/* ── НАЛ ↔ TRY ── */}
       {buckets.auto.length > 0 && (
         <>
