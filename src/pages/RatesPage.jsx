@@ -52,6 +52,7 @@ import RatesImportModal from "../components/RatesImportModal.jsx";
 import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
 import RatesTable from "../components/rates/RatesTable.jsx";
 import RatesMarginEditor from "../components/rates/RatesMarginEditor.jsx";
+import OfficeRatesMatrix from "../components/rates/OfficeRatesMatrix.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
@@ -134,6 +135,7 @@ export default function RatesPage({ onBack, drawer = false }) {
   // Full-page views: "list" | "addPair" | "addCurrency" | "addChannel" | "coverage"
   const [view, setView] = useState("list");
   const [importOpen, setImportOpen] = useState(false);
+  const [importSource, setImportSource] = useState("file"); // "file" | "text"
   const [addPairPreset, setAddPairPreset] = useState({ from: "", to: "" });
 
   const gotoAddPair = (from = "", to = "") => {
@@ -141,7 +143,8 @@ export default function RatesPage({ onBack, drawer = false }) {
     setView("addPair");
   };
 
-  const handleOpenImport = () => {
+  const handleOpenImport = (src = "file") => {
+    setImportSource(src === "text" ? "text" : "file");
     setImportOpen(true);
   };
 
@@ -346,6 +349,33 @@ export default function RatesPage({ onBack, drawer = false }) {
     }
   };
 
+  // Матрица офисов: правка клетки → office override (USDT-якорь). rate = введённое
+  // значение (spread офиса сохраняем). rpcUpsertOfficeRate — как в handleSetRate.
+  const saveOfficeRate = async (officeId, from, to, rate) => {
+    const n = Number(rate);
+    if (!isSupabaseConfigured || !Number.isFinite(n) || n <= 0) return;
+    const existing = getOfficeOverride(officeId, from, to);
+    const spread = Number(existing?.spreadPercent ?? 0);
+    const res = await withToast(
+      () => rpcUpsertOfficeRate({ officeId, from, to, rate: n, spreadPercent: spread }),
+      { success: null, errorPrefix: "Office rate update failed" }
+    );
+    if (res.ok) {
+      applyOfficeOverrideLocal?.(officeId, from, to, {
+        baseRate: n,
+        spreadPercent: spread,
+        rate: n * (1 + spread / 100),
+        updatedAt: new Date().toISOString(),
+      });
+      logAudit({
+        action: "update",
+        entity: "office_rate",
+        entityId: `${officeId}:${rateKey(from, to)}`,
+        summary: `office ${from}→${to} = ${n}`,
+      });
+    }
+  };
+
   // Accessors модели «рынок + маржа» (global) для мок-редактора.
   const findGP = React.useCallback(
     (from, to) =>
@@ -501,11 +531,11 @@ export default function RatesPage({ onBack, drawer = false }) {
                 {t("export_csv")}
               </button>
               <button
-                onClick={handleOpenImport}
+                onClick={() => handleOpenImport("text")}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-caption font-bold text-white bg-[#0c9c6b] hover:bg-[#0b8c60]"
               >
                 <Upload className="w-3.5 h-3.5" />
-                {t("cov_import_xlsx") || "Import xlsx"}
+                Вставить курсы
               </button>
             </div>
           )}
@@ -524,8 +554,8 @@ export default function RatesPage({ onBack, drawer = false }) {
         <div>
           <div className="min-w-0 space-y-5">
 
-        {/* Office tabs (visible only in list view) */}
-        {view === "list" && (
+        {/* Office tabs убраны — матрица показывает все офисы сразу */}
+        {false && (
           <div className="flex items-center gap-1 overflow-x-auto border-b border-[rgba(18,22,26,0.08)] pb-1.5">
             <button
               onClick={() => setActiveOffice("all")}
@@ -569,8 +599,8 @@ export default function RatesPage({ onBack, drawer = false }) {
         {/* List view */}
         {view === "list" && (
           <>
-            {/* Scope notice — редактирование override для конкретного офиса */}
-            {activeOffice !== "all" && (
+            {/* Scope notice убран (матрица, не табы) */}
+            {false && (
               <div className="border border-[rgba(18,22,26,0.12)] rounded-[10px] px-4 py-3 text-caption text-[#6a717a] flex items-start gap-2">
                 <Building2 className="w-4 h-4 shrink-0 mt-0.5 text-[#0c9c6b]" />
                 <div>
@@ -613,10 +643,8 @@ export default function RatesPage({ onBack, drawer = false }) {
               </div>
             </div>
 
-            {/* Bulk spread оставлен только для офисных табов (в мок-редакторе не нужен) */}
-            {activeOffice !== "all" && isSupabaseConfigured && (
-              <BulkSpreadControl onApply={handleBulkSpread} />
-            )}
+            {/* Bulk spread убран (матрица) */}
+            {false && <BulkSpreadControl onApply={handleBulkSpread} />}
 
             {/* Единая табличная сетка для всех пар.
                 Сортировка: ★ Избранные сверху, дальше по FROM → TO
@@ -624,38 +652,13 @@ export default function RatesPage({ onBack, drawer = false }) {
                 строке. OFC-чип в строках с office override (клик = вернуть
                 на global). × delete показывается на hover (только owner/admin
                 в global-tab — публичные пары удаляются глобально). */}
-            {activeOffice === "all" ? (
-              <RatesMarginEditor
-                pairs={existingPairs}
-                getMarketRate={mGetMarket}
-                getBuyMargin={mGetBuy}
-                getSellMargin={mGetSell}
-                getRate={mGetRate}
-                onSetMargins={handleSetMargins}
-                onOpenImport={handleOpenImport}
-              />
-            ) : (
-              <RatesPageEditTable
-                activeOffice={activeOffice}
-                activeOffices={activeOffices}
-                existingPairs={existingPairs}
-                allPairs={allPairs}
-                channels={channels}
-                groups={groups}
-                getRate={getRate}
-                getOfficeOverride={getOfficeOverride}
-                isEditorFav={isEditorFav}
-                editorFavorites={editorFavorites}
-                editorFavKeys={editorFavKeys}
-                toggleEditorFav={toggleEditorFav}
-                handleSetRate={handleSetRate}
-                handleSetMargins={handleSetMargins}
-                handleResetOverride={handleResetOverride}
-                handleDeletePair={handleDeletePair}
-                canDelete={isOwner || isAdmin}
-                t={t}
-              />
-            )}
+            <OfficeRatesMatrix
+              offices={activeOffices}
+              pairs={existingPairs}
+              getOverride={getOfficeOverride}
+              onSave={saveOfficeRate}
+              onOpenPaste={() => handleOpenImport("text")}
+            />
 
             {/* Спец-курсы (НЕРЕЗ / СБП) — информационная панель из утреннего
                 импорта. В сделках пока не участвует. */}
@@ -721,7 +724,7 @@ export default function RatesPage({ onBack, drawer = false }) {
       </div>
 
       {importOpen && (
-        <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} />
+        <RatesImportModal open={importOpen} onClose={() => setImportOpen(false)} initialSource={importSource} />
       )}
     </main>
   );
