@@ -82,25 +82,44 @@ export default async function handler(req, res) {
     }
   }
 
-  // 5. Пуш алертов в менеджерский бот (Telegram).
+  // 5. Пуш алертов в менеджерский бот (@coinpoint_manager_bot).
   let notified = 0
   for (const a of alerts) {
-    const arrow = a.chgPct >= 0 ? '▲' : '▼'
-    const sign = a.chgPct > 0 ? '+' : ''
-    const disp = a.pair.replace('_', '/')
-    const txt =
-      `⚠️ <b>${disp}</b> ${arrow} ${sign}${a.chgPct}%\n` +
-      `Рынок Rapira: ${a.from} → ${a.to}\n` +
-      `Возможно нужно расширить спред.`
-    if (await sendTelegram(txt)) notified++
+    if (await notifyBot(a)) notified++
   }
 
   return res.status(200).json({ ok: true, inserted: rows.length, alerts, notified })
 }
 
-// Отправка алерта в менеджерский бот через Telegram Bot API.
-// ENV: TELEGRAM_BOT_TOKEN, TELEGRAM_ALERT_CHAT_ID. Без них — тихо пропускаем.
-async function sendTelegram(text) {
+// Алерт в менеджерский бот. Приоритет — через coinpoint-мост (бот живёт там,
+// токен НЕ в кассе): POST /api/internal/cashdesk/alert с x-cashdesk-secret.
+// Fallback — прямой Telegram, если задан TELEGRAM_BOT_TOKEN + TELEGRAM_ALERT_CHAT_ID.
+async function notifyBot(a) {
+  const arrow = a.chgPct >= 0 ? '▲' : '▼'
+  const sign = a.chgPct > 0 ? '+' : ''
+  const disp = a.pair.replace('_', '/')
+  const text =
+    `⚠️ <b>${disp}</b> ${arrow} ${sign}${a.chgPct}%\n` +
+    `Рынок Rapira: ${a.from} → ${a.to}\n` +
+    `Возможно нужно расширить спред.`
+
+  // 1) через coinpoint (там бот)
+  const base = process.env.COINPOINT_API_URL
+  const secret = process.env.CASHDESK_API_SECRET
+  if (base && secret) {
+    try {
+      const r = await fetch(`${base}/api/internal/cashdesk/alert`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-cashdesk-secret': secret },
+        body: JSON.stringify({ kind: 'rate_volatility', text, pair: a.pair, chg_pct: a.chgPct, from: a.from, to: a.to }),
+      })
+      if (r.ok) return true
+    } catch {
+      /* падаем на fallback */
+    }
+  }
+
+  // 2) fallback — прямой Telegram
   const token = process.env.TELEGRAM_BOT_TOKEN
   const chat = process.env.TELEGRAM_ALERT_CHAT_ID
   if (!token || !chat) return false
