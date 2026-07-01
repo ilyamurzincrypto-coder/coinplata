@@ -93,7 +93,9 @@ function Cell({ ovr, onSave }) {
   );
 }
 
-export default function OfficeRatesMatrix({ offices, pairs, getOverride, onSave, onOpenPaste }) {
+export default function OfficeRatesMatrix({ offices, pairs, getOverride, onSave, onOpenPaste, rapiraMid, onApplyAuto }) {
+  const [applying, setApplying] = useState(false);
+  const rMid = Number(rapiraMid?.USDT_RUB);
   // Колонки: офисы, сгруппированные по странам (+ «Другое» для несопоставленных).
   const groups = useMemo(() => {
     const used = new Set();
@@ -132,9 +134,25 @@ export default function OfficeRatesMatrix({ offices, pairs, getOverride, onSave,
 
   return (
     <div className="min-w-0 overflow-x-auto">
-      <div className="mb-2 text-[11.5px] text-[#6a717a] leading-snug max-w-[720px]">
-        Задай курс <b className="text-[#15191d]">USDT ↔ валюта</b> для каждого офиса. Нал↔нал направления касса считает
-        сама через USDT — портянка не нужна. Тап по клетке — ввод; «—» = не задан.
+      <div className="mb-2 flex items-start justify-between gap-4 max-w-[900px]">
+        <div className="text-[11.5px] text-[#6a717a] leading-snug">
+          Задай курс <b className="text-[#15191d]">USDT ↔ валюта</b> для каждого офиса. Нал↔нал направления касса считает
+          сама через USDT — портянка не нужна. Тап по клетке — ввод; «—» = не задан.
+        </div>
+        {rMid > 0 && onApplyAuto && (
+          <button
+            type="button"
+            disabled={applying}
+            onClick={async () => {
+              setApplying(true);
+              try { await onApplyAuto(); } finally { setApplying(false); }
+            }}
+            className="shrink-0 inline-flex items-center gap-1.5 h-8 px-3 rounded-[8px] text-[11.5px] font-bold text-white bg-[#0c9c6b] hover:bg-[#0b8c60] disabled:opacity-60 transition-colors"
+            title={`Rapira USDT/RUB ${ru(rMid)} · применить ± дефолтный спред к RU-офисам`}
+          >
+            {applying ? "Применяю…" : `Авто по Rapira · ${ru(rMid, 2)}`}
+          </button>
+        )}
       </div>
 
       <div className="inline-block min-w-full align-top">

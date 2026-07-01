@@ -56,6 +56,8 @@ import OfficeRatesMatrix from "../components/rates/OfficeRatesMatrix.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
+import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
+import { officeCityCode, spreadFor, rapiraRateFor } from "../lib/rapiraSpreads.js";
 
 export default function RatesPage({ onBack, drawer = false }) {
   const { t } = useTranslation();
@@ -136,6 +138,20 @@ export default function RatesPage({ onBack, drawer = false }) {
   const [view, setView] = useState("list");
   // Внутри list: "matrix" (курсы по офисам) | "settings" (все пары + авто/спреды)
   const [listMode, setListMode] = useState("matrix");
+  // Свежий Rapira mid по паре (для авто-курса). { USDT_RUB: 81.04, ... }
+  const [rapiraMid, setRapiraMid] = useState({});
+  React.useEffect(() => {
+    let alive = true;
+    loadExternalRatesLatest()
+      .then((rows) => {
+        if (!alive) return;
+        const m = {};
+        (rows || []).filter((r) => r.source === "rapira").forEach((r) => { m[r.pair] = r.mid; });
+        setRapiraMid(m);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
   const [importOpen, setImportOpen] = useState(false);
   const [importSource, setImportSource] = useState("file"); // "file" | "text"
   const [addPairPreset, setAddPairPreset] = useState({ from: "", to: "" });
@@ -375,6 +391,20 @@ export default function RatesPage({ onBack, drawer = false }) {
         entityId: `${officeId}:${rateKey(from, to)}`,
         summary: `office ${from}→${to} = ${n}`,
       });
+    }
+  };
+
+  // Применить авто-курс Rapira ± дефолтный спред к RU-офисам (USDT↔RUB).
+  const applyRapiraAuto = async () => {
+    const mid = Number(rapiraMid.USDT_RUB);
+    if (!(mid > 0)) return;
+    const ru = (activeOffices || []).filter((o) => ["MSK", "SPB"].includes(officeCityCode(o)));
+    for (const o of ru) {
+      const s = spreadFor(o, "USDT_RUB");
+      const buy = rapiraRateFor(mid, s, "USDT", "RUB"); // USDT→RUB
+      const sell = rapiraRateFor(mid, s, "RUB", "USDT"); // RUB→USDT (сторно)
+      if (buy) await saveOfficeRate(o.id, "USDT", "RUB", buy);
+      if (sell) await saveOfficeRate(o.id, "RUB", "USDT", sell);
     }
   };
 
@@ -672,6 +702,8 @@ export default function RatesPage({ onBack, drawer = false }) {
                 getOverride={getOfficeOverride}
                 onSave={saveOfficeRate}
                 onOpenPaste={() => handleOpenImport("text")}
+                rapiraMid={rapiraMid}
+                onApplyAuto={applyRapiraAuto}
               />
             ) : (
               <>
