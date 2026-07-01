@@ -27,7 +27,7 @@ export default async function handler(req, res) {
   }
   const base = process.env.COINPOINT_API_URL
   const secret = process.env.CASHDESK_API_SECRET
-  const supaUrl = process.env.SUPABASE_URL
+  const supaUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!base || !secret || !supaUrl || !supaKey) {
     return res.status(503).json({ error: 'bridge env not configured' })
