@@ -59,38 +59,59 @@ export default async function handler(req, res) {
   }
   if (!rows.length) return res.status(200).json({ ok: true, inserted: 0, note: 'no matching pairs' })
 
-  // 3. Волатильность: сравниваем с последним снимком по паре.
-  const alerts = []
-  for (const row of rows) {
-    const prev = await supa
-      .from('external_rates')
-      .select('mid, fetched_at')
-      .eq('source', 'rapira')
-      .eq('pair', row.pair)
-      .order('fetched_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    const prevMid = numOr(prev.data?.mid)
-    if (prevMid && prevMid > 0) {
-      const chgPct = ((row.mid - prevMid) / prevMid) * 100
-      if (Math.abs(chgPct) >= VOL_PCT) {
-        alerts.push({
-          pair: row.pair,
-          from: prevMid,
-          to: row.mid,
-          chgPct: Number(chgPct.toFixed(3)),
-          since: prev.data?.fetched_at || null,
-        })
-      }
-    }
-  }
-
-  // 4. Пишем снимок.
+  // 3. Пишем снимок.
   const { error } = await supa.from('external_rates').insert(rows)
   if (error) return res.status(500).json({ error: 'insert failed', detail: error.message })
 
-  // TODO(этап алертов): при alerts.length — POST в менеджерский бот
-  // (нужны TELEGRAM_BOT_TOKEN + TELEGRAM_ALERT_CHAT_ID) с текстом
-  // «USDT/RUB {chgPct}% — проверь спред».
-  return res.status(200).json({ ok: true, inserted: rows.length, pairs: rows.map((r) => r.pair), alerts })
+  // 4. Волатильность от РЕФЕРЕНСА (rapira_alert_state). |Δ| ≥ порога → алерт и
+  //    перезадаём reference текущим (антиспам без таймера: следующий алерт —
+  //    только после нового движения на порог от новой точки).
+  const nowIso = new Date().toISOString()
+  const alerts = []
+  for (const row of rows) {
+    const st = await supa.from('rapira_alert_state').select('ref_mid, ref_at').eq('pair', row.pair).maybeSingle()
+    const ref = numOr(st.data?.ref_mid)
+    if (!ref || ref <= 0) {
+      await supa.from('rapira_alert_state').upsert({ pair: row.pair, ref_mid: row.mid, ref_at: nowIso, updated_at: nowIso })
+      continue
+    }
+    const chgPct = ((row.mid - ref) / ref) * 100
+    if (Math.abs(chgPct) >= VOL_PCT) {
+      alerts.push({ pair: row.pair, from: ref, to: row.mid, chgPct: Number(chgPct.toFixed(2)), since: st.data?.ref_at || null })
+      await supa.from('rapira_alert_state').upsert({ pair: row.pair, ref_mid: row.mid, ref_at: nowIso, updated_at: nowIso })
+    }
+  }
+
+  // 5. Пуш алертов в менеджерский бот (Telegram).
+  let notified = 0
+  for (const a of alerts) {
+    const arrow = a.chgPct >= 0 ? '▲' : '▼'
+    const sign = a.chgPct > 0 ? '+' : ''
+    const disp = a.pair.replace('_', '/')
+    const txt =
+      `⚠️ <b>${disp}</b> ${arrow} ${sign}${a.chgPct}%\n` +
+      `Рынок Rapira: ${a.from} → ${a.to}\n` +
+      `Возможно нужно расширить спред.`
+    if (await sendTelegram(txt)) notified++
+  }
+
+  return res.status(200).json({ ok: true, inserted: rows.length, alerts, notified })
+}
+
+// Отправка алерта в менеджерский бот через Telegram Bot API.
+// ENV: TELEGRAM_BOT_TOKEN, TELEGRAM_ALERT_CHAT_ID. Без них — тихо пропускаем.
+async function sendTelegram(text) {
+  const token = process.env.TELEGRAM_BOT_TOKEN
+  const chat = process.env.TELEGRAM_ALERT_CHAT_ID
+  if (!token || !chat) return false
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    })
+    return r.ok
+  } catch {
+    return false
+  }
 }

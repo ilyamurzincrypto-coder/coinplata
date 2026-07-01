@@ -8,8 +8,8 @@
 // Пока данные есть только по USDT↔RUB; для остальных пар — _default.
 
 export const RAPIRA_SPREADS = {
-  MSK: { USDT_RUB: 0.009 },
-  SPB: { USDT_RUB: 0.012 },
+  MSK: { USDT_RUB: 0.0095 }, // ±0,95% → итог 1,9% (как факт)
+  SPB: { USDT_RUB: 0.012 },  // ±1,2% → итог 2,4%
   _default: 0.011,
 };
 
