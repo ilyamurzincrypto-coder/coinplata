@@ -45,8 +45,8 @@ describe("resolveCityOffices", () => {
   it("IST → Стамбул", () => {
     expect(resolveCityOffices("IST", OFFICES)).toEqual(["o-ist"]);
   });
-  it("MSK → только Moscow, не «Москва Вася»", () => {
-    expect(resolveCityOffices("MSK", OFFICES)).toEqual(["o-msk"]);
+  it("MSK → все московские офисы (Moscow + «Москва Вася»)", () => {
+    expect(resolveCityOffices("MSK", OFFICES).sort()).toEqual(["o-msk", "o-msk2"]);
   });
   it("SPB → St.pt", () => {
     expect(resolveCityOffices("SPB", OFFICES)).toEqual(["o-spb"]);
@@ -145,7 +145,7 @@ USDT -> RUB  75,75`);
     expect(tryUpd.map((u) => u.officeId).sort()).toEqual(["o-mark", "o-terra"]);
     expect(tryUpd[0]).toMatchObject({ from: "USDT", to: "TRY", rate: 45.5 });
     const rubUpd = updates.filter((u) => u.to === "RUB");
-    expect(rubUpd.map((u) => u.officeId)).toEqual(["o-msk"]);
+    expect(rubUpd.map((u) => u.officeId).sort()).toEqual(["o-msk", "o-msk2"]);
   });
   it("город без офиса в списке → skipped", () => {
     const parsed = parseMorningRates(`MSK
@@ -250,9 +250,9 @@ describe("интеграция — полный документ", () => {
     // MSK/SPB теперь резолвятся (офисы есть в списке)
     expect(updates.some((u) => u.officeId === "o-msk")).toBe(true);
     expect(updates.some((u) => u.officeId === "o-spb")).toBe(true);
-    // «Москва Вася» (o-msk2) не должна получать MSK-курсы
-    expect(updates.some((u) => u.officeId === "o-msk2")).toBe(false);
-    const known = ["o-mark", "o-terra", "o-ist", "o-msk", "o-spb"];
+    // «Москва Вася» (o-msk2) ТЕПЕРЬ получает MSK-курсы (активный мск-офис)
+    expect(updates.some((u) => u.officeId === "o-msk2")).toBe(true);
+    const known = ["o-mark", "o-terra", "o-ist", "o-msk", "o-msk2", "o-spb"];
     expect(updates.every((u) => known.includes(u.officeId))).toBe(true);
   });
 });

@@ -8,9 +8,10 @@ export const KNOWN_CITIES = ["ANT", "IST", "MSK", "SPB"];
 export const CITY_OFFICE_MATCHERS = {
   ANT: (o) => /antal/i.test(`${o.city || ""} ${o.name || ""}`),
   IST: (o) => /istanbul|стамбул/i.test(`${o.city || ""} ${o.name || ""}`),
-  // только «Moscow» — исключаем «Москва Вася» (city «Москва»)
-  MSK: (o) => `${o.city || ""}`.trim().toLowerCase() === "moscow" || `${o.name || ""}`.trim().toLowerCase() === "moscow",
-  SPB: (o) => /st\.?\s*pt|spb|peterburg|petersburg|питер|спб/i.test(`${o.city || ""} ${o.name || ""}`),
+  // MSK → любой московский офис: «Москва Вася» (city «Москва») И «Moscow».
+  // Раньше требовалось ровно «moscow» и активная «Москва Вася» пролетала мимо.
+  MSK: (o) => /москв|moscow/i.test(`${o.city || ""} ${o.name || ""}`),
+  SPB: (o) => /st\.?\s*pt|spb|peterburg|petersburg|питер|санкт|спб/i.test(`${o.city || ""} ${o.name || ""}`),
 };
 
 // resolveCityOffices(city, offices) -> [officeId,...]

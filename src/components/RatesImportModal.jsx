@@ -208,7 +208,9 @@ export default function RatesImportModal({ open, onClose, initialSource }) {
   // --------- Text import (утренний документ) ---------
   const handleParseText = () => {
     const parsed = parseMorningRates(bulkText);
-    const { updates, skipped } = buildMorningUpdates(parsed, kindOf, offices);
+    // Только активные офисы — иначе MSK/SPB писали бы в закрытые «Moscow»/«St.pt».
+    const activeOffices = (offices || []).filter((o) => o && o.active !== false);
+    const { updates, skipped } = buildMorningUpdates(parsed, kindOf, activeOffices);
     setTextParsed({ updates, skipped, special: parsed.special });
     setStep(2);
   };
