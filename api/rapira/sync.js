@@ -24,6 +24,14 @@ export default async function handler(req, res) {
   if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'unauthorized' })
   }
+
+  // Тест-режим: /api/rapira/sync?test=1 — шлёт тестовый алерт в бот (проверка
+  // пайпа касса→coinpoint→@coinpoint_manager_bot) без ожидания реальной волатильности.
+  if (req.query?.test === '1' || req.query?.test === 'true') {
+    const ok = await notifyBot({ pair: 'USDT_RUB', from: 81.04, to: 82.5, chgPct: 1.8 })
+    return res.status(200).json({ test: true, notified: ok })
+  }
+
   const supaUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!supaUrl || !supaKey) return res.status(503).json({ error: 'supabase env not configured' })
