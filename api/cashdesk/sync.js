@@ -63,7 +63,13 @@ export default async function handler(req, res) {
           status: mapStatus(o.status),
           meeting_at: o.meeting_at,
         }
-        const up = await supa.from('manager_orders').upsert(row, { onConflict: 'source_order_id' })
+        // Ручной upsert: ON CONFLICT не матчит частичный unique-индекс
+        // (manager_orders_source_order_id_uq WHERE ... is not null) → 42P10.
+        // Апдейтим только coinpoint-поля; локальные кассы (arrived_at, deal_id) НЕ трогаем.
+        const ex = await supa.from('manager_orders').select('id').eq('source_order_id', o.id).maybeSingle()
+        const up = ex.data
+          ? await supa.from('manager_orders').update(row).eq('id', ex.data.id)
+          : await supa.from('manager_orders').insert(row)
         if (!up.error) upserts++
         else console.warn(`[cashdesk-sync] upsert #${o.id} failed:`, up.error.message)
       }
