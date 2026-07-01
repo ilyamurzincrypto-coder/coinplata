@@ -104,13 +104,14 @@ export default function RatesMarginEditor({
 
   const set = (from, to, patch) => onSetMargins?.(from, to, patch);
 
-  // Грид НАЛ↔TRY: пара | рынок | +марж.пок | −марж.прод | покупка | продажа
-  const AUTO_GRID = { gridTemplateColumns: "1fr 96px 78px 78px 76px 76px" };
-  // Грид USDT/КРОСС: пара | покупка | продажа (значения справа, рядом)
-  const TWO_GRID = { gridTemplateColumns: "1fr 130px 130px" };
+  // Грид НАЛ↔TRY: пара (фикс) | рынок | +марж.пок | −марж.прод | покупка | продажа.
+  // Без 1fr на паре — значения пакуются сразу за названием, а не у правого края.
+  const AUTO_GRID = { gridTemplateColumns: "104px 92px 76px 76px 78px 78px" };
+  // Грид USDT/КРОСС: пара (фикс) | покупка | продажа
+  const TWO_GRID = { gridTemplateColumns: "104px 120px 120px" };
 
   return (
-    <div className="text-[#15191d] max-w-[820px]">
+    <div className="text-[#15191d] max-w-[560px]">
       {/* ── НАЛ ↔ TRY ── */}
       {buckets.auto.length > 0 && (
         <>

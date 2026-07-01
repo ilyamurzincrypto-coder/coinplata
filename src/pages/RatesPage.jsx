@@ -586,16 +586,8 @@ export default function RatesPage({ onBack, drawer = false }) {
               </div>
             )}
 
-            {/* Counts + action buttons */}
-            <div className="flex items-center justify-between flex-wrap gap-2 px-1 py-2 border-b border-[rgba(18,22,26,0.08)]">
-              <div className="text-caption text-ink-soft tabular-nums">
-                <span className="font-bold text-ink">{currencies.length}</span>{" "}
-                {t("rates_currencies_count") || "currencies"} ·{" "}
-                <span className="font-bold text-ink">{channels.length}</span>{" "}
-                {t("rates_channels_count") || "channels"} ·{" "}
-                <span className="font-bold text-ink">{existingPairs.length}</span>{" "}
-                {t("rates_pairs_count") || "pairs"}
-              </div>
+            {/* Action buttons (счётчики убраны) */}
+            <div className="flex items-center justify-end flex-wrap gap-2 px-1 py-2">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setView("addCurrency")}
@@ -621,11 +613,8 @@ export default function RatesPage({ onBack, drawer = false }) {
               </div>
             </div>
 
-            {/* Bulk spread — выставить spread % на все default-пары разом.
-                Только в "all" tab (bulk spread = global концепт, у офисных
-                override'ов спред не bulk-овый) и только для тех кто может
-                редактировать (страница уже это гейтит). */}
-            {activeOffice === "all" && isSupabaseConfigured && (
+            {/* Bulk spread оставлен только для офисных табов (в мок-редакторе не нужен) */}
+            {activeOffice !== "all" && isSupabaseConfigured && (
               <BulkSpreadControl onApply={handleBulkSpread} />
             )}
 
