@@ -503,16 +503,18 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           <Header />
           <tbody>
             {/* ── Заявки (pending) ── */}
-            {ordersView.map((o) => {
+            {ordersView.map((o, oi) => {
               const zbg = "bg-[rgba(224,176,74,.07)] group-hover:bg-[rgba(224,176,74,.11)]";
               const stage = orderStage(o);
               return (
                 <tr key={`ord_${o.id}`} className="group">
                   <td
-                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR}`}
+                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
                     style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
                     title={`Статус: ${stage.label}`}
-                  />
+                  >
+                    {oi + 1}
+                  </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
                     <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
                     <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
