@@ -1,22 +1,27 @@
 // src/components/cashier/ledger/DealsLedger.jsx
-// Зона C — «Сделки за день». Широкая таблица: Контрагент | ПРИХОД [валюты] |
-// Курс | РАСХОД [валюты]. Заполненная валютная ячейка — зелёная (как в их Excel).
-// Снизу инлайн-строка: печатаешь сумму прямо в валютную ячейку → Enter/blur →
-// create_deal (no-false-green: зелёнка только после подтверждения БД). Валютные
-// колонки — динамически из справочника валют. Без колонки прибыли и без строки
-// оборотов (убрано намеренно). Realtime на deals/deal_legs.
+// Зона C — «Сделки за день», компактный блоттер (по эталону deals-ledger.html).
+// Колонки: № | Дата·время | Контрагент | Приход (сумма+валюта) | Курс |
+//          Расход (сумма+валюта) | Статус.
+// Заявки (manager_orders, pending) — амбер-строки в секции «Заявки · N ожидают»
+// над секцией «Сделки»; «Принять» = onOrderToDeal (форма «Новая сделка»).
+// Клиентские сортировка (по заголовкам + по коду валюты) и поиск — по
+// загруженным строкам (день грузится целиком, пагинации нет).
+//
+// СОЗДАНИЕ сделок больше НЕ здесь — через кнопку «Новая сделка» (takeover-форма).
+// Данные/поля/расчёты/приём заявок не менялись — только презентация + сорт/поиск.
+//
+// ПРОБЕЛЫ (данных в ридере нет — по ТЗ не фабрикуем):
+//   • Профит на сделку не считается (аудит: заглушка 0.01) → колонка «Профит» и
+//     P&L в подвале СКРЫТЫ. Бэклог: расчёт профита на бэке.
+//   • Человекочитаемого № сделки нет (только uuid) → показываем порядковый (по
+//     хронологии загрузки, стабилен в рамках дня). Бэклог: настоящий № на бэке.
+//   • Мульти-OUT (outs[] с несколькими валютами) → показываем крупнейшую ногу +
+//     бейдж «＋N» (полный сплит виден по наведению).
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase.js";
 import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
 import { useAccounts } from "../../../store/accounts.jsx";
-import { useOffices } from "../../../store/offices.jsx";
-import { useRates } from "../../../store/rates.jsx";
-import { convert } from "../../../utils/convert.js";
-import { createDeal } from "../../../lib/dealOperations.js";
-import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "../../balances/currencyMeta.js";
-import CounterpartyPicker from "./CounterpartyPicker.jsx";
-import DealTimeField from "./DealTimeField.jsx";
 import {
   rpcReverseTransactionV2,
   rpcCompleteDealLegV2,
@@ -25,107 +30,90 @@ import {
   rpcVoidDeal,
 } from "../../../lib/newLedger.js";
 import { resolveAccountCode } from "../../../lib/newLedgerAdapter.js";
+import { ccyMeta, fmtRu } from "../../balances/currencyMeta.js";
 import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
-  createOrder,
   setArrived,
   cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
-import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2, CalendarClock, PlayCircle } from "lucide-react";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
-import DeferredDealModal from "./DeferredDealModal.jsx";
+import { CheckCircle2, CircleDashed, Eye, Trash2, PlayCircle, Search } from "lucide-react";
 
-function fmtDealTime(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const p2 = (n) => String(n).padStart(2, "0");
-  return `${p2(d.getHours())}:${p2(d.getMinutes())}`;
-}
-
-function fmtDue(s) {
-  if (!s) return "";
-  const m = String(s).match(/(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return `${m[3]}.${m[2]}`;
-  const d = new Date(s);
-  return Number.isNaN(d.getTime()) ? "" : `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
+// ── helpers ──────────────────────────────────────────────────────────
 function todayStartIso() {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
-
-function parseRu(v) {
-  const n = Number(String(v ?? "").replace(/\s/g, "").replace(",", "."));
-  return Number.isFinite(n) ? n : 0;
+function fmtTime(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function fmtDue(s) {
+  if (!s) return "";
+  const d = new Date(s);
+  return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function Amt({ value, ccy }) {
-  const v = Number(value) || 0;
-  const abs = Math.abs(v);
-  const full = fmtRu(value, ccyMeta(ccy).dp);
-  // От миллиона — сокращаем (млн/млрд), чтобы влезало ОДНИМ шрифтом. Точное — в тултипе.
-  if (abs >= 1e6) {
-    const div = abs >= 1e9 ? 1e9 : 1e6;
-    const suf = abs >= 1e9 ? "млрд" : "млн";
-    const n = v / div;
-    const dp = abs / div < 10 ? 2 : abs / div < 100 ? 1 : 0;
-    const num = n.toLocaleString("ru-RU", { maximumFractionDigits: dp });
+// Число с приглушёнными хвостовыми нулями после запятой (как в эталоне).
+function Money({ amount, ccy }) {
+  const dp = ccyMeta(ccy)?.dp ?? 2;
+  const s = fmtRu(amount, dp);
+  const m = s.match(/^(.*?)(,\d*?)(0+)$/);
+  if (m) {
     return (
-      <span title={`${full} ${ccy}`}>
-        {num}
-        <span className="opacity-60 ml-[2px] text-[0.8em]">{suf}</span>
-      </span>
+      <>
+        {m[1] + m[2]}
+        <span className="text-[color:var(--faint2)]">{m[3]}</span>
+      </>
     );
   }
-  const { int, dec } = splitParts(full);
-  // Прячем нулевые десятичные («12 000,00» → «12 000»), значащие оставляем («,50»).
-  const showDec = dec && !/^,0*$/.test(dec);
-  return (
-    <span title={`${full} ${ccy}`}>
-      {int}
-      {showDec && <span className="opacity-[0.42]">{dec}</span>}
-    </span>
-  );
+  return <>{s}</>;
 }
 
-function fmtAmt(n, ccy) {
-  const dp = ccyMeta(ccy)?.dp ?? 2;
-  return Number(n).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: dp });
+// Статус-мета сделки: текст + вес для сортировки.
+function dealStatus(d) {
+  if (d.deferred) {
+    if (d.deferred.open) {
+      return {
+        rank: 0,
+        text: `${d.deferred.side === "in" ? "клиент должен" : "мы должны"} ${fmtRu(d.deferred.amount)} ${d.deferred.currency}`,
+        cls: "text-[color:var(--amber)] font-semibold",
+      };
+    }
+    return { rank: 3, text: "долг закрыт", cls: "text-[color:var(--pos)] font-semibold" };
+  }
+  if (!d.confirmed) return { rank: 1, text: "не подтв.", cls: "text-[color:var(--faint)]" };
+  return { rank: 2, text: "проведена", cls: "text-[color:var(--faint)]" };
 }
-function fmtRate(r) {
-  const a = Math.abs(Number(r) || 0);
-  const dp = a >= 100 ? 2 : a >= 1 ? 4 : 6;
-  return Number(r).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: dp });
+
+// primary OUT = крупнейшая нога; total — для сортировки; extra — сколько ещё ног.
+function outSummary(d) {
+  const outs = d.outs || [];
+  if (!outs.length) return { amount: null, ccy: "", total: 0, extra: 0, tip: "" };
+  const sorted = [...outs].sort((a, b) => b.amount - a.amount);
+  const total = outs.reduce((s, o) => s + o.amount, 0);
+  const tip = outs.map((o) => `${fmtRu(o.amount, ccyMeta(o.ccy)?.dp ?? 2)} ${o.ccy}`).join(" + ");
+  return { amount: sorted[0].amount, ccy: sorted[0].ccy, total, extra: outs.length - 1, tip };
 }
+
+const G = "border-[color:var(--grid)]"; // вертикальные/горизонтальные линии — один тон
 
 export default function DealsLedger({ officeId, onOrderToDeal }) {
   const { accounts } = useAccounts();
-  const { getRate } = useRates();
-  const { activeOffices } = useOffices();
-
-  // Наличные → cash-клиент офиса (v2-сделка требует client_id). Совпадение по
-  // первому слову названия офиса: «Mark Antalya» → «Mark Cash».
-  const resolveCashClient = useCallback(async () => {
-    const off = activeOffices.find((o) => o.id === officeId);
-    const token = String(off?.name || "").split(/\s+/)[0];
-    if (!token) return null;
-    const { data } = await supabase
-      .from("clients")
-      .select("id")
-      .ilike("nickname", `${token}%Cash%`)
-      .limit(1);
-    return data?.[0]?.id || null;
-  }, [activeOffices, officeId]);
-  // Тот же набор валют, что и в «Остатках» (а не все активные из справочника).
-  const cols = BAL_COLUMNS;
   const fromIso = useMemo(() => todayStartIso(), []);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
 
   const refetch = useCallback(async () => {
     try {
@@ -173,290 +161,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   }, [refetchOrders]);
   useEffect(() => subscribeOrders(refetchOrders), [refetchOrders]);
 
-  // ── Инлайн-ввод ──
-  const rowRef = useRef(null);
-  // party — объект контрагента из пикера: { kind, clientId?, accountingCode?, name?, contact?, label } | null
-  const [draft, setDraft] = useState({ party: null, at: new Date(), rate: "", rateManual: false, in: {}, out: {}, isReq: false });
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const partyCellRef = useRef(null);
   const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
-  const [deferredOpen, setDeferredOpen] = useState(false); // модалка отложенной сделки
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState("");
 
   const acctFor = useCallback(
     (ccy) => accounts.find((a) => a.active && a.officeId === officeId && a.currency === ccy),
     [accounts, officeId]
   );
 
-  const resetDraft = () => {
-    setDraft({ party: null, at: new Date(), rate: "", rateManual: false, in: {}, out: {}, isReq: false });
-  };
-  const partyContact = (p) => p?.contact || p?.name || p?.label || null;
-
-  const commit = useCallback(async (allowOneLeg = false) => {
-    if (saving) return;
-    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
-    const outCcys = cols.filter((c) => parseRu(draft.out[c]) > 0); // мульти-расход
-    const outCcy = outCcys[0];
-    if (!inCcy || outCcys.length === 0) {
-      // Одна нога (не заявка) + Enter → одноногая сделка-долг: сначала контрагент,
-      // потом направление/дата/коммент в модалке. Пустая строка — просто выходим.
-      if (allowOneLeg && !draft.isReq && (inCcy || outCcys.length > 0)) {
-        if (!draft.party?.clientId) {
-          setErr("Одна нога — это сделка в долг. Выберите контрагента (не «Наличные»).");
-          setPickerOpen(true);
-        } else {
-          setErr("");
-          setDeferredOpen(true);
-        }
-      }
-      return;
-    }
-    setErr("");
-
-    // ── Сохранение как ЗАЯВКА (тоггл «⧖ заявка») — без счетов, без create_deal ──
-    if (draft.isReq) {
-      setSaving(true);
-      try {
-        await createOrder({
-          officeId,
-          kind: "exchange",
-          contact: partyContact(draft.party),
-          clientId: draft.party?.clientId || null,
-          fromCurrency: inCcy,
-          fromAmount: parseRu(draft.in[inCcy]),
-          rate: draft.rate || null,
-          toCurrency: outCcy,
-          toAmount: parseRu(draft.out[outCcy]),
-        });
-        resetDraft();
-        await refetchOrders();
-      } catch (e2) {
-        // eslint-disable-next-line no-console
-        console.warn("[orders] create failed", e2);
-        setErr(e2?.message || "Не удалось сохранить заявку");
-      } finally {
-        setSaving(false);
-      }
-      return;
-    }
-
-    // Сделка проводится сразу (create_deal_v2). Подтверждает бухгалтер у себя
-    // (Казначейство → «Подтвердить»), касса отражает зелёным. Наличные → cash-клиент офиса.
-    // Несколько ног прихода (мульти-вход) и расхода (сплит). Курс из поля —
-    // только при ОДНОЙ ноге с каждой стороны, иначе рыночный по парам.
-    const inCcys = cols.filter((c) => parseRu(draft.in[c]) > 0);
-    const single = inCcys.length === 1 && outCcys.length === 1;
-    const inPayments = [];
-    for (const ic of inCcys) {
-      const ia = acctFor(ic);
-      if (!ia) return setErr(`Нет счёта ${ic} в этом офисе`);
-      inPayments.push({ currency: ic, amount: parseRu(draft.in[ic]), accountId: ia.id });
-    }
-    const outputs = [];
-    for (const oc of outCcys) {
-      const oa = acctFor(oc);
-      if (!oa) return setErr(`Нет счёта ${oc} в этом офисе`);
-      outputs.push({
-        currency: oc,
-        amount: parseRu(draft.out[oc]),
-        accountId: oa.id,
-        rate: single ? parseRu(draft.rate) || undefined : convert(1, inCcys[0], oc, getRate) || undefined,
-      });
-    }
-    let clientId = draft.party?.clientId || null;
-    if (!clientId) {
-      clientId = await resolveCashClient();
-      if (!clientId) return setErr("Нет cash-клиента офиса (напр. «Mark Cash») — выберите контрагента");
-    }
-    setSaving(true);
-    try {
-      await createDeal({
-        officeId,
-        clientId,
-        clientNickname: draft.party?.label || draft.party?.name || "cash",
-        inPayments,
-        effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
-        outputs,
-      });
-      resetDraft();
-      await refetch();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[deals] create failed", e);
-      setErr(e?.message || "Не удалось сохранить сделку");
-    } finally {
-      setSaving(false);
-    }
-  }, [saving, cols, draft, acctFor, officeId, refetch, refetchOrders, resolveCashClient, getRate]);
-
-  // Пикер контрагента: ref-флаг, чтобы blur строки не коммитил при открытии пикера.
-  const pickerOpenRef = useRef(false);
-  const openPicker = () => {
-    pickerOpenRef.current = true;
-    setPickerOpen(true);
-  };
-  const closePicker = () => {
-    pickerOpenRef.current = false;
-    setPickerOpen(false);
-  };
-
-  const onRowBlur = (e) => {
-    // НЕ коммитим, если фокус ушёл в пикер (портал, role=dialog) или пикер открыт.
-    if (pickerOpenRef.current) return;
-    if (e.relatedTarget?.closest?.('[role="dialog"]')) return;
-    if (rowRef.current && !rowRef.current.contains(e.relatedTarget)) commit();
-  };
-  const onKeyDown = (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commit(true); // Enter разрешает одноногую сделку-долг
-    }
-  };
-
-  // ── Авто-калькуляция прихода/курса/расхода ──
-  // Приход (in) — якорь. Клик по ячейке расхода → авто-курс (рыночный) + сумма.
-  // Правка курса → пересчёт расхода. Правка расхода → пересчёт курса (курс менеджера).
-  const inCcysOf = (d) => cols.filter((x) => parseRu(d.in[x]) > 0);
-  const outCcysOf = (d) => cols.filter((x) => parseRu(d.out[x]) > 0);
-  const inLeg = (d) => {
-    const c = inCcysOf(d)[0];
-    return c ? { ccy: c, amt: parseRu(d.in[c]) } : null; // первая нога — база конвертаций
-  };
-  // Суммарная стоимость прихода в валюте ПЕРВОЙ ноги (для мульти-входа/остатка).
-  const totalInVal = (d) => {
-    const base = inLeg(d);
-    if (!base) return null;
-    const amt = cols.reduce((s, c) => {
-      const a = parseRu(d.in[c]);
-      if (a <= 0) return s;
-      return s + (c === base.ccy ? a : convert(a, c, base.ccy, getRate) || 0);
-    }, 0);
-    return { ccy: base.ccy, amt };
-  };
-  // Сумма заполненных расходов, переведённая в валюту inCcy (кроме exceptCcy).
-  const filledOutInIn = (d, inCcy, exceptCcy) =>
-    cols.reduce((sum, c) => {
-      if (c === exceptCcy) return sum;
-      const amt = parseRu(d.out[c]);
-      return amt > 0 ? sum + (convert(amt, c, inCcy, getRate) || 0) : sum;
-    }, 0);
-  const remainingIn = (d) => {
-    const tot = totalInVal(d);
-    if (!tot) return 0;
-    return tot.amt - filledOutInIn(d, tot.ccy, null);
-  };
-  const oneToOne = (d) => inCcysOf(d).length === 1 && outCcysOf(d).length === 1;
-
-  const setIn = (c, v) =>
-    setDraft((d) => {
-      const next = { ...d, in: { ...d.in, [c]: v } }; // мульти-приход: добавляем/правим ногу
-      const inCs = inCcysOf(next);
-      const outCs = outCcysOf(next);
-      const rateN = parseRu(next.rate);
-      // курс правит расход только при ОДНОЙ ноге прихода И ОДНОЙ расхода
-      if (inCs.length === 1 && outCs.length === 1 && rateN > 0) {
-        next.out = { ...next.out, [outCs[0]]: fmtAmt(parseRu(next.in[inCs[0]]) * rateN, outCs[0]) };
-      }
-      return next;
-    });
-
-  // Клик по ячейке расхода (сплит):
-  //  • первая нога — весь приход в эту валюту;
-  //  • есть нераспределённый остаток — досыпаем его в новую валюту;
-  //  • остатка нет (первая нога забрала всё) — делим приход РОВНО между всеми
-  //    ногами расхода (это и есть «двойной аут»: кликнул вторую валюту → сплит).
-  const focusOut = (c) =>
-    setDraft((d) => {
-      const tot = totalInVal(d);
-      if (!tot || tot.amt <= 0) return d;
-      if (parseRu(d.out[c]) > 0) return d; // ячейка уже заполнена — не трогаем
-      const existing = outCcysOf(d);
-
-      // Первая нога расхода — весь приход сюда, показываем курс.
-      if (existing.length === 0) {
-        const outAmt = convert(tot.amt, tot.ccy, c, getRate);
-        if (!outAmt || !Number.isFinite(outAmt)) return d;
-        const next = { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } };
-        if (inCcysOf(next).length === 1) next.rate = fmtRate(outAmt / tot.amt);
-        return next;
-      }
-
-      // Есть нераспределённый остаток → досыпаем его в новую валюту.
-      const remaining = tot.amt - filledOutInIn(d, tot.ccy, c);
-      if (remaining > 1e-9) {
-        const outAmt = convert(remaining, tot.ccy, c, getRate);
-        return outAmt && Number.isFinite(outAmt)
-          ? { ...d, out: { ...d.out, [c]: fmtAmt(outAmt, c) } }
-          : d;
-      }
-
-      // Остатка нет → делим приход поровну между всеми ногами (вкл. новую).
-      const legs = [...existing, c];
-      const share = tot.amt / legs.length;
-      const out = { ...d.out };
-      legs.forEach((lc) => {
-        const v = convert(share, tot.ccy, lc, getRate);
-        if (v && Number.isFinite(v)) out[lc] = fmtAmt(v, lc);
-      });
-      // Несколько ног → единый курс не применим, сбрасываем ручной флаг.
-      return { ...d, out, rate: "", rateManual: false };
-    });
-
-  const setRate = (v) =>
-    setDraft((d) => {
-      // Ручной курс: помечаем, чтобы правка сумм его НЕ пересчитывала (нужно для сплита).
-      const next = { ...d, rate: v, rateManual: !!String(v).trim() };
-      const inCs = inCcysOf(d);
-      const outCs = outCcysOf(d);
-      const rateN = parseRu(v);
-      if (inCs.length === 1 && outCs.length === 1 && rateN > 0) {
-        next.out = { ...next.out, [outCs[0]]: fmtAmt(parseRu(d.in[inCs[0]]) * rateN, outCs[0]) };
-      }
-      return next;
-    });
-
-  const setOut = (c, v) =>
-    setDraft((d) => {
-      const next = { ...d, out: { ...d.out, [c]: v } }; // мульти-расход
-      const inCs = inCcysOf(next);
-      const outCs = outCcysOf(next);
-      const outAmt = parseRu(v);
-      // Курс из суммы выводим ТОЛЬКО если он не задан вручную и одна нога с каждой
-      // стороны. Если курс ручной (сплит) — НЕ трогаем его при правке сумм.
-      if (!d.rateManual && inCs.length === 1 && outCs.length === 1 && outAmt > 0) {
-        next.rate = fmtRate(outAmt / parseRu(next.in[inCs[0]]));
-      }
-      return next;
-    });
-
-  const onSelectParty = (party) => {
-    setDraft((d) => ({ ...d, party }));
-    closePicker();
-    // Если уже введена ОДНА нога и выбрали контрагента — сразу к оформлению долга.
-    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
-    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
-    if (!!inCcy !== !!outCcy && party?.clientId && !draft.isReq) {
-      setErr("");
-      setDeferredOpen(true);
-    }
-  };
-  const onFillFromDeal = (deal) => {
-    setDraft((d) => {
-      const nd = { ...d, in: { ...d.in }, out: { ...d.out } };
-      if (deal.fromCurrency) nd.in[deal.fromCurrency] = fmtRu(deal.fromAmount, ccyMeta(deal.fromCurrency).dp);
-      if (deal.toCurrency) nd.out[deal.toCurrency] = fmtRu(deal.toAmount, ccyMeta(deal.toCurrency).dp);
-      if (deal.rate != null) nd.rate = String(deal.rate);
-      if (deal.party) nd.party = deal.party;
-      return nd;
-    });
-    closePicker();
-  };
-
-  // «Клиент пришёл» — переключаемая отметка (вкл/выкл). Менеджер сам проставил
-  // суммы в строке заявки → этого достаточно; «провести» не нужно (бухгалтер
-  // увидит незаполненное).
+  // ── Действия заявок ──
   const toggleArrived = async (order) => {
     try {
       await setArrived(order.id, !order.arrivedAt);
@@ -466,15 +178,24 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       console.warn("[orders] arrived toggle failed", e);
     }
   };
+  const deleteOrder = async (o) => {
+    if (!window.confirm("Удалить заявку?")) return;
+    try {
+      await cancelOrder(o.id);
+      await refetchOrders();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[orders] delete failed", e);
+    }
+  };
 
-  // Удаление сделки = сторно (обратная проводка). Если уже подтверждена бухгалтером
-  // — предупреждаем об этом отдельно.
+  // Удаление сделки = сторно (обратная проводка). Если уже подтверждена —
+  // предупреждаем отдельно; одноногая — сторно; непроведённая — физ. void.
   const deleteDeal = async (d) => {
     setErr("");
     const oneLeg = !!d.deferred?.oneLeg;
     try {
       if (d.confirmed) {
-        // Подтверждена бухгалтером → проводки сверены → только СТОРНО.
         if (
           !window.confirm(
             "Сделку уже подтвердил бухгалтер — при удалении будет создано СТОРНО (обратная проводка). Продолжить?"
@@ -483,11 +204,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           return;
         await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена сделки из кассы", cascade: true });
       } else if (oneLeg) {
-        // Одноногая (topup/withdrawal) — физического void пока нет → сторно.
         if (!window.confirm("Удалить долг? Будет создано сторно (обратная проводка).")) return;
         await rpcReverseTransactionV2({ targetTxId: d.id, reason: "Отмена из кассы", cascade: true });
       } else {
-        // Непроведённая сделка → физическое удаление БЕЗ сторно.
         if (!window.confirm("Удалить сделку? Бухгалтер ещё не провёл — удалится без сторно.")) return;
         await rpcVoidDeal(d.id);
       }
@@ -499,8 +218,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     }
   };
 
-  // Закрытие долга: «мы должны» (out) → complete_deal_leg (выдаём ногу расхода);
-  // «клиент должен» (in) → create_topup (клиент доносит приход на наш счёт).
+  // Закрытие долга: «мы должны» (out) → complete_deal_leg; «клиент должен» (in) →
+  // topup. Одноногая → противоположный примитив (гасит баланс клиента).
   const settleDeferred = async (d) => {
     const def = d.deferred;
     if (!def) return;
@@ -514,10 +233,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     try {
       const accountCode = await resolveAccountCode(acc.id);
       if (def.oneLeg) {
-        // Одноногая: закрытие = ПРОТИВОПОЛОЖНЫЙ примитив, гасит баланс клиента.
         if (!d.clientId) return window.alert("Нет контрагента для закрытия (client_id)");
         if (def.side === "out") {
-          // мы должны (был topup) → выдаём (withdrawal)
           await rpcCreateWithdrawalV2({
             clientId: d.clientId,
             currencyCode: def.currency,
@@ -526,7 +243,6 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             description: "Закрытие долга: выдали клиенту",
           });
         } else {
-          // клиент должен (был withdrawal) → клиент доносит (topup)
           await rpcCreateTopupV2({
             clientId: d.clientId,
             accountCode,
@@ -536,12 +252,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           });
         }
       } else if (def.side === "out") {
-        await rpcCompleteDealLegV2({
-          dealId: d.id,
-          currencyCode: def.currency,
-          amount: def.amount,
-          accountCode,
-        });
+        await rpcCompleteDealLegV2({ dealId: d.id, currencyCode: def.currency, amount: def.amount, accountCode });
       } else {
         if (!d.clientId) return window.alert("Нет контрагента для закрытия (client_id)");
         await rpcCreateTopupV2({
@@ -560,347 +271,288 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     }
   };
 
-  // ── Отложенная сделка (долг) ──
-  const deferredSummary = () => {
-    const inCcy = cols.find((c) => parseRu(draft.in[c]) > 0);
-    const outCcy = cols.find((c) => parseRu(draft.out[c]) > 0);
-    return {
-      inCcy,
-      outCcy,
-      inAmount: inCcy ? parseRu(draft.in[inCcy]) : 0,
-      outAmount: outCcy ? parseRu(draft.out[outCcy]) : 0,
-      party: draft.party?.label || draft.party?.name || null,
-    };
-  };
-  const openDeferred = () => {
-    setErr("");
-    const s = deferredSummary();
-    if (!s.inCcy && !s.outCcy) return setErr("Впишите сумму прихода или расхода");
-    if (!draft.party?.clientId) return setErr("Долг — только с контрагентом (не «Наличные»)");
-    setDeferredOpen(true);
-  };
-  const commitDeferred = async ({ side, dueDate, comment }) => {
-    const s = deferredSummary();
-    const clientId = draft.party?.clientId;
-    const oneLegged = !(s.inCcy && s.outCcy);
+  // ── Клиентские сортировка + поиск ──
+  // seq — стабильный порядковый по хронологии загрузки (ридер отдаёт ASC по дате).
+  const indexed = useMemo(() => rows.map((d, i) => ({ ...d, seq: i + 1, _out: outSummary(d) })), [rows]);
 
-    // ── ОДНОНОГАЯ: только приход (клиент занёс → мы должны, topup) ИЛИ только
-    //    расход (мы выдали → клиент должен, withdrawal). ──
-    if (oneLegged) {
-      const isIn = !!s.inCcy;
-      const ccy = isIn ? s.inCcy : s.outCcy;
-      const amt = isIn ? s.inAmount : s.outAmount;
-      const acc = acctFor(ccy);
-      setSaving(true);
-      try {
-        if (!acc) throw new Error(`Нет счёта ${ccy} в этом офисе`);
-        const accountCode = await resolveAccountCode(acc.id);
-        const meta = {
-          cashier_one_leg: true,
-          deferred_side: isIn ? "out" : "in", // out = мы должны, in = клиент должен
-          deferred_currency: ccy,
-          deferred_amount: amt,
-          phys_side: isIn ? "in" : "out",
-          due_date: dueDate,
-          obligation_comment: comment,
-          client_id: clientId,
-          client_nickname: draft.party?.label || draft.party?.name || "—",
-          office_id: officeId,
-        };
-        if (isIn) {
-          await rpcCreateTopupV2({ clientId, accountCode, amount: amt, currencyCode: ccy, description: comment, metadata: meta });
-        } else {
-          await rpcCreateWithdrawalV2({ clientId, currencyCode: ccy, amount: amt, destinationAccount: accountCode, description: comment, metadata: meta });
-        }
-        setDeferredOpen(false);
-        resetDraft();
-        await refetch();
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn("[deals] one-leg create failed", e);
-        window.alert(`Не удалось сохранить долг:\n${e?.message || e}`);
-      } finally {
-        setSaving(false);
-      }
-      return;
-    }
+  const [sortKey, setSortKey] = useState("tm"); // по умолчанию — Дата ↓
+  const [sortDir, setSortDir] = useState("desc");
+  const [query, setQuery] = useState("");
 
-    const inAcc = acctFor(s.inCcy);
-    const outAcc = acctFor(s.outCcy);
-    const base = {
-      officeId,
-      clientId,
-      clientNickname: draft.party?.label || draft.party?.name || "—",
-      currencyIn: s.inCcy,
-      amountIn: s.inAmount,
-      effectiveDate: draft.at instanceof Date ? draft.at.toISOString() : undefined,
-      comment,
-      obligationComment: comment,
-      plannedAt: dueDate,
-      dueDate,
-      deferredSide: side,
-      deferredCurrency: side === "in" ? s.inCcy : s.outCcy,
-      deferredAmount: side === "in" ? s.inAmount : s.outAmount,
-    };
-    setSaving(true);
-    try {
-      if (side === "in") {
-        // Клиент должен нам: приход отложен (со счёта клиента), расход выдаём сейчас.
-        if (!outAcc) throw new Error(`Нет счёта ${s.outCcy} в этом офисе`);
-        await createDeal({
-          ...base,
-          deferredIn: true,
-          outputs: [{ currency: s.outCcy, amount: s.outAmount, accountId: outAcc.id, rate: parseRu(draft.rate) || undefined }],
-        });
-      } else {
-        // Мы должны клиенту: приход получаем сейчас, расход отложен (payNow:0).
-        if (!inAcc) throw new Error(`Нет счёта ${s.inCcy} в этом офисе`);
-        if (!outAcc) throw new Error(`Нет счёта ${s.outCcy} в этом офисе`);
-        await createDeal({
-          ...base,
-          inAccountId: inAcc.id,
-          outputs: [{ currency: s.outCcy, amount: s.outAmount, accountId: outAcc.id, rate: parseRu(draft.rate) || undefined, payNow: 0 }],
-        });
-      }
-      setDeferredOpen(false);
-      resetDraft();
-      await refetch();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[deals] deferred create failed", e);
-      window.alert(`Не удалось сохранить долг:\n${e?.message || e}`);
-    } finally {
-      setSaving(false);
+  const NUMERIC = useMemo(() => new Set(["seq", "tm", "inAmt", "rate", "outAmt", "status"]), []);
+  const setSort = (k) => {
+    if (sortKey === k) setSortDir((p) => (p === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(k);
+      setSortDir(NUMERIC.has(k) ? "desc" : "asc");
     }
   };
-
-  const deleteOrder = async (o) => {
-    if (!window.confirm("Удалить заявку?")) return;
-    try {
-      await cancelOrder(o.id);
-      await refetchOrders();
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[orders] delete failed", e);
+  const sortVal = useCallback((d, k) => {
+    switch (k) {
+      case "seq": return d.seq;
+      case "tm": return new Date(d.createdAt).getTime() || 0;
+      case "party": return String(d.party || "").toLowerCase();
+      case "inAmt": return d.inAmount || 0;
+      case "rate": return d.rate || 0;
+      case "outAmt": return d._out.total || 0;
+      case "inC": return d.inCcy || "";
+      case "outC": return d._out.ccy || "";
+      case "status": return dealStatus(d).rank;
+      default: return 0;
     }
-  };
+  }, []);
 
-  // Всё содержимое валютных ячеек — ПО ЦЕНТРУ (и числа, и точки, и ввод), чтобы
-  // позиция не «прыгала» между заполненными и пустыми ячейками/строками.
-  const cell =
-    "text-center whitespace-nowrap border-l border-[#e7e9f1] px-1.5 py-1.5 font-mono tabular-nums text-[13px]";
-  const cellHas = "bg-[#e7f6ee] text-[#0b8a54] font-semibold";
-  const cellEmpty = "text-[#b6bacb]";
-  const dot = <span className="text-[#cbd0dd]">·</span>;
-  const inputCls =
-    "w-full bg-transparent text-center font-mono tabular-nums text-[13px] outline-none placeholder:text-[#cbd0dd] select-text";
-  const inAlign = (v) => (parseRu(v) > 0 ? "text-[#0b8a54] font-semibold" : "");
+  const matchDeal = useCallback(
+    (d) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      const st = dealStatus(d).text.toLowerCase();
+      return (
+        String(d.party || "").toLowerCase().includes(q) ||
+        String(d.seq).includes(q) ||
+        st.includes(q)
+      );
+    },
+    [query]
+  );
+  const matchOrder = useCallback(
+    (o) => {
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        String(o.contact || "").toLowerCase().includes(q) ||
+        String(o.meetingCode || "").toLowerCase().includes(q)
+      );
+    },
+    [query]
+  );
+
+  const dealsView = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return indexed
+      .filter(matchDeal)
+      .sort((a, b) => {
+        const p = sortVal(a, sortKey);
+        const q = sortVal(b, sortKey);
+        if (p < q) return -1 * dir;
+        if (p > q) return 1 * dir;
+        return 0;
+      });
+  }, [indexed, matchDeal, sortDir, sortKey, sortVal]);
+
+  const ordersView = useMemo(() => orders.filter(matchOrder), [orders, matchOrder]);
+
+  // ── стили ячеек ──
+  const th =
+    "px-2.5 pb-3 pt-0 text-[11px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
+  const thBtn = "cursor-pointer hover:text-[color:var(--muted)]";
+  const td = "px-2.5 py-3 text-[13px] align-middle whitespace-nowrap border-b " + G;
+  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13.5px] tracking-[-0.3px] pr-1";
+  const curCls =
+    "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
+
+  const Arrow = ({ k }) =>
+    sortKey === k ? (
+      <span className="inline-block align-middle ml-1 text-[color:var(--muted)] text-[9px]">
+        {sortDir === "asc" ? "▲" : "▼"}
+      </span>
+    ) : null;
+
+  const Header = () => (
+    <thead>
+      <tr>
+        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("seq")} aria-sort={sortKey === "seq" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+          №<Arrow k="seq" />
+        </th>
+        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("tm")} aria-sort={sortKey === "tm" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+          Дата<Arrow k="tm" />
+        </th>
+        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("party")}>
+          Контрагент<Arrow k="party" />
+        </th>
+        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
+          Приход<Arrow k="inAmt" />
+        </th>
+        <th className={th}></th>
+        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("rate")}>
+          Курс<Arrow k="rate" />
+        </th>
+        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("outAmt")}>
+          Расход<Arrow k="outAmt" />
+        </th>
+        <th className={th}></th>
+        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("status")}>
+          Статус<Arrow k="status" />
+        </th>
+      </tr>
+    </thead>
+  );
+
+  const SecRow = ({ label, tone }) => (
+    <tr>
+      <td
+        colSpan={9}
+        className={`px-2.5 pt-[18px] pb-2 text-[10.5px] font-bold tracking-[0.5px] uppercase ${
+          tone === "z" ? "text-[color:var(--amber)]" : "text-[color:var(--faint)]"
+        }`}
+      >
+        <span
+          className={`inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle ${
+            tone === "z" ? "bg-[color:var(--amber)]" : "bg-[color:var(--accent)]"
+          }`}
+        />
+        {label}
+      </td>
+    </tr>
+  );
+
+  const gridR = `border-r ${G}`;
 
   return (
-    <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
-      <div className="px-[18px] py-[11px] border-b border-[#e7e9f1] flex items-center justify-between gap-3">
-        <span className="text-[12px] font-extrabold tracking-[1.3px] uppercase text-[#454a66]">
-          Сделки за день
-        </span>
-        <span className="text-[11.5px] font-semibold text-muted">
-          {rows.length} сделок · приход слева, расход справа
-        </span>
+    <div
+      className="bg-white border border-[color:var(--grid)] rounded-[16px] overflow-hidden"
+      style={{
+        // Единые тона сетки — правятся одним значением.
+        "--grid": "rgba(18,22,26,.07)",
+        "--gridh": "rgba(18,22,26,.14)",
+        "--muted": "#616873",
+        "--faint": "#9aa0a8",
+        "--faint2": "#c6cbd0",
+        "--accent": "#0c9c6b",
+        "--pos": "#0a8f5f",
+        "--amber": "#a9781a",
+        "--amber-bd": "#e0b04a",
+      }}
+    >
+      {/* Шапка: заголовок · офис/дата · поиск */}
+      <div className="px-[18px] py-3 flex items-center gap-3 border-b border-[color:var(--grid)]">
+        <span className="text-[15px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
+        <span className="text-[12px] text-[color:var(--faint)]">за день</span>
+        <span className="flex-1" />
+        <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[9px] px-2.5 h-[34px] w-[230px]">
+          <Search className="w-3.5 h-3.5 text-[color:var(--faint)] shrink-0" strokeWidth={2} />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск: контрагент, №…"
+            className="w-full bg-transparent outline-none text-[13px] text-ink placeholder:text-[color:var(--faint)]"
+          />
+        </label>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="border-collapse w-full table-fixed min-w-[1090px] select-none">
-          <thead>
-            <tr>
-              <th
-                rowSpan={2}
-                className="w-[32px] text-center align-middle bg-[#f6f7fb] text-[#8d92a8] font-bold text-[10px] px-1 py-2 border-b border-[#e7e9f1]"
-              >
-                №
-              </th>
-              <th
-                rowSpan={2}
-                className="w-[150px] text-left align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[11.5px] px-3 py-2 border-b border-[#e7e9f1]"
-              >
-                Контрагент
-              </th>
-              <th
-                rowSpan={2}
-                className="w-[58px] text-center align-middle bg-[#f6f7fb] text-[#454a66] font-bold text-[10.5px] px-1.5 py-2 border-b border-l border-[#e7e9f1] leading-tight"
-              >
-                Время
-              </th>
-              <th
-                colSpan={cols.length}
-                className="text-center bg-[#159a5d] text-white font-extrabold text-[11.5px] tracking-wide px-2 py-1.5"
-              >
-                ПРИХОД
-              </th>
-              <th
-                rowSpan={2}
-                className="text-center align-middle bg-[#eef0f4] text-[#454a66] font-extrabold text-[11px] px-2 py-1.5 border-b border-[#e7e9f1] leading-tight"
-              >
-                Курс /<br />цена
-              </th>
-              <th
-                colSpan={cols.length}
-                className="text-center bg-[#e24a4f] text-white font-extrabold text-[11.5px] tracking-wide px-2 py-1.5"
-              >
-                РАСХОД
-              </th>
-            </tr>
-            <tr>
-              {cols.map((c, i) => (
-                <th
-                  key={`in_${c}`}
-                  className={`text-right text-[10.5px] font-bold text-muted tracking-wide bg-[#fbfcfe] px-2.5 py-1.5 border-b border-[#e7e9f1] ${
-                    i === 0 ? "shadow-[inset_3px_0_0_#daf0e4]" : ""
-                  }`}
-                >
-                  {c}
-                </th>
-              ))}
-              {cols.map((c) => (
-                <th
-                  key={`out_${c}`}
-                  className="text-right text-[10.5px] font-bold text-muted tracking-wide bg-[#fbfcfe] px-2.5 py-1.5 border-b border-[#e7e9f1] border-l"
-                >
-                  {c}
-                </th>
-              ))}
-            </tr>
-          </thead>
-
+        <table className="w-full border-collapse" style={{ tableLayout: "auto" }}>
+          <Header />
           <tbody>
-            {/* Заявки (pending) — жёлтые строки сверху */}
-            {orders.map((o, oi) => (
-              <tr key={`ord_${o.id}`} className="group bg-[#fff8e6] hover:bg-[#fff3cf]">
-                <td className="bg-[#fff8e6] text-center border-t border-[#f0e2b8] font-mono text-[11px] font-bold text-[#b8923a] px-1 py-1.5">
-                  {oi + 1}
-                </td>
-                <td className="bg-[#fff8e6] text-left border-t border-[#f0e2b8] px-2 py-1.5">
-                  <div className="flex items-center gap-1.5 min-h-[31px]">
+            {/* ── Заявки (pending) ── */}
+            {ordersView.length > 0 && <SecRow label={`Заявки · ${ordersView.length} ожидают`} tone="z" />}
+            {ordersView.map((o) => {
+              const zbg = "bg-[rgba(224,176,74,.07)] group-hover:bg-[rgba(224,176,74,.11)]";
+              return (
+                <tr key={`ord_${o.id}`} className="group">
+                  <td
+                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
+                    style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
+                  >
                     <button
                       type="button"
                       onClick={() => toggleArrived(o)}
                       title={o.arrivedAt ? "Пришёл — снять отметку" : "Отметить: клиент пришёл"}
-                      className="shrink-0"
+                      className="align-middle"
                     >
                       {o.arrivedAt ? (
-                        <CheckCircle2 className="w-[18px] h-[18px] text-[#0b8a54]" strokeWidth={2.2} />
+                        <CheckCircle2 className="w-[15px] h-[15px] text-[color:var(--pos)]" strokeWidth={2.2} />
                       ) : (
-                        <CircleDashed className="w-[18px] h-[18px] text-[#c9a14a] hover:text-[#0b8a54]" strokeWidth={2.2} />
+                        <CircleDashed className="w-[15px] h-[15px] text-[color:var(--amber-bd)] hover:text-[color:var(--pos)]" strokeWidth={2.2} />
                       )}
                     </button>
-                    <Hourglass className="w-3 h-3 text-[#c9a14a] shrink-0" strokeWidth={2.2} />
-                    <span className="flex flex-col min-w-0 flex-1 leading-tight">
-                      <span className="text-[12px] font-bold text-ink truncate" title={o.contact}>
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
+                    <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
+                    <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-[9px] font-bold tracking-[0.6px] uppercase text-[#8a5e10] bg-[rgba(224,176,74,.2)] rounded-[4px] px-1.5 py-px shrink-0">
+                        Заявка
+                      </span>
+                      <span className="font-semibold text-ink truncate" title={o.contact}>
                         {o.contact || "—"}
                       </span>
-                      <span className="text-[9.5px] font-mono text-[#b8923a] truncate">
-                        {o.meetingCode ? `№ ${o.meetingCode}` : "заявка"}
-                        {o.meetingAt ? ` · к ${fmtDealTime(o.meetingAt)}` : ""}
-                        {o.note ? ` · ${o.note}` : ""}
-                      </span>
-                    </span>
+                      {o.meetingCode && (
+                        <span className="text-[10.5px] font-mono text-[color:var(--faint)] shrink-0">№ {o.meetingCode}</span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setDetailOrder(o)}
+                        title="Открыть и править заявку"
+                        className="ml-auto shrink-0 text-[color:var(--amber)] hover:text-[#8a5e10] p-0.5"
+                      >
+                        <Eye className="w-[14px] h-[14px]" strokeWidth={2} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteOrder(o)}
+                        title="Удалить заявку"
+                        className="shrink-0 p-0.5 text-[#ce463d]/50 hover:text-[#ce463d] hidden group-hover:inline-flex"
+                      >
+                        <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
+                    {o.fromAmount ? <Money amount={o.fromAmount} ccy={o.fromCurrency} /> : ""}
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.fromCurrency || ""}</td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
+                    {o.rate || ""}
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
+                    {o.toAmount ? <Money amount={o.toAmount} ccy={o.toCurrency} /> : ""}
+                  </td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.toCurrency || ""}</td>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} text-left`}>
                     {onOrderToDeal && (
                       <button
                         type="button"
                         onClick={() => onOrderToDeal(o)}
-                        title="Провести заявку → форма «Новая сделка» с данными заявки. После проведения заявка закроется и станет готовой сделкой."
-                        className="shrink-0 inline-flex items-center gap-1 rounded-md bg-[#0b8a54] px-1.5 py-[3px] text-[10px] font-bold text-white hover:bg-[#0a7a4a] transition-colors"
+                        title="Принять заявку → форма «Новая сделка» с её данными"
+                        className="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-[color:var(--accent)] border border-[color:var(--accent)] rounded-[7px] px-3 py-[5px] hover:bg-[#0a865c]"
                       >
                         <PlayCircle className="w-[13px] h-[13px]" strokeWidth={2.4} />
-                        Провести
+                        Принять
                       </button>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => setDetailOrder(o)}
-                      title="Открыть и править заявку"
-                      className="shrink-0 text-[#b8923a] hover:text-[#9a6b00] p-0.5"
-                    >
-                      <Eye className="w-[15px] h-[15px]" strokeWidth={2} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteOrder(o)}
-                      title="Удалить заявку"
-                      className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
-                    >
-                      <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
-                    </button>
-                  </div>
-                </td>
-                <td className="bg-[#fff8e6] text-center px-1.5 py-1.5 border-t border-l border-[#f0e2b8] font-mono text-[11.5px] text-[#9a6b00] whitespace-nowrap">
-                  {fmtDealTime(o.createdAt)}
-                </td>
-                {cols.map((c) => (
-                  <td
-                    key={`oi_${o.id}_${c}`}
-                    className={`${cell} border-t border-[#f0e2b8] ${
-                      o.fromCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
-                    }`}
-                  >
-                    {o.fromCurrency === c ? <Amt value={o.fromAmount} ccy={c} /> : dot}
                   </td>
-                ))}
-                <td className="text-center border-l border-t border-[#f0e2b8] bg-[#fdf3d6] text-[#9a6b00] font-semibold font-mono text-[12.5px] px-2 py-1.5">
-                  {o.rate || ""}
-                </td>
-                {cols.map((c) => (
-                  <td
-                    key={`oo_${o.id}_${c}`}
-                    className={`${cell} border-t border-[#f0e2b8] ${
-                      o.toCurrency === c ? "bg-[#fde9b8] text-[#9a6b00] font-semibold" : "text-[#d9c187]"
-                    }`}
-                  >
-                    {o.toCurrency === c ? <Amt value={o.toAmount} ccy={c} /> : dot}
-                  </td>
-                ))}
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
 
-            {rows.map((d, di) => {
-              const outByCcy = {};
-              d.outs.forEach((o) => {
-                outByCcy[o.ccy] = (outByCcy[o.ccy] || 0) + o.amount;
-              });
-              const filled = d.confirmed ? cellHas : "bg-[#eef1f7] text-[#3a4a6b] font-semibold";
+            {/* ── Сделки ── */}
+            <SecRow label="Сделки" tone="d" />
+            {dealsView.map((d) => {
+              const st = dealStatus(d);
+              const out = d._out;
               return (
-                <tr key={d.id} className="group hover:bg-[#fafbff]">
-                  <td className="bg-[#f6f7fb] text-center border-t border-[#e7e9f1] font-mono text-[11px] font-bold text-[#b6bacb] px-1 py-1.5">
-                    {orders.length + di + 1}
+                <tr key={d.id} className="group hover:bg-[rgba(18,22,26,.016)]">
+                  <td className={`${td} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}>
+                    {d.seq}
                   </td>
-                  <td className="bg-[#f6f7fb] text-left px-3 py-1.5 border-t border-[#e7e9f1]">
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex flex-col min-w-0 flex-1 leading-tight">
-                        <span className="text-[12.5px] font-bold text-ink truncate" title={d.party}>
-                          {d.party}
-                        </span>
-                        {d.deferred ? (
-                          d.deferred.open ? (
-                            <span className="text-[9.5px] font-bold text-[#b8923a] truncate" title={d.deferred.comment || ""}>
-                              ⏳ {d.deferred.side === "in" ? "клиент должен" : "мы должны"} {fmtRu(d.deferred.amount)}{" "}
-                              {d.deferred.currency}
-                              {d.deferred.dueDate ? ` · до ${fmtDue(d.deferred.dueDate)}` : ""}
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-bold uppercase tracking-wide text-[#0b8a54]">
-                              ✓ долг закрыт
-                            </span>
-                          )
-                        ) : !d.confirmed ? (
-                          <span className="text-[9px] font-bold uppercase tracking-wide text-[#8d92a8]">
-                            не подтв.
-                          </span>
-                        ) : null}
+                  <td className={`${td} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
+                    <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(d.createdAt)}</span>
+                    <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(d.createdAt)}</span>
+                  </td>
+                  <td className={`${td} ${gridR} text-left`}>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="font-semibold text-ink truncate tracking-[-0.1px]" title={d.party}>
+                        {d.party}
                       </span>
                       {d.deferred?.open && (
                         <button
                           type="button"
                           onClick={() => settleDeferred(d)}
                           title="Закрыть долг (рассчитались)"
-                          className="shrink-0 inline-flex items-center text-[10px] font-bold text-[#0b8a54] bg-[#e7f6ee] rounded-[5px] px-1.5 py-0.5 hover:bg-[#d6f0e0]"
+                          className="shrink-0 inline-flex items-center text-[10px] font-bold text-[color:var(--pos)] bg-[rgba(12,156,107,.1)] rounded-[5px] px-1.5 py-0.5 hover:bg-[rgba(12,156,107,.16)]"
                         >
                           закрыть
                         </button>
@@ -909,249 +561,65 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteDeal(d)}
                         title="Удалить сделку (сторно)"
-                        className="shrink-0 p-0.5 text-[#cf3b40]/55 hover:text-[#cf3b40] hidden group-hover:inline-flex"
+                        className="ml-auto shrink-0 p-0.5 text-[#ce463d]/45 hover:text-[#ce463d] hidden group-hover:inline-flex"
                       >
-                        <Trash2 className="w-[14px] h-[14px]" strokeWidth={2} />
+                        <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
                       </button>
                     </div>
+                    {d.deferred?.open && d.deferred.dueDate && (
+                      <div className="text-[10px] text-[color:var(--faint)] mt-0.5">до {fmtDue(d.deferred.dueDate)}</div>
+                    )}
                   </td>
-                  <td className="bg-[#f6f7fb] text-center px-1.5 py-1.5 border-t border-l border-[#e7e9f1] font-mono text-[11.5px] text-[#454a66] whitespace-nowrap">
-                    {fmtDealTime(d.createdAt)}
+                  <td className={`${td} ${amtCls} text-ink`}>
+                    {d.inAmount ? <Money amount={d.inAmount} ccy={d.inCcy} /> : <span className="text-[color:var(--faint2)]">·</span>}
                   </td>
-                  {cols.map((c) => (
-                    <td
-                      key={`i_${d.id}_${c}`}
-                      className={`${cell} border-t border-[#e7e9f1] ${
-                        d.inCcy === c ? filled : cellEmpty
-                      }`}
-                    >
-                      {d.inCcy === c ? <Amt value={d.inAmount} ccy={c} /> : dot}
-                    </td>
-                  ))}
-                  <td className="text-center border-l border-t border-[#e7e9f1] bg-[#f7f8fb] text-[#454a66] font-semibold font-mono text-[12.5px] px-2 py-1.5">
-                    {d.rate != null ? fmtRu(d.rate) : ""}
+                  <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("inC")} title="Группировать по валюте прихода">
+                    {d.inCcy || ""}
                   </td>
-                  {cols.map((c) => (
-                    <td
-                      key={`o_${d.id}_${c}`}
-                      className={`${cell} border-t border-[#e7e9f1] ${
-                        outByCcy[c] ? filled : cellEmpty
-                      }`}
-                    >
-                      {outByCcy[c] ? <Amt value={outByCcy[c]} ccy={c} /> : dot}
-                    </td>
-                  ))}
+                  <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
+                    {d.rate != null ? fmtRu(d.rate) : "—"}
+                  </td>
+                  <td className={`${td} ${amtCls} text-ink`}>
+                    {out.amount != null ? (
+                      <span title={out.tip}>
+                        <Money amount={out.amount} ccy={out.ccy} />
+                        {out.extra > 0 && <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{out.extra}</span>}
+                      </span>
+                    ) : (
+                      <span className="text-[color:var(--faint2)]">·</span>
+                    )}
+                  </td>
+                  <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("outC")} title="Группировать по валюте расхода">
+                    {out.ccy || ""}
+                  </td>
+                  <td className={`${td} text-left text-[12px] ${st.cls}`}>{st.text}</td>
                 </tr>
               );
             })}
 
-            {/* Инлайн-ввод новой сделки */}
-            <tr ref={rowRef} onBlur={onRowBlur} className={draft.isReq ? "bg-[#fff8e6]" : "bg-white"}>
-              <td className={`text-center border-t border-[#e7e9f1] text-[#cdd1de] text-[13px] ${draft.isReq ? "bg-[#fff8e6]" : "bg-[#f6f7fb]"}`}>
-                +
-              </td>
-              <td
-                ref={partyCellRef}
-                className="bg-[#f6f7fb] text-left border-t border-[#e7e9f1] p-0 align-middle"
-              >
-                <div className="flex items-stretch min-h-[31px]">
-                  {MANAGER_ORDERS_ENABLED && (
-                    <button
-                      type="button"
-                      title={draft.isReq ? "Заявка — снять" : "Заявка: клиент придёт позже"}
-                      onMouseDown={(e) => {
-                        // preventDefault: не блюрить инпут (иначе onRowBlur в Safari
-                        // успеет закоммитить СДЕЛКУ до переключения isReq).
-                        e.preventDefault();
-                        setDraft((d) => ({ ...d, isReq: !d.isReq }));
-                      }}
-                      className={`shrink-0 w-7 grid place-items-center border-r border-[#e7e9f1] transition-colors ${
-                        draft.isReq ? "bg-[#fde9b8] text-[#9a6b00]" : "text-muted-soft hover:bg-[#f3f5ff]"
-                      }`}
-                    >
-                      <Hourglass className="w-3.5 h-3.5" strokeWidth={2} />
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    title="Отложенная сделка (долг) — клиент/мы отдаём позже с датой"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      openDeferred();
-                    }}
-                    className="shrink-0 w-7 grid place-items-center border-r border-[#e7e9f1] text-muted-soft hover:bg-[#f3f5ff] hover:text-[#c9a14a] transition-colors"
-                  >
-                    <CalendarClock className="w-3.5 h-3.5" strokeWidth={2} />
-                  </button>
-                  <div className="flex-1 min-w-0">
-                {draft.party ? (
-                  <div
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      openPicker();
-                    }}
-                    className="flex items-center gap-1.5 min-h-[31px] px-2.5 py-1 cursor-pointer hover:bg-[#f3f5ff]"
-                  >
-                    <span className="inline-flex items-center gap-1.5 text-[12px] min-w-0 flex-1">
-                      {draft.party.kind === "cash" ? (
-                        <span className="font-bold text-[12px] text-[#0b8a54]">Наличные</span>
-                      ) : draft.party.kind === "contact" ? (
-                        <span className="font-semibold text-[12px] text-[#2f6fd0] truncate min-w-0">
-                          {draft.party.label}
-                        </span>
-                      ) : draft.party.accountingCode ? (
-                        <span className="font-mono text-[10.5px] font-bold text-[#586079] bg-[#ebedf4] border border-[#e0e3ee] rounded-[5px] px-1.5 py-px whitespace-nowrap">
-                          {draft.party.accountingCode}
-                        </span>
-                      ) : null}
-                      {draft.party.name && (
-                        <span className="font-bold text-ink truncate">{draft.party.name}</span>
-                      )}
-                    </span>
-                    <span
-                      role="button"
-                      title="Очистить"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDraft((d) => ({ ...d, party: null }));
-                      }}
-                      className="ml-auto text-[#b6bacb] hover:text-[#cf3b40] text-[12px] px-0.5 shrink-0"
-                    >
-                      ✕
-                    </span>
-                  </div>
-                ) : (
-                  <div
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      openPicker();
-                    }}
-                    className="flex items-center min-h-[31px] px-2.5 py-1 cursor-pointer hover:bg-[#f3f5ff]"
-                  >
-                    <span className="text-[#b6bacb] text-[12px]">контрагент</span>
-                  </div>
-                )}
-                  </div>
-                </div>
-              </td>
-              <td className="bg-[#f6f7fb] text-left border-t border-l border-[#e7e9f1] p-0 align-middle">
-                <DealTimeField
-                  value={draft.at}
-                  onChange={(at) => setDraft((d) => ({ ...d, at }))}
-                />
-              </td>
-              {cols.map((c) => {
-                const v = draft.in[c] || "";
-                return (
-                  <td
-                    key={`ein_${c}`}
-                    className={`${cell.replace("font-mono", "")} border-t border-[#e7e9f1] ${
-                      parseRu(v) > 0 ? "bg-[#e7f6ee]" : ""
-                    }`}
-                  >
-                    <input
-                      value={v}
-                      onChange={(e) => setIn(c, e.target.value.replace(/[^\d\s.,]/g, ""))}
-                      onKeyDown={onKeyDown}
-                      inputMode="decimal"
-                      placeholder="·"
-                      className={`${inputCls} ${inAlign(v)}`}
-                    />
-                  </td>
-                );
-              })}
-              <td className="text-center border-l border-t border-[#e7e9f1] bg-[#f7f8fb] px-2 py-1.5">
-                <input
-                  value={draft.rate}
-                  onChange={(e) => setRate(e.target.value.replace(/[^\d.,]/g, ""))}
-                  onKeyDown={onKeyDown}
-                  inputMode="decimal"
-                  placeholder="курс"
-                  className="w-full bg-transparent text-center font-mono text-[12.5px] text-[#454a66] outline-none placeholder:text-[#cdd1de] select-text"
-                />
-              </td>
-              {cols.map((c) => {
-                const v = draft.out[c] || "";
-                return (
-                  <td
-                    key={`eout_${c}`}
-                    className={`${cell.replace("font-mono", "")} border-t border-[#e7e9f1] ${
-                      parseRu(v) > 0 ? "bg-[#e7f6ee]" : ""
-                    }`}
-                  >
-                    <input
-                      value={v}
-                      onChange={(e) => setOut(c, e.target.value.replace(/[^\d\s.,]/g, ""))}
-                      onFocus={() => focusOut(c)}
-                      onKeyDown={onKeyDown}
-                      inputMode="decimal"
-                      placeholder="·"
-                      className={`${inputCls} ${inAlign(v)}`}
-                    />
-                  </td>
-                );
-              })}
-            </tr>
+            {!loading && dealsView.length === 0 && ordersView.length === 0 && (
+              <tr>
+                <td colSpan={9} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
+                  {query ? "Ничего не найдено" : "Сделок за день пока нет"}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      <div className="px-[18px] py-2 flex items-center gap-3 min-h-[34px]">
-        {(() => {
-          const inC = cols.find((c) => parseRu(draft.in[c]) > 0);
-          const rem = inC ? remainingIn(draft) : 0;
-          // Только при СПЛИТЕ (2+ ног расхода) и положительном остатке: при одной
-          // ноге это полная сделка по курсу менеджера, никакого «остатка» нет.
-          const split = outCcysOf(draft).length >= 2;
-          if (inC && split && rem > 0.5) {
-            return (
-              <span className="text-[11.5px] font-bold text-[#b8923a]">
-                Остаток к распределению: {fmtRu(rem)} {inC} — кликни по валюте расхода, чтобы досыпать
-              </span>
-            );
-          }
-          return null;
-        })()}
-        {err ? (
-          <span className="text-[11.5px] font-semibold text-[#cf3b40]">⚠ {err}</span>
-        ) : saving ? (
-          <span className="text-[11.5px] font-semibold text-muted">Сохранение…</span>
-        ) : (
-          <span className="text-[11px] text-muted">
-            {draft.isReq
-              ? "Режим заявки (⧖): впишите суммы + контрагента, затем Enter — заявка сохранится (потом можно править)"
-              : "Приход → задай суммы расхода (можно НЕСКОЛЬКО валют — клик по валюте досыпает остаток) → Enter. Одна нога = долг"}
-          </span>
-        )}
+      {/* Подвал: счётчик. P&L скрыт — профит на сделку не считается (бэклог). */}
+      <div className="px-[18px] py-3.5 flex items-center text-[12px] text-[color:var(--faint)] border-t border-[color:var(--grid)]">
+        <span>
+          {rows.length} сделок
+          {orders.length > 0 ? ` · ${orders.length} заявок в ожидании` : ""}
+        </span>
+        {err && <span className="ml-3 text-[#ce463d] font-semibold">⚠ {err}</span>}
+        <span className="ml-auto text-[color:var(--faint2)]">профит на сделку не считается — в бэклоге</span>
       </div>
 
-      {pickerOpen && (
-        <CounterpartyPicker
-          anchorEl={partyCellRef.current}
-          onClose={closePicker}
-          onSelect={onSelectParty}
-          onFillFromDeal={onFillFromDeal}
-        />
-      )}
-
       {detailOrder && (
-        <OrderDetailsModal
-          order={detailOrder}
-          onClose={() => setDetailOrder(null)}
-          onRefetch={refetchOrders}
-        />
-      )}
-
-      {deferredOpen && (
-        <DeferredDealModal
-          summary={deferredSummary()}
-          onClose={() => {
-            setDeferredOpen(false);
-            resetDraft(); // чистый выход — не оставляем долг-черновик в строке
-          }}
-          onConfirm={commitDeferred}
-        />
+        <OrderDetailsModal order={detailOrder} onClose={() => setDetailOrder(null)} onRefetch={refetchOrders} />
       )}
     </div>
   );
