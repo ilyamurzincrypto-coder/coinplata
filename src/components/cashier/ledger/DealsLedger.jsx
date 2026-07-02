@@ -475,9 +475,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       className="align-middle"
                     >
                       {o.arrivedAt ? (
-                        <CheckCircle2 className="w-[15px] h-[15px] text-[color:var(--pos)]" strokeWidth={2.2} />
+                        <CheckCircle2 className="w-[22px] h-[22px] text-[color:var(--pos)]" strokeWidth={2.2} />
                       ) : (
-                        <CircleDashed className="w-[15px] h-[15px] text-[color:var(--amber-bd)] hover:text-[color:var(--pos)]" strokeWidth={2.2} />
+                        <CircleDashed className="w-[22px] h-[22px] text-[color:var(--amber-bd)] hover:text-[color:var(--pos)]" strokeWidth={2.2} />
                       )}
                     </button>
                   </td>
