@@ -151,6 +151,15 @@ function Root() {
   //   G+C cashier, G+K treasury, G+A accounts, G+P counterparties,
   //   G+T treasury, G+S settings
   useKeyboardShortcuts({
+    // N — новая сделка. На cashier открывает create-форму; с других
+    // страниц переключает на Кассу и открывает её.
+    n: () => {
+      if (!canShow("cashier")) return;
+      setDemoDealSeed(null);
+      setFormMounted(true);
+      setExchangeMode("create");
+      setPage("cashier");
+    },
     "/": () => {
       const el = document.querySelector('input[placeholder*="Search" i], input[placeholder*="Поиск" i]');
       if (el) el.focus();

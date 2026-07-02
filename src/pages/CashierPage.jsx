@@ -421,7 +421,8 @@ export default function CashierPage({
   // оставляем пустой экран.
   // Дашборд рендерится всегда; редактор курсов — выезжающим drawer'ом поверх
   // правой колонки (mode==="rates"). Так strip курсов слева остаётся виден.
-  const isDashboard = true;
+  const isDashboard = mode !== "create";
+  const isCreate = mode === "create";
   const isRates = mode === "rates";
 
   const openRates = () => setMode("rates");
@@ -472,6 +473,68 @@ export default function CashierPage({
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
+
+              {/* Большая чёрная кнопка «Новая сделка» — прямо под «Остатками»,
+                  над списком сделок. Клик → create-режим (takeover) с формой
+                  формирования ордера. Когда форма свёрнута (formMounted, draft
+                  жив в sessionStorage) — кнопка превращается в «Продолжить». */}
+              {formMounted ? (
+                <button
+                  onClick={openCreate}
+                  className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-ink shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="relative w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
+                      <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
+                        С клиентом
+                      </div>
+                      <div className="text-[16px] font-bold tracking-tight">
+                        {t("cta_resume_exchange_title")}
+                      </div>
+                      <div className="text-caption text-muted">
+                        {t("cta_resume_exchange_hint")}
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowUpRight className="w-4 h-4 text-success group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+                </button>
+              ) : (
+                <button
+                  onClick={openCreate}
+                  className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-ink text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-ink active:scale-[0.995] transition-all duration-200"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
+                      <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
+                        С клиентом
+                      </div>
+                      <div className="text-[16px] font-bold tracking-tight">
+                        {t("cta_new_exchange_title")}
+                      </div>
+                      <div className="text-caption text-muted-soft">
+                        {t("cta_new_exchange_hint")}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="hidden sm:inline-flex items-center gap-1 text-tiny font-semibold text-muted-soft">
+                      {t("cta_press_key")}
+                      <kbd className="px-1.5 py-0.5 rounded-md bg-ink border border-ink text-white/80 tracking-wider">
+                        N
+                      </kbd>
+                    </span>
+                    <ArrowUpRight className="w-4 h-4 text-muted-soft group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                  </div>
+                </button>
+              )}
+
               <DealsLedger officeId={currentOffice} />
               <ObligationsPanel officeId={currentOffice} />
               {/* Выезжающий редактор курсов — поверх этой колонки */}
@@ -481,7 +544,104 @@ export default function CashierPage({
         </div>
       )}
 
-      {/* CREATE MODE и форма сделки убраны. Перемещение между счетами тоже. */}
+      {/* ====== CREATE MODE (takeover) ====== */}
+      {/* Sticky-курсы слева + форма формирования ордера справа. Дашборд
+          скрыт (isDashboard=false при mode==="create"). Форма mount'ится
+          пока formMounted=true — переключение mode её state не теряет
+          (draft хранится в sessionStorage). display:none в остальных
+          режимах, чтобы не размонтировать при «свернуть». */}
+      <div
+        style={{ display: isCreate ? "block" : "none" }}
+        className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
+      >
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
+          {/* LEFT: sticky-курсы */}
+          <aside className="lg:sticky lg:top-[88px]">
+            <RatesSidebar currentOffice={currentOffice} />
+          </aside>
+
+          {/* RIGHT: header + форма */}
+          <section>
+            <div className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
+              <header className="px-5 py-3.5 border-b border-border-soft flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success text-white shrink-0">
+                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-body font-bold text-ink tracking-tight">
+                      {t("cta_new_exchange_title")}
+                    </div>
+                    <div className="text-tiny text-muted truncate">
+                      {t("drawer_minimize_hint")}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button
+                    onClick={minimizeCreate}
+                    title={`${t("btn_minimize")} (Esc)`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{t("btn_minimize")}</span>
+                  </button>
+                  <button
+                    onClick={closeCreate}
+                    title={t("btn_close_discard")}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">{t("btn_close")}</span>
+                  </button>
+                </div>
+              </header>
+
+              <div className="p-5">
+                {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
+                  <div className="mb-3 flex items-start gap-2 text-caption text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
+                    <span aria-hidden>🎓</span>
+                    <span>
+                      Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.
+                      Поправьте под свою сделку и проведите, либо закройте форму без сохранения.
+                    </span>
+                  </div>
+                )}
+                {formMounted && (
+                  USE_NEW_DEAL_FORM_REDESIGN ? (
+                    // Phase 1 redesign — новая форма, использует тот же
+                    // handleFormSubmit что и ExchangeForm (один контракт payload).
+                    <NewDealForm
+                      currentOffice={currentOffice}
+                      initialData={demoDealSeed || undefined}
+                      onSubmit={handleFormSubmit}
+                      onCancel={() => setFormMounted(false)}
+                      submitting={submitting}
+                    />
+                  ) : USE_NEW_DEAL_FORM ? (
+                    // Legacy v2 DealForm — отключена по запросу юзера.
+                    <DealForm
+                      mode="create"
+                      currentOffice={currentOffice}
+                      onSubmit={() => closeCreate()}
+                      submitting={submitting}
+                      onCancel={() => setFormMounted(false)}
+                    />
+                  ) : (
+                    <ExchangeForm
+                      mode="create"
+                      currentOffice={currentOffice}
+                      initialData={demoDealSeed || undefined}
+                      onSubmit={handleFormSubmit}
+                      submitting={submitting}
+                    />
+                  )
+                )}
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
 
       {/* CashClosureModal вынесен в Header через CashClosureBadge — здесь
           оставляем fallback-открытие из старого state для обратной совместимости. */}
