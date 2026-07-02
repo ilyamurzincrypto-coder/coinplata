@@ -36,6 +36,8 @@ function mapOrder(r) {
     meetingCode: r.meeting_code || null,
     meetingAt: r.meeting_at || null,
     createdAt: r.created_at,
+    createdBy: r.created_by || null,
+    sourceOrderId: r.source_order_id || null, // из coinpoint-бота, если задан
   };
 }
 

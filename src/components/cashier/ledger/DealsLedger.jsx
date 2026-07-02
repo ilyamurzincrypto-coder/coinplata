@@ -22,6 +22,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabase.js";
 import { loadCashierDeals } from "../../../lib/cashierDealsReader.js";
 import { useAccounts } from "../../../store/accounts.jsx";
+import { useAuth } from "../../../store/auth.jsx";
 import {
   rpcReverseTransactionV2,
   rpcCompleteDealLegV2,
@@ -109,6 +110,14 @@ const G = "border-[color:var(--grid)]"; // вертикальные/горизо
 
 export default function DealsLedger({ officeId, onOrderToDeal }) {
   const { accounts } = useAccounts();
+  const { users } = useAuth();
+  const usersById = useMemo(() => {
+    const m = {};
+    (users || []).forEach((u) => {
+      if (u?.id) m[u.id] = u.name || u.full_name || u.email || null;
+    });
+    return m;
+  }, [users]);
   const fromIso = useMemo(() => todayStartIso(), []);
 
   const [rows, setRows] = useState([]);
@@ -487,15 +496,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="text-[9px] font-bold tracking-[0.6px] uppercase text-[#8a5e10] bg-[rgba(224,176,74,.2)] rounded-[4px] px-1.5 py-px shrink-0">
-                        Заявка
-                      </span>
                       <span className="font-semibold text-ink truncate" title={o.contact}>
                         {o.contact || "—"}
                       </span>
-                      {o.meetingCode && (
-                        <span className="text-[10.5px] font-mono text-[color:var(--faint)] shrink-0">№ {o.meetingCode}</span>
-                      )}
                       <button
                         type="button"
                         onClick={() => setDetailOrder(o)}
@@ -513,6 +516,20 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         <Trash2 className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
+                    {(() => {
+                      const creator = o.sourceOrderId
+                        ? "из бота"
+                        : usersById[o.createdBy] || (o.createdBy ? "менеджер" : null);
+                      const bits = [];
+                      if (creator) bits.push(`создал: ${creator}`);
+                      if (o.meetingCode) bits.push(`код ${o.meetingCode}`);
+                      if (o.meetingAt) bits.push(`к ${fmtTime(o.meetingAt)}`);
+                      return bits.length ? (
+                        <div className="text-[10px] text-[color:var(--faint)] mt-0.5 truncate">
+                          {bits.join(" · ")}
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
                     {o.fromAmount ? <Money amount={o.fromAmount} ccy={o.fromCurrency} /> : ""}
