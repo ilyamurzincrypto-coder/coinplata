@@ -500,17 +500,17 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => setDetailOrder(o)}
                         title="Открыть и править заявку"
-                        className="ml-auto shrink-0 text-[color:var(--amber)] hover:text-[#8a5e10] p-0.5"
+                        className="ml-auto shrink-0 inline-flex items-center justify-center text-[color:var(--amber)] hover:text-[#8a5e10] hover:bg-[rgba(224,176,74,0.16)] rounded-md p-1.5"
                       >
-                        <Eye className="w-[14px] h-[14px]" strokeWidth={2} />
+                        <Eye className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                       <button
                         type="button"
                         onClick={() => deleteOrder(o)}
                         title="Удалить заявку"
-                        className="shrink-0 p-0.5 text-[#ce463d]/50 hover:text-[#ce463d] inline-flex opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="shrink-0 p-1.5 rounded-md text-[#ce463d]/60 hover:text-[#ce463d] hover:bg-[#ce463d]/10 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
+                        <Trash2 className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
                   </td>
@@ -533,7 +533,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         title="Принять заявку → форма «Новая сделка» с её данными"
                         className="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-[color:var(--accent)] border border-[color:var(--accent)] rounded-[7px] px-3 py-[5px] hover:bg-[#0a865c]"
                       >
-                        <PlayCircle className="w-[13px] h-[13px]" strokeWidth={2.4} />
+                        <PlayCircle className="w-[18px] h-[18px]" strokeWidth={2.4} />
                         Принять
                       </button>
                     )}
@@ -575,9 +575,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteDeal(d)}
                         title="Удалить сделку (сторно)"
-                        className="ml-auto shrink-0 p-0.5 text-[#ce463d]/45 hover:text-[#ce463d] inline-flex opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="ml-auto shrink-0 p-1.5 rounded-md text-[#ce463d]/55 hover:text-[#ce463d] hover:bg-[#ce463d]/10 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
+                        <Trash2 className="w-[18px] h-[18px]" strokeWidth={2} />
                       </button>
                     </div>
                     {d.deferred?.open && d.deferred.dueDate && (
