@@ -566,6 +566,19 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                           {o.meetingCode}
                         </span>
                       )}
+                      {(() => {
+                        // Всё в одну строку (без подстроки) — иначе строки разной
+                        // высоты и контакт «плавает». Автора для ботовых нет.
+                        const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
+                        const bits = [];
+                        if (creator) bits.push(`создал ${creator}`);
+                        if (o.meetingAt) bits.push(`встреча ${fmtTime(o.meetingAt)}`);
+                        return bits.length ? (
+                          <span className="min-w-0 truncate text-[10.5px] text-[color:var(--faint)]">
+                            · {bits.join(" · ")}
+                          </span>
+                        ) : null;
+                      })()}
                       <div className="ml-auto flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
@@ -585,20 +598,6 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         </button>
                       </div>
                     </div>
-                    {(() => {
-                      // Реального автора для ботовых заявок в данных нет (мост не
-                      // переносит) → «из бота» не показываем. Только имя (локальные)
-                      // + код встречи + время, если есть.
-                      const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
-                      const bits = [];
-                      if (creator) bits.push(`создал: ${creator}`);
-                      if (o.meetingAt) bits.push(`встреча в ${fmtTime(o.meetingAt)}`);
-                      return bits.length ? (
-                        <div className="text-[10px] text-[color:var(--faint)] mt-0.5 truncate">
-                          {bits.join(" · ")}
-                        </div>
-                      ) : null;
-                    })()}
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
                     {o.fromAmount ? <Money amount={o.fromAmount} ccy={o.fromCurrency} /> : ""}
