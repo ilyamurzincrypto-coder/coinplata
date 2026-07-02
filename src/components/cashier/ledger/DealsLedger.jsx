@@ -36,11 +36,13 @@ import {
   MANAGER_ORDERS_ENABLED,
   loadPendingOrders,
   setArrived,
+  setSeen,
+  setChecked,
   cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
-import { CheckCircle2, CircleDashed, PlayCircle, Search } from "lucide-react";
+import { PlayCircle, Search } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────
 function todayStartIso() {
@@ -94,6 +96,15 @@ function dealStatus(d) {
   }
   if (!d.confirmed) return { rank: 1, text: "не подтв.", cls: "text-[color:var(--faint)]" };
   return { rank: 2, text: "проведена", cls: "text-[color:var(--faint)]" };
+}
+
+// Стадия жизненного цикла заявки: Новая → Принята → Пришёл → Проверено → (Провести).
+// Выводится из локальных меток времени; каждый переход подтверждается поп-апом.
+function orderStage(o) {
+  if (o.checkedAt) return { key: "checked", label: "Проверено", dot: "#0a8f5f", pill: "text-[#0a8f5f] bg-[rgba(10,143,95,.12)]" };
+  if (o.arrivedAt) return { key: "arrived", label: "Пришёл", dot: "#7c3aed", pill: "text-[#6d28d9] bg-[rgba(124,58,237,.12)]" };
+  if (o.seenAt) return { key: "seen", label: "Принята", dot: "#2563eb", pill: "text-[#1d4ed8] bg-[rgba(37,99,235,.12)]" };
+  return { key: "new", label: "Новая", dot: "#e0b04a", pill: "text-[#a9781a] bg-[rgba(224,176,74,.18)]" };
 }
 
 // primary OUT = крупнейшая нога; total — для сортировки; extra — сколько ещё ног.
@@ -171,22 +182,45 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   useEffect(() => subscribeOrders(refetchOrders), [refetchOrders]);
 
   const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
+  const [confirmDlg, setConfirmDlg] = useState(null); // поп-ап подтверждения стадии
 
   const acctFor = useCallback(
     (ccy) => accounts.find((a) => a.active && a.officeId === officeId && a.currency === ccy),
     [accounts, officeId]
   );
 
-  // ── Действия заявок ──
-  const toggleArrived = async (order) => {
+  // ── Стадии заявки (каждый переход — через поп-ап подтверждения) ──
+  const runStage = (fn) => async () => {
     try {
-      await setArrived(order.id, !order.arrivedAt);
+      await fn();
       await refetchOrders();
     } catch (e) {
       // eslint-disable-next-line no-console
-      console.warn("[orders] arrived toggle failed", e);
+      console.warn("[orders] stage change failed", e);
+      window.alert(`Не удалось обновить статус заявки:\n${e?.message || e}`);
     }
   };
+  const askAccept = (o) =>
+    setConfirmDlg({
+      title: "Принять заявку в работу",
+      message: `Вы увидели заявку${o.contact ? ` «${o.contact}»` : ""} и берёте её в работу?`,
+      confirmLabel: "Да, принял",
+      onConfirm: runStage(() => setSeen(o.id, true)),
+    });
+  const askArrive = (o) =>
+    setConfirmDlg({
+      title: "Клиент пришёл",
+      message: "Клиент точно пришёл в офис?",
+      confirmLabel: "Да, пришёл",
+      onConfirm: runStage(() => setArrived(o.id, true)),
+    });
+  const askCheck = (o) =>
+    setConfirmDlg({
+      title: "Проверка перед проведением",
+      message: "Вы проверили сумму, реквизиты и клиента? После этого можно проводить сделку.",
+      confirmLabel: "Да, проверил",
+      onConfirm: runStage(() => setChecked(o.id, true)),
+    });
   const deleteOrder = async (o) => {
     if (!window.confirm("Удалить заявку?")) return;
     try {
@@ -464,7 +498,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             <col style={{ width: "78px" }} />
             <col style={{ width: "116px" }} />
             <col style={{ width: "46px" }} />
-            <col style={{ width: "168px" }} />
+            <col style={{ width: "210px" }} />
           </colgroup>
           <Header />
           <tbody>
@@ -472,24 +506,18 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             {ordersView.length > 0 && <SecRow label={`Заявки · ${ordersView.length} ожидают`} tone="z" />}
             {ordersView.map((o) => {
               const zbg = "bg-[rgba(224,176,74,.07)] group-hover:bg-[rgba(224,176,74,.11)]";
+              const stage = orderStage(o);
               return (
                 <tr key={`ord_${o.id}`} className="group">
                   <td
-                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
+                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-center`}
                     style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
+                    title={`Статус: ${stage.label}`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => toggleArrived(o)}
-                      title={o.arrivedAt ? "Пришёл — снять отметку" : "Отметить: клиент пришёл"}
-                      className="align-middle"
-                    >
-                      {o.arrivedAt ? (
-                        <CheckCircle2 className="w-[22px] h-[22px] text-[color:var(--pos)]" strokeWidth={2.2} />
-                      ) : (
-                        <CircleDashed className="w-[22px] h-[22px] text-[color:var(--amber-bd)] hover:text-[color:var(--pos)]" strokeWidth={2.2} />
-                      )}
-                    </button>
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full align-middle"
+                      style={{ background: stage.dot }}
+                    />
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
                     <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
@@ -547,17 +575,30 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.toCurrency || ""}</td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} text-left`}>
-                    {onOrderToDeal && (
-                      <button
-                        type="button"
-                        onClick={() => onOrderToDeal(o)}
-                        title="Принять заявку → форма «Новая сделка» с её данными"
-                        className="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-[color:var(--accent)] border border-[color:var(--accent)] rounded-[7px] px-3 py-[5px] hover:bg-[#0a865c]"
-                      >
-                        <PlayCircle className="w-[18px] h-[18px]" strokeWidth={2.4} />
-                        Принять
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${stage.pill}`}>
+                        {stage.label}
+                      </span>
+                      {(() => {
+                        const act = {
+                          new: { label: "Принять", onClick: () => askAccept(o) },
+                          seen: { label: "Клиент пришёл", onClick: () => askArrive(o) },
+                          arrived: { label: "Проверил", onClick: () => askCheck(o) },
+                          checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
+                        }[stage.key];
+                        return act ? (
+                          <button
+                            type="button"
+                            onClick={act.onClick}
+                            title={act.label}
+                            className="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-[#0c9c6b] rounded-[7px] px-2.5 py-[5px] hover:bg-[#0a865c] shrink-0"
+                          >
+                            <PlayCircle className="w-[15px] h-[15px]" strokeWidth={2.4} />
+                            {act.label}
+                          </button>
+                        ) : null;
+                      })()}
+                    </div>
                   </td>
                 </tr>
               );
@@ -655,6 +696,42 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
       {detailOrder && (
         <OrderDetailsModal order={detailOrder} onClose={() => setDetailOrder(null)} onRefetch={refetchOrders} />
+      )}
+
+      {/* Поп-ап подтверждения перехода стадии заявки */}
+      {confirmDlg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          onClick={() => setConfirmDlg(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[18px] bg-white p-5 shadow-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[16px] font-bold text-ink mb-1.5">{confirmDlg.title}</div>
+            <div className="text-[13.5px] text-muted leading-relaxed mb-4">{confirmDlg.message}</div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDlg(null)}
+                className="px-3.5 py-2 rounded-[10px] text-[13px] font-semibold text-ink bg-[#f2f1ec] hover:bg-[#e9e8e2]"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const fn = confirmDlg.onConfirm;
+                  setConfirmDlg(null);
+                  await fn?.();
+                }}
+                className="px-3.5 py-2 rounded-[10px] text-[13px] font-bold text-white bg-[#0c9c6b] hover:bg-[#0a865c]"
+              >
+                {confirmDlg.confirmLabel || "Подтвердить"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

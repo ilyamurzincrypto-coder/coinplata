@@ -30,7 +30,10 @@ function mapOrder(r) {
     toCurrency: r.to_currency ? String(r.to_currency).toUpperCase() : null,
     toAmount: Number(r.to_amount) || 0,
     status: r.status,
-    arrivedAt: r.arrived_at || null,
+    // Стадии жизненного цикла (локальные метки кассы).
+    seenAt: r.seen_at || null,       // «Принята» — менеджер взял в работу
+    arrivedAt: r.arrived_at || null, // «Пришёл» — клиент в офисе
+    checkedAt: r.checked_at || null, // «Проверено» — сверено перед проведением
     dealId: r.deal_id || null,
     note: r.note || null,
     meetingCode: r.meeting_code || null,
@@ -86,6 +89,25 @@ export async function setArrived(id, arrived) {
   const { error } = await supabase
     .from("manager_orders")
     .update({ arrived_at: arrived ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+// Стадии: «Принята» (seen) и «Проверено» (checked). val=true → ставим время,
+// val=false → снимаем (откат стадии из модалки).
+export async function setSeen(id, val) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from("manager_orders")
+    .update({ seen_at: val ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+export async function setChecked(id, val) {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from("manager_orders")
+    .update({ checked_at: val ? new Date().toISOString() : null })
     .eq("id", id);
   if (error) throw error;
 }
