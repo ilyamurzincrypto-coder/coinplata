@@ -62,6 +62,8 @@ export default async function handler(req, res) {
           to_amount: o.to_amount,
           status: mapStatus(o.status),
           meeting_at: o.meeting_at,
+          // Код встречи для сведения онлайн-клиента с кассой (если coinpoint отдаёт).
+          meeting_code: o.meeting_code ?? o.meetingCode ?? null,
         }
         // Ручной upsert: ON CONFLICT не матчит частичный unique-индекс
         // (manager_orders_source_order_id_uq WHERE ... is not null) → 42P10.

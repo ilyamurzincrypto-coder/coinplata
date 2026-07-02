@@ -503,22 +503,16 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           <Header />
           <tbody>
             {/* ── Заявки (pending) ── */}
-            {ordersView.length > 0 && <SecRow label={`Заявки · ${ordersView.length} ожидают`} tone="z" />}
             {ordersView.map((o) => {
               const zbg = "bg-[rgba(224,176,74,.07)] group-hover:bg-[rgba(224,176,74,.11)]";
               const stage = orderStage(o);
               return (
                 <tr key={`ord_${o.id}`} className="group">
                   <td
-                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-center`}
+                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR}`}
                     style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
                     title={`Статус: ${stage.label}`}
-                  >
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full align-middle"
-                      style={{ background: stage.dot }}
-                    />
-                  </td>
+                  />
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
                     <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
                     <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
@@ -528,6 +522,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       <span className="font-semibold text-ink truncate" title={o.contact}>
                         {o.contact || "—"}
                       </span>
+                      {o.meetingCode && (
+                        <span
+                          className="shrink-0 font-mono text-[11px] font-bold text-[#8a5e10] bg-[rgba(224,176,74,.22)] rounded px-1.5 py-0.5"
+                          title="Код встречи"
+                        >
+                          {o.meetingCode}
+                        </span>
+                      )}
                       <div className="ml-auto flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
@@ -554,8 +556,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
                       const bits = [];
                       if (creator) bits.push(`создал: ${creator}`);
-                      if (o.meetingCode) bits.push(`код ${o.meetingCode}`);
-                      if (o.meetingAt) bits.push(`к ${fmtTime(o.meetingAt)}`);
+                      if (o.meetingAt) bits.push(`встреча в ${fmtTime(o.meetingAt)}`);
                       return bits.length ? (
                         <div className="text-[10px] text-[color:var(--faint)] mt-0.5 truncate">
                           {bits.join(" · ")}
@@ -604,8 +605,6 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
               );
             })}
 
-            {/* ── Сделки ── */}
-            <SecRow label="Сделки" tone="d" />
             {dealsView.map((d) => {
               const st = dealStatus(d);
               const out = d._out;
