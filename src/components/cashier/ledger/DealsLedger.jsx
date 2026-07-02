@@ -526,7 +526,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       </span>
                       {o.meetingCode && (
                         <span
-                          className="shrink-0 font-mono text-[11px] font-bold text-[#8a5e10] bg-[rgba(224,176,74,.22)] rounded px-1.5 py-0.5"
+                          className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10]"
                           title="Код встречи"
                         >
                           {o.meetingCode}
