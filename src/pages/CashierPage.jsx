@@ -535,28 +535,34 @@ export default function CashierPage({
               {formMounted ? (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center justify-center gap-3.5 h-[76px] rounded-card bg-white text-ink ring-1 ring-inset ring-success/40 shadow-[0_1px_2px_rgba(19,20,22,0.06)] hover:-translate-y-px hover:shadow-card-active active:translate-y-0 transition-all duration-200 ease-apple"
+                  className="group w-full flex items-center gap-3.5 h-[72px] px-6 rounded-card text-white bg-[linear-gradient(180deg,#23272c,#0d0f11)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.06),0_12px_30px_-16px_rgba(19,20,22,0.55)] hover:-translate-y-px hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),inset_0_1px_0_rgba(255,255,255,0.08),0_18px_42px_-16px_rgba(19,20,22,0.6)] active:translate-y-0 transition-all duration-200 ease-apple"
                 >
-                  <span className="w-2.5 h-2.5 rounded-full bg-success shrink-0" />
-                  <span className="text-[20px] font-bold tracking-tight">
-                    {t("cta_resume_exchange_title")}
+                  <span className="flex items-center justify-center w-9 h-9 shrink-0">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                   </span>
-                  <ArrowRight className="w-5 h-5 text-success transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
+                  <span className="flex flex-col text-left leading-tight">
+                    <span className="text-[16px] font-semibold tracking-[-0.2px]">
+                      {t("cta_resume_exchange_title")}
+                    </span>
+                    <span className="text-[11.5px] font-medium text-white/50">черновик сохранён · N</span>
+                  </span>
+                  <ArrowRight className="ml-auto w-5 h-5 text-emerald-400 transition-transform duration-200 ease-apple group-hover:translate-x-[3px]" />
                 </button>
               ) : (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center justify-center gap-3.5 h-[76px] rounded-card bg-ink text-white ring-1 ring-black/[0.06] shadow-[0_2px_8px_-2px_rgba(19,20,22,0.25)] hover:-translate-y-px hover:shadow-card-active active:translate-y-0 transition-all duration-200 ease-apple"
+                  className="group w-full flex items-center gap-3.5 h-[72px] px-6 rounded-card text-white bg-[linear-gradient(180deg,#23272c,#0d0f11)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.06),0_12px_30px_-16px_rgba(19,20,22,0.55)] hover:-translate-y-px hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),inset_0_1px_0_rgba(255,255,255,0.08),0_18px_42px_-16px_rgba(19,20,22,0.6)] active:translate-y-0 transition-all duration-200 ease-apple"
                 >
-                  <span className="flex items-center justify-center w-9 h-9 rounded-full bg-success shrink-0 group-hover:bg-emerald-400 transition-colors">
-                    <Plus className="w-5 h-5 text-white" strokeWidth={2.75} />
+                  <span className="flex items-center justify-center w-9 h-9 rounded-[10px] shrink-0 bg-[linear-gradient(180deg,#10b981,#047857)] shadow-[0_3px_10px_-3px_rgba(16,185,129,0.6)]">
+                    <Plus className="w-[18px] h-[18px] text-white" strokeWidth={2.6} />
                   </span>
-                  <span className="text-[20px] font-bold tracking-tight">
-                    {t("cta_new_exchange_title")}
+                  <span className="flex flex-col text-left leading-tight">
+                    <span className="text-[16px] font-semibold tracking-[-0.2px]">
+                      {t("cta_new_exchange_title")}
+                    </span>
+                    <span className="text-[11.5px] font-medium text-white/50">оформить ордер · N</span>
                   </span>
-                  <kbd className="hidden sm:flex items-center justify-center h-6 min-w-6 px-1.5 rounded-badge bg-white/[0.1] text-white/50 text-[13px] font-mono leading-none">
-                    N
-                  </kbd>
+                  <ArrowRight className="ml-auto w-5 h-5 text-white/55 transition-transform duration-200 ease-apple group-hover:translate-x-[3px] group-hover:text-white" />
                 </button>
               )}
 
