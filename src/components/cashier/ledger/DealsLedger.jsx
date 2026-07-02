@@ -42,7 +42,7 @@ import {
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
-import { PlayCircle, Search } from "lucide-react";
+import { PlayCircle, Search, RefreshCw } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────
 function todayStartIso() {
@@ -180,6 +180,28 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     refetchOrders();
   }, [refetchOrders]);
   useEffect(() => subscribeOrders(refetchOrders), [refetchOrders]);
+
+  // Ручной синк заявок из бота (не ждём крон Vercel). Авторизация — JWT кассира.
+  const [syncing, setSyncing] = useState(false);
+  const syncOrders = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const token = data?.session?.access_token;
+      const r = await fetch("/api/cashdesk/sync", {
+        method: "POST",
+        headers: token ? { authorization: `Bearer ${token}` } : {},
+      });
+      if (!r.ok) throw new Error(`sync ${r.status}`);
+      await refetchOrders();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[orders] manual sync failed", e);
+      window.alert(`Не удалось обновить заявки:\n${e?.message || e}`);
+    } finally {
+      setSyncing(false);
+    }
+  }, [refetchOrders]);
 
   const [detailOrder, setDetailOrder] = useState(null); // заявка для модалки деталей
   const [confirmDlg, setConfirmDlg] = useState(null); // поп-ап подтверждения стадии
@@ -473,6 +495,18 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
         <span className="text-[14.5px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
         <span className="text-[12px] text-[color:var(--faint)]">за день</span>
         <span className="flex-1" />
+        {MANAGER_ORDERS_ENABLED && (
+          <button
+            type="button"
+            onClick={syncOrders}
+            disabled={syncing}
+            title="Обновить заявки из бота (подтянуть новые + коды встречи)"
+            className="inline-flex items-center gap-1.5 h-[34px] px-3 rounded-[9px] border border-[color:var(--grid)] text-[12.5px] font-semibold text-[color:var(--muted)] hover:text-ink hover:bg-[rgba(18,22,26,.03)] disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} strokeWidth={2} />
+            {syncing ? "Обновляю…" : "Обновить"}
+          </button>
+        )}
         <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[9px] px-2.5 h-[34px] w-[230px]">
           <Search className="w-3.5 h-3.5 text-[color:var(--faint)] shrink-0" strokeWidth={2} />
           <input

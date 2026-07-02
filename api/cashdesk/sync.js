@@ -9,6 +9,7 @@
  *      SUPABASE_SERVICE_ROLE_KEY, (опц.) CRON_SECRET, CASHDESK_OFFICES="ANT,IST,MSK".
  */
 import { createClient } from '@supabase/supabase-js'
+import { requireStaff } from './_auth.js'
 
 const OFFICES = (process.env.CASHDESK_OFFICES || 'ANT,IST,MSK').split(',').map((s) => s.trim()).filter(Boolean)
 
@@ -20,18 +21,31 @@ function mapStatus(s) {
 }
 
 export default async function handler(req, res) {
-  // Vercel cron шлёт Authorization: Bearer <CRON_SECRET> (если env задан).
-  const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
-    return res.status(401).json({ error: 'unauthorized' })
-  }
   const base = process.env.COINPOINT_API_URL
   const secret = process.env.CASHDESK_API_SECRET
   const supaUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
   const supaKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const anon = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
   if (!base || !secret || !supaUrl || !supaKey) {
     return res.status(503).json({ error: 'bridge env not configured' })
   }
+
+  // Авторизация: Vercel cron (Bearer CRON_SECRET) ИЛИ сотрудник кассы (Supabase
+  // JWT) — чтобы «Обновить заявки» работало вручную из кассы, не дожидаясь крона.
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret) {
+    let ok = req.headers.authorization === `Bearer ${cronSecret}`
+    if (!ok && anon) {
+      try {
+        await requireStaff(req, { supaUrl, anon, svcKey: supaKey })
+        ok = true
+      } catch {
+        /* не сотрудник кассы */
+      }
+    }
+    if (!ok) return res.status(401).json({ error: 'unauthorized' })
+  }
+
   const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } })
 
   const summary = {}
