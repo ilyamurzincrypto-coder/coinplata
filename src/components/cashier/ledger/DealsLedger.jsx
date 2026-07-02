@@ -40,7 +40,7 @@ import {
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
-import { CheckCircle2, CircleDashed, Eye, Trash2, PlayCircle, Search } from "lucide-react";
+import { CheckCircle2, CircleDashed, PlayCircle, Search } from "lucide-react";
 
 // ── helpers ──────────────────────────────────────────────────────────
 function todayStartIso() {
@@ -353,10 +353,11 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   // ── стили ячеек ──
   const th =
-    "px-2.5 pb-2.5 pt-0 text-[10.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
+    "px-2.5 pb-2.5 pt-3 text-[10.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
   const thBtn = "cursor-pointer hover:text-[color:var(--muted)]";
-  const td = "px-2.5 py-2.5 text-[12.5px] align-middle whitespace-nowrap overflow-hidden border-b " + G;
-  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px] pr-1";
+  const thGrid = "border-r border-[color:var(--grid)]"; // верт. линии в шапке — как в теле
+  const td = "px-2.5 py-2 text-[12.5px] align-middle whitespace-nowrap overflow-hidden border-b " + G;
+  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px]";
   const curCls =
     "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
 
@@ -370,26 +371,26 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   const Header = () => (
     <thead>
       <tr>
-        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("seq")} aria-sort={sortKey === "seq" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("seq")} aria-sort={sortKey === "seq" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
           №<Arrow k="seq" />
         </th>
-        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("tm")} aria-sort={sortKey === "tm" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
+        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("tm")} aria-sort={sortKey === "tm" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
           Дата<Arrow k="tm" />
         </th>
-        <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("party")}>
+        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("party")}>
           Контрагент<Arrow k="party" />
         </th>
         <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
           Приход<Arrow k="inAmt" />
         </th>
-        <th className={th}></th>
-        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("rate")}>
+        <th className={`${th} ${thGrid}`}></th>
+        <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("rate")}>
           Курс<Arrow k="rate" />
         </th>
         <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("outAmt")}>
           Расход<Arrow k="outAmt" />
         </th>
-        <th className={th}></th>
+        <th className={`${th} ${thGrid}`}></th>
         <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("status")}>
           Статус<Arrow k="status" />
         </th>
@@ -495,31 +496,34 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
-                    <div className="flex items-center gap-1.5 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
                       <span className="font-semibold text-ink truncate" title={o.contact}>
                         {o.contact || "—"}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => setDetailOrder(o)}
-                        title="Открыть и править заявку"
-                        className="ml-auto shrink-0 inline-flex items-center justify-center text-[color:var(--amber)] hover:text-[#8a5e10] hover:bg-[rgba(224,176,74,0.16)] rounded-md p-1.5"
-                      >
-                        <Eye className="w-[18px] h-[18px]" strokeWidth={2} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteOrder(o)}
-                        title="Удалить заявку"
-                        className="shrink-0 p-1.5 rounded-md text-[#ce463d]/60 hover:text-[#ce463d] hover:bg-[#ce463d]/10 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-[18px] h-[18px]" strokeWidth={2} />
-                      </button>
+                      <div className="ml-auto flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setDetailOrder(o)}
+                          title="Открыть и править заявку"
+                          className="text-[11px] font-semibold rounded-md px-2 py-1 text-[color:var(--amber)] hover:text-[#8a5e10] bg-[rgba(224,176,74,0.16)] hover:bg-[rgba(224,176,74,0.26)]"
+                        >
+                          Открыть
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteOrder(o)}
+                          title="Удалить заявку"
+                          className="text-[11px] font-semibold rounded-md px-2 py-1 text-[#ce463d]/85 hover:text-[#ce463d] bg-[#ce463d]/[0.08] hover:bg-[#ce463d]/[0.16]"
+                        >
+                          Удалить
+                        </button>
+                      </div>
                     </div>
                     {(() => {
-                      const creator = o.sourceOrderId
-                        ? "из бота"
-                        : usersById[o.createdBy] || (o.createdBy ? "менеджер" : null);
+                      // Реального автора для ботовых заявок в данных нет (мост не
+                      // переносит) → «из бота» не показываем. Только имя (локальные)
+                      // + код встречи + время, если есть.
+                      const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
                       const bits = [];
                       if (creator) bits.push(`создал: ${creator}`);
                       if (o.meetingCode) bits.push(`код ${o.meetingCode}`);
@@ -592,9 +596,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteDeal(d)}
                         title="Удалить сделку (сторно)"
-                        className="ml-auto shrink-0 p-1.5 rounded-md text-[#ce463d]/55 hover:text-[#ce463d] hover:bg-[#ce463d]/10 inline-flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="ml-auto shrink-0 text-[11px] font-semibold rounded-md px-2 py-1 text-[#ce463d]/85 hover:text-[#ce463d] bg-[#ce463d]/[0.08] hover:bg-[#ce463d]/[0.16] opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 className="w-[18px] h-[18px]" strokeWidth={2} />
+                        Удалить
                       </button>
                     </div>
                     {d.deferred?.open && d.deferred.dueDate && (
