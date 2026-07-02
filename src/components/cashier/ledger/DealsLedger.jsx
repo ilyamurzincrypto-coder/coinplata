@@ -344,10 +344,10 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   // ── стили ячеек ──
   const th =
-    "px-2.5 pb-3 pt-0 text-[11px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
+    "px-2.5 pb-2.5 pt-0 text-[10.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
   const thBtn = "cursor-pointer hover:text-[color:var(--muted)]";
-  const td = "px-2.5 py-3 text-[13px] align-middle whitespace-nowrap border-b " + G;
-  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13.5px] tracking-[-0.3px] pr-1";
+  const td = "px-2.5 py-2.5 text-[12.5px] align-middle whitespace-nowrap overflow-hidden border-b " + G;
+  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px] pr-1";
   const curCls =
     "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
 
@@ -425,8 +425,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       }}
     >
       {/* Шапка: заголовок · офис/дата · поиск */}
-      <div className="px-[18px] py-3 flex items-center gap-3 border-b border-[color:var(--grid)]">
-        <span className="text-[15px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
+      <div className="px-[18px] py-2.5 flex items-center gap-3 border-b border-[color:var(--grid)]">
+        <span className="text-[14.5px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
         <span className="text-[12px] text-[color:var(--faint)]">за день</span>
         <span className="flex-1" />
         <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[9px] px-2.5 h-[34px] w-[230px]">
@@ -441,7 +441,21 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse" style={{ tableLayout: "auto" }}>
+        {/* Фиксированная сетка: ширины колонок не пересчитываются от контента,
+            поэтому таблица не «прыгает» при наведении/появлении hover-кнопок.
+            Контрагент (3-я, без width) забирает остаток. */}
+        <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+          <colgroup>
+            <col style={{ width: "46px" }} />
+            <col style={{ width: "64px" }} />
+            <col />
+            <col style={{ width: "116px" }} />
+            <col style={{ width: "46px" }} />
+            <col style={{ width: "78px" }} />
+            <col style={{ width: "116px" }} />
+            <col style={{ width: "46px" }} />
+            <col style={{ width: "168px" }} />
+          </colgroup>
           <Header />
           <tbody>
             {/* ── Заявки (pending) ── */}
@@ -494,7 +508,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteOrder(o)}
                         title="Удалить заявку"
-                        className="shrink-0 p-0.5 text-[#ce463d]/50 hover:text-[#ce463d] hidden group-hover:inline-flex"
+                        className="shrink-0 p-0.5 text-[#ce463d]/50 hover:text-[#ce463d] inline-flex opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
                       </button>
@@ -561,7 +575,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteDeal(d)}
                         title="Удалить сделку (сторно)"
-                        className="ml-auto shrink-0 p-0.5 text-[#ce463d]/45 hover:text-[#ce463d] hidden group-hover:inline-flex"
+                        className="ml-auto shrink-0 p-0.5 text-[#ce463d]/45 hover:text-[#ce463d] inline-flex opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 className="w-[13px] h-[13px]" strokeWidth={2} />
                       </button>
