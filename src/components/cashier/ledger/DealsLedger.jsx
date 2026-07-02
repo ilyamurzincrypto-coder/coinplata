@@ -33,7 +33,7 @@ import {
   cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
-import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2, CalendarClock } from "lucide-react";
+import { Hourglass, CircleDashed, CheckCircle2, Eye, Trash2, CalendarClock, PlayCircle } from "lucide-react";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
 import DeferredDealModal from "./DeferredDealModal.jsx";
 
@@ -102,7 +102,7 @@ function fmtRate(r) {
   return Number(r).toLocaleString("ru-RU", { minimumFractionDigits: 0, maximumFractionDigits: dp });
 }
 
-export default function DealsLedger({ officeId }) {
+export default function DealsLedger({ officeId, onOrderToDeal }) {
   const { accounts } = useAccounts();
   const { getRate } = useRates();
   const { activeOffices } = useOffices();
@@ -802,6 +802,17 @@ export default function DealsLedger({ officeId }) {
                         {o.note ? ` · ${o.note}` : ""}
                       </span>
                     </span>
+                    {onOrderToDeal && (
+                      <button
+                        type="button"
+                        onClick={() => onOrderToDeal(o)}
+                        title="Провести заявку → форма «Новая сделка» с данными заявки. После проведения заявка закроется и станет готовой сделкой."
+                        className="shrink-0 inline-flex items-center gap-1 rounded-md bg-[#0b8a54] px-1.5 py-[3px] text-[10px] font-bold text-white hover:bg-[#0a7a4a] transition-colors"
+                      >
+                        <PlayCircle className="w-[13px] h-[13px]" strokeWidth={2.4} />
+                        Провести
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setDetailOrder(o)}

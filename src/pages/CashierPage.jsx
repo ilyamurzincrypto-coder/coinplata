@@ -1,6 +1,6 @@
 // src/pages/CashierPage.jsx
 import React, { useState } from "react";
-import { Plus, ArrowUpRight, X, Minus, ArrowLeft, ArrowRightLeft, HelpCircle } from "lucide-react";
+import { Plus, ArrowRight, X, Minus } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
@@ -40,6 +40,7 @@ import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { createDeal } from "../lib/dealOperations.js";
+import { markDone } from "../lib/managerOrders.js";
 import { supabase } from "../lib/supabase.js";
 import { useRates } from "../store/rates.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -69,12 +70,29 @@ export default function CashierPage({
   // базовых пар + sidebar 260px. Expanded = все пары + sidebar 480px.
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
+  // «Провести заявку» → предзаполняем форму данными заявки. orderSeed
+  // питает NewDealForm через initialData; formInstanceKey форсит свежий
+  // mount формы (иначе уже смонтированная форма с draft'ом не пере-сидится);
+  // pendingOrderId запоминает заявку, чтобы после успешного создания сделки
+  // закрыть её (markDone + deal_id).
+  const [orderSeed, setOrderSeed] = useState(null);
+  const [formInstanceKey, setFormInstanceKey] = useState("blank");
+  const pendingOrderIdRef = React.useRef(null);
+
   // mode / formMounted теперь lifted в App.jsx, чтобы переживать переход
   // на другие вкладки (Clients/Capital и т.д.). ExchangeForm сохраняет
   // ввод через sessionStorage — draft восстанавливается при возврате.
 
   const openCreate = () => {
-    onDemoConsumed(); // фолбэк: «+Новый обмен» всегда открывает чистую форму
+    // Свежая форма только когда формы ещё нет. Если formMounted (свёрнутый
+    // draft или проведение заявки) — это «Продолжить»: ничего не сбрасываем,
+    // чтобы не потерять ввод и привязку к заявке.
+    if (!formMounted) {
+      onDemoConsumed(); // «+Новая сделка» всегда открывает чистую форму
+      setOrderSeed(null);
+      pendingOrderIdRef.current = null;
+      setFormInstanceKey("blank");
+    }
     setFormMounted(true);
     setMode("create");
   };
@@ -83,9 +101,39 @@ export default function CashierPage({
     setMode("dashboard");
     setFormMounted(false); // discard: form unmounts
     onDemoConsumed();
+    setOrderSeed(null);
+    pendingOrderIdRef.current = null;
+    setFormInstanceKey("blank");
     try {
       sessionStorage.removeItem("coinplata.exchangeDraft");
     } catch {}
+  };
+
+  // «Провести заявку» из ленты: открываем форму «Новая сделка», предзаполненную
+  // данными заявки. После успешного создания сделки заявка закрывается в
+  // handleCreate (markDone + deal_id).
+  const handleOrderToDeal = (order) => {
+    if (!order) return;
+    const seed = {
+      curIn: order.fromCurrency || "USDT",
+      amtIn: order.fromAmount || undefined,
+      counterparty: order.contact || "",
+      counterpartyId: order.clientId || undefined,
+      outputs: [
+        {
+          currency: order.toCurrency || "TRY",
+          amount: order.toAmount || undefined,
+          rate: order.rate || undefined,
+          manualRate: !!order.rate, // курс из заявки фиксируем, не пересчитываем
+        },
+      ],
+    };
+    onDemoConsumed(); // не смешиваем с demo-seed из Справки
+    setOrderSeed(seed);
+    pendingOrderIdRef.current = order.id;
+    setFormInstanceKey(`ord_${order.id}`); // форсим свежий mount формы
+    setFormMounted(true);
+    setMode("create");
   };
 
   // N / Esc — обрабатываются глобально в App.jsx через useKeyboardShortcuts.
@@ -210,6 +258,18 @@ export default function CashierPage({
           { success: "Deal created", errorPrefix: "Create deal failed" }
         );
         if (res.ok) {
+          // Сделка создана из заявки («Провести») — закрываем заявку и
+          // линкуем deal_id. Не блокирует сделку при сбое (заявку можно
+          // закрыть вручную).
+          if (pendingOrderIdRef.current) {
+            try {
+              await markDone(pendingOrderIdRef.current, { dealId: res.result });
+            } catch (e) {
+              // eslint-disable-next-line no-console
+              console.warn("[order→deal] markDone failed", e);
+            }
+            pendingOrderIdRef.current = null;
+          }
           setJustCreatedId(res.result);
           setTimeout(() => setJustCreatedId(null), 2500);
           const outStr = (tx.outputs || [])
@@ -467,75 +527,46 @@ export default function CashierPage({
             </aside>
 
             <div className="min-w-0 space-y-4 relative">
+              {/* Основной CTA «Новая сделка» — НАД «Остатками». Клик →
+                  create-режим (takeover) с формой формирования ордера.
+                  Свёрнутый draft (formMounted) превращает кнопку в
+                  «Продолжить сделку». Дизайн по системе: моно + один
+                  emerald-акцент, тень только на hover, ease apple. */}
+              {formMounted ? (
+                <button
+                  onClick={openCreate}
+                  className="group w-full flex items-center justify-center gap-2.5 h-[52px] rounded-card bg-white text-ink ring-1 ring-inset ring-success/35 shadow-[0_1px_2px_rgba(19,20,22,0.06)] hover:-translate-y-px hover:shadow-card-active active:translate-y-0 transition-all duration-200 ease-apple"
+                >
+                  <span className="w-2 h-2 rounded-full bg-success shrink-0" />
+                  <span className="text-[15px] font-semibold tracking-tight">
+                    {t("cta_resume_exchange_title")}
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-success transition-transform duration-200 ease-apple group-hover:translate-x-0.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={openCreate}
+                  className="group w-full flex items-center justify-center gap-2.5 h-[52px] rounded-card bg-ink text-white ring-1 ring-black/[0.06] shadow-[0_1px_2px_rgba(19,20,22,0.12)] hover:-translate-y-px hover:shadow-card-active active:translate-y-0 transition-all duration-200 ease-apple"
+                >
+                  <span className="flex items-center justify-center w-[22px] h-[22px] rounded-full bg-success shrink-0">
+                    <Plus className="w-3.5 h-3.5 text-white" strokeWidth={2.75} />
+                  </span>
+                  <span className="text-[15px] font-semibold tracking-tight">
+                    {t("cta_new_exchange_title")}
+                  </span>
+                  <kbd className="hidden sm:flex items-center justify-center h-[18px] min-w-[18px] px-1 rounded-badge bg-white/[0.09] text-white/45 text-[10.5px] font-mono leading-none">
+                    N
+                  </kbd>
+                </button>
+              )}
+
               <Balances
                 currentOffice={currentOffice}
                 onOfficeChange={onOfficeChange}
                 scope={balanceScope}
                 onScopeChange={setBalanceScope}
               />
-
-              {/* Большая чёрная кнопка «Новая сделка» — прямо под «Остатками»,
-                  над списком сделок. Клик → create-режим (takeover) с формой
-                  формирования ордера. Когда форма свёрнута (formMounted, draft
-                  жив в sessionStorage) — кнопка превращается в «Продолжить». */}
-              {formMounted ? (
-                <button
-                  onClick={openCreate}
-                  className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-white border-2 border-emerald-500 text-ink shadow-[0_10px_32px_-12px_rgba(16,185,129,0.35)] hover:shadow-[0_16px_40px_-12px_rgba(16,185,129,0.45)] active:scale-[0.995] transition-all duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="relative w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)]">
-                      <ArrowLeft className="w-5 h-5 text-white" strokeWidth={2.5} />
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-pulse" />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
-                        С клиентом
-                      </div>
-                      <div className="text-[16px] font-bold tracking-tight">
-                        {t("cta_resume_exchange_title")}
-                      </div>
-                      <div className="text-caption text-muted">
-                        {t("cta_resume_exchange_hint")}
-                      </div>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-success group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </button>
-              ) : (
-                <button
-                  onClick={openCreate}
-                  className="group w-full flex items-center justify-between gap-4 px-6 py-5 rounded-[16px] bg-ink text-white shadow-[0_10px_32px_-12px_rgba(15,23,42,0.5)] hover:shadow-[0_16px_40px_-12px_rgba(15,23,42,0.6)] hover:bg-ink active:scale-[0.995] transition-all duration-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 rounded-full bg-success flex items-center justify-center shadow-[0_4px_14px_-2px_rgba(16,185,129,0.5)] group-hover:bg-emerald-400 transition-colors">
-                      <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-tiny font-bold uppercase tracking-[0.18em] text-success mb-0.5">
-                        С клиентом
-                      </div>
-                      <div className="text-[16px] font-bold tracking-tight">
-                        {t("cta_new_exchange_title")}
-                      </div>
-                      <div className="text-caption text-muted-soft">
-                        {t("cta_new_exchange_hint")}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="hidden sm:inline-flex items-center gap-1 text-tiny font-semibold text-muted-soft">
-                      {t("cta_press_key")}
-                      <kbd className="px-1.5 py-0.5 rounded-md bg-ink border border-ink text-white/80 tracking-wider">
-                        N
-                      </kbd>
-                    </span>
-                    <ArrowUpRight className="w-4 h-4 text-muted-soft group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
-                  </div>
-                </button>
-              )}
-
-              <DealsLedger officeId={currentOffice} />
+              <DealsLedger officeId={currentOffice} onOrderToDeal={handleOrderToDeal} />
               <ObligationsPanel officeId={currentOffice} />
               {/* Выезжающий редактор курсов — поверх этой колонки */}
               <RatesEditorDrawer open={isRates} onClose={closeRates} />
@@ -612,8 +643,9 @@ export default function CashierPage({
                     // Phase 1 redesign — новая форма, использует тот же
                     // handleFormSubmit что и ExchangeForm (один контракт payload).
                     <NewDealForm
+                      key={formInstanceKey}
                       currentOffice={currentOffice}
-                      initialData={demoDealSeed || undefined}
+                      initialData={orderSeed || demoDealSeed || undefined}
                       onSubmit={handleFormSubmit}
                       onCancel={() => setFormMounted(false)}
                       submitting={submitting}
