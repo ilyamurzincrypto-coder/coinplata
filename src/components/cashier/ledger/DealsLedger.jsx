@@ -344,12 +344,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   // ── стили ячеек ──
   const th =
-    "px-4 pb-4 pt-0 text-[12.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
+    "px-2.5 pb-3 pt-0 text-[11px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
   const thBtn = "cursor-pointer hover:text-[color:var(--muted)]";
-  const td = "px-4 py-[23px] text-[15px] align-middle whitespace-nowrap border-b " + G;
-  const amtCls = "text-right font-mono tabular-nums font-semibold text-[17px] tracking-[-0.3px] pr-1";
+  const td = "px-2.5 py-3 text-[13px] align-middle whitespace-nowrap border-b " + G;
+  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13.5px] tracking-[-0.3px] pr-1";
   const curCls =
-    "text-[11.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
+    "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
 
   const Arrow = ({ k }) =>
     sortKey === k ? (
@@ -392,12 +392,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     <tr>
       <td
         colSpan={9}
-        className={`px-3.5 pt-6 pb-2.5 text-[12px] font-bold tracking-[0.5px] uppercase ${
+        className={`px-2.5 pt-[18px] pb-2 text-[10.5px] font-bold tracking-[0.5px] uppercase ${
           tone === "z" ? "text-[color:var(--amber)]" : "text-[color:var(--faint)]"
         }`}
       >
         <span
-          className={`inline-block w-2 h-2 rounded-full mr-2.5 align-middle ${
+          className={`inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle ${
             tone === "z" ? "bg-[color:var(--amber)]" : "bg-[color:var(--accent)]"
           }`}
         />
@@ -425,17 +425,17 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       }}
     >
       {/* Шапка: заголовок · офис/дата · поиск */}
-      <div className="px-5 py-4 flex items-center gap-3 border-b border-[color:var(--grid)]">
-        <span className="text-[19px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
-        <span className="text-[13.5px] text-[color:var(--faint)]">за день</span>
+      <div className="px-[18px] py-3 flex items-center gap-3 border-b border-[color:var(--grid)]">
+        <span className="text-[15px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
+        <span className="text-[12px] text-[color:var(--faint)]">за день</span>
         <span className="flex-1" />
-        <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[10px] px-3 h-[40px] w-[260px]">
-          <Search className="w-4 h-4 text-[color:var(--faint)] shrink-0" strokeWidth={2} />
+        <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[9px] px-2.5 h-[34px] w-[230px]">
+          <Search className="w-3.5 h-3.5 text-[color:var(--faint)] shrink-0" strokeWidth={2} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск: контрагент, №…"
-            className="w-full bg-transparent outline-none text-[13.5px] text-ink placeholder:text-[color:var(--faint)]"
+            className="w-full bg-transparent outline-none text-[13px] text-ink placeholder:text-[color:var(--faint)]"
           />
         </label>
       </div>
@@ -468,8 +468,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     </button>
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
-                    <span className="block text-[color:var(--muted)] text-[14.5px]">{fmtDate(o.createdAt)}</span>
-                    <span className="block text-[color:var(--faint2)] text-[12px]">{fmtTime(o.createdAt)}</span>
+                    <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
+                    <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -504,7 +504,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     {o.fromAmount ? <Money amount={o.fromAmount} ccy={o.fromCurrency} /> : ""}
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.fromCurrency || ""}</td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[14.5px]`}>
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {o.rate || ""}
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
@@ -539,12 +539,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     {d.seq}
                   </td>
                   <td className={`${td} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
-                    <span className="block text-[color:var(--muted)] text-[14.5px]">{fmtDate(d.createdAt)}</span>
-                    <span className="block text-[color:var(--faint2)] text-[12px]">{fmtTime(d.createdAt)}</span>
+                    <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(d.createdAt)}</span>
+                    <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(d.createdAt)}</span>
                   </td>
                   <td className={`${td} ${gridR} text-left`}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-semibold text-ink truncate tracking-[-0.1px] text-[15.5px]" title={d.party}>
+                      <span className="font-semibold text-ink truncate tracking-[-0.1px]" title={d.party}>
                         {d.party}
                       </span>
                       {d.deferred?.open && (
@@ -576,7 +576,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("inC")} title="Группировать по валюте прихода">
                     {d.inCcy || ""}
                   </td>
-                  <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[14.5px]`}>
+                  <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {d.rate != null ? fmtRu(d.rate) : "—"}
                   </td>
                   <td className={`${td} ${amtCls} text-ink`}>
@@ -592,7 +592,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("outC")} title="Группировать по валюте расхода">
                     {out.ccy || ""}
                   </td>
-                  <td className={`${td} text-left text-[13.5px] ${st.cls}`}>{st.text}</td>
+                  <td className={`${td} text-left text-[12px] ${st.cls}`}>{st.text}</td>
                 </tr>
               );
             })}
@@ -609,7 +609,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       </div>
 
       {/* Подвал: счётчик. P&L скрыт — профит на сделку не считается (бэклог). */}
-      <div className="px-5 py-4 flex items-center text-[12.5px] text-[color:var(--faint)] border-t border-[color:var(--grid)]">
+      <div className="px-[18px] py-3.5 flex items-center text-[12px] text-[color:var(--faint)] border-t border-[color:var(--grid)]">
         <span>
           {rows.length} сделок
           {orders.length > 0 ? ` · ${orders.length} заявок в ожидании` : ""}
