@@ -36,6 +36,9 @@ import { useCurrencies } from "../../store/currencies.jsx";
 import { multiplyAmount } from "../../utils/money.js";
 import { displayRate, formatRate, formatRateCompact } from "../../lib/rates.js";
 import { createTransfer } from "../../lib/dealOperations.js";
+import { rpcCreateManualEntryV2 } from "../../lib/newLedger.js";
+import { resolveAccountCode } from "../../lib/newLedgerAdapter.js";
+import { supabase } from "../../lib/supabase.js";
 import { withToast } from "../../lib/supabaseWrite.js";
 import RatesSidebar from "../RatesSidebar.jsx";
 import CounterpartyPicker from "../cashier/ledger/CounterpartyPicker.jsx";
@@ -708,10 +711,76 @@ export default function CreateOrderForm({
     }
   };
 
-  // ── Приход / Расход (создание — TODO) ──
-  const handleSideSubmit = () => {
-    // TODO: create_manual_entry когда появятся GL-счета доход/расход по валютам
-    window.alert("Приход/Расход: создание проводки — в бэклоге (нужны операционные GL-счета)");
+  // ── Приход / Расход → ledger.create_manual_entry ──
+  //   Расход: Дт операц.расход / Кт касса.  Приход: Дт касса / Кт операц.доход.
+  // Операционный счёт резолвится по office_id + валюте (счета заведены на офис×валюту).
+  const [sideBusy, setSideBusy] = useState(false);
+  const sideData = type === "income" ? side.income : side.expense;
+  const canSubmitSide =
+    (type === "income" || type === "expense") &&
+    pn(sideData.amount) > 0 &&
+    sideData.accountId &&
+    sideData.currency;
+
+  const handleSideSubmit = async () => {
+    if (!canSubmitSide || sideBusy) return;
+    const isIncome = type === "income";
+    setSideBusy(true);
+    try {
+      // код кассового счёта (Дт при приходе / Кт при расходе)
+      const cashCode = await resolveAccountCode(sideData.accountId);
+      if (!cashCode) throw new Error("Не найден код кассового счёта");
+      // операционный счёт по офису+валюте
+      let q = supabase
+        .schema("ledger")
+        .from("accounts")
+        .select("code")
+        .eq("office_id", currentOffice)
+        .eq("currency_code", sideData.currency)
+        .eq("type", isIncome ? "revenue" : "expense");
+      q = isIncome ? q.is("subtype", null) : q.eq("subtype", "office_expense");
+      const { data: opAcc, error: opErr } = await q.limit(1).maybeSingle();
+      if (opErr) throw opErr;
+      if (!opAcc?.code)
+        throw new Error(`Нет операционного счёта ${isIncome ? "дохода" : "расхода"} для ${sideData.currency} в этом офисе`);
+
+      const cat = (byType(type) || []).find((c) => c.id === sideData.categoryId);
+      const amount = pn(sideData.amount);
+      const lines = isIncome
+        ? [
+            { accountCode: cashCode, direction: "dr", amount, currencyCode: sideData.currency },
+            { accountCode: opAcc.code, direction: "cr", amount, currencyCode: sideData.currency },
+          ]
+        : [
+            { accountCode: opAcc.code, direction: "dr", amount, currencyCode: sideData.currency },
+            { accountCode: cashCode, direction: "cr", amount, currencyCode: sideData.currency },
+          ];
+      const res = await withToast(
+        () =>
+          rpcCreateManualEntryV2({
+            lines,
+            currencyCode: sideData.currency,
+            reason: `${isIncome ? "Приход" : "Расход"}: ${cat?.name || "без категории"}${sideData.comment ? ` — ${sideData.comment}` : ""}`,
+            description: sideData.comment || undefined,
+            effectiveDate: dtToIso(sideData.dt),
+            metadata: {
+              cashier_side: type,
+              category_id: sideData.categoryId || null,
+              category: cat?.name || null,
+              office_id: currentOffice,
+              counterparty: sideData.cp?.label || null,
+            },
+          }),
+        { success: isIncome ? "Приход записан" : "Расход записан", errorPrefix: "Не удалось записать" }
+      );
+      if (res?.ok) onCancel?.();
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn("[side] create failed", e);
+      window.alert(`Не удалось записать ${isIncome ? "приход" : "расход"}:\n${e?.message || e}`);
+    } finally {
+      setSideBusy(false);
+    }
   };
 
   // ── Сводка + текст кнопки ──
@@ -735,7 +804,7 @@ export default function CreateOrderForm({
   const primaryDisabled =
     type === "transfer" ? !canSubmitTransfer || movBusy
     : isExchange ? !canSubmitExchange || submitting
-    : false; // income/expense — кнопка активна (показывает TODO-alert)
+    : !canSubmitSide || sideBusy; // income/expense
 
   const onPrimary =
     type === "transfer" ? handleTransferSubmit
