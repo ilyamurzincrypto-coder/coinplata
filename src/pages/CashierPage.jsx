@@ -9,6 +9,7 @@ import RatesSidebar from "../components/RatesSidebar.jsx";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
 import NewDealForm from "../components/deal-form/NewDealForm.jsx";
+import CreateOrderForm from "../components/deal-form/CreateOrderForm.jsx";
 
 // Форма создания сделки. По умолчанию — новая редизайн-форма (Phase 1+).
 // Чтобы вернуть legacy ExchangeForm — выставить
@@ -115,6 +116,9 @@ export default function CashierPage({
   const handleOrderToDeal = (order) => {
     if (!order) return;
     const seed = {
+      // inPayments — чтобы CreateOrderForm подставил сумму IN-ноги (одиночная
+      // нога читается из inPayments, не из amtIn).
+      inPayments: [{ currency: order.fromCurrency || "USDT", amount: order.fromAmount || undefined }],
       curIn: order.fromCurrency || "USDT",
       amtIn: order.fromAmount || undefined,
       counterparty: order.contact || "",
@@ -589,96 +593,22 @@ export default function CashierPage({
           режимах, чтобы не размонтировать при «свернуть». */}
       <div
         style={{ display: isCreate ? "block" : "none" }}
-        className="max-w-[1400px] mx-auto px-6 py-6 animate-[fadeIn_180ms_ease-out]"
+        className="animate-[fadeIn_180ms_ease-out]"
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(280px,340px)_1fr] gap-6 items-start">
-          {/* LEFT: sticky-курсы */}
-          <aside className="lg:sticky lg:top-[88px]">
-            <RatesSidebar currentOffice={currentOffice} />
-          </aside>
-
-          {/* RIGHT: header + форма */}
-          <section>
-            <div className="bg-white rounded-[16px] border border-border-soft shadow-[0_1px_2px_rgba(15,23,42,0.04),0_4px_12px_rgba(15,23,42,0.06)] overflow-hidden">
-              <header className="px-5 py-3.5 border-b border-border-soft flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-success text-white shrink-0">
-                    <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-body font-bold text-ink tracking-tight">
-                      {t("cta_new_exchange_title")}
-                    </div>
-                    <div className="text-tiny text-muted truncate">
-                      {t("drawer_minimize_hint")}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={minimizeCreate}
-                    title={`${t("btn_minimize")} (Esc)`}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-ink hover:bg-surface-sunk transition-colors"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t("btn_minimize")}</span>
-                  </button>
-                  <button
-                    onClick={closeCreate}
-                    title={t("btn_close_discard")}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-card text-caption font-semibold text-muted hover:text-danger hover:bg-danger-soft transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">{t("btn_close")}</span>
-                  </button>
-                </div>
-              </header>
-
-              <div className="p-5">
-                {formMounted && demoDealSeed && !USE_NEW_DEAL_FORM && (
-                  <div className="mb-3 flex items-start gap-2 text-caption text-indigo-800 bg-accent-bg border border-indigo-200 rounded-card px-3 py-2">
-                    <span aria-hidden>🎓</span>
-                    <span>
-                      Это пример из <span className="font-semibold">Справки</span> — значения уже подставлены, счёт нужно выбрать.
-                      Поправьте под свою сделку и проведите, либо закройте форму без сохранения.
-                    </span>
-                  </div>
-                )}
-                {formMounted && (
-                  USE_NEW_DEAL_FORM_REDESIGN ? (
-                    // Phase 1 redesign — новая форма, использует тот же
-                    // handleFormSubmit что и ExchangeForm (один контракт payload).
-                    <NewDealForm
-                      key={formInstanceKey}
-                      currentOffice={currentOffice}
-                      initialData={orderSeed || demoDealSeed || undefined}
-                      onSubmit={handleFormSubmit}
-                      onCancel={() => setFormMounted(false)}
-                      submitting={submitting}
-                    />
-                  ) : USE_NEW_DEAL_FORM ? (
-                    // Legacy v2 DealForm — отключена по запросу юзера.
-                    <DealForm
-                      mode="create"
-                      currentOffice={currentOffice}
-                      onSubmit={() => closeCreate()}
-                      submitting={submitting}
-                      onCancel={() => setFormMounted(false)}
-                    />
-                  ) : (
-                    <ExchangeForm
-                      mode="create"
-                      currentOffice={currentOffice}
-                      initialData={demoDealSeed || undefined}
-                      onSubmit={handleFormSubmit}
-                      submitting={submitting}
-                    />
-                  )
-                )}
-              </div>
-            </div>
-          </section>
-        </div>
+        {/* Экран «Новый ордер» — единая форма-конструктор (5 типов, курсы
+            слева, сводка справа). Своя шапка с «Отмена». Обмен/ОТС уходят
+            через handleFormSubmit → createDeal; перемещение форма создаёт
+            сама; приход/расход — TODO (нет GL-счетов). */}
+        {formMounted && (
+          <CreateOrderForm
+            key={formInstanceKey}
+            currentOffice={currentOffice}
+            initialData={orderSeed || demoDealSeed || undefined}
+            onSubmit={handleFormSubmit}
+            onCancel={closeCreate}
+            submitting={submitting}
+          />
+        )}
       </div>
 
       {/* CashClosureModal вынесен в Header через CashClosureBadge — здесь
