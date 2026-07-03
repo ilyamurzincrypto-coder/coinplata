@@ -132,6 +132,9 @@ function DateTimePicker({ value, onChange, small }) {
     };
   };
   const [sel, setSel] = useState(initSel);
+  // Буфер редактирования времени: пока поле в фокусе показываем «сырой» ввод
+  // (без pad), иначе набрать «20» поверх «00» невозможно.
+  const [tEdit, setTEdit] = useState(null); // { field: 'hh'|'mm', raw: string } | null
   const [viewY, setViewY] = useState(sel.y);
   const [viewM, setViewM] = useState(sel.m);
 
@@ -333,8 +336,14 @@ function DateTimePicker({ value, onChange, small }) {
                   aria-label="Часы"
                   inputMode="numeric"
                   maxLength={2}
-                  value={pad(sel.hh)}
-                  onChange={(e) => commit({ hh: clampT(e.target.value, 23) })}
+                  value={tEdit?.field === "hh" ? tEdit.raw : pad(sel.hh)}
+                  onFocus={(e) => { setTEdit({ field: "hh", raw: String(sel.hh) }); e.target.select(); }}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "").slice(-2);
+                    setTEdit({ field: "hh", raw });
+                    commit({ hh: clampT(raw || "0", 23) });
+                  }}
+                  onBlur={() => setTEdit(null)}
                   className="font-mono tabular-nums text-center outline-none"
                   style={{ width: 26, border: "none", background: "none", fontSize: 15, fontWeight: 600, color: C.text }}
                 />
@@ -343,8 +352,14 @@ function DateTimePicker({ value, onChange, small }) {
                   aria-label="Минуты"
                   inputMode="numeric"
                   maxLength={2}
-                  value={pad(sel.mm)}
-                  onChange={(e) => commit({ mm: clampT(e.target.value, 59) })}
+                  value={tEdit?.field === "mm" ? tEdit.raw : pad(sel.mm)}
+                  onFocus={(e) => { setTEdit({ field: "mm", raw: String(sel.mm) }); e.target.select(); }}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "").slice(-2);
+                    setTEdit({ field: "mm", raw });
+                    commit({ mm: clampT(raw || "0", 59) });
+                  }}
+                  onBlur={() => setTEdit(null)}
                   className="font-mono tabular-nums text-center outline-none"
                   style={{ width: 26, border: "none", background: "none", fontSize: 15, fontWeight: 600, color: C.text }}
                 />
@@ -409,6 +424,7 @@ function CounterpartyField({ value, onChange, placeholder }) {
               kind: party.kind,
               isReferral: party.isReferral === true,
             });
+            setOpen(false); // закрываем пикер после выбора
           }}
         />
       )}
@@ -1126,7 +1142,7 @@ export default function CreateOrderForm({
   const card = { background: C.bg, border: `1px solid ${C.line}`, borderRadius: 13, boxShadow: "0 1px 2px rgba(20,30,22,.04),0 2px 10px rgba(20,30,22,.03)" };
 
   return (
-    <div style={{ color: C.text }} className="font-sans">
+    <div style={{ color: C.text, maxWidth: 1400, padding: "24px 22px 60px" }} className="font-sans mx-auto">
       {/* Заголовок */}
       <div className="flex items-center gap-3" style={{ marginBottom: 18 }}>
         <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: "-.3px" }}>Новый ордер</span>

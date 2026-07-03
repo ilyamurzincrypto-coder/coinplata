@@ -572,7 +572,15 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
                         const bits = [];
                         if (creator) bits.push(`создал ${creator}`);
-                        if (o.meetingAt) bits.push(`встреча ${fmtTime(o.meetingAt)}`);
+                        if (o.meetingAt) {
+                        const md = new Date(o.meetingAt);
+                        const t = new Date();
+                        const sameDay =
+                          md.getFullYear() === t.getFullYear() &&
+                          md.getMonth() === t.getMonth() &&
+                          md.getDate() === t.getDate();
+                        bits.push(`встреча ${sameDay ? "" : fmtDate(o.meetingAt) + " "}${fmtTime(o.meetingAt)}`);
+                      }
                         return bits.length ? (
                           <span className="min-w-0 truncate text-[10.5px] text-[color:var(--faint)]">
                             · {bits.join(" · ")}
