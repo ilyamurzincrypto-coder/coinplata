@@ -638,6 +638,7 @@ export default function CreateOrderForm({
     const legDt = primaryIn?.dt ?? vOuts[0]?.dt ?? "now";
     const backdateAt = legDt === "now" ? "" : dtToIso(legDt);
     return {
+      officeId: currentOffice, // adapter требует officeId
       amtIn: primaryIn ? pn(primaryIn.amount) : 0,
       curIn: primaryIn?.currency || "",
       inPayments:
