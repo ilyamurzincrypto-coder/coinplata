@@ -391,8 +391,11 @@ function CounterpartyField({ value, onChange, placeholder }) {
     <div>
       <div
         ref={anchorRef}
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2.5 cursor-text"
+        role="button"
+        tabIndex={0}
+        onMouseDown={(e) => { e.preventDefault(); setOpen(true); }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
+        className="flex items-center gap-2.5 cursor-pointer"
         style={{ border: `1px solid ${C.line2}`, borderRadius: 10, padding: "0 12px", height: 42 }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15, color: C.faint, flex: "none" }}>
@@ -405,7 +408,7 @@ function CounterpartyField({ value, onChange, placeholder }) {
             <button
               type="button"
               aria-label="Очистить контрагента"
-              onClick={(e) => { e.stopPropagation(); onChange(null); }}
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onChange(null); }}
               style={{ border: "none", background: "none", color: C.faint, cursor: "pointer", fontSize: 16, lineHeight: 1 }}
             >
               ×
