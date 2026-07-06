@@ -30,21 +30,21 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'bridge env not configured' })
   }
 
-  // Авторизация: Vercel cron (Bearer CRON_SECRET) ИЛИ сотрудник кассы (Supabase
-  // JWT) — чтобы «Обновить заявки» работало вручную из кассы, не дожидаясь крона.
+  // Авторизация БЕЗУСЛОВНАЯ: Vercel cron (Bearer CRON_SECRET) ИЛИ сотрудник кассы
+  // (Supabase JWT). Раньше вся проверка была внутри `if (cronSecret)` → при
+  // отсутствии CRON_SECRET эндпоинт был открыт для любого (бил в coinpoint
+  // привил. секретом). Теперь: нет валидного крон-секрета И не сотрудник → 401.
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret) {
-    let ok = req.headers.authorization === `Bearer ${cronSecret}`
-    if (!ok && anon) {
-      try {
-        await requireStaff(req, { supaUrl, anon, svcKey: supaKey })
-        ok = true
-      } catch {
-        /* не сотрудник кассы */
-      }
+  let ok = !!cronSecret && req.headers.authorization === `Bearer ${cronSecret}`
+  if (!ok && anon) {
+    try {
+      await requireStaff(req, { supaUrl, anon, svcKey: supaKey })
+      ok = true
+    } catch {
+      /* не сотрудник кассы */
     }
-    if (!ok) return res.status(401).json({ error: 'unauthorized' })
   }
+  if (!ok) return res.status(401).json({ error: 'unauthorized' })
 
   const supa = createClient(supaUrl, supaKey, { auth: { persistSession: false } })
 

@@ -166,9 +166,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     try {
       const r = await loadCashierDeals({ officeId, fromIso });
       setRows(r);
+      setErr("");
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn("[deals] load failed", e);
+      // Не маскируем ошибку под «пустой день» — показываем её в подвале.
+      setErr(e?.message || "Не удалось загрузить сделки");
     } finally {
       setLoading(false);
     }
@@ -183,14 +186,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   useEffect(() => {
     if (!supabase) return undefined;
     const ch = supabase
-      .channel("cashier-deals-ledger")
+      .channel(`cashier-deals-ledger-${officeId || "all"}`)
       .on("postgres_changes", { event: "*", schema: "ledger", table: "transactions" }, refetch)
       .on("postgres_changes", { event: "*", schema: "ledger", table: "journal_entries" }, refetch)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [refetch]);
+  }, [refetch, officeId]);
 
   // ── Заявки менеджера (за фиче-флагом) ──
   const [orders, setOrders] = useState([]);
@@ -713,7 +716,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     <AmtCcy amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} />
                   </td>
                   <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
-                    {d.rate != null ? fmtRu(d.rate) : "—"}
+                    {d.rate != null ? fmtRu(d.rate, Math.abs(d.rate) > 0 && Math.abs(d.rate) < 1 ? 4 : 2) : "—"}
                   </td>
                   <td className={`${td} ${gridR} text-ink`}>
                     <AmtCcy amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} />
@@ -737,8 +740,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       {/* Подвал: счётчик. P&L скрыт — профит на сделку не считается (бэклог). */}
       <div className="px-[18px] py-3.5 flex items-center text-[12px] text-[color:var(--faint)] border-t border-[color:var(--grid)]">
         <span>
-          {rows.length} сделок
-          {orders.length > 0 ? ` · ${orders.length} заявок в ожидании` : ""}
+          {dealsView.length} сделок
+          {ordersView.length > 0 ? ` · ${ordersView.length} заявок в ожидании` : ""}
         </span>
         {err && <span className="ml-3 text-[#ce463d] font-semibold">⚠ {err}</span>}
         <span className="ml-auto text-[color:var(--faint2)]">профит на сделку не считается — в бэклоге</span>

@@ -393,7 +393,14 @@ function CounterpartyField({ value, onChange, placeholder }) {
         ref={anchorRef}
         role="button"
         tabIndex={0}
-        onMouseDown={(e) => { e.preventDefault(); setOpen(true); }}
+        onMouseDown={(e) => {
+          // Пикер — портал; его события всплывают по React-дереву сюда. Гасим
+          // default ТОЛЬКО когда пикер закрыт (открытие), иначе preventDefault
+          // крадёт фокус у полей внутри пикера («не протыкивается»).
+          if (open) return;
+          e.preventDefault();
+          setOpen(true);
+        }}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(true); } }}
         className="flex items-center gap-2.5 cursor-pointer"
         style={{ border: `1px solid ${C.line2}`, borderRadius: 10, padding: "0 12px", height: 42 }}
@@ -524,7 +531,7 @@ export default function CreateOrderForm({
   ));
   const [outLegs, setOutLegs] = useState(() => (
     Array.isArray(initialData?.outputs) && initialData.outputs.length
-      ? initialData.outputs.map((o) => ({ id: uid("out"), amount: o.amount != null ? String(o.amount) : "", currency: o.currency || secondCcy, accountId: o.accountId || "", dt: "now", rate: o.rate != null ? String(o.rate) : "", manualRate: !!o.manualRate, amountTouched: false }))
+      ? initialData.outputs.map((o) => ({ id: uid("out"), amount: o.amount != null ? String(o.amount) : "", currency: o.currency || secondCcy, accountId: o.accountId || "", dt: "now", rate: o.rate != null ? String(o.rate) : "", manualRate: !!o.manualRate, amountTouched: o.amount != null }))
       : [mkOutLeg(initialData?.curOut || secondCcy)]
   ));
   const [manualPrimary, setManualPrimary] = useState(false);
@@ -629,8 +636,13 @@ export default function CreateOrderForm({
     // если есть OUT-ноги с суммой — у них должен быть курс
     const outWithAmt = outLegs.filter((l) => pn(l.amount) > 0);
     if (outWithAmt.length > 0 && validOuts.length !== outWithAmt.length) return false;
+    // Счёт обязателен на КАЖДОЙ ноге с суммой (иначе адаптер бросает
+    // «requires accountId» уже при создании).
+    const inWithAmt = inLegs.filter((l) => pn(l.amount) > 0);
+    if (inWithAmt.some((l) => !l.accountId)) return false;
+    if (outWithAmt.some((l) => !l.accountId)) return false;
     return true;
-  }, [exCp, validIns, validOuts, outLegs]);
+  }, [exCp, validIns, validOuts, inLegs, outLegs]);
 
   // ── Сборка payload обмена (1-в-1 как NewDealForm.handleSubmit) ──
   const buildExchangePayload = useCallback(() => {
@@ -661,6 +673,7 @@ export default function CreateOrderForm({
         partnerAccountId: null, // TODO OTC partner accounts — партнёрские счета в ОТС пока не реализованы
       })),
       counterparty: exCp?.label?.trim() || "",
+      counterpartyId: exCp?.clientId || undefined, // линковка к клиенту (ensureClient)
       accountId: primaryIn?.accountId || "",
       referral: !!exCp?.isReferral,
       comment: exComment,
