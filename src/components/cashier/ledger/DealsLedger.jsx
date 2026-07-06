@@ -117,6 +117,33 @@ function outSummary(d) {
   return { amount: sorted[0].amount, ccy: sorted[0].ccy, total, extra: outs.length - 1, tip };
 }
 
+// Денежная ячейка: сумма прижата вправо, код валюты — в фиксированном слоте
+// слева от правого края. Так и суммы, и коды валют выравниваются по вертикали
+// (раньше сумма и валюта были в разных колонках и «плыли»).
+function AmtCcy({ amount, ccy, extra = 0, onCcy, tip }) {
+  return (
+    <div className="flex items-baseline justify-end gap-1.5" title={tip}>
+      {amount != null ? (
+        <span className="font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px] truncate">
+          <Money amount={amount} ccy={ccy} />
+          {extra > 0 && (
+            <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{extra}</span>
+          )}
+        </span>
+      ) : (
+        <span className="text-[color:var(--faint2)]">·</span>
+      )}
+      <span
+        className="inline-block w-[38px] shrink-0 text-left text-[11.5px] font-semibold text-[color:var(--faint)] cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2"
+        onClick={onCcy}
+        title={onCcy ? "Группировать по валюте" : undefined}
+      >
+        {ccy || ""}
+      </span>
+    </div>
+  );
+}
+
 const G = "border-[color:var(--grid)]"; // вертикальные/горизонтальные линии — один тон
 
 export default function DealsLedger({ officeId, onOrderToDeal }) {
@@ -436,17 +463,15 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
         <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("party")}>
           Контрагент<Arrow k="party" />
         </th>
-        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
+        <th className={`${th} ${thGrid} text-right ${thBtn} pr-[46px]`} onClick={() => setSort("inAmt")}>
           Приход<Arrow k="inAmt" />
         </th>
-        <th className={`${th} ${thGrid}`}></th>
         <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("rate")}>
           Курс<Arrow k="rate" />
         </th>
-        <th className={`${th} text-right ${thBtn}`} onClick={() => setSort("outAmt")}>
+        <th className={`${th} ${thGrid} text-right ${thBtn} pr-[46px]`} onClick={() => setSort("outAmt")}>
           Расход<Arrow k="outAmt" />
         </th>
-        <th className={`${th} ${thGrid}`}></th>
         <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("status")}>
           Статус<Arrow k="status" />
         </th>
@@ -457,7 +482,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   const SecRow = ({ label, tone }) => (
     <tr>
       <td
-        colSpan={9}
+        colSpan={7}
         className={`px-2.5 pt-[18px] pb-2 text-[10.5px] font-bold tracking-[0.5px] uppercase ${
           tone === "z" ? "text-[color:var(--amber)]" : "text-[color:var(--faint)]"
         }`}
@@ -524,15 +549,13 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             Контрагент (3-я, без width) забирает остаток. */}
         <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "46px" }} />
-            <col style={{ width: "64px" }} />
-            <col />
-            <col style={{ width: "116px" }} />
-            <col style={{ width: "46px" }} />
-            <col style={{ width: "78px" }} />
-            <col style={{ width: "116px" }} />
-            <col style={{ width: "46px" }} />
-            <col style={{ width: "238px" }} />
+            <col style={{ width: "46px" }} />{/* № */}
+            <col style={{ width: "64px" }} />{/* Дата */}
+            <col />{/* Контрагент */}
+            <col style={{ width: "162px" }} />{/* Приход (сумма+валюта) */}
+            <col style={{ width: "78px" }} />{/* Курс */}
+            <col style={{ width: "162px" }} />{/* Расход (сумма+валюта) */}
+            <col style={{ width: "238px" }} />{/* Статус */}
           </colgroup>
           <Header />
           <tbody>
@@ -607,17 +630,15 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       </div>
                     </div>
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
-                    {o.fromAmount ? <Money amount={o.fromAmount} ccy={o.fromCurrency} /> : ""}
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-[color:var(--amber)]`}>
+                    <AmtCcy amount={o.fromAmount || null} ccy={o.fromCurrency} />
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.fromCurrency || ""}</td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {o.rate || ""}
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${amtCls} text-[color:var(--amber)]`}>
-                    {o.toAmount ? <Money amount={o.toAmount} ccy={o.toCurrency} /> : ""}
+                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-[color:var(--amber)]`}>
+                    <AmtCcy amount={o.toAmount || null} ccy={o.toCurrency} />
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} ${curCls}`}>{o.toCurrency || ""}</td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} text-left`}>
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${stage.pill}`}>
@@ -688,27 +709,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       <div className="text-[10px] text-[color:var(--faint)] mt-0.5">до {fmtDue(d.deferred.dueDate)}</div>
                     )}
                   </td>
-                  <td className={`${td} ${amtCls} text-ink`}>
-                    {d.inAmount ? <Money amount={d.inAmount} ccy={d.inCcy} /> : <span className="text-[color:var(--faint2)]">·</span>}
-                  </td>
-                  <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("inC")} title="Группировать по валюте прихода">
-                    {d.inCcy || ""}
+                  <td className={`${td} ${gridR} text-ink`}>
+                    <AmtCcy amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} />
                   </td>
                   <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {d.rate != null ? fmtRu(d.rate) : "—"}
                   </td>
-                  <td className={`${td} ${amtCls} text-ink`}>
-                    {out.amount != null ? (
-                      <span title={out.tip}>
-                        <Money amount={out.amount} ccy={out.ccy} />
-                        {out.extra > 0 && <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{out.extra}</span>}
-                      </span>
-                    ) : (
-                      <span className="text-[color:var(--faint2)]">·</span>
-                    )}
-                  </td>
-                  <td className={`${td} ${gridR} ${curCls}`} onClick={() => setSort("outC")} title="Группировать по валюте расхода">
-                    {out.ccy || ""}
+                  <td className={`${td} ${gridR} text-ink`}>
+                    <AmtCcy amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} />
                   </td>
                   <td className={`${td} text-left text-[12px] ${st.cls}`}>{st.text}</td>
                 </tr>
@@ -717,7 +725,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
             {!loading && dealsView.length === 0 && ordersView.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
+                <td colSpan={7} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
                   {query ? "Ничего не найдено" : "Сделок за день пока нет"}
                 </td>
               </tr>
