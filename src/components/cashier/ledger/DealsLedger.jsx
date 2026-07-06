@@ -532,7 +532,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             <col style={{ width: "78px" }} />
             <col style={{ width: "116px" }} />
             <col style={{ width: "46px" }} />
-            <col style={{ width: "210px" }} />
+            <col style={{ width: "238px" }} />
           </colgroup>
           <Header />
           <tbody>
@@ -626,7 +626,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       {(() => {
                         const act = {
                           new: { label: "Принять", onClick: () => askAccept(o) },
-                          seen: { label: "Клиент пришёл", onClick: () => askArrive(o) },
+                          seen: { label: "Пришёл", onClick: () => askArrive(o) },
                           arrived: { label: "Проверил", onClick: () => askCheck(o) },
                           checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
                         }[stage.key];
