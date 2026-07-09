@@ -60,6 +60,8 @@ function OfficeFormModal({ open, office, onClose }) {
   const [endTime, setEndTime] = useState(DEFAULT_OFFICE_OPS.workingHours.end);
   const [minFee, setMinFee] = useState(String(DEFAULT_OFFICE_OPS.minFeeUsd));
   const [feePct, setFeePct] = useState(String(DEFAULT_OFFICE_OPS.feePercent));
+  // Код офиса на сайте (coinpoint.offices.code) — управление доступностью касса→сайт.
+  const [coinpointCode, setCoinpointCode] = useState("");
   // Per-day hours override: { "6": {start, end} | null } — null = закрыт в этот день
   const [workingHoursByDay, setWorkingHoursByDay] = useState(null);
   // Holidays (YYYY-MM-DD строки)
@@ -106,6 +108,7 @@ function OfficeFormModal({ open, office, onClose }) {
           : ""
       );
       setTempClosedReason(office?.tempClosedReason || "");
+      setCoinpointCode(office?.coinpointOfficeCode || "");
     }
   }, [open, office]);
 
@@ -186,6 +189,7 @@ function OfficeFormModal({ open, office, onClose }) {
       tempClosedReason: tempClosedReason.trim() || null,
       minFeeUsd: minFeeNum,
       feePercent: feePctNum,
+      coinpointOfficeCode: coinpointCode.trim() || null,
     };
     if (isEdit) {
       if (isSupabaseConfigured) {
@@ -528,6 +532,24 @@ function OfficeFormModal({ open, office, onClose }) {
           </div>
           <p className="text-tiny text-muted mt-1.5">
             {t("office_fees_hint")}
+          </p>
+        </div>
+
+        {/* Привязка к офису сайта (coinpoint) — управление открыт/закрыт касса→сайт */}
+        <div className="border-t border-border-soft pt-4">
+          <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2">
+            Офис на сайте (coinpoint)
+          </div>
+          <input
+            type="text"
+            value={coinpointCode}
+            onChange={(e) => setCoinpointCode(e.target.value.trim())}
+            placeholder="напр. antalya_lara / ist_taksim / msk_arbat"
+            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
+          />
+          <p className="text-tiny text-muted mt-1.5">
+            Код офиса на сайте (coinpoint.offices.code). Управление «открыт/закрыт/выходной» из
+            кассы будет применяться именно к этому офису сайта. Пусто = офис не отражается на сайте.
           </p>
         </div>
       </div>

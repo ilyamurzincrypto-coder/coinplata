@@ -1277,6 +1277,9 @@ export async function insertOfficeRow(payload) {
     temp_closed_reason: payload.tempClosedReason || null,
     min_fee_usd: Number(payload.minFeeUsd) || 10,
     fee_percent: Number(payload.feePercent) || 0,
+    coinpoint_office_code: payload.coinpointOfficeCode
+      ? String(payload.coinpointOfficeCode).trim()
+      : null,
     status: payload.status || "active",
     active: payload.active !== false,
   };
@@ -1305,6 +1308,10 @@ export async function updateOfficeRow(id, patch) {
   if (patch.tempClosedReason !== undefined) row.temp_closed_reason = patch.tempClosedReason || null;
   if (patch.minFeeUsd !== undefined) row.min_fee_usd = Number(patch.minFeeUsd) || 0;
   if (patch.feePercent !== undefined) row.fee_percent = Number(patch.feePercent) || 0;
+  if (patch.coinpointOfficeCode !== undefined)
+    row.coinpoint_office_code = patch.coinpointOfficeCode
+      ? String(patch.coinpointOfficeCode).trim()
+      : null;
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.active !== undefined) row.active = !!patch.active;
   if (Object.keys(row).length === 0) return;
