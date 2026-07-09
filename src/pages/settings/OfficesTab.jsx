@@ -3,7 +3,7 @@
 // Подсчёт accounts per office — через useAccounts (read-only).
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Building2, Plus, Pencil, Power, RotateCcw, Clock, ChevronUp, ChevronDown } from "lucide-react";
+import { Building2, Plus, Pencil, Power, RotateCcw, Clock, ChevronUp, ChevronDown, Globe, CalendarX2, Loader2, RefreshCw } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
@@ -13,6 +13,13 @@ import { useTranslation } from "../../i18n/translations.jsx";
 import { DEFAULT_OFFICE_OPS } from "../../store/data.js";
 import { getOfficeOpenState } from "../../utils/officeSchedule.js";
 import { isSupabaseConfigured } from "../../lib/supabase.js";
+import {
+  fetchSiteOffices,
+  setSiteOfficeDay,
+  pushSiteSchedule,
+  officeToSiteWorkingHours,
+  officeLocalToday,
+} from "../../lib/cashdeskSite.js";
 import {
   insertOfficeRow,
   updateOfficeRow,
@@ -44,6 +51,212 @@ const ISO_DAYS = [
 function formatWorkingDays(days) {
   if (!Array.isArray(days) || days.length === 0) return "—";
   return ISO_DAYS.filter((d) => days.includes(d.n)).map((d) => d.short).join(" · ");
+}
+
+// --- Site (coinpoint) binding + live availability controls ---
+// Привязка кассового офиса к офису сайта + управление доступностью касса→сайт.
+// Пока рубильник на бэке выключен (CASHDESK_SYNC_TO_SITE≠'on') — запись
+// отвечает { dryRun:true } и мы показываем «предпросмотр», сайт не трогается.
+function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
+  const [list, setList] = useState(null); // null=загрузка, []=нет/ошибка
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [loadErr, setLoadErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState(null); // { ok, dryRun, text }
+  const [dayDate, setDayDate] = useState("");
+  const [dayReason, setDayReason] = useState("");
+
+  const reload = React.useCallback(async () => {
+    setList(null);
+    setLoadErr("");
+    try {
+      const { offices, syncEnabled: se } = await fetchSiteOffices();
+      setList(offices);
+      setSyncEnabled(se);
+    } catch (e) {
+      setList([]);
+      setLoadErr(e?.message || String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    setResult(null);
+    setDayReason("");
+    setDayDate(officeLocalToday({ timezone }));
+    reload();
+  }, [open, timezone, reload]);
+
+  const codeKnown = !list ? true : list.some((o) => o.code === code);
+
+  const runAction = async (fn, describe) => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await fn();
+      const dry = !!res?.dryRun;
+      setResult({
+        ok: true,
+        dryRun: dry,
+        text: dry ? `Предпросмотр: ${describe} (синхронизация выключена — сайт не тронут)` : `${describe} — применено на сайте`,
+      });
+    } catch (e) {
+      setResult({ ok: false, dryRun: false, text: e?.message || String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doDay = (status) => {
+    const date = dayDate || officeLocalToday({ timezone });
+    return runAction(
+      () => setSiteOfficeDay({ code, date, status, reason: dayReason || undefined }),
+      status === "closed" ? `выходной ${code} на ${date}` : `открыть ${code} на ${date}`
+    );
+  };
+
+  const doSchedule = () =>
+    runAction(
+      () => pushSiteSchedule({ code, workingHours: officeToSiteWorkingHours(scheduleSource) }),
+      `расписание ${code}`
+    );
+
+  return (
+    <div className="border-t border-border-soft pt-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-tiny font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Globe className="w-3.5 h-3.5" /> Офис на сайте (coinpoint)
+        </div>
+        <button
+          type="button"
+          onClick={reload}
+          className="text-tiny text-muted hover:text-ink inline-flex items-center gap-1"
+          title="Обновить список офисов сайта"
+        >
+          <RefreshCw className={`w-3 h-3 ${list === null ? "animate-spin" : ""}`} /> обновить
+        </button>
+      </div>
+
+      {/* Привязка: дропдаун из живого списка + ручной ввод как фолбэк */}
+      {list && list.length > 0 ? (
+        <select
+          value={codeKnown ? code : "__manual__"}
+          onChange={(e) => setCode(e.target.value === "__manual__" ? code : e.target.value === "__none__" ? "" : e.target.value)}
+          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
+        >
+          <option value="__none__">— не привязан (не на сайте) —</option>
+          {list.map((o) => (
+            <option key={o.code} value={o.code}>
+              {o.code}{o.city ? ` · ${o.city}` : ""}{o.is_active === false ? " · выкл" : ""}
+            </option>
+          ))}
+          <option value="__manual__">ввести код вручную…</option>
+        </select>
+      ) : (
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.trim())}
+          placeholder="напр. antalya_lara / ist_taksim / msk_arbat"
+          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
+        />
+      )}
+      {(!codeKnown && list && list.length > 0) && (
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value.trim())}
+          placeholder="код офиса сайта вручную"
+          className="w-full mt-2 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
+        />
+      )}
+      {loadErr && (
+        <p className="text-tiny text-muted mt-1.5">Список офисов сайта недоступен ({loadErr}). Введите код вручную.</p>
+      )}
+      <p className="text-tiny text-muted mt-1.5">
+        Пусто = офис не отражается на сайте. Управление «выходной / открыт» ниже применяется именно к этому офису сайта.
+      </p>
+
+      {/* Живые действия — только когда офис привязан */}
+      {code ? (
+        <div className="mt-3 rounded-card border border-border-soft bg-surface-soft/50 p-3 space-y-3">
+          {/* Рубильник-статус */}
+          <div
+            className={`text-tiny font-semibold px-2 py-1.5 rounded-md inline-flex items-center gap-1.5 ${
+              syncEnabled ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${syncEnabled ? "bg-success" : "bg-warning"}`} />
+            {syncEnabled ? "Синхронизация с сайтом включена" : "Предпросмотр — запись на сайт выключена"}
+          </div>
+
+          {/* Выходной / открыть на дату */}
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Дата</label>
+              <input
+                type="date"
+                value={dayDate}
+                onChange={(e) => setDayDate(e.target.value)}
+                className="bg-white border border-border-soft rounded-card px-2.5 py-2 text-body-sm outline-none focus:border-accent"
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Причина (необяз.)</label>
+              <input
+                type="text"
+                value={dayReason}
+                onChange={(e) => setDayReason(e.target.value)}
+                placeholder="напр. праздник"
+                className="w-full bg-white border border-border-soft rounded-card px-2.5 py-2 text-body-sm outline-none focus:border-accent"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => doDay("closed")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-danger-soft text-danger text-body-sm font-semibold hover:brightness-95 disabled:opacity-50 transition"
+            >
+              <CalendarX2 className="w-3.5 h-3.5" /> Выходной
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => doDay("open")}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-success-soft text-success text-body-sm font-semibold hover:brightness-95 disabled:opacity-50 transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Открыть
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={doSchedule}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink disabled:opacity-50 transition"
+              title="Отправить текущее недельное расписание кассы на сайт"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />} Расписание → сайт
+            </button>
+          </div>
+
+          {result && (
+            <div
+              className={`text-tiny rounded-md px-2 py-1.5 ${
+                !result.ok
+                  ? "bg-danger-soft text-danger"
+                  : result.dryRun
+                  ? "bg-warning-soft text-warning"
+                  : "bg-success-soft text-success"
+              }`}
+            >
+              {result.text}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 // --- Add / Edit modal ---
@@ -535,23 +748,18 @@ function OfficeFormModal({ open, office, onClose }) {
           </p>
         </div>
 
-        {/* Привязка к офису сайта (coinpoint) — управление открыт/закрыт касса→сайт */}
-        <div className="border-t border-border-soft pt-4">
-          <div className="text-tiny font-bold text-muted uppercase tracking-wider mb-2">
-            Офис на сайте (coinpoint)
-          </div>
-          <input
-            type="text"
-            value={coinpointCode}
-            onChange={(e) => setCoinpointCode(e.target.value.trim())}
-            placeholder="напр. antalya_lara / ist_taksim / msk_arbat"
-            className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
-          />
-          <p className="text-tiny text-muted mt-1.5">
-            Код офиса на сайте (coinpoint.offices.code). Управление «открыт/закрыт/выходной» из
-            кассы будет применяться именно к этому офису сайта. Пусто = офис не отражается на сайте.
-          </p>
-        </div>
+        {/* Привязка к офису сайта (coinpoint) + живое управление доступностью */}
+        <SiteOfficeControls
+          open={open}
+          code={coinpointCode}
+          setCode={setCoinpointCode}
+          timezone={timezone}
+          scheduleSource={{
+            workingDays,
+            workingHours: { start: startTime, end: endTime },
+            workingHoursByDay,
+          }}
+        />
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
