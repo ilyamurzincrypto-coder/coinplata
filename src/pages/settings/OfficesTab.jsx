@@ -54,7 +54,11 @@ function formatWorkingDays(days) {
 }
 
 // iOS-style переключатель (Apple switch). role=switch, клавиатура/фокус, busy-спиннер.
-function AppleToggle({ checked, onChange, disabled, busy }) {
+function AppleToggle({ checked, onChange, disabled, busy, size = "md" }) {
+  const sm = size === "sm";
+  const track = sm ? "h-6 w-11" : "h-7 w-[52px]";
+  const knob = sm ? "h-5 w-5" : "h-6 w-6";
+  const onX = sm ? "translate-x-[22px]" : "translate-x-[26px]";
   return (
     <button
       type="button"
@@ -62,13 +66,13 @@ function AppleToggle({ checked, onChange, disabled, busy }) {
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-7 w-[52px] shrink-0 items-center rounded-full transition-colors duration-300 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`relative inline-flex ${track} shrink-0 items-center rounded-full transition-colors duration-300 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed ${
         checked ? "bg-success" : "bg-black/15"
       }`}
     >
       <span
-        className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out ${
-          checked ? "translate-x-[26px]" : "translate-x-0.5"
+        className={`inline-flex ${knob} items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out ${
+          checked ? onX : "translate-x-0.5"
         }`}
       >
         {busy && <Loader2 className="w-3 h-3 animate-spin text-muted" />}
@@ -882,6 +886,56 @@ export default function OfficesTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingOffice, setEditingOffice] = useState(null);
 
+  // Живой статус офисов сайта (coinpoint) для тумблера «На сайте» в таблице.
+  const [siteByCode, setSiteByCode] = useState({}); // code → { today, ... }
+  const [syncEnabled, setSyncEnabled] = useState(false);
+  const [siteLoaded, setSiteLoaded] = useState(false);
+  const [siteHint, setSiteHint] = useState(""); // предпросмотр/ошибка внизу
+  const [openByCode, setOpenByCode] = useState({}); // оптимистичное положение тумблеров
+  const [busyCode, setBusyCode] = useState(null);
+
+  const loadSite = React.useCallback(async () => {
+    try {
+      const { offices: so, syncEnabled: se } = await fetchSiteOffices();
+      const map = {};
+      const openMap = {};
+      so.forEach((o) => {
+        map[o.code] = o;
+        openMap[o.code] = o?.today?.status ? o.today.status !== "closed" : true;
+      });
+      setSiteByCode(map);
+      setOpenByCode(openMap);
+      setSyncEnabled(se);
+    } catch {
+      /* мост недоступен — тумблеры покажем в дефолте, действие даст ошибку */
+    } finally {
+      setSiteLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadSite();
+  }, [loadSite]);
+
+  const toggleSite = async (office, next) => {
+    const code = office.coinpointOfficeCode;
+    if (!code) return;
+    const date = officeLocalToday({ timezone: office.timezone });
+    setOpenByCode((m) => ({ ...m, [code]: next }));
+    setBusyCode(code);
+    setSiteHint("");
+    try {
+      const res = await setSiteOfficeDay({ code, date, status: next ? "open" : "closed" });
+      const label = `${office.name}: ${next ? "открыт" : "выходной"} (${date})`;
+      setSiteHint(res?.dryRun ? `Предпросмотр — ${label}. Сайт не тронут (синхронизация выключена).` : `${label} — применено на сайте.`);
+    } catch (e) {
+      setOpenByCode((m) => ({ ...m, [code]: !next })); // откат
+      setSiteHint(`Ошибка: ${e?.message || e}`);
+    } finally {
+      setBusyCode(null);
+    }
+  };
+
   const accountsPerOffice = useMemo(() => {
     const map = new Map();
     accounts.forEach((a) => {
@@ -945,16 +999,34 @@ export default function OfficesTab() {
           <h2 className="text-[16px] font-semibold tracking-tight">{t("offices_title")}</h2>
           <p className="text-caption text-muted mt-0.5">{t("offices_subtitle")}</p>
         </div>
-        {isAdmin && (
-          <button
-            onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            {t("office_add")}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {siteLoaded && (
+            <span
+              className={`inline-flex items-center gap-1.5 text-tiny font-semibold px-2 py-1 rounded-md ${
+                syncEnabled ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
+              }`}
+              title={syncEnabled ? "Тумблеры «На сайте» реально меняют статус на coinpoint" : "Тумблеры работают в предпросмотре — сайт не меняется, пока синхронизацию не включат"}
+            >
+              <Globe className="w-3 h-3" />
+              {syncEnabled ? "Синхронизация с сайтом ВКЛ" : "Сайт: предпросмотр"}
+            </span>
+          )}
+          {isAdmin && (
+            <button
+              onClick={openCreate}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t("office_add")}
+            </button>
+          )}
+        </div>
       </div>
+      {siteHint && (
+        <div className="px-5 py-2 border-b border-border-soft bg-surface-soft/40 text-tiny text-ink-soft">
+          {siteHint}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full text-body-sm">
@@ -967,6 +1039,7 @@ export default function OfficesTab() {
               <th className="px-3 py-2.5 font-bold">{t("office_schedule")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_fees")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
+              <th className="px-3 py-2.5 font-bold">На сайте</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("office_accounts")}</th>
               <th className="px-5 py-2.5 font-bold w-24"></th>
             </tr>
@@ -1058,6 +1131,30 @@ export default function OfficesTab() {
                       {isClosed ? t("office_status_closed") : t("office_status_active")}
                     </span>
                   </td>
+                  <td className="px-3 py-3">
+                    {o.coinpointOfficeCode ? (
+                      <div className="inline-flex items-center gap-2">
+                        <AppleToggle
+                          size="sm"
+                          checked={openByCode[o.coinpointOfficeCode] ?? true}
+                          busy={busyCode === o.coinpointOfficeCode}
+                          disabled={!isAdmin || busyCode === o.coinpointOfficeCode || !siteLoaded}
+                          onChange={(next) => toggleSite(o, next)}
+                        />
+                        <span
+                          className={`text-tiny font-semibold ${
+                            (openByCode[o.coinpointOfficeCode] ?? true) ? "text-success" : "text-danger"
+                          }`}
+                        >
+                          {(openByCode[o.coinpointOfficeCode] ?? true) ? "Открыт" : "Выходной"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-tiny text-muted-soft" title="Офис не привязан к сайту">
+                        не на сайте
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-3 text-right tabular-nums">
                     {count > 0 ? (
                       <span className="font-semibold text-ink-soft">{count}</span>
@@ -1100,7 +1197,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 9 : 8} className="px-5 py-12 text-center text-body-sm text-muted-soft">
+                <td colSpan={isAdmin ? 10 : 9} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   No offices
                 </td>
               </tr>
