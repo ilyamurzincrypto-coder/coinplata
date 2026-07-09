@@ -3,7 +3,7 @@
 // Подсчёт accounts per office — через useAccounts (read-only).
 
 import React, { useState, useMemo, useEffect } from "react";
-import { Building2, Plus, Pencil, Power, RotateCcw, Clock, ChevronUp, ChevronDown, Globe, CalendarX2, Loader2, RefreshCw } from "lucide-react";
+import { Building2, Plus, Pencil, Power, RotateCcw, Clock, ChevronUp, ChevronDown, Globe, Loader2, RefreshCw } from "lucide-react";
 import Modal from "../../components/ui/Modal.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
@@ -53,6 +53,30 @@ function formatWorkingDays(days) {
   return ISO_DAYS.filter((d) => days.includes(d.n)).map((d) => d.short).join(" · ");
 }
 
+// iOS-style переключатель (Apple switch). role=switch, клавиатура/фокус, busy-спиннер.
+function AppleToggle({ checked, onChange, disabled, busy }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-7 w-[52px] shrink-0 items-center rounded-full transition-colors duration-300 ease-out outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed ${
+        checked ? "bg-success" : "bg-black/15"
+      }`}
+    >
+      <span
+        className={`inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-out ${
+          checked ? "translate-x-[26px]" : "translate-x-0.5"
+        }`}
+      >
+        {busy && <Loader2 className="w-3 h-3 animate-spin text-muted" />}
+      </span>
+    </button>
+  );
+}
+
 // --- Site (coinpoint) binding + live availability controls ---
 // Привязка кассового офиса к офису сайта + управление доступностью касса→сайт.
 // Пока рубильник на бэке выключен (CASHDESK_SYNC_TO_SITE≠'on') — запись
@@ -65,6 +89,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
   const [result, setResult] = useState(null); // { ok, dryRun, text }
   const [dayDate, setDayDate] = useState("");
   const [dayReason, setDayReason] = useState("");
+  const [dayOpen, setDayOpen] = useState(true); // положение тумблера (оптимистично)
 
   const reload = React.useCallback(async () => {
     setList(null);
@@ -83,6 +108,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
     if (!open) return;
     setResult(null);
     setDayReason("");
+    setDayOpen(true);
     setDayDate(officeLocalToday({ timezone }));
     reload();
   }, [open, timezone, reload]);
@@ -107,12 +133,28 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
     }
   };
 
-  const doDay = (status) => {
+  // Тумблер Открыт/Выходной: оптимистично двигаем, при ошибке откатываем.
+  const toggleDay = async (next) => {
     const date = dayDate || officeLocalToday({ timezone });
-    return runAction(
-      () => setSiteOfficeDay({ code, date, status, reason: dayReason || undefined }),
-      status === "closed" ? `выходной ${code} на ${date}` : `открыть ${code} на ${date}`
-    );
+    const status = next ? "open" : "closed";
+    setDayOpen(next);
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await setSiteOfficeDay({ code, date, status, reason: dayReason || undefined });
+      const dry = !!res?.dryRun;
+      const label = next ? `открыть ${code} на ${date}` : `выходной ${code} на ${date}`;
+      setResult({
+        ok: true,
+        dryRun: dry,
+        text: dry ? `Предпросмотр: ${label} (синхронизация выключена — сайт не тронут)` : `${label} — применено на сайте`,
+      });
+    } catch (e) {
+      setDayOpen(!next); // откат
+      setResult({ ok: false, dryRun: false, text: e?.message || String(e) });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const doSchedule = () =>
@@ -190,7 +232,23 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
             {syncEnabled ? "Синхронизация с сайтом включена" : "Предпросмотр — запись на сайт выключена"}
           </div>
 
-          {/* Выходной / открыть на дату */}
+          {/* Apple-тумблер: Открыт ↔ Выходной на выбранную дату */}
+          <div className="flex items-center justify-between gap-3 rounded-card bg-white border border-border-soft px-3 py-2.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className={`text-body-sm font-semibold ${dayOpen ? "text-success" : "text-danger"}`}>
+                  {dayOpen ? "Открыт" : "Выходной"}
+                </span>
+                {busy && <Loader2 className="w-3 h-3 animate-spin text-muted-soft" />}
+              </div>
+              <div className="text-tiny text-muted mt-0.5 truncate">
+                {dayDate === officeLocalToday({ timezone }) ? "сегодня" : dayDate} · офис на сайте
+              </div>
+            </div>
+            <AppleToggle checked={dayOpen} onChange={toggleDay} disabled={busy} busy={busy} />
+          </div>
+
+          {/* Дата (по умолчанию сегодня) + причина выходного */}
           <div className="flex flex-wrap items-end gap-2">
             <div>
               <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Дата</label>
@@ -202,7 +260,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
               />
             </div>
             <div className="flex-1 min-w-[140px]">
-              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Причина (необяз.)</label>
+              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Причина выходного (необяз.)</label>
               <input
                 type="text"
                 value={dayReason}
@@ -212,23 +270,8 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
               />
             </div>
           </div>
+
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => doDay("closed")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-danger-soft text-danger text-body-sm font-semibold hover:brightness-95 disabled:opacity-50 transition"
-            >
-              <CalendarX2 className="w-3.5 h-3.5" /> Выходной
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => doDay("open")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-success-soft text-success text-body-sm font-semibold hover:brightness-95 disabled:opacity-50 transition"
-            >
-              <RotateCcw className="w-3.5 h-3.5" /> Открыть
-            </button>
             <button
               type="button"
               disabled={busy}
