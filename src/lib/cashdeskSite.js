@@ -74,6 +74,37 @@ export function officeToSiteWorkingHours(office) {
   return out;
 }
 
+// Обратная конверсия: расписание сайта (working_hours sun..sat) → модель кассы
+// { workingDays:[ISO 1-7], startTime, endTime, workingHoursByDay }. Нужна, чтобы
+// «подтянуть реальные настройки с сайта» в форму офиса кассы.
+const KEY_TO_ISO = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 7 };
+
+export function siteWorkingHoursToOffice(wh) {
+  if (!wh || typeof wh !== "object") return null;
+  const days = []; // { n, open, close }
+  for (const [key, iso] of Object.entries(KEY_TO_ISO)) {
+    const v = wh[key];
+    if (v && typeof v === "object" && v.open && v.close) {
+      days.push({ n: iso, open: String(v.open).slice(0, 5), close: String(v.close).slice(0, 5) });
+    }
+  }
+  if (!days.length) return { workingDays: [], startTime: "09:00", endTime: "18:00", workingHoursByDay: {} };
+  days.sort((a, b) => a.n - b.n);
+  const base = days[0];
+  const byDay = {};
+  for (const d of days) {
+    if (d.open !== base.open || d.close !== base.close) {
+      byDay[String(d.n)] = { start: d.open, end: d.close };
+    }
+  }
+  return {
+    workingDays: days.map((d) => d.n),
+    startTime: base.open,
+    endTime: base.close,
+    workingHoursByDay: Object.keys(byDay).length ? byDay : null,
+  };
+}
+
 /** Локальная дата 'YYYY-MM-DD' по TZ офиса (для выходного «сегодня»). */
 export function officeLocalToday(office) {
   const tz = office?.timezone || "Europe/Istanbul";

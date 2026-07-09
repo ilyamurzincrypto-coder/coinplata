@@ -18,6 +18,7 @@ import {
   setSiteOfficeDay,
   pushSiteSchedule,
   officeToSiteWorkingHours,
+  siteWorkingHoursToOffice,
   officeLocalToday,
 } from "../../lib/cashdeskSite.js";
 import {
@@ -85,7 +86,7 @@ function AppleToggle({ checked, onChange, disabled, busy, size = "md" }) {
 // Привязка кассового офиса к офису сайта + управление доступностью касса→сайт.
 // Пока рубильник на бэке выключен (CASHDESK_SYNC_TO_SITE≠'on') — запись
 // отвечает { dryRun:true } и мы показываем «предпросмотр», сайт не трогается.
-function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
+function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onApplySite }) {
   const [list, setList] = useState(null); // null=загрузка, []=нет/ошибка
   const [syncEnabled, setSyncEnabled] = useState(false);
   const [loadErr, setLoadErr] = useState("");
@@ -276,6 +277,20 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone }) {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            {onApplySite && (
+              <button
+                type="button"
+                disabled={busy || !list}
+                onClick={() => {
+                  const so = (list || []).find((o) => o.code === code);
+                  if (so) { onApplySite(so); setResult({ ok: true, dryRun: false, text: `Настройки офиса ${code} подтянуты с сайта — проверьте и нажмите «Сохранить».` }); }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk disabled:opacity-50 transition"
+                title="Заполнить расписание кассового офиса реальными настройками с сайта"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Настройки ← сайт
+              </button>
+            )}
             <button
               type="button"
               disabled={busy}
@@ -806,6 +821,14 @@ function OfficeFormModal({ open, office, onClose }) {
             workingHours: { start: startTime, end: endTime },
             workingHoursByDay,
           }}
+          onApplySite={(so) => {
+            const s = siteWorkingHoursToOffice(so?.working_hours);
+            if (!s) return;
+            setWorkingDays(s.workingDays);
+            setStartTime(s.startTime);
+            setEndTime(s.endTime);
+            setWorkingHoursByDay(s.workingHoursByDay);
+          }}
         />
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
@@ -1039,7 +1062,6 @@ export default function OfficesTab() {
               <th className="px-3 py-2.5 font-bold">{t("office_schedule")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_fees")}</th>
               <th className="px-3 py-2.5 font-bold">{t("office_status")}</th>
-              <th className="px-3 py-2.5 font-bold">На сайте</th>
               <th className="px-3 py-2.5 font-bold text-right">{t("office_accounts")}</th>
               <th className="px-5 py-2.5 font-bold w-24"></th>
             </tr>
@@ -1121,39 +1143,29 @@ export default function OfficesTab() {
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold ${
-                        isClosed
-                          ? "bg-surface-sunk text-muted"
-                          : "bg-success-soft text-success"
-                      }`}
-                    >
-                      {isClosed ? t("office_status_closed") : t("office_status_active")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">
-                    {o.coinpointOfficeCode ? (
-                      <div className="inline-flex items-center gap-2">
-                        <AppleToggle
-                          size="sm"
-                          checked={openByCode[o.coinpointOfficeCode] ?? true}
-                          busy={busyCode === o.coinpointOfficeCode}
-                          disabled={!isAdmin || busyCode === o.coinpointOfficeCode || !siteLoaded}
-                          onChange={(next) => toggleSite(o, next)}
-                        />
-                        <span
-                          className={`text-tiny font-semibold ${
-                            (openByCode[o.coinpointOfficeCode] ?? true) ? "text-success" : "text-danger"
-                          }`}
-                        >
-                          {(openByCode[o.coinpointOfficeCode] ?? true) ? "Открыт" : "Выходной"}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-tiny text-muted-soft" title="Офис не привязан к сайту">
-                        не на сайте
+                    <div className="flex flex-col items-start gap-1.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold ${
+                          isClosed
+                            ? "bg-surface-sunk text-muted"
+                            : "bg-success-soft text-success"
+                        }`}
+                      >
+                        {isClosed ? t("office_status_closed") : t("office_status_active")}
                       </span>
-                    )}
+                      {o.coinpointOfficeCode && (
+                        <span className="inline-flex items-center gap-1.5" title="Открыт / выходной на сайте (coinpoint), сегодня">
+                          <Globe className="w-3 h-3 text-muted-soft" />
+                          <AppleToggle
+                            size="sm"
+                            checked={openByCode[o.coinpointOfficeCode] ?? true}
+                            busy={busyCode === o.coinpointOfficeCode}
+                            disabled={!isAdmin || busyCode === o.coinpointOfficeCode || !siteLoaded}
+                            onChange={(next) => toggleSite(o, next)}
+                          />
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-3 text-right tabular-nums">
                     {count > 0 ? (
@@ -1197,7 +1209,7 @@ export default function OfficesTab() {
             })}
             {offices.length === 0 && (
               <tr>
-                <td colSpan={isAdmin ? 10 : 9} className="px-5 py-12 text-center text-body-sm text-muted-soft">
+                <td colSpan={isAdmin ? 9 : 8} className="px-5 py-12 text-center text-body-sm text-muted-soft">
                   No offices
                 </td>
               </tr>
