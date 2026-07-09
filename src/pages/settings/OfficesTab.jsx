@@ -49,9 +49,26 @@ const ISO_DAYS = [
   { n: 7, short: "Sun" },
 ];
 
+// Компактный диапазон рабочих дней: [1..6] → «Mon–Sat», [1..5,7] → «Mon–Fri, Sun».
 function formatWorkingDays(days) {
   if (!Array.isArray(days) || days.length === 0) return "—";
-  return ISO_DAYS.filter((d) => days.includes(d.n)).map((d) => d.short).join(" · ");
+  const sorted = [...new Set(days)].filter((n) => n >= 1 && n <= 7).sort((a, b) => a - b);
+  if (!sorted.length) return "—";
+  const short = (n) => ISO_DAYS.find((d) => d.n === n)?.short || String(n);
+  const runs = [];
+  let s = sorted[0], p = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === p + 1) { p = sorted[i]; continue; }
+    runs.push([s, p]); s = sorted[i]; p = sorted[i];
+  }
+  runs.push([s, p]);
+  return runs.map(([a, b]) => (a === b ? short(a) : `${short(a)}–${short(b)}`)).join(", ");
+}
+
+// Короткая таймзона: «Europe/Istanbul» → «Istanbul».
+function shortTz(tz) {
+  if (!tz) return "—";
+  return String(tz).split("/").pop().replace(/_/g, " ");
 }
 
 // iOS-style переключатель (Apple switch). role=switch, клавиатура/фокус, busy-спиннер.
@@ -1125,7 +1142,7 @@ export default function OfficesTab() {
                           {o.workingHours?.start || "—"}–{o.workingHours?.end || "—"}
                         </div>
                         <div className="text-muted">
-                          {formatWorkingDays(o.workingDays)} · {o.timezone || "—"}
+                          {formatWorkingDays(o.workingDays)} · {shortTz(o.timezone)}
                         </div>
                       </div>
                     </div>
