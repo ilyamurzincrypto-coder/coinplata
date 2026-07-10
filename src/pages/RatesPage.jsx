@@ -53,6 +53,7 @@ import RatesCoveragePanel from "../components/RatesCoveragePanel.jsx";
 import RatesTable from "../components/rates/RatesTable.jsx";
 import RatesMarginEditor from "../components/rates/RatesMarginEditor.jsx";
 import OfficeRatesMatrix from "../components/rates/OfficeRatesMatrix.jsx";
+import RatesControlPanel from "../components/rates/RatesControlPanel.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
@@ -140,14 +141,22 @@ export default function RatesPage({ onBack, drawer = false }) {
   const [listMode, setListMode] = useState("matrix");
   // Свежий Rapira mid по паре (для авто-курса). { USDT_RUB: 81.04, ... }
   const [rapiraMid, setRapiraMid] = useState({});
+  // Полные снимки фидов для панели управления: { USDT_RUB: {bid,ask,mid} }.
+  const [rapiraLatest, setRapiraLatest] = useState({});
+  const [tolLatest, setTolLatest] = useState({}); // Tolunay: { USD_TRY:{bid,ask,mid} }
   React.useEffect(() => {
     let alive = true;
     loadExternalRatesLatest()
       .then((rows) => {
         if (!alive) return;
-        const m = {};
-        (rows || []).filter((r) => r.source === "rapira").forEach((r) => { m[r.pair] = r.mid; });
+        const m = {}, rap = {}, tol = {};
+        (rows || []).forEach((r) => {
+          if (r.source === "rapira") { m[r.pair] = r.mid; rap[r.pair] = { bid: r.bid, ask: r.ask, mid: r.mid }; }
+          else if (r.source === "tolunay") { tol[r.pair] = { bid: r.bid, ask: r.ask, mid: r.mid }; }
+        });
         setRapiraMid(m);
+        setRapiraLatest(rap);
+        setTolLatest(tol);
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -390,6 +399,27 @@ export default function RatesPage({ onBack, drawer = false }) {
         entity: "office_rate",
         entityId: `${officeId}:${rateKey(from, to)}`,
         summary: `office ${from}→${to} = ${n}`,
+      });
+    }
+  };
+
+  // Сохранить override с явным spread (для «Панели управления»: pct-строки
+  // Турции base=1+spread%, прочее — base=rate, spread=0). В отличие от
+  // saveOfficeRate (сохраняет существующий spread) — задаёт spread явно.
+  const saveOverrideRaw = async (officeId, from, to, rate, spread = 0) => {
+    const n = Number(rate);
+    const sp = Number(spread) || 0;
+    if (!isSupabaseConfigured || !Number.isFinite(n) || n <= 0) return;
+    const res = await withToast(
+      () => rpcUpsertOfficeRate({ officeId, from, to, rate: n, spreadPercent: sp }),
+      { success: null, errorPrefix: "Override save failed" }
+    );
+    if (res.ok) {
+      applyOfficeOverrideLocal?.(officeId, from, to, {
+        baseRate: n,
+        spreadPercent: sp,
+        rate: n * (1 + sp / 100),
+        updatedAt: new Date().toISOString(),
       });
     }
   };
@@ -678,6 +708,7 @@ export default function RatesPage({ onBack, drawer = false }) {
             {/* Переключатель: матрица офисов ↔ полные настройки (все пары/авто) */}
             <div className="flex items-center gap-1 pb-1">
               {[
+                { id: "control", label: "Панель управления" },
                 { id: "matrix", label: "Курсы по офисам" },
                 { id: "settings", label: "Настройки · все пары / авто" },
               ].map((m) => (
@@ -695,7 +726,18 @@ export default function RatesPage({ onBack, drawer = false }) {
               ))}
             </div>
 
-            {listMode === "matrix" ? (
+            {listMode === "control" ? (
+              <RatesControlPanel
+                offices={activeOffices}
+                getGP={findGP}
+                getOverride={getOfficeOverride}
+                tol={tolLatest}
+                rapira={rapiraLatest}
+                saveMargins={handleSetMargins}
+                saveOverride={saveOverrideRaw}
+                onDone={() => {}}
+              />
+            ) : listMode === "matrix" ? (
               <OfficeRatesMatrix
                 offices={activeOffices}
                 pairs={existingPairs}
