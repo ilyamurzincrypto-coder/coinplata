@@ -61,7 +61,7 @@ const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
 const TREND_WINS = [[30, "30м"], [60, "1ч"], [180, "3ч"]];
 function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
   return (
-    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Колонка «{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / = без изменений). Итог = цена + спред (коп.).</>}>
+    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Колонка «{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / • без изменений). Итог = цена + спред (коп.).</>}>
       <div className="flex items-center gap-1 px-3.5 pt-2">
         {[["ANT", "Анталья"], ["IST", "Стамбул"]].map(([id, label]) => (
           <button
@@ -99,10 +99,10 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
           <div key={r.key} className="grid items-center px-3.5 py-2 border-t border-border-soft" style={{ gridTemplateColumns: "70px 56px 68px 40px 56px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
             <div className="text-right font-mono tabular-nums text-[12px] text-ink-soft" title="Цена Tolunay (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
-            <div className="text-right">
+            <div className="text-right pr-3">
               {delta != null ? (
                 <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
-                  {fmt(r.prev, r.dp)}<span className="text-[10px]">{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
+                  <span className="text-[11px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
                 </span>
               ) : (
                 <span className="text-muted-soft text-[12px]">—</span>
