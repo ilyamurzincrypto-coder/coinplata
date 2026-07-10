@@ -101,9 +101,9 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
             <div className="text-right" title="Tolunay (авто)">
               <div className="font-mono tabular-nums text-[12px] text-muted leading-tight">{r.price ? fmt(r.price, r.dp) : "—"}</div>
               {delta != null && (
-                <div className={`text-[8px] tabular-nums leading-tight flex items-center justify-end gap-0.5 ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
-                  <span className="font-mono">{fmt(r.prev, r.dp)}</span>
-                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
+                <div className={`text-[10px] tabular-nums leading-tight flex items-center justify-end gap-1 font-mono font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
+                  <span className="text-muted-soft font-normal">{fmt(r.prev, r.dp)}</span>
+                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}{delta !== 0 ? `${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}` : ""}</span>
                 </div>
               )}
             </div>
@@ -171,45 +171,42 @@ const RU_ROWS = [
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "МСК", cityCode: "MSK", dp: 2 },
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "СПБ", cityCode: "SPB", dp: 2 },
 ];
-function RuBlock({ rows, setRows, prevRapira }) {
-  const isOver = (r) => Math.abs(r.price - r.rapira) > 1e-9;
-  const rapDelta = (r) => (prevRapira != null && r.rapira ? r.rapira - prevRapira : null);
+function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira }) {
+  const isOver = (r) => r.rapira > 0 && Math.abs(r.price - r.rapira) > 1e-9;
   return (
     <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (оверрайд). <b className="text-muted">↻</b> — вернуть. Итог = цена + спред (коп.).</>}>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
         <span>Напр.</span><span className="text-right">Rapira</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
-      {rows.map((r, i) => {
-        const itog = r.price + (r.spread || 0) / 100;
+      {rows.map((r) => {
         const over = isOver(r);
+        const d = prevRapira != null && r.rapira ? r.rapira - prevRapira : null;
         return (
-          <div key={r.d + r.city} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
+          <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to} <span className="text-muted text-[10px] font-sans font-semibold">{r.city}</span></div>
             <div className="flex flex-col items-end">
               <input
                 className={`${cellIn} w-[84px] ${over ? "border-warning bg-warning-soft" : ""}`}
                 value={r.priceStr ?? fmt(r.price, r.dp)}
-                onChange={(e) => setRows((s) => s.map((x, idx) => (idx === i ? { ...x, price: pnum(e.target.value), priceStr: e.target.value } : x)))}
+                onChange={(e) => onPrice(r.key, e.target.value)}
               />
-              <div className="flex items-center gap-1 text-[8px] text-muted-soft mt-0.5">
-                Rapira <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
-                {(() => {
-                  const d = rapDelta(r);
-                  return d != null ? (
-                    <span className={`inline-flex items-center gap-0.5 ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
-                      <span className="font-mono">{fmt(prevRapira, r.dp)}</span>{d > 0 ? "▲" : d < 0 ? "▼" : "="}
-                    </span>
-                  ) : null;
-                })()}
-                <button type="button" className="text-accent inline-flex" title="Вернуть Rapira" onClick={() => setRows((s) => s.map((x, idx) => (idx === i ? { ...x, price: x.rapira, priceStr: undefined } : x)))}>
-                  <RotateCcw className="w-2.5 h-2.5" />
+              <div className="flex items-center gap-1 text-[10px] text-muted-soft mt-1">
+                <span className="text-[8px] uppercase tracking-wide">Rapira</span>
+                <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
+                {d != null && (
+                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
+                    {d > 0 ? "▲" : d < 0 ? "▼" : "="}{d !== 0 ? `${d > 0 ? "+" : ""}${fmt(d, r.dp)}` : ""}
+                  </span>
+                )}
+                <button type="button" className="text-accent inline-flex ml-0.5" title="Вернуть Rapira" onClick={() => onReset(r.key, r.rapira)}>
+                  <RotateCcw className="w-3 h-3" />
                 </button>
               </div>
             </div>
             <div className="flex justify-end">
-              <input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spreadStr ?? String(r.spread)} onChange={(e) => setRows((s) => s.map((x, idx) => (idx === i ? { ...x, spread: pint(e.target.value), spreadStr: e.target.value } : x)))} />
+              <input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spreadStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} />
             </div>
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{fmt(itog, r.dp)}</div>
+            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.rapira || r.price ? fmt(r.itog, r.dp) : "—"}</div>
           </div>
         );
       })}
@@ -228,8 +225,9 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     });
     return m;
   }, [offices]);
-  const antRep = byCity.ANT[0];
-  const istRep = byCity.IST[0];
+  const repOf = (city) => (byCity[city] || []).find((o) => o.active) ?? byCity[city]?.[0];
+  const antRep = repOf("ANT");
+  const istRep = repOf("IST");
 
   // ── Нал per-city: в состоянии только спред (строка) по направлению; цена —
   // ЖИВАЯ из Tolunay (tol prop), итог = цена + спред/100. Спред-seed из
@@ -287,17 +285,23 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     })
   );
 
-  // ── init Россия из overrides RU + Rapira mid ──
-  const rapMid = Number(rapira?.USDT_RUB?.mid ?? 0);
-  const [ru, setRu] = useState(() =>
-    RU_ROWS.map((r) => {
-      const rep = byCity[r.cityCode]?.[0];
-      const ov = rep ? getOverride?.(rep.id, r.from, r.to) : null;
-      const rapiraRef = rapMid || Number(ov?.rate ?? ov?.baseRate ?? 0);
-      const price = Number(ov?.baseRate ?? ov?.rate ?? rapiraRef);
-      return { ...r, rapira: rapiraRef, price, spread: 0 };
-    })
-  );
+  // ── Россия: цена и Rapira-ref ЖИВЫЕ (rapira mid / override), в состоянии только
+  // правки (перебитая цена / спред). Фикс async-нуля и неактивного СПБ.
+  const [ruEdits, setRuEdits] = useState({}); // key -> {priceStr?, spreadStr?}
+  const ruRows = RU_ROWS.map((r) => {
+    const key = `${r.from}_${r.to}_${r.cityCode}`;
+    const rep = repOf(r.cityCode);
+    const ov = rep ? getOverride?.(rep.id, r.from, r.to) : null;
+    const rapiraMid = Number(rapira?.USDT_RUB?.mid ?? 0);
+    const basePrice = Number(ov?.baseRate ?? ov?.rate ?? rapiraMid);
+    const ed = ruEdits[key] || {};
+    const price = ed.priceStr != null ? pnum(ed.priceStr) : basePrice;
+    const spread = ed.spreadStr != null ? pint(ed.spreadStr) : 0;
+    return { ...r, key, rapira: rapiraMid, price, priceStr: ed.priceStr, spread, spreadStr: ed.spreadStr, itog: price + spread / 100 };
+  });
+  const ruSetPrice = (key, val) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], priceStr: val } }));
+  const ruSetSpread = (key, val) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], spreadStr: val } }));
+  const ruReset = (key, mid) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], priceStr: fmt(mid, 2) } }));
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -333,12 +337,12 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
           }
         }
       }
-      // Блок 3 — Россия → overrides RU-офисов. Итог = price + spread/100.
-      for (const r of ru) {
+      // Блок 3 — Россия → overrides RU-офисов города. Итог = price + spread/100.
+      for (const r of ruRows) {
         const offs = byCity[r.cityCode] || [];
-        const itog = r.price + (r.spread || 0) / 100;
+        if (!(r.itog > 0)) continue;
         for (const o of offs) {
-          await saveOverride(o.id, r.from, r.to, itog, 0);
+          await saveOverride(o.id, r.from, r.to, r.itog, 0);
           n++;
         }
       }
@@ -349,7 +353,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     } finally {
       setBusy(false);
     }
-  }, [nalSpreadOf, tol, tr, ru, byCity, saveOverride, onDone]);
+  }, [nalSpreadOf, tol, tr, ruRows, byCity, saveOverride, onDone]);
 
   return (
     <div>
@@ -370,7 +374,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
         <div className="flex flex-col gap-3 shrink-0">
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock rows={ru} setRows={setRu} prevRapira={rapiraPrev.USDT_RUB} />
+          <RuBlock rows={ruRows} onPrice={ruSetPrice} onSpread={ruSetSpread} onReset={ruReset} prevRapira={rapiraPrev.USDT_RUB} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">

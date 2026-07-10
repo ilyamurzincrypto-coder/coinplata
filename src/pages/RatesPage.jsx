@@ -74,7 +74,7 @@ export default function RatesPage({ onBack, drawer = false }) {
     specialRates,
   } = useRates();
   const { currencies } = useCurrencies();
-  const { activeOffices } = useOffices();
+  const { activeOffices, offices: allOfficesList } = useOffices();
   const { isAdmin, isOwner, currentUser, updatePreferences } = useAuth();
   const { addEntry: logAudit } = useAudit();
 
@@ -714,7 +714,7 @@ export default function RatesPage({ onBack, drawer = false }) {
             </div>
 
             <RatesControlPanel
-              offices={activeOffices}
+              offices={allOfficesList}
               getGP={findGP}
               getOverride={getOfficeOverride}
               tol={tolLatest}
