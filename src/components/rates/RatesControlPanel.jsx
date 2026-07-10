@@ -264,7 +264,12 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     [nalSpread, byCity, getOverride]
   );
   const nalRows = NAL_DIRS.map((d) => {
-    const price = Number(tol?.[d.feed]?.mid ?? 0);
+    const cur = d.from === "TRY" ? d.to : d.from; // валюта против TRY (для фолбэка)
+    const feedMid = Number(tol?.[d.feed]?.mid ?? 0);
+    // Пока Tolunay не догрузился — курс из глобальной пары CUR→TRY (синхронно), не «—».
+    const gp = getGP?.(cur, "TRY");
+    const fallback = Number(gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
+    const price = feedMid || fallback;
     const spread = nalSpreadOf(nalCity, d, price);
     const prev = tolPrev[d.feed];
     return { ...d, price, spread, prev: prev ?? null, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
