@@ -53,10 +53,14 @@ const NAL_CCYS = [
   { c: "CHF", dp: 2 },
   { c: "RUB", dp: 2 },
 ];
-function NalBlock({ city, setCity, rows, setRows, tol }) {
-  // out sell = price + ss/100 ; out buy = price + sb/100 (sb обычно отрицателен)
+// Обе стороны отдельными строками: CUR→TRY (покупаем валюту) и TRY→CUR (продаём).
+const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
+  { from: c, to: "TRY", feed: `${c}_TRY`, dp, key: `${c}_TRY` },
+  { from: "TRY", to: c, feed: `${c}_TRY`, dp, key: `TRY_${c}` },
+]);
+function NalBlock({ city, setCity, rows, onSpread, tol }) {
   return (
-    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая; спред и итог — по вкладке города. <b className="text-muted">Прод.</b> = цена + спред, <b className="text-muted">Пок.</b> = цена − |спред| (коп.).</>}>
+    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Итог = цена + спред (коп.). Обе стороны — отдельными строками.</>}>
       <div className="flex gap-1 px-3.5 pt-2">
         {[["ANT", "Анталья"], ["IST", "Стамбул"]].map(([id, label]) => (
           <button
@@ -71,30 +75,17 @@ function NalBlock({ city, setCity, rows, setRows, tol }) {
           </button>
         ))}
       </div>
-      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "70px 54px 46px 56px 46px 56px" }}>
-        <span>Вал.</span><span className="text-right">Цена</span><span className="text-right">Спр.</span><span className="text-right">Прод.</span><span className="text-right">Спр.</span><span className="text-right">Пок.</span>
+      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "96px 70px 46px 70px" }}>
+        <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
-      {NAL_CCYS.map(({ c, dp }) => {
-        const r = rows[c];
-        const feed = tol[`${c}_TRY`]?.mid;
-        const price = r.price;
-        const sell = price + r.ss / 100;
-        const buy = price + r.sb / 100;
-        return (
-          <div key={c} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "70px 54px 46px 56px 46px 56px" }}>
-            <div className="font-mono text-[12px] font-semibold text-ink">{c}<span className="text-muted-soft font-medium">/TRY</span></div>
-            {feed != null ? (
-              <div className="text-right font-mono tabular-nums text-[12px] text-muted" title="Tolunay (авто)">{fmt(price, dp)}</div>
-            ) : (
-              <input className={`${cellIn} w-[50px] justify-self-end`} value={r.priceStr ?? fmt(price, dp)} onChange={(e) => setRows((s) => ({ ...s, [c]: { ...s[c], price: pnum(e.target.value), priceStr: e.target.value } }))} title="Нет фида — ручная цена" />
-            )}
-            <input className={`${cellIn} w-[42px] justify-self-end`} inputMode="numeric" value={r.ssStr ?? String(r.ss)} onChange={(e) => setRows((s) => ({ ...s, [c]: { ...s[c], ss: pint(e.target.value), ssStr: e.target.value } }))} />
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{fmt(sell, dp)}</div>
-            <input className={`${cellIn} w-[42px] justify-self-end`} inputMode="numeric" value={r.sbStr ?? String(r.sb)} onChange={(e) => setRows((s) => ({ ...s, [c]: { ...s[c], sb: pint(e.target.value), sbStr: e.target.value } }))} />
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{fmt(buy, dp)}</div>
-          </div>
-        );
-      })}
+      {rows.map((r) => (
+        <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "96px 70px 46px 70px" }}>
+          <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
+          <div className="text-right font-mono tabular-nums text-[12px] text-muted" title="Tolunay (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+          <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+          <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
+        </div>
+      ))}
     </Card>
   );
 }
@@ -205,44 +196,44 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
   const antRep = byCity.ANT[0];
   const istRep = byCity.IST[0];
 
-  // ── init нала per-city из офисных оверрайдов представителя города + Tolunay цена ──
-  // покупка (CUR→TRY) и продажа (TRY→CUR) хранятся как office_rate_overrides.
-  const initNalCity = useCallback(
-    (cityCode) => {
-      const rep = byCity[cityCode]?.[0];
-      const s = {};
-      NAL_CCYS.forEach(({ c }) => {
-        const feed = tol?.[`${c}_TRY`]?.mid;
-        const ovBuy = rep ? getOverride?.(rep.id, c, "TRY") : null; // CUR→TRY = покупка
-        const ovSell = rep ? getOverride?.(rep.id, "TRY", c) : null; // TRY→CUR = продажа
-        const buy = Number(ovBuy?.baseRate ?? ovBuy?.rate ?? 0);
-        const sell = Number(ovSell?.baseRate ?? ovSell?.rate ?? 0);
-        const price = feed != null ? feed : buy || sell || 0;
-        s[c] = {
-          price,
-          ss: sell ? Math.round((sell - price) * 100) : 0,
-          sb: buy ? Math.round((buy - price) * 100) : 0,
-        };
-      });
-      return s;
-    },
-    [byCity, getOverride, tol]
-  );
+  // ── Нал per-city: в состоянии только спред (строка) по направлению; цена —
+  // ЖИВАЯ из Tolunay (tol prop), итог = цена + спред/100. Спред-seed из
+  // существующего оверрайда офиса-представителя (когда цена известна).
   const [nalCity, setNalCity] = useState("ANT");
-  const [nalByCity, setNalByCity] = useState(() => ({ ANT: initNalCity("ANT"), IST: initNalCity("IST") }));
-  const setNalRows = useCallback(
-    (updater) =>
-      setNalByCity((s) => ({ ...s, [nalCity]: typeof updater === "function" ? updater(s[nalCity]) : updater })),
+  const [nalSpread, setNalSpread] = useState({ ANT: {}, IST: {} }); // {city:{dirKey: spStr}}
+  const onNalSpread = useCallback(
+    (key, val) => setNalSpread((s) => ({ ...s, [nalCity]: { ...s[nalCity], [key]: val } })),
     [nalCity]
   );
+  const nalSpreadOf = useCallback(
+    (cityCode, d, price) => {
+      const spStr = nalSpread[cityCode]?.[d.key];
+      if (spStr != null) return pint(spStr);
+      const rep = byCity[cityCode]?.[0];
+      const ov = rep ? getOverride?.(rep.id, d.from, d.to) : null;
+      const itog = Number(ov?.baseRate ?? ov?.rate ?? 0);
+      return itog && price ? Math.round((itog - price) * 100) : 0;
+    },
+    [nalSpread, byCity, getOverride]
+  );
+  const nalRows = NAL_DIRS.map((d) => {
+    const price = Number(tol?.[d.feed]?.mid ?? 0);
+    const spread = nalSpreadOf(nalCity, d, price);
+    return { ...d, price, spread, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
+  });
 
   // ── init Турция из overrides представителя города ──
   const [tr, setTr] = useState(() =>
     TR_ROWS.map((r) => {
       const readCity = (rep) => {
         const ov = rep ? getOverride?.(rep.id, r.from, r.to) : null;
-        if (!ov) return { v: r.type === "pct" ? 0 : 0 };
-        return { v: r.type === "pct" ? Number(ov.spreadPercent ?? 0) : Number(ov.baseRate ?? ov.rate ?? 0) };
+        if (!ov) return { v: 0 };
+        if (r.type === "pct") {
+          // %-строка = (эффективный курс − 1)·100, независимо от того, как хранили (base vs spread).
+          const rate = Number(ov.rate ?? Number(ov.baseRate ?? 1) * (1 + Number(ov.spreadPercent ?? 0) / 100));
+          return { v: Number(((rate - 1) * 100).toFixed(4)) };
+        }
+        return { v: Number(ov.baseRate ?? ov.rate ?? 0) };
       };
       return { ...r, ant: readCity(antRep), ist: readCity(istRep) };
     })
@@ -268,20 +259,18 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
     setMsg(null);
     try {
       let n = 0;
-      // Блок 1 — нал per-city → office_rate_overrides офисов города. Пишем обе
-      // стороны: CUR→TRY = Покупка (цена+sb/100), TRY→CUR = Продажа (цена+ss/100).
+      // Блок 1 — нал per-city → office_rate_overrides офисов города. Каждая строка-
+      // направление (CUR→TRY и TRY→CUR) сохраняется как итог = Tolunay + спред/100.
       for (const city of ["ANT", "IST"]) {
         const offs = byCity[city] || [];
-        const rows = nalByCity[city];
-        for (const { c } of NAL_CCYS) {
-          const r = rows[c];
-          const buy = r.price + r.sb / 100;
-          const sell = r.price + r.ss / 100;
-          if (!(buy > 0) || !(sell > 0)) continue;
+        for (const d of NAL_DIRS) {
+          const price = Number(tol?.[d.feed]?.mid ?? 0);
+          if (!(price > 0)) continue;
+          const itog = price + nalSpreadOf(city, d, price) / 100;
+          if (!(itog > 0)) continue;
           for (const o of offs) {
-            await saveOverride(o.id, c, "TRY", buy, 0);
-            await saveOverride(o.id, "TRY", c, sell, 0);
-            n += 2;
+            await saveOverride(o.id, d.from, d.to, itog, 0);
+            n++;
           }
         }
       }
@@ -312,7 +301,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
     } finally {
       setBusy(false);
     }
-  }, [nalByCity, tr, ru, byCity, saveOverride, onDone]);
+  }, [nalSpreadOf, tol, tr, ru, byCity, saveOverride, onDone]);
 
   return (
     <div>
@@ -331,7 +320,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
 
       <div className="flex gap-4 items-start">
         <div className="flex flex-col gap-3 shrink-0">
-          <NalBlock city={nalCity} setCity={setNalCity} rows={nalByCity[nalCity]} setRows={setNalRows} tol={tol || {}} />
+          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} tol={tol || {}} />
           <TrBlock rows={tr} setRows={setTr} />
           <RuBlock rows={ru} setRows={setRu} />
         </div>
