@@ -57,7 +57,7 @@ import RatesControlPanel from "../components/rates/RatesControlPanel.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
-import { loadExternalRatesLatest, loadTolunayHistory } from "../lib/supabaseReaders.js";
+import { loadExternalRatesLatest, loadTolunayHistory, loadExternalHistory } from "../lib/supabaseReaders.js";
 import { officeCityCode, spreadFor, rapiraRateFor } from "../lib/rapiraSpreads.js";
 
 export default function RatesPage({ onBack, drawer = false }) {
@@ -145,9 +145,11 @@ export default function RatesPage({ onBack, drawer = false }) {
   const [rapiraLatest, setRapiraLatest] = useState({});
   const [tolLatest, setTolLatest] = useState({}); // Tolunay: { USD_TRY:{bid,ask,mid} }
   const [tolHistory, setTolHistory] = useState([]); // недавние снимки Tolunay (тренд)
+  const [rapiraHistory, setRapiraHistory] = useState([]); // недавние снимки Rapira (тренд)
   React.useEffect(() => {
     let alive = true;
     loadTolunayHistory(6).then((h) => { if (alive) setTolHistory(h); }).catch(() => {});
+    loadExternalHistory("rapira", 6).then((h) => { if (alive) setRapiraHistory(h); }).catch(() => {});
     return () => { alive = false; };
   }, []);
   React.useEffect(() => {
@@ -717,6 +719,7 @@ export default function RatesPage({ onBack, drawer = false }) {
               getOverride={getOfficeOverride}
               tol={tolLatest}
               tolHistory={tolHistory}
+              rapiraHistory={rapiraHistory}
               rapira={rapiraLatest}
               saveMargins={handleSetMargins}
               saveOverride={saveOverrideRaw}

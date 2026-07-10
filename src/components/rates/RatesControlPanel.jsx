@@ -171,8 +171,9 @@ const RU_ROWS = [
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "МСК", cityCode: "MSK", dp: 2 },
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "СПБ", cityCode: "SPB", dp: 2 },
 ];
-function RuBlock({ rows, setRows }) {
+function RuBlock({ rows, setRows, prevRapira }) {
   const isOver = (r) => Math.abs(r.price - r.rapira) > 1e-9;
+  const rapDelta = (r) => (prevRapira != null && r.rapira ? r.rapira - prevRapira : null);
   return (
     <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (оверрайд). <b className="text-muted">↻</b> — вернуть. Итог = цена + спред (коп.).</>}>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
@@ -192,6 +193,14 @@ function RuBlock({ rows, setRows }) {
               />
               <div className="flex items-center gap-1 text-[8px] text-muted-soft mt-0.5">
                 Rapira <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
+                {(() => {
+                  const d = rapDelta(r);
+                  return d != null ? (
+                    <span className={`inline-flex items-center gap-0.5 ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
+                      <span className="font-mono">{fmt(prevRapira, r.dp)}</span>{d > 0 ? "▲" : d < 0 ? "▼" : "="}
+                    </span>
+                  ) : null;
+                })()}
                 <button type="button" className="text-accent inline-flex" title="Вернуть Rapira" onClick={() => setRows((s) => s.map((x, idx) => (idx === i ? { ...x, price: x.rapira, priceStr: undefined } : x)))}>
                   <RotateCcw className="w-2.5 h-2.5" />
                 </button>
@@ -209,7 +218,7 @@ function RuBlock({ rows, setRows }) {
 }
 
 // ── Панель ─────────────────────────────────────────────────────────────────
-export default function RatesControlPanel({ offices, getGP, getOverride, tol, tolHistory, rapira, saveMargins, saveOverride, onDone }) {
+export default function RatesControlPanel({ offices, getGP, getOverride, tol, tolHistory, rapiraHistory, rapira, saveMargins, saveOverride, onDone }) {
   // Разрешаем офисы по городам (для записи overrides).
   const byCity = useMemo(() => {
     const m = { ANT: [], IST: [], MSK: [], SPB: [] };
@@ -229,14 +238,16 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   const [nalSpread, setNalSpread] = useState({ ANT: {}, IST: {} }); // {city:{dirKey: spStr}}
   // Тренд Tolunay: предыдущая цена (свежайший снимок старше окна) по паре.
   const [trendWin, setTrendWin] = useState(30); // минут
-  const tolPrev = useMemo(() => {
+  const prevFromHistory = (history) => {
     const cutoff = Date.now() - trendWin * 60000;
     const out = {};
-    for (const r of tolHistory || []) {
+    for (const r of history || []) {
       if (out[r.pair] === undefined && new Date(r.fetchedAt).getTime() <= cutoff) out[r.pair] = r.mid;
     }
     return out;
-  }, [tolHistory, trendWin]);
+  };
+  const tolPrev = useMemo(() => prevFromHistory(tolHistory), [tolHistory, trendWin]);
+  const rapiraPrev = useMemo(() => prevFromHistory(rapiraHistory), [rapiraHistory, trendWin]);
   const onNalSpread = useCallback(
     (key, val) => setNalSpread((s) => ({ ...s, [nalCity]: { ...s[nalCity], [key]: val } })),
     [nalCity]
@@ -359,7 +370,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
         <div className="flex flex-col gap-3 shrink-0">
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock rows={ru} setRows={setRu} />
+          <RuBlock rows={ru} setRows={setRu} prevRapira={rapiraPrev.USDT_RUB} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">
