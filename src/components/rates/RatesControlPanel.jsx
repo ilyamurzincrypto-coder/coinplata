@@ -329,18 +329,19 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   const [nalCity, setNalCity] = useState("ANT");
   // Тренд Tolunay: предыдущая цена (свежайший снимок старше окна) по паре.
   const [trendWin, setTrendWin] = useState(30); // минут
+  // Полный снимок (bid=Покупка, ask=Продажа, mid) по паре — новейший старше окна.
   const prevFromHistory = (history) => {
     const cutoff = Date.now() - trendWin * 60000;
     const out = {};
     for (const r of history || []) {
-      if (out[r.pair] === undefined && new Date(r.fetchedAt).getTime() <= cutoff) out[r.pair] = r.mid;
+      if (out[r.pair] === undefined && new Date(r.fetchedAt).getTime() <= cutoff) out[r.pair] = r;
     }
     return out;
   };
-  // Текущая цена — новейший снимок из истории (тот же надёжный запрос, что и prev).
+  // Текущий снимок — новейший из истории (тот же надёжный запрос, что и prev).
   const curFromHistory = (history) => {
     const out = {};
-    for (const r of history || []) if (out[r.pair] === undefined) out[r.pair] = r.mid;
+    for (const r of history || []) if (out[r.pair] === undefined) out[r.pair] = r;
     return out;
   };
   const tolCur = useMemo(() => curFromHistory(tolHistory), [tolHistory]);
@@ -348,12 +349,15 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   const tolPrev = useMemo(() => prevFromHistory(tolHistory), [tolHistory, trendWin]);
   const rapiraPrev = useMemo(() => prevFromHistory(rapiraHistory), [rapiraHistory, trendWin]);
   const nalRows = NAL_DIRS.map((d) => {
-    const cur = d.from === "TRY" ? d.to : d.from; // валюта против TRY (для фолбэка)
-    // Текущая цена Tolunay из истории (надёжно) → latest-view → глобальная пара (синхронный фолбэк).
-    const feedMid = Number(tolCur[d.feed] ?? tol?.[d.feed]?.mid ?? 0);
+    const cur = d.from === "TRY" ? d.to : d.from; // валюта против TRY
+    // Сторона Tolunay: CUR→TRY = Покупка (bid), TRY→CUR = Продажа (ask).
+    const side = d.from === "TRY" ? "ask" : "bid";
+    const c = tolCur[d.feed];
+    const feed = Number(c?.[side] ?? tol?.[d.feed]?.[side] ?? 0);
     const gp = getGP?.(cur, "TRY");
-    const price = feedMid || Number(gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
-    const prev = feedMid > 0 ? tolPrev[d.feed] ?? null : null; // тренд из истории
+    const price = feed || Number(gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
+    const p = tolPrev[d.feed];
+    const prev = feed > 0 && p ? Number(p[side]) : null; // тренд по той же стороне
     const key = `nal:${nalCity}:${d.key}`;
     const r = resolveRow(key, price, seedSpread(nalCity, d, price));
     return { ...d, price, prev, lockKey: key, ...r };
@@ -378,12 +382,12 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
 
   // ── Россия: кэш USDT↔RUB per-city (Москва/Питер), как нал per-city. Одна цена
   // Rapira; спред свой по городу; итог = Rapira + спред/100.
-  const rapPrice = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? getGP?.("USDT", "RUB")?.rate ?? 0);
+  const rapPrice = Number(rapiraCur.USDT_RUB?.mid ?? rapira?.USDT_RUB?.mid ?? getGP?.("USDT", "RUB")?.rate ?? 0);
   const [ruCity, setRuCity] = useState("MSK");
   const ruRows = RU_DIRS.map((d) => {
     const key = `ru:${ruCity}:${d.key}`;
     const r = resolveRow(key, rapPrice, seedSpread(ruCity, d, rapPrice));
-    return { ...d, price: rapPrice, prev: rapiraPrev.USDT_RUB ?? null, lockKey: key, ...r };
+    return { ...d, price: rapPrice, prev: rapiraPrev.USDT_RUB?.mid ?? null, lockKey: key, ...r };
   });
 
   const [busy, setBusy] = useState(false);
@@ -400,8 +404,9 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
         const offs = byCity[city] || [];
         for (const d of NAL_DIRS) {
           const cur = d.from === "TRY" ? d.to : d.from;
+          const side = d.from === "TRY" ? "ask" : "bid";
           const gp = getGP?.(cur, "TRY");
-          const price = Number(tolCur[d.feed] ?? tol?.[d.feed]?.mid ?? gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
+          const price = Number(tolCur[d.feed]?.[side] ?? tol?.[d.feed]?.[side] ?? gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
           if (!(price > 0)) continue;
           const itog = publishItog(`nal:${city}:${d.key}`, price, seedSpread(city, d, price));
           if (!(itog > 0)) continue;

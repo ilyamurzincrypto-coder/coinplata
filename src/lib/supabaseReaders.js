@@ -1092,7 +1092,7 @@ export async function loadExternalHistory(source, hours = 6) {
   const sinceIso = new Date(Date.now() - hours * 3600 * 1000).toISOString();
   const { data, error } = await sb
     .from("external_rates")
-    .select("pair, mid, fetched_at")
+    .select("pair, bid, ask, mid, fetched_at")
     .eq("source", source)
     .gte("fetched_at", sinceIso)
     .order("fetched_at", { ascending: false });
@@ -1100,7 +1100,7 @@ export async function loadExternalHistory(source, hours = 6) {
     if (String(error.message || "").includes("does not exist")) return [];
     throw error;
   }
-  return (data || []).map((r) => ({ pair: r.pair, mid: num(r.mid), fetchedAt: r.fetched_at }));
+  return (data || []).map((r) => ({ pair: r.pair, bid: num(r.bid), ask: num(r.ask), mid: num(r.mid), fetchedAt: r.fetched_at }));
 }
 export const loadTolunayHistory = (hours = 6) => loadExternalHistory("tolunay", hours);
 
