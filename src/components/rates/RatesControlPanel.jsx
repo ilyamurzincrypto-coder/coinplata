@@ -98,14 +98,16 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
         return (
           <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-            <div className="text-right" title="Tolunay (авто)">
-              <div className="font-mono tabular-nums text-[12px] text-muted leading-tight">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+            <div
+              className="flex items-center justify-end gap-1.5"
+              title={delta != null ? `было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)} за окно` : "Tolunay (авто)"}
+            >
               {delta != null && (
-                <div className={`text-[10px] tabular-nums leading-tight flex items-center justify-end gap-1 font-mono font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
-                  <span className="text-muted-soft font-normal">{fmt(r.prev, r.dp)}</span>
-                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}{delta !== 0 ? `${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}` : ""}</span>
-                </div>
+                <span className={`text-[12px] font-bold leading-none ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
+                  {delta > 0 ? "▲" : delta < 0 ? "▼" : "="}
+                </span>
               )}
+              <span className="font-mono tabular-nums text-[12px] text-muted">{r.price ? fmt(r.price, r.dp) : "—"}</span>
             </div>
             <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
             <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
