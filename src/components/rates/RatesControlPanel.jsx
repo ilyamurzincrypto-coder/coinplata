@@ -172,41 +172,46 @@ const RU_ROWS = [
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "МСК", cityCode: "MSK", dp: 2 },
   { d: "RUB→USDT", from: "RUB", to: "USDT", city: "СПБ", cityCode: "SPB", dp: 2 },
 ];
-function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira }) {
+function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira, trendWin }) {
   const isOver = (r) => r.rapira > 0 && Math.abs(r.price - r.rapira) > 1e-9;
+  const cols = "70px 74px 66px 40px 56px";
+  const winLabel = TREND_WINS.find(([m]) => m === trendWin)?.[1];
   return (
-    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (оверрайд). <b className="text-muted">↻</b> — вернуть. Итог = цена + спред (коп.).</>}>
-      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
-        <span>Напр.</span><span className="text-right">Rapira</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
+    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (жёлтым = оверрайд, ↻ вернуть). Колонка «{winLabel} назад» — прошлый курс Rapira (▲/▼/•). Итог = цена + спред (коп.).</>}>
+      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: cols }}>
+        <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">{winLabel} назад</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
       {rows.map((r) => {
         const over = isOver(r);
         const d = prevRapira != null && r.rapira ? r.rapira - prevRapira : null;
         return (
-          <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
-            <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to} <span className="text-muted text-[10px] font-sans font-semibold">{r.city}</span></div>
-            <div className="flex flex-col items-end">
+          <div key={r.key} className="grid items-center px-3.5 py-2 border-t border-border-soft" style={{ gridTemplateColumns: cols }}>
+            <div className="leading-tight">
+              <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
+              <div className="text-[9px] font-sans font-semibold text-muted uppercase tracking-wide">{r.city}</div>
+            </div>
+            <div className="flex items-center justify-end gap-1">
+              {over && (
+                <button type="button" className="text-accent shrink-0" title={`Вернуть Rapira ${fmt(r.rapira, r.dp)}`} onClick={() => onReset(r.key, r.rapira)}>
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              )}
               <input
-                className={`${cellIn} w-[84px] ${over ? "border-warning bg-warning-soft" : ""}`}
+                className={`${cellIn} w-[62px] ${over ? "border-warning bg-warning-soft" : ""}`}
                 value={r.priceStr ?? fmt(r.price, r.dp)}
                 onChange={(e) => onPrice(r.key, e.target.value)}
               />
-              <div className="flex items-center gap-1 text-[10px] text-muted-soft mt-1">
-                <span className="text-[8px] uppercase tracking-wide">Rapira</span>
-                <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
-                {d != null && (
-                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
-                    <span className="text-muted-soft font-normal">было</span>{fmt(prevRapira, r.dp)}{d > 0 ? "▲" : d < 0 ? "▼" : "="}
-                  </span>
-                )}
-                <button type="button" className="text-accent inline-flex ml-0.5" title="Вернуть Rapira" onClick={() => onReset(r.key, r.rapira)}>
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              </div>
             </div>
-            <div className="flex justify-end">
-              <input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spreadStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} />
+            <div className="text-right pr-3">
+              {d != null ? (
+                <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`} title={`Rapira сейчас ${fmt(r.rapira, r.dp)} · было ${fmt(prevRapira, r.dp)}`}>
+                  <span className="text-[11px] leading-none">{d > 0 ? "▲" : d < 0 ? "▼" : "•"}</span>{fmt(prevRapira, r.dp)}
+                </span>
+              ) : (
+                <span className="text-muted-soft text-[12px]">—</span>
+              )}
             </div>
+            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spreadStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
             <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.rapira || r.price ? fmt(r.itog, r.dp) : "—"}</div>
           </div>
         );
@@ -389,7 +394,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
         <div className="flex flex-col gap-3 shrink-0">
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock rows={ruRows} onPrice={ruSetPrice} onSpread={ruSetSpread} onReset={ruReset} prevRapira={rapiraPrev.USDT_RUB} />
+          <RuBlock rows={ruRows} onPrice={ruSetPrice} onSpread={ruSetSpread} onReset={ruReset} prevRapira={rapiraPrev.USDT_RUB} trendWin={trendWin} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">
