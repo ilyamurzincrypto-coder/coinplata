@@ -61,7 +61,7 @@ const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
 const TREND_WINS = [[30, "30м"], [60, "1ч"], [180, "3ч"]];
 function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
   return (
-    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Итог = цена + спред (коп.). Стрелка — движение цены за {TREND_WINS.find(([m]) => m === trendWin)?.[1]}.</>}>
+    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Колонка «{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / = без изменений). Итог = цена + спред (коп.).</>}>
       <div className="flex items-center gap-1 px-3.5 pt-2">
         {[["ANT", "Анталья"], ["IST", "Стамбул"]].map(([id, label]) => (
           <button
@@ -90,25 +90,25 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
           ))}
         </div>
       </div>
-      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
-        <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
+      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "70px 56px 68px 40px 56px" }}>
+        <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
       {rows.map((r) => {
         const delta = r.prev != null && r.price ? r.price - r.prev : null;
         return (
-          <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
+          <div key={r.key} className="grid items-center px-3.5 py-2 border-t border-border-soft" style={{ gridTemplateColumns: "70px 56px 68px 40px 56px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-            <div className="text-right leading-tight" title="Tolunay (авто)">
-              <div className="font-mono tabular-nums text-[12px] text-ink-soft">{r.price ? fmt(r.price, r.dp) : "—"}</div>
-              {delta != null && (
-                <div className={`text-[10px] tabular-nums font-mono font-semibold flex items-center justify-end gap-1 ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
-                  <span className="text-muted-soft font-normal">было</span>
-                  <span>{fmt(r.prev, r.dp)}</span>
-                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
-                </div>
+            <div className="text-right font-mono tabular-nums text-[12px] text-ink-soft" title="Цена Tolunay (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+            <div className="text-right">
+              {delta != null ? (
+                <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
+                  {fmt(r.prev, r.dp)}<span className="text-[10px]">{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
+                </span>
+              ) : (
+                <span className="text-muted-soft text-[12px]">—</span>
               )}
             </div>
-            <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
             <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
           </div>
         );
