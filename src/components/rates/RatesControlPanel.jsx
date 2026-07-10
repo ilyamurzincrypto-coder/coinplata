@@ -100,11 +100,11 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
             <div className="text-right leading-tight" title="Tolunay (авто)">
               <div className="font-mono tabular-nums text-[12px] text-ink-soft">{r.price ? fmt(r.price, r.dp) : "—"}</div>
-              {delta != null && delta !== 0 && (
-                <div className={`text-[10px] tabular-nums font-mono font-semibold flex items-center justify-end gap-1 ${delta > 0 ? "text-success" : "text-danger"}`}>
-                  <span className="text-muted-soft font-normal not-italic">было</span>
+              {delta != null && (
+                <div className={`text-[10px] tabular-nums font-mono font-semibold flex items-center justify-end gap-1 ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
+                  <span className="text-muted-soft font-normal">было</span>
                   <span>{fmt(r.prev, r.dp)}</span>
-                  <span>{delta > 0 ? "▲" : "▼"}</span>
+                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
                 </div>
               )}
             </div>
@@ -194,9 +194,9 @@ function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira }) {
               <div className="flex items-center gap-1 text-[10px] text-muted-soft mt-1">
                 <span className="text-[8px] uppercase tracking-wide">Rapira</span>
                 <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
-                {d != null && d !== 0 && (
-                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : "text-danger"}`}>
-                    <span className="text-muted-soft font-normal">было</span>{fmt(prevRapira, r.dp)}{d > 0 ? "▲" : "▼"}
+                {d != null && (
+                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
+                    <span className="text-muted-soft font-normal">было</span>{fmt(prevRapira, r.dp)}{d > 0 ? "▲" : d < 0 ? "▼" : "="}
                   </span>
                 )}
                 <button type="button" className="text-accent inline-flex ml-0.5" title="Вернуть Rapira" onClick={() => onReset(r.key, r.rapira)}>
