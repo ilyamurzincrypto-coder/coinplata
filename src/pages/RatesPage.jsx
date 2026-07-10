@@ -137,8 +137,8 @@ export default function RatesPage({ onBack, drawer = false }) {
   );
   // Full-page views: "list" | "addPair" | "addCurrency" | "addChannel" | "coverage"
   const [view, setView] = useState("list");
-  // Внутри list: "matrix" (курсы по офисам) | "settings" (все пары + авто/спреды)
-  const [listMode, setListMode] = useState("matrix");
+  // Внутри list: "control" (панель управления) | "matrix" (курсы по офисам) | "settings"
+  const [listMode, setListMode] = useState("control");
   // Свежий Rapira mid по паре (для авто-курса). { USDT_RUB: 81.04, ... }
   const [rapiraMid, setRapiraMid] = useState({});
   // Полные снимки фидов для панели управления: { USDT_RUB: {bid,ask,mid} }.
