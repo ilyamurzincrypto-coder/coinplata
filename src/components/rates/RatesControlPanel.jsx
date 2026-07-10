@@ -6,8 +6,17 @@
 // Локальное состояние; «Опубликовать» коммитит всё через существующие RPC (см. RatesPage).
 // Данные/фиды — из движка кассы (Tolunay/Rapira → external_rates, pairs, overrides).
 import React, { useState, useMemo, useCallback } from "react";
-import { RotateCcw, Loader2, Globe } from "lucide-react";
+import { Loader2, Globe, Lock, Unlock } from "lucide-react";
 import { officeCityCode } from "../../lib/rapiraSpreads.js";
+
+// Замки зафиксированных итоговых цен (переживают переоткрытие панели).
+const LOCKS_KEY = "rates_control_locks_v1";
+function readLocks() {
+  try { return JSON.parse(localStorage.getItem(LOCKS_KEY) || "{}") || {}; } catch { return {}; }
+}
+function writeLocks(m) {
+  try { localStorage.setItem(LOCKS_KEY, JSON.stringify(m)); } catch { /* noop */ }
+}
 
 const fmt = (n, dp) =>
   Number.isFinite(Number(n))
@@ -59,7 +68,7 @@ const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
   { from: "TRY", to: c, feed: `${c}_TRY`, dp, key: `TRY_${c}` },
 ]);
 const TREND_WINS = [[30, "30м"], [60, "1ч"], [180, "3ч"]];
-function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
+function NalBlock({ city, setCity, rows, onSpread, onToggleLock, trendWin, setTrendWin }) {
   return (
     <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Колонка «{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / • без изменений). Итог = цена + спред (коп.).</>}>
       <div className="flex items-center gap-1 px-3.5 pt-2">
@@ -108,8 +117,13 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
                 <span className="text-muted-soft text-[12px]">—</span>
               )}
             </div>
-            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
+            <div className="flex justify-end"><input disabled={r.locked} className={`${cellIn} w-[38px] ${r.locked ? "opacity-40 cursor-not-allowed" : ""}`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+            <div className="flex items-center justify-end gap-1.5">
+              <button type="button" onClick={() => onToggleLock(r.lockKey, r.live)} title={r.locked ? "Цена зафиксирована — снять замок (снова следит за рынком)" : "Зафиксировать эту цену (не будет меняться от рынка)"} className="shrink-0 -mr-0.5">
+                {r.locked ? <Lock className="w-3 h-3 text-warning" /> : <Unlock className="w-3 h-3 text-muted-soft hover:text-ink" />}
+              </button>
+              <span className={`font-mono tabular-nums text-[13px] font-bold ${r.locked ? "text-warning" : "text-ink"}`}>{r.price ? fmt(r.itog, r.dp) : "—"}</span>
+            </div>
           </div>
         );
       })}
@@ -171,12 +185,26 @@ const RU_DIRS = [
   { from: "USDT", to: "RUB", key: "USDT_RUB", dp: 2 },
   { from: "RUB", to: "USDT", key: "RUB_USDT", dp: 2 },
 ];
-// Один-в-один как NalBlock: Напр | Цена(авто Rapira) | N назад | Спр | Итог.
-function RuBlock({ rows, onSpread, trendWin }) {
+// Один-в-один как NalBlock: вкладки Москва/Питер + Напр | Цена(авто Rapira) | N назад | Спр | Итог.
+function RuBlock({ city, setCity, rows, onSpread, onToggleLock, trendWin }) {
   const winLabel = TREND_WINS.find(([m]) => m === trendWin)?.[1];
   const cols = "70px 56px 68px 40px 56px";
   return (
-    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira (авто). Колонка «{winLabel} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / • без изменений). Итог = цена + спред (коп.).</>}>
+    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira (авто, единая). Спред и итог — по вкладке города. Колонка «{winLabel} назад» — какой курс был столько времени назад (▲/▼/•). Итог = цена + спред (коп.).</>}>
+      <div className="flex items-center gap-1 px-3.5 pt-2">
+        {[["MSK", "Москва"], ["SPB", "Питер"]].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setCity(id)}
+            className={`px-2.5 py-1 rounded-[6px] text-[11px] font-bold transition-colors ${
+              city === id ? "bg-[rgba(18,22,26,0.06)] text-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: cols }}>
         <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">{winLabel} назад</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
@@ -195,8 +223,13 @@ function RuBlock({ rows, onSpread, trendWin }) {
                 <span className="text-muted-soft text-[12px]">—</span>
               )}
             </div>
-            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
+            <div className="flex justify-end"><input disabled={r.locked} className={`${cellIn} w-[38px] ${r.locked ? "opacity-40 cursor-not-allowed" : ""}`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+            <div className="flex items-center justify-end gap-1.5">
+              <button type="button" onClick={() => onToggleLock(r.lockKey, r.live)} title={r.locked ? "Цена зафиксирована — снять замок (снова следит за рынком)" : "Зафиксировать эту цену (не будет меняться от рынка)"} className="shrink-0 -mr-0.5">
+                {r.locked ? <Lock className="w-3 h-3 text-warning" /> : <Unlock className="w-3 h-3 text-muted-soft hover:text-ink" />}
+              </button>
+              <span className={`font-mono tabular-nums text-[13px] font-bold ${r.locked ? "text-warning" : "text-ink"}`}>{r.price ? fmt(r.itog, r.dp) : "—"}</span>
+            </div>
           </div>
         );
       })}
@@ -218,6 +251,18 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   const repOf = (city) => (byCity[city] || []).find((o) => o.active) ?? byCity[city]?.[0];
   const antRep = repOf("ANT");
   const istRep = repOf("IST");
+
+  // Замки итоговых цен: key → зафиксированное значение. Цена стоит, рынок двигается.
+  const [locks, setLocks] = useState(readLocks);
+  const toggleLock = useCallback((key, itog) => {
+    setLocks((prev) => {
+      const next = { ...prev };
+      if (next[key] != null) delete next[key];
+      else next[key] = Number(itog);
+      writeLocks(next);
+      return next;
+    });
+  }, []);
 
   // ── Нал per-city: в состоянии только спред (строка) по направлению; цена —
   // ЖИВАЯ из Tolunay (tol prop), итог = цена + спред/100. Спред-seed из
@@ -269,7 +314,10 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     const spread = nalSpreadOf(nalCity, d, price);
     // Тренд: и текущая, и предыдущая из истории — сравнение консистентно.
     const prev = feedMid > 0 ? tolPrev[d.feed] ?? null : null;
-    return { ...d, price, spread, prev, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
+    const live = price + spread / 100;
+    const lockKey = `nal:${nalCity}:${d.key}`;
+    const locked = locks[lockKey] != null;
+    return { ...d, price, spread, prev, spStr: nalSpread[nalCity]?.[d.key], live, lockKey, locked, itog: locked ? locks[lockKey] : live };
   });
 
   // ── init Турция из overrides представителя города ──
@@ -289,17 +337,26 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     })
   );
 
-  // ── Россия: кэш USDT↔RUB, без городов. Цена = Rapira (авто, как Tolunay в нале),
-  // в состоянии только спред. Итог = Rapira + спред/100. Пишем во все РФ-офисы.
-  const ruOffices = [...(byCity.MSK || []), ...(byCity.SPB || [])];
-  const [ruSpread, setRuSpread] = useState({}); // {dirKey: spStr}
-  const onRuSpread = (key, val) => setRuSpread((s) => ({ ...s, [key]: val }));
+  // ── Россия: кэш USDT↔RUB per-city (Москва/Питер), как нал per-city. Одна цена
+  // Rapira; спред свой по городу; итог = Rapira + спред/100.
+  const rapPrice = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? getGP?.("USDT", "RUB")?.rate ?? 0);
+  const [ruCity, setRuCity] = useState("MSK");
+  const [ruSpread, setRuSpread] = useState({ MSK: {}, SPB: {} }); // {city:{dirKey: spStr}}
+  const onRuSpread = (key, val) => setRuSpread((s) => ({ ...s, [ruCity]: { ...s[ruCity], [key]: val } }));
+  const ruSpreadOf = (city, d, price) => {
+    const spStr = ruSpread[city]?.[d.key];
+    if (spStr != null) return pint(spStr);
+    const rep = repOf(city);
+    const ov = rep ? getOverride?.(rep.id, d.from, d.to) : null;
+    const itog = Number(ov?.baseRate ?? ov?.rate ?? 0);
+    return itog && price ? Math.round((itog - price) * 100) : 0;
+  };
   const ruRows = RU_DIRS.map((d) => {
-    // Цена Rapira из истории → latest → глобальная пара (синхронный фолбэк, без «—»).
-    const price = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? getGP?.("USDT", "RUB")?.rate ?? 0);
-    const spStr = ruSpread[d.key];
-    const spread = spStr != null ? pint(spStr) : 0;
-    return { ...d, price, prev: rapiraPrev.USDT_RUB ?? null, spread, spStr, itog: price + spread / 100 };
+    const spread = ruSpreadOf(ruCity, d, rapPrice);
+    const live = rapPrice + spread / 100;
+    const lockKey = `ru:${ruCity}:${d.key}`;
+    const locked = locks[lockKey] != null;
+    return { ...d, price: rapPrice, prev: rapiraPrev.USDT_RUB ?? null, spread, spStr: ruSpread[ruCity]?.[d.key], live, lockKey, locked, itog: locked ? locks[lockKey] : live };
   });
 
   const [busy, setBusy] = useState(false);
@@ -315,9 +372,12 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
       for (const city of ["ANT", "IST"]) {
         const offs = byCity[city] || [];
         for (const d of NAL_DIRS) {
-          const price = Number(tol?.[d.feed]?.mid ?? 0);
+          const cur = d.from === "TRY" ? d.to : d.from;
+          const gp = getGP?.(cur, "TRY");
+          const price = Number(tolCur[d.feed] ?? tol?.[d.feed]?.mid ?? gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
           if (!(price > 0)) continue;
-          const itog = price + nalSpreadOf(city, d, price) / 100;
+          const lockKey = `nal:${city}:${d.key}`;
+          const itog = locks[lockKey] != null ? locks[lockKey] : price + nalSpreadOf(city, d, price) / 100;
           if (!(itog > 0)) continue;
           for (const o of offs) {
             await saveOverride(o.id, d.from, d.to, itog, 0);
@@ -336,12 +396,17 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
           }
         }
       }
-      // Блок 3 — Россия → overrides ВСЕХ РФ-офисов (кэш USDT↔RUB, без городов).
-      for (const r of ruRows) {
-        if (!(r.itog > 0)) continue;
-        for (const o of ruOffices) {
-          await saveOverride(o.id, r.from, r.to, r.itog, 0);
-          n++;
+      // Блок 3 — Россия per-city → overrides офисов города (кэш USDT↔RUB).
+      for (const city of ["MSK", "SPB"]) {
+        const offs = byCity[city] || [];
+        for (const d of RU_DIRS) {
+          const lockKey = `ru:${city}:${d.key}`;
+          const itog = locks[lockKey] != null ? locks[lockKey] : rapPrice + ruSpreadOf(city, d, rapPrice) / 100;
+          if (!(itog > 0)) continue;
+          for (const o of offs) {
+            await saveOverride(o.id, d.from, d.to, itog, 0);
+            n++;
+          }
         }
       }
       setMsg({ ok: true, text: `Опубликовано в БД кассы: ${n} записей.` });
@@ -351,7 +416,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     } finally {
       setBusy(false);
     }
-  }, [nalSpreadOf, tol, tr, ruRows, ruOffices, byCity, saveOverride, onDone]);
+  }, [nalSpreadOf, tol, tolCur, getGP, tr, ruSpreadOf, rapPrice, locks, byCity, saveOverride, onDone]);
 
   return (
     <div>
@@ -370,9 +435,9 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
 
       <div className="flex gap-4 items-start">
         <div className="flex flex-col gap-3 shrink-0">
-          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
+          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock rows={ruRows} onSpread={onRuSpread} trendWin={trendWin} />
+          <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onRuSpread} onToggleLock={toggleLock} trendWin={trendWin} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">
