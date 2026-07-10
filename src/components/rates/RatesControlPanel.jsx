@@ -143,7 +143,7 @@ const RU_ROWS = [
 function RuBlock({ rows, setRows }) {
   const isOver = (r) => Math.abs(r.price - r.rapira) > 1e-9;
   return (
-    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-blue-500" hint={<>Цена — Rapira, можно перебить (оверрайд). <b className="text-muted">↻</b> — вернуть. Итог = цена + спред (коп.).</>}>
+    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (оверрайд). <b className="text-muted">↻</b> — вернуть. Итог = цена + спред (коп.).</>}>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "112px 88px 46px 68px" }}>
         <span>Напр.</span><span className="text-right">Rapira</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
