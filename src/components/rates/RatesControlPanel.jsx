@@ -58,10 +58,11 @@ const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
   { from: c, to: "TRY", feed: `${c}_TRY`, dp, key: `${c}_TRY` },
   { from: "TRY", to: c, feed: `${c}_TRY`, dp, key: `TRY_${c}` },
 ]);
-function NalBlock({ city, setCity, rows, onSpread, tol }) {
+const TREND_WINS = [[30, "30м"], [60, "1ч"], [180, "3ч"]];
+function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
   return (
-    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Итог = цена + спред (коп.). Обе стороны — отдельными строками.</>}>
-      <div className="flex gap-1 px-3.5 pt-2">
+    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Итог = цена + спред (коп.). Стрелка — движение цены за {TREND_WINS.find(([m]) => m === trendWin)?.[1]}.</>}>
+      <div className="flex items-center gap-1 px-3.5 pt-2">
         {[["ANT", "Анталья"], ["IST", "Стамбул"]].map(([id, label]) => (
           <button
             key={id}
@@ -74,18 +75,43 @@ function NalBlock({ city, setCity, rows, onSpread, tol }) {
             {label}
           </button>
         ))}
+        <div className="ml-auto flex items-center gap-0.5">
+          {TREND_WINS.map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setTrendWin(m)}
+              className={`px-1.5 py-0.5 rounded-[5px] text-[10px] font-semibold transition-colors ${
+                trendWin === m ? "bg-[rgba(18,22,26,0.06)] text-ink" : "text-muted-soft hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "96px 70px 46px 70px" }}>
+      <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
         <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
-      {rows.map((r) => (
-        <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "96px 70px 46px 70px" }}>
-          <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-          <div className="text-right font-mono tabular-nums text-[12px] text-muted" title="Tolunay (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
-          <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
-          <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
-        </div>
-      ))}
+      {rows.map((r) => {
+        const delta = r.prev != null && r.price ? r.price - r.prev : null;
+        return (
+          <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
+            <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
+            <div className="text-right" title="Tolunay (авто)">
+              <div className="font-mono tabular-nums text-[12px] text-muted leading-tight">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+              {delta != null && (
+                <div className={`text-[8px] tabular-nums leading-tight flex items-center justify-end gap-0.5 ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
+                  <span className="font-mono">{fmt(r.prev, r.dp)}</span>
+                  <span>{delta > 0 ? "▲" : delta < 0 ? "▼" : "="}</span>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
+          </div>
+        );
+      })}
     </Card>
   );
 }
@@ -183,7 +209,7 @@ function RuBlock({ rows, setRows }) {
 }
 
 // ── Панель ─────────────────────────────────────────────────────────────────
-export default function RatesControlPanel({ offices, getGP, getOverride, tol, rapira, saveMargins, saveOverride, onDone }) {
+export default function RatesControlPanel({ offices, getGP, getOverride, tol, tolHistory, rapira, saveMargins, saveOverride, onDone }) {
   // Разрешаем офисы по городам (для записи overrides).
   const byCity = useMemo(() => {
     const m = { ANT: [], IST: [], MSK: [], SPB: [] };
@@ -201,6 +227,16 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
   // существующего оверрайда офиса-представителя (когда цена известна).
   const [nalCity, setNalCity] = useState("ANT");
   const [nalSpread, setNalSpread] = useState({ ANT: {}, IST: {} }); // {city:{dirKey: spStr}}
+  // Тренд Tolunay: предыдущая цена (свежайший снимок старше окна) по паре.
+  const [trendWin, setTrendWin] = useState(30); // минут
+  const tolPrev = useMemo(() => {
+    const cutoff = Date.now() - trendWin * 60000;
+    const out = {};
+    for (const r of tolHistory || []) {
+      if (out[r.pair] === undefined && new Date(r.fetchedAt).getTime() <= cutoff) out[r.pair] = r.mid;
+    }
+    return out;
+  }, [tolHistory, trendWin]);
   const onNalSpread = useCallback(
     (key, val) => setNalSpread((s) => ({ ...s, [nalCity]: { ...s[nalCity], [key]: val } })),
     [nalCity]
@@ -219,7 +255,8 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
   const nalRows = NAL_DIRS.map((d) => {
     const price = Number(tol?.[d.feed]?.mid ?? 0);
     const spread = nalSpreadOf(nalCity, d, price);
-    return { ...d, price, spread, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
+    const prev = tolPrev[d.feed];
+    return { ...d, price, spread, prev: prev ?? null, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
   });
 
   // ── init Турция из overrides представителя города ──
@@ -320,7 +357,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
 
       <div className="flex gap-4 items-start">
         <div className="flex flex-col gap-3 shrink-0">
-          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} tol={tol || {}} />
+          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
           <RuBlock rows={ru} setRows={setRu} />
         </div>

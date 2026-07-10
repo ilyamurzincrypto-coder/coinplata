@@ -1086,6 +1086,23 @@ export async function loadExternalRatesLatest() {
   }));
 }
 
+// Недавняя история Tolunay-снимков (для тренда «было / стало» в панели курсов).
+export async function loadTolunayHistory(hours = 6) {
+  const sb = ensureSupabase();
+  const sinceIso = new Date(Date.now() - hours * 3600 * 1000).toISOString();
+  const { data, error } = await sb
+    .from("external_rates")
+    .select("pair, mid, fetched_at")
+    .eq("source", "tolunay")
+    .gte("fetched_at", sinceIso)
+    .order("fetched_at", { ascending: false });
+  if (error) {
+    if (String(error.message || "").includes("does not exist")) return [];
+    throw error;
+  }
+  return (data || []).map((r) => ({ pair: r.pair, mid: num(r.mid), fetchedAt: r.fetched_at }));
+}
+
 // ---------- rate snapshots ----------
 
 export async function loadRateSnapshots() {

@@ -57,7 +57,7 @@ import RatesControlPanel from "../components/rates/RatesControlPanel.jsx";
 import { analyzeCoverage, loadDismissed } from "../utils/ratesCoverage.js";
 import { rateKey } from "../store/rates.jsx";
 import { exportCSV } from "../utils/csv.js";
-import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
+import { loadExternalRatesLatest, loadTolunayHistory } from "../lib/supabaseReaders.js";
 import { officeCityCode, spreadFor, rapiraRateFor } from "../lib/rapiraSpreads.js";
 
 export default function RatesPage({ onBack, drawer = false }) {
@@ -144,6 +144,12 @@ export default function RatesPage({ onBack, drawer = false }) {
   // Полные снимки фидов для панели управления: { USDT_RUB: {bid,ask,mid} }.
   const [rapiraLatest, setRapiraLatest] = useState({});
   const [tolLatest, setTolLatest] = useState({}); // Tolunay: { USD_TRY:{bid,ask,mid} }
+  const [tolHistory, setTolHistory] = useState([]); // недавние снимки Tolunay (тренд)
+  React.useEffect(() => {
+    let alive = true;
+    loadTolunayHistory(6).then((h) => { if (alive) setTolHistory(h); }).catch(() => {});
+    return () => { alive = false; };
+  }, []);
   React.useEffect(() => {
     let alive = true;
     loadExternalRatesLatest()
@@ -710,6 +716,7 @@ export default function RatesPage({ onBack, drawer = false }) {
               getGP={findGP}
               getOverride={getOfficeOverride}
               tol={tolLatest}
+              tolHistory={tolHistory}
               rapira={rapiraLatest}
               saveMargins={handleSetMargins}
               saveOverride={saveOverrideRaw}
