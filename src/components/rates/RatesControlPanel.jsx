@@ -98,16 +98,15 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
         return (
           <div key={r.key} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "84px 82px 46px 70px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-            <div
-              className="flex items-center justify-end gap-1.5"
-              title={delta != null ? `было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)} за окно` : "Tolunay (авто)"}
-            >
-              {delta != null && (
-                <span className={`text-[12px] font-bold leading-none ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`}>
-                  {delta > 0 ? "▲" : delta < 0 ? "▼" : "="}
-                </span>
+            <div className="text-right leading-tight" title="Tolunay (авто)">
+              <div className="font-mono tabular-nums text-[12px] text-ink-soft">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+              {delta != null && delta !== 0 && (
+                <div className={`text-[10px] tabular-nums font-mono font-semibold flex items-center justify-end gap-1 ${delta > 0 ? "text-success" : "text-danger"}`}>
+                  <span className="text-muted-soft font-normal not-italic">было</span>
+                  <span>{fmt(r.prev, r.dp)}</span>
+                  <span>{delta > 0 ? "▲" : "▼"}</span>
+                </div>
               )}
-              <span className="font-mono tabular-nums text-[12px] text-muted">{r.price ? fmt(r.price, r.dp) : "—"}</span>
             </div>
             <div className="flex justify-end"><input className={`${cellIn} w-[42px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
             <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
@@ -195,9 +194,9 @@ function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira }) {
               <div className="flex items-center gap-1 text-[10px] text-muted-soft mt-1">
                 <span className="text-[8px] uppercase tracking-wide">Rapira</span>
                 <b className="font-mono text-muted font-semibold">{fmt(r.rapira, r.dp)}</b>
-                {d != null && (
-                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`}>
-                    {d > 0 ? "▲" : d < 0 ? "▼" : "="}{d !== 0 ? `${d > 0 ? "+" : ""}${fmt(d, r.dp)}` : ""}
+                {d != null && d !== 0 && (
+                  <span className={`inline-flex items-center gap-0.5 font-mono font-semibold ${d > 0 ? "text-success" : "text-danger"}`}>
+                    <span className="text-muted-soft font-normal">было</span>{fmt(prevRapira, r.dp)}{d > 0 ? "▲" : "▼"}
                   </span>
                 )}
                 <button type="button" className="text-accent inline-flex ml-0.5" title="Вернуть Rapira" onClick={() => onReset(r.key, r.rapira)}>
@@ -246,6 +245,14 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     }
     return out;
   };
+  // Текущая цена — новейший снимок из истории (тот же надёжный запрос, что и prev).
+  const curFromHistory = (history) => {
+    const out = {};
+    for (const r of history || []) if (out[r.pair] === undefined) out[r.pair] = r.mid;
+    return out;
+  };
+  const tolCur = useMemo(() => curFromHistory(tolHistory), [tolHistory]);
+  const rapiraCur = useMemo(() => curFromHistory(rapiraHistory), [rapiraHistory]);
   const tolPrev = useMemo(() => prevFromHistory(tolHistory), [tolHistory, trendWin]);
   const rapiraPrev = useMemo(() => prevFromHistory(rapiraHistory), [rapiraHistory, trendWin]);
   const onNalSpread = useCallback(
@@ -265,14 +272,15 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   );
   const nalRows = NAL_DIRS.map((d) => {
     const cur = d.from === "TRY" ? d.to : d.from; // валюта против TRY (для фолбэка)
-    const feedMid = Number(tol?.[d.feed]?.mid ?? 0);
-    // Пока Tolunay не догрузился — курс из глобальной пары CUR→TRY (синхронно), не «—».
+    // Текущая цена Tolunay из истории (надёжно) → latest-view → глобальная пара (синхронный фолбэк).
+    const feedMid = Number(tolCur[d.feed] ?? tol?.[d.feed]?.mid ?? 0);
     const gp = getGP?.(cur, "TRY");
     const fallback = Number(gp?.rate ?? gp?.marketRate ?? gp?.baseRate ?? 0);
     const price = feedMid || fallback;
     const spread = nalSpreadOf(nalCity, d, price);
-    const prev = tolPrev[d.feed];
-    return { ...d, price, spread, prev: prev ?? null, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
+    // Тренд: и текущая, и предыдущая из истории — сравнение консистентно.
+    const prev = feedMid > 0 ? tolPrev[d.feed] ?? null : null;
+    return { ...d, price, spread, prev, spStr: nalSpread[nalCity]?.[d.key], itog: price + spread / 100 };
   });
 
   // ── init Турция из overrides представителя города ──
@@ -299,7 +307,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     const key = `${r.from}_${r.to}_${r.cityCode}`;
     const rep = repOf(r.cityCode);
     const ov = rep ? getOverride?.(rep.id, r.from, r.to) : null;
-    const rapiraMid = Number(rapira?.USDT_RUB?.mid ?? 0);
+    const rapiraMid = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? 0);
     const basePrice = Number(ov?.baseRate ?? ov?.rate ?? rapiraMid);
     const ed = ruEdits[key] || {};
     const price = ed.priceStr != null ? pnum(ed.priceStr) : basePrice;

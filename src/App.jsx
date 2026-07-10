@@ -207,8 +207,10 @@ function Root() {
         currentOffice={currentOffice}
         onOfficeChange={setCurrentOffice}
       />
-      <RateChangeBanner />
-      <RatesConfirmationBanner currentOffice={currentOffice} />
+      {/* Курс-баннеры (sticky top) прячем, когда открыт дровер редактора курсов —
+          иначе просвечивают щелью над ним. */}
+      {exchangeMode !== "rates" && <RateChangeBanner />}
+      {exchangeMode !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
       {page === "cashier" && canShow("cashier") && (
         <CashierPage
           currentOffice={currentOffice}
