@@ -1039,28 +1039,15 @@ export default function OfficesTab() {
           <h2 className="text-[16px] font-semibold tracking-tight">{t("offices_title")}</h2>
           <p className="text-caption text-muted mt-0.5">{t("offices_subtitle")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          {siteLoaded && (
-            <span
-              className={`inline-flex items-center gap-1.5 text-tiny font-semibold px-2 py-1 rounded-md ${
-                syncEnabled ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
-              }`}
-              title={syncEnabled ? "Тумблеры «На сайте» реально меняют статус на coinpoint" : "Тумблеры работают в предпросмотре — сайт не меняется, пока синхронизацию не включат"}
-            >
-              <Globe className="w-3 h-3" />
-              {syncEnabled ? "Синхронизация с сайтом ВКЛ" : "Сайт: предпросмотр"}
-            </span>
-          )}
-          {isAdmin && (
-            <button
-              onClick={openCreate}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {t("office_add")}
-            </button>
-          )}
-        </div>
+        {isAdmin && (
+          <button
+            onClick={openCreate}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {t("office_add")}
+          </button>
+        )}
       </div>
       {siteHint && (
         <div className="px-5 py-2 border-b border-border-soft bg-surface-soft/40 text-tiny text-ink-soft">
