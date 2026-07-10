@@ -186,7 +186,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
     );
 
   return (
-    <div className="border-t border-border-soft pt-4">
+    <div className="border-t border-border-soft pt-4 lg:border-t-0 lg:pt-0">
       <div className="flex items-center justify-between mb-2">
         <div className="text-tiny font-bold text-muted uppercase tracking-wider flex items-center gap-1.5">
           <Globe className="w-3.5 h-3.5" /> Офис на сайте (coinpoint)
@@ -532,9 +532,11 @@ function OfficeFormModal({ open, office, onClose }) {
       open={open}
       onClose={onClose}
       title={isEdit ? t("office_edit_title") : t("office_add_title")}
-      width="md"
+      width="4xl"
     >
-      <div className="p-5 space-y-4">
+      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-4 items-start">
+        {/* Левая колонка — расписание и комиссии офиса */}
+        <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
@@ -826,27 +828,30 @@ function OfficeFormModal({ open, office, onClose }) {
             {t("office_fees_hint")}
           </p>
         </div>
+        </div>
 
-        {/* Привязка к офису сайта (coinpoint) + живое управление доступностью */}
-        <SiteOfficeControls
-          open={open}
-          code={coinpointCode}
-          setCode={setCoinpointCode}
-          timezone={timezone}
-          scheduleSource={{
-            workingDays,
-            workingHours: { start: startTime, end: endTime },
-            workingHoursByDay,
-          }}
-          onApplySite={(so) => {
-            const s = siteWorkingHoursToOffice(so?.working_hours);
-            if (!s) return;
-            setWorkingDays(s.workingDays);
-            setStartTime(s.startTime);
-            setEndTime(s.endTime);
-            setWorkingHoursByDay(s.workingHoursByDay);
-          }}
-        />
+        {/* Правая колонка — привязка к офису сайта (coinpoint) + доступность */}
+        <div className="space-y-4">
+          <SiteOfficeControls
+            open={open}
+            code={coinpointCode}
+            setCode={setCoinpointCode}
+            timezone={timezone}
+            scheduleSource={{
+              workingDays,
+              workingHours: { start: startTime, end: endTime },
+              workingHoursByDay,
+            }}
+            onApplySite={(so) => {
+              const s = siteWorkingHoursToOffice(so?.working_hours);
+              if (!s) return;
+              setWorkingDays(s.workingDays);
+              setStartTime(s.startTime);
+              setEndTime(s.endTime);
+              setWorkingHoursByDay(s.workingHoursByDay);
+            }}
+          />
+        </div>
       </div>
       <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
         <button
