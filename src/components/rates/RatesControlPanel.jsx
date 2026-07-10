@@ -166,53 +166,37 @@ function TrBlock({ rows, setRows }) {
 }
 
 // ── Блок 3 — USDT · Россия (Rapira) ────────────────────────────────────────
-const RU_ROWS = [
-  { d: "USDT→RUB", from: "USDT", to: "RUB", city: "МСК", cityCode: "MSK", dp: 2 },
-  { d: "USDT→RUB", from: "USDT", to: "RUB", city: "СПБ", cityCode: "SPB", dp: 2 },
-  { d: "RUB→USDT", from: "RUB", to: "USDT", city: "МСК", cityCode: "MSK", dp: 2 },
-  { d: "RUB→USDT", from: "RUB", to: "USDT", city: "СПБ", cityCode: "SPB", dp: 2 },
+// Россия — кэш USDT↔RUB, без городов (2 направления).
+const RU_DIRS = [
+  { from: "USDT", to: "RUB", key: "USDT_RUB", dp: 2 },
+  { from: "RUB", to: "USDT", key: "RUB_USDT", dp: 2 },
 ];
-function RuBlock({ rows, onPrice, onSpread, onReset, prevRapira, trendWin }) {
-  const isOver = (r) => r.rapira > 0 && Math.abs(r.price - r.rapira) > 1e-9;
-  const cols = "70px 74px 66px 40px 56px";
+// Один-в-один как NalBlock: Напр | Цена(авто Rapira) | N назад | Спр | Итог.
+function RuBlock({ rows, onSpread, trendWin }) {
   const winLabel = TREND_WINS.find(([m]) => m === trendWin)?.[1];
+  const cols = "70px 56px 68px 40px 56px";
   return (
-    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira, можно перебить (жёлтым = оверрайд, ↻ вернуть). Колонка «{winLabel} назад» — прошлый курс Rapira (▲/▼/•). Итог = цена + спред (коп.).</>}>
+    <Card title="USDT · Россия" badge="Rapira" badgeColor="bg-info" hint={<>Цена — Rapira (авто). Колонка «{winLabel} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / • без изменений). Итог = цена + спред (коп.).</>}>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: cols }}>
         <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">{winLabel} назад</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
       {rows.map((r) => {
-        const over = isOver(r);
-        const d = prevRapira != null && r.rapira ? r.rapira - prevRapira : null;
+        const delta = r.prev != null && r.price ? r.price - r.prev : null;
         return (
           <div key={r.key} className="grid items-center px-3.5 py-2 border-t border-border-soft" style={{ gridTemplateColumns: cols }}>
-            <div className="leading-tight">
-              <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-              <div className="text-[9px] font-sans font-semibold text-muted uppercase tracking-wide">{r.city}</div>
-            </div>
-            <div className="flex items-center justify-end gap-1">
-              {over && (
-                <button type="button" className="text-accent shrink-0" title={`Вернуть Rapira ${fmt(r.rapira, r.dp)}`} onClick={() => onReset(r.key, r.rapira)}>
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
-              <input
-                className={`${cellIn} w-[62px] ${over ? "border-warning bg-warning-soft" : ""}`}
-                value={r.priceStr ?? fmt(r.price, r.dp)}
-                onChange={(e) => onPrice(r.key, e.target.value)}
-              />
-            </div>
+            <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
+            <div className="text-right font-mono tabular-nums text-[12px] text-ink-soft" title="Цена Rapira (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
             <div className="text-right pr-3">
-              {d != null ? (
-                <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${d > 0 ? "text-success" : d < 0 ? "text-danger" : "text-muted-soft"}`} title={`Rapira сейчас ${fmt(r.rapira, r.dp)} · было ${fmt(prevRapira, r.dp)}`}>
-                  <span className="text-[11px] leading-none">{d > 0 ? "▲" : d < 0 ? "▼" : "•"}</span>{fmt(prevRapira, r.dp)}
+              {delta != null ? (
+                <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
+                  <span className="text-[11px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
                 </span>
               ) : (
                 <span className="text-muted-soft text-[12px]">—</span>
               )}
             </div>
-            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spreadStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
-            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.rapira || r.price ? fmt(r.itog, r.dp) : "—"}</div>
+            <div className="flex justify-end"><input className={`${cellIn} w-[38px]`} inputMode="numeric" value={r.spStr ?? String(r.spread)} onChange={(e) => onSpread(r.key, e.target.value)} /></div>
+            <div className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{r.price ? fmt(r.itog, r.dp) : "—"}</div>
           </div>
         );
       })}
@@ -305,23 +289,17 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     })
   );
 
-  // ── Россия: цена и Rapira-ref ЖИВЫЕ (rapira mid / override), в состоянии только
-  // правки (перебитая цена / спред). Фикс async-нуля и неактивного СПБ.
-  const [ruEdits, setRuEdits] = useState({}); // key -> {priceStr?, spreadStr?}
-  const ruRows = RU_ROWS.map((r) => {
-    const key = `${r.from}_${r.to}_${r.cityCode}`;
-    const rep = repOf(r.cityCode);
-    const ov = rep ? getOverride?.(rep.id, r.from, r.to) : null;
-    const rapiraMid = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? 0);
-    const basePrice = Number(ov?.baseRate ?? ov?.rate ?? rapiraMid);
-    const ed = ruEdits[key] || {};
-    const price = ed.priceStr != null ? pnum(ed.priceStr) : basePrice;
-    const spread = ed.spreadStr != null ? pint(ed.spreadStr) : 0;
-    return { ...r, key, rapira: rapiraMid, price, priceStr: ed.priceStr, spread, spreadStr: ed.spreadStr, itog: price + spread / 100 };
+  // ── Россия: кэш USDT↔RUB, без городов. Цена = Rapira (авто, как Tolunay в нале),
+  // в состоянии только спред. Итог = Rapira + спред/100. Пишем во все РФ-офисы.
+  const ruOffices = [...(byCity.MSK || []), ...(byCity.SPB || [])];
+  const [ruSpread, setRuSpread] = useState({}); // {dirKey: spStr}
+  const onRuSpread = (key, val) => setRuSpread((s) => ({ ...s, [key]: val }));
+  const ruRows = RU_DIRS.map((d) => {
+    const price = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? 0);
+    const spStr = ruSpread[d.key];
+    const spread = spStr != null ? pint(spStr) : 0;
+    return { ...d, price, prev: rapiraPrev.USDT_RUB ?? null, spread, spStr, itog: price + spread / 100 };
   });
-  const ruSetPrice = (key, val) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], priceStr: val } }));
-  const ruSetSpread = (key, val) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], spreadStr: val } }));
-  const ruReset = (key, mid) => setRuEdits((s) => ({ ...s, [key]: { ...s[key], priceStr: fmt(mid, 2) } }));
 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
@@ -357,11 +335,10 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
           }
         }
       }
-      // Блок 3 — Россия → overrides RU-офисов города. Итог = price + spread/100.
+      // Блок 3 — Россия → overrides ВСЕХ РФ-офисов (кэш USDT↔RUB, без городов).
       for (const r of ruRows) {
-        const offs = byCity[r.cityCode] || [];
         if (!(r.itog > 0)) continue;
-        for (const o of offs) {
+        for (const o of ruOffices) {
           await saveOverride(o.id, r.from, r.to, r.itog, 0);
           n++;
         }
@@ -373,7 +350,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
     } finally {
       setBusy(false);
     }
-  }, [nalSpreadOf, tol, tr, ruRows, byCity, saveOverride, onDone]);
+  }, [nalSpreadOf, tol, tr, ruRows, ruOffices, byCity, saveOverride, onDone]);
 
   return (
     <div>
@@ -394,7 +371,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
         <div className="flex flex-col gap-3 shrink-0">
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onNalSpread} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock rows={ruRows} onPrice={ruSetPrice} onSpread={ruSetSpread} onReset={ruReset} prevRapira={rapiraPrev.USDT_RUB} trendWin={trendWin} />
+          <RuBlock rows={ruRows} onSpread={onRuSpread} trendWin={trendWin} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">
