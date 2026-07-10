@@ -243,19 +243,17 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
 
       {/* Живые действия — только когда офис привязан */}
       {code ? (
-        <div className="mt-3 rounded-card border border-border-soft bg-surface-soft/50 p-3 space-y-3">
-          {/* Рубильник-статус */}
-          <div
-            className={`text-tiny font-semibold px-2 py-1.5 rounded-md inline-flex items-center gap-1.5 ${
-              syncEnabled ? "bg-success-soft text-success" : "bg-warning-soft text-warning"
-            }`}
-          >
+        <div className="mt-4 pt-4 border-t border-border-soft space-y-3">
+          {/* Статус синхронизации — компактный чип */}
+          <div className="flex items-center gap-1.5 text-tiny font-semibold">
             <span className={`w-1.5 h-1.5 rounded-full ${syncEnabled ? "bg-success" : "bg-warning"}`} />
-            {syncEnabled ? "Синхронизация с сайтом включена" : "Предпросмотр — запись на сайт выключена"}
+            <span className={syncEnabled ? "text-success" : "text-warning"}>
+              {syncEnabled ? "Синхронизация с сайтом включена" : "Предпросмотр — запись на сайт выключена"}
+            </span>
           </div>
 
           {/* Apple-тумблер: Открыт ↔ Выходной на выбранную дату */}
-          <div className="flex items-center justify-between gap-3 rounded-card bg-white border border-border-soft px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3 rounded-card bg-surface-soft border border-border-soft px-3 py-2.5">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <span className={`text-body-sm font-semibold ${dayOpen ? "text-success" : "text-danger"}`}>
@@ -271,29 +269,29 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
           </div>
 
           {/* Дата (по умолчанию сегодня) + причина выходного */}
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Дата</label>
+              <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">Дата</label>
               <input
                 type="date"
                 value={dayDate}
                 onChange={(e) => setDayDate(e.target.value)}
-                className="bg-white border border-border-soft rounded-card px-2.5 py-2 text-body-sm outline-none focus:border-accent"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
               />
             </div>
-            <div className="flex-1 min-w-[140px]">
-              <label className="block text-tiny font-semibold text-muted mb-1 uppercase tracking-wide">Причина выходного (необяз.)</label>
+            <div>
+              <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">Причина (необяз.)</label>
               <input
                 type="text"
                 value={dayReason}
                 onChange={(e) => setDayReason(e.target.value)}
                 placeholder="напр. праздник"
-                className="w-full bg-white border border-border-soft rounded-card px-2.5 py-2 text-body-sm outline-none focus:border-accent"
+                className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 pt-0.5">
             {onApplySite && (
               <button
                 type="button"
@@ -302,7 +300,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
                   const so = (list || []).find((o) => o.code === code);
                   if (so) { onApplySite(so); setResult({ ok: true, dryRun: false, text: `Настройки офиса ${code} подтянуты с сайта — проверьте и нажмите «Сохранить».` }); }
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk disabled:opacity-50 transition"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk disabled:opacity-50 transition-colors"
                 title="Заполнить расписание кассового офиса реальными настройками с сайта"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Настройки ← сайт
@@ -312,7 +310,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
               type="button"
               disabled={busy}
               onClick={doSchedule}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink disabled:opacity-50 transition"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink disabled:opacity-50 transition-colors"
               title="Отправить текущее недельное расписание кассы на сайт"
             >
               {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Clock className="w-3.5 h-3.5" />} Расписание → сайт
@@ -321,7 +319,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
 
           {result && (
             <div
-              className={`text-tiny rounded-md px-2 py-1.5 ${
+              className={`text-tiny rounded-card px-3 py-2 ${
                 !result.ok
                   ? "bg-danger-soft text-danger"
                   : result.dryRun
