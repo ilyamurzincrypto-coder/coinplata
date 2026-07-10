@@ -705,73 +705,16 @@ export default function RatesPage({ onBack, drawer = false }) {
               </div>
             </div>
 
-            {/* Переключатель: матрица офисов ↔ полные настройки (все пары/авто) */}
-            <div className="flex items-center gap-1 pb-1">
-              {[
-                { id: "control", label: "Панель управления" },
-                { id: "matrix", label: "Курсы по офисам" },
-                { id: "settings", label: "Настройки · все пары / авто" },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  onClick={() => setListMode(m.id)}
-                  className={`px-3 py-1.5 rounded-[7px] text-[11.5px] font-bold transition-colors ${
-                    listMode === m.id
-                      ? "bg-[rgba(18,22,26,0.06)] text-[#15191d]"
-                      : "text-[#6a717a] hover:bg-[rgba(18,22,26,0.03)] hover:text-[#15191d]"
-                  }`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-
-            {listMode === "control" ? (
-              <RatesControlPanel
-                offices={activeOffices}
-                getGP={findGP}
-                getOverride={getOfficeOverride}
-                tol={tolLatest}
-                rapira={rapiraLatest}
-                saveMargins={handleSetMargins}
-                saveOverride={saveOverrideRaw}
-                onDone={() => {}}
-              />
-            ) : listMode === "matrix" ? (
-              <OfficeRatesMatrix
-                offices={activeOffices}
-                pairs={existingPairs}
-                getOverride={getOfficeOverride}
-                onSave={saveOfficeRate}
-                onOpenPaste={() => handleOpenImport("text")}
-                rapiraMid={rapiraMid}
-                onApplyAuto={applyRapiraAuto}
-              />
-            ) : (
-              <>
-                {isSupabaseConfigured && <BulkSpreadControl onApply={handleBulkSpread} />}
-                <RatesPageEditTable
-                  activeOffice="all"
-                  activeOffices={activeOffices}
-                  existingPairs={existingPairs}
-                  allPairs={allPairs}
-                  channels={channels}
-                  groups={groups}
-                  getRate={getRate}
-                  getOfficeOverride={getOfficeOverride}
-                  isEditorFav={isEditorFav}
-                  editorFavorites={editorFavorites}
-                  editorFavKeys={editorFavKeys}
-                  toggleEditorFav={toggleEditorFav}
-                  handleSetRate={handleSetRate}
-                  handleSetMargins={handleSetMargins}
-                  handleResetOverride={handleResetOverride}
-                  handleDeletePair={handleDeletePair}
-                  canDelete={isOwner || isAdmin}
-                  t={t}
-                />
-              </>
-            )}
+            <RatesControlPanel
+              offices={activeOffices}
+              getGP={findGP}
+              getOverride={getOfficeOverride}
+              tol={tolLatest}
+              rapira={rapiraLatest}
+              saveMargins={handleSetMargins}
+              saveOverride={saveOverrideRaw}
+              onDone={() => {}}
+            />
 
             {/* Спец-курсы (НЕРЕЗ / СБП) — информационная панель из утреннего
                 импорта. В сделках пока не участвует. */}

@@ -53,10 +53,24 @@ const NAL_CCYS = [
   { c: "CHF", dp: 2 },
   { c: "RUB", dp: 2 },
 ];
-function NalBlock({ rows, setRows, tol }) {
+function NalBlock({ city, setCity, rows, setRows, tol }) {
   // out sell = price + ss/100 ; out buy = price + sb/100 (sb обычно отрицателен)
   return (
-    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Единый для Антальи и Стамбула. <b className="text-muted">Прод.</b> = цена + спред, <b className="text-muted">Пок.</b> = цена − |спред| (коп.).</>}>
+    <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая; спред и итог — по вкладке города. <b className="text-muted">Прод.</b> = цена + спред, <b className="text-muted">Пок.</b> = цена − |спред| (коп.).</>}>
+      <div className="flex gap-1 px-3.5 pt-2">
+        {[["ANT", "Анталья"], ["IST", "Стамбул"]].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setCity(id)}
+            className={`px-2.5 py-1 rounded-[6px] text-[11px] font-bold transition-colors ${
+              city === id ? "bg-[rgba(18,22,26,0.06)] text-ink" : "text-muted hover:text-ink"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "70px 54px 46px 56px 46px 56px" }}>
         <span>Вал.</span><span className="text-right">Цена</span><span className="text-right">Спр.</span><span className="text-right">Прод.</span><span className="text-right">Спр.</span><span className="text-right">Пок.</span>
       </div>
@@ -191,21 +205,36 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
   const antRep = byCity.ANT[0];
   const istRep = byCity.IST[0];
 
-  // ── init нал из global pairs (market+маржа) + Tolunay цена ──
-  const [nal, setNal] = useState(() => {
-    const s = {};
-    NAL_CCYS.forEach(({ c }) => {
-      const gp = getGP?.(c, "TRY");
-      const feed = tol?.[`${c}_TRY`]?.mid;
-      const market = Number(gp?.marketRate ?? gp?.baseRate ?? feed ?? 0);
-      s[c] = {
-        price: feed != null ? feed : market,
-        ss: Math.round(-(Number(gp?.sellMargin ?? 0)) * 100), // продажа = market − sellMargin = price + ss/100
-        sb: Math.round(Number(gp?.buyMargin ?? 0) * 100), // покупка = market + buyMargin = price + sb/100
-      };
-    });
-    return s;
-  });
+  // ── init нала per-city из офисных оверрайдов представителя города + Tolunay цена ──
+  // покупка (CUR→TRY) и продажа (TRY→CUR) хранятся как office_rate_overrides.
+  const initNalCity = useCallback(
+    (cityCode) => {
+      const rep = byCity[cityCode]?.[0];
+      const s = {};
+      NAL_CCYS.forEach(({ c }) => {
+        const feed = tol?.[`${c}_TRY`]?.mid;
+        const ovBuy = rep ? getOverride?.(rep.id, c, "TRY") : null; // CUR→TRY = покупка
+        const ovSell = rep ? getOverride?.(rep.id, "TRY", c) : null; // TRY→CUR = продажа
+        const buy = Number(ovBuy?.baseRate ?? ovBuy?.rate ?? 0);
+        const sell = Number(ovSell?.baseRate ?? ovSell?.rate ?? 0);
+        const price = feed != null ? feed : buy || sell || 0;
+        s[c] = {
+          price,
+          ss: sell ? Math.round((sell - price) * 100) : 0,
+          sb: buy ? Math.round((buy - price) * 100) : 0,
+        };
+      });
+      return s;
+    },
+    [byCity, getOverride, tol]
+  );
+  const [nalCity, setNalCity] = useState("ANT");
+  const [nalByCity, setNalByCity] = useState(() => ({ ANT: initNalCity("ANT"), IST: initNalCity("IST") }));
+  const setNalRows = useCallback(
+    (updater) =>
+      setNalByCity((s) => ({ ...s, [nalCity]: typeof updater === "function" ? updater(s[nalCity]) : updater })),
+    [nalCity]
+  );
 
   // ── init Турция из overrides представителя города ──
   const [tr, setTr] = useState(() =>
@@ -239,12 +268,22 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
     setMsg(null);
     try {
       let n = 0;
-      // Блок 1 — нал → global pairs (market+маржа, копейки). rate=market+buyMargin(=sb),
-      // продажа=market−sellMargin(=−ss). Пишем pair CUR→TRY.
-      for (const { c } of NAL_CCYS) {
-        const r = nal[c];
-        await saveMargins(c, "TRY", { market: r.price, buyMargin: r.sb / 100, sellMargin: -r.ss / 100 });
-        n++;
+      // Блок 1 — нал per-city → office_rate_overrides офисов города. Пишем обе
+      // стороны: CUR→TRY = Покупка (цена+sb/100), TRY→CUR = Продажа (цена+ss/100).
+      for (const city of ["ANT", "IST"]) {
+        const offs = byCity[city] || [];
+        const rows = nalByCity[city];
+        for (const { c } of NAL_CCYS) {
+          const r = rows[c];
+          const buy = r.price + r.sb / 100;
+          const sell = r.price + r.ss / 100;
+          if (!(buy > 0) || !(sell > 0)) continue;
+          for (const o of offs) {
+            await saveOverride(o.id, c, "TRY", buy, 0);
+            await saveOverride(o.id, "TRY", c, sell, 0);
+            n += 2;
+          }
+        }
       }
       // Блок 2 — Турция → overrides по всем офисам города.
       for (const r of tr) {
@@ -273,7 +312,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
     } finally {
       setBusy(false);
     }
-  }, [nal, tr, ru, byCity, saveMargins, saveOverride, onDone]);
+  }, [nalByCity, tr, ru, byCity, saveOverride, onDone]);
 
   return (
     <div>
@@ -292,7 +331,7 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, ra
 
       <div className="flex gap-4 items-start">
         <div className="flex flex-col gap-3 shrink-0">
-          <NalBlock rows={nal} setRows={setNal} tol={tol || {}} />
+          <NalBlock city={nalCity} setCity={setNalCity} rows={nalByCity[nalCity]} setRows={setNalRows} tol={tol || {}} />
           <TrBlock rows={tr} setRows={setTr} />
           <RuBlock rows={ru} setRows={setRu} />
         </div>
