@@ -102,7 +102,7 @@ function NalBlock({ city, setCity, rows, onSpread, trendWin, setTrendWin }) {
             <div className="text-right pr-3">
               {delta != null ? (
                 <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
-                  <span className="text-[11px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
+                  <span className="inline-block w-[10px] text-center text-[10px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
                 </span>
               ) : (
                 <span className="text-muted-soft text-[12px]">—</span>
@@ -189,7 +189,7 @@ function RuBlock({ rows, onSpread, trendWin }) {
             <div className="text-right pr-3">
               {delta != null ? (
                 <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
-                  <span className="text-[11px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
+                  <span className="inline-block w-[10px] text-center text-[10px] leading-none">{delta > 0 ? "▲" : delta < 0 ? "▼" : "•"}</span>{fmt(r.prev, r.dp)}
                 </span>
               ) : (
                 <span className="text-muted-soft text-[12px]">—</span>
@@ -295,7 +295,8 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
   const [ruSpread, setRuSpread] = useState({}); // {dirKey: spStr}
   const onRuSpread = (key, val) => setRuSpread((s) => ({ ...s, [key]: val }));
   const ruRows = RU_DIRS.map((d) => {
-    const price = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? 0);
+    // Цена Rapira из истории → latest → глобальная пара (синхронный фолбэк, без «—»).
+    const price = Number(rapiraCur.USDT_RUB ?? rapira?.USDT_RUB?.mid ?? getGP?.("USDT", "RUB")?.rate ?? 0);
     const spStr = ruSpread[d.key];
     const spread = spStr != null ? pint(spStr) : 0;
     return { ...d, price, prev: rapiraPrev.USDT_RUB ?? null, spread, spStr, itog: price + spread / 100 };
