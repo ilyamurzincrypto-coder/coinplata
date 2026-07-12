@@ -10,6 +10,8 @@ import {
   canonicalJson,
   requestHash,
   newIdempotencyKey,
+  idempotencyKeyForAttempt,
+  clearDealAttempt,
 } from "./newLedger.js";
 
 describe("canonicalJson", () => {
@@ -113,5 +115,49 @@ describe("newIdempotencyKey", () => {
     const keys = new Set();
     for (let i = 0; i < 100; i++) keys.add(newIdempotencyKey());
     expect(keys.size).toBe(100);
+  });
+});
+
+// B1 — идемпотентность создания сделки. Доказывает: ретрай того же payload
+// переиспользует ключ (сервер дедупит → нет дубля сделки), а после успеха
+// легитимный повтор получает новый ключ.
+describe("idempotencyKeyForAttempt / clearDealAttempt (B1)", () => {
+  it("ретрай того же payload (той же hash) → ТОТ ЖЕ ключ", () => {
+    clearDealAttempt();
+    const k1 = idempotencyKeyForAttempt("HASH_A");
+    const k2 = idempotencyKeyForAttempt("HASH_A"); // «ответ потерялся → повтор»
+    expect(k2).toBe(k1);
+  });
+
+  it("другой payload (другая hash) → ДРУГОЙ ключ", () => {
+    clearDealAttempt();
+    const kA = idempotencyKeyForAttempt("HASH_A");
+    const kB = idempotencyKeyForAttempt("HASH_B");
+    expect(kB).not.toBe(kA);
+  });
+
+  it("несколько payload-ов в полёте не путают ключи", () => {
+    clearDealAttempt();
+    const kA1 = idempotencyKeyForAttempt("HASH_A");
+    const kB1 = idempotencyKeyForAttempt("HASH_B");
+    expect(idempotencyKeyForAttempt("HASH_A")).toBe(kA1);
+    expect(idempotencyKeyForAttempt("HASH_B")).toBe(kB1);
+  });
+
+  it("после успеха (clear) тот же payload → НОВЫЙ ключ (легитимный повтор)", () => {
+    clearDealAttempt();
+    const k1 = idempotencyKeyForAttempt("HASH_A");
+    clearDealAttempt("HASH_A"); // успех сделки
+    const k2 = idempotencyKeyForAttempt("HASH_A");
+    expect(k2).not.toBe(k1);
+  });
+
+  it("clear только своей hash — другие в полёте остаются", () => {
+    clearDealAttempt();
+    const kA = idempotencyKeyForAttempt("HASH_A");
+    const kB = idempotencyKeyForAttempt("HASH_B");
+    clearDealAttempt("HASH_A");
+    expect(idempotencyKeyForAttempt("HASH_B")).toBe(kB); // B не сброшен
+    expect(idempotencyKeyForAttempt("HASH_A")).not.toBe(kA); // A сброшен → новый
   });
 });

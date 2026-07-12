@@ -70,6 +70,24 @@ export async function requestHash(payload) {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Идемпотентность создания сделки (B1). Ключ генерируется ОДИН раз на попытку и
+// переиспользуется при РЕТРАЕ того же payload (та же request-hash), чтобы
+// «ответ потерялся → юзер повторил» не создавало дубль (ledger.transactions
+// имеет UNIQUE(idempotency_key), сервер дедупит). При УСПЕХЕ ключ сбрасывается —
+// легитимный повтор той же сделки позже получит новый ключ.
+// Map по hash: держит ключи нескольких «в полёте» payload-ов (разные сделки).
+const _dealAttempts = new Map(); // requestHash → idempotencyKey
+export function idempotencyKeyForAttempt(hash) {
+  if (_dealAttempts.has(hash)) return _dealAttempts.get(hash);
+  const key = newIdempotencyKey();
+  _dealAttempts.set(hash, key);
+  return key;
+}
+export function clearDealAttempt(hash) {
+  if (hash === undefined) _dealAttempts.clear();
+  else _dealAttempts.delete(hash);
+}
+
 // Standard error formatter. ledger RPC раскидывают ERRCODE: P0422 idempotency,
 // P0001 insufficient balance, 22000 invalid params, P0002 not found.
 function formatLedgerError(error) {
@@ -178,7 +196,10 @@ export async function rpcCreateWithdrawalV2(payload) {
  * @returns {Promise<{deal_tx_id, settle_tx_ids, recognition_tx_id}>}
  */
 export async function rpcCreateDealV2(payload) {
-  const key = payload.idempotencyKey || newIdempotencyKey();
+  // request-hash от payload (без ключа) считаем ОДИН раз — он же основа
+  // идемпотентного ключа: ретрай того же payload → тот же ключ → сервер дедупит.
+  const hash = await requestHash({ ...payload, idempotencyKey: undefined });
+  const key = payload.idempotencyKey || idempotencyKeyForAttempt(hash);
   // Принимаем как camelCase (DealForm.buildTx), так и snake_case
   // (adaptLegacyDealPayload — legacy ExchangeForm путь): иначе fresh-IN/
   // physical-OUT ноги уходят в RPC без account_code и БД отбивает
@@ -204,7 +225,7 @@ export async function rpcCreateDealV2(payload) {
   }));
   const params = {
     p_idempotency_key: key,
-    p_request_hash: await requestHash({ ...payload, idempotencyKey: undefined }),
+    p_request_hash: hash,
     // ВСЕГДА явный null, а не undefined: иначе ключ выпадает из JSON и PostgREST
     // не находит перегрузку create_deal_v2 (p_client_id — required-параметр).
     p_client_id: payload.clientId ?? null,
@@ -219,6 +240,10 @@ export async function rpcCreateDealV2(payload) {
   };
   if (params.p_effective_date === undefined) delete params.p_effective_date;
   const data = await invokeLedger("create_deal_v2", params);
+  // Успех → сбрасываем попытку (следующий такой же payload = легитимный повтор,
+  // получит новый ключ). При ОШИБКЕ invokeLedger бросает раньше — попытка
+  // остаётся в трекере, и ретрай переиспользует тот же ключ (дедуп на сервере).
+  clearDealAttempt(hash);
   // RETURNS TABLE → Supabase возвращает массив одной строки
   return Array.isArray(data) ? data[0] : data;
 }
