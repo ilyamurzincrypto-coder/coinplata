@@ -195,16 +195,17 @@ export function computeNetOutput({ amtIn, rate, feeUsd, outputCurrency, getRate 
 
 // Авто-расчёт прибыли от разницы между rate менеджера и рыночным rate.
 //
-// Для каждого output:
-//   market_rate = getRate(curIn, out.currency)  // сколько outCurrency за 1 unit curIn
+// В exchange-формате "rate" = сколько outCurrency за 1 curIn. Считаем через
+// «сколько curIn забрали на этот output»:
+//   market_rate = getRate(curIn, out.currency)
 //   actual_rate = out.rate
-//   marginInOut = out.amount × (actual_rate − market_rate) / actual_rate
-//     — положительное если actual > market (office заработал на марже)
-//     — отрицательное иначе
-// ВНИМАНИЕ: в exchange формате "rate" = сколько outCurrency за 1 curIn.
-//   actual_rate > market_rate значит клиент получает больше outCurrency за тот же input,
-//   что для офиса означает меньшую маржу. Значит правильно: marginInOut positive когда
-//   actual < market (менеджер дал хуже рыночного).
+//   margin_in_curIn = out.amount/actual_rate − out.amount/market_rate
+//
+// ЗНАК (единственно верный, совпадает с кодом ниже и тестом money.test.js):
+//   actual_rate < market_rate  ⇒  клиент получил МЕНЬШЕ рынка за тот же input
+//                               ⇒  офис заработал  ⇒  margin ПОЛОЖИТЕЛЬНА.
+//   actual_rate > market_rate  ⇒  клиенту дали лучше рынка  ⇒  margin отрицательна.
+//   (Прежняя шапка утверждала обратное — это была ошибка комментария, не кода. B8.)
 //
 // Возвращает суммарную маржу в USD (суммируем margin по всем outputs).
 // Если market rate недоступен для какого-то output — его margin = 0.
