@@ -128,7 +128,8 @@ function PerRow({ sending, receiving, base, target, getRate, markups, setMarkup 
   );
 }
 function PerTab({ getRate, offices }) {
-  const all = useMemo(() => (offices || []).filter((o) => o.active !== false), [offices]);
+  // Все офисы (включая закрытые — напр. Питер/St.pt), чтобы были доступны в перестановках.
+  const all = useMemo(() => offices || [], [offices]);
   const [aId, setAId] = useState(""); // "" = все
   const [bId, setBId] = useState("");
   const [markups, setMarkups] = useState(readMarkups);
