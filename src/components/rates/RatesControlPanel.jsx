@@ -8,6 +8,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { Loader2, Globe, Lock, Unlock } from "lucide-react";
 import { officeCityCode } from "../../lib/rapiraSpreads.js";
+import RatesAuxPanel from "./RatesAuxPanel.jsx";
 
 // Замки зафиксированных итоговых цен (переживают переоткрытие панели).
 const LOCKS_KEY = "rates_control_locks_v1";
@@ -262,7 +263,7 @@ function RuBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWin
 }
 
 // ── Панель ─────────────────────────────────────────────────────────────────
-export default function RatesControlPanel({ offices, getGP, getOverride, tol, tolHistory, rapiraHistory, rapira, saveMargins, saveOverride, onDone }) {
+export default function RatesControlPanel({ offices, getGP, getRate, getOverride, tol, tolHistory, rapiraHistory, rapira, cbr, cbrAt, competitorSnapshots, saveMargins, saveOverride, onDone }) {
   // Разрешаем офисы по городам (для записи overrides).
   const byCity = useMemo(() => {
     const m = { ANT: [], IST: [], MSK: [], SPB: [] };
@@ -470,9 +471,15 @@ export default function RatesControlPanel({ offices, getGP, getOverride, tol, to
           <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
-          <div className="h-full min-h-[400px] rounded-card border-[1.5px] border-dashed border-border-soft flex items-center justify-center text-muted-soft text-body-sm font-semibold bg-surface-soft/30">
-            Вспомогательные панели (превью · история · калькулятор) — позже
-          </div>
+          <RatesAuxPanel
+            getRate={getRate}
+            antRep={antRep}
+            mskRep={repOf("MSK")}
+            spbRep={repOf("SPB")}
+            cbr={cbr}
+            cbrAt={cbrAt}
+            competitorSnapshots={competitorSnapshots}
+          />
         </div>
       </div>
     </div>

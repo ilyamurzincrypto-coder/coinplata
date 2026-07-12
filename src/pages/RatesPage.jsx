@@ -144,6 +144,8 @@ export default function RatesPage({ onBack, drawer = false }) {
   // Полные снимки фидов для панели управления: { USDT_RUB: {bid,ask,mid} }.
   const [rapiraLatest, setRapiraLatest] = useState({});
   const [tolLatest, setTolLatest] = useState({}); // Tolunay: { USD_TRY:{bid,ask,mid} }
+  const [cbrLatest, setCbrLatest] = useState({}); // ЦБ РФ: { USD_RUB: mid, ... }
+  const [cbrAt, setCbrAt] = useState(null); // время среза ЦБ
   const [tolHistory, setTolHistory] = useState([]); // недавние снимки Tolunay (тренд)
   const [rapiraHistory, setRapiraHistory] = useState([]); // недавние снимки Rapira (тренд)
   React.useEffect(() => {
@@ -157,14 +159,18 @@ export default function RatesPage({ onBack, drawer = false }) {
     loadExternalRatesLatest()
       .then((rows) => {
         if (!alive) return;
-        const m = {}, rap = {}, tol = {};
+        const m = {}, rap = {}, tol = {}, cbr = {};
+        let cbrTs = null;
         (rows || []).forEach((r) => {
           if (r.source === "rapira") { m[r.pair] = r.mid; rap[r.pair] = { bid: r.bid, ask: r.ask, mid: r.mid }; }
           else if (r.source === "tolunay") { tol[r.pair] = { bid: r.bid, ask: r.ask, mid: r.mid }; }
+          else if (r.source === "cbr") { cbr[r.pair] = r.mid; if (!cbrTs || r.fetchedAt > cbrTs) cbrTs = r.fetchedAt; }
         });
         setRapiraMid(m);
         setRapiraLatest(rap);
         setTolLatest(tol);
+        setCbrLatest(cbr);
+        setCbrAt(cbrTs);
       })
       .catch(() => {});
     return () => { alive = false; };
@@ -716,11 +722,15 @@ export default function RatesPage({ onBack, drawer = false }) {
             <RatesControlPanel
               offices={allOfficesList}
               getGP={findGP}
+              getRate={getRate}
               getOverride={getOfficeOverride}
               tol={tolLatest}
               tolHistory={tolHistory}
               rapiraHistory={rapiraHistory}
               rapira={rapiraLatest}
+              cbr={cbrLatest}
+              cbrAt={cbrAt}
+              competitorSnapshots={{}}
               saveMargins={handleSetMargins}
               saveOverride={saveOverrideRaw}
               onDone={() => {}}
