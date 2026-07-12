@@ -1,0 +1,54 @@
+# BUGS — охота на баги (read-only, с доказательствами)
+
+> Дата: 2026-07-12. Метод: build + `vitest run` + grep + git churn + интроспекция живой БД (mcp) + 1 forensic-агент по коду денег/курсов.
+> Ничего не чинилось. «Доказано» = вывод команды или file:line + сниппет. Недоказанное — в разделе «Подозрения».
+> Живого SQL бэкенда (`effective_rate`, `deal_rate_for_leg`) в дереве **нет** — он в другом проекте; такие места помечены «не проверено».
+
+## Сводка гейтов (важно для контекста всех багов)
+
+| Гейт | Есть? | Доказательство |
+|---|---|---|
+| `build` | ✅ проходит (warning про chunk >600 kB) | `npm run build` → `✓ built` |
+| `test` | ✅ **596 тестов, 59 файлов, все зелёные** | `vitest run` → `Test Files 59 passed / Tools 596 passed` |
+| `typecheck` | ❌ **нет** (нет `tsconfig.json`, проект на JS) | `ls tsconfig*.json` → нет |
+| `lint` | ❌ **нет** (нет `.eslintrc`/`eslint.config`) | `ls .eslintrc*` → нет |
+| CI | ❌ **нет** | `ls .github/workflows` → нет |
+| Схема БД в репо | ⚠️ 137 миграций, но **дрейф** (см. B7) | — |
+
+---
+
+## Баги (по severity)
+
+| # | Severity | Что сломано | Файл:строка | Доказательство | Репро |
+|---|---|---|---|---|---|
+| **B1** | **blocker** | **Нет идемпотентности при создании сделки → дубль сделки и её проводок при ретрае.** Legacy `create_deal` без ключа вовсе; v2 генерит **новый** UUID на каждый вызов (caller не передаёт `idempotencyKey`), БД дедупит по ключу → два вызова = две сделки. Защита только `if(submitting)return` (от даблкликов, НЕ от «ответ потерян → юзер повторил»). | `src/lib/supabaseWrite.js:293` (`create_deal` без ключа); `src/lib/newLedger.js:181` (`key = payload.idempotencyKey \|\| newIdempotencyKey()`, caller не задаёт) | forensic-агент F7 | Создать сделку → оборвать ответ после коммита сервера → `submitting` сбрасывается в `finally` → повторный клик → второй `create_deal` с новым ключом → дубль сделки + дубль движений |
+| **B2** | **major** | **`usdtPer` инвертирует кросс для GBP/CHF** (и любой валюты дороже 1 USDT). Ориентация выбирается по величине + хардкод-вайтлист `STRONG=[USD,EUR]`; GBP/CHF не в нём → уходят в ветку `1/readable` → перевёрнуты. Бьёт «Кросс» на главной И все строки Перестановок с GBP/CHF. | `src/components/rates/CrossRatesPanel.jsx:11-20`; копия `src/components/rates/RatesAuxPanel.jsx:36-44` | forensic F1 | `getRate("USDT","GBP")=0.751` → выдаёт 0.751 USDT/GBP, верно 1.3315 |
+| **B3** | **major** | **Две копии `usdtPer` расходятся на офисных оверрайдах.** CrossRatesPanel зовёт `getRate("USDT",x)` (глобальный), копия в RatesAuxPanel — `getRate("USDT",cur,officeId)` (офисный). Один и тот же кросс показывается по-разному в двух панелях при наличии офис-override. Логика скопипащена, а не импортирована. | `CrossRatesPanel.jsx:14` vs `RatesAuxPanel.jsx:37,41` | forensic F2 | Задать office-override USDT→X → сравнить «Кросс» слева и Перестановки справа |
+| **B4** | **major** | **Дрейф схемы: 8 объектов в проде без DDL в репо.** Нельзя воспроизвести схему из репозитория; риск при откате/пересоздании. | `external_rates, special_rates, rapira_alert_state, v_external_rates_latest, set_pair_margins, replace_special_rates, buy_margin, coinpoint_office_code` — `grep -rl <obj> supabase/migrations` → **0 файлов** для каждого | вывод grep (в сессии) | Развернуть БД из миграций репо → этих объектов не будет → фронт словит ошибки на курсах/перестановках/мосте офисов |
+| **B5** | **major** (демо-режим) | **Односторонняя проводка (OUT без IN).** В `buildMovementsFromTransaction` IN и OUT независимы: если IN-счёт не выбран/неактивен — IN-нога молча дропается (`warnings`, не блокирует), OUT пишется. Consumer делает `movements.forEach(addMovement)` без проверки warnings → баланс списан без встречной записи. Только in-memory путь (`isSupabaseConfigured===false`); БД-путь идёт через RPC. | `src/utils/exchangeMovements.js:38-59,75-78`; consumer `src/pages/CashierPage.jsx:428-434` | forensic F6 | В демо-режиме создать сделку с невыбранным IN-счётом → OUT спишется, IN не запишется |
+| **B6** | minor | **4 разных форматтера курса с разными порогами точности** — один курс рендерится с разным числом знаков в разных панелях (44,90 vs 44,9000). | `src/lib/rates.js:39-44`; `src/utils/tradingRates.js:42-47`; `src/components/cashier/RatesPanel.jsx:192-197`; `CrossRatesPanel.jsx:22-32` | forensic F3 | Сравнить один курс в сайдбаре и в кросс-панели |
+| **B7** | minor | **Автосчёт ноги суммы через сырой float** `inAmt * rate` (в обход `multiplyAmount`/минорных единиц). Смягчено `formatNumber→toFixed(8)`. | `src/store/dealForm.js:510` | forensic F4 | — (остаточный риск на очень больших суммах) |
+| **B8** | minor | **`computeProfitFromRates` — противоречивая конвенция знака** (шапка говорит одно, ATTENTION-блок другое, код `amt/actual − amt/market`). Только превью-профит (не персистится). | `src/utils/money.js:204-230` | forensic F5 | — |
+| **B9** | minor | **Профит на сделку = заглушка 0,01.** Каждая сделка без комиссии пишет хардкод-ногу `amount: 0.01, kind:"commission"` (чтобы удовлетворить RPC), колонка «Профит»/P&L скрыты. | `src/components/cashier/ledger/DealsLedger.jsx:14`; `src/lib/dealForm/buildTx.js:224,249,263`; `src/lib/newLedgerAdapter.js:255,264` | forensic F6(profit) | — |
+| **B10** | minor | **Незавершённое (33 метки TODO/заглушка).** Ключевые: приход/расход без GL-проводки, OTC-партнёрские счета не реализованы, `blockchainApi` — заглушка вместо TronGrid/Etherscan, `exchange_in/out` движения «пока не пишутся». | `src/components/deal-form/CreateOrderForm.jsx:17,673`; `src/pages/CashierPage.jsx:601`; `src/utils/blockchainApi.js:24,43`; `src/store/accounts.jsx:13` | grep TODO/заглушк | — |
+
+---
+
+## Подозрения (требует проверки, доказать нельзя из этого дерева)
+
+- **S1 — РАЗОБРАНО 2026-07-12 (DDL снят, `docs/db/rate-and-deal-functions.sql`). Вывод: расхождения превью↔факт НЕТ, но по другой причине — и это хуже.**
+  Первоначальная гипотеза (сервер считает свой `effective_rate`, фронт шлёт свой) **опровергнута**: живой `ledger.create_deal_v2` **вообще не читает** `leg.rate`/`rate_source` — книжит только `leg.amount`. Курс сделки = отношение `amtOut/amtIn`, посчитанное **целиком фронтом** (`output.amount = multiplyAmount(amtIn, output.rate)` в `ExchangeForm.jsx`, дальше `newLedgerAdapter.js:174,186,198` кладёт `amount` в ногу как есть). Т.е. превью и факт совпадают **by construction** — amount и есть превью.
+  `effective_rate`/`deal_rate_for_leg` на живом v2-пути **мертвы** — их зовёт только legacy `create_deal`/`_update_deal_impl`.
+  Серверный `tx_check_balance` проверяет `SUM(dr)=SUM(cr)` **по каждой валюте отдельно** (IN и OUT сходятся на своём `fx_clearing`) → **кросс-курс между валютами не валидируется вообще.**
+  **СЛЕДСТВИЕ (переоценка):** фронт — единственный источник истины по курсу, серверного бэкстопа нет. Поэтому **B2 (инверсия `getRate` вне STRONG-вайтлиста) — НЕ косметика/витрина, а critical**: перевёрнутый курс уходит в проводку как реальные деньги, сервер его не поймает. B2 повышается до P0-кандидата.
+- **S2. Гонки при параллельной правке курсов** — publish в «Панели управления» шлёт per-office overrides последовательными `upsert` без транзакции/блокировки; два одновременных publish могут перемешать значения. Не воспроизводилось.
+- **S3. 75 «молчаливых» `catch`/`.catch(()=>{})`** — forensic-агент проверил денежные write-пути: там ошибки всплывают тостом/`console.warn` (не проглатываются). Пустые catch — всё загрузка/localStorage/UI. **Денежного write-пути с пустым catch не найдено** (нулевой результат по этому пункту), но 75 — много, стоит ревью при добавлении новых write-путей.
+- **S4. `parseFloat` в 124 местах** — `money.js` корректен (минорные единицы), но парсинг ввода идёт через `parseFloat`; точечно проверить, что везде далее уходит в `toMinor`, а не в сырую арифметику.
+
+---
+
+## Что нужно для полной картины (нет доступа / не проверено)
+
+1. ~~**DDL сервера** — снять с БД, чтобы закрыть S1.~~ ✅ Сделано 2026-07-12: `docs/db/rate-and-deal-functions.sql`. Вывод см. S1 выше.
+2. **Живой снимок схемы** для B4 — `pg_dump --schema-only` кассы в репо.
+3. Проверка идемпотентности на стороне RPC (B1) — есть ли уникальный constraint по (office, client, amount, minute) как запасной.
