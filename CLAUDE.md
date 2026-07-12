@@ -165,5 +165,5 @@ Current user is hardcoded to `u_adm` (E. Kara, admin) via `useState("u_adm")` in
 ## ⚠️ Известные ловушки этого репозитория
 
 - **Два пути создания сделки:** legacy `create_deal` и v2 `create_deal_v2` (флаг `VITE_USE_NEW_LEDGER`); две формы: legacy `ExchangeForm` и v2 `DealForm` (`USE_NEW_DEAL_FORM` = false). **Уточняй, какая реализация «настоящая», прежде чем править.**
-- **Дрейф схемы:** 8 боевых объектов без DDL в репо (`external_rates`, `special_rates`, `rapira_alert_state`, `v_external_rates_latest`, `set_pair_margins`, `replace_special_rates`, `buy_margin`, `coinpoint_office_code`). Схему из репо развернуть нельзя — **сверяйся с живой БД, не с миграциями**.
+- **Дрейф схемы:** те самые 8 боевых объектов (`external_rates`, `special_rates`, `rapira_alert_state`, `v_external_rates_latest`, `set_pair_margins`, `replace_special_rates`, `pairs.buy_margin`, `offices.coinpoint_office_code`) теперь снятами в `docs/db/schema-drift-objects.sql` (интроспекция, не полный pg_dump). Ключевые деньги-функции — в `docs/db/rate-and-deal-functions.sql`. Схему из репо целиком развернуть всё равно нельзя — **сверяйся с живой БД, эти файлы — карта, а не источник истины**.
 - **Файлы-монстры** (`ExchangeForm` 3879, `supabaseWrite` 2126, `translations` 4589): правки вслепую по фрагменту = источник половины чинящих коммитов. Читай функцию целиком перед правкой.
