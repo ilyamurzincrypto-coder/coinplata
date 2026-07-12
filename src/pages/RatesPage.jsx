@@ -735,31 +735,6 @@ export default function RatesPage({ onBack, drawer = false }) {
               saveOverride={saveOverrideRaw}
               onDone={() => {}}
             />
-
-            {/* Спец-курсы (НЕРЕЗ / СБП) — информационная панель из утреннего
-                импорта. В сделках пока не участвует. */}
-            {specialRates && specialRates.length > 0 && (
-              <div className="bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] p-5">
-                <div className="text-tiny font-bold uppercase tracking-wider text-muted mb-3">
-                  {t("rimport_special_title")}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-body-sm">
-                  {specialRates.map((s, i) => (
-                    <div key={i} className="flex items-center justify-between gap-3">
-                      <span className="text-ink-soft">
-                        {s.kind === "sbp"
-                          ? `СБП · ${s.from}→${s.to}`
-                          : `НЕРЕЗ · ${s.side} · ${s.settle}`}
-                      </span>
-                      <span className="font-mono tabular-nums text-ink">{s.value}</span>
-                    </div>
-                  ))}
-                </div>
-                <p className="mt-3 text-caption text-muted-soft">
-                  {t("rimport_special_note")}
-                </p>
-              </div>
-            )}
           </>
         )}
 
