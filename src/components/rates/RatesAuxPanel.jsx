@@ -52,9 +52,9 @@ const Chip = ({ children }) => (
 );
 function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
   const TARGETS = [
-    { cur: "TRY", flag: "🇹🇷" },
-    { cur: "USD", flag: "🇺🇸" },
-    { cur: "EUR", flag: "🇪🇺" },
+    { cur: "TRY", flag: "🇹🇷", dp2: 2 },
+    { cur: "USD", flag: "🇺🇸", dp2: 4 },
+    { cur: "EUR", flag: "🇪🇺", dp2: 4 },
   ];
   const RF = [["Москва", mskRep], ["Санкт-Петербург", spbRep]];
   const TR = [["Анталья", antRep], ["Стамбул", istRep]];
@@ -75,20 +75,23 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
             <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
               {rfName} <ArrowLeftRight className="w-3 h-3 text-success" /> {trName}
             </div>
-            {TARGETS.map(({ cur, flag }) => {
+            {TARGETS.map(({ cur, flag, dp2 }) => {
               const key = `${rfName}:${trName}:${cur}`;
               const mkStr = markups[key];
               const mk = pnum(mkStr ?? 0);
               const b = base(rfRep, trRep, cur);
               const v = Number.isFinite(b) ? b * (1 + mk / 100) : NaN;
+              const leg1 = rubPerUsdt(getRate, rfRep?.id); // RUB за 1 USDT (РФ)
+              const up = usdtPer(cur, getRate, trRep?.id);
+              const leg2 = up > 0 ? 1 / up : NaN; // валюта за 1 USDT (Турция)
               return (
                 <div key={cur} className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-                  {/* Полная цепочка: RUB → USDT → валюта */}
+                  {/* Полная цепочка с промежуточными курсами: RUB →(курс)→ USDT →(курс)→ валюта */}
                   <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
                     <Chip>🇷🇺</Chip>RUB
-                    <span className="text-muted-soft">→</span>
+                    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(leg1, 2)}</span>→</span>
                     <Chip><span className="text-success font-bold">₮</span></Chip>USDT
-                    <span className="text-muted-soft">→</span>
+                    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(leg2, dp2)}</span>→</span>
                     <Chip>{flag}</Chip>{cur}
                   </span>
                   <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
