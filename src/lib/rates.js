@@ -15,6 +15,30 @@
  * пользователя обратно перед сохранением в БД. В UI rate-карточек этот
  * флаг НЕ используется — никаких визуальных индикаторов инверсии.
  */
+/**
+ * usdtPer(cur, getRate, officeId) — сколько USDT стоит 1 единица `cur`.
+ *
+ * ЕДИНСТВЕННЫЙ источник ориентации курса к USDT (инвариант B2/B3/D5/D6 —
+ * копировать этот хелпер в компоненты запрещено, только импортировать).
+ *
+ * Касса хранит направленные множители: getRate("USDT", cur) = «cur за 1 USDT».
+ * Значит «USDT за 1 cur» = 1/raw — ВСЕГДА, для любой валюты. Никаких
+ * STRONG-вайтлистов: они ломали сильные валюты вне списка (GBP/CHF отдавали raw
+ * вместо 1/raw — перевёрнутый курс). Для percent-пар прежний код тоже возвращал
+ * 1/raw, так что формула едина.
+ *
+ *   USD  → ~1.0     EUR → 1.167    GBP → 1.348    CHF → 1.271
+ *   TRY  → 0.0214   RUB → 0.0130   USDT → 1
+ *
+ * Возвращает NaN, если курс не найден/невалиден.
+ */
+export function usdtPer(cur, getRate, officeId) {
+  if (cur === "USDT") return 1;
+  const raw = Number(getRate?.("USDT", cur, officeId));
+  if (!(raw > 0)) return NaN;
+  return 1 / raw;
+}
+
 export function displayRate(rawRate, fromCcy, toCcy) {
   if (!Number.isFinite(rawRate) || rawRate <= 0) {
     return { rate: null, from: fromCcy, to: toCcy, wasInverted: false };

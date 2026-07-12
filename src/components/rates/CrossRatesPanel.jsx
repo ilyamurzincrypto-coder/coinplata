@@ -5,19 +5,8 @@
 // Порядок пар, направления и расчёт — без изменений.
 
 import React from "react";
-import { isPercentPair } from "../../utils/ratesFormat.js";
+import { usdtPer } from "../../lib/rates.js";
 import RateNum from "./RateNum.jsx";
-
-const STRONG = new Set(["USD", "EUR"]); // котируются «USDT за X»
-
-function usdtPer(x, getRate) {
-  if (x === "USDT") return 1;
-  const raw = Number(getRate?.("USDT", x));
-  if (!Number.isFinite(raw) || raw <= 0) return NaN;
-  if (isPercentPair("USDT", x)) return 1 / raw;
-  const readable = raw < 1 ? 1 / raw : raw;
-  return STRONG.has(x) ? readable : 1 / readable;
-}
 
 function fmtCross(n) {
   if (!Number.isFinite(n) || n <= 0) return "—";

@@ -6,7 +6,7 @@
 // (пустое состояние / пометка), не выдумываем.
 import React, { useState, useMemo } from "react";
 import { ArrowLeftRight, Landmark, Users, ChevronLeft, ChevronRight, ChevronDown, RotateCcw } from "lucide-react";
-import { isPercentPair } from "../../utils/ratesFormat.js";
+import { usdtPer } from "../../lib/rates.js";
 
 const fmt = (n, dp) =>
   Number.isFinite(Number(n))
@@ -31,17 +31,8 @@ const TABS = [
 
 // ── Вкладка 1 — Перестановки ────────────────────────────────────────────────
 // Вносим RUB в РФ-офисе → выдаём валюту в Турции через USDT.
-// 1 CUR (RUB) = usdtPer(CUR, офис Турции) × rubPerUsdt(офис РФ). getRate кассы
-// хранит «читаемые» значения (>1), ориентацию правим как в CrossRatesPanel.
-const STRONG = new Set(["USD", "EUR"]); // котируются «USDT за X»
-function usdtPer(cur, getRate, officeId) {
-  if (cur === "USDT") return 1;
-  const raw = Number(getRate?.("USDT", cur, officeId));
-  if (!(raw > 0)) return NaN;
-  if (isPercentPair("USDT", cur)) return 1 / raw;
-  const readable = raw < 1 ? 1 / raw : raw;
-  return STRONG.has(cur) ? readable : 1 / readable; // USDT за 1 CUR
-}
+// 1 CUR (RUB) = usdtPer(CUR, офис Турции) × rubPerUsdt(офис РФ). Ориентация к
+// USDT — через общий usdtPer из lib/rates (импорт, не копия — инвариант B2/B3).
 function rubPerUsdt(getRate, officeId) {
   const raw = Number(getRate?.("USDT", "RUB", officeId));
   if (!(raw > 0)) return NaN;
