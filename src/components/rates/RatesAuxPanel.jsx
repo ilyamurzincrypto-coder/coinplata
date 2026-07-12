@@ -54,6 +54,25 @@ const Chip = ({ children }) => (
 const isRF = (o) => /росс|москв|moscow|питер|петербург|санкт|\bспб\b|st\.?\s?p|\bru\b/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
 const isTR = (o) => /турц|антал|antalya|стамбул|istanbul|turkey|\btr\b|liman|terra|mark antalya/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
 const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
+// Реверс-анкоры (обратное направление): офис ПРИНИМАЕТ валюту/отдаёт RUB.
+function usdtPerRev(cur, getRate, officeId) {
+  if (cur === "USDT") return 1;
+  const raw = Number(getRate?.(cur, "USDT", officeId)); // CUR→USDT (офис покупает CUR)
+  if (!(raw > 0)) return NaN;
+  if (isPercentPair(cur, "USDT")) return raw;
+  const readable = raw < 1 ? 1 / raw : raw;
+  return STRONG.has(cur) ? readable : 1 / readable;
+}
+function rubPerUsdtRev(getRate, officeId) {
+  const raw = Number(getRate?.("RUB", "USDT", officeId)); // RUB→USDT
+  if (!(raw > 0)) return NaN;
+  return raw < 1 ? 1 / raw : raw;
+}
+const TARGETS = [
+  { cur: "TRY", flag: "🇹🇷", dp2: 2 },
+  { cur: "USD", flag: "🇺🇸", dp2: 4 },
+  { cur: "EUR", flag: "🇪🇺", dp2: 4 },
+];
 function OfficeSelect({ label, offices, value, onChange }) {
   return (
     <div className="flex-1 min-w-[160px]">
@@ -64,7 +83,7 @@ function OfficeSelect({ label, offices, value, onChange }) {
           onChange={(e) => onChange(e.target.value)}
           className="appearance-none w-full h-10 bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/15 rounded-card pl-3 pr-9 text-body font-semibold text-ink outline-none cursor-pointer truncate"
         >
-          {offices.length === 0 && <option value="">— нет офисов —</option>}
+          <option value="">— Все офисы —</option>
           {offices.map((o) => (
             <option key={o.id} value={o.id}>{officeLabel(o)}</option>
           ))}
@@ -74,92 +93,100 @@ function OfficeSelect({ label, offices, value, onChange }) {
     </div>
   );
 }
+// Одна строка направления (fwd: РФ→Турция вносим RUB; rev: Турция→РФ вносим валюту).
+function PerRow({ dir, rf, tr, cur, flag, dp2, getRate, markups, setMarkup }) {
+  const key = `${dir}:${rf?.id}:${tr?.id}:${cur}`;
+  const mkStr = markups[key];
+  const mk = pnum(mkStr ?? 0);
+  const usdtP = dir === "fwd" ? usdtPer(cur, getRate, tr?.id) : usdtPerRev(cur, getRate, tr?.id); // USDT за 1 CUR
+  const rubP = dir === "fwd" ? rubPerUsdt(getRate, rf?.id) : rubPerUsdtRev(getRate, rf?.id); // RUB за 1 USDT
+  const b = usdtP > 0 && rubP > 0 ? usdtP * rubP : NaN;
+  const v = Number.isFinite(b) ? b * (1 + mk / 100) : NaN;
+  const legCur = usdtP > 0 ? 1 / usdtP : NaN; // валюта за 1 USDT
+  const legRub = rubP; // RUB за 1 USDT
+  const arrow = (val, dp) => (
+    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
+  );
+  return (
+    <div className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
+      <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
+        {dir === "fwd" ? (
+          <>
+            <Chip>🇷🇺</Chip>RUB{arrow(legRub, 2)}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(legCur, dp2)}<Chip>{flag}</Chip>{cur}
+          </>
+        ) : (
+          <>
+            <Chip>{flag}</Chip>{cur}{arrow(legCur, dp2)}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(legRub, 2)}<Chip>🇷🇺</Chip>RUB
+          </>
+        )}
+      </span>
+      <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
+      <span className="flex-1" />
+      <span className="flex items-center gap-1.5 shrink-0">
+        <span className="text-[10px] text-muted-soft uppercase tracking-wide">наценка за&nbsp;перестановку</span>
+        <input
+          value={mkStr ?? "0"}
+          onChange={(e) => setMarkup(key, e.target.value)}
+          inputMode="decimal"
+          className="w-[44px] bg-white border border-border-soft rounded-button h-7 px-1.5 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
+          title="Наценка за перестановку, %"
+        />
+        <span className="text-[11px] text-muted-soft">%</span>
+      </span>
+      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
+        <span className="text-[11px] text-muted-soft">1 {cur}</span>
+        <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
+        <span className="text-[11px] text-muted-soft">RUB</span>
+      </span>
+    </div>
+  );
+}
 function PerTab({ getRate, offices }) {
-  const TARGETS = [
-    { cur: "TRY", flag: "🇹🇷", dp2: 2 },
-    { cur: "USD", flag: "🇺🇸", dp2: 4 },
-    { cur: "EUR", flag: "🇪🇺", dp2: 4 },
-  ];
   const rfOffices = useMemo(() => (offices || []).filter(isRF), [offices]);
   const trOffices = useMemo(() => (offices || []).filter(isTR), [offices]);
-  const [rfId, setRfId] = useState(null);
-  const [trId, setTrId] = useState(null);
-  const rfRep = rfOffices.find((o) => o.id === rfId) ?? rfOffices[0];
-  const trRep = trOffices.find((o) => o.id === trId) ?? trOffices[0];
-  const rfName = rfRep?.name || "—";
-  const trName = trRep?.name || "—";
+  const [rfId, setRfId] = useState(""); // "" = все
+  const [trId, setTrId] = useState("");
+  const rfList = rfId ? rfOffices.filter((o) => o.id === rfId) : rfOffices;
+  const trList = trId ? trOffices.filter((o) => o.id === trId) : trOffices;
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
-  const base = (rf, tr, cur) => {
-    const up = usdtPer(cur, getRate, tr?.id);
-    const rp = rubPerUsdt(getRate, rf?.id);
-    return up > 0 && rp > 0 ? up * rp : NaN;
-  };
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта.</p>
-      {/* Нав: выбор офиса отправки (РФ) и получения (Турция) — из реального списка */}
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT. Оба направления: <b className="text-muted">РФ→Турция</b> (вносите RUB) и <b className="text-muted">Турция→РФ</b> (вносите валюту).</p>
       <div className="flex items-end gap-2.5 mb-4">
-        <OfficeSelect label="Офис отправки (RUB)" offices={rfOffices} value={rfRep?.id} onChange={setRfId} />
+        <OfficeSelect label="Офис РФ (рубли)" offices={rfOffices} value={rfId} onChange={setRfId} />
         <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
-        <OfficeSelect label="Офис получения" offices={trOffices} value={trRep?.id} onChange={setTrId} />
+        <OfficeSelect label="Офис Турции" offices={trOffices} value={trId} onChange={setTrId} />
         <button
           type="button"
-          onClick={() => { setRfId(null); setTrId(null); }}
+          onClick={() => { setRfId(""); setTrId(""); }}
           className="shrink-0 h-10 px-3 inline-flex items-center gap-1.5 rounded-card border border-border-soft text-body-sm font-semibold text-muted hover:text-ink hover:bg-surface-soft transition-colors"
-          title="Сбросить к первым офисам"
+          title="Показать все офисы"
         >
           <RotateCcw className="w-3.5 h-3.5" /> Сброс
         </button>
       </div>
-      {[[rfName, rfRep, trName, trRep]].map(([rfName, rfRep, trName, trRep]) => (
-          <div key={rfName + trName}>
-            {TARGETS.map(({ cur, flag, dp2 }) => {
-              const key = `${rfName}:${trName}:${cur}`;
-              const mkStr = markups[key];
-              const mk = pnum(mkStr ?? 0);
-              const b = base(rfRep, trRep, cur);
-              const v = Number.isFinite(b) ? b * (1 + mk / 100) : NaN;
-              const leg1 = rubPerUsdt(getRate, rfRep?.id); // RUB за 1 USDT (РФ)
-              const up = usdtPer(cur, getRate, trRep?.id);
-              const leg2 = up > 0 ? 1 / up : NaN; // валюта за 1 USDT (Турция)
-              return (
-                <div key={cur} className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-                  {/* Полная цепочка с промежуточными курсами: RUB →(курс)→ USDT →(курс)→ валюта */}
-                  <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
-                    <Chip>🇷🇺</Chip>RUB
-                    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(leg1, 2)}</span>→</span>
-                    <Chip><span className="text-success font-bold">₮</span></Chip>USDT
-                    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(leg2, dp2)}</span>→</span>
-                    <Chip>{flag}</Chip>{cur}
-                  </span>
-                  <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
-                  <span className="flex-1" />
-                  {/* Наценка за перестановку, % */}
-                  <span className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] text-muted-soft uppercase tracking-wide">наценка за&nbsp;перестановку</span>
-                    <input
-                      value={mkStr ?? "0"}
-                      onChange={(e) => setMarkup(key, e.target.value)}
-                      inputMode="decimal"
-                      className="w-[44px] bg-white border border-border-soft rounded-button h-7 px-1.5 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
-                      title="Наценка за перестановку, %"
-                    />
-                    <span className="text-[11px] text-muted-soft">%</span>
-                  </span>
-                  <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
-                    <span className="text-[11px] text-muted-soft">1 {cur}</span>
-                    <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
-                    <span className="text-[11px] text-muted-soft">RUB</span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        ))}
+      {rfList.length === 0 || trList.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов РФ и/или Турции.</div>
+      ) : (
+        rfList.map((rf) =>
+          trList.map((tr) => (
+            <div key={rf.id + tr.id} className="mb-2">
+              <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
+                {rf.name} <span className="text-success">→</span> {tr.name}
+              </div>
+              {TARGETS.map((t) => <PerRow key={"f" + t.cur} dir="fwd" rf={rf} tr={tr} {...t} getRate={getRate} markups={markups} setMarkup={setMarkup} />)}
+              <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3 mb-2">
+                {tr.name} <span className="text-success">→</span> {rf.name} <span className="text-[9px] text-muted-soft uppercase font-semibold">обратно</span>
+              </div>
+              {TARGETS.map((t) => <PerRow key={"r" + t.cur} dir="rev" rf={rf} tr={tr} {...t} getRate={getRate} markups={markups} setMarkup={setMarkup} />)}
+            </div>
+          ))
+        )
+      )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
-        Считается из курсов слева (RUB→USDT в РФ × USDT→валюта в Турции) + наценка %. Наценки хранятся локально; серверного конфига пока нет — при готовности перенесём на бэк.
+        Считается из курсов слева (через USDT) + наценка %. Обратное направление берёт обратные курсы офисов. Наценки — локально; серверного конфига пока нет.
       </p>
     </div>
   );
