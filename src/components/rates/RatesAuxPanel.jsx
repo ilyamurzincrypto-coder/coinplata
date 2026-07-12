@@ -93,8 +93,9 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
                   </span>
                   <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
                   <span className="flex-1" />
-                  {/* Наценка % */}
-                  <span className="flex items-center gap-1 shrink-0">
+                  {/* Наценка за перестановку, % */}
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[10px] text-muted-soft uppercase tracking-wide">наценка за&nbsp;перестановку</span>
                     <input
                       value={mkStr ?? "0"}
                       onChange={(e) => setMarkup(key, e.target.value)}
