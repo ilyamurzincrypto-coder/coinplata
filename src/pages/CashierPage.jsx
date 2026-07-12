@@ -37,7 +37,7 @@ import { useAuth } from "../store/auth.jsx";
 import { useObligations } from "../store/obligations.jsx";
 import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
-import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
+import { buildMovementsFromTransaction, commitMovements } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcSetDealPayee, rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { createDeal } from "../lib/dealOperations.js";
@@ -420,18 +420,24 @@ export default function CashierPage({
       inCompletedAt: inCompleted ? nowIso : null,
     };
 
+    // 4. Строим движения ДО записи tx. Односторонний набор (IN не построен или
+    //    OUT брошен по счёту/сумме — не obligation) → отклоняем: НЕ пишем НИ tx,
+    //    НИ движений (B5: двойная запись не ломается).
+    const built = buildMovementsFromTransaction(finalTx, accounts, currentUser.id, {
+      obligationLegs,
+    });
+    if (built.fatal) {
+      // eslint-disable-next-line no-console
+      console.warn("[deal] отклонена — несбалансированный набор:", built.warnings);
+      return { ok: false, error: `Проводка отклонена: ${built.warnings.join("; ")}` };
+    }
+    const { warnings } = built;
+
     addTransaction(finalTx);
     setJustCreatedId(finalTx.id);
     setTimeout(() => setJustCreatedId(null), 2500);
 
-    // 4. Создаём movements (OUT по obligation-легам пропускаем).
-    const { movements, warnings } = buildMovementsFromTransaction(
-      finalTx,
-      accounts,
-      currentUser.id,
-      { obligationLegs }
-    );
-    movements.forEach(addMovement);
+    commitMovements(built, addMovement);
 
     // 5. Для каждой obligation-леги — создаём we_owe obligation.
     const obligationSummaries = [];

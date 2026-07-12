@@ -13,7 +13,7 @@ import { useAuth } from "../store/auth.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { officeName } from "../store/data.js";
 import { fmt } from "../utils/money.js";
-import { buildMovementsFromTransaction } from "../utils/exchangeMovements.js";
+import { buildMovementsFromTransaction, commitMovements } from "../utils/exchangeMovements.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcSetDealCreatedAt, withToast, uuidOrNull, ensureClient } from "../lib/supabaseWrite.js";
 import { updateDeal } from "../lib/dealOperations.js";
@@ -104,14 +104,22 @@ export default function EditTransactionModal({ transaction, onClose }) {
       return;
     }
 
-    updateTransaction(transaction.id, updated);
-    removeMovementsByRefId(transaction.id);
-    const { movements } = buildMovementsFromTransaction(
+    // Строим НОВЫЕ движения ДО изменения tx и удаления старых — если набор
+    // односторонний (нет IN / брошен OUT), отклоняем правку: старое состояние
+    // не трогаем (B5: не оставляем tx без движений).
+    const built = buildMovementsFromTransaction(
       { ...updated, id: transaction.id },
       accounts,
       currentUser.id
     );
-    movements.forEach(addMovement);
+    if (built.fatal) {
+      // eslint-disable-next-line no-console
+      console.warn("[edit] отклонена — несбалансированный набор:", built.warnings);
+      return;
+    }
+    updateTransaction(transaction.id, updated);
+    removeMovementsByRefId(transaction.id);
+    commitMovements(built, addMovement);
 
     const changes = [];
     if (transaction.amtIn !== updated.amtIn) {

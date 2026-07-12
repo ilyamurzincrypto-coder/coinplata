@@ -29,6 +29,10 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}
   const obligationLegs = opts.obligationLegs || new Set();
   const movements = [];
   const warnings = [];
+  // fatal = набор односторонний/несбалансированный (нельзя проводить). Отличается
+  // от obligation-warning (деньги намеренно не выданы, висит обязательство — ок).
+  // IN не построен → fatal (нет встречной ноги, OUT-only = двойная запись сломана).
+  let fatal = false;
   const isReserved = tx.status === "pending" || tx.status === "checking";
 
   const hasAccount = (id) =>
@@ -39,6 +43,7 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}
     const amount = safeAmount(tx.amtIn);
     if (amount === 0) {
       warnings.push(`IN: invalid amount (${tx.amtIn} ${tx.curIn})`);
+      fatal = true;
     } else {
       movements.push({
         accountId: tx.accountId,
@@ -56,6 +61,7 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}
     }
   } else {
     warnings.push(`IN: account not selected (${tx.amtIn} ${tx.curIn})`);
+    fatal = true;
   }
 
   // ---------- OUT ----------
@@ -74,11 +80,13 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}
     }
     if (!out.accountId || !hasAccount(out.accountId)) {
       warnings.push(`OUT #${index + 1}: account not selected (${out.amount} ${out.currency})`);
+      fatal = true; // нога брошена → набор односторонний
       return;
     }
     const outAmount = safeAmount(out.amount);
     if (outAmount === 0) {
       warnings.push(`OUT #${index + 1}: invalid amount (${out.amount} ${out.currency})`);
+      fatal = true;
       return;
     }
     // Crypto OUT с sendStatus не "confirmed" → движение резервируется отдельно
@@ -104,5 +112,17 @@ export function buildMovementsFromTransaction(tx, accounts, createdBy, opts = {}
     });
   });
 
-  return { movements, warnings };
+  return { movements, warnings, fatal };
+}
+
+// Атомарная запись движений: если набор fatal (односторонний — IN не построен
+// или OUT брошен по account/amount) — БРОСАЕТ и НЕ пишет НИ ОДНОГО движения.
+// Так двойная запись не ломается (B5). Вызывать ВМЕСТО прямого forEach(addMovement).
+export function commitMovements(result, addMovement) {
+  if (!result || result.fatal) {
+    const detail = (result?.warnings || []).join("; ") || "нет встречной ноги";
+    throw new Error(`Проводка отклонена — набор несбалансирован: ${detail}`);
+  }
+  result.movements.forEach(addMovement);
+  return result.movements.length;
 }
