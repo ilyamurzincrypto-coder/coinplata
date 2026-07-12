@@ -58,6 +58,8 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
   ];
   const RF = [["Москва", mskRep], ["Санкт-Петербург", spbRep]];
   const TR = [["Анталья", antRep], ["Стамбул", istRep]];
+  const [rfIdx, setRfIdx] = useState(0);
+  const [trIdx, setTrIdx] = useState(0);
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
   const base = (rfRep, trRep, cur) => {
@@ -65,16 +67,38 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
     const rp = rubPerUsdt(getRate, rfRep?.id);
     return up > 0 && rp > 0 ? up * rp : NaN;
   };
+  const [rfName, rfRep] = RF[rfIdx];
+  const [trName, trRep] = TR[trIdx];
+  const Seg = ({ items, idx, onPick }) => (
+    <div className="inline-flex gap-0.5 bg-surface-soft rounded-card p-0.5">
+      {items.map(([label], k) => (
+        <button
+          key={label}
+          type="button"
+          onClick={() => onPick(k)}
+          className={`px-3 py-1.5 rounded-button text-body-sm font-semibold transition-colors ${
+            idx === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(20,30,24,0.1)]" : "text-muted hover:text-ink"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта. % — наценка за перестановку.</p>
-      {RF.map(([rfName, rfRep]) =>
-        TR.map(([trName, trRep]) => (
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта.</p>
+      {/* Нав: офис отправки (РФ) ⇄ офис получения (Турция) */}
+      <div className="flex items-center flex-wrap gap-2.5 mb-3.5">
+        <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">Отправка</span>
+        <Seg items={RF} idx={rfIdx} onPick={setRfIdx} />
+        <ArrowLeftRight className="w-4 h-4 text-success shrink-0" />
+        <Seg items={TR} idx={trIdx} onPick={setTrIdx} />
+        <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">Получение</span>
+      </div>
+      {[[rfName, rfRep, trName, trRep]].map(([rfName, rfRep, trName, trRep]) => (
           <div key={rfName + trName}>
-            <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
-              {rfName} <ArrowLeftRight className="w-3 h-3 text-success" /> {trName}
-            </div>
             {TARGETS.map(({ cur, flag, dp2 }) => {
               const key = `${rfName}:${trName}:${cur}`;
               const mkStr = markups[key];
@@ -117,8 +141,7 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
               );
             })}
           </div>
-        ))
-      )}
+        ))}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
         Считается из курсов слева (RUB→USDT в РФ × USDT→валюта в Турции) + наценка %. Наценки хранятся локально; серверного конфига пока нет — при готовности перенесём на бэк.
       </p>
