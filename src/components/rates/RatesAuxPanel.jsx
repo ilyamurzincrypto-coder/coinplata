@@ -12,6 +12,16 @@ const fmt = (n, dp) =>
   Number.isFinite(Number(n))
     ? Number(n).toLocaleString("ru-RU", { minimumFractionDigits: dp, maximumFractionDigits: dp })
     : "—";
+const pnum = (v) => {
+  const x = String(v).replace(/[^0-9.,-]/g, "").replace(/(?!^)-/g, "").replace(",", ".");
+  const n = parseFloat(x);
+  return Number.isNaN(n) ? 0 : n;
+};
+
+// Наценка перестановки, % по строке — переживает переоткрытие (localStorage).
+const MARKUP_KEY = "per_markup_v1";
+const readMarkups = () => { try { return JSON.parse(localStorage.getItem(MARKUP_KEY) || "{}") || {}; } catch { return {}; } };
+const writeMarkups = (m) => { try { localStorage.setItem(MARKUP_KEY, JSON.stringify(m)); } catch { /* noop */ } };
 
 const TABS = [
   { id: "per", label: "Перестановки", Icon: ArrowLeftRight },
@@ -37,6 +47,9 @@ function rubPerUsdt(getRate, officeId) {
   if (!(raw > 0)) return NaN;
   return raw < 1 ? 1 / raw : raw; // RUB за 1 USDT (>1)
 }
+const Chip = ({ children }) => (
+  <span className="w-6 h-6 rounded-full bg-white border border-border-soft flex items-center justify-center text-[13px] shrink-0">{children}</span>
+);
 function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
   const TARGETS = [
     { cur: "TRY", flag: "🇹🇷" },
@@ -45,15 +58,17 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
   ];
   const RF = [["Москва", mskRep], ["Санкт-Петербург", spbRep]];
   const TR = [["Анталья", antRep], ["Стамбул", istRep]];
-  const rubPer = (rfRep, trRep, cur) => {
+  const [markups, setMarkups] = useState(readMarkups);
+  const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
+  const base = (rfRep, trRep, cur) => {
     const up = usdtPer(cur, getRate, trRep?.id);
     const rp = rubPerUsdt(getRate, rfRep?.id);
-    return up > 0 && rp > 0 ? up * rp : NaN; // наценка = 0 (пробел: конфига нет)
+    return up > 0 && rp > 0 ? up * rp : NaN;
   };
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции.</p>
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта. % — наценка за перестановку.</p>
       {RF.map(([rfName, rfRep]) =>
         TR.map(([trName, trRep]) => (
           <div key={rfName + trName}>
@@ -61,17 +76,35 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
               {rfName} <ArrowLeftRight className="w-3 h-3 text-success" /> {trName}
             </div>
             {TARGETS.map(({ cur, flag }) => {
-              const v = rubPer(rfRep, trRep, cur);
+              const key = `${rfName}:${trName}:${cur}`;
+              const mkStr = markups[key];
+              const mk = pnum(mkStr ?? 0);
+              const b = base(rfRep, trRep, cur);
+              const v = Number.isFinite(b) ? b * (1 + mk / 100) : NaN;
               return (
                 <div key={cur} className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-                  <span className="flex items-center gap-1.5 shrink-0">
-                    <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">🇷🇺</span>
+                  {/* Полная цепочка: RUB → USDT → валюта */}
+                  <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
+                    <Chip>🇷🇺</Chip>RUB
                     <span className="text-muted-soft">→</span>
-                    <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">{flag}</span>
+                    <Chip><span className="text-success font-bold">₮</span></Chip>USDT
+                    <span className="text-muted-soft">→</span>
+                    <Chip>{flag}</Chip>{cur}
                   </span>
-                  <span className="text-[8.5px] text-muted-soft uppercase">наличные</span>
+                  <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
                   <span className="flex-1" />
-                  <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap">
+                  {/* Наценка % */}
+                  <span className="flex items-center gap-1 shrink-0">
+                    <input
+                      value={mkStr ?? "0"}
+                      onChange={(e) => setMarkup(key, e.target.value)}
+                      inputMode="decimal"
+                      className="w-[44px] bg-white border border-border-soft rounded-button h-7 px-1.5 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
+                      title="Наценка за перестановку, %"
+                    />
+                    <span className="text-[11px] text-muted-soft">%</span>
+                  </span>
+                  <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
                     <span className="text-[11px] text-muted-soft">1 {cur}</span>
                     <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
                     <span className="text-[11px] text-muted-soft">RUB</span>
@@ -83,7 +116,7 @@ function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
         ))
       )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
-        Считается из курсов слева (RUB→USDT в РФ × USDT→валюта в Турции). <b className="text-muted">Наценка за перестановку пока не задана (0)</b> — нужен конфиг на бэке.
+        Считается из курсов слева (RUB→USDT в РФ × USDT→валюта в Турции) + наценка %. Наценки хранятся локально; серверного конфига пока нет — при готовности перенесём на бэк.
       </p>
     </div>
   );
