@@ -5,7 +5,7 @@
 // фида ЦБ (cbr). Наценка перестановки, «Биржевой», снимки конкурентов — пробелы
 // (пустое состояние / пометка), не выдумываем.
 import React, { useState, useMemo } from "react";
-import { ArrowLeftRight, Landmark, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeftRight, Landmark, Users, ChevronLeft, ChevronRight, ChevronDown, RotateCcw } from "lucide-react";
 import { isPercentPair } from "../../utils/ratesFormat.js";
 
 const fmt = (n, dp) =>
@@ -56,19 +56,22 @@ const isTR = (o) => /турц|антал|antalya|стамбул|istanbul|turkey|
 const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
 function OfficeSelect({ label, offices, value, onChange }) {
   return (
-    <label className="inline-flex flex-col gap-1">
-      <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">{label}</span>
-      <select
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-2.5 py-1.5 text-body-sm font-semibold text-ink outline-none min-w-[150px]"
-      >
-        {offices.length === 0 && <option value="">— нет офисов —</option>}
-        {offices.map((o) => (
-          <option key={o.id} value={o.id}>{officeLabel(o)}</option>
-        ))}
-      </select>
-    </label>
+    <div className="flex-1 min-w-[160px]">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-muted-soft mb-1">{label}</div>
+      <div className="relative">
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="appearance-none w-full h-10 bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/15 rounded-card pl-3 pr-9 text-body font-semibold text-ink outline-none cursor-pointer truncate"
+        >
+          {offices.length === 0 && <option value="">— нет офисов —</option>}
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>{officeLabel(o)}</option>
+          ))}
+        </select>
+        <ChevronDown className="w-4 h-4 text-muted-soft absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      </div>
+    </div>
   );
 }
 function PerTab({ getRate, offices }) {
@@ -97,10 +100,18 @@ function PerTab({ getRate, offices }) {
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
       <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта.</p>
       {/* Нав: выбор офиса отправки (РФ) и получения (Турция) — из реального списка */}
-      <div className="flex items-end flex-wrap gap-2.5 mb-3.5">
+      <div className="flex items-end gap-2.5 mb-4">
         <OfficeSelect label="Офис отправки (RUB)" offices={rfOffices} value={rfRep?.id} onChange={setRfId} />
-        <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-2" />
+        <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
         <OfficeSelect label="Офис получения" offices={trOffices} value={trRep?.id} onChange={setTrId} />
+        <button
+          type="button"
+          onClick={() => { setRfId(null); setTrId(null); }}
+          className="shrink-0 h-10 px-3 inline-flex items-center gap-1.5 rounded-card border border-border-soft text-body-sm font-semibold text-muted hover:text-ink hover:bg-surface-soft transition-colors"
+          title="Сбросить к первым офисам"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> Сброс
+        </button>
       </div>
       {[[rfName, rfRep, trName, trRep]].map(([rfName, rfRep, trName, trRep]) => (
           <div key={rfName + trName}>
