@@ -474,6 +474,7 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
           <RatesAuxPanel
             getRate={getRate}
             antRep={antRep}
+            istRep={istRep}
             mskRep={repOf("MSK")}
             spbRep={repOf("SPB")}
             cbr={cbr}

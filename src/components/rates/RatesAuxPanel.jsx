@@ -6,6 +6,7 @@
 // (пустое состояние / пометка), не выдумываем.
 import React, { useState, useMemo } from "react";
 import { ArrowLeftRight, Landmark, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { isPercentPair } from "../../utils/ratesFormat.js";
 
 const fmt = (n, dp) =>
   Number.isFinite(Number(n))
@@ -19,53 +20,68 @@ const TABS = [
 ];
 
 // ── Вкладка 1 — Перестановки ────────────────────────────────────────────────
-// Эффективный курс: вносим RUB в РФ-офисе → выдаём валюту в Анталье через USDT.
-// 1 CUR в Анталье = getRate(CUR→USDT, Анталья) USDT, каждый USDT = getRate(USDT→RUB, РФ) RUB.
-function PerTab({ getRate, antRep, mskRep, spbRep }) {
+// Вносим RUB в РФ-офисе → выдаём валюту в Турции через USDT.
+// 1 CUR (RUB) = usdtPer(CUR, офис Турции) × rubPerUsdt(офис РФ). getRate кассы
+// хранит «читаемые» значения (>1), ориентацию правим как в CrossRatesPanel.
+const STRONG = new Set(["USD", "EUR"]); // котируются «USDT за X»
+function usdtPer(cur, getRate, officeId) {
+  if (cur === "USDT") return 1;
+  const raw = Number(getRate?.("USDT", cur, officeId));
+  if (!(raw > 0)) return NaN;
+  if (isPercentPair("USDT", cur)) return 1 / raw;
+  const readable = raw < 1 ? 1 / raw : raw;
+  return STRONG.has(cur) ? readable : 1 / readable; // USDT за 1 CUR
+}
+function rubPerUsdt(getRate, officeId) {
+  const raw = Number(getRate?.("USDT", "RUB", officeId));
+  if (!(raw > 0)) return NaN;
+  return raw < 1 ? 1 / raw : raw; // RUB за 1 USDT (>1)
+}
+function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
   const TARGETS = [
     { cur: "TRY", flag: "🇹🇷" },
     { cur: "USD", flag: "🇺🇸" },
     { cur: "EUR", flag: "🇪🇺" },
   ];
-  const rubPer = (rfRep, cur) => {
-    if (!antRep || !rfRep) return NaN;
-    const usdtPerCur = Number(getRate?.(cur, "USDT", antRep.id)); // USDT за 1 CUR (Анталья)
-    const rubPerUsdt = Number(getRate?.("USDT", "RUB", rfRep.id)); // RUB за 1 USDT (РФ)
-    if (!(usdtPerCur > 0) || !(rubPerUsdt > 0)) return NaN;
-    return usdtPerCur * rubPerUsdt; // наценка = 0 (пробел: конфига нет)
+  const RF = [["Москва", mskRep], ["Санкт-Петербург", spbRep]];
+  const TR = [["Анталья", antRep], ["Стамбул", istRep]];
+  const rubPer = (rfRep, trRep, cur) => {
+    const up = usdtPer(cur, getRate, trRep?.id);
+    const rp = rubPerUsdt(getRate, rfRep?.id);
+    return up > 0 && rp > 0 ? up * rp : NaN; // наценка = 0 (пробел: конфига нет)
   };
-  const Group = ({ title, rep }) => (
-    <div>
-      <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
-        {title} <ArrowLeftRight className="w-3 h-3 text-success" /> Анталья
-      </div>
-      {TARGETS.map(({ cur, flag }) => {
-        const v = rubPer(rep, cur);
-        return (
-          <div key={cur} className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-            <span className="flex items-center gap-1.5 shrink-0">
-              <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">🇷🇺</span>
-              <span className="text-muted-soft">→</span>
-              <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">{flag}</span>
-            </span>
-            <span className="text-[8.5px] text-muted-soft uppercase">наличные</span>
-            <span className="flex-1" />
-            <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap">
-              <span className="text-[11px] text-muted-soft">1 {cur}</span>
-              <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
-              <span className="text-[11px] text-muted-soft">RUB</span>
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
       <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции.</p>
-      <Group title="Москва" rep={mskRep} />
-      <Group title="Санкт-Петербург" rep={spbRep} />
+      {RF.map(([rfName, rfRep]) =>
+        TR.map(([trName, trRep]) => (
+          <div key={rfName + trName}>
+            <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
+              {rfName} <ArrowLeftRight className="w-3 h-3 text-success" /> {trName}
+            </div>
+            {TARGETS.map(({ cur, flag }) => {
+              const v = rubPer(rfRep, trRep, cur);
+              return (
+                <div key={cur} className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">🇷🇺</span>
+                    <span className="text-muted-soft">→</span>
+                    <span className="w-7 h-7 rounded-full bg-white border border-border-soft flex items-center justify-center text-[15px]">{flag}</span>
+                  </span>
+                  <span className="text-[8.5px] text-muted-soft uppercase">наличные</span>
+                  <span className="flex-1" />
+                  <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap">
+                    <span className="text-[11px] text-muted-soft">1 {cur}</span>
+                    <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
+                    <span className="text-[11px] text-muted-soft">RUB</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ))
+      )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
         Считается из курсов слева (RUB→USDT в РФ × USDT→валюта в Турции). <b className="text-muted">Наценка за перестановку пока не задана (0)</b> — нужен конфиг на бэке.
       </p>
@@ -180,7 +196,7 @@ function CompTable({ snap }) {
 }
 
 // ── Панель ──────────────────────────────────────────────────────────────────
-export default function RatesAuxPanel({ getRate, antRep, mskRep, spbRep, cbr, cbrAt, competitorSnapshots }) {
+export default function RatesAuxPanel({ getRate, antRep, istRep, mskRep, spbRep, cbr, cbrAt, competitorSnapshots }) {
   const [tab, setTab] = useState("per");
   return (
     <div className="bg-white border border-border-soft rounded-card overflow-hidden sticky top-4">
@@ -199,7 +215,7 @@ export default function RatesAuxPanel({ getRate, antRep, mskRep, spbRep, cbr, cb
         ))}
       </div>
       <div className="p-4 overflow-auto" style={{ maxHeight: "calc(100vh - 150px)" }}>
-        {tab === "per" && <PerTab getRate={getRate} antRep={antRep} mskRep={mskRep} spbRep={spbRep} />}
+        {tab === "per" && <PerTab getRate={getRate} antRep={antRep} istRep={istRep} mskRep={mskRep} spbRep={spbRep} />}
         {tab === "ner" && <NerTab cbr={cbr} cbrAt={cbrAt} />}
         {tab === "comp" && <CompTab snapshots={competitorSnapshots || {}} />}
       </div>
