@@ -17,6 +17,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # npm install (не ci): package-lock тянет опциональный @esbuild/netbsd-arm64,
+      # на котором `npm ci` строго падает EBADPLATFORM. install пропускает
+      # несовместимые платформенные optional-депы. (Тот же esbuild-затык, из-за
+      # которого репо ушёл с pnpm — см. CLAUDE.md.)
+      - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run build
