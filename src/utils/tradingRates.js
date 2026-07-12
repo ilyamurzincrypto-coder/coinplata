@@ -35,13 +35,5 @@ export function getTradingRates({ getRate, base, quote }) {
   };
 }
 
-// Единый форматтер. Одинаковая точность в sell/buy:
-//   ≥ 10  → 2 знака  (курс TRY)
-//   ≥ 1   → 4 знака  (курс USD/EUR к USDT)
-//   < 1   → 6 знаков (крипта к TRY/JPY)
-export function formatTradingRate(value) {
-  if (value == null || !Number.isFinite(value)) return "—";
-  if (value >= 10) return value.toFixed(2);
-  if (value >= 1) return value.toFixed(4);
-  return value.toFixed(6);
-}
+// Форматирование курса — единый форматтер приложения: import { formatRate }
+// from "../lib/rates.js" (B6). Локальный formatTradingRate удалён (мёртвый код).

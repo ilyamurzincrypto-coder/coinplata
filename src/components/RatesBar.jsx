@@ -34,6 +34,7 @@ import { useAudit } from "../store/audit.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
 import { NETWORKS } from "../store/data.js";
 import { getTradingRates } from "../utils/tradingRates.js";
+import { formatRate } from "../lib/rates.js"; // единый форматтер курса (B6)
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcUpdatePair, withToast } from "../lib/supabaseWrite.js";
 import { useNow } from "../hooks/useNow.js";
@@ -52,13 +53,6 @@ const curIndex = (code) => {
   const i = CURRENCY_ORDER.indexOf(code);
   return i === -1 ? 999 : i;
 };
-
-function formatRate(value) {
-  if (!value && value !== 0) return "—";
-  if (value >= 10) return value.toFixed(2);
-  if (value >= 1) return value.toFixed(4);
-  return value.toFixed(6);
-}
 
 function timeAgo(date, nowMs = Date.now()) {
   const diff = Math.floor((nowMs - date.getTime()) / 1000);

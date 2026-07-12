@@ -13,13 +13,7 @@ import { useTranslation } from "../i18n/translations.jsx";
 import { isSupabaseConfigured } from "../lib/supabase.js";
 import { rpcImportRates, withToast } from "../lib/supabaseWrite.js";
 import { useNow } from "../hooks/useNow.js";
-
-function formatRate(v) {
-  if (v == null || !Number.isFinite(v)) return "—";
-  if (v >= 10) return v.toFixed(2);
-  if (v >= 1) return v.toFixed(4);
-  return v.toFixed(6);
-}
+import { formatRate } from "../lib/rates.js"; // единый форматтер курса (B6)
 
 function timeAgo(date, nowMs = Date.now()) {
   if (!date) return "—";
