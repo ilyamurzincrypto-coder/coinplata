@@ -76,16 +76,39 @@ export async function requestHash(payload) {
 // имеет UNIQUE(idempotency_key), сервер дедупит). При УСПЕХЕ ключ сбрасывается —
 // легитимный повтор той же сделки позже получит новый ключ.
 // Map по hash: держит ключи нескольких «в полёте» payload-ов (разные сделки).
-const _dealAttempts = new Map(); // requestHash → idempotencyKey
+// ПЕРСИСТ в sessionStorage — иначе перезагрузка страницы (F5) теряет ключ и
+// ретрай после reload создаёт дубль. sessionStorage живёт до закрытия вкладки
+// (после закрытия — новая сессия, новые ключи — это ок). В node/тестах
+// sessionStorage нет → работаем чисто в памяти (guard'ы).
+const _ATTEMPTS_KEY = "deal_idem_attempts_v1";
+function _loadAttempts() {
+  try {
+    if (typeof sessionStorage === "undefined") return new Map();
+    return new Map(Object.entries(JSON.parse(sessionStorage.getItem(_ATTEMPTS_KEY) || "{}")));
+  } catch {
+    return new Map();
+  }
+}
+function _saveAttempts(map) {
+  try {
+    if (typeof sessionStorage === "undefined") return;
+    sessionStorage.setItem(_ATTEMPTS_KEY, JSON.stringify(Object.fromEntries(map)));
+  } catch {
+    /* noop */
+  }
+}
+const _dealAttempts = _loadAttempts();
 export function idempotencyKeyForAttempt(hash) {
   if (_dealAttempts.has(hash)) return _dealAttempts.get(hash);
   const key = newIdempotencyKey();
   _dealAttempts.set(hash, key);
+  _saveAttempts(_dealAttempts);
   return key;
 }
 export function clearDealAttempt(hash) {
   if (hash === undefined) _dealAttempts.clear();
   else _dealAttempts.delete(hash);
+  _saveAttempts(_dealAttempts);
 }
 
 // Standard error formatter. ledger RPC раскидывают ERRCODE: P0422 idempotency,

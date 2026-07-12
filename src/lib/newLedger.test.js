@@ -160,4 +160,18 @@ describe("idempotencyKeyForAttempt / clearDealAttempt (B1)", () => {
     expect(idempotencyKeyForAttempt("HASH_B")).toBe(kB); // B не сброшен
     expect(idempotencyKeyForAttempt("HASH_A")).not.toBe(kA); // A сброшен → новый
   });
+
+  it("персистит ключ в sessionStorage → переживает reload (F5)", () => {
+    const store = {};
+    globalThis.sessionStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => { store[k] = v; } };
+    try {
+      clearDealAttempt();
+      const k = idempotencyKeyForAttempt("HASH_RELOAD");
+      // На reload модуль перечитал бы sessionStorage → тот же ключ.
+      const persisted = JSON.parse(store["deal_idem_attempts_v1"]);
+      expect(persisted["HASH_RELOAD"]).toBe(k);
+    } finally {
+      delete globalThis.sessionStorage;
+    }
+  });
 });
