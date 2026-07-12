@@ -50,52 +50,57 @@ function rubPerUsdt(getRate, officeId) {
 const Chip = ({ children }) => (
   <span className="w-6 h-6 rounded-full bg-white border border-border-soft flex items-center justify-center text-[13px] shrink-0">{children}</span>
 );
-function PerTab({ getRate, antRep, istRep, mskRep, spbRep }) {
+// Категоризация офисов по региону (масштабируется: по городу/стране/названию).
+const isRF = (o) => /росс|москв|moscow|питер|петербург|санкт|\bспб\b|st\.?\s?p|\bru\b/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
+const isTR = (o) => /турц|антал|antalya|стамбул|istanbul|turkey|\btr\b|liman|terra|mark antalya/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
+const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
+function OfficeSelect({ label, offices, value, onChange }) {
+  return (
+    <label className="inline-flex flex-col gap-1">
+      <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">{label}</span>
+      <select
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-2.5 py-1.5 text-body-sm font-semibold text-ink outline-none min-w-[150px]"
+      >
+        {offices.length === 0 && <option value="">— нет офисов —</option>}
+        {offices.map((o) => (
+          <option key={o.id} value={o.id}>{officeLabel(o)}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+function PerTab({ getRate, offices }) {
   const TARGETS = [
     { cur: "TRY", flag: "🇹🇷", dp2: 2 },
     { cur: "USD", flag: "🇺🇸", dp2: 4 },
     { cur: "EUR", flag: "🇪🇺", dp2: 4 },
   ];
-  const RF = [["Москва", mskRep], ["Санкт-Петербург", spbRep]];
-  const TR = [["Анталья", antRep], ["Стамбул", istRep]];
-  const [rfIdx, setRfIdx] = useState(0);
-  const [trIdx, setTrIdx] = useState(0);
+  const rfOffices = useMemo(() => (offices || []).filter(isRF), [offices]);
+  const trOffices = useMemo(() => (offices || []).filter(isTR), [offices]);
+  const [rfId, setRfId] = useState(null);
+  const [trId, setTrId] = useState(null);
+  const rfRep = rfOffices.find((o) => o.id === rfId) ?? rfOffices[0];
+  const trRep = trOffices.find((o) => o.id === trId) ?? trOffices[0];
+  const rfName = rfRep?.name || "—";
+  const trName = trRep?.name || "—";
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
-  const base = (rfRep, trRep, cur) => {
-    const up = usdtPer(cur, getRate, trRep?.id);
-    const rp = rubPerUsdt(getRate, rfRep?.id);
+  const base = (rf, tr, cur) => {
+    const up = usdtPer(cur, getRate, tr?.id);
+    const rp = rubPerUsdt(getRate, rf?.id);
     return up > 0 && rp > 0 ? up * rp : NaN;
   };
-  const [rfName, rfRep] = RF[rfIdx];
-  const [trName, trRep] = TR[trIdx];
-  const Seg = ({ items, idx, onPick }) => (
-    <div className="inline-flex gap-0.5 bg-surface-soft rounded-card p-0.5">
-      {items.map(([label], k) => (
-        <button
-          key={label}
-          type="button"
-          onClick={() => onPick(k)}
-          className={`px-3 py-1.5 rounded-button text-body-sm font-semibold transition-colors ${
-            idx === k ? "bg-white text-ink shadow-[0_1px_2px_rgba(20,30,24,0.1)]" : "text-muted hover:text-ink"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
-    </div>
-  );
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
       <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT: вносите рубли в офисе РФ — получаете в офисе Турции. Цепочка: RUB → USDT → валюта.</p>
-      {/* Нав: офис отправки (РФ) ⇄ офис получения (Турция) */}
-      <div className="flex items-center flex-wrap gap-2.5 mb-3.5">
-        <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">Отправка</span>
-        <Seg items={RF} idx={rfIdx} onPick={setRfIdx} />
-        <ArrowLeftRight className="w-4 h-4 text-success shrink-0" />
-        <Seg items={TR} idx={trIdx} onPick={setTrIdx} />
-        <span className="text-[9px] font-bold uppercase tracking-wide text-muted-soft">Получение</span>
+      {/* Нав: выбор офиса отправки (РФ) и получения (Турция) — из реального списка */}
+      <div className="flex items-end flex-wrap gap-2.5 mb-3.5">
+        <OfficeSelect label="Офис отправки (RUB)" offices={rfOffices} value={rfRep?.id} onChange={setRfId} />
+        <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-2" />
+        <OfficeSelect label="Офис получения" offices={trOffices} value={trRep?.id} onChange={setTrId} />
       </div>
       {[[rfName, rfRep, trName, trRep]].map(([rfName, rfRep, trName, trRep]) => (
           <div key={rfName + trName}>
@@ -256,7 +261,7 @@ function CompTable({ snap }) {
 }
 
 // ── Панель ──────────────────────────────────────────────────────────────────
-export default function RatesAuxPanel({ getRate, antRep, istRep, mskRep, spbRep, cbr, cbrAt, competitorSnapshots }) {
+export default function RatesAuxPanel({ getRate, offices, cbr, cbrAt, competitorSnapshots }) {
   const [tab, setTab] = useState("per");
   return (
     <div className="bg-white border border-border-soft rounded-card overflow-hidden sticky top-4">
@@ -275,7 +280,7 @@ export default function RatesAuxPanel({ getRate, antRep, istRep, mskRep, spbRep,
         ))}
       </div>
       <div className="p-4 overflow-auto" style={{ maxHeight: "calc(100vh - 150px)" }}>
-        {tab === "per" && <PerTab getRate={getRate} antRep={antRep} istRep={istRep} mskRep={mskRep} spbRep={spbRep} />}
+        {tab === "per" && <PerTab getRate={getRate} offices={offices} />}
         {tab === "ner" && <NerTab cbr={cbr} cbrAt={cbrAt} />}
         {tab === "comp" && <CompTab snapshots={competitorSnapshots || {}} />}
       </div>

@@ -473,10 +473,7 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
         <div className="flex-1 min-w-0 self-stretch">
           <RatesAuxPanel
             getRate={getRate}
-            antRep={antRep}
-            istRep={istRep}
-            mskRep={repOf("MSK")}
-            spbRep={repOf("SPB")}
+            offices={offices}
             cbr={cbr}
             cbrAt={cbrAt}
             competitorSnapshots={competitorSnapshots}
