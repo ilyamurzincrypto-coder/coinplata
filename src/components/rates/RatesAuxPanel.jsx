@@ -50,29 +50,23 @@ function rubPerUsdt(getRate, officeId) {
 const Chip = ({ children }) => (
   <span className="w-6 h-6 rounded-full bg-white border border-border-soft flex items-center justify-center text-[13px] shrink-0">{children}</span>
 );
-// Категоризация офисов по региону (масштабируется: по городу/стране/названию).
-const isRF = (o) => /росс|москв|moscow|питер|петербург|санкт|\bспб\b|st\.?\s?p|\bru\b/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
-const isTR = (o) => /турц|антал|antalya|стамбул|istanbul|turkey|\btr\b|liman|terra|mark antalya/i.test(`${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`);
+// Базовая (наличная) валюта офиса — расширяемая карта. Добавляются страны → сюда.
+const CCY_FLAG = { RUB: "🇷🇺", TRY: "🇹🇷", USD: "🇺🇸", EUR: "🇪🇺", USDT: "₮" };
+const FIATS = ["RUB", "TRY", "USD", "EUR"];
+function baseCcy(o) {
+  const s = `${o?.city || ""} ${o?.country || ""} ${o?.name || ""}`.toLowerCase();
+  if (/росс|москв|питер|петерб|санкт|\bру\b|\bru\b|russia|\bспб\b/.test(s)) return "RUB";
+  if (/турц|антал|стамбул|istanbul|antalya|turkey|\btr\b|liman|terra|mark/.test(s)) return "TRY";
+  // сюда добавлять новые страны: if (/...дубай.../) return "AED"; и т.д.
+  return "USD";
+}
 const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
-// Реверс-анкоры (обратное направление): офис ПРИНИМАЕТ валюту/отдаёт RUB.
-function usdtPerRev(cur, getRate, officeId) {
-  if (cur === "USDT") return 1;
-  const raw = Number(getRate?.(cur, "USDT", officeId)); // CUR→USDT (офис покупает CUR)
-  if (!(raw > 0)) return NaN;
-  if (isPercentPair(cur, "USDT")) return raw;
-  const readable = raw < 1 ? 1 / raw : raw;
-  return STRONG.has(cur) ? readable : 1 / readable;
+// Валюта (наличных) за 1 USDT в офисе.
+function ccyPerUsdt(cur, getRate, officeId) {
+  const u = usdtPer(cur, getRate, officeId); // USDT за 1 CUR
+  return u > 0 ? 1 / u : NaN;
 }
-function rubPerUsdtRev(getRate, officeId) {
-  const raw = Number(getRate?.("RUB", "USDT", officeId)); // RUB→USDT
-  if (!(raw > 0)) return NaN;
-  return raw < 1 ? 1 / raw : raw;
-}
-const TARGETS = [
-  { cur: "TRY", flag: "🇹🇷", dp2: 2 },
-  { cur: "USD", flag: "🇺🇸", dp2: 4 },
-  { cur: "EUR", flag: "🇪🇺", dp2: 4 },
-];
+const dpOf = (cur) => (cur === "TRY" || cur === "RUB" ? 2 : 4);
 function OfficeSelect({ label, offices, value, onChange }) {
   return (
     <div className="flex-1 min-w-[160px]">
@@ -93,32 +87,24 @@ function OfficeSelect({ label, offices, value, onChange }) {
     </div>
   );
 }
-// Одна строка направления (fwd: РФ→Турция вносим RUB; rev: Турция→РФ вносим валюту).
-function PerRow({ dir, rf, tr, cur, flag, dp2, getRate, markups, setMarkup }) {
-  const key = `${dir}:${rf?.id}:${tr?.id}:${cur}`;
+// Одна строка перестановки: вносишь base (валюта офиса отправки) → получаешь target
+// (валюта офиса получения) через USDT. base → USDT → target.
+function PerRow({ sending, receiving, base, target, getRate, markups, setMarkup }) {
+  const key = `${sending?.id}:${receiving?.id}:${base}:${target}`;
   const mkStr = markups[key];
   const mk = pnum(mkStr ?? 0);
-  const usdtP = dir === "fwd" ? usdtPer(cur, getRate, tr?.id) : usdtPerRev(cur, getRate, tr?.id); // USDT за 1 CUR
-  const rubP = dir === "fwd" ? rubPerUsdt(getRate, rf?.id) : rubPerUsdtRev(getRate, rf?.id); // RUB за 1 USDT
-  const b = usdtP > 0 && rubP > 0 ? usdtP * rubP : NaN;
+  const basePerUsdt = ccyPerUsdt(base, getRate, sending?.id); // base за 1 USDT (офис отправки)
+  const tgtUsdt = usdtPer(target, getRate, receiving?.id); // USDT за 1 target (офис получения)
+  const b = basePerUsdt > 0 && tgtUsdt > 0 ? basePerUsdt * tgtUsdt : NaN;
   const v = Number.isFinite(b) ? b * (1 + mk / 100) : NaN;
-  const legCur = usdtP > 0 ? 1 / usdtP : NaN; // валюта за 1 USDT
-  const legRub = rubP; // RUB за 1 USDT
+  const legTarget = tgtUsdt > 0 ? 1 / tgtUsdt : NaN; // target за 1 USDT
   const arrow = (val, dp) => (
     <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
   );
   return (
     <div className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
       <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
-        {dir === "fwd" ? (
-          <>
-            <Chip>🇷🇺</Chip>RUB{arrow(legRub, 2)}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(legCur, dp2)}<Chip>{flag}</Chip>{cur}
-          </>
-        ) : (
-          <>
-            <Chip>{flag}</Chip>{cur}{arrow(legCur, dp2)}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(legRub, 2)}<Chip>🇷🇺</Chip>RUB
-          </>
-        )}
+        <Chip>{CCY_FLAG[base]}</Chip>{base}{arrow(basePerUsdt, dpOf(base))}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(legTarget, dpOf(target))}<Chip>{CCY_FLAG[target]}</Chip>{target}
       </span>
       <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
       <span className="flex-1" />
@@ -133,60 +119,80 @@ function PerRow({ dir, rf, tr, cur, flag, dp2, getRate, markups, setMarkup }) {
         />
         <span className="text-[11px] text-muted-soft">%</span>
       </span>
-      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
-        <span className="text-[11px] text-muted-soft">1 {cur}</span>
-        <span className="text-[15px] font-extrabold text-success">{fmt(v, 4)}</span>
-        <span className="text-[11px] text-muted-soft">RUB</span>
+      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[160px] justify-end">
+        <span className="text-[11px] text-muted-soft">1 {target}</span>
+        <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(base))}</span>
+        <span className="text-[11px] text-muted-soft">{base}</span>
       </span>
     </div>
   );
 }
 function PerTab({ getRate, offices }) {
-  const rfOffices = useMemo(() => (offices || []).filter(isRF), [offices]);
-  const trOffices = useMemo(() => (offices || []).filter(isTR), [offices]);
-  const [rfId, setRfId] = useState(""); // "" = все
-  const [trId, setTrId] = useState("");
-  const rfList = rfId ? rfOffices.filter((o) => o.id === rfId) : rfOffices;
-  const trList = trId ? trOffices.filter((o) => o.id === trId) : trOffices;
+  const all = useMemo(() => (offices || []).filter((o) => o.active !== false), [offices]);
+  const [aId, setAId] = useState(""); // "" = все
+  const [bId, setBId] = useState("");
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
+  // Пары офисов с РАЗНОЙ базовой валютой (внутри одной валюты перестановка бессмысленна).
+  const pairs = useMemo(() => {
+    const A = aId ? all.filter((o) => o.id === aId) : all;
+    const B = bId ? all.filter((o) => o.id === bId) : all;
+    const seen = new Set();
+    const out = [];
+    for (const a of A) for (const b of B) {
+      if (a.id === b.id) continue;
+      if (baseCcy(a) === baseCcy(b)) continue;
+      const k = [a.id, b.id].sort().join("|");
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push([a, b]);
+    }
+    return out;
+  }, [all, aId, bId]);
+  const Group = ({ sending, receiving }) => {
+    const base = baseCcy(sending);
+    const targets = FIATS.filter((c) => c !== base);
+    return (
+      <>
+        <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
+          {sending.name} <span className="text-success">→</span> {receiving.name}
+          <span className="text-[9px] text-muted-soft uppercase font-semibold">вносишь {base}</span>
+        </div>
+        {targets.map((t) => (
+          <PerRow key={sending.id + receiving.id + t} sending={sending} receiving={receiving} base={base} target={t} getRate={getRate} markups={markups} setMarkup={setMarkup} />
+        ))}
+      </>
+    );
+  };
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между городами через USDT. Оба направления: <b className="text-muted">РФ→Турция</b> (вносите RUB) и <b className="text-muted">Турция→РФ</b> (вносите валюту).</p>
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами через USDT: вносишь наличные в одном офисе — получаешь в другом. Показаны оба направления. Валюта офиса определяется автоматически.</p>
       <div className="flex items-end gap-2.5 mb-4">
-        <OfficeSelect label="Офис РФ (рубли)" offices={rfOffices} value={rfId} onChange={setRfId} />
+        <OfficeSelect label="Офис" offices={all} value={aId} onChange={setAId} />
         <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
-        <OfficeSelect label="Офис Турции" offices={trOffices} value={trId} onChange={setTrId} />
+        <OfficeSelect label="Офис" offices={all} value={bId} onChange={setBId} />
         <button
           type="button"
-          onClick={() => { setRfId(""); setTrId(""); }}
+          onClick={() => { setAId(""); setBId(""); }}
           className="shrink-0 h-10 px-3 inline-flex items-center gap-1.5 rounded-card border border-border-soft text-body-sm font-semibold text-muted hover:text-ink hover:bg-surface-soft transition-colors"
           title="Показать все офисы"
         >
           <RotateCcw className="w-3.5 h-3.5" /> Сброс
         </button>
       </div>
-      {rfList.length === 0 || trList.length === 0 ? (
-        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов РФ и/или Турции.</div>
+      {pairs.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет пар офисов с разной валютой.</div>
       ) : (
-        rfList.map((rf) =>
-          trList.map((tr) => (
-            <div key={rf.id + tr.id} className="mb-2">
-              <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
-                {rf.name} <span className="text-success">→</span> {tr.name}
-              </div>
-              {TARGETS.map((t) => <PerRow key={"f" + t.cur} dir="fwd" rf={rf} tr={tr} {...t} getRate={getRate} markups={markups} setMarkup={setMarkup} />)}
-              <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3 mb-2">
-                {tr.name} <span className="text-success">→</span> {rf.name} <span className="text-[9px] text-muted-soft uppercase font-semibold">обратно</span>
-              </div>
-              {TARGETS.map((t) => <PerRow key={"r" + t.cur} dir="rev" rf={rf} tr={tr} {...t} getRate={getRate} markups={markups} setMarkup={setMarkup} />)}
-            </div>
-          ))
-        )
+        pairs.map(([a, b]) => (
+          <div key={a.id + b.id} className="mb-2 pb-1 border-b border-border-soft last:border-0">
+            <Group sending={a} receiving={b} />
+            <Group sending={b} receiving={a} />
+          </div>
+        ))
       )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
-        Считается из курсов слева (через USDT) + наценка %. Обратное направление берёт обратные курсы офисов. Наценки — локально; серверного конфига пока нет.
+        Считается из курсов слева (через USDT) + наценка %. Оба направления. Наценки — локально; серверного конфига пока нет.
       </p>
     </div>
   );
