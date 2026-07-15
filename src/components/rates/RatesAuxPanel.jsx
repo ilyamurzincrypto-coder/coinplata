@@ -109,8 +109,9 @@ function PerRow({ a, b, fromCur, toCur, getRate, markups, setMarkup }) {
 }
 
 function PerTab({ getRate, offices }) {
-  // Все офисы (включая закрытые), у которых валюта резолвится из timezone.
-  const all = useMemo(() => offices || [], [offices]);
+  // Только АКТИВНЫЕ офисы (по выбору владельца): перестановки — живой калькулятор
+  // между работающими офисами, закрытые/виртуальные не участвуют.
+  const all = useMemo(() => (offices || []).filter((o) => o.active !== false), [offices]);
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
   const [markups, setMarkups] = useState(readMarkups);
