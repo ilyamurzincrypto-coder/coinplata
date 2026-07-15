@@ -148,6 +148,17 @@ describe("auto-calc rate↔amount", () => {
     const result = applyAutoCalc(legs, target, { rate: "5" });
     expect(result[1].amount).toBe("500");
   });
+
+  // B7 — сумма ноги считается через money.js (multiplyAmount), не сырым float.
+  // Крупная сумма → чистое значение без float-артефакта (77226000, не …00000001).
+  it("applyAutoCalc: крупная сумма без float-артефакта (B7)", () => {
+    const legs = [
+      leg({ id: "i", side: "in", amount: "73200000" }),
+      leg({ id: "o", side: "out", currency: "TRY", amount: "", rate: "" }),
+    ];
+    const result = applyAutoCalc(legs, legs[1], { rate: "1.055" });
+    expect(result[1].amount).toBe("77226000");
+  });
 });
 
 describe("REMOVE_LEG invariant", () => {

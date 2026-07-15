@@ -5,6 +5,7 @@
 // buildTx (src/lib/dealForm/buildTx.js) конвертирует это в v2 RPC payload.
 
 import { useReducer, useCallback, useMemo, useEffect } from "react";
+import { multiplyAmount } from "../utils/money.js"; // деньги — только через money.js (B7)
 
 const HISTORY_MAX = 20;
 const DRAFT_KEY = "dealForm.draft.v1";
@@ -507,7 +508,9 @@ export function applyAutoCalc(legs, target, patch) {
     const rate = Number(patch.rate);
     if (Number.isFinite(rate) && rate > 0 && inAmtValid) {
       legs = legs.map((l) =>
-        l.id === target.id ? { ...l, amount: formatNumber(inAmt * rate) } : l
+        l.id === target.id
+          ? { ...l, amount: formatNumber(multiplyAmount(inAmt, rate, SAFE_DECIMALS)) }
+          : l
       );
     }
   }
@@ -532,7 +535,7 @@ export function applyAutoCalc(legs, target, patch) {
         if (l.side !== "out") return l;
         const r = Number(l.rate);
         if (!Number.isFinite(r) || r <= 0) return l;
-        return { ...l, amount: formatNumber(newInAmt * r) };
+        return { ...l, amount: formatNumber(multiplyAmount(newInAmt, r, SAFE_DECIMALS)) };
       });
     }
   }
