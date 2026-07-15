@@ -68,6 +68,11 @@ function OfficeSelect({ label, offices, value, onChange }) {
   );
 }
 
+// Табличная сетка перестановок: получатель · цепочка · наценка · курс — одни и те
+// же колонки во всех строках И в шапке (см. PerTab). На узком экране строка
+// переполняет контейнер → горизонтальный скролл (панель overflow-auto).
+const PER_GRID = { gridTemplateColumns: "minmax(170px,210px) minmax(300px,1fr) 116px minmax(150px,166px)" };
+
 // Одна строка внутри группы отправителя: получаешь в офисе {receiver}.
 // 1 {fromCur} → {rate} {toCur}, через USDT (курс офиса-отправителя и получателя).
 // Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
@@ -85,18 +90,19 @@ function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup 
     <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
   );
   return (
-    <div className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-      <span className="flex items-center gap-1.5 shrink-0 min-w-0">
+    <div className="grid items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5" style={PER_GRID}>
+      {/* Получатель */}
+      <span className="flex items-center gap-1.5 min-w-0">
         <span className="text-muted-soft text-[13px]">→</span>
         <span className="font-bold text-body-sm text-ink truncate">{receiver.name}</span>
         {receiver.city ? <span className="text-[10px] text-muted-soft whitespace-nowrap hidden lg:inline">· {receiver.city}</span> : null}
       </span>
-      <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink hidden xl:flex">
+      {/* Цепочка через USDT */}
+      <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-ink min-w-0 whitespace-nowrap overflow-hidden">
         <Chip>{CCY_META[fromCur]?.flag}</Chip>{fromCur}{arrow(fromPerUsdt, dpOf(fromCur))}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(toPerUsdt, dpOf(toCur))}<Chip>{CCY_META[toCur]?.flag}</Chip>{toCur}
       </span>
-      <span className="flex-1" />
-      <span className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[10px] text-muted-soft uppercase tracking-wide hidden md:inline">наценка</span>
+      {/* Наценка */}
+      <span className="flex items-center gap-1.5">
         <input
           value={mkStr ?? "0"}
           onChange={(e) => setMarkup(key, e.target.value)}
@@ -106,7 +112,8 @@ function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup 
         />
         <span className="text-[11px] text-muted-soft">%</span>
       </span>
-      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
+      {/* Курс */}
+      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap justify-self-end">
         <span className="text-[11px] text-muted-soft">1 {fromCur}</span>
         <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(toCur))}</span>
         <span className="text-[11px] text-muted-soft">{toCur}</span>
@@ -167,6 +174,14 @@ function PerTab({ getRate, offices }) {
           <RotateCcw className="w-3.5 h-3.5" /> Сброс
         </button>
       </div>
+      {groups.length > 0 && (
+        <div className="grid items-center gap-3 px-3.5 pb-1.5 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={PER_GRID}>
+          <span>Получаешь в офисе</span>
+          <span>Через USDT</span>
+          <span>Наценка</span>
+          <span className="justify-self-end">Курс</span>
+        </div>
+      )}
       {groups.length === 0 ? (
         <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов из разных стран.</div>
       ) : (
