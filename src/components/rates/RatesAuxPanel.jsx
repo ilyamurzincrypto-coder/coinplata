@@ -112,10 +112,13 @@ function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup 
   );
 }
 
+// Порядок групп: РФ-отправители (RUB) сверху — чаще шлют из РФ; турецкие (TRY) ниже.
+const SENDER_CCY_ORDER = { RUB: 0, TRY: 1 };
+
 function PerTab({ getRate, offices }) {
-  // Только АКТИВНЫЕ офисы (по выбору владельца): перестановки — живой калькулятор
-  // между работающими офисами, закрытые/виртуальные не участвуют.
-  const all = useMemo(() => (offices || []).filter((o) => o.active !== false), [offices]);
+  // Все офисы с распознаваемой валютой (вкл. закрытые — напр. Питер): перестановки
+  // считаются и для сезонно закрытых офисов. Валюта — из timezone.
+  const all = useMemo(() => offices || [], [offices]);
   const [aId, setAId] = useState(""); // отправитель
   const [bId, setBId] = useState(""); // получатель
   const [markups, setMarkups] = useState(readMarkups);
@@ -125,7 +128,7 @@ function PerTab({ getRate, offices }) {
     [all]
   );
   // Группировка ПО ОФИСУ-ОТПРАВИТЕЛЮ: «Внёс в S» → все офисы-получатели другой
-  // страны. Валюта — из timezone; неизвестная зона → офис выпадает.
+  // страны. РФ-отправители сверху, турецкие ниже; внутри — активные раньше, по имени.
   const groups = useMemo(() => {
     const senders = aId ? withCcy.filter((x) => x.o.id === aId) : withCcy;
     return senders
@@ -135,7 +138,14 @@ function PerTab({ getRate, offices }) {
           (t) => t.o.id !== s.o.id && t.ccy !== s.ccy && (!bId || t.o.id === bId)
         ),
       }))
-      .filter((g) => g.targets.length > 0);
+      .filter((g) => g.targets.length > 0)
+      .sort((g1, g2) => {
+        const c = (SENDER_CCY_ORDER[g1.s.ccy] ?? 9) - (SENDER_CCY_ORDER[g2.s.ccy] ?? 9);
+        if (c) return c;
+        const act = (g1.s.o.active !== false ? 0 : 1) - (g2.s.o.active !== false ? 0 : 1);
+        if (act) return act;
+        return (g1.s.o.name || "").localeCompare(g2.s.o.name || "", "ru");
+      });
   }, [withCcy, aId, bId]);
   return (
     <div>
