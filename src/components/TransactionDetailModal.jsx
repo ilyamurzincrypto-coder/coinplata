@@ -60,26 +60,26 @@ export default function TransactionDetailModal({ transaction, onClose }) {
   const { log: auditLog } = useAudit();
   const { users } = useAuth();
 
-  if (!transaction) return null;
-
-  const tx = transaction;
-  const office = findOffice(tx.officeId);
-  const inAccount = tx.accountId ? findAccount(tx.accountId) : null;
+  // ВАЖНО: хуки ниже вызываются БЕЗУСЛОВНО (rules-of-hooks). Ранний
+  // `return null` при отсутствии transaction — ПОСЛЕ всех useMemo.
+  const tx = transaction; // может быть null
+  const office = tx ? findOffice(tx.officeId) : null;
+  const inAccount = tx?.accountId ? findAccount(tx.accountId) : null;
 
   // Obligations по этой сделке
   const dealObligations = useMemo(
-    () => obligations.filter((o) => String(o.dealId) === String(tx.id)),
-    [obligations, tx.id]
+    () => (tx ? obligations.filter((o) => String(o.dealId) === String(tx.id)) : []),
+    [obligations, tx?.id]
   );
 
   // Audit events — отфильтруем по entityId (если поле есть и совпадает)
   const dealAudit = useMemo(() => {
-    return auditLog.filter(
-      (e) =>
-        e.entity === "transaction" &&
-        String(e.entityId) === String(tx.id)
-    );
-  }, [auditLog, tx.id]);
+    return tx
+      ? auditLog.filter(
+          (e) => e.entity === "transaction" && String(e.entityId) === String(tx.id)
+        )
+      : [];
+  }, [auditLog, tx?.id]);
 
   const StatusBadge = () => {
     const base =
@@ -122,14 +122,19 @@ export default function TransactionDetailModal({ transaction, onClose }) {
 
   const inLegState = useMemo(
     () =>
-      computeLegStatus({
-        plannedAmount: tx.inPlannedAmount ?? tx.amtIn,
-        actualAmount: tx.inActualAmount ?? 0,
-        plannedAt: tx.inPlannedAt,
-        completedAt: tx.inCompletedAt,
-      }),
+      tx
+        ? computeLegStatus({
+            plannedAmount: tx.inPlannedAmount ?? tx.amtIn,
+            actualAmount: tx.inActualAmount ?? 0,
+            plannedAt: tx.inPlannedAt,
+            completedAt: tx.inCompletedAt,
+          })
+        : null,
     [tx]
   );
+
+  // Все хуки вызваны — теперь безопасно выходить.
+  if (!transaction) return null;
 
   return (
     <Modal

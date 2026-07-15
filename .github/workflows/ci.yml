@@ -22,5 +22,6 @@ jobs:
       # несовместимые платформенные optional-депы. (Тот же esbuild-затык, из-за
       # которого репо ушёл с pnpm — см. CLAUDE.md.)
       - run: npm install --no-audit --no-fund
+      - run: npm run lint
       - run: npm test
       - run: npm run build

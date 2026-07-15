@@ -20,7 +20,8 @@ export default function CurrencyTextInput({
 }) {
   const { dict } = useCurrencies();
   const decimals = (dict[currencyCode]?.decimals ?? 2);
-  const ref = inputRef || useRef(null);
+  const localRef = useRef(null); // хук должен вызываться безусловно (rules-of-hooks)
+  const ref = inputRef || localRef;
 
   // Allow only digits + one decimal separator (`.` или `,`).
   // Replace `,` to `.` для consistency.
