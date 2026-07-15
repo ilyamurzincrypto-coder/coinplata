@@ -65,31 +65,35 @@ function OfficeSelect({ label, offices, value, onChange }) {
   );
 }
 
-// Одна строка: внёс 1 {fromCur} в офисе A → получил {rate} {toCur} в офисе B.
-// Через USDT: fromCur →(курс офиса A)→ USDT →(курс офиса B)→ toCur. + наценка %.
+// Одна строка внутри группы отправителя: получаешь в офисе {receiver}.
+// 1 {fromCur} → {rate} {toCur}, через USDT (курс офиса-отправителя и получателя).
 // Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
-function PerRow({ a, b, fromCur, toCur, getRate, markups, setMarkup }) {
-  const key = `${a.id}:${b.id}:${fromCur}:${toCur}`;
+function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup }) {
+  const key = `${sender.id}:${receiver.id}:${fromCur}:${toCur}`;
   const mkStr = markups[key];
   const mk = pnum(mkStr ?? 0);
-  const uFrom = usdtPer(fromCur, getRate, a.id); // USDT за 1 fromCur (офис A)
-  const uTo = usdtPer(toCur, getRate, b.id);     // USDT за 1 toCur (офис B)
+  const uFrom = usdtPer(fromCur, getRate, sender.id); // USDT за 1 fromCur (отправитель)
+  const uTo = usdtPer(toCur, getRate, receiver.id);   // USDT за 1 toCur (получатель)
   const base = uFrom > 0 && uTo > 0 ? uFrom / uTo : NaN; // toCur за 1 fromCur
   const v = Number.isFinite(base) ? base * (1 + mk / 100) : NaN;
-  const fromPerUsdt = uFrom > 0 ? 1 / uFrom : NaN; // fromCur за 1 USDT (офис A)
-  const toPerUsdt = uTo > 0 ? 1 / uTo : NaN;       // toCur за 1 USDT (офис B)
+  const fromPerUsdt = uFrom > 0 ? 1 / uFrom : NaN;
+  const toPerUsdt = uTo > 0 ? 1 / uTo : NaN;
   const arrow = (val, dp) => (
     <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
   );
   return (
     <div className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
-      <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
+      <span className="flex items-center gap-1.5 shrink-0 min-w-0">
+        <span className="text-muted-soft text-[13px]">→</span>
+        <span className="font-bold text-body-sm text-ink truncate">{receiver.name}</span>
+        {receiver.city ? <span className="text-[10px] text-muted-soft whitespace-nowrap hidden lg:inline">· {receiver.city}</span> : null}
+      </span>
+      <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink hidden xl:flex">
         <Chip>{CCY_META[fromCur]?.flag}</Chip>{fromCur}{arrow(fromPerUsdt, dpOf(fromCur))}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(toPerUsdt, dpOf(toCur))}<Chip>{CCY_META[toCur]?.flag}</Chip>{toCur}
       </span>
-      <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
       <span className="flex-1" />
       <span className="flex items-center gap-1.5 shrink-0">
-        <span className="text-[10px] text-muted-soft uppercase tracking-wide">наценка за&nbsp;перестановку</span>
+        <span className="text-[10px] text-muted-soft uppercase tracking-wide hidden md:inline">наценка</span>
         <input
           value={mkStr ?? "0"}
           onChange={(e) => setMarkup(key, e.target.value)}
@@ -99,7 +103,7 @@ function PerRow({ a, b, fromCur, toCur, getRate, markups, setMarkup }) {
         />
         <span className="text-[11px] text-muted-soft">%</span>
       </span>
-      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[160px] justify-end">
+      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[150px] justify-end">
         <span className="text-[11px] text-muted-soft">1 {fromCur}</span>
         <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(toCur))}</span>
         <span className="text-[11px] text-muted-soft">{toCur}</span>
@@ -112,45 +116,35 @@ function PerTab({ getRate, offices }) {
   // Только АКТИВНЫЕ офисы (по выбору владельца): перестановки — живой калькулятор
   // между работающими офисами, закрытые/виртуальные не участвуют.
   const all = useMemo(() => (offices || []).filter((o) => o.active !== false), [offices]);
-  const [aId, setAId] = useState("");
-  const [bId, setBId] = useState("");
+  const [aId, setAId] = useState(""); // отправитель
+  const [bId, setBId] = useState(""); // получатель
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
-  // Пары офисов РАЗНЫХ стран (разная локальная валюта). Валюта — из timezone;
-  // офисы с неизвестной зоной выпадают.
-  const pairs = useMemo(() => {
-    const withCcy = all.map((o) => ({ o, ccy: officeCurrency(o) })).filter((x) => x.ccy);
-    const A = aId ? withCcy.filter((x) => x.o.id === aId) : withCcy;
-    const B = bId ? withCcy.filter((x) => x.o.id === bId) : withCcy;
-    const seen = new Set();
-    const out = [];
-    for (const a of A) for (const b of B) {
-      if (a.o.id === b.o.id) continue;
-      if (a.ccy === b.ccy) continue; // одна страна → перестановка бессмысленна
-      const k = [a.o.id, b.o.id].sort().join("|");
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push({ a: a.o, b: b.o, ca: a.ccy, cb: b.ccy });
-    }
-    return out;
-  }, [all, aId, bId]);
-  const Group = ({ a, b, ca, cb }) => (
-    <>
-      <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
-        {a.name} <span className="text-success">→</span> {b.name}
-        <span className="text-[9px] text-muted-soft uppercase font-semibold">вносишь {ca}</span>
-      </div>
-      <PerRow a={a} b={b} fromCur={ca} toCur={cb} getRate={getRate} markups={markups} setMarkup={setMarkup} />
-    </>
+  const withCcy = useMemo(
+    () => all.map((o) => ({ o, ccy: officeCurrency(o) })).filter((x) => x.ccy),
+    [all]
   );
+  // Группировка ПО ОФИСУ-ОТПРАВИТЕЛЮ: «Внёс в S» → все офисы-получатели другой
+  // страны. Валюта — из timezone; неизвестная зона → офис выпадает.
+  const groups = useMemo(() => {
+    const senders = aId ? withCcy.filter((x) => x.o.id === aId) : withCcy;
+    return senders
+      .map((s) => ({
+        s,
+        targets: withCcy.filter(
+          (t) => t.o.id !== s.o.id && t.ccy !== s.ccy && (!bId || t.o.id === bId)
+        ),
+      }))
+      .filter((g) => g.targets.length > 0);
+  }, [withCcy, aId, bId]);
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь наличные в одном — получаешь в другом. Валюта офиса — по его часовому поясу. Показаны оба направления.</p>
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь наличные в одном — получаешь в другом. Сгруппировано по офису-отправителю. Валюта офиса — по его часовому поясу.</p>
       <div className="flex items-end gap-2.5 mb-4">
-        <OfficeSelect label="Офис" offices={all} value={aId} onChange={setAId} />
+        <OfficeSelect label="Отправитель" offices={all} value={aId} onChange={setAId} />
         <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
-        <OfficeSelect label="Офис" offices={all} value={bId} onChange={setBId} />
+        <OfficeSelect label="Получатель" offices={all} value={bId} onChange={setBId} />
         <button
           type="button"
           onClick={() => { setAId(""); setBId(""); }}
@@ -160,18 +154,34 @@ function PerTab({ getRate, offices }) {
           <RotateCcw className="w-3.5 h-3.5" /> Сброс
         </button>
       </div>
-      {pairs.length === 0 ? (
-        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет пар офисов из разных стран.</div>
+      {groups.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов из разных стран.</div>
       ) : (
-        pairs.map(({ a, b, ca, cb }) => (
-          <div key={a.id + b.id} className="mb-2 pb-1 border-b border-border-soft last:border-0">
-            <Group a={a} b={b} ca={ca} cb={cb} />
-            <Group a={b} b={a} ca={cb} cb={ca} />
+        groups.map(({ s, targets }) => (
+          <div key={s.o.id} className="mb-3 pb-2 border-b border-border-soft last:border-0">
+            <div className="text-body-sm font-extrabold text-ink flex items-center gap-1.5 mb-2 first:mt-0">
+              <span className="text-[9px] text-muted-soft uppercase font-semibold">внёс в</span>
+              {s.o.name}
+              <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted">{CCY_META[s.ccy]?.flag} {s.ccy}</span>
+              <span className="text-success">→</span>
+            </div>
+            {targets.map((t) => (
+              <PerRow
+                key={t.o.id}
+                sender={s.o}
+                receiver={t.o}
+                fromCur={s.ccy}
+                toCur={t.ccy}
+                getRate={getRate}
+                markups={markups}
+                setMarkup={setMarkup}
+              />
+            ))}
           </div>
         ))
       )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
-        Считается из курсов слева (через USDT) + наценка %. Оба направления. Наценки — локально; серверного конфига пока нет.
+        Считается из курсов слева (через USDT) + наценка %. Наценки — локально; серверного конфига пока нет.
       </p>
     </div>
   );
