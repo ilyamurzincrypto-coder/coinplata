@@ -34,8 +34,13 @@ const isPhysicalOffice = (o) => !!o?.city && o.city.trim().toLowerCase() !== "wo
 const CCY_META = {
   RUB: { flag: "🇷🇺", dp: 2 }, TRY: { flag: "🇹🇷", dp: 2 },
   USD: { flag: "🇺🇸", dp: 4 }, EUR: { flag: "🇪🇺", dp: 4 },
+  GBP: { flag: "🇬🇧", dp: 4 }, CHF: { flag: "🇨🇭", dp: 4 },
+  USDT: { flag: "₮", dp: 4 },
 };
 const dpOf = (c) => CCY_META[c]?.dp ?? 2;
+// Валюты приёма: всё торгуемое (есть курс к USDT). Выдача = валюта принимающей
+// страны; одноимённую с выдачей валюту пропускаем (это не конвертация).
+const DEPOSIT_CCYS = ["USDT", "USD", "EUR", "GBP", "CHF", "TRY", "RUB"];
 
 const MARKUP_KEY = "per_markup_v1";
 const readMarkups = () => { try { return JSON.parse(localStorage.getItem(MARKUP_KEY) || "{}") || {}; } catch { return {}; } };
@@ -68,38 +73,37 @@ function OfficeSelect({ label, offices, value, onChange }) {
   );
 }
 
-// Табличная сетка перестановок: получатель · цепочка · наценка · курс — одни и те
-// же колонки во всех строках И в шапке (см. PerTab). На узком экране строка
+// Табличная сетка перестановок: вношу · цепочка через USDT · наценка · курс —
+// одни и те же колонки во всех строках И в шапке. На узком экране строка
 // переполняет контейнер → горизонтальный скролл (панель overflow-auto).
-const PER_GRID = { gridTemplateColumns: "minmax(170px,210px) minmax(300px,1fr) 116px minmax(150px,166px)" };
+const PER_GRID = { gridTemplateColumns: "minmax(96px,120px) minmax(210px,1fr) 116px minmax(150px,172px)" };
 
-// Одна строка внутри группы отправителя: получаешь в офисе {receiver}.
-// 1 {fromCur} → {rate} {toCur}, через USDT (курс офиса-отправителя и получателя).
-// Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
-function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup }) {
-  const key = `${sender.id}:${receiver.id}:${fromCur}:${toCur}`;
+// Одна строка: вношу depositCur (в офисе-отправителе) → получаю payoutCur (валюта
+// принимающей страны, в офисе-получателе), через USDT. Ориентация к USDT — общий
+// usdtPer из lib/rates (импорт, не копия — B2/B3).
+function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, setMarkup }) {
+  const key = `${sender.id}:${receiver.id}:${depositCur}:${payoutCur}`;
   const mkStr = markups[key];
   const mk = pnum(mkStr ?? 0);
-  const uFrom = usdtPer(fromCur, getRate, sender.id); // USDT за 1 fromCur (отправитель)
-  const uTo = usdtPer(toCur, getRate, receiver.id);   // USDT за 1 toCur (получатель)
-  const base = uFrom > 0 && uTo > 0 ? uFrom / uTo : NaN; // toCur за 1 fromCur
+  const uDep = usdtPer(depositCur, getRate, sender.id);  // USDT за 1 depositCur (отправитель)
+  const uPay = usdtPer(payoutCur, getRate, receiver.id); // USDT за 1 payoutCur (получатель)
+  const base = uDep > 0 && uPay > 0 ? uDep / uPay : NaN;  // payoutCur за 1 depositCur
   const v = Number.isFinite(base) ? base * (1 + mk / 100) : NaN;
-  const fromPerUsdt = uFrom > 0 ? 1 / uFrom : NaN;
-  const toPerUsdt = uTo > 0 ? 1 / uTo : NaN;
+  const depPerUsdt = uDep > 0 ? 1 / uDep : NaN;
+  const payPerUsdt = uPay > 0 ? 1 / uPay : NaN;
   const arrow = (val, dp) => (
     <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
   );
   return (
-    <div className="grid items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5" style={PER_GRID}>
-      {/* Получатель */}
-      <span className="flex items-center gap-1.5 min-w-0">
-        <span className="text-muted-soft text-[13px]">→</span>
-        <span className="font-bold text-body-sm text-ink truncate">{receiver.name}</span>
-        {receiver.city ? <span className="text-[10px] text-muted-soft whitespace-nowrap hidden lg:inline">· {receiver.city}</span> : null}
+    <div className="grid items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2 mb-1" style={PER_GRID}>
+      {/* Вношу */}
+      <span className="flex items-center gap-1.5 font-mono text-[12px] font-extrabold text-ink">
+        <Chip>{CCY_META[depositCur]?.flag}</Chip>{depositCur}
       </span>
       {/* Цепочка через USDT */}
-      <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-ink min-w-0 whitespace-nowrap overflow-hidden">
-        <Chip>{CCY_META[fromCur]?.flag}</Chip>{fromCur}{arrow(fromPerUsdt, dpOf(fromCur))}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(toPerUsdt, dpOf(toCur))}<Chip>{CCY_META[toCur]?.flag}</Chip>{toCur}
+      <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted min-w-0 whitespace-nowrap overflow-hidden">
+        {depositCur !== "USDT" ? arrow(depPerUsdt, dpOf(depositCur)) : null}
+        <Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(payPerUsdt, dpOf(payoutCur))}<Chip>{CCY_META[payoutCur]?.flag}</Chip>{payoutCur}
       </span>
       {/* Наценка */}
       <span className="flex items-center gap-1.5">
@@ -114,9 +118,9 @@ function PerRow({ sender, receiver, fromCur, toCur, getRate, markups, setMarkup 
       </span>
       {/* Курс */}
       <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap justify-self-end">
-        <span className="text-[11px] text-muted-soft">1 {fromCur}</span>
-        <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(toCur))}</span>
-        <span className="text-[11px] text-muted-soft">{toCur}</span>
+        <span className="text-[11px] text-muted-soft">1 {depositCur}</span>
+        <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(payoutCur))}</span>
+        <span className="text-[11px] text-muted-soft">{payoutCur}</span>
       </span>
     </div>
   );
@@ -160,7 +164,7 @@ function PerTab({ getRate, offices }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
-      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь наличные в одном — получаешь в другом. Сгруппировано по офису-отправителю. Валюта офиса — по его часовому поясу.</p>
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь любую валюту в одном офисе — получаешь валюту принимающей страны в другом (в РФ — рубль, в Турции — лиру). Сгруппировано по офису-отправителю и получателю.</p>
       <div className="flex items-end gap-2.5 mb-4">
         <OfficeSelect label="Отправитель" offices={all} value={aId} onChange={setAId} />
         <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
@@ -176,7 +180,7 @@ function PerTab({ getRate, offices }) {
       </div>
       {groups.length > 0 && (
         <div className="grid items-center gap-3 px-3.5 pb-1.5 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={PER_GRID}>
-          <span>Получаешь в офисе</span>
+          <span>Вношу</span>
           <span>Через USDT</span>
           <span>Наценка</span>
           <span className="justify-self-end">Курс</span>
@@ -189,22 +193,37 @@ function PerTab({ getRate, offices }) {
           <div key={s.o.id} className="mb-3 pb-2 border-b border-border-soft last:border-0">
             <div className="text-body-sm font-extrabold text-ink flex items-center gap-1.5 mb-2 first:mt-0">
               <span className="text-[9px] text-muted-soft uppercase font-semibold">внёс в</span>
+              <Chip>{CCY_META[s.ccy]?.flag}</Chip>
               {s.o.name}
-              <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted">{CCY_META[s.ccy]?.flag} {s.ccy}</span>
               <span className="text-success">→</span>
             </div>
-            {targets.map((t) => (
-              <PerRow
-                key={t.o.id}
-                sender={s.o}
-                receiver={t.o}
-                fromCur={s.ccy}
-                toCur={t.ccy}
-                getRate={getRate}
-                markups={markups}
-                setMarkup={setMarkup}
-              />
-            ))}
+            {targets.map((t) => {
+              const payout = t.ccy;
+              const deposits = DEPOSIT_CCYS.filter((c) => c !== payout && usdtPer(c, getRate, s.o.id) > 0);
+              return (
+                <div key={t.o.id} className="mb-2.5 last:mb-0">
+                  <div className="flex items-center gap-1.5 mb-1 pl-1 text-body-sm">
+                    <span className="text-muted-soft text-[13px]">→</span>
+                    <span className="font-bold text-ink">{t.o.name}</span>
+                    {t.o.city ? <span className="text-[10px] text-muted-soft">· {t.o.city}</span> : null}
+                    <span className="text-[9px] text-muted-soft uppercase font-semibold ml-1">выдача</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted">{CCY_META[payout]?.flag} {payout}</span>
+                  </div>
+                  {deposits.map((dc) => (
+                    <PerCcyRow
+                      key={dc}
+                      sender={s.o}
+                      receiver={t.o}
+                      depositCur={dc}
+                      payoutCur={payout}
+                      getRate={getRate}
+                      markups={markups}
+                      setMarkup={setMarkup}
+                    />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         ))
       )}
