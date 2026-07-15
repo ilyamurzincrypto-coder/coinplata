@@ -28,6 +28,9 @@ const TABS = [
 // офис не участвует в перестановках (НЕ подставляем USD-дефолт — это был баг).
 const TZ_CCY = { "Europe/Moscow": "RUB", "Europe/Istanbul": "TRY" };
 const officeCurrency = (o) => TZ_CCY[o?.timezone] ?? null;
+// Виртуальный «международный» офис (город Worldwide) не наличный и не привязан к
+// стране — в перестановках между странами не участвует. Реальные офисы имеют город.
+const isPhysicalOffice = (o) => !!o?.city && o.city.trim().toLowerCase() !== "worldwide";
 const CCY_META = {
   RUB: { flag: "🇷🇺", dp: 2 }, TRY: { flag: "🇹🇷", dp: 2 },
   USD: { flag: "🇺🇸", dp: 4 }, EUR: { flag: "🇪🇺", dp: 4 },
@@ -124,7 +127,7 @@ function PerTab({ getRate, offices }) {
   const [markups, setMarkups] = useState(readMarkups);
   const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
   const withCcy = useMemo(
-    () => all.map((o) => ({ o, ccy: officeCurrency(o) })).filter((x) => x.ccy),
+    () => all.filter(isPhysicalOffice).map((o) => ({ o, ccy: officeCurrency(o) })).filter((x) => x.ccy),
     [all]
   );
   // Группировка ПО ОФИСУ-ОТПРАВИТЕЛЮ: «Внёс в S» → все офисы-получатели другой
