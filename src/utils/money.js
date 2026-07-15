@@ -44,15 +44,32 @@ export function multiplyAmount(amount, rate, outputPrecision = 2) {
   const a = typeof amount === "number" ? amount : parseFloat(String(amount).replace(",", "."));
   const r = typeof rate === "number" ? rate : parseFloat(String(rate).replace(",", "."));
   if (isNaN(a) || isNaN(r)) return 0;
-  // Работаем с достаточной внутренней точностью
+  // Работаем с достаточной внутренней точностью (8 знаков на множитель).
   const internal = 8;
   const aMinor = Math.round(a * Math.pow(10, internal));
   const rMinor = Math.round(r * Math.pow(10, internal));
-  // Результат в 2*internal минорных единицах
-  const productHigh = aMinor * rMinor;
-  // Приводим к outputPrecision
-  const divisor = Math.pow(10, 2 * internal - outputPrecision);
-  return Math.round(productHigh / divisor) / Math.pow(10, outputPrecision);
+  // aMinor и rMinor по отдельности — безопасные целые, но их произведение
+  // (до 2*internal знаков) легко вылетает за MAX_SAFE_INTEGER на больших суммах
+  // → раньше Math.round(productHigh/divisor) давал float-артефакт (77226000.00000001).
+  // Умножаем и делим в BigInt — точно на любом масштабе (S5).
+  if (!Number.isFinite(aMinor) || !Number.isFinite(rMinor)) return 0;
+  const productHigh = BigInt(aMinor) * BigInt(rMinor);
+  const shift = 2 * internal - outputPrecision; // divisor = 10^shift
+  const rounded =
+    shift <= 0
+      ? productHigh * 10n ** BigInt(-shift)
+      : roundHalfUpBig(productHigh, 10n ** BigInt(shift));
+  return Number(rounded) / Math.pow(10, outputPrecision);
+}
+
+// Деление BigInt с округлением к ближайшему (половина — вверх, как Math.round).
+// den > 0 и кратен 10 (чётный) → den/2 точно. Отрицательные — как Math.round
+// (ties к +∞): floor((num + den/2) / den).
+function roundHalfUpBig(num, den) {
+  const shifted = num + den / 2n;
+  let q = shifted / den; // BigInt делит с усечением к нулю
+  if (shifted < 0n && q * den !== shifted) q -= 1n; // корректируем усечение до floor
+  return q;
 }
 
 // Процент от суммы: amount * (percent / 100)
