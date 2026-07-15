@@ -1,14 +1,15 @@
 // src/components/rates/RatesAuxPanel.jsx
 // Вспомогательная панель справа от курсов (экран «Редактирование курсов»).
-// Вкладки: Нерез · Конкуренты. Занимает пустую aux-область; ЛЕВУЮ колонку
-// курсов не трогает. Данные — из фида ЦБ (cbr) и снимков конкурентов.
+// Вкладки: Перестановки · Нерез · Конкуренты. Занимает пустую aux-область;
+// ЛЕВУЮ колонку курсов не трогает. Данные — из курсов (getRate) и фида ЦБ (cbr).
 //
-// Вкладка «Перестановки» удалена 2026-07-15 по просьбе владельца: базовая валюта
-// офиса угадывалась хрупким regex по названию (напр. «Moscow» латиницей не матчил
-// /москв/ → сваливался в USD), из-за чего строились бессмысленные пары
-// («Moscow → Москва Вася, вносишь USD»). Хардкод стран — анти-паттерн (CLAUDE.md).
+// Перестановки (v2, 2026-07-15): валюта офиса берётся из timezone (структурное
+// поле офиса), НЕ угадывается по названию. Пара — только РАЗНЫЕ страны. Цель —
+// локальная валюта ПРИНИМАЮЩЕГО офиса (не список FIATS, как в старой версии,
+// которая давала RUB→USD/EUR мусор).
 import React, { useState, useMemo } from "react";
-import { Landmark, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import { Landmark, Users, ChevronLeft, ChevronRight, ArrowLeftRight, ChevronDown, RotateCcw } from "lucide-react";
+import { usdtPer } from "../../lib/rates.js";
 
 const fmt = (n, dp) =>
   Number.isFinite(Number(n))
@@ -16,11 +17,166 @@ const fmt = (n, dp) =>
     : "—";
 
 const TABS = [
+  { id: "per", label: "Перестановки", Icon: ArrowLeftRight },
   { id: "ner", label: "Нерез", Icon: Landmark },
   { id: "comp", label: "Конкуренты", Icon: Users },
 ];
 
-// ── Вкладка — Нерез (ЦБ РФ) ─────────────────────────────────────────────────
+// ── Вкладка 1 — Перестановки ────────────────────────────────────────────────
+// Локальная (наличная) валюта офиса — из timezone (структурное поле), а не из
+// угадывания по имени. Новую страну → добавить её зону сюда. Неизвестная зона →
+// офис не участвует в перестановках (НЕ подставляем USD-дефолт — это был баг).
+const TZ_CCY = { "Europe/Moscow": "RUB", "Europe/Istanbul": "TRY" };
+const officeCurrency = (o) => TZ_CCY[o?.timezone] ?? null;
+const CCY_META = {
+  RUB: { flag: "🇷🇺", dp: 2 }, TRY: { flag: "🇹🇷", dp: 2 },
+  USD: { flag: "🇺🇸", dp: 4 }, EUR: { flag: "🇪🇺", dp: 4 },
+};
+const dpOf = (c) => CCY_META[c]?.dp ?? 2;
+
+const MARKUP_KEY = "per_markup_v1";
+const readMarkups = () => { try { return JSON.parse(localStorage.getItem(MARKUP_KEY) || "{}") || {}; } catch { return {}; } };
+const writeMarkups = (m) => { try { localStorage.setItem(MARKUP_KEY, JSON.stringify(m)); } catch { /* noop */ } };
+const pnum = (v) => { const n = parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
+
+const Chip = ({ children }) => (
+  <span className="w-6 h-6 rounded-full bg-white border border-border-soft flex items-center justify-center text-[13px] shrink-0">{children}</span>
+);
+
+function OfficeSelect({ label, offices, value, onChange }) {
+  return (
+    <div className="flex-1 min-w-[160px]">
+      <div className="text-[9px] font-bold uppercase tracking-wide text-muted-soft mb-1">{label}</div>
+      <div className="relative">
+        <select
+          value={value || ""}
+          onChange={(e) => onChange(e.target.value)}
+          className="appearance-none w-full h-10 bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/15 rounded-card pl-3 pr-9 text-body font-semibold text-ink outline-none cursor-pointer truncate"
+        >
+          <option value="">— Все офисы —</option>
+          {offices.map((o) => (
+            <option key={o.id} value={o.id}>{officeLabel(o)}</option>
+          ))}
+        </select>
+        <ChevronDown className="w-4 h-4 text-muted-soft absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      </div>
+    </div>
+  );
+}
+
+// Одна строка: внёс 1 {fromCur} в офисе A → получил {rate} {toCur} в офисе B.
+// Через USDT: fromCur →(курс офиса A)→ USDT →(курс офиса B)→ toCur. + наценка %.
+// Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
+function PerRow({ a, b, fromCur, toCur, getRate, markups, setMarkup }) {
+  const key = `${a.id}:${b.id}:${fromCur}:${toCur}`;
+  const mkStr = markups[key];
+  const mk = pnum(mkStr ?? 0);
+  const uFrom = usdtPer(fromCur, getRate, a.id); // USDT за 1 fromCur (офис A)
+  const uTo = usdtPer(toCur, getRate, b.id);     // USDT за 1 toCur (офис B)
+  const base = uFrom > 0 && uTo > 0 ? uFrom / uTo : NaN; // toCur за 1 fromCur
+  const v = Number.isFinite(base) ? base * (1 + mk / 100) : NaN;
+  const fromPerUsdt = uFrom > 0 ? 1 / uFrom : NaN; // fromCur за 1 USDT (офис A)
+  const toPerUsdt = uTo > 0 ? 1 / uTo : NaN;       // toCur за 1 USDT (офис B)
+  const arrow = (val, dp) => (
+    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
+  );
+  return (
+    <div className="flex items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2.5 mb-1.5">
+      <span className="flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] font-semibold text-ink">
+        <Chip>{CCY_META[fromCur]?.flag}</Chip>{fromCur}{arrow(fromPerUsdt, dpOf(fromCur))}<Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(toPerUsdt, dpOf(toCur))}<Chip>{CCY_META[toCur]?.flag}</Chip>{toCur}
+      </span>
+      <span className="text-[8.5px] text-muted-soft uppercase hidden xl:inline">наличные</span>
+      <span className="flex-1" />
+      <span className="flex items-center gap-1.5 shrink-0">
+        <span className="text-[10px] text-muted-soft uppercase tracking-wide">наценка за&nbsp;перестановку</span>
+        <input
+          value={mkStr ?? "0"}
+          onChange={(e) => setMarkup(key, e.target.value)}
+          inputMode="decimal"
+          className="w-[44px] bg-white border border-border-soft rounded-button h-7 px-1.5 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
+          title="Наценка за перестановку, %"
+        />
+        <span className="text-[11px] text-muted-soft">%</span>
+      </span>
+      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap min-w-[160px] justify-end">
+        <span className="text-[11px] text-muted-soft">1 {fromCur}</span>
+        <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(toCur))}</span>
+        <span className="text-[11px] text-muted-soft">{toCur}</span>
+      </span>
+    </div>
+  );
+}
+
+function PerTab({ getRate, offices }) {
+  // Все офисы (включая закрытые), у которых валюта резолвится из timezone.
+  const all = useMemo(() => offices || [], [offices]);
+  const [aId, setAId] = useState("");
+  const [bId, setBId] = useState("");
+  const [markups, setMarkups] = useState(readMarkups);
+  const setMarkup = (key, val) => setMarkups((m) => { const n = { ...m, [key]: val }; writeMarkups(n); return n; });
+  // Пары офисов РАЗНЫХ стран (разная локальная валюта). Валюта — из timezone;
+  // офисы с неизвестной зоной выпадают.
+  const pairs = useMemo(() => {
+    const withCcy = all.map((o) => ({ o, ccy: officeCurrency(o) })).filter((x) => x.ccy);
+    const A = aId ? withCcy.filter((x) => x.o.id === aId) : withCcy;
+    const B = bId ? withCcy.filter((x) => x.o.id === bId) : withCcy;
+    const seen = new Set();
+    const out = [];
+    for (const a of A) for (const b of B) {
+      if (a.o.id === b.o.id) continue;
+      if (a.ccy === b.ccy) continue; // одна страна → перестановка бессмысленна
+      const k = [a.o.id, b.o.id].sort().join("|");
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ a: a.o, b: b.o, ca: a.ccy, cb: b.ccy });
+    }
+    return out;
+  }, [all, aId, bId]);
+  const Group = ({ a, b, ca, cb }) => (
+    <>
+      <div className="text-body-sm font-bold text-ink flex items-center gap-1.5 mt-3.5 mb-2 first:mt-1">
+        {a.name} <span className="text-success">→</span> {b.name}
+        <span className="text-[9px] text-muted-soft uppercase font-semibold">вносишь {ca}</span>
+      </div>
+      <PerRow a={a} b={b} fromCur={ca} toCur={cb} getRate={getRate} markups={markups} setMarkup={setMarkup} />
+    </>
+  );
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
+      <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь наличные в одном — получаешь в другом. Валюта офиса — по его часовому поясу. Показаны оба направления.</p>
+      <div className="flex items-end gap-2.5 mb-4">
+        <OfficeSelect label="Офис" offices={all} value={aId} onChange={setAId} />
+        <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
+        <OfficeSelect label="Офис" offices={all} value={bId} onChange={setBId} />
+        <button
+          type="button"
+          onClick={() => { setAId(""); setBId(""); }}
+          className="shrink-0 h-10 px-3 inline-flex items-center gap-1.5 rounded-card border border-border-soft text-body-sm font-semibold text-muted hover:text-ink hover:bg-surface-soft transition-colors"
+          title="Показать все офисы"
+        >
+          <RotateCcw className="w-3.5 h-3.5" /> Сброс
+        </button>
+      </div>
+      {pairs.length === 0 ? (
+        <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет пар офисов из разных стран.</div>
+      ) : (
+        pairs.map(({ a, b, ca, cb }) => (
+          <div key={a.id + b.id} className="mb-2 pb-1 border-b border-border-soft last:border-0">
+            <Group a={a} b={b} ca={ca} cb={cb} />
+            <Group a={b} b={a} ca={cb} cb={ca} />
+          </div>
+        ))
+      )}
+      <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
+        Считается из курсов слева (через USDT) + наценка %. Оба направления. Наценки — локально; серверного конфига пока нет.
+      </p>
+    </div>
+  );
+}
+
+// ── Вкладка 2 — Нерез (ЦБ РФ) ───────────────────────────────────────────────
 function NerTab({ cbr, cbrAt }) {
   const PAIRS = [
     { cur: "USD", flag: "🇺🇸" },
@@ -58,7 +214,7 @@ function NerTab({ cbr, cbrAt }) {
   );
 }
 
-// ── Вкладка — Конкуренты (снимки по датам) ──────────────────────────────────
+// ── Вкладка 3 — Конкуренты (снимки по датам) ────────────────────────────────
 function CompTab({ snapshots }) {
   const dates = useMemo(() => Object.keys(snapshots || {}), [snapshots]);
   const today = dates[0];
@@ -127,8 +283,8 @@ function CompTable({ snap }) {
 }
 
 // ── Панель ──────────────────────────────────────────────────────────────────
-export default function RatesAuxPanel({ cbr, cbrAt, competitorSnapshots }) {
-  const [tab, setTab] = useState("ner");
+export default function RatesAuxPanel({ getRate, offices, cbr, cbrAt, competitorSnapshots }) {
+  const [tab, setTab] = useState("per");
   return (
     <div className="bg-white border border-border-soft rounded-card overflow-hidden sticky top-4">
       <div className="flex gap-0.5 px-2.5 pt-2 border-b border-border-soft">
@@ -146,6 +302,7 @@ export default function RatesAuxPanel({ cbr, cbrAt, competitorSnapshots }) {
         ))}
       </div>
       <div className="p-4 overflow-auto" style={{ maxHeight: "calc(100vh - 150px)" }}>
+        {tab === "per" && <PerTab getRate={getRate} offices={offices} />}
         {tab === "ner" && <NerTab cbr={cbr} cbrAt={cbrAt} />}
         {tab === "comp" && <CompTab snapshots={competitorSnapshots || {}} />}
       </div>
