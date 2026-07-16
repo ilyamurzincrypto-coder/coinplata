@@ -53,17 +53,28 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const nowMs = useNow(30_000);
 
   // Курс ЦБ (для блока QR-рубль) — тот же ридер, что и на странице «Изм.».
+  // Ретрай, пока ЦБ не подъедет: на раннем маунте сайдбара запрос иногда уходит
+  // до готовности сессии/клиента и возвращается пустым — тогда QR-блок висел «—».
   const [cbr, setCbr] = useState(null);
   useEffect(() => {
     let alive = true;
-    loadExternalRatesLatest()
-      .then((rows) => {
-        if (!alive) return;
-        const c = {};
-        (rows || []).forEach((r) => { if (r.source === "cbr") c[r.pair] = r.mid; });
-        setCbr(c);
-      })
-      .catch(() => {});
+    let tries = 0;
+    const load = () => {
+      loadExternalRatesLatest()
+        .then((rows) => {
+          if (!alive) return;
+          const c = {};
+          (rows || []).forEach((r) => { if (r.source === "cbr") c[r.pair] = r.mid; });
+          setCbr(c);
+          if (!c.USD_RUB && tries < 6) { tries += 1; setTimeout(load, 1500); }
+        })
+        .catch((e) => {
+          // eslint-disable-next-line no-console
+          console.warn("[QR] загрузка курса ЦБ не удалась:", e?.message || e);
+          if (alive && tries < 6) { tries += 1; setTimeout(load, 1500); }
+        });
+    };
+    load();
     return () => { alive = false; };
   }, []);
 
