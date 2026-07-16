@@ -38,9 +38,14 @@ const CCY_META = {
   USDT: { flag: "₮", dp: 4 },
 };
 const dpOf = (c) => CCY_META[c]?.dp ?? 2;
-// Валюты приёма: всё торгуемое (есть курс к USDT). Выдача = валюта принимающей
-// страны; одноимённую с выдачей валюту пропускаем (это не конвертация).
-const DEPOSIT_CCYS = ["USDT", "USD", "EUR", "GBP", "CHF", "TRY", "RUB"];
+// Валюты приёма ЗАВИСЯТ от страны офиса-отправителя (что реально принимают):
+//   РФ (RUB): тезер, доллар, рубль. Турция (TRY): всё торгуемое.
+// Выдача = валюта принимающей страны; одноимённую с выдачей валюту пропускаем.
+const ALL_TRADABLE = ["USDT", "USD", "EUR", "GBP", "CHF", "TRY", "RUB"];
+const DEPOSIT_BY_CCY = {
+  RUB: ["USDT", "USD", "RUB"],
+  TRY: ["USDT", "USD", "EUR", "GBP", "CHF", "TRY", "RUB"],
+};
 
 const MARKUP_KEY = "per_markup_v1";
 const readMarkups = () => { try { return JSON.parse(localStorage.getItem(MARKUP_KEY) || "{}") || {}; } catch { return {}; } };
@@ -235,7 +240,7 @@ function PerTab({ getRate, offices }) {
           {groups.flatMap(({ s, targets }) =>
             targets.map((t) => {
               const payout = t.ccy;
-              const deposits = DEPOSIT_CCYS.filter((c) => c !== payout && usdtPer(c, getRate, s.o.id) > 0);
+              const deposits = (DEPOSIT_BY_CCY[s.ccy] || ALL_TRADABLE).filter((c) => c !== payout && usdtPer(c, getRate, s.o.id) > 0);
               return (
                 <div key={s.o.id + t.o.id} className="mb-2">
                   <div className="flex items-center gap-1.5 mb-1 text-body-sm flex-wrap">
