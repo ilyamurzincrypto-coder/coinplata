@@ -120,14 +120,13 @@ function OfficeCombo({ label, options, value, onChange }) {
   );
 }
 
-// Табличная сетка перестановок: вношу · цепочка через USDT · наценка · курс —
-// одни и те же колонки во всех строках И в шапке. На узком экране строка
-// переполняет контейнер → горизонтальный скролл (панель overflow-auto).
-const PER_GRID = { gridTemplateColumns: "minmax(80px,1fr) 74px auto" };
+// Табличная сетка строки: вношу · цепочка через USDT · наценка · курс. Блок ≥560px
+// (auto-fit в PerTab), поэтому цепочка помещается всегда, в т.ч. в 2-колоночном виде.
+const PER_GRID = { gridTemplateColumns: "88px minmax(190px,1fr) 90px minmax(140px,166px)" };
 
-// Одна строка (компактная, под 2-колоночную раскладку): вношу depositCur → получаю
-// payoutCur (валюта принимающей страны). Цепочка через USDT — в подсказке (title).
-// Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
+// Одна строка: вношу depositCur → получаю payoutCur (валюта принимающей страны),
+// через USDT. Цепочка (depositCur → ₮ → payoutCur) видна в строке, ноги фикс-ширины
+// для выравнивания. usdtPer — общий из lib/rates (импорт, не копия — B2/B3).
 function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, setMarkup }) {
   const key = `${sender.id}:${receiver.id}:${depositCur}:${payoutCur}`;
   const mkStr = markups[key];
@@ -138,12 +137,21 @@ function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, 
   const v = Number.isFinite(base) ? base * (1 + mk / 100) : NaN;
   const depPerUsdt = uDep > 0 ? 1 / uDep : NaN;
   const payPerUsdt = uPay > 0 ? 1 / uPay : NaN;
-  const chainTitle = `1 ${depositCur} → ${depositCur === "USDT" ? "" : fmt(depPerUsdt, dpOf(depositCur)) + " → "}₮ USDT → ${fmt(payPerUsdt, dpOf(payoutCur))} → ${payoutCur}`;
+  const arrow = (val, dp) => (
+    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
+  );
   return (
-    <div className="grid items-center gap-2 bg-surface-soft rounded-card px-3 py-1.5 mb-1" style={PER_GRID} title={chainTitle}>
+    <div className="grid items-center gap-2 bg-surface-soft rounded-card px-3 py-1.5 mb-1" style={PER_GRID}>
       {/* Вношу */}
       <span className="flex items-center gap-1.5 font-mono text-[12px] font-extrabold text-ink min-w-0">
         <Chip>{CCY_META[depositCur]?.flag}</Chip>{depositCur}
+      </span>
+      {/* Цепочка через USDT — ноги фикс-ширины, чтобы ₮ и выдача стояли в столбик. */}
+      <span className="grid items-center gap-1 font-mono text-[10.5px] font-semibold text-muted min-w-0 whitespace-nowrap" style={{ gridTemplateColumns: "72px auto 72px auto" }}>
+        <span className="justify-self-end">{depositCur !== "USDT" ? arrow(depPerUsdt, dpOf(depositCur)) : null}</span>
+        <span className="flex items-center gap-1"><Chip><span className="text-success font-bold">₮</span></Chip>USDT</span>
+        <span className="justify-self-end">{arrow(payPerUsdt, dpOf(payoutCur))}</span>
+        <span className="flex items-center gap-1"><Chip>{CCY_META[payoutCur]?.flag}</Chip>{payoutCur}</span>
       </span>
       {/* Наценка */}
       <span className="flex items-center gap-1">
@@ -221,9 +229,9 @@ function PerTab({ getRate, offices }) {
       {groups.length === 0 ? (
         <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов из разных стран.</div>
       ) : (
-        // Блоки пар в 2 колонки — меньше вертикального скролла. Каждый блок
-        // самодостаточен (видно направление). Порядок прежний (РФ сверху).
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-5 gap-y-1">
+        // Блоки пар в колонки (auto-fit, каждая ≥560px под цепочку): 2 колонки когда
+        // широко, 1 когда узко. Меньше скролла, но цепочка всегда влезает.
+        <div className="grid gap-x-6 gap-y-1" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(560px, 1fr))" }}>
           {groups.flatMap(({ s, targets }) =>
             targets.map((t) => {
               const payout = t.ccy;
