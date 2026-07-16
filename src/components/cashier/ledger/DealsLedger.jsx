@@ -463,8 +463,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
         <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("tm")} aria-sort={sortKey === "tm" ? (sortDir === "asc" ? "ascending" : "descending") : "none"}>
           Дата<Arrow k="tm" />
         </th>
-        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("party")}>
-          Контрагент<Arrow k="party" />
+        <th className={`${th} ${thGrid} text-left`}>
+          <span className="flex items-center">
+            {/* Слот ника (150) + gap + разделитель + gap = старт кода → «Код» ровно над ним. */}
+            <span className={`w-[167px] shrink-0 inline-flex items-center ${thBtn}`} onClick={() => setSort("party")}>
+              Контрагент<Arrow k="party" />
+            </span>
+            <span>Код</span>
+          </span>
         </th>
         <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
           Приход<Arrow k="inAmt" />
