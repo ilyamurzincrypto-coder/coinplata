@@ -10,8 +10,12 @@ export const MANAGER_ORDERS_ENABLED =
   import.meta.env?.VITE_MANAGER_ORDERS_ENABLED === "true";
 
 // Короткий читаемый код заявки/встречи (для устной координации и привязки).
+// Буквенный (по просьбе): 5 заглавных букв без похожих I/O/L → 21^5 ≈ 4М комбинаций,
+// коллизий меньше, чем у 6-значных цифровых. Префикс CP- = касса CoinPlata.
 export function genOrderCode() {
-  const s = Math.random().toString(36).slice(2, 6).toUpperCase();
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZ"; // без I, O, L
+  let s = "";
+  for (let i = 0; i < 5; i += 1) s += A[Math.floor(Math.random() * A.length)];
   return `CP-${s}`;
 }
 
