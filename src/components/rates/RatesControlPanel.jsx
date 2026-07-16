@@ -9,6 +9,7 @@ import React, { useState, useMemo, useCallback } from "react";
 import { Loader2, Globe, Lock, Unlock } from "lucide-react";
 import { officeCityCode } from "../../lib/rapiraSpreads.js";
 import RatesAuxPanel from "./RatesAuxPanel.jsx";
+import { readQrSpread, writeQrSpread } from "./QrRubPanel.jsx";
 
 // Замки зафиксированных итоговых цен (переживают переоткрытие панели).
 const LOCKS_KEY = "rates_control_locks_v1";
@@ -264,6 +265,47 @@ function RuBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWin
   );
 }
 
+// ── Блок 4 — QR · РУБ (ЦБ + спред %) ────────────────────────────────────────
+// QR-рубль: курс ЦБ × (1 + спред). Спред общий с блоком QR на дашборде
+// (localStorage). v1 — правим спред тут; в сделки пока не публикуется.
+const QR_ROWS = [
+  { cur: "USDT", flag: "₮", pairKey: "USD_RUB" },
+  { cur: "USD", flag: "🇺🇸", pairKey: "USD_RUB" },
+  { cur: "EUR", flag: "🇪🇺", pairKey: "EUR_RUB" },
+  { cur: "TRY", flag: "🇹🇷", pairKey: "TRY_RUB" },
+];
+function QrBlock({ cbr }) {
+  const [spreadStr, setSpreadStr] = useState(readQrSpread);
+  const spread = pnum(spreadStr);
+  const rows = QR_ROWS.map((r) => {
+    const base = Number(cbr?.[r.pairKey]);
+    const itog = Number.isFinite(base) && base > 0 ? base * (1 + spread / 100) : NaN;
+    return { ...r, base, itog };
+  });
+  if (!rows.some((r) => Number.isFinite(r.base) && r.base > 0)) return null;
+  return (
+    <Card title="QR · РУБ" badge="ЦБ" badgeColor="bg-info" hint={<>Курс QR = курс ЦБ × (1 + спред %). USDT — от ЦБ USD/RUB. Спред общий с блоком QR на дашборде. В сделки пока не публикуется.</>}>
+      <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5 pb-1.5">
+        <span className="text-[10px] text-muted-soft uppercase tracking-wide font-semibold">Спред к ЦБ</span>
+        <span className="inline-flex items-center gap-1">
+          <input value={spreadStr} onChange={(e) => { setSpreadStr(e.target.value); writeQrSpread(e.target.value); }} inputMode="decimal" className={`${cellIn} w-[64px]`} title="Спред к курсу ЦБ, %" />
+          <span className="text-[11px] text-muted-soft">%</span>
+        </span>
+      </div>
+      <div className="grid px-3.5 pt-1 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "84px 1fr 1fr" }}>
+        <span>Напр.</span><span className="text-right">ЦБ</span><span className="text-right">Итог QR</span>
+      </div>
+      {rows.map((r) => (
+        <div key={r.cur} className="grid items-center px-3.5 py-1.5 border-t border-border-soft" style={{ gridTemplateColumns: "84px 1fr 1fr" }}>
+          <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap flex items-center gap-1">{r.flag} {r.cur}<span className="text-muted-soft">→₽</span></div>
+          <span className="text-right font-mono tabular-nums text-[12px] text-muted">{fmt(r.base, 2)}</span>
+          <span className="text-right font-mono tabular-nums text-[13px] font-bold text-ink">{fmt(r.itog, 2)}</span>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
 // ── Панель ─────────────────────────────────────────────────────────────────
 export default function RatesControlPanel({ offices, getGP, getRate, getOverride, tol, tolHistory, rapiraHistory, rapira, cbr, cbrAt, competitorSnapshots, saveMargins, saveOverride, onDone }) {
   // Разрешаем офисы по городам (для записи overrides).
@@ -472,6 +514,7 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
           <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
+          <QrBlock cbr={cbr} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <RatesAuxPanel

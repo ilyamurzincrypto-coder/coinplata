@@ -6,9 +6,11 @@
 
 import React, { useState } from "react";
 
-const SPREAD_KEY = "qr_spread_pct_v1";
-const readSpread = () => { try { const v = localStorage.getItem(SPREAD_KEY); return v == null ? "1" : v; } catch { return "1"; } };
-const writeSpread = (v) => { try { localStorage.setItem(SPREAD_KEY, String(v)); } catch { /* noop */ } };
+// Спред QR — общий для дашборда и редактора (панель управления). Один ключ →
+// правка в одном месте видна в другом.
+export const QR_SPREAD_KEY = "qr_spread_pct_v1";
+export const readQrSpread = () => { try { const v = localStorage.getItem(QR_SPREAD_KEY); return v == null ? "1" : v; } catch { return "1"; } };
+export const writeQrSpread = (v) => { try { localStorage.setItem(QR_SPREAD_KEY, String(v)); } catch { /* noop */ } };
 const pnum = (v) => { const n = parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
 const fmt = (v) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2).replace(".", ",") : "—");
 
@@ -21,7 +23,7 @@ const ROWS = [
 ];
 
 export default function QrRubPanel({ cbr, onCopy }) {
-  const [spreadStr, setSpreadStr] = useState(readSpread);
+  const [spreadStr, setSpreadStr] = useState(readQrSpread);
   const spread = pnum(spreadStr);
   const rows = ROWS.map((r) => {
     const base = Number(cbr?.[r.pairKey]);
@@ -40,7 +42,7 @@ export default function QrRubPanel({ cbr, onCopy }) {
         <span className="ml-auto inline-flex items-center gap-1 shrink-0">
           <input
             value={spreadStr}
-            onChange={(e) => { setSpreadStr(e.target.value); writeSpread(e.target.value); }}
+            onChange={(e) => { setSpreadStr(e.target.value); writeQrSpread(e.target.value); }}
             inputMode="decimal"
             className="w-[48px] bg-white border border-[rgba(18,22,26,0.12)] rounded-[8px] h-6 px-1.5 font-mono tabular-nums text-[11.5px] text-right outline-none focus:border-[#0c9c6b]"
             title="Спред к курсу ЦБ, %"
