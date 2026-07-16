@@ -117,30 +117,30 @@ function outSummary(d) {
   return { amount: sorted[0].amount, ccy: sorted[0].ccy, total, extra: outs.length - 1, tip };
 }
 
-// Денежная ячейка: сумма прижата вправо, код валюты — в фиксированном слоте
-// слева от правого края. Так и суммы, и коды валют выравниваются по вертикали
-// (раньше сумма и валюта были в разных колонках и «плыли»).
-function AmtCcy({ amount, ccy, extra = 0, onCcy, tip }) {
+// Сумма и валюта — ОТДЕЛЬНЫМИ ячейками (столбик суммы | столбик валюты), чтобы
+// между ними была вертикальная линия сетки. tdBase — классы ячейки строки
+// (фон/бордер), tone — цвет суммы (амбер у заявок, ink у сделок).
+function AmtCells({ amount, ccy, extra = 0, tip, onCcy, tdBase, gridR, tone = "" }) {
   return (
-    <div className="flex items-baseline justify-end gap-1.5" title={tip}>
-      {amount != null ? (
-        <span className="font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px] truncate">
-          <Money amount={amount} ccy={ccy} />
-          {extra > 0 && (
-            <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{extra}</span>
-          )}
-        </span>
-      ) : (
-        <span className="text-[color:var(--faint2)]">·</span>
-      )}
-      <span
-        className="inline-block w-[38px] shrink-0 text-left text-[11.5px] font-semibold text-[color:var(--faint)] cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2"
+    <>
+      <td className={`${tdBase} ${gridR} text-right ${tone}`} title={tip}>
+        {amount != null ? (
+          <span className="font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px]">
+            <Money amount={amount} ccy={ccy} />
+            {extra > 0 && <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{extra}</span>}
+          </span>
+        ) : (
+          <span className="text-[color:var(--faint2)]">·</span>
+        )}
+      </td>
+      <td
+        className={`${tdBase} ${gridR} text-left text-[11.5px] font-semibold text-[color:var(--faint)] ${onCcy ? "cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2" : ""}`}
         onClick={onCcy}
         title={onCcy ? "Группировать по валюте" : undefined}
       >
         {ccy || ""}
-      </span>
-    </div>
+      </td>
+    </>
   );
 }
 
@@ -466,14 +466,20 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
         <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("party")}>
           Контрагент<Arrow k="party" />
         </th>
-        <th className={`${th} ${thGrid} text-right ${thBtn} pr-[46px]`} onClick={() => setSort("inAmt")}>
+        <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
           Приход<Arrow k="inAmt" />
+        </th>
+        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("inC")}>
+          Вал<Arrow k="inC" />
         </th>
         <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("rate")}>
           Курс<Arrow k="rate" />
         </th>
-        <th className={`${th} ${thGrid} text-right ${thBtn} pr-[46px]`} onClick={() => setSort("outAmt")}>
+        <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("outAmt")}>
           Расход<Arrow k="outAmt" />
+        </th>
+        <th className={`${th} ${thGrid} text-left ${thBtn}`} onClick={() => setSort("outC")}>
+          Вал<Arrow k="outC" />
         </th>
         <th className={`${th} text-left ${thBtn}`} onClick={() => setSort("status")}>
           Статус<Arrow k="status" />
@@ -485,7 +491,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   const SecRow = ({ label, tone }) => (
     <tr>
       <td
-        colSpan={7}
+        colSpan={9}
         className={`px-2.5 pt-[18px] pb-2 text-[10.5px] font-bold tracking-[0.5px] uppercase ${
           tone === "z" ? "text-[color:var(--amber)]" : "text-[color:var(--faint)]"
         }`}
@@ -554,10 +560,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           <colgroup>
             <col style={{ width: "46px" }} />{/* № */}
             <col style={{ width: "64px" }} />{/* Дата */}
-            <col />{/* Контрагент */}
-            <col style={{ width: "162px" }} />{/* Приход (сумма+валюта) */}
+            <col />{/* Контрагент (+ код встречи внутри, отделён линией) */}
+            <col style={{ width: "116px" }} />{/* Приход — сумма */}
+            <col style={{ width: "48px" }} />{/* Приход — валюта */}
             <col style={{ width: "78px" }} />{/* Курс */}
-            <col style={{ width: "162px" }} />{/* Расход (сумма+валюта) */}
+            <col style={{ width: "116px" }} />{/* Расход — сумма */}
+            <col style={{ width: "48px" }} />{/* Расход — валюта */}
             <col style={{ width: "238px" }} />{/* Статус */}
           </colgroup>
           <Header />
@@ -586,8 +594,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       </span>
                       {o.meetingCode && (
                         <span
-                          className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10]"
-                          title="Код встречи"
+                          className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10] border-l border-[color:var(--gridh)] pl-2"
+                          title="Код встречи (сделки)"
                         >
                           {o.meetingCode}
                         </span>
@@ -633,15 +641,11 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       </div>
                     </div>
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-[color:var(--amber)]`}>
-                    <AmtCcy amount={o.fromAmount || null} ccy={o.fromCurrency} />
-                  </td>
+                  <AmtCells amount={o.fromAmount || null} ccy={o.fromCurrency} tdBase={`${td} border-b-[rgba(224,176,74,.3)] ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {o.rate || ""}
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-[color:var(--amber)]`}>
-                    <AmtCcy amount={o.toAmount || null} ccy={o.toCurrency} />
-                  </td>
+                  <AmtCells amount={o.toAmount || null} ccy={o.toCurrency} tdBase={`${td} border-b-[rgba(224,176,74,.3)] ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} text-left`}>
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${stage.pill}`}>
@@ -712,15 +716,11 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       <div className="text-[10px] text-[color:var(--faint)] mt-0.5">до {fmtDue(d.deferred.dueDate)}</div>
                     )}
                   </td>
-                  <td className={`${td} ${gridR} text-ink`}>
-                    <AmtCcy amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} />
-                  </td>
+                  <AmtCells amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} tdBase={td} gridR={gridR} tone="text-ink" />
                   <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {d.rate != null ? fmtRu(d.rate, Math.abs(d.rate) > 0 && Math.abs(d.rate) < 1 ? 4 : 2) : "—"}
                   </td>
-                  <td className={`${td} ${gridR} text-ink`}>
-                    <AmtCcy amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} />
-                  </td>
+                  <AmtCells amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} tdBase={td} gridR={gridR} tone="text-ink" />
                   <td className={`${td} text-left text-[12px] ${st.cls}`}>{st.text}</td>
                 </tr>
               );
@@ -728,7 +728,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
             {!loading && dealsView.length === 0 && ordersView.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
+                <td colSpan={9} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
                   {query ? "Ничего не найдено" : "Сделок за день пока нет"}
                 </td>
               </tr>
