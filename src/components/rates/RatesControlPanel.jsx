@@ -1,7 +1,7 @@
 // src/components/rates/RatesControlPanel.jsx
 // Панель управления курсами (касса = источник). Три блока по макету rates-control:
 //   1. Нал (Tolunay)      — global pairs, market+маржа (копейки), обе стороны, единый для Ант/Ист.
-//   2. USDT · Турция      — office_rate_overrides per-city (Анталья/Стамбул); USD↔USDT в %, прочее абс.
+//   2. USDT · Турция      — office_rate_overrides per-city (Анталья/Стамбул); все строки — прямой ввод итога (abs), спредов/автокурсов пока нет.
 //   3. USDT · Россия      — office_rate_overrides RU (МСК/СПБ); Rapira-цена + оверрайд + ↻; спред в копейках.
 // Локальное состояние; «Опубликовать» коммитит всё через существующие RPC (см. RatesPage).
 // Данные/фиды — из движка кассы (Tolunay/Rapira → external_rates, pairs, overrides).
@@ -139,8 +139,10 @@ function NalBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWi
 
 // ── Блок 2 — USDT · Турция (Paramon) ───────────────────────────────────────
 const TR_ROWS = [
-  { d: "USDT→USD", from: "USDT", to: "USD", type: "pct", dp: 4 },
-  { d: "USD→USDT", from: "USD", to: "USDT", type: "pct", dp: 4 },
+  // USDT↔USD — прямой ввод ИТОГА (abs), как прочие строки: спредов/автокурсов
+  // тут пока нет, вводим готовое значение (напр. 0,9940). Было pct (ввод спреда %).
+  { d: "USDT→USD", from: "USDT", to: "USD", type: "abs", dp: 4 },
+  { d: "USD→USDT", from: "USD", to: "USDT", type: "abs", dp: 4 },
   { d: "USDT→TRY", from: "USDT", to: "TRY", type: "abs", dp: 2 },
   { d: "TRY→USDT", from: "TRY", to: "USDT", type: "abs", dp: 2 },
   { d: "USDT→EUR", from: "USDT", to: "EUR", type: "abs", dp: 4 },
@@ -375,7 +377,8 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
           const rate = Number(ov.rate ?? Number(ov.baseRate ?? 1) * (1 + Number(ov.spreadPercent ?? 0) / 100));
           return { v: Number(((rate - 1) * 100).toFixed(4)) };
         }
-        return { v: Number(ov.baseRate ?? ov.rate ?? 0) };
+        // abs = ИТОГ: берём эффективный rate (если хранили base+спред — покажем итог).
+        return { v: Number(ov.rate ?? ov.baseRate ?? 0) };
       };
       return { ...r, ant: readCity(antRep), ist: readCity(istRep) };
     })
