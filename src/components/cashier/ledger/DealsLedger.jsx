@@ -593,12 +593,15 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         {o.contact || "—"}
                       </span>
                       {o.meetingCode && (
-                        <span
-                          className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10] border-l border-[color:var(--gridh)] pl-2"
-                          title="Код встречи (сделки)"
-                        >
-                          {o.meetingCode}
-                        </span>
+                        <>
+                          <span className="shrink-0 self-center w-px h-[15px] bg-[color:var(--gridh)]" aria-hidden="true" />
+                          <span
+                            className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10]"
+                            title="Код встречи (сделки)"
+                          >
+                            {o.meetingCode}
+                          </span>
+                        </>
                       )}
                       {(() => {
                         // Всё в одну строку (без подстроки) — иначе строки разной
