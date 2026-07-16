@@ -76,11 +76,11 @@ function OfficeSelect({ label, offices, value, onChange }) {
 // Табличная сетка перестановок: вношу · цепочка через USDT · наценка · курс —
 // одни и те же колонки во всех строках И в шапке. На узком экране строка
 // переполняет контейнер → горизонтальный скролл (панель overflow-auto).
-const PER_GRID = { gridTemplateColumns: "minmax(96px,120px) minmax(210px,1fr) 116px minmax(150px,172px)" };
+const PER_GRID = { gridTemplateColumns: "minmax(80px,1fr) 74px auto" };
 
-// Одна строка: вношу depositCur (в офисе-отправителе) → получаю payoutCur (валюта
-// принимающей страны, в офисе-получателе), через USDT. Ориентация к USDT — общий
-// usdtPer из lib/rates (импорт, не копия — B2/B3).
+// Одна строка (компактная, под 2-колоночную раскладку): вношу depositCur → получаю
+// payoutCur (валюта принимающей страны). Цепочка через USDT — в подсказке (title).
+// Ориентация к USDT — общий usdtPer из lib/rates (импорт, не копия — B2/B3).
 function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, setMarkup }) {
   const key = `${sender.id}:${receiver.id}:${depositCur}:${payoutCur}`;
   const mkStr = markups[key];
@@ -91,39 +91,29 @@ function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, 
   const v = Number.isFinite(base) ? base * (1 + mk / 100) : NaN;
   const depPerUsdt = uDep > 0 ? 1 / uDep : NaN;
   const payPerUsdt = uPay > 0 ? 1 / uPay : NaN;
-  const arrow = (val, dp) => (
-    <span className="inline-flex items-center gap-1 text-muted-soft">→<span className="text-muted tabular-nums font-normal">{fmt(val, dp)}</span>→</span>
-  );
+  const chainTitle = `1 ${depositCur} → ${depositCur === "USDT" ? "" : fmt(depPerUsdt, dpOf(depositCur)) + " → "}₮ USDT → ${fmt(payPerUsdt, dpOf(payoutCur))} → ${payoutCur}`;
   return (
-    <div className="grid items-center gap-3 bg-surface-soft rounded-card px-3.5 py-2 mb-1" style={PER_GRID}>
+    <div className="grid items-center gap-2 bg-surface-soft rounded-card px-3 py-1.5 mb-1" style={PER_GRID} title={chainTitle}>
       {/* Вношу */}
-      <span className="flex items-center gap-1.5 font-mono text-[12px] font-extrabold text-ink">
+      <span className="flex items-center gap-1.5 font-mono text-[12px] font-extrabold text-ink min-w-0">
         <Chip>{CCY_META[depositCur]?.flag}</Chip>{depositCur}
       </span>
-      {/* Цепочка через USDT — ноги фикс-ширины, чтобы ₮ и выдача стояли в столбик
-          во всех строках (у USDT первой ноги нет — слот пустой, но ширину держит). */}
-      <span className="grid items-center gap-1 font-mono text-[10.5px] font-semibold text-muted min-w-0 whitespace-nowrap" style={{ gridTemplateColumns: "74px auto 74px auto" }}>
-        <span className="justify-self-end">{depositCur !== "USDT" ? arrow(depPerUsdt, dpOf(depositCur)) : null}</span>
-        <span className="flex items-center gap-1"><Chip><span className="text-success font-bold">₮</span></Chip>USDT</span>
-        <span className="justify-self-end">{arrow(payPerUsdt, dpOf(payoutCur))}</span>
-        <span className="flex items-center gap-1"><Chip>{CCY_META[payoutCur]?.flag}</Chip>{payoutCur}</span>
-      </span>
       {/* Наценка */}
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-1">
         <input
           value={mkStr ?? "0"}
           onChange={(e) => setMarkup(key, e.target.value)}
           inputMode="decimal"
-          className="w-[44px] bg-white border border-border-soft rounded-button h-7 px-1.5 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
+          className="w-[40px] bg-white border border-border-soft rounded-button h-7 px-1 font-mono tabular-nums text-[12px] text-right outline-none focus:border-accent"
           title="Наценка за перестановку, %"
         />
         <span className="text-[11px] text-muted-soft">%</span>
       </span>
       {/* Курс */}
-      <span className="font-mono tabular-nums flex items-baseline gap-1.5 whitespace-nowrap justify-self-end">
-        <span className="text-[11px] text-muted-soft">1 {depositCur}</span>
-        <span className="text-[15px] font-extrabold text-success">{fmt(v, dpOf(payoutCur))}</span>
-        <span className="text-[11px] text-muted-soft">{payoutCur}</span>
+      <span className="font-mono tabular-nums flex items-baseline gap-1 whitespace-nowrap justify-self-end">
+        <span className="text-[10px] text-muted-soft">1 {depositCur}</span>
+        <span className="text-[14px] font-extrabold text-success">{fmt(v, dpOf(payoutCur))}</span>
+        <span className="text-[10px] text-muted-soft">{payoutCur}</span>
       </span>
     </div>
   );
@@ -181,30 +171,22 @@ function PerTab({ getRate, offices }) {
           <RotateCcw className="w-3.5 h-3.5" /> Сброс
         </button>
       </div>
-      {groups.length > 0 && (
-        <div className="grid items-center gap-3 px-3.5 pb-1.5 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={PER_GRID}>
-          <span>Вношу</span>
-          <span>Через USDT</span>
-          <span>Наценка</span>
-          <span className="justify-self-end">Курс</span>
-        </div>
-      )}
       {groups.length === 0 ? (
         <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов из разных стран.</div>
       ) : (
-        groups.map(({ s, targets }) => (
-          <div key={s.o.id} className="mb-2 pb-1 border-b border-border-soft last:border-0">
-            {targets.map((t) => {
+        // Блоки пар в 2 колонки — меньше вертикального скролла. Каждый блок
+        // самодостаточен (видно направление). Порядок прежний (РФ сверху).
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-5 gap-y-1">
+          {groups.flatMap(({ s, targets }) =>
+            targets.map((t) => {
               const payout = t.ccy;
               const deposits = DEPOSIT_CCYS.filter((c) => c !== payout && usdtPer(c, getRate, s.o.id) > 0);
               return (
-                <div key={t.o.id} className="mb-3 last:mb-1">
-                  {/* Явное направление в КАЖДОМ блоке: отправитель → получатель. */}
-                  <div className="flex items-center gap-1.5 mb-1.5 text-body-sm flex-wrap">
+                <div key={s.o.id + t.o.id} className="mb-2">
+                  <div className="flex items-center gap-1.5 mb-1 text-body-sm flex-wrap">
                     <span className="text-[9px] text-muted-soft uppercase font-semibold">внёс в</span>
                     <span className="inline-flex items-center gap-1 font-bold text-ink"><Chip>{CCY_META[s.ccy]?.flag}</Chip>{s.o.name}</span>
-                    <span className="text-success text-[15px] font-bold">→</span>
-                    <span className="text-[9px] text-muted-soft uppercase font-semibold">выдаёшь в</span>
+                    <span className="text-success text-[14px] font-bold">→</span>
                     <span className="inline-flex items-center gap-1 font-bold text-ink"><Chip>{CCY_META[payout]?.flag}</Chip>{t.o.name}</span>
                     {t.o.city ? <span className="text-[10px] text-muted-soft">· {t.o.city}</span> : null}
                   </div>
@@ -222,9 +204,9 @@ function PerTab({ getRate, offices }) {
                   ))}
                 </div>
               );
-            })}
-          </div>
-        ))
+            })
+          )}
+        </div>
       )}
       <p className="text-caption text-muted-soft mt-3 pt-3 border-t border-border-soft leading-snug">
         Считается из курсов слева (через USDT) + наценка %. Наценки — локально; серверного конфига пока нет.
