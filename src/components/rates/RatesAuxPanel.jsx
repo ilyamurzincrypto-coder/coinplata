@@ -193,24 +193,20 @@ function PerTab({ getRate, offices }) {
         <div className="rounded-card border border-dashed border-border-soft py-8 text-center text-body-sm text-muted-soft">Нет офисов из разных стран.</div>
       ) : (
         groups.map(({ s, targets }) => (
-          <div key={s.o.id} className="mb-3 pb-2 border-b border-border-soft last:border-0">
-            <div className="text-body-sm font-extrabold text-ink flex items-center gap-1.5 mb-2 first:mt-0">
-              <span className="text-[9px] text-muted-soft uppercase font-semibold">внёс в</span>
-              <Chip>{CCY_META[s.ccy]?.flag}</Chip>
-              {s.o.name}
-              <span className="text-success">→</span>
-            </div>
+          <div key={s.o.id} className="mb-2 pb-1 border-b border-border-soft last:border-0">
             {targets.map((t) => {
               const payout = t.ccy;
               const deposits = DEPOSIT_CCYS.filter((c) => c !== payout && usdtPer(c, getRate, s.o.id) > 0);
               return (
-                <div key={t.o.id} className="mb-2.5 last:mb-0">
-                  <div className="flex items-center gap-1.5 mb-1 pl-1 text-body-sm">
-                    <span className="text-muted-soft text-[13px]">→</span>
-                    <span className="font-bold text-ink">{t.o.name}</span>
+                <div key={t.o.id} className="mb-3 last:mb-1">
+                  {/* Явное направление в КАЖДОМ блоке: отправитель → получатель. */}
+                  <div className="flex items-center gap-1.5 mb-1.5 text-body-sm flex-wrap">
+                    <span className="text-[9px] text-muted-soft uppercase font-semibold">внёс в</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-ink"><Chip>{CCY_META[s.ccy]?.flag}</Chip>{s.o.name}</span>
+                    <span className="text-success text-[15px] font-bold">→</span>
+                    <span className="text-[9px] text-muted-soft uppercase font-semibold">выдаёшь в</span>
+                    <span className="inline-flex items-center gap-1 font-bold text-ink"><Chip>{CCY_META[payout]?.flag}</Chip>{t.o.name}</span>
                     {t.o.city ? <span className="text-[10px] text-muted-soft">· {t.o.city}</span> : null}
-                    <span className="text-[9px] text-muted-soft uppercase font-semibold ml-1">выдача</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted">{CCY_META[payout]?.flag} {payout}</span>
                   </div>
                   {deposits.map((dc) => (
                     <PerCcyRow
