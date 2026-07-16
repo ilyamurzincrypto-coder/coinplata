@@ -14,6 +14,8 @@ import { useNow } from "../hooks/useNow.js";
 import MasterRatesPanel from "./rates/MasterRatesPanel.jsx";
 import CrossRatesPanel from "./rates/CrossRatesPanel.jsx";
 import NerezPanel from "./rates/NerezPanel.jsx";
+import QrRubPanel from "./rates/QrRubPanel.jsx";
+import { loadExternalRatesLatest } from "../lib/supabaseReaders.js";
 
 const RU_OFFICE_RE = /москв|moscow|питер|петербург|санкт|spb|st\.?\s*pt|peterburg/i;
 const FRESH_MS = 60 * 60 * 1000; // <1ч = live (зелёная точка)
@@ -49,6 +51,21 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const { activeOffices } = useOffices();
   const { t } = useTranslation();
   const nowMs = useNow(30_000);
+
+  // Курс ЦБ (для блока QR-рубль) — тот же ридер, что и на странице «Изм.».
+  const [cbr, setCbr] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    loadExternalRatesLatest()
+      .then((rows) => {
+        if (!alive) return;
+        const c = {};
+        (rows || []).forEach((r) => { if (r.source === "cbr") c[r.pair] = r.mid; });
+        setCbr(c);
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     onExpandedChange?.(false);
@@ -167,10 +184,15 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         })}
       </div>
 
-      {/* ── Контейнер 2: спец-блоки (НЕРЕЗ) ── */}
+      {/* ── Контейнер 2: спец-блоки (НЕРЕЗ, QR-рубль) ── */}
       {hasNerez && (
         <div className={`${cardCls} px-3.5 py-3`}>
           <NerezPanel specialRates={specialRates} onCopy={handleCopy} fresh={nerezFresh} />
+        </div>
+      )}
+      {cbr && (cbr.USD_RUB || cbr.EUR_RUB || cbr.TRY_RUB) && (
+        <div className={`${cardCls} px-3.5 py-3`}>
+          <QrRubPanel cbr={cbr} onCopy={handleCopy} />
         </div>
       )}
 
