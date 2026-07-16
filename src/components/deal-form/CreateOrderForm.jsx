@@ -34,7 +34,7 @@ import { useCategories } from "../../store/categories.jsx";
 import { useOffices } from "../../store/offices.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
 import { multiplyAmount } from "../../utils/money.js";
-import { displayRate, formatRate, formatRateCompact } from "../../lib/rates.js";
+import { formatRateCompact, usdtPer } from "../../lib/rates.js";
 import { createTransfer } from "../../lib/dealOperations.js";
 import { rpcCreateManualEntryV2 } from "../../lib/newLedger.js";
 import { resolveAccountCode } from "../../lib/newLedgerAdapter.js";
@@ -553,10 +553,15 @@ export default function CreateOrderForm({
     outLegs.forEach((o, i) => {
       if (!primaryInCcy || !o.currency || primaryInCcy === o.currency) return;
       if (o.manualRate && o.rate) return;
-      const raw = getRate(primaryInCcy, o.currency);
-      const d = displayRate(raw, primaryInCcy, o.currency);
-      if (d.rate != null) {
-        const f = formatRate(d.rate);
+      // Курс out за 1 in — ориентация-безопасно через USDT (usdtPer), а НЕ прямой
+      // getRate/displayRate: прямой оверрайд пары может быть перевёрнут (напр.
+      // TRY→USDT=46.80 вместо 0.0216), и умножение давало бред. usdtPer берёт
+      // корректную сторону (USDT→X). Фолбэк на прямой множитель — для пар без USDT.
+      const upIn = usdtPer(primaryInCcy, getRate);
+      const upOut = usdtPer(o.currency, getRate);
+      const rate = upIn > 0 && upOut > 0 ? upIn / upOut : getRate(primaryInCcy, o.currency);
+      if (Number.isFinite(rate) && rate > 0) {
+        const f = formatRateCompact(rate);
         if (f !== o.rate) patchOut(i, { rate: f });
       }
     });
