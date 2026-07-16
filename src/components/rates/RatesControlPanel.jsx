@@ -282,7 +282,6 @@ function QrBlock({ cbr }) {
     const itog = Number.isFinite(base) && base > 0 ? base * (1 + spread / 100) : NaN;
     return { ...r, base, itog };
   });
-  if (!rows.some((r) => Number.isFinite(r.base) && r.base > 0)) return null;
   return (
     <Card title="QR · РУБ" badge="ЦБ" badgeColor="bg-info" hint={<>Курс QR = курс ЦБ × (1 + спред %). USDT — от ЦБ USD/RUB. Спред общий с блоком QR на дашборде. В сделки пока не публикуется.</>}>
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5 pb-1.5">

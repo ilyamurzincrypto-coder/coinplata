@@ -190,11 +190,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           <NerezPanel specialRates={specialRates} onCopy={handleCopy} fresh={nerezFresh} />
         </div>
       )}
-      {cbr && (cbr.USD_RUB || cbr.EUR_RUB || cbr.TRY_RUB) && (
-        <div className={`${cardCls} px-3.5 py-3`}>
-          <QrRubPanel cbr={cbr} onCopy={handleCopy} />
-        </div>
-      )}
+      <div className={`${cardCls} px-3.5 py-3`}>
+        <QrRubPanel cbr={cbr || {}} onCopy={handleCopy} />
+      </div>
 
       {/* Тост копирования */}
       <div

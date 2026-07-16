@@ -30,7 +30,7 @@ export default function QrRubPanel({ cbr, onCopy }) {
     const qr = Number.isFinite(base) && base > 0 ? base * (1 + spread / 100) : NaN;
     return { ...r, base, qr };
   });
-  if (!rows.some((r) => Number.isFinite(r.base) && r.base > 0)) return null; // нет курса ЦБ
+  const hasData = rows.some((r) => Number.isFinite(r.base) && r.base > 0);
 
   return (
     <div>
@@ -72,6 +72,7 @@ export default function QrRubPanel({ cbr, onCopy }) {
         ))}
       </div>
       <p className="text-[10px] text-[#aeb4bb] mt-2 pt-2 border-t border-[rgba(18,22,26,0.08)] leading-snug">
+        {!hasData && <span className="text-warning font-semibold">Курс ЦБ ещё не загрузился (нет данных cbr). </span>}
         QR-рубль = курс ЦБ × (1 + спред %). USDT — от ЦБ USD/RUB (USDT≈USD). Пока отображение; в сделки не публикуется.
       </p>
     </div>
