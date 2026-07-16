@@ -1,65 +1,68 @@
 // src/components/rates/QrRubPanel.jsx
-// QR-рубль (СБП/QR) на дашборде «Курсы», контейнер 2 (под НЕРЕЗ).
-// Курс QR₽ ↔ USDT/USD/EUR/TRY = курс ЦБ × (1 + наш спред %).
-// v1 — ТОЛЬКО ОТОБРАЖЕНИЕ: спред вводится тут (localStorage), в сделки пока НЕ
-// публикуется. USDT берём от ЦБ USD/RUB (у ЦБ нет USDT, USDT≈USD).
+// QR-рубль (СБП/QR) на дашборде «Курсы», контейнер 2 (под НЕРЕЗ). ОТОБРАЖЕНИЕ.
+// Якорь: 1 USDT в рублях = курс ЦБ USD/RUB (USDT≈USD) × (1 + спред). ЦБ — ТОЛЬКО
+// к рублю. Ниже USD/EUR/TRY считаем через USDT: QR₽ за 1 вал = якорь × usdtPer(вал).
+// Спред задаётся в РЕДАКТОРЕ курсов (общий localStorage); тут только показ.
 
-import React, { useState } from "react";
+import React from "react";
+import { usdtPer } from "../../lib/rates.js";
 
-// Спред QR — общий для дашборда и редактора (панель управления). Один ключ →
-// правка в одном месте видна в другом.
+// Спред QR — общий для дашборда и редактора. Один ключ → правка в редакторе видна тут.
 export const QR_SPREAD_KEY = "qr_spread_pct_v1";
 export const readQrSpread = () => { try { const v = localStorage.getItem(QR_SPREAD_KEY); return v == null ? "1" : v; } catch { return "1"; } };
 export const writeQrSpread = (v) => { try { localStorage.setItem(QR_SPREAD_KEY, String(v)); } catch { /* noop */ } };
 const pnum = (v) => { const n = parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
-const fmt = (v) => (Number.isFinite(Number(v)) ? Number(v).toFixed(2).replace(".", ",") : "—");
+const fmt = (v, dp = 2) => (Number.isFinite(Number(v)) ? Number(v).toFixed(dp).replace(".", ",") : "—");
 
-// base = курс ЦБ X/RUB (рублей за 1 X). USDT — от USD_RUB.
 const ROWS = [
-  { cur: "USDT", flag: "₮", pairKey: "USD_RUB" },
-  { cur: "USD", flag: "🇺🇸", pairKey: "USD_RUB" },
-  { cur: "EUR", flag: "🇪🇺", pairKey: "EUR_RUB" },
-  { cur: "TRY", flag: "🇹🇷", pairKey: "TRY_RUB" },
+  { cur: "USDT", flag: "₮" },
+  { cur: "USD", flag: "🇺🇸" },
+  { cur: "EUR", flag: "🇪🇺" },
+  { cur: "TRY", flag: "🇹🇷" },
 ];
 
-export default function QrRubPanel({ cbr, onCopy }) {
-  const [spreadStr, setSpreadStr] = useState(readQrSpread);
+export default function QrRubPanel({ cbr, getRate, onCopy }) {
+  // Read-only: спред задаётся в редакторе курсов. Читаем свежим каждый рендер.
+  const spreadStr = readQrSpread();
   const spread = pnum(spreadStr);
+  // Якорь: рублей за 1 USDT = ЦБ USD/RUB × (1+спред). ЦБ применяется только тут.
+  const usdtBase = Number(cbr?.USD_RUB);
+  const usdtItog = Number.isFinite(usdtBase) && usdtBase > 0 ? usdtBase * (1 + spread / 100) : NaN;
+  // Остальное — через USDT: QR₽ за 1 вал = якорь × (USDT за 1 вал).
   const rows = ROWS.map((r) => {
-    const base = Number(cbr?.[r.pairKey]);
-    const qr = Number.isFinite(base) && base > 0 ? base * (1 + spread / 100) : NaN;
-    return { ...r, base, qr };
+    const up = r.cur === "USDT" ? 1 : usdtPer(r.cur, getRate); // USDT за 1 вал
+    const qr = Number.isFinite(usdtItog) && Number.isFinite(up) && up > 0 ? usdtItog * up : NaN;
+    return { ...r, up, qr };
   });
-  const hasData = rows.some((r) => Number.isFinite(r.base) && r.base > 0);
+  const hasData = Number.isFinite(usdtItog);
 
   return (
     <div>
-      {/* Заголовок + поле спреда */}
       <div className="flex items-center gap-2 pb-2 mb-1.5 border-b border-[rgba(18,22,26,0.08)]">
         <span className="text-[12.5px] font-bold tracking-tight text-[#15191d] truncate">
           QR ₽ <span className="text-[#aeb4bb] font-semibold">· ЦБ + спред</span>
         </span>
-        <span className="ml-auto inline-flex items-center gap-1 shrink-0">
-          <input
-            value={spreadStr}
-            onChange={(e) => { setSpreadStr(e.target.value); writeQrSpread(e.target.value); }}
-            inputMode="decimal"
-            className="w-[48px] bg-white border border-[rgba(18,22,26,0.12)] rounded-[8px] h-6 px-1.5 font-mono tabular-nums text-[11.5px] text-right outline-none focus:border-[#0c9c6b]"
-            title="Спред к курсу ЦБ, %"
-          />
+        <span className="ml-auto inline-flex items-baseline gap-1 shrink-0 text-[#6a717a]">
+          <span className="text-[9px] uppercase tracking-wide text-[#aeb4bb] font-semibold">спред</span>
+          <span className="font-mono tabular-nums text-[12px] font-bold">{spreadStr}</span>
           <span className="text-[10px] text-[#aeb4bb]">%</span>
         </span>
       </div>
-      <div className="grid items-baseline gap-y-1.5 gap-x-2" style={{ gridTemplateColumns: "minmax(66px,auto) 1fr 1fr" }}>
+      {/* Якорь: 1 USDT в рублях (ЦБ + спред) */}
+      <div className="flex items-baseline justify-between mb-2 text-[10.5px]">
+        <span className="text-[#aeb4bb]">1 ₮ = ЦБ {fmt(usdtBase)} +&nbsp;спред</span>
+        <span className="font-mono tabular-nums font-bold text-[#15191d]">{fmt(usdtItog)} ₽</span>
+      </div>
+      <div className="grid items-baseline gap-y-1.5 gap-x-2" style={{ gridTemplateColumns: "minmax(60px,auto) 1fr 1fr" }}>
         <span />
-        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">ЦБ</span>
-        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">Курс QR</span>
+        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">₮ за&nbsp;1</span>
+        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">Курс QR&nbsp;₽</span>
         {rows.map((r) => (
           <React.Fragment key={r.cur}>
             <span className="font-mono text-[12px] font-semibold text-[#15191d] flex items-center gap-1.5">
               <span>{r.flag}</span>{r.cur}
             </span>
-            <span className="text-right font-mono tabular-nums text-[12px] text-[#6a717a]">{fmt(r.base)}</span>
+            <span className="text-right font-mono tabular-nums text-[12px] text-[#6a717a]">{fmt(r.up, 4)}</span>
             <button
               type="button"
               onClick={() => Number.isFinite(r.qr) && onCopy?.(fmt(r.qr))}
@@ -72,8 +75,8 @@ export default function QrRubPanel({ cbr, onCopy }) {
         ))}
       </div>
       <p className="text-[10px] text-[#aeb4bb] mt-2 pt-2 border-t border-[rgba(18,22,26,0.08)] leading-snug">
-        {!hasData && <span className="text-warning font-semibold">Курс ЦБ ещё не загрузился (нет данных cbr). </span>}
-        QR-рубль = курс ЦБ × (1 + спред %). USDT — от ЦБ USD/RUB (USDT≈USD). Пока отображение; в сделки не публикуется.
+        {!hasData && <span className="text-warning font-semibold">Курс ЦБ ещё не загрузился. </span>}
+        ЦБ — только к рублю (1 ₮ = ЦБ USD/RUB × (1 + спред)). USD/EUR/TRY — через USDT. Спред — в редакторе курсов; в сделки не публикуется.
       </p>
     </div>
   );

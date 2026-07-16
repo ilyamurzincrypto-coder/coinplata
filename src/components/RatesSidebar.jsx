@@ -191,7 +191,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         </div>
       )}
       <div className={`${cardCls} px-3.5 py-3`}>
-        <QrRubPanel cbr={cbr || {}} onCopy={handleCopy} />
+        <QrRubPanel cbr={cbr || {}} getRate={getRate} onCopy={handleCopy} />
       </div>
 
       {/* Тост копирования */}
