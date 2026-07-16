@@ -7,8 +7,8 @@
 // поле офиса), НЕ угадывается по названию. Пара — только РАЗНЫЕ страны. Цель —
 // локальная валюта ПРИНИМАЮЩЕГО офиса (не список FIATS, как в старой версии,
 // которая давала RUB→USD/EUR мусор).
-import React, { useState, useMemo } from "react";
-import { Landmark, Users, ChevronLeft, ChevronRight, ArrowLeftRight, ChevronDown, RotateCcw } from "lucide-react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
+import { Landmark, Users, ChevronLeft, ChevronRight, ArrowLeftRight, ChevronDown, RotateCcw, Check } from "lucide-react";
 import { usdtPer } from "../../lib/rates.js";
 
 const fmt = (n, dp) =>
@@ -46,28 +46,75 @@ const MARKUP_KEY = "per_markup_v1";
 const readMarkups = () => { try { return JSON.parse(localStorage.getItem(MARKUP_KEY) || "{}") || {}; } catch { return {}; } };
 const writeMarkups = (m) => { try { localStorage.setItem(MARKUP_KEY, JSON.stringify(m)); } catch { /* noop */ } };
 const pnum = (v) => { const n = parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
-const officeLabel = (o) => `${o?.name || "?"}${o?.city ? ` · ${o.city}` : ""}`;
 
 const Chip = ({ children }) => (
   <span className="w-6 h-6 rounded-full bg-white border border-border-soft flex items-center justify-center text-[13px] shrink-0">{children}</span>
 );
 
-function OfficeSelect({ label, offices, value, onChange }) {
+// Интерактивная выпадашка офиса: флаг + имя + город, ховер, галочка выбранного,
+// закрытие по клику вне. options — только офисы-участники перестановок ([{o,ccy}]).
+function OfficeCombo({ label, options, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [open]);
+  const sorted = [...options].sort((a, b) => {
+    const c = (SENDER_CCY_ORDER[a.ccy] ?? 9) - (SENDER_CCY_ORDER[b.ccy] ?? 9);
+    return c || (a.o.name || "").localeCompare(b.o.name || "", "ru");
+  });
+  const selected = options.find((x) => x.o.id === value);
+  const pick = (id) => { onChange(id); setOpen(false); };
   return (
-    <div className="flex-1 min-w-[160px]">
+    <div className="flex-1 min-w-[160px]" ref={ref}>
       <div className="text-[9px] font-bold uppercase tracking-wide text-muted-soft mb-1">{label}</div>
       <div className="relative">
-        <select
-          value={value || ""}
-          onChange={(e) => onChange(e.target.value)}
-          className="appearance-none w-full h-10 bg-white border border-border-soft focus:border-accent focus:ring-2 focus:ring-accent/15 rounded-card pl-3 pr-9 text-body font-semibold text-ink outline-none cursor-pointer truncate"
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className={`w-full h-10 bg-white border rounded-card pl-3 pr-9 text-body font-semibold text-ink flex items-center gap-2 cursor-pointer outline-none transition-colors ${open ? "border-accent ring-2 ring-accent/15" : "border-border-soft hover:border-accent/60"}`}
         >
-          <option value="">— Все офисы —</option>
-          {offices.map((o) => (
-            <option key={o.id} value={o.id}>{officeLabel(o)}</option>
-          ))}
-        </select>
-        <ChevronDown className="w-4 h-4 text-muted-soft absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {selected ? (
+            <>
+              <Chip>{CCY_META[selected.ccy]?.flag}</Chip>
+              <span className="truncate">{selected.o.name}</span>
+              {selected.o.city ? <span className="text-[10px] text-muted-soft truncate">· {selected.o.city}</span> : null}
+            </>
+          ) : (
+            <span className="text-muted-soft">— Все офисы —</span>
+          )}
+          <ChevronDown className={`w-4 h-4 text-muted-soft absolute right-3 top-1/2 -translate-y-1/2 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        {open && (
+          <div className="absolute z-30 mt-1 w-full min-w-[230px] bg-white border border-border-soft rounded-card shadow-lg max-h-72 overflow-auto py-1">
+            <button
+              type="button"
+              onClick={() => pick("")}
+              className={`w-full text-left px-3 py-2 flex items-center gap-2 text-body-sm transition-colors ${!value ? "bg-accent/10 text-accent font-semibold" : "text-muted-soft hover:bg-surface-soft"}`}
+            >
+              — Все офисы —
+              {!value && <Check className="w-4 h-4 ml-auto text-accent shrink-0" />}
+            </button>
+            {sorted.map(({ o, ccy }) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => pick(o.id)}
+                className={`w-full text-left px-3 py-2 flex items-center gap-2 text-body-sm transition-colors ${value === o.id ? "bg-accent/10 text-accent font-semibold" : "text-ink hover:bg-surface-soft"}`}
+              >
+                <Chip>{CCY_META[ccy]?.flag}</Chip>
+                <span className="font-semibold truncate">{o.name}</span>
+                {o.city ? <span className="text-[10px] text-muted-soft truncate">· {o.city}</span> : null}
+                {value === o.id && <Check className="w-4 h-4 ml-auto text-accent shrink-0" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -159,9 +206,9 @@ function PerTab({ getRate, offices }) {
       <div className="flex items-center gap-2 mb-1"><ArrowLeftRight className="w-4 h-4 text-ink" /><span className="text-[15px] font-extrabold tracking-tight">Перестановки</span></div>
       <p className="text-caption text-muted-soft mb-3 leading-snug">Обмен между офисами <b className="text-muted">разных стран</b> через USDT: вносишь любую валюту в одном офисе — получаешь валюту принимающей страны в другом (в РФ — рубль, в Турции — лиру). Сгруппировано по офису-отправителю и получателю.</p>
       <div className="flex items-end gap-2.5 mb-4">
-        <OfficeSelect label="Отправитель" offices={all} value={aId} onChange={setAId} />
+        <OfficeCombo label="Отправитель" options={withCcy} value={aId} onChange={setAId} />
         <ArrowLeftRight className="w-4 h-4 text-success shrink-0 mb-3" />
-        <OfficeSelect label="Получатель" offices={all} value={bId} onChange={setBId} />
+        <OfficeCombo label="Получатель" options={withCcy} value={bId} onChange={setBId} />
         <button
           type="button"
           onClick={() => { setAId(""); setBId(""); }}
