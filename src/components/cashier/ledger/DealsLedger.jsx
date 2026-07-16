@@ -469,7 +469,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             <span className={`w-[167px] shrink-0 inline-flex items-center ${thBtn}`} onClick={() => setSort("party")}>
               Контрагент<Arrow k="party" />
             </span>
-            <span>Код</span>
+            <span>Код&nbsp;сделки</span>
           </span>
         </th>
         <th className={`${th} ${thGrid} text-right ${thBtn}`} onClick={() => setSort("inAmt")}>
