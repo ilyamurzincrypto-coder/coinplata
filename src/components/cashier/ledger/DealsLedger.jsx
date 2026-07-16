@@ -589,7 +589,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
                   <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-semibold text-ink truncate" title={o.contact}>
+                      <span className="w-[150px] shrink-0 truncate font-semibold text-ink" title={o.contact}>
                         {o.contact || "—"}
                       </span>
                       {o.meetingCode && (
@@ -693,7 +693,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
                   <td className={`${td} ${gridR} text-left`}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="font-semibold text-ink truncate tracking-[-0.1px]" title={d.party}>
+                      <span className="w-[150px] shrink-0 truncate font-semibold text-ink tracking-[-0.1px]" title={d.party}>
                         {d.party}
                       </span>
                       {d.deferred?.open && (
