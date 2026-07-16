@@ -100,10 +100,13 @@ function PerCcyRow({ sender, receiver, depositCur, payoutCur, getRate, markups, 
       <span className="flex items-center gap-1.5 font-mono text-[12px] font-extrabold text-ink">
         <Chip>{CCY_META[depositCur]?.flag}</Chip>{depositCur}
       </span>
-      {/* Цепочка через USDT */}
-      <span className="flex items-center gap-1.5 font-mono text-[10.5px] font-semibold text-muted min-w-0 whitespace-nowrap overflow-hidden">
-        {depositCur !== "USDT" ? arrow(depPerUsdt, dpOf(depositCur)) : null}
-        <Chip><span className="text-success font-bold">₮</span></Chip>USDT{arrow(payPerUsdt, dpOf(payoutCur))}<Chip>{CCY_META[payoutCur]?.flag}</Chip>{payoutCur}
+      {/* Цепочка через USDT — ноги фикс-ширины, чтобы ₮ и выдача стояли в столбик
+          во всех строках (у USDT первой ноги нет — слот пустой, но ширину держит). */}
+      <span className="grid items-center gap-1 font-mono text-[10.5px] font-semibold text-muted min-w-0 whitespace-nowrap" style={{ gridTemplateColumns: "74px auto 74px auto" }}>
+        <span className="justify-self-end">{depositCur !== "USDT" ? arrow(depPerUsdt, dpOf(depositCur)) : null}</span>
+        <span className="flex items-center gap-1"><Chip><span className="text-success font-bold">₮</span></Chip>USDT</span>
+        <span className="justify-self-end">{arrow(payPerUsdt, dpOf(payoutCur))}</span>
+        <span className="flex items-center gap-1"><Chip>{CCY_META[payoutCur]?.flag}</Chip>{payoutCur}</span>
       </span>
       {/* Наценка */}
       <span className="flex items-center gap-1.5">
