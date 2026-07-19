@@ -73,28 +73,33 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
   if (!walletId) return { status: 200, body: { ok: true, ignored: 'no wallet_id' } }
 
   if (event.event === 'risk.changed') {
+    // §4b: уровень/причины ВНУТРИ event.risk; время — event.occurred_at; prev_level сверху.
+    const risk = event.risk || {}
+    const level = risk.level
+    const prev = event.prev_level
     const updated = await deps.updateRisk(walletId, {
-      risk_level: event.level,
-      risk_updated_at: event.risk_updated_at || new Date().toISOString(),
+      risk_level: level,
+      risk_updated_at: event.occurred_at || new Date().toISOString(),
     })
-    const plan = alertPlan(event.prev_level, event.level)
+    const plan = alertPlan(prev, level)
     if (plan.telegram && deps.notifyTelegram) {
-      const reasons = (event.reasons || []).map((r) => r.message).filter(Boolean)
+      const reasons = (risk.reasons || []).map((r) => r.message).filter(Boolean)
       await deps.notifyTelegram({
         text:
-          `🚨 <b>Кошелёк ${escapeHtml(event.wallet_label || walletId)}</b> — риск CRITICAL\n` +
+          `🚨 <b>Кошелёк ${escapeHtml(event.address || walletId)}</b> — риск CRITICAL\n` +
           (reasons.length ? reasons.map((m) => `• ${escapeHtml(m)}`).join('\n') : 'Проверьте кошелёк в AEGIS.'),
-        meta: { wallet_id: walletId, level: event.level, prev_level: event.prev_level },
+        meta: { wallet_id: walletId, address: event.address || null, level, prev_level: prev },
       })
     }
     return { status: 200, body: { ok: true, updated, severity: plan.severity } }
   }
 
   if (event.event === 'balance.changed') {
+    // §4b: balance = {native, usdt, usd_est}; собственного времени нет → occurred_at.
     const bal = event.balance || {}
     const updated = await deps.updateBalance(walletId, {
       balance_usd_est: bal.usd_est != null ? String(bal.usd_est) : null,
-      synced_at: bal.synced_at || new Date().toISOString(),
+      synced_at: event.occurred_at || new Date().toISOString(),
     })
     return { status: 200, body: { ok: true, updated } }
   }

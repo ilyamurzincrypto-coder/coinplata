@@ -43,17 +43,35 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { created, wallet } = await aegis.registerWallet({
+    // §4b C1: ответ регистрации ПЛОСКИЙ {wallet_id,…,created} — риска/баланса в нём НЕТ.
+    const { created, walletId } = await aegis.registerWallet({
       address: acc.address,
-      network: acc.network_id, // клиент нормализует в lowercase
+      network: acc.network_id, // клиент маппит TRC20→TRON
       label: acc.name || null,
     })
-    const err = await applyWalletCache(db, accountId, wallet, { setWalletId: true })
-    if (err) return res.status(500).json({ error: 'cache write failed' })
+    if (!walletId) return res.status(502).json({ error: 'register: no wallet_id in response' })
+
+    // Первичный кэш риск/баланса — ОТДЕЛЬНЫМ getWallet (register его не отдаёт).
+    // Сбой getWallet не критичен: wallet_id всё равно сохраняем, риск подтянет refresh/поллинг.
+    let wallet = null
+    try {
+      wallet = await aegis.getWallet(walletId)
+    } catch (e2) {
+      if (!(e2 instanceof AegisError)) throw e2
+    }
+
+    if (wallet) {
+      const err = await applyWalletCache(db, accountId, wallet, { setWalletId: true })
+      if (err) return res.status(500).json({ error: 'cache write failed' })
+    } else {
+      const { error: widErr } = await db.from('accounts').update({ aegis_wallet_id: walletId }).eq('id', accountId)
+      if (widErr) return res.status(500).json({ error: 'wallet_id write failed' })
+    }
+
     return res.status(200).json({
       ok: true,
       created,
-      aegisWalletId: wallet?.id || null,
+      aegisWalletId: walletId,
       riskLevel: wallet?.riskLevel || null,
       capability: wallet?.capability || null,
       by: staff.userId,
