@@ -9,6 +9,7 @@ import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import InfoPage from "./pages/InfoPage.jsx";
+import ShareAccountsView from "./pages/ShareAccountsView.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -458,6 +459,20 @@ function AuthGate({ children }) {
 }
 
 export default function App() {
+  // Публичная read-only ссылка /share/accounts/<token> — рендерим ВНЕ авторизации
+  // и провайдеров (нет логина, нет доступа к мутациям). Данные — через share-API.
+  const shareMatch =
+    typeof window !== "undefined" &&
+    window.location.pathname.match(/^\/share\/accounts\/([^/?#]+)/);
+  if (shareMatch) {
+    const token = decodeURIComponent(shareMatch[1]);
+    return (
+      <ErrorBoundary>
+        <ShareAccountsView token={token} />
+      </ErrorBoundary>
+    );
+  }
+
   return (
     <ErrorBoundary>
     <ToastProvider>

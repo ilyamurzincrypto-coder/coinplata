@@ -106,7 +106,7 @@ function findDefaultPair(pairs, channels, fromCur, toCur) {
 // для legacy данных может отсутствовать физически. Synthesize reverse =
 // 1/master.rate если direct reverse row не найдена → форма сделки и sidebar
 // видят оба направления даже когда БД содержит только master row.
-function buildRatesLookup(pairs, channels) {
+export function buildRatesLookup(pairs, channels) {
   const out = {};
   pairs.forEach((p) => {
     if (!p.isDefault) return;

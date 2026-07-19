@@ -23,6 +23,7 @@ import {
   ChevronUp,
   ChevronDown,
   HelpCircle,
+  Share2,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -47,6 +48,7 @@ import DeleteDealButton from "../components/DeleteDealButton.jsx";
 import DeleteTransferButton from "../components/DeleteTransferButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import AccountsTree from "../components/accounts/AccountsTree.jsx";
+import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -157,6 +159,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [editAccountFor, setEditAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
+  const [shareOpen, setShareOpen] = useState(false);
 
   const handleExportAccounts = () => {
     if (accounts.length === 0) return;
@@ -426,7 +429,23 @@ export default function AccountsPage({ onOpenHelp = null }) {
 
       {/* TAB: Все/Фиат/Крипто — дерево счетов офис→валюта→счета, фильтр по типу. */}
       {(activeTab === "all" || activeTab === "fiat" || activeTab === "crypto") && (
-        <AccountsTree kindFilter={activeTab} />
+        <>
+          <div className="flex justify-end -mb-1">
+            <button
+              type="button"
+              onClick={() => setShareOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
+              title="Создать публичную read-only ссылку на этот разрез"
+            >
+              <Share2 className="w-4 h-4" strokeWidth={2} /> Поделиться
+            </button>
+          </div>
+          <AccountsTree kindFilter={activeTab} />
+        </>
+      )}
+
+      {shareOpen && (
+        <ShareLinksModal scope={activeTab} onClose={() => setShareOpen(false)} />
       )}
 
       {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {

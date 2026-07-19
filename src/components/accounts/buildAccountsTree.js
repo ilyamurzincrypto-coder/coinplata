@@ -25,9 +25,10 @@ export function buildAccountsTree({
         const list = byCcy[ccy];
         const total = list.reduce((s, a) => s + balanceOf(a.id), 0);
         const reserved = list.reduce((s, a) => s + reservedOf(a.id), 0);
-        return { ccy, list, total, reserved, available: total - reserved };
+        // base — вклад валюты в итог офиса (в base-валюте); удобно для рендера.
+        return { ccy, list, total, reserved, available: total - reserved, base: toBase(total, ccy) };
       });
-    const baseTotal = ccys.reduce((s, c) => s + toBase(c.total, c.ccy), 0);
+    const baseTotal = ccys.reduce((s, c) => s + c.base, 0);
     return { office, ccys, baseTotal, accsCount: accs.length };
   });
   const grandBase = tree.reduce((s, o) => s + o.baseTotal, 0);
