@@ -163,6 +163,7 @@ export async function loadAccounts() {
     officeId: r.office_id,
     currency: r.currency_code,
     type: r.type,
+    kind: r.kind || (r.type === "crypto" || r.network_id ? "crypto" : "fiat"), // разрез Фиат/Крипто (generated-колонка)
     name: r.name,
     active: r.active,
     balance: num(r.opening_balance), // seed opening balance; реальный current — через view

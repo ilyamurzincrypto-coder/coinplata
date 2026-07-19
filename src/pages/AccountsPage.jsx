@@ -156,7 +156,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [editAccountFor, setEditAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("operations");
+  const [activeTab, setActiveTab] = useState("all");
 
   const handleExportAccounts = () => {
     if (accounts.length === 0) return;
@@ -400,7 +400,9 @@ export default function AccountsPage({ onOpenHelp = null }) {
       {/* Tabs */}
       <div className="bg-white border border-border-soft rounded-card p-1 flex gap-0.5 overflow-x-auto">
         {[
-          { id: "operations", label: "Операции" },
+          { id: "all", label: "Все" },
+          { id: "fiat", label: "Фиат" },
+          { id: "crypto", label: "Крипто" },
           { id: "otc", label: "История OTC" },
           { id: "transfers", label: "Перемещения" },
           { id: "ledger", label: "Журнал" },
@@ -422,8 +424,10 @@ export default function AccountsPage({ onOpenHelp = null }) {
         })}
       </div>
 
-      {/* TAB: Операции (default) — current grid по офисам/валютам/каналам */}
-      {activeTab === "operations" && <AccountsTree />}
+      {/* TAB: Все/Фиат/Крипто — дерево счетов офис→валюта→счета, фильтр по типу. */}
+      {(activeTab === "all" || activeTab === "fiat" || activeTab === "crypto") && (
+        <AccountsTree kindFilter={activeTab} />
+      )}
 
       {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;

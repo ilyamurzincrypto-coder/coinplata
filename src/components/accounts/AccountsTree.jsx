@@ -25,6 +25,7 @@ import BalanceAdjustmentModal from "./BalanceAdjustmentModal.jsx";
 import TransferModal from "./TransferModal.jsx";
 import AccountHistoryModal from "./AccountHistoryModal.jsx";
 import AddAccountModal from "./AddAccountModal.jsx";
+import { buildAccountsTree } from "./buildAccountsTree.js";
 
 const ccyOrder = (c) => {
   const i = BAL_COLUMNS.indexOf(c);
@@ -71,7 +72,7 @@ function Actions({ children }) {
   );
 }
 
-export default function AccountsTree() {
+export default function AccountsTree({ kindFilter = "all" }) {
   const { accounts, balanceOf, reservedOf, availableOf } = useAccounts();
   const { activeOffices } = useOffices();
   const { toBase, formatBase } = useBaseCurrency();
@@ -86,26 +87,22 @@ export default function AccountsTree() {
   const [historyFor, setHistoryFor] = useState(null);
   const [addAccountFor, setAddAccountFor] = useState(null);
 
-  // Дерево: офис → валюта → счета.
-  const tree = useMemo(() => {
-    return activeOffices.map((office) => {
-      const accs = accounts.filter((a) => a.active && a.officeId === office.id);
-      const byCcy = {};
-      accs.forEach((a) => (byCcy[a.currency] || (byCcy[a.currency] = [])).push(a));
-      const ccys = Object.keys(byCcy)
-        .sort((x, y) => ccyOrder(x) - ccyOrder(y))
-        .map((ccy) => {
-          const list = byCcy[ccy];
-          const total = list.reduce((s, a) => s + balanceOf(a.id), 0);
-          const reserved = list.reduce((s, a) => s + reservedOf(a.id), 0);
-          return { ccy, list, total, reserved, available: total - reserved };
-        });
-      const baseTotal = ccys.reduce((s, c) => s + toBase(c.total, c.ccy), 0);
-      return { office, ccys, baseTotal, accsCount: accs.length };
-    });
-  }, [accounts, activeOffices, balanceOf, reservedOf, toBase]);
-
-  const grandBase = tree.reduce((s, o) => s + o.baseTotal, 0);
+  // Дерево: офис → валюта → счета. Чистая логика вынесена в buildAccountsTree
+  // (тестируется отдельно). Разрез по типу счёта (Все/Фиат/Крипто); пустые в
+  // разрезе офисы НЕ скрываем — важно бухгалтеру видеть, что пусто.
+  const { tree, grandBase } = useMemo(
+    () =>
+      buildAccountsTree({
+        accounts,
+        offices: activeOffices,
+        kindFilter,
+        balanceOf,
+        reservedOf,
+        toBase,
+        ccyOrder,
+      }),
+    [accounts, activeOffices, balanceOf, reservedOf, toBase, kindFilter]
+  );
 
   const openTransfer = (acc) => {
     setTransferFrom(acc);
