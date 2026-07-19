@@ -187,6 +187,13 @@ export async function loadAccounts() {
     // (e.g. fiat banks, удалённые из ledger seed).
     ledgerAccountCode: r.ledger_account_code || null,
     legacyOnly: r.legacy_only === true,
+    // AEGIS-мониторинг (кэш; balance_usd_est информационный, НЕ в леджер).
+    aegisWalletId: r.aegis_wallet_id || null,
+    aegisCapability: r.aegis_capability || null,
+    riskLevel: r.risk_level || null, // ok|warning|critical|null
+    riskUpdatedAt: r.risk_updated_at || null,
+    balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : null, // строка
+    syncedAt: r.synced_at || null,
   }));
 }
 

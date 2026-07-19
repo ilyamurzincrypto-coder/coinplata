@@ -5,10 +5,12 @@
 // конверсия переиспользуют тот же движок (buildShareTree). Никаких мутаций:
 // у страницы нет ни одной кнопки действия, а бэкенд отдаёт только GET.
 import React, { useEffect, useState } from "react";
-import { Building2, Eye, Lock } from "lucide-react";
+import { Building2, Eye, Lock, AlertTriangle } from "lucide-react";
 import { buildShareTree, SCOPE_LABEL } from "../lib/shareAccounts.js";
 import { ccyMeta, fmtRu } from "../components/balances/currencyMeta.js";
 import { curSymbol, fmt } from "../utils/money.js";
+import AegisBadge from "../components/accounts/AegisBadge.jsx";
+import { walletDiscrepancy, syncedLabel, isCryptoAccount } from "../utils/accountsRisk.js";
 
 function CcyChip({ ccy }) {
   const m = ccyMeta(ccy);
@@ -109,22 +111,58 @@ export default function ShareAccountsView({ token }) {
                 <span className="text-right text-[13px] font-bold text-ink font-mono">{fmtBase(ob.baseTotal)}</span>
               </div>
 
-              {ob.ccys.map((cb) => (
-                <div
-                  key={`${ob.office.id}|${cb.ccy}`}
-                  className="grid grid-cols-[1fr_140px_120px] items-center pl-9 pr-4 py-2 border-t border-[#f3f4f8]"
-                >
-                  <span className="flex items-center gap-2 min-w-0">
-                    <CcyChip ccy={cb.ccy} />
-                    <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
-                    {cb.list.length > 1 && (
-                      <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>
-                    )}
-                  </span>
-                  <span className="text-right text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
-                  <span className="text-right text-[12px] font-mono text-muted">{fmtBase(cb.base)}</span>
-                </div>
-              ))}
+              {ob.ccys.map((cb) => {
+                const cryptoRows = (cb.rows || []).filter((r) => isCryptoAccount(r.account));
+                return (
+                  <React.Fragment key={`${ob.office.id}|${cb.ccy}`}>
+                    <div className="grid grid-cols-[1fr_140px_120px] items-center pl-9 pr-4 py-2 border-t border-[#f3f4f8]">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <CcyChip ccy={cb.ccy} />
+                        <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
+                        {cb.list.length > 1 && (
+                          <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>
+                        )}
+                      </span>
+                      <span className="text-right text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
+                      <span className="text-right text-[12px] font-mono text-muted">{fmtBase(cb.base)}</span>
+                    </div>
+
+                    {/* Крипто-кошельки: бейдж риска AEGIS + он-чейн баланс + расхождение (read-only) */}
+                    {cryptoRows.map((r) => {
+                      const a = r.account;
+                      const disc = walletDiscrepancy({ ledgerUsd: r.ledgerUsd, balanceUsdEst: a.balanceUsdEst });
+                      return (
+                        <div
+                          key={a.id}
+                          className="grid grid-cols-[1fr_140px_120px] items-center pl-[52px] pr-4 py-1.5 border-t border-[#f6f7fb]"
+                        >
+                          <span className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[12px] text-ink-soft truncate">{a.name}</span>
+                            <AegisBadge account={a} />
+                            {disc.hasOnchain && (
+                              <span
+                                title={
+                                  disc.flagged
+                                    ? `Расхождение: учётный ${fmtBase(r.ledgerUsd)} vs он-чейн ${fmtBase(disc.onchainUsd)}`
+                                    : `Он-чейн (AEGIS): ${fmtBase(disc.onchainUsd)}${a.syncedAt ? ` · ${syncedLabel(a.syncedAt)}` : ""}`
+                                }
+                                className={`inline-flex items-center gap-1 text-[10.5px] font-mono shrink-0 ${
+                                  disc.flagged ? "text-[#c0392b] font-bold" : "text-muted"
+                                }`}
+                              >
+                                {disc.flagged && <AlertTriangle className="w-3 h-3" strokeWidth={2.2} />}
+                                ⛓ {fmtBase(disc.onchainUsd)}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-right text-[12px] font-mono text-ink">{native(r.native, cb.ccy)}</span>
+                          <span className="text-right text-[11.5px] font-mono text-muted">{fmtBase(r.ledgerUsd)}</span>
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
 
               {ob.ccys.length === 0 && (
                 <div className="pl-9 pr-4 py-2.5 border-t border-[#f3f4f8] text-[12px] text-muted">

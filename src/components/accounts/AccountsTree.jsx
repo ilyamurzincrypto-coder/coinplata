@@ -26,6 +26,7 @@ import TransferModal from "./TransferModal.jsx";
 import AccountHistoryModal from "./AccountHistoryModal.jsx";
 import AddAccountModal from "./AddAccountModal.jsx";
 import { buildAccountsTree } from "./buildAccountsTree.js";
+import AegisInline from "./AegisInline.jsx";
 
 const ccyOrder = (c) => {
   const i = BAL_COLUMNS.indexOf(c);
@@ -184,6 +185,14 @@ export default function AccountsTree({ kindFilter = "all" }) {
                         <CcyChip ccy={cb.ccy} />
                         <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
                         {!single && <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>}
+                        {/* AEGIS-мониторинг для одно-счётной крипто-валюты */}
+                        {single && (
+                          <AegisInline
+                            account={acc0}
+                            ledgerUsd={toBase(cb.total, cb.ccy)}
+                            fmtBase={(v) => formatBase(v, undefined)}
+                          />
+                        )}
                         {/* Действия для одно-счётной валюты — прямо здесь */}
                         {single && (
                           <Actions>
@@ -223,6 +232,11 @@ export default function AccountsTree({ kindFilter = "all" }) {
                         >
                           <span className="flex items-center gap-2 min-w-0">
                             <span className="text-[12.5px] text-ink-soft truncate">{a.name || a.label || a.id}</span>
+                            <AegisInline
+                              account={a}
+                              ledgerUsd={toBase(balanceOf(a.id), a.currency)}
+                              fmtBase={(v) => formatBase(v, undefined)}
+                            />
                             <Actions>
                               <ActBtn title="Корректировка остатка" label="Корректировка" onClick={() => setAdjustFor(a)}>
                                 <SlidersHorizontal className="w-3 h-3" strokeWidth={2} />

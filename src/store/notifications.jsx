@@ -59,6 +59,8 @@ export function NotificationsProvider({ children }) {
   currentUserRef.current = currentUser;
   const usersRef = useRef(users);
   usersRef.current = users;
+  // Дедуп риск-алертов кошельков: `${accountId}:${risk_updated_at}` уже показан.
+  const seenRiskRef = useRef(new Set());
 
   const pushNotification = useCallback((note) => {
     setNotifications((prev) => {
@@ -261,12 +263,40 @@ export function NotificationsProvider({ children }) {
       )
       .subscribe();
 
+    // 4) accounts UPDATE → риск кошелька AEGIS (ok|warning|critical).
+    //    Источник — вебхук api/aegis/webhook.js (обновляет risk_level).
+    //    Дедуп по risk_updated_at, чтобы не повторять один и тот же переход.
+    const acctRiskCh = supabase
+      .channel("cp-notif-acct-risk")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "accounts" },
+        (payload) => {
+          const row = payload.new || {};
+          const level = row.risk_level;
+          if (!level || !row.risk_updated_at) return;
+          const key = `${row.id}:${row.risk_updated_at}`;
+          if (seenRiskRef.current.has(key)) return;
+          seenRiskRef.current.add(key);
+          const name = row.name || "кошелёк";
+          if (level === "critical") {
+            pushNotification({ type: "wallet_risk", title: "🚨 Риск кошелька: критично", body: name, link: "accounts" });
+          } else if (level === "warning") {
+            pushNotification({ type: "wallet_risk", title: "⚠ Риск кошелька: пред-бан", body: name, link: "accounts" });
+          } else if (level === "ok") {
+            pushNotification({ type: "wallet_risk", title: "Риск кошелька снят", body: name, link: "accounts" });
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       try { supabase.removeChannel(pairsCh); } catch {}
       try { supabase.removeChannel(dealsCh); } catch {}
       try { supabase.removeChannel(dealsUpdateCh); } catch {}
       try { supabase.removeChannel(transfersCh); } catch {}
       try { supabase.removeChannel(obCh); } catch {}
+      try { supabase.removeChannel(acctRiskCh); } catch {}
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

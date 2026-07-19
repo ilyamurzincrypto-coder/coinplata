@@ -49,6 +49,7 @@ import DeleteTransferButton from "../components/DeleteTransferButton.jsx";
 import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx";
 import AccountsTree from "../components/accounts/AccountsTree.jsx";
 import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
+import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -160,6 +161,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [importOpen, setImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [shareOpen, setShareOpen] = useState(false);
+  const [walletImportOpen, setWalletImportOpen] = useState(false);
 
   const handleExportAccounts = () => {
     if (accounts.length === 0) return;
@@ -430,7 +432,17 @@ export default function AccountsPage({ onOpenHelp = null }) {
       {/* TAB: Все/Фиат/Крипто — дерево счетов офис→валюта→счета, фильтр по типу. */}
       {(activeTab === "all" || activeTab === "fiat" || activeTab === "crypto") && (
         <>
-          <div className="flex justify-end -mb-1">
+          <div className="flex justify-end gap-1 -mb-1">
+            {(activeTab === "crypto" || activeTab === "all") && (
+              <button
+                type="button"
+                onClick={() => setWalletImportOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
+                title="Импорт кошельков из CSV (name,address,network) + регистрация в AEGIS"
+              >
+                <Upload className="w-4 h-4" strokeWidth={2} /> Импорт кошельков
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShareOpen(true)}
@@ -447,6 +459,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
       {shareOpen && (
         <ShareLinksModal scope={activeTab} onClose={() => setShareOpen(false)} />
       )}
+      {walletImportOpen && <ImportWalletsModal onClose={() => setWalletImportOpen(false)} />}
 
       {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;

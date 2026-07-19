@@ -56,5 +56,17 @@ export function buildShareTree(snapshot) {
     toBase,
     ccyOrder,
   });
-  return { tree, grandBase, base: baseCurrency, scope };
+  // Обогащаем per-account строками (нативный остаток + учётный в base) — чтобы
+  // share-view мог показать бейдж риска и он-чейн по каждому криптосчёту.
+  const enriched = tree.map((o) => ({
+    ...o,
+    ccys: o.ccys.map((c) => ({
+      ...c,
+      rows: c.list.map((a) => {
+        const native = balanceOf(a.id);
+        return { account: a, native, ledgerUsd: toBase(native, c.ccy) };
+      }),
+    })),
+  }));
+  return { tree: enriched, grandBase, base: baseCurrency, scope };
 }

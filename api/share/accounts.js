@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     // 2. Живые данные. Счета фильтруем по scope СЕРВЕРНО.
     let accQ = db
       .from('accounts')
-      .select('id, office_id, currency_code, kind, name')
+      .select('id, office_id, currency_code, kind, name, aegis_wallet_id, aegis_capability, risk_level, risk_updated_at, balance_usd_est, synced_at')
       .eq('active', true)
     if (scope !== 'all') accQ = accQ.eq('kind', scope)
 
@@ -64,6 +64,13 @@ export default async function handler(req, res) {
       kind: r.kind || 'fiat',
       name: r.name,
       active: true,
+      // AEGIS-мониторинг (кэш) — бейдж риска + он-чейн баланс в share-view.
+      aegisWalletId: r.aegis_wallet_id || null,
+      aegisCapability: r.aegis_capability || null,
+      riskLevel: r.risk_level || null,
+      riskUpdatedAt: r.risk_updated_at || null,
+      balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : null,
+      syncedAt: r.synced_at || null,
     }))
     const offices = (offRes.data || []).map((r) => ({ id: r.id, name: r.name }))
 
