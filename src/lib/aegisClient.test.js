@@ -53,12 +53,18 @@ describe("network mappers (G3: хранит TRC20, шлёт TRON)", () => {
   it("касса → AEGIS enum", () => {
     expect(toAegisNetwork("TRC20")).toBe("TRON");
     expect(toAegisNetwork("erc20")).toBe("ETHEREUM");
+    expect(toAegisNetwork("BEP20")).toBe("BSC");
+    expect(toAegisNetwork("bep20")).toBe("BSC");
     expect(toAegisNetwork("btc")).toBe("BITCOIN");
   });
   it("AEGIS enum → канальное представление кассы", () => {
     expect(fromAegisNetwork("TRON")).toBe("TRC20");
     expect(fromAegisNetwork("ETHEREUM")).toBe("ERC20");
+    expect(fromAegisNetwork("BSC")).toBe("BEP20");
     expect(fromAegisNetwork("BITCOIN")).toBe("BTC");
+  });
+  it("BEP20 круговой маппинг стабилен", () => {
+    expect(fromAegisNetwork(toAegisNetwork("BEP20"))).toBe("BEP20");
   });
 });
 

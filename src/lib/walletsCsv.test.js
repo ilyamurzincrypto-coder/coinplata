@@ -43,6 +43,20 @@ W2,taddr,TRC20`;
     const { rows } = parseWalletsCsv("\n\nW,TAddr,trc20\n\n");
     expect(rows).toHaveLength(1);
   });
+
+  it("BEP20 распознаётся как сеть", () => {
+    const { rows, errors } = parseWalletsCsv("Lara,0x8cf4f979831c8585F6eF6867E8D70c2e346455e4,BEP20");
+    expect(errors).toHaveLength(0);
+    expect(rows[0].network).toBe("bep20");
+  });
+
+  it("один адрес в ERC20 и BEP20 = ДВЕ строки (ключ по network+address)", () => {
+    const addr = "0x8cf4f979831c8585F6eF6867E8D70c2e346455e4";
+    const { rows, errors } = parseWalletsCsv(`Lara,${addr},ERC20\nLara,${addr},BEP20`);
+    expect(errors).toHaveLength(0);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.network).sort()).toEqual(["bep20", "erc20"]);
+  });
 });
 
 describe("сопоставление с существующими", () => {
@@ -60,5 +74,11 @@ describe("сопоставление с существующими", () => {
     const keys = existingWalletKeys(accounts);
     expect(isDuplicateRow({ network: "trc20", address: "TMARKADDR111" }, keys)).toBe(true);
     expect(isDuplicateRow({ network: "trc20", address: "TNew" }, keys)).toBe(false);
+  });
+
+  it("BEP20 с адресом существующего ERC20-счёта — НЕ дубль (сеть другая)", () => {
+    const keys = existingWalletKeys([{ address: "0xLara", network: "ERC20" }]);
+    expect(isDuplicateRow({ network: "erc20", address: "0xLara" }, keys)).toBe(true);
+    expect(isDuplicateRow({ network: "bep20", address: "0xLara" }, keys)).toBe(false);
   });
 });

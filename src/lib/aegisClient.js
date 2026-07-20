@@ -10,10 +10,10 @@
 // не пускаем в леджер/проводки/деньги-математику. В Number коэрсим лишь на
 // границе отображения/порога расхождения (utils accountsRisk.js).
 
-// --- нормализация сети (G3): касса ХРАНИТ network_id как есть (TRC20/ERC20/BTC);
-// в AEGIS ШЛЁТ enum TRON|ETHEREUM|BITCOIN. Один маппер, обе стороны. ---
-const KASSA_TO_AEGIS = { trc20: "TRON", tron: "TRON", trx: "TRON", erc20: "ETHEREUM", eth: "ETHEREUM", ethereum: "ETHEREUM", btc: "BITCOIN", bitcoin: "BITCOIN" };
-const AEGIS_TO_KASSA = { TRON: "TRC20", ETHEREUM: "ERC20", BITCOIN: "BTC" };
+// --- нормализация сети (G3): касса ХРАНИТ network_id как есть (TRC20/ERC20/BEP20/BTC);
+// в AEGIS ШЛЁТ enum TRON|ETHEREUM|BSC|BITCOIN. Один маппер, обе стороны. ---
+const KASSA_TO_AEGIS = { trc20: "TRON", tron: "TRON", trx: "TRON", erc20: "ETHEREUM", eth: "ETHEREUM", ethereum: "ETHEREUM", bep20: "BSC", bsc: "BSC", bnb: "BSC", btc: "BITCOIN", bitcoin: "BITCOIN" };
+const AEGIS_TO_KASSA = { TRON: "TRC20", ETHEREUM: "ERC20", BSC: "BEP20", BITCOIN: "BTC" };
 
 // касса network_id → AEGIS enum. Известное маппим; неизвестное — пробрасываем в UPPER (честно, не глотаем).
 export function toAegisNetwork(network) {
