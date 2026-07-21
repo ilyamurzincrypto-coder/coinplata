@@ -129,9 +129,28 @@ export function AccountsProvider({ children }) {
       })
       .subscribe();
 
+    // Синк при возврате на вкладку: realtime на фоновой вкладке (особенно
+    // мобильный Safari) отваливается и не доигрывает пропущенные UPDATE →
+    // устройство держит скор/баланс на момент загрузки, и два девайса
+    // расходятся. При visible/focus перетягиваем счета из БД (лёгкий запрос,
+    // без movements/transfers) — оба девайса сходятся к свежему значению.
+    let syncing = false;
+    const syncAccounts = () => {
+      if (cancelled || syncing || document.visibilityState !== "visible") return;
+      syncing = true;
+      loadAccounts()
+        .then((rows) => { if (!cancelled && Array.isArray(rows)) setAccounts(rows); })
+        .catch(() => {})
+        .finally(() => { syncing = false; });
+    };
+    document.addEventListener("visibilitychange", syncAccounts);
+    window.addEventListener("focus", syncAccounts);
+
     return () => {
       cancelled = true;
       unsub();
+      document.removeEventListener("visibilitychange", syncAccounts);
+      window.removeEventListener("focus", syncAccounts);
       try { supabase.removeChannel(ch); } catch { /* noop */ }
     };
   }, []);
