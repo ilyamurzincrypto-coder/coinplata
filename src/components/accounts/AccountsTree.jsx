@@ -14,6 +14,8 @@ import {
   ArrowLeftRight,
   History,
   ArrowDownToLine,
+  Copy,
+  Check,
 } from "lucide-react";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useOffices } from "../../store/offices.jsx";
@@ -33,6 +35,35 @@ const ccyOrder = (c) => {
   return i < 0 ? 99 : i;
 };
 const native = (amt, ccy) => `${curSymbol(ccy)}${fmtRu(amt, ccyMeta(ccy).dp ?? 2)}`;
+
+// Адрес крипто-кошелька: сеть + усечённый адрес, клик — копировать полностью.
+function AddrChip({ address, network }) {
+  const [copied, setCopied] = useState(false);
+  if (!address) return null;
+  const short = address.length > 12 ? `${address.slice(0, 5)}…${address.slice(-4)}` : address;
+  const copy = async (e) => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      /* clipboard недоступен — адрес всё равно виден в title */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={`${network ? network + " · " : ""}${address}\n(клик — скопировать)`}
+      className="inline-flex items-center gap-1 shrink-0 text-[10.5px] font-mono text-muted-soft hover:text-ink transition-colors"
+    >
+      {network && <span className="text-[9px] uppercase tracking-wide opacity-70">{network}</span>}
+      <span>{short}</span>
+      {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3 opacity-40" />}
+    </button>
+  );
+}
 
 function CcyChip({ ccy }) {
   const m = ccyMeta(ccy);
@@ -185,6 +216,7 @@ export default function AccountsTree({ kindFilter = "all" }) {
                         <CcyChip ccy={cb.ccy} />
                         <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
                         {!single && <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>}
+                        {single && <AddrChip address={acc0.address} network={acc0.network} />}
                         {/* AEGIS-мониторинг для одно-счётной крипто-валюты */}
                         {single && (
                           <AegisInline
@@ -232,6 +264,7 @@ export default function AccountsTree({ kindFilter = "all" }) {
                         >
                           <span className="flex items-center gap-2 min-w-0">
                             <span className="text-[12.5px] text-ink-soft truncate">{a.name || a.label || a.id}</span>
+                            <AddrChip address={a.address} network={a.network} />
                             <AegisInline
                               account={a}
                               ledgerUsd={toBase(balanceOf(a.id), a.currency)}
