@@ -14,6 +14,9 @@ import { requireStaff } from '../cashdesk/_auth.js'
 import { aegis, AegisError } from '../../src/lib/aegisClient.js'
 import { svcClient, authEnv } from './_common.js'
 
+// cold getWallet у AEGIS ~12с — даём функции время (Vercel по умолч. режет короче).
+export const config = { maxDuration: 30 }
+
 function daysAgoIso(n) {
   const d = new Date()
   d.setUTCDate(d.getUTCDate() - n)
@@ -68,8 +71,9 @@ export default async function handler(req, res) {
       return res.status(200).json({ transactions })
     }
 
-    // getWallet — ядро (риск/скор/reasons/баланс); с таймаутом, но обязателен.
-    const wallet = await withTimeout(aegis.getWallet(wid), 9000, null)
+    // getWallet — ядро (риск/скор/reasons/баланс). Первый (cold) вызов AEGIS ~12с
+    // (наполняет их кэш), warm ~1с — держим таймаут 14с, чтобы первый заход не падал.
+    const wallet = await withTimeout(aegis.getWallet(wid), 14000, null)
     if (!wallet) return res.status(504).json({ error: 'aegis wallet timeout' })
 
     // stats/transactions — деградируют в «нет данных» по таймауту/ошибке.
