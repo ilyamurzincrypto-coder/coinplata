@@ -76,6 +76,7 @@ export function walletToCacheRow(w) {
   const row = {
     aegis_capability: w.capability,
     risk_level: w.riskLevel,
+    risk_score: w.riskScore ?? null, // 0-100 (кэш; для колонки «риск» в списке)
     risk_updated_at: w.riskUpdatedAt,
   };
   if (w.balanceUsdEst != null) {

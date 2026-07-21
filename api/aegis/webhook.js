@@ -79,6 +79,7 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
     const prev = event.prev_level
     const updated = await deps.updateRisk(walletId, {
       risk_level: level,
+      risk_score: risk.score ?? null, // §4b: числовой скор внутри event.risk
       risk_updated_at: event.occurred_at || new Date().toISOString(),
     })
     const plan = alertPlan(prev, level)

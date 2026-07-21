@@ -191,6 +191,7 @@ export async function loadAccounts() {
     aegisWalletId: r.aegis_wallet_id || null,
     aegisCapability: r.aegis_capability || null,
     riskLevel: r.risk_level || null, // ok|warning|critical|null
+    riskScore: r.risk_score ?? null, // 0-100 (кэш AEGIS; для колонки «риск»)
     riskUpdatedAt: r.risk_updated_at || null,
     balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : null, // строка
     syncedAt: r.synced_at || null,

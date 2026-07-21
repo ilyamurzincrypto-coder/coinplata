@@ -37,7 +37,9 @@ const STATUS = {
 
 const statusOf = (account) => {
   const b = riskBadge(account) || { tone: "muted", label: "нет данных" };
-  return { ...(STATUS[b.tone] || STATUS.muted), label: b.label, tone: b.tone };
+  const s = account?.riskScore;
+  const score = s == null || s === "" || !Number.isFinite(Number(s)) ? null : Number(s);
+  return { ...(STATUS[b.tone] || STATUS.muted), label: b.label, tone: b.tone, score };
 };
 const hasDelta = (vm) => vm.hasOnchain && vm.deltaAbs > DELTA_ALERT_THRESHOLD_USD;
 // Он-чейн краснеет ТОЛЬКО при недостаче (он-чейн < учёт выше порога) — по макету:
@@ -60,7 +62,7 @@ function DeltaBadge({ vm, minW = 96 }) {
   return (
     <span className="inline-flex justify-end" style={{ minWidth: minW }}>
       {show ? (
-        <span className="inline-flex items-center rounded-[7px] bg-danger-soft text-danger font-mono tabular-nums text-[11.5px] px-1.5 py-0.5">
+        <span className="inline-flex items-center whitespace-nowrap rounded-[7px] bg-danger-soft text-danger font-mono tabular-nums text-[11px] px-1.5 py-0.5">
           Δ {usd(vm.deltaAbs)}
         </span>
       ) : null}
@@ -68,27 +70,35 @@ function DeltaBadge({ vm, minW = 96 }) {
   );
 }
 
+// Риск-скор: иконка уровня (точка ok / треугольник warn-crit) + число 0-100.
+// Клик → «почему такой скор» (плашка причины). Нет числа (не пришло от AEGIS) →
+// фолбэк на словесный лейбл, чтобы не показывать пусто.
 function StatusDot({ account, onClick, small = false }) {
   const st = statusOf(account);
   const Tag = onClick ? "button" : "span";
+  const fs = small ? "text-[12.5px]" : "text-[13px]";
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(); } : undefined}
       className={`inline-flex items-center gap-1.5 shrink-0 ${st.text} ${onClick ? "hover:opacity-80" : ""}`}
-      title={onClick ? "Показать причину" : undefined}
+      title={onClick ? "Почему такой риск-скор" : undefined}
     >
       {st.tone === "warning" || st.tone === "critical" ? (
         <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: st.color }} strokeWidth={2.2} />
       ) : (
         <span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: st.color }} />
       )}
-      <span className={small ? "text-[12px] font-medium" : "text-[12.5px] font-medium"}>{st.label}</span>
+      {st.score != null ? (
+        <span className={`font-mono tabular-nums font-semibold ${fs}`}>{st.score}<span className="text-muted font-normal text-[10px]">/100</span></span>
+      ) : (
+        <span className={`font-medium ${small ? "text-[12px]" : "text-[12.5px]"}`}>{st.label}</span>
+      )}
     </Tag>
   );
 }
 
-function CopyAddr({ address, network, size = 12, head = 6, tail = 5 }) {
+function CopyAddr({ address, network, size = 12, head = 6, tail = 5, full = false }) {
   const [copied, setCopied] = useState(false);
   if (!address) return null;
   const copy = (e) => {
@@ -97,7 +107,7 @@ function CopyAddr({ address, network, size = 12, head = 6, tail = 5 }) {
   };
   return (
     <span className="inline-flex items-center gap-1.5 min-w-0">
-      <span className="font-mono text-ink-soft truncate" style={{ fontSize: size }} title={address}>{midTruncate(address, head, tail)}</span>
+      <span className="font-mono text-ink-soft truncate" style={{ fontSize: size }} title={address}>{full ? address : midTruncate(address, head, tail)}</span>
       <button type="button" onClick={copy} title="Скопировать адрес" className="shrink-0 text-muted hover:text-ink">
         {copied ? <Check className="w-3.5 h-3.5 text-emerald" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
@@ -180,26 +190,27 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
 }
 
 // ─── Desktop: строка таблицы ───
-// Табличный вид: имя | сеть (своя колонка → чипы выровнены) | адрес | статус |
-// он-чейн | учёт | Δ | ›. Вертикальные хайрлайны между колонками (border-l на
-// ячейках, items-stretch → линии во всю высоту строки).
-const DCOLS = "grid-cols-[minmax(190px,2fr)_62px_minmax(132px,1.3fr)_128px_112px_92px_104px_22px]";
+// Табличный вид: имя | сеть (узкая, у имени) | адрес (полностью) | риск | он-чейн |
+// учёт | Δ | ›. Вертикальные хайрлайны между колонками (border-l на ячейках,
+// items-stretch → линии во всю высоту строки). Высота строки ФИКСИРОВАНА (h-11) —
+// Δ-бейдж в одну строку (whitespace-nowrap), поэтому строки не «скачут».
+const DCOLS = "grid-cols-[minmax(150px,1.4fr)_52px_minmax(250px,2.4fr)_96px_112px_88px_120px_20px]";
 const DCELL = "flex items-center px-2.5 min-w-0 border-l-[0.5px] border-border-soft";
 function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
   const red = deficitRed(vm);
   return (
     <>
       <div
-        className={`grid ${DCOLS} items-stretch min-h-[46px] border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
+        className={`grid ${DCOLS} items-stretch h-11 border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
         <span className="flex items-center px-2.5 min-w-0"><span className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</span></span>
-        <span className={`${DCELL} justify-center`}>{vm.network && <span className="text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</span>
-        <span className={`${DCELL} overflow-hidden`}><CopyAddr address={vm.address} network={null} size={12} head={8} tail={6} /></span>
+        <span className={`${DCELL} !px-2 justify-start`}>{vm.network && <span className="text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</span>
+        <span className={`${DCELL} overflow-hidden`}><CopyAddr address={vm.address} network={null} size={12} full /></span>
         <span className={DCELL}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></span>
         <span className={`${DCELL} justify-end`}><Amount value={vm.onchain} cls="text-[15px] font-medium text-ink" minW={84} red={red} /></span>
         <span className={`${DCELL} justify-end`}><Amount value={vm.ledger} cls="text-[13px] text-muted" minW={72} /></span>
-        <span className={`${DCELL} justify-end`}><DeltaBadge vm={vm} minW={90} /></span>
+        <span className={`${DCELL} justify-end`}><DeltaBadge vm={vm} minW={0} /></span>
         <span className={`${DCELL} justify-center !px-0`}>{drillEnabled ? <ChevronRight className="w-4 h-4 text-muted-soft" /> : null}</span>
       </div>
       {expanded && mode === "authed" && (
@@ -310,9 +321,9 @@ export default function CryptoAccountsList({
             <div className="hidden md:block bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
               <div className={`grid ${DCOLS} items-stretch py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted border-b-[0.5px] border-border`}>
                 <span className="flex items-center px-2.5">Кошелёк</span>
-                <span className={`${DCELL} justify-center`}>Сеть</span>
+                <span className={`${DCELL} !px-2 justify-start`}>Сеть</span>
                 <span className={DCELL}>Адрес</span>
-                <span className={DCELL}>Статус</span>
+                <span className={DCELL}>Риск</span>
                 <span className={`${DCELL} justify-end`}>Он-чейн</span>
                 <span className={`${DCELL} justify-end`}>Учёт</span>
                 <span className={`${DCELL} justify-end`}>Δ</span>

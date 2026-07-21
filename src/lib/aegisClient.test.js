@@ -132,6 +132,7 @@ describe("walletToCacheRow", () => {
   it("доступный баланс → пишем balance_usd_est + synced_at (now)", () => {
     const row = walletToCacheRow(normalizeWallet(FIX_WALLET_OK));
     expect(row.risk_level).toBe("ok");
+    expect(row.risk_score).toBe(2); // числовой скор в кэш → колонка «риск» в списке
     expect(row.balance_usd_est).toBe("12500.40");
     expect(row.synced_at).toBeTruthy();
   });

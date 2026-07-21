@@ -36,6 +36,8 @@ export function walletVM(account, ledgerUsd) {
     address: account?.address || null,
     network: account?.network || account?.networkId || null,
     riskLevel: level,
+    riskScore: num(account?.riskScore), // 0-100 | null
+
     capability: account?.aegisCapability || account?.capability || null,
     connected: !!(account?.aegisWalletId || account?.aegis_wallet_id),
     onchain, // number | null

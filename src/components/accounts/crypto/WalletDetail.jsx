@@ -32,27 +32,52 @@ function Metric({ label, children, valueCls = "" }) {
   );
 }
 
-function TxRow({ t }) {
+function CopyBtn({ value }) {
+  const [copied, setCopied] = useState(false);
+  if (!value) return null;
+  return (
+    <button type="button" title="Скопировать адрес" className="shrink-0 text-muted hover:text-ink"
+      onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); }, () => {}); }}>
+      {copied ? <Check className="w-3 h-3 text-emerald" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
+}
+
+function TxRow({ t, network }) {
   const isIn = t.direction === "in";
   const amt = tokenAmt(t.amount);
-  const score = t.riskScore ?? t.counterpartyRisk?.score;
-  const lvl = levelOfScore(score) || t.counterpartyRisk?.level;
+  // Риск-скор КОНТРАГЕНТА (его адреса), не самого перевода: сначала counterparty_risk,
+  // фолбэк на risk_score перевода.
+  const cpScore = t.counterpartyRisk?.score ?? t.riskScore ?? null;
+  const lvl = levelOfScore(cpScore) || t.counterpartyRisk?.level;
   const color = RISK_COLOR[lvl] || "#B5B9BF";
   const type = t.counterpartyType && t.counterpartyType !== "unknown" ? (TYPE_LABEL[t.counterpartyType] || t.counterpartyType) : null;
   const cats = (t.counterpartyRisk?.categories || []).join(", ");
   const dt = t.ts ? new Date(t.ts) : null;
+  const explorer = t.counterparty && EXPLORER[network]?.(t.counterparty);
   return (
-    <div className="flex items-center gap-2.5 py-2 border-t-[0.5px] border-border-soft">
-      <span className={`grid place-items-center w-[26px] h-[26px] rounded-full shrink-0 ${isIn ? "bg-emerald-soft" : "bg-surface-sunk"}`}>
+    <div className="flex items-start gap-2.5 py-2.5 border-t-[0.5px] border-border-soft">
+      <span className={`grid place-items-center w-[26px] h-[26px] rounded-full shrink-0 mt-0.5 ${isIn ? "bg-emerald-soft" : "bg-surface-sunk"}`}>
         {isIn ? <ArrowDown className="w-3.5 h-3.5 text-success" strokeWidth={2.2} /> : <ArrowUp className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
       </span>
-      <span className="flex flex-col min-w-0 flex-1">
-        <span className="font-mono tabular-nums text-[13px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
-        <span className="text-[11px] text-muted truncate">{[type, cats || null, mid(t.counterparty, 6, 5), dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
+      <span className="flex flex-col min-w-0 flex-1 gap-1">
+        <span className="flex items-center gap-2">
+          <span className="font-mono tabular-nums text-[14px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
+          {type && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>}
+        </span>
+        {/* Адрес контрагента — подсвечен (mono ink) + копия + эксплорер */}
+        {t.counterparty && (
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="font-mono text-[12px] text-ink-soft truncate" title={t.counterparty}>{mid(t.counterparty, 10, 8)}</span>
+            <CopyBtn value={t.counterparty} />
+            {explorer && <a href={explorer} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-3 h-3" /></a>}
+          </span>
+        )}
+        <span className="text-[11px] text-muted truncate">{[cats || null, dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
       </span>
-      {(score != null || lvl) && (
-        <span className="shrink-0 inline-flex items-center gap-1 text-[10.5px] font-medium" style={{ color }}>
-          <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {score != null ? score : lvl}
+      {(cpScore != null || lvl) && (
+        <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold" style={{ color, background: `${color}14` }}>
+          <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {cpScore != null ? cpScore : lvl}
         </span>
       )}
     </div>
@@ -128,7 +153,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex md:items-center md:justify-center" onClick={onBack}>
-      <div className="bg-bg w-full h-full md:h-auto md:max-h-[90vh] md:w-[560px] md:rounded-[18px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-bg w-full h-full md:h-auto md:max-h-[92vh] md:w-[760px] md:rounded-[18px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Навбар */}
         <div className="sticky top-0 bg-bg/95 backdrop-blur border-b-[0.5px] border-border flex items-center gap-2 px-3 h-12">
           <button type="button" onClick={onBack} className="p-1 -ml-1 text-ink-soft hover:text-ink"><ArrowLeft className="w-5 h-5" /></button>
@@ -192,7 +217,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
               {allTx.length === 0 ? (
                 <div className="text-[12.5px] text-muted py-2">Нет движений за период.</div>
               ) : (
-                <div>{allTx.map((t, i) => <TxRow key={t.txHash || i} t={t} />)}</div>
+                <div>{allTx.map((t, i) => <TxRow key={t.txHash || i} t={t} network={account.network} />)}</div>
               )}
               {more && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-2 w-full py-2 rounded-[10px] bg-surface-soft text-[12.5px] text-ink-soft hover:text-ink disabled:opacity-50">{loadingMore ? "Загрузка…" : "Показать ещё"}</button>}
             </div>

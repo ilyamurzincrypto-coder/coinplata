@@ -118,6 +118,7 @@ export function AccountsProvider({ children }) {
                   aegisWalletId: r.aegis_wallet_id ?? a.aegisWalletId,
                   aegisCapability: r.aegis_capability ?? a.aegisCapability,
                   riskLevel: r.risk_level ?? a.riskLevel,
+                  riskScore: r.risk_score ?? a.riskScore,
                   riskUpdatedAt: r.risk_updated_at ?? a.riskUpdatedAt,
                   balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : a.balanceUsdEst,
                   syncedAt: r.synced_at ?? a.syncedAt,

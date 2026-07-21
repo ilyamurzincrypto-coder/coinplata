@@ -26,7 +26,7 @@ describe("CryptoAccountsList — плашка причины по тапу на 
     expect(screen.queryAllByText(rx)).toHaveLength(0);
 
     // тап на статус («Показать причину»); mobile+desktop оба в DOM — берём первый
-    const statusBtn = screen.getAllByTitle("Показать причину")[0];
+    const statusBtn = screen.getAllByTitle("Почему такой риск-скор")[0];
     fireEvent.click(statusBtn);
     expect(screen.getAllByText(rx).length).toBeGreaterThan(0);
 
@@ -35,8 +35,15 @@ describe("CryptoAccountsList — плашка причины по тапу на 
     expect(screen.queryAllByText(rx)).toHaveLength(0);
   });
 
-  it("статус проблемного = «внимание» (warning → правка, не «warning»)", () => {
+  it("статус проблемного без числа = «внимание» (фолбэк, warning → правка)", () => {
     render(<CryptoAccountsList items={items} offices={offices} mode="authed" onOpenWallet={() => {}} />);
     expect(screen.getAllByText("внимание").length).toBeGreaterThan(0);
+  });
+
+  it("есть riskScore → колонка «риск» показывает число, а не «OK»/лейбл", () => {
+    const scored = [{ account: { ...account, riskLevel: "warning", riskScore: 55 }, ledgerUsd: 0 }];
+    render(<CryptoAccountsList items={scored} offices={offices} mode="authed" onOpenWallet={() => {}} />);
+    expect(screen.getAllByText("55").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("/100").length).toBeGreaterThan(0);
   });
 });
