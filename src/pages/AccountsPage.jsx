@@ -50,6 +50,7 @@ import AccountsImportModal from "../components/accounts/AccountsImportModal.jsx"
 import AccountsTree from "../components/accounts/AccountsTree.jsx";
 import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
+import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -135,6 +136,19 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const { dict: curDict } = useCurrencies();
   const { channels } = useRates();
   const { base, toBase } = useBaseCurrency();
+
+  // Крипто-раздел: {account, ledgerUsd} + единый таймстемп (макс synced_at).
+  const cryptoItems = useMemo(
+    () =>
+      accounts
+        .filter((a) => a.active && a.kind === "crypto")
+        .map((a) => ({ account: a, ledgerUsd: toBase(balanceOf(a.id), a.currency) })),
+    [accounts, balanceOf, toBase]
+  );
+  const cryptoAsOf = useMemo(() => {
+    const ts = cryptoItems.map((i) => i.account.syncedAt).filter(Boolean).sort();
+    return ts.length ? ts[ts.length - 1] : new Date().toISOString();
+  }, [cryptoItems]);
   const sym = curSymbol(base);
 
   // Период для delta — сегодня + вчера (для сравнения через слэш).
@@ -452,7 +466,16 @@ export default function AccountsPage({ onOpenHelp = null }) {
               <Share2 className="w-4 h-4" strokeWidth={2} /> Поделиться
             </button>
           </div>
-          <AccountsTree kindFilter={activeTab} />
+          {activeTab === "crypto" ? (
+            <CryptoAccountsList
+              items={cryptoItems}
+              offices={activeOffices}
+              mode="authed"
+              asOf={cryptoAsOf}
+            />
+          ) : (
+            <AccountsTree kindFilter={activeTab} />
+          )}
         </>
       )}
 
