@@ -36,7 +36,7 @@ import {
   useEffect,
 } from "react";
 import { SEED_ACCOUNTS, ACCOUNT_TYPES } from "./data.js";
-import { isSupabaseConfigured } from "../lib/supabase.js";
+import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
 import {
   loadAccounts,
   loadAccountBalances,
@@ -101,9 +101,37 @@ export function AccountsProvider({ children }) {
         });
     reload();
     const unsub = onDataBump(reload);
+
+    // Realtime: AEGIS-вебхуки/поллинг пишут risk_level/balance в public.accounts.
+    // Без этой подписки клиент держал бы риск/он-чейн на момент загрузки страницы
+    // (отсюда «всё OK, хотя в кэше warning»). Патчим aegis-поля счёта вживую.
+    const ch = supabase
+      .channel("accounts-aegis-live")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "accounts" }, (payload) => {
+        const r = payload.new || {};
+        if (!r.id) return;
+        setAccounts((prev) =>
+          prev.map((a) =>
+            a.id === r.id
+              ? {
+                  ...a,
+                  aegisWalletId: r.aegis_wallet_id ?? a.aegisWalletId,
+                  aegisCapability: r.aegis_capability ?? a.aegisCapability,
+                  riskLevel: r.risk_level ?? a.riskLevel,
+                  riskUpdatedAt: r.risk_updated_at ?? a.riskUpdatedAt,
+                  balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : a.balanceUsdEst,
+                  syncedAt: r.synced_at ?? a.syncedAt,
+                }
+              : a
+          )
+        );
+      })
+      .subscribe();
+
     return () => {
       cancelled = true;
       unsub();
+      try { supabase.removeChannel(ch); } catch { /* noop */ }
     };
   }, []);
 
