@@ -145,7 +145,7 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
     <div className="border-[0.5px] border-border rounded-[14px] overflow-hidden">
       <div className="px-3 py-3">
         <div className="flex items-center gap-2.5">
-          <span className={`grid place-items-center w-[36px] h-[36px] rounded-[11px] ${st.tile} shrink-0`}><Wallet className="w-[17px] h-[17px]" style={{ color: st.color }} strokeWidth={1.8} /></span>
+          <span className={`grid place-items-center w-[38px] h-[38px] rounded-[11px] ${st.tile} shrink-0`}><Wallet className="w-[18px] h-[18px]" style={{ color: st.color }} strokeWidth={1.8} /></span>
           <span className="text-[15px] text-ink truncate flex-1">{vm.name}</span>
           <StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} />
         </div>
@@ -173,7 +173,9 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
 }
 
 // ─── Desktop: строка таблицы ───
-const DCOLS = "grid-cols-[minmax(0,1.4fr)_minmax(0,1.3fr)_150px_120px_110px_112px_20px]";
+// имя — твёрдый min-width (НЕ схлопывать в «W…»); адрес — фикс-узкая колонка
+// (усечён серединой, не налезает на статус); статус — своя колонка с gap.
+const DCOLS = "grid-cols-[minmax(160px,2fr)_112px_140px_108px_92px_104px_16px]";
 function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
   const red = hasDelta(vm);
   return (
@@ -186,8 +188,8 @@ function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
           <span className="text-[13px] text-ink truncate">{vm.name}</span>
           {vm.network && <span className="shrink-0 text-[9.5px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{vm.network}</span>}
         </span>
-        <span className="min-w-0"><CopyAddr address={vm.address} network={null} size={12} /></span>
-        <StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small />
+        <span className="min-w-0 overflow-hidden"><CopyAddr address={vm.address} network={null} size={12} /></span>
+        <span className="min-w-0"><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></span>
         <Amount value={vm.onchain} cls="text-[15px] font-medium text-ink w-full" minW={88} red={red} />
         <Amount value={vm.ledger} cls="text-[13px] text-muted w-full" minW={80} />
         <DeltaBadge vm={vm} minW={104} />
