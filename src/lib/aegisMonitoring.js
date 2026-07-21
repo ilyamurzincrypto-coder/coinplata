@@ -26,6 +26,24 @@ export async function connectMonitoring(accountId) {
   return body;
 }
 
+// Детали кошелька (Экран 3): getWallet+getStats+getTransactions через боевой
+// эндпоинт (requireStaff). stats/transactions могут прийти available:false.
+export async function fetchWalletDetail(accountId) {
+  const r = await fetch(`/api/aegis/wallet?accountId=${encodeURIComponent(accountId)}`, { headers: await authHeaders() });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `detail ${r.status}`), { status: r.status, code: body?.code });
+  return body;
+}
+
+// Следующая страница движений («показать ещё»).
+export async function fetchWalletTransactions(accountId, cursor) {
+  const q = `accountId=${encodeURIComponent(accountId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+  const r = await fetch(`/api/aegis/wallet?${q}`, { headers: await authHeaders() });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `tx ${r.status}`), { status: r.status });
+  return body.transactions || { available: false, items: [], cursor: null, hasMore: false };
+}
+
 // «Обновить»: ручной пул сводки кошелька из AEGIS.
 export async function refreshMonitoring(accountId) {
   const r = await fetch("/api/aegis/refresh", {

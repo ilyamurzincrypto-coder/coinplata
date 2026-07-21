@@ -3,7 +3,7 @@
 // Дефолт — все currency-строки свёрнуты; видны: code, total, available.
 // Клик раскрывает — показывает только non-empty каналы с account-карточками.
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import {
   Plus,
   ArrowLeftRight,
@@ -51,6 +51,8 @@ import AccountsTree from "../components/accounts/AccountsTree.jsx";
 import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
 import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
+import WalletDetail from "../components/accounts/crypto/WalletDetail.jsx";
+import { fetchWalletDetail } from "../lib/aegisMonitoring.js";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -149,6 +151,19 @@ export default function AccountsPage({ onOpenHelp = null }) {
     const ts = cryptoItems.map((i) => i.account.syncedAt).filter(Boolean).sort();
     return ts.length ? ts[ts.length - 1] : new Date().toISOString();
   }, [cryptoItems]);
+  // Drill-down (Экран 3) + подгрузка reasons в плашку списка.
+  const [detailWallet, setDetailWallet] = useState(null); // { account, ledgerUsd }
+  const [reasonsById, setReasonsById] = useState({});
+  const openWallet = useCallback(
+    (account) => setDetailWallet({ account, ledgerUsd: toBase(balanceOf(account.id), account.currency) }),
+    [toBase, balanceOf]
+  );
+  const requestReasons = useCallback((account) => {
+    fetchWalletDetail(account.id).then(
+      (d) => setReasonsById((m) => ({ ...m, [account.id]: d?.wallet?.riskReasons || [] })),
+      () => {}
+    );
+  }, []);
   const sym = curSymbol(base);
 
   // Период для delta — сегодня + вчера (для сравнения через слэш).
@@ -472,6 +487,9 @@ export default function AccountsPage({ onOpenHelp = null }) {
               offices={activeOffices}
               mode="authed"
               asOf={cryptoAsOf}
+              onOpenWallet={openWallet}
+              reasonsById={reasonsById}
+              onRequestReasons={requestReasons}
             />
           ) : (
             <AccountsTree kindFilter={activeTab} />
@@ -483,6 +501,9 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <ShareLinksModal scope={activeTab} onClose={() => setShareOpen(false)} />
       )}
       {walletImportOpen && <ImportWalletsModal onClose={() => setWalletImportOpen(false)} />}
+      {detailWallet && (
+        <WalletDetail account={detailWallet.account} ledgerUsd={detailWallet.ledgerUsd} onBack={() => setDetailWallet(null)} />
+      )}
 
       {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;
