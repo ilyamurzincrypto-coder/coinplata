@@ -88,7 +88,7 @@ function StatusDot({ account, onClick, small = false }) {
   );
 }
 
-function CopyAddr({ address, network, size = 12 }) {
+function CopyAddr({ address, network, size = 12, head = 6, tail = 5 }) {
   const [copied, setCopied] = useState(false);
   if (!address) return null;
   const copy = (e) => {
@@ -97,7 +97,7 @@ function CopyAddr({ address, network, size = 12 }) {
   };
   return (
     <span className="inline-flex items-center gap-1.5 min-w-0">
-      <span className="font-mono text-ink-soft truncate" style={{ fontSize: size }} title={address}>{midTruncate(address)}</span>
+      <span className="font-mono text-ink-soft truncate" style={{ fontSize: size }} title={address}>{midTruncate(address, head, tail)}</span>
       <button type="button" onClick={copy} title="Скопировать адрес" className="shrink-0 text-muted hover:text-ink">
         {copied ? <Check className="w-3.5 h-3.5 text-emerald" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
@@ -180,27 +180,27 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
 }
 
 // ─── Desktop: строка таблицы ───
-// имя — твёрдый min-width (НЕ схлопывать в «W…»); адрес — фикс-узкая колонка
-// (усечён серединой, не налезает на статус); статус — своя колонка с gap.
-const DCOLS = "grid-cols-[minmax(160px,2fr)_112px_140px_108px_92px_104px_16px]";
+// Табличный вид: имя | сеть (своя колонка → чипы выровнены) | адрес | статус |
+// он-чейн | учёт | Δ | ›. Вертикальные хайрлайны между колонками (border-l на
+// ячейках, items-stretch → линии во всю высоту строки).
+const DCOLS = "grid-cols-[minmax(190px,2fr)_62px_minmax(132px,1.3fr)_128px_112px_92px_104px_22px]";
+const DCELL = "flex items-center px-2.5 min-w-0 border-l-[0.5px] border-border-soft";
 function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
   const red = deficitRed(vm);
   return (
     <>
       <div
-        className={`grid ${DCOLS} items-center gap-2 px-3 min-h-[46px] border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
+        className={`grid ${DCOLS} items-stretch min-h-[46px] border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
-        <span className="flex items-center gap-2 min-w-0">
-          <span className="text-[13px] text-ink truncate">{vm.name}</span>
-          {vm.network && <span className="shrink-0 text-[9.5px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{vm.network}</span>}
-        </span>
-        <span className="min-w-0 overflow-hidden"><CopyAddr address={vm.address} network={null} size={12} /></span>
-        <span className="min-w-0"><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></span>
-        <Amount value={vm.onchain} cls="text-[15px] font-medium text-ink w-full" minW={88} red={red} />
-        <Amount value={vm.ledger} cls="text-[13px] text-muted w-full" minW={80} />
-        <DeltaBadge vm={vm} minW={104} />
-        {drillEnabled ? <ChevronRight className="w-4 h-4 text-muted-soft" /> : <span />}
+        <span className="flex items-center px-2.5 min-w-0"><span className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</span></span>
+        <span className={`${DCELL} justify-center`}>{vm.network && <span className="text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</span>
+        <span className={`${DCELL} overflow-hidden`}><CopyAddr address={vm.address} network={null} size={12} head={8} tail={6} /></span>
+        <span className={DCELL}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></span>
+        <span className={`${DCELL} justify-end`}><Amount value={vm.onchain} cls="text-[15px] font-medium text-ink" minW={84} red={red} /></span>
+        <span className={`${DCELL} justify-end`}><Amount value={vm.ledger} cls="text-[13px] text-muted" minW={72} /></span>
+        <span className={`${DCELL} justify-end`}><DeltaBadge vm={vm} minW={90} /></span>
+        <span className={`${DCELL} justify-center !px-0`}>{drillEnabled ? <ChevronRight className="w-4 h-4 text-muted-soft" /> : null}</span>
       </div>
       {expanded && mode === "authed" && (
         <div className="px-3 py-2 border-t-[0.5px] border-border-soft bg-surface-soft"><div className="max-w-[560px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div></div>
@@ -308,9 +308,15 @@ export default function CryptoAccountsList({
 
             {/* Desktop: таблица */}
             <div className="hidden md:block bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
-              <div className={`grid ${DCOLS} items-center gap-2 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted`}>
-                <span>Кошелёк</span><span>Адрес</span><span>Статус</span>
-                <span className="text-right">Он-чейн</span><span className="text-right">Учёт</span><span className="text-right">Δ</span><span />
+              <div className={`grid ${DCOLS} items-stretch py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted border-b-[0.5px] border-border`}>
+                <span className="flex items-center px-2.5">Кошелёк</span>
+                <span className={`${DCELL} justify-center`}>Сеть</span>
+                <span className={DCELL}>Адрес</span>
+                <span className={DCELL}>Статус</span>
+                <span className={`${DCELL} justify-end`}>Он-чейн</span>
+                <span className={`${DCELL} justify-end`}>Учёт</span>
+                <span className={`${DCELL} justify-end`}>Δ</span>
+                <span className={`${DCELL} !px-0`} />
               </div>
               {s.wallets.map((vm) => (
                 <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
