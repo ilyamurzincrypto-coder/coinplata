@@ -97,7 +97,6 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
   const txData = state.data?.transactions || {};
   const allTx = [...(txData.items || []), ...extra].filter((t) => txFilter === "all" || t.direction === (txFilter === "in" ? "in" : "out"));
   const score = w.riskScore;
-  const scoreColor = RISK_COLOR[w.riskLevel] || "#131416";
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex md:items-center md:justify-center" onClick={onBack}>
@@ -118,12 +117,14 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
             {explorer && <a href={explorer} target="_blank" rel="noreferrer" className="text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-4 h-4" /></a>}
           </div>
 
-          {/* 3 метрики */}
+          {/* 3 метрики. Фолбэк на кэш счёта, если live-detail не пришёл (AEGIS-таймаут). */}
           <div className="flex gap-2">
-            <Metric label="он-чейн">{w.balanceUsdEst != null ? usd(w.balanceUsdEst) : "—"}</Metric>
+            <Metric label="он-чейн">{(w.balanceUsdEst ?? account.balanceUsdEst) != null ? usd(w.balanceUsdEst ?? account.balanceUsdEst) : "—"}</Metric>
             <Metric label="учёт">{usd(ledgerUsd)}</Metric>
-            <Metric label="риск-скор" valueCls="">
-              <span style={{ color: scoreColor }}>{score != null ? `${score}/100` : (w.riskLevel || "—")}</span>
+            <Metric label="риск-скор">
+              <span style={{ color: RISK_COLOR[w.riskLevel || account.riskLevel] || "#131416" }}>
+                {score != null ? `${score}/100` : (w.riskLevel || account.riskLevel || "—")}
+              </span>
             </Metric>
           </div>
 
