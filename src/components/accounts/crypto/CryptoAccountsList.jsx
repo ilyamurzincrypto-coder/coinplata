@@ -10,7 +10,7 @@
 //  • Статус-точка (риск AEGIS) и Δ-бейдж (расхождение учёт↔он-чейн) — РАЗДЕЛЬНЫ.
 //    Он-чейн краснеет только вместе с Δ-бейджем.
 import React, { useMemo, useState } from "react";
-import { Lock, Copy, Check, ChevronRight, X, ArrowDownUp, Wallet, AlertTriangle } from "lucide-react";
+import { Lock, Copy, Check, ChevronRight, X, AlertTriangle } from "lucide-react";
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
 
@@ -135,57 +135,39 @@ function ReasonPanel({ vm, reasons, onClose }) {
   );
 }
 
-// ─── Mobile: карточка ───
-function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
-  const st = statusOf(vm.account);
+// ─── Mobile: строка (единый стиль для всех кошельков) ───
+// Как таблица на десктопе, но в 2 строки: имя+адрес слева, он-чейн+риск справа.
+// Один стиль для ok/проблемных (различие — цвет риск-индикатора и Δ), внутри
+// одной карточки на офис с хайрлайнами между строками — без «вакханалии».
+function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled, first }) {
   const red = deficitRed(vm);
-  if (vm.category !== "problem") {
-    return (
+  const showDelta = hasDelta(vm);
+  return (
+    <>
       <div
-        className={`flex items-center gap-2.5 px-3 min-h-[52px] ${drillEnabled ? "cursor-pointer hover:bg-surface-soft" : ""}`}
+        className={`flex items-center gap-2.5 px-3 py-2.5 ${first ? "" : "border-t-[0.5px] border-border-soft"} ${drillEnabled ? "active:bg-surface-soft" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
-        <span className={`grid place-items-center w-[34px] h-[34px] rounded-[10px] ${st.tile} shrink-0`}><Wallet className="w-4 h-4 text-muted" strokeWidth={1.8} /></span>
-        <span className="flex flex-col min-w-0 flex-1 gap-0.5">
+        <div className="flex flex-col min-w-0 flex-1 gap-1">
           <span className="text-[14px] text-ink truncate">{vm.name}</span>
-          <CopyAddr address={vm.address} network={vm.network} />
-        </span>
-        <span className="flex flex-col items-end shrink-0">
-          <Amount value={vm.onchain} cls="text-[15px] text-ink" minW={84} />
-          <span className="text-[10px] text-success">● = учёт</span>
-        </span>
+          <span className="flex items-center gap-1.5 min-w-0">
+            {vm.network && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[5px] px-1 py-0.5">{vm.network}</span>}
+            <CopyAddr address={vm.address} network={null} size={11.5} head={6} tail={5} />
+          </span>
+        </div>
+        <div className="flex flex-col items-end shrink-0 gap-1">
+          <Amount value={vm.onchain} cls="text-[16px] font-medium text-ink" minW={0} red={red} />
+          <div className="flex items-center gap-1.5">
+            {showDelta && <DeltaBadge vm={vm} minW={0} />}
+            <StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small />
+          </div>
+        </div>
         {drillEnabled && <ChevronRight className="w-4 h-4 text-muted-soft shrink-0" />}
       </div>
-    );
-  }
-  return (
-    <div className="border-[0.5px] border-border rounded-[14px] overflow-hidden">
-      <div className="px-3 py-3">
-        <div className="flex items-center gap-2.5">
-          <span className={`grid place-items-center w-[38px] h-[38px] rounded-[11px] ${st.tile} shrink-0`}><Wallet className="w-[18px] h-[18px]" style={{ color: st.color }} strokeWidth={1.8} /></span>
-          <span className="text-[15px] text-ink truncate flex-1">{vm.name}</span>
-          <StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} />
-        </div>
-        <div className="mt-2 pl-[46px]"><CopyAddr address={vm.address} network={vm.network} /></div>
-        <div className="mt-2.5 pl-[46px] flex items-end justify-between gap-2 min-h-[40px]">
-          <span className="flex flex-col">
-            <Amount value={vm.onchain} cls="text-[30px] leading-none text-ink" minW={110} red={red} />
-            <span className="text-[11px] text-muted mt-1">он-чейн сейчас</span>
-          </span>
-          <span className="flex flex-col items-end gap-1">
-            <DeltaBadge vm={vm} minW={92} />
-            <span className="text-[12px] text-muted"><span className="font-mono tabular-nums">{usd(vm.ledger)}</span> в учёте</span>
-          </span>
-        </div>
-        {expanded && mode === "authed" && <div className="mt-2 pl-[46px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div>}
-      </div>
-      {drillEnabled && (
-        <button type="button" onClick={() => onOpen?.(vm.account)} className="w-full flex items-center justify-between px-3 py-2 border-t-[0.5px] border-border-soft text-[12.5px] text-ink-soft hover:bg-surface-soft">
-          <span className="inline-flex items-center gap-1.5"><ArrowDownUp className="w-3.5 h-3.5 text-muted" /> Движения и контрагенты</span>
-          <ChevronRight className="w-4 h-4 text-muted-soft" />
-        </button>
+      {expanded && mode === "authed" && (
+        <div className="px-3 py-2 bg-surface-soft border-t-[0.5px] border-border-soft"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -335,11 +317,21 @@ export default function CryptoAccountsList({
               </span>
             </div>
 
-            {/* Mobile: карточки */}
-            <div className="md:hidden space-y-2">
-              {s.wallets.map((vm) => (
-                <MobileCard key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
+            {/* Mobile: единый список в одной карточке офиса */}
+            <div className="md:hidden bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
+              {s.wallets.map((vm, i) => (
+                <MobileRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={i === 0} />
               ))}
+              {s.zeroWallets.length > 0 && (
+                <>
+                  <button type="button" onClick={() => setZeroOpen((o) => !o)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
+                    <span className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</span>
+                  </button>
+                  {zeroOpen && s.zeroWallets.map((vm) => (
+                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} />
+                  ))}
+                </>
+              )}
             </div>
 
             {/* Desktop: таблица (table-fixed, общий colgroup → выровнено между офисами) */}
@@ -366,14 +358,6 @@ export default function CryptoAccountsList({
                 </tbody>
               </table>
             </div>
-
-            {/* Нулёвки — mobile */}
-            {s.zeroWallets.length > 0 && (
-              <div className="md:hidden mt-2">
-                <button type="button" onClick={() => setZeroOpen((o) => !o)} className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</button>
-                {zeroOpen && <div className="space-y-2 mt-2">{s.zeroWallets.map((vm) => <MobileCard key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} />)}</div>}
-              </div>
-            )}
           </div>
         ))}
       </div>
