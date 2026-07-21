@@ -51,7 +51,7 @@ const deficitRed = (vm) => vm.hasOnchain && vm.ledger - vm.onchain > DELTA_ALERT
 function Amount({ value, cls = "", minW = 88, red = false }) {
   return (
     <span className={`inline-block text-right font-mono tabular-nums ${cls}`} style={{ minWidth: minW, color: red ? "#B91C1C" : undefined }}>
-      {value == null ? <span className="inline-block rounded bg-surface-soft align-middle" style={{ width: minW - 16, height: "0.78em" }} /> : usd(value)}
+      {value == null ? <span className="inline-block rounded bg-surface-soft align-middle" style={{ width: Math.max(minW - 16, 48), height: "0.78em" }} /> : usd(value)}
     </span>
   );
 }
@@ -106,8 +106,8 @@ function CopyAddr({ address, network, size = 12, head = 6, tail = 5, full = fals
     navigator.clipboard?.writeText(address).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200); }, () => {});
   };
   return (
-    <span className="inline-flex items-center gap-1.5 min-w-0">
-      <span className="font-mono text-ink-soft truncate" style={{ fontSize: size }} title={address}>{full ? address : midTruncate(address, head, tail)}</span>
+    <span className={`inline-flex items-center gap-1.5 min-w-0 ${full ? "max-w-full w-full" : ""}`}>
+      <span className={`font-mono text-ink-soft truncate ${full ? "min-w-0 flex-1" : ""}`} style={{ fontSize: size }} title={address}>{full ? address : midTruncate(address, head, tail)}</span>
       <button type="button" onClick={copy} title="Скопировать адрес" className="shrink-0 text-muted hover:text-ink">
         {copied ? <Check className="w-3.5 h-3.5 text-emerald" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
@@ -189,32 +189,54 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
   );
 }
 
-// ─── Desktop: строка таблицы ───
-// Табличный вид: имя | сеть (узкая, у имени) | адрес (полностью) | риск | он-чейн |
-// учёт | Δ | ›. Вертикальные хайрлайны между колонками (border-l на ячейках,
-// items-stretch → линии во всю высоту строки). Высота строки ФИКСИРОВАНА (h-11) —
-// Δ-бейдж в одну строку (whitespace-nowrap), поэтому строки не «скачут».
-const DCOLS = "grid-cols-[minmax(150px,1.4fr)_52px_minmax(250px,2.4fr)_96px_112px_88px_120px_20px]";
-const DCELL = "flex items-center px-2.5 min-w-0 border-l-[0.5px] border-border-soft";
+// ─── Desktop: настоящая таблица (table-fixed) ───
+// Один colgroup на ВСЕ офисы → колонки (и суммы) выровнены между таблицами, а не
+// «плывут». table-fixed + truncate → контент не вылезает и Δ не клипается.
+// Колонки: имя | сеть | адрес | риск | он-чейн | учёт | Δ | ›.
+const DCOLW = ["19%", "7%", "21%", "11%", "16%", "11%", "11%", "4%"];
+const TD = "px-2.5 border-l-[0.5px] border-border-soft align-middle";
+function ColGroup() {
+  return <colgroup>{DCOLW.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
+}
+
+function DesktopHead() {
+  return (
+    <thead>
+      <tr className="text-[10px] font-semibold uppercase tracking-wide text-muted border-b-[0.5px] border-border">
+        <th className="text-left font-semibold px-2.5 py-2">Кошелёк</th>
+        <th className={`${TD} text-left font-semibold py-2`}>Сеть</th>
+        <th className={`${TD} text-left font-semibold py-2`}>Адрес</th>
+        <th className={`${TD} text-left font-semibold py-2`}>Риск</th>
+        <th className={`${TD} text-right font-semibold py-2`}>Он-чейн</th>
+        <th className={`${TD} text-right font-semibold py-2`}>Учёт</th>
+        <th className={`${TD} text-right font-semibold py-2`}>Δ</th>
+        <th className={`${TD} !px-0`} />
+      </tr>
+    </thead>
+  );
+}
+
 function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
   const red = deficitRed(vm);
   return (
     <>
-      <div
-        className={`grid ${DCOLS} items-stretch h-11 border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
+      <tr
+        className={`h-11 border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
-        <span className="flex items-center px-2.5 min-w-0"><span className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</span></span>
-        <span className={`${DCELL} !px-2 justify-start`}>{vm.network && <span className="text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</span>
-        <span className={`${DCELL} overflow-hidden`}><CopyAddr address={vm.address} network={null} size={12} full /></span>
-        <span className={DCELL}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></span>
-        <span className={`${DCELL} justify-end`}><Amount value={vm.onchain} cls="text-[15px] font-medium text-ink" minW={84} red={red} /></span>
-        <span className={`${DCELL} justify-end`}><Amount value={vm.ledger} cls="text-[13px] text-muted" minW={72} /></span>
-        <span className={`${DCELL} justify-end`}><DeltaBadge vm={vm} minW={0} /></span>
-        <span className={`${DCELL} justify-center !px-0`}>{drillEnabled ? <ChevronRight className="w-4 h-4 text-muted-soft" /> : null}</span>
-      </div>
+        <td className="px-2.5 align-middle"><div className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</div></td>
+        <td className={`${TD} !px-2`}>{vm.network && <span className="inline-block text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</td>
+        <td className={TD}><CopyAddr address={vm.address} network={null} size={12} full /></td>
+        <td className={TD}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></td>
+        <td className={`${TD} text-right`}><Amount value={vm.onchain} cls="text-[15px] font-medium text-ink" minW={0} red={red} /></td>
+        <td className={`${TD} text-right`}><Amount value={vm.ledger} cls="text-[13px] text-muted" minW={0} /></td>
+        <td className={`${TD} text-right`}><DeltaBadge vm={vm} minW={0} /></td>
+        <td className={`${TD} !px-0 text-center`}>{drillEnabled ? <ChevronRight className="inline w-4 h-4 text-muted-soft" /> : null}</td>
+      </tr>
       {expanded && mode === "authed" && (
-        <div className="px-3 py-2 border-t-[0.5px] border-border-soft bg-surface-soft"><div className="max-w-[560px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div></div>
+        <tr className="bg-surface-soft border-t-[0.5px] border-border-soft">
+          <td colSpan={8} className="px-3 py-2"><div className="max-w-[560px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div></td>
+        </tr>
       )}
     </>
   );
@@ -305,9 +327,12 @@ export default function CryptoAccountsList({
       <div className="space-y-4">
         {view.sections.map((s) => (
           <div key={s.office.id}>
-            <div className="flex items-baseline justify-between gap-2 mb-1.5 px-0.5">
-              <span className="text-[13px] font-bold text-ink truncate">{s.office.name}</span>
-              <span className="font-mono tabular-nums text-[12.5px] text-ink shrink-0">{usd(s.onchainSum)}</span>
+            <div className="flex items-end justify-between gap-3 mb-2 px-0.5">
+              <span className="text-[15px] font-bold text-ink truncate">{s.office.name}</span>
+              <span className="flex items-baseline gap-1.5 shrink-0">
+                <span className="font-mono tabular-nums text-[17px] font-semibold text-ink">{usd(s.onchainSum)}</span>
+                <span className="text-[11px] text-muted">он-чейн</span>
+              </span>
             </div>
 
             {/* Mobile: карточки */}
@@ -317,27 +342,29 @@ export default function CryptoAccountsList({
               ))}
             </div>
 
-            {/* Desktop: таблица */}
+            {/* Desktop: таблица (table-fixed, общий colgroup → выровнено между офисами) */}
             <div className="hidden md:block bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
-              <div className={`grid ${DCOLS} items-stretch py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted border-b-[0.5px] border-border`}>
-                <span className="flex items-center px-2.5">Кошелёк</span>
-                <span className={`${DCELL} !px-2 justify-start`}>Сеть</span>
-                <span className={DCELL}>Адрес</span>
-                <span className={DCELL}>Риск</span>
-                <span className={`${DCELL} justify-end`}>Он-чейн</span>
-                <span className={`${DCELL} justify-end`}>Учёт</span>
-                <span className={`${DCELL} justify-end`}>Δ</span>
-                <span className={`${DCELL} !px-0`} />
-              </div>
-              {s.wallets.map((vm) => (
-                <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
-              ))}
-              {s.zeroWallets.length > 0 && (
-                <div className="border-t-[0.5px] border-border-soft px-3 py-2">
-                  <button type="button" onClick={() => setZeroOpen((o) => !o)} className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</button>
-                  {zeroOpen && s.zeroWallets.map((vm) => <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} />)}
-                </div>
-              )}
+              <table className="w-full table-fixed border-collapse">
+                <ColGroup />
+                <DesktopHead />
+                <tbody>
+                  {s.wallets.map((vm) => (
+                    <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
+                  ))}
+                  {s.zeroWallets.length > 0 && (
+                    <>
+                      <tr className="border-t-[0.5px] border-border-soft">
+                        <td colSpan={8} className="px-3 py-2">
+                          <button type="button" onClick={() => setZeroOpen((o) => !o)} className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</button>
+                        </td>
+                      </tr>
+                      {zeroOpen && s.zeroWallets.map((vm) => (
+                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
+                      ))}
+                    </>
+                  )}
+                </tbody>
+              </table>
             </div>
 
             {/* Нулёвки — mobile */}
