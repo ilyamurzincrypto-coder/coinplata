@@ -4,7 +4,7 @@
 // Данные — живой снапшот из /api/share/accounts?token=… ; сборка дерева и base-
 // конверсия переиспользуют тот же движок (buildShareTree). Никаких мутаций:
 // у страницы нет ни одной кнопки действия, а бэкенд отдаёт только GET.
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Building2, Eye, Lock, AlertTriangle } from "lucide-react";
 import { buildShareTree, SCOPE_LABEL } from "../lib/shareAccounts.js";
 import { ccyMeta, fmtRu } from "../components/balances/currencyMeta.js";
@@ -91,84 +91,72 @@ export default function ShareAccountsView({ token }) {
           </div>
         </div>
 
-        {/* Дерево (всё развёрнуто, без действий) */}
-        <div className="bg-surface border border-[#e7e9f1] rounded-[16px] overflow-hidden">
-          <div className="grid grid-cols-[1fr_140px_120px] items-center px-4 py-2.5 border-b border-[#e7e9f1] bg-[#fbfcfe] text-[10px] font-bold uppercase tracking-wide text-muted">
-            <span>Касса / валюта</span>
-            <span className="text-right">Остаток</span>
-            <span className="text-right">≈ итого</span>
-          </div>
-
+        {/* Дерево — мобайл-френдли: flex со стеком, он-чейн на отдельной строке */}
+        <div className="space-y-3">
           {tree.map((ob) => (
-            <div key={ob.office.id} className="border-b border-[#eef0f4] last:border-0">
-              <div className="grid grid-cols-[1fr_140px_120px] items-center px-4 py-2.5 bg-[#fbfcfe]">
+            <div key={ob.office.id} className="bg-surface border border-[#e7e9f1] rounded-[14px] overflow-hidden">
+              {/* Офис */}
+              <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-[#fbfcfe] border-b border-[#eef0f4]">
                 <span className="flex items-center gap-2 min-w-0">
                   <Building2 className="w-4 h-4 text-[#5b6cff] shrink-0" strokeWidth={2} />
-                  <span className="text-[13.5px] font-bold text-ink truncate">{ob.office.name}</span>
-                  <span className="text-[11px] text-muted">· {ob.accsCount}</span>
+                  <span className="text-[14px] font-bold text-ink truncate">{ob.office.name}</span>
+                  <span className="text-[11px] text-muted shrink-0">· {ob.accsCount}</span>
                 </span>
-                <span className="text-right" />
-                <span className="text-right text-[13px] font-bold text-ink font-mono">{fmtBase(ob.baseTotal)}</span>
+                <span className="text-[14px] font-extrabold text-ink font-mono shrink-0">{fmtBase(ob.baseTotal)}</span>
               </div>
+
+              {ob.ccys.length === 0 && (
+                <div className="px-3.5 py-2.5 text-[12px] text-muted">Нет счетов в этом разрезе</div>
+              )}
 
               {ob.ccys.map((cb) => {
                 const cryptoRows = (cb.rows || []).filter((r) => isCryptoAccount(r.account));
                 return (
-                  <React.Fragment key={`${ob.office.id}|${cb.ccy}`}>
-                    <div className="grid grid-cols-[1fr_140px_120px] items-center pl-9 pr-4 py-2 border-t border-[#f3f4f8]">
+                  <div key={`${ob.office.id}|${cb.ccy}`} className="px-3.5 py-2 border-b border-[#f3f4f8] last:border-0">
+                    {/* Валюта — итог */}
+                    <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2 min-w-0">
                         <CcyChip ccy={cb.ccy} />
                         <span className="text-[13px] font-bold text-ink">{cb.ccy}</span>
-                        {cb.list.length > 1 && (
-                          <span className="text-[11px] text-muted">· {cb.list.length} сч.</span>
-                        )}
+                        {cb.list.length > 1 && <span className="text-[11px] text-muted">· {cb.list.length}</span>}
                       </span>
-                      <span className="text-right text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
-                      <span className="text-right text-[12px] font-mono text-muted">{fmtBase(cb.base)}</span>
+                      <span className="flex flex-col items-end leading-tight shrink-0">
+                        <span className="text-[13px] font-mono font-semibold text-ink">{native(cb.total, cb.ccy)}</span>
+                        <span className="text-[10.5px] font-mono text-muted">≈ {fmtBase(cb.base)}</span>
+                      </span>
                     </div>
 
-                    {/* Крипто-кошельки: бейдж риска AEGIS + он-чейн баланс + расхождение (read-only) */}
+                    {/* Крипто-кошельки: имя + бейдж, на второй строке — он-чейн (видно на мобиле) */}
                     {cryptoRows.map((r) => {
                       const a = r.account;
                       const disc = walletDiscrepancy({ ledgerUsd: r.ledgerUsd, balanceUsdEst: a.balanceUsdEst });
                       return (
-                        <div
-                          key={a.id}
-                          className="grid grid-cols-[1fr_140px_120px] items-center pl-[52px] pr-4 py-1.5 border-t border-[#f6f7fb]"
-                        >
-                          <span className="flex items-center gap-1.5 min-w-0">
-                            <span className="text-[12px] text-ink-soft truncate">{a.name}</span>
-                            <AegisBadge account={a} />
-                            {disc.hasOnchain && (
-                              <span
-                                title={
-                                  disc.flagged
-                                    ? `Расхождение: учётный ${fmtBase(r.ledgerUsd)} vs он-чейн ${fmtBase(disc.onchainUsd)}`
-                                    : `Он-чейн (AEGIS): ${fmtBase(disc.onchainUsd)}${a.syncedAt ? ` · ${syncedLabel(a.syncedAt)}` : ""}`
-                                }
-                                className={`inline-flex items-center gap-1 text-[10.5px] font-mono shrink-0 ${
-                                  disc.flagged ? "text-[#c0392b] font-bold" : "text-muted"
-                                }`}
-                              >
-                                {disc.flagged && <AlertTriangle className="w-3 h-3" strokeWidth={2.2} />}
-                                ⛓ {fmtBase(disc.onchainUsd)}
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-right text-[12px] font-mono text-ink">{native(r.native, cb.ccy)}</span>
-                          <span className="text-right text-[11.5px] font-mono text-muted">{fmtBase(r.ledgerUsd)}</span>
+                        <div key={a.id} className="mt-2 pl-1 flex flex-col gap-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-[12px] text-ink-soft truncate">{a.name}</span>
+                              <AegisBadge account={a} />
+                            </span>
+                            <span className="text-[12px] font-mono text-ink shrink-0">{native(r.native, cb.ccy)}</span>
+                          </div>
+                          {disc.hasOnchain && (
+                            <div
+                              className={`flex items-center gap-1.5 flex-wrap text-[11px] font-mono ${
+                                disc.flagged ? "text-[#c0392b] font-semibold" : "text-muted"
+                              }`}
+                            >
+                              {disc.flagged && <AlertTriangle className="w-3 h-3 shrink-0" strokeWidth={2.2} />}
+                              <span>⛓ он-чейн {fmtBase(disc.onchainUsd)}</span>
+                              {a.syncedAt && <span className="text-muted-soft">· {syncedLabel(a.syncedAt)}</span>}
+                              {disc.flagged && <span className="text-muted-soft">· учёт {fmtBase(r.ledgerUsd)}</span>}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-                  </React.Fragment>
+                  </div>
                 );
               })}
-
-              {ob.ccys.length === 0 && (
-                <div className="pl-9 pr-4 py-2.5 border-t border-[#f3f4f8] text-[12px] text-muted">
-                  Нет счетов в этом разрезе
-                </div>
-              )}
             </div>
           ))}
         </div>
