@@ -10,7 +10,7 @@
 //  • Статус-точка (риск AEGIS) и Δ-бейдж (расхождение учёт↔он-чейн) — РАЗДЕЛЬНЫ.
 //    Он-чейн краснеет только вместе с Δ-бейджем.
 import React, { useMemo, useState } from "react";
-import { Lock, Copy, Check, ChevronRight, X, ArrowDownUp, Wallet } from "lucide-react";
+import { Lock, Copy, Check, ChevronRight, X, ArrowDownUp, Wallet, AlertTriangle } from "lucide-react";
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
 
@@ -40,6 +40,9 @@ const statusOf = (account) => {
   return { ...(STATUS[b.tone] || STATUS.muted), label: b.label, tone: b.tone };
 };
 const hasDelta = (vm) => vm.hasOnchain && vm.deltaAbs > DELTA_ALERT_THRESHOLD_USD;
+// Он-чейн краснеет ТОЛЬКО при недостаче (он-чейн < учёт выше порога) — по макету:
+// W88 $0.62<$1000 → красный; Center $5700>$0 (избыток) → чёрный, Δ-чип красный.
+const deficitRed = (vm) => vm.hasOnchain && vm.ledger - vm.onchain > DELTA_ALERT_THRESHOLD_USD;
 
 // Сумма в фикс-контейнере (mono, tabular) — обновление не двигает соседей.
 // null он-чейн → skeleton фикс-размера (нет данных/грузится).
@@ -75,7 +78,11 @@ function StatusDot({ account, onClick, small = false }) {
       className={`inline-flex items-center gap-1.5 shrink-0 ${st.text} ${onClick ? "hover:opacity-80" : ""}`}
       title={onClick ? "Показать причину" : undefined}
     >
-      <span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: st.color }} />
+      {st.tone === "warning" || st.tone === "critical" ? (
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: st.color }} strokeWidth={2.2} />
+      ) : (
+        <span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: st.color }} />
+      )}
       <span className={small ? "text-[12px] font-medium" : "text-[12.5px] font-medium"}>{st.label}</span>
     </Tag>
   );
@@ -121,7 +128,7 @@ function ReasonPanel({ vm, reasons, onClose }) {
 // ─── Mobile: карточка ───
 function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
   const st = statusOf(vm.account);
-  const red = hasDelta(vm);
+  const red = deficitRed(vm);
   if (vm.category !== "problem") {
     return (
       <div
@@ -152,7 +159,7 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
         <div className="mt-2 pl-[46px]"><CopyAddr address={vm.address} network={vm.network} /></div>
         <div className="mt-2.5 pl-[46px] flex items-end justify-between gap-2 min-h-[40px]">
           <span className="flex flex-col">
-            <Amount value={vm.onchain} cls="text-[22px] leading-none text-ink" minW={100} red={red} />
+            <Amount value={vm.onchain} cls="text-[30px] leading-none text-ink" minW={110} red={red} />
             <span className="text-[11px] text-muted mt-1">он-чейн сейчас</span>
           </span>
           <span className="flex flex-col items-end gap-1">
@@ -177,7 +184,7 @@ function MobileCard({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
 // (усечён серединой, не налезает на статус); статус — своя колонка с gap.
 const DCOLS = "grid-cols-[minmax(160px,2fr)_112px_140px_108px_92px_104px_16px]";
 function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
-  const red = hasDelta(vm);
+  const red = deficitRed(vm);
   return (
     <>
       <div
@@ -231,7 +238,13 @@ export default function CryptoAccountsList({
       key={key}
       type="button"
       onClick={() => setFilter(key)}
-      className={`px-2.5 py-1 rounded-[9px] text-[12px] font-medium whitespace-nowrap transition-colors ${filter === key ? "bg-ink text-white" : "bg-surface-soft text-ink-soft hover:text-ink"}`}
+      className={`px-2.5 py-1 rounded-[9px] text-[12px] font-medium whitespace-nowrap transition-colors ${
+        filter === key
+          ? "bg-ink text-white"
+          : key === "attention"
+          ? "bg-surface border-[0.5px] border-border text-danger hover:bg-surface-soft"
+          : "bg-surface border-[0.5px] border-border text-ink-soft hover:text-ink"
+      }`}
     >
       {label} · {n}
     </button>
@@ -243,13 +256,29 @@ export default function CryptoAccountsList({
     <div className="bg-bg">
       {/* Шапка */}
       <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted">Счета · Крипто</span>
-          <div className="mt-1 font-mono tabular-nums text-[28px] leading-none text-ink">{usd(view.totals.onchain)}</div>
-          <div className="text-[13px] mt-1.5">
-            <span className="text-muted">он-чейн</span>
-            <span className="text-muted"> · учёт <span className="font-mono tabular-nums">{usd(view.totals.ledger)}</span></span>
-            {dShowDelta && <span className="text-danger"> · Δ <span className="font-mono tabular-nums">{usd(view.totals.delta)}</span></span>}
+        <div className="flex items-start gap-5">
+          <div>
+            <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted">Счета · Крипто</span>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="font-mono tabular-nums text-[36px] leading-none text-ink">{usd(view.totals.onchain)}</span>
+              <span className="text-[12px] text-muted">он-чейн</span>
+            </div>
+            <div className="md:hidden text-[13px] mt-1.5">
+              <span className="text-muted">учёт <span className="font-mono tabular-nums">{usd(view.totals.ledger)}</span></span>
+              {dShowDelta && <span className="text-danger"> · Δ <span className="font-mono tabular-nums">{usd(view.totals.delta)}</span></span>}
+            </div>
+          </div>
+          <div className="hidden md:flex items-stretch gap-5 pt-4">
+            <div className="pl-5 border-l-[0.5px] border-border">
+              <div className="text-[10.5px] text-muted">учёт</div>
+              <div className="font-mono tabular-nums text-[17px] text-ink">{usd(view.totals.ledger)}</div>
+            </div>
+            {dShowDelta && (
+              <div className="pl-5 border-l-[0.5px] border-border">
+                <div className="text-[10.5px] text-muted">расхождение</div>
+                <div className="font-mono tabular-nums text-[17px] text-danger">Δ {usd(view.totals.delta)}</div>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -266,8 +295,7 @@ export default function CryptoAccountsList({
         {view.sections.map((s) => (
           <div key={s.office.id}>
             <div className="flex items-baseline justify-between gap-2 mb-1.5 px-0.5">
-              <span className="text-[12px] font-semibold text-ink-soft truncate">{s.office.name}</span>
-              <span className="flex-1 border-b-[0.5px] border-border mx-2 translate-y-[-3px]" />
+              <span className="text-[13px] font-bold text-ink truncate">{s.office.name}</span>
               <span className="font-mono tabular-nums text-[12.5px] text-ink shrink-0">{usd(s.onchainSum)}</span>
             </div>
 

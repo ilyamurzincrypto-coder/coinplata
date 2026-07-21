@@ -68,15 +68,8 @@ function RiskDistribution({ dist }) {
     { k: "medium", share: seg("medium"), color: RISK_COLOR.medium },
     { k: "low", share: seg("low"), color: RISK_COLOR.low },
   ].filter((p) => p.share > 0);
-  const risky = dist?.risky_share;
   return (
-    <div className="mt-2">
-      {risky != null && (
-        <div className="text-[12px] mb-1.5">
-          <span className="text-muted">рисковые</span>{" "}
-          <span className="font-mono tabular-nums font-semibold" style={{ color: Number(risky) > 0 ? "#B91C1C" : "#10B981" }}>{risky}%</span>
-        </div>
-      )}
+    <div className="mt-2.5">
       <div className="flex h-2 rounded-full overflow-hidden bg-surface-sunk">
         {parts.map((p) => <span key={p.k} style={{ width: `${p.share}%`, background: p.color }} />)}
       </div>
@@ -173,8 +166,14 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
               <div className="flex gap-2">
                 <Metric label="входы">{stats.in?.sumUsd != null ? usd(stats.in.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.in?.count ?? 0}</span></Metric>
                 <Metric label="выходы">{stats.out?.sumUsd != null ? usd(stats.out.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.out?.count ?? 0}</span></Metric>
+                {stats.riskDistribution?.risky_share != null && (
+                  <div className="flex-1 rounded-[12px] px-3 py-2.5 min-w-0 border-[0.5px]" style={{ borderColor: "#B91C1C" }}>
+                    <div className="text-[10.5px] text-muted">рисковые</div>
+                    <div className="mt-1 font-mono tabular-nums text-[16px]" style={{ color: Number(stats.riskDistribution.risky_share) > 0 ? "#B91C1C" : "#10B981" }}>{stats.riskDistribution.risky_share}%</div>
+                  </div>
+                )}
               </div>
-              {/* распределение объёма по риску + рисковые % (если AEGIS отдал; null на EVM) */}
+              {/* стек-бар распределения объёма по риску (null на EVM — скрыт) */}
               {stats.riskDistribution && <RiskDistribution dist={stats.riskDistribution} />}
             </div>
           )}
