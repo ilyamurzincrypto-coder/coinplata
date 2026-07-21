@@ -72,8 +72,25 @@ export default function ShareAccountsView({ token }) {
   const fmtBase = (v) => `${curSymbol(base)}${fmt(v, base)}`;
   const genAt = state.data?.generatedAt ? new Date(state.data.generatedAt) : null;
 
-  // Редизайн крипто-списка (CryptoAccountsList) временно отключён на share —
-  // дорабатывается со сверкой по макетам; share остаётся на прежнем layout.
+  // Крипто-скоуп → новый монитор-список (mode=share, read-only, без drill-down).
+  if (scope === "crypto") {
+    const cryptoItems = tree.flatMap((o) =>
+      (o.ccys || []).flatMap((c) =>
+        (c.rows || []).filter((r) => isCryptoAccount(r.account)).map((r) => ({ account: r.account, ledgerUsd: r.ledgerUsd }))
+      )
+    );
+    const offices = tree.map((o) => o.office);
+    return (
+      <div className="min-h-screen bg-bg py-6 px-4">
+        <div className="max-w-3xl mx-auto">
+          <CryptoAccountsList items={cryptoItems} offices={offices} mode="share" asOf={state.data?.generatedAt} />
+          <div className="mt-3 text-[11px] text-muted-soft text-center">
+            Живые данные{genAt ? ` · обновлено ${genAt.toLocaleString("ru-RU")}` : ""} · CoinPlata
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f4f5f9] py-6 px-4">

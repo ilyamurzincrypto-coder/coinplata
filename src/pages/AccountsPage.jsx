@@ -481,9 +481,19 @@ export default function AccountsPage({ onOpenHelp = null }) {
               <Share2 className="w-4 h-4" strokeWidth={2} /> Поделиться
             </button>
           </div>
-          {/* Редизайн «Крипто» (CryptoAccountsList/WalletDetail) временно отключён —
-              дорабатывается со сверкой по макетам; вкладка на рабочем AccountsTree. */}
-          <AccountsTree kindFilter={activeTab} />
+          {activeTab === "crypto" ? (
+            <CryptoAccountsList
+              items={cryptoItems}
+              offices={activeOffices}
+              mode="authed"
+              asOf={cryptoAsOf}
+              onOpenWallet={openWallet}
+              reasonsById={reasonsById}
+              onRequestReasons={requestReasons}
+            />
+          ) : (
+            <AccountsTree kindFilter={activeTab} />
+          )}
         </>
       )}
 
