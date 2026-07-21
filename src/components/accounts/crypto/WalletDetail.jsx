@@ -18,7 +18,10 @@ const EXPLORER = {
   BEP20: (a) => `https://bscscan.com/address/${a}`,
   BTC: (a) => `https://blockstream.info/address/${a}`,
 };
-const RISK_COLOR = { critical: "#B91C1C", warning: "#B45309", ok: "#10B981" };
+const RISK_COLOR = { critical: "#B91C1C", warning: "#B45309", ok: "#10B981", high: "#B91C1C", medium: "#B45309", low: "#10B981" };
+// score 0-100 → уровень (пороги AEGIS: ok≤25 / warning 25-80 / critical>80).
+const levelOfScore = (s) => (s == null ? null : s > 80 ? "critical" : s > 25 ? "warning" : "ok");
+const TYPE_LABEL = { exchange: "биржа", p2p_merchant: "P2P", mixer: "микшер", private: "приватный", internal: "свой", bridge: "мост", contract: "контракт" };
 
 function Metric({ label, children, valueCls = "" }) {
   return (
@@ -32,8 +35,10 @@ function Metric({ label, children, valueCls = "" }) {
 function TxRow({ t }) {
   const isIn = t.direction === "in";
   const amt = tokenAmt(t.amount);
-  const lvl = t.counterpartyRisk?.level;
+  const score = t.riskScore ?? t.counterpartyRisk?.score;
+  const lvl = levelOfScore(score) || t.counterpartyRisk?.level;
   const color = RISK_COLOR[lvl] || "#B5B9BF";
+  const type = t.counterpartyType && t.counterpartyType !== "unknown" ? (TYPE_LABEL[t.counterpartyType] || t.counterpartyType) : null;
   const cats = (t.counterpartyRisk?.categories || []).join(", ");
   const dt = t.ts ? new Date(t.ts) : null;
   return (
@@ -43,13 +48,43 @@ function TxRow({ t }) {
       </span>
       <span className="flex flex-col min-w-0 flex-1">
         <span className="font-mono tabular-nums text-[13px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
-        <span className="text-[11px] text-muted truncate">{[cats || null, mid(t.counterparty, 6, 5), dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
+        <span className="text-[11px] text-muted truncate">{[type, cats || null, mid(t.counterparty, 6, 5), dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
       </span>
-      {lvl && (
+      {(score != null || lvl) && (
         <span className="shrink-0 inline-flex items-center gap-1 text-[10.5px] font-medium" style={{ color }}>
-          <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {lvl}
+          <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {score != null ? score : lvl}
         </span>
       )}
+    </div>
+  );
+}
+
+// Стек-бар распределения объёма по риску + «рисковые N%» (из stats.risk_distribution).
+function RiskDistribution({ dist }) {
+  const t = dist?.total || {};
+  const seg = (k) => Number(t?.[k]?.share) || 0;
+  const parts = [
+    { k: "high", share: seg("high"), color: RISK_COLOR.high },
+    { k: "medium", share: seg("medium"), color: RISK_COLOR.medium },
+    { k: "low", share: seg("low"), color: RISK_COLOR.low },
+  ].filter((p) => p.share > 0);
+  const risky = dist?.risky_share;
+  return (
+    <div className="mt-2">
+      {risky != null && (
+        <div className="text-[12px] mb-1.5">
+          <span className="text-muted">рисковые</span>{" "}
+          <span className="font-mono tabular-nums font-semibold" style={{ color: Number(risky) > 0 ? "#B91C1C" : "#10B981" }}>{risky}%</span>
+        </div>
+      )}
+      <div className="flex h-2 rounded-full overflow-hidden bg-surface-sunk">
+        {parts.map((p) => <span key={p.k} style={{ width: `${p.share}%`, background: p.color }} />)}
+      </div>
+      <div className="flex gap-3 mt-1.5 text-[10.5px] text-muted">
+        <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: RISK_COLOR.high }} /> высокий {seg("high")}%</span>
+        <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: RISK_COLOR.medium }} /> средний {seg("medium")}%</span>
+        <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: RISK_COLOR.low }} /> низкий {seg("low")}%</span>
+      </div>
     </div>
   );
 }
@@ -139,7 +174,8 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
                 <Metric label="входы">{stats.in?.sumUsd != null ? usd(stats.in.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.in?.count ?? 0}</span></Metric>
                 <Metric label="выходы">{stats.out?.sumUsd != null ? usd(stats.out.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.out?.count ?? 0}</span></Metric>
               </div>
-              {/* «рисковые N%» + стек-бар распределения — скрыты: нет агрегата от AEGIS */}
+              {/* распределение объёма по риску + рисковые % (если AEGIS отдал; null на EVM) */}
+              {stats.riskDistribution && <RiskDistribution dist={stats.riskDistribution} />}
             </div>
           )}
 

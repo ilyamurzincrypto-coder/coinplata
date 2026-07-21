@@ -154,6 +154,9 @@ describe("getStats — §4b in/out + by_day", () => {
     expect(s.out.sumUsd).toBe("900.00");
     expect(s.byDay).toHaveLength(2);
     expect(s.byDay[0]).toMatchObject({ date: "2026-07-18", inUsd: "500.00", outCount: 1 });
+    // распределение объёма по риску (для стек-бара + рисковые %)
+    expect(s.riskDistribution.risky_share).toBe(30);
+    expect(s.riskDistribution.total.low.share).toBe(70);
   });
 
   it("degraded: available false, секции null", async () => {
@@ -174,6 +177,12 @@ describe("getTransactions — §4b items + cursor + has_more", () => {
     expect(p1.items[1].counterpartyRisk.categories).toContain("BLACKLIST");
     expect(p1.cursor).toBe("cursor_page2");
     expect(p1.hasMore).toBe(true);
+    // новые поля: числовой риск перевода + тип контрагента + score контрагента
+    expect(p1.items[0].riskScore).toBe(8);
+    expect(p1.items[0].counterpartyType).toBe("exchange");
+    expect(p1.items[1].riskScore).toBe(95);
+    expect(p1.items[1].counterpartyType).toBe("mixer");
+    expect(p1.items[1].counterpartyRisk.score).toBe(95);
   });
 
   it("последняя страница: items пусто, cursor null, has_more false", async () => {

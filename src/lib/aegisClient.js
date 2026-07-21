@@ -96,6 +96,9 @@ export function normalizeStats(raw) {
     capability: raw?.capability || "live",
     in: side(raw?.in),
     out: side(raw?.out),
+    // Распределение объёма по риску за период (для стек-бара + «рисковые N%»).
+    // { inbound, total:{high/medium/low:{volume,share}}, risky_share }; null на EVM (degraded).
+    riskDistribution: raw?.risk_distribution ?? null,
     byDay: Array.isArray(raw?.by_day)
       ? raw.by_day.map((d) => ({
           date: d.date,
@@ -121,8 +124,12 @@ export function normalizeTransactions(raw) {
       counterparty: t.counterparty ?? null,
       // токен-минор {amount:строка, decimals} — НЕ USD (в контракте USD-оценки на транзакцию нет).
       amount: t.amount ? { amount: String(t.amount.amount), decimals: t.amount.decimals } : null,
+      // риск перевода 0-100 (пороги ok≤25 / warning 25-80 / critical>80); опционально.
+      riskScore: t.risk_score ?? null,
+      // тип контрагента: exchange/p2p_merchant/mixer/private/internal/bridge/contract/unknown.
+      counterpartyType: t.counterparty_type ?? null,
       counterpartyRisk: t.counterparty_risk
-        ? { level: t.counterparty_risk.level ?? null, categories: t.counterparty_risk.categories || [] }
+        ? { level: t.counterparty_risk.level ?? null, score: t.counterparty_risk.score ?? null, categories: t.counterparty_risk.categories || [] }
         : null,
       ts: t.ts,
     })),

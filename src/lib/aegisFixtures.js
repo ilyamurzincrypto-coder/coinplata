@@ -113,6 +113,12 @@ export const FIX_STATS_OK = {
     { date: "2026-07-18", in_usd: "500.00", out_usd: "100.00", in_count: 3, out_count: 1 },
     { date: "2026-07-19", in_usd: "1000.00", out_usd: "800.00", in_count: 9, out_count: 7 },
   ],
+  // распределение объёма по риску за период (агрегат для стек-бара + рисковые %)
+  risk_distribution: {
+    inbound: { high: { volume: "150.00", share: 10 }, medium: { volume: "300.00", share: 20 }, low: { volume: "1050.00", share: 70 } },
+    total: { high: { volume: "150.00", share: 10 }, medium: { volume: "300.00", share: 20 }, low: { volume: "1950.00", share: 70 } },
+    risky_share: 30,
+  },
   capability: "live",
   data_unavailable: [],
 };
@@ -134,7 +140,9 @@ export const FIX_TX_PAGE = {
       direction: "in",
       counterparty: "TCleanCounterpartyAddrxxxxxxxxxxxx",
       amount: { amount: "1000000000", decimals: 6 },
-      counterparty_risk: { level: "ok", categories: [] },
+      risk_score: 8,
+      counterparty_type: "exchange",
+      counterparty_risk: { level: "ok", score: 8, categories: [] },
       ts: "2026-07-19T09:01:00.000Z",
     },
     {
@@ -142,7 +150,9 @@ export const FIX_TX_PAGE = {
       direction: "out",
       counterparty: "TRiskCounterpartyAddryyyyyyyyyyyyyy",
       amount: { amount: "250000000", decimals: 6 },
-      counterparty_risk: { level: "critical", categories: ["BLACKLIST"] },
+      risk_score: 95,
+      counterparty_type: "mixer",
+      counterparty_risk: { level: "critical", score: 95, categories: ["BLACKLIST"] },
       ts: "2026-07-19T09:03:00.000Z",
     },
   ],
