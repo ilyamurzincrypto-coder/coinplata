@@ -29,6 +29,22 @@ export async function applyWalletCache(db, accountId, wallet, { setWalletId = fa
   return error || null
 }
 
+// Записать кэш деталей кошелька (tx/stats/reasons) в wallet_aegis_cache (upsert).
+// Всё опционально: пишем только пришедшие секции (не затираем валидное null-ом при
+// таймауте AEGIS). cached_at обновляем всегда. Возвращает error|null.
+export async function applyDetailCache(db, accountId, walletId, { transactions, stats, reasons } = {}) {
+  const row = { account_id: accountId, wallet_id: walletId || null, cached_at: new Date().toISOString() };
+  if (transactions && transactions.available) {
+    row.tx_items = transactions.items || [];
+    row.tx_cursor = transactions.cursor || null;
+    row.tx_has_more = !!transactions.hasMore;
+  }
+  if (stats && stats.available) row.stats = stats;
+  if (Array.isArray(reasons)) row.risk_reasons = reasons;
+  const { error } = await db.from('wallet_aegis_cache').upsert(row, { onConflict: 'account_id' });
+  return error || null;
+}
+
 // Найти счёт по aegis_wallet_id (для вебхука/поллинга). Может быть несколько
 // (мнемоник = один wallet_id на 2 счёта) — вернём все.
 export async function accountsByWalletId(db, walletId) {

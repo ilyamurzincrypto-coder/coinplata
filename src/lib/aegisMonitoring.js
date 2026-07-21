@@ -26,12 +26,24 @@ export async function connectMonitoring(accountId) {
   return body;
 }
 
-// Детали кошелька (Экран 3): getWallet+getStats+getTransactions через боевой
-// эндпоинт (requireStaff). stats/transactions могут прийти available:false.
-export async function fetchWalletDetail(accountId) {
-  const r = await fetch(`/api/aegis/wallet?accountId=${encodeURIComponent(accountId)}`, { headers: await authHeaders() });
+// Session-кэш деталей в памяти: повторное открытие того же кошелька в рамках
+// сессии — мгновенно, без сети (TTL 60с). Живой запрос (live) кэш игнорирует и
+// перезаписывает. Сам эндпоинт по умолчанию отдаёт кэш из БД (poll), а ?live=1 —
+// свежий пул из AEGIS (кнопка «Обновить»).
+const _detailMem = new Map(); // accountId → { at, body }
+const _MEM_TTL = 60000;
+
+// Детали кошелька (Экран 3). live=false → БД-кэш (мгновенно), live=true → свежий.
+export async function fetchWalletDetail(accountId, { live = false } = {}) {
+  if (!live) {
+    const hit = _detailMem.get(accountId);
+    if (hit && Date.now() - hit.at < _MEM_TTL) return hit.body;
+  }
+  const q = `accountId=${encodeURIComponent(accountId)}${live ? "&live=1" : ""}`;
+  const r = await fetch(`/api/aegis/wallet?${q}`, { headers: await authHeaders() });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw Object.assign(new Error(body?.error || `detail ${r.status}`), { status: r.status, code: body?.code });
+  _detailMem.set(accountId, { at: Date.now(), body });
   return body;
 }
 

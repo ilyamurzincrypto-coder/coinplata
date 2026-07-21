@@ -12,7 +12,7 @@
  */
 import { requireStaff } from '../cashdesk/_auth.js'
 import { aegis, AegisError } from '../../src/lib/aegisClient.js'
-import { svcClient, authEnv } from './_common.js'
+import { svcClient, authEnv, applyDetailCache } from './_common.js'
 
 // cold getWallet у AEGIS ~12с — даём функции время (Vercel по умолч. режет короче).
 export const config = { maxDuration: 30 }
@@ -47,13 +47,14 @@ export default async function handler(req, res) {
   const accountId = String(req.query.accountId || '').trim()
   if (!accountId) return res.status(400).json({ error: 'accountId required' })
   const cursor = req.query.cursor ? String(req.query.cursor) : null
+  const live = req.query.live === '1' || req.query.refresh === '1' // «Обновить» → мимо кэша
 
   const db = svcClient()
   if (!db) return res.status(503).json({ error: 'backend not configured' })
 
   const { data: acc, error: accErr } = await db
     .from('accounts')
-    .select('id, name, address, network_id, aegis_wallet_id')
+    .select('id, name, address, network_id, aegis_wallet_id, aegis_capability, risk_level, risk_score, balance_usd_est, synced_at')
     .eq('id', accountId)
     .maybeSingle()
   if (accErr) return res.status(500).json({ error: 'account lookup failed' })
@@ -61,32 +62,64 @@ export default async function handler(req, res) {
   if (!acc.aegis_wallet_id) return res.status(409).json({ error: 'monitoring not connected' })
 
   const wid = acc.aegis_wallet_id
-  try {
-    const TX_UNAVAIL = { available: false, items: [], cursor: null, hasMore: false }
-    const STATS_UNAVAIL = { available: false, in: null, out: null, byDay: null }
+  const accountOut = { id: acc.id, name: acc.name, address: acc.address, network: acc.network_id }
+  // wallet-ядро (риск/скор/баланс) — из кэш-колонок счёта, всегда быстро.
+  const walletFromAccount = {
+    riskLevel: acc.risk_level ?? null,
+    riskScore: acc.risk_score ?? null,
+    balanceUsdEst: acc.balance_usd_est != null ? String(acc.balance_usd_est) : null,
+    capability: acc.aegis_capability ?? null,
+  }
+  const TX_UNAVAIL = { available: false, items: [], cursor: null, hasMore: false }
+  const STATS_UNAVAIL = { available: false, in: null, out: null, byDay: null }
 
-    // «Показать ещё» — только следующая страница движений.
+  try {
+    // «Показать ещё» — следующая страница движений всегда live (за пределами кэша).
     if (cursor) {
       const transactions = await withTimeout(aegis.getTransactions(wid, { cursor }), 9000, TX_UNAVAIL)
       return res.status(200).json({ transactions })
     }
 
-    // getWallet — ядро (риск/скор/reasons/баланс). Первый (cold) вызов AEGIS ~12с
-    // (наполняет их кэш), warm ~1с — держим таймаут 14с, чтобы первый заход не падал.
-    const wallet = await withTimeout(aegis.getWallet(wid), 14000, null)
-    if (!wallet) return res.status(504).json({ error: 'aegis wallet timeout' })
+    // По умолчанию — кэш из wallet_aegis_cache (мгновенно). Живой запрос только по
+    // ?live=1 (кнопка «Обновить») или если кэша ещё нет.
+    if (!live) {
+      const { data: cache } = await db
+        .from('wallet_aegis_cache')
+        .select('tx_items, tx_cursor, tx_has_more, stats, cached_at')
+        .eq('account_id', accountId)
+        .maybeSingle()
+      if (cache) {
+        res.setHeader('Cache-Control', 'no-store')
+        return res.status(200).json({
+          account: accountOut,
+          wallet: walletFromAccount,
+          stats: cache.stats || STATS_UNAVAIL,
+          transactions: cache.tx_items != null
+            ? { available: true, items: cache.tx_items, cursor: cache.tx_cursor, hasMore: !!cache.tx_has_more }
+            : TX_UNAVAIL,
+          cachedAt: cache.cached_at,
+          source: 'cache',
+        })
+      }
+      // Кэша нет — падаем на live (первый заход до первого прогона poll).
+    }
 
-    // stats/transactions — деградируют в «нет данных» по таймауту/ошибке.
+    // Live: getWallet — cold ~12с (наполняет кэш AEGIS), warm ~1с → таймаут 14с.
+    const wallet = await withTimeout(aegis.getWallet(wid), 14000, null)
     const [stats, transactions] = await Promise.all([
       withTimeout(aegis.getStats(wid, daysAgoIso(30), daysAgoIso(0)), 9000, STATS_UNAVAIL),
       withTimeout(aegis.getTransactions(wid, {}), 9000, TX_UNAVAIL),
     ])
+    // Прогреваем кэш живым ответом (следующее открытие — мгновенно).
+    await applyDetailCache(db, accountId, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
     res.setHeader('Cache-Control', 'no-store')
     return res.status(200).json({
-      account: { id: acc.id, name: acc.name, address: acc.address, network: acc.network_id },
-      wallet,
+      account: accountOut,
+      wallet: wallet || walletFromAccount,
       stats,
       transactions,
+      cachedAt: new Date().toISOString(),
+      source: 'live',
     })
   } catch (e) {
     if (e instanceof AegisError) return res.status(e.status || 502).json({ error: e.message, code: e.code })

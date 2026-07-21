@@ -4,13 +4,14 @@
 // getTransactions). Блоки без данных СКРЫТЫ (stats/transactions могут прийти
 // available:false пока AEGIS не поднимет эндпоинты).
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Copy, Check, ExternalLink, ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowLeft, Copy, Check, ExternalLink, ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
 import AegisBadge from "../AegisBadge.jsx";
 import { fetchWalletDetail, fetchWalletTransactions } from "../../../lib/aegisMonitoring.js";
 
 const usd = (n) => `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const tokenAmt = (a) => (a && a.amount != null ? Number(a.amount) / 10 ** (a.decimals ?? 6) : null);
 const mid = (s, h = 8, t = 6) => (!s ? "" : s.length > h + t + 1 ? `${s.slice(0, h)}…${s.slice(-t)}` : s);
+const hhmm = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : ""; };
 
 const EXPLORER = {
   TRC20: (a) => `https://tronscan.org/#/address/${a}`,
@@ -115,10 +116,12 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
   const [more, setMore] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     let alive = true;
     setState({ loading: true, error: null, data: null });
+    setExtra([]);
     fetchWalletDetail(account.id).then(
       (d) => {
         if (!alive) return;
@@ -130,6 +133,23 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
     );
     return () => { alive = false; };
   }, [account.id]);
+
+  // «Обновить» — свежий пул из AEGIS мимо кэша (?live=1).
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const d = await fetchWalletDetail(account.id, { live: true });
+      setState({ loading: false, error: null, data: d });
+      setExtra([]);
+      setCursor(d?.transactions?.cursor || null);
+      setMore(!!d?.transactions?.hasMore);
+    } catch (e) {
+      setState((s) => ({ ...s, error: e?.message || "Ошибка" }));
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const loadMore = async () => {
     if (loadingMore) return;
@@ -158,6 +178,12 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
         <div className="sticky top-0 bg-bg/95 backdrop-blur border-b-[0.5px] border-border flex items-center gap-2 px-3 h-12">
           <button type="button" onClick={onBack} className="p-1 -ml-1 text-ink-soft hover:text-ink"><ArrowLeft className="w-5 h-5" /></button>
           <span className="text-[15px] font-medium text-ink truncate flex-1">{account.name}</span>
+          {state.data?.cachedAt && (
+            <span className="hidden sm:inline text-[10.5px] text-muted mr-0.5">обновлено {hhmm(state.data.cachedAt)}</span>
+          )}
+          <button type="button" onClick={refresh} disabled={refreshing} title="Обновить из AEGIS" className="p-1 text-muted hover:text-ink disabled:opacity-50">
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          </button>
           <AegisBadge account={account} />
         </div>
 
