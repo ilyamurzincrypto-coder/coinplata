@@ -118,19 +118,34 @@ function CopyAddr({ address, network, size = 12, head = 6, tail = 5, full = fals
   );
 }
 
+// Расшифровка риск-скора по клику. Показывает само число, расшифровку уровня
+// (даже для чистых ok — «флагов нет»), причины AEGIS если есть, и расхождение
+// учёта. Цвет — по фактическому уровню (не всегда янтарный).
 function ReasonPanel({ vm, reasons, onClose }) {
-  const tone = vm.riskLevel === "critical" ? "danger" : "warning";
-  const bg = tone === "danger" ? "bg-danger-soft" : "bg-warning-soft";
+  const st = statusOf(vm.account);
+  const badge = riskBadge(vm.account) || {};
+  const bg = st.tone === "critical" ? "bg-danger-soft" : st.tone === "warning" ? "bg-warning-soft" : "bg-surface-sunk";
   const discLine = vm.hasOnchain && vm.deltaAbs > 0 ? `Учёт расходится с он-чейном на ${usd(vm.deltaAbs)}.` : null;
   const msgs = (reasons || []).map((r) => (typeof r === "string" ? r : r?.message)).filter(Boolean);
+  const hint = badge.hint || (st.tone === "ok" ? "Флагов нет — проверок не требуется." : "Данных о причине нет.");
   return (
     <div className={`${bg} rounded-[10px] px-3 py-2.5 relative`}>
       <button type="button" onClick={onClose} className="absolute top-2 right-2 text-muted hover:text-ink" title="Закрыть"><X className="w-3.5 h-3.5" /></button>
-      <ul className="space-y-1 pr-5">
-        {msgs.length === 0 && !discLine && <li className="text-[12px] text-ink-soft">Причина по кошельку — в деталях кошелька.</li>}
-        {msgs.map((m, i) => <li key={i} className="text-[12px] text-ink-soft leading-snug">• {m}</li>)}
-        {discLine && <li className="text-[12px] font-medium text-ink leading-snug">{discLine}</li>}
-      </ul>
+      <div className="pr-5">
+        <div className="flex items-baseline gap-2 mb-1">
+          <span className="font-mono tabular-nums text-[15px] font-semibold" style={{ color: st.color }}>
+            {st.score != null ? `${st.score}/100` : "—"}
+          </span>
+          <span className="text-[12px] font-medium" style={{ color: st.color }}>{st.label}</span>
+        </div>
+        {/* реальные причины AEGIS (для warning/critical), иначе — расшифровка уровня */}
+        {msgs.length > 0 ? (
+          <ul className="space-y-1">{msgs.map((m, i) => <li key={i} className="text-[12px] text-ink-soft leading-snug">• {m}</li>)}</ul>
+        ) : (
+          <div className="text-[12px] text-ink-soft leading-snug">{hint}</div>
+        )}
+        {discLine && <div className="mt-1.5 text-[12px] font-medium text-ink leading-snug">⚠ {discLine}</div>}
+      </div>
     </div>
   );
 }
