@@ -18,6 +18,16 @@ describe("riskBadge", () => {
     expect(riskBadge({ aegisWalletId: "w", riskLevel: "warning" }).tone).toBe("warning");
     expect(riskBadge({ aegisWalletId: "w", riskLevel: "critical" }).tone).toBe("critical");
   });
+  it("лейблы: warning=«внимание», critical=«пред-бан» (слово пред-бан только у critical)", () => {
+    expect(riskBadge({ aegisWalletId: "w", riskLevel: "warning" }).label).toBe("внимание");
+    expect(riskBadge({ aegisWalletId: "w", riskLevel: "critical" }).label).toBe("пред-бан");
+    expect(riskBadge({ aegisWalletId: "w", riskLevel: "ok" }).label).toBe("OK");
+    // warning НЕ должен содержать «пред-бан»
+    expect(riskBadge({ aegisWalletId: "w", riskLevel: "warning" }).label).not.toContain("пред-бан");
+  });
+  it("hint у warning поясняет «не блокировка»", () => {
+    expect(riskBadge({ aegisWalletId: "w", riskLevel: "warning" }).hint).toMatch(/не блокировк/i);
+  });
   it("degraded → muted «нет данных (сеть)» независимо от риска", () => {
     const b = riskBadge({ aegisWalletId: "w", riskLevel: "ok", capability: "degraded" });
     expect(b.tone).toBe("muted");

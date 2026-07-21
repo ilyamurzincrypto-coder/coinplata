@@ -21,6 +21,7 @@ export default function AegisBadge({ account }) {
     .filter(Boolean);
   const title = [
     `Риск: ${b.label}`,
+    b.hint || "",
     ...reasons,
     account.riskUpdatedAt ? `обновлено ${new Date(account.riskUpdatedAt).toLocaleString("ru-RU")}` : "",
   ]

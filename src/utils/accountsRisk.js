@@ -10,20 +10,33 @@ export const DISCREPANCY_THRESHOLD_USD = 50;
 // Бейдж риска для криптосчёта. Возвращает null если мониторинг не подключён
 // (тогда UI показывает кнопку «Подключить»).
 //   tone: ok | warning | critical | muted
+// Семантика AEGIS /v1: «пред-бан» — это ТОЛЬКО critical (блэклист/санкции/
+// pending-заморозка). warning = поведенческий сигнал «на проверку», НЕ блокировка
+// (и мигает от прогона к прогону). Слово «пред-бан» закреплено за critical.
 export function riskBadge({ riskLevel, capability, aegisWalletId } = {}) {
   if (!aegisWalletId) return null; // не подключён
   if (capability === "degraded") {
-    return { tone: "muted", label: "нет данных (сеть)", dot: false };
+    return { tone: "muted", label: "нет данных (сеть)", dot: false, hint: "Сеть не индексируется AEGIS — риск/баланс недоступны." };
   }
   switch (riskLevel) {
     case "ok":
-      return { tone: "ok", label: "OK", dot: true };
+      return { tone: "ok", label: "OK", dot: true, hint: "Проверок не требуется." };
     case "warning":
-      return { tone: "warning", label: "пред-бан", dot: true };
+      return {
+        tone: "warning",
+        label: "внимание",
+        dot: true,
+        hint: "Поведенческий сигнал — рекомендуется проверить источник средств. Это не блокировка.",
+      };
     case "critical":
-      return { tone: "critical", label: "критично", dot: true };
+      return {
+        tone: "critical",
+        label: "пред-бан",
+        dot: true,
+        hint: "Реальный риск заморозки: блэклист эмитента USDT / санкции OFAC / pending-заморозка.",
+      };
     default:
-      return { tone: "muted", label: "нет данных", dot: false };
+      return { tone: "muted", label: "нет данных", dot: false, hint: "Данных о риске нет." };
   }
 }
 
