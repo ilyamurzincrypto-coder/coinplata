@@ -60,7 +60,7 @@ export function NotificationsProvider({ children }) {
   const usersRef = useRef(users);
   usersRef.current = users;
   // Дедуп риск-алертов кошельков: `${accountId}:${risk_updated_at}` уже показан.
-  const seenRiskRef = useRef(new Set());
+  const lastLevelRef = useRef(new Map()); // id → последний известный risk_level (для нотификаций только на ПЕРЕХОД)
 
   const pushNotification = useCallback((note) => {
     setNotifications((prev) => {
@@ -264,8 +264,10 @@ export function NotificationsProvider({ children }) {
       .subscribe();
 
     // 4) accounts UPDATE → риск кошелька AEGIS (ok|warning|critical).
-    //    Источник — вебхук api/aegis/webhook.js (обновляет risk_level).
-    //    Дедуп по risk_updated_at, чтобы не повторять один и тот же переход.
+    //    Источник — вебхук/poll (обновляют risk_level). Уведомляем ТОЛЬКО на смену
+    //    уровня: poll бампает risk_updated_at у всех кошельков каждые 10 мин, и без
+    //    сравнения с предыдущим уровнем «ok» спамил «Риск снят» по всем счетам.
+    //    «Снят» шлём только если раньше реально был warning/critical.
     const acctRiskCh = supabase
       .channel("cp-notif-acct-risk")
       .on(
@@ -274,16 +276,17 @@ export function NotificationsProvider({ children }) {
         (payload) => {
           const row = payload.new || {};
           const level = row.risk_level;
-          if (!level || !row.risk_updated_at) return;
-          const key = `${row.id}:${row.risk_updated_at}`;
-          if (seenRiskRef.current.has(key)) return;
-          seenRiskRef.current.add(key);
+          if (!level) return;
+          const prev = lastLevelRef.current.get(row.id);
+          if (prev === level) return; // не сменился — молчим (гасит спам от poll)
+          lastLevelRef.current.set(row.id, level);
           const name = row.name || "кошелёк";
           if (level === "critical") {
             pushNotification({ type: "wallet_risk", title: "🚨 Риск кошелька: критично", body: name, link: "accounts" });
           } else if (level === "warning") {
-            pushNotification({ type: "wallet_risk", title: "⚠ Риск кошелька: пред-бан", body: name, link: "accounts" });
-          } else if (level === "ok") {
+            pushNotification({ type: "wallet_risk", title: "⚠ Риск кошелька: внимание", body: name, link: "accounts" });
+          } else if (level === "ok" && (prev === "warning" || prev === "critical")) {
+            // «снят» — только реальная разблокировка (не первое наблюдение ok-счёта)
             pushNotification({ type: "wallet_risk", title: "Риск кошелька снят", body: name, link: "accounts" });
           }
         }
