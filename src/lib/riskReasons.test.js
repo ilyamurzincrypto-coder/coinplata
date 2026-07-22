@@ -7,11 +7,11 @@ describe("plainReason — funder-trace парсинг", () => {
     const r = plainReason({ code: "risk_factor", message: msg });
     expect(r.tone).toBe("warning");
     expect(r.hop).toBe(1);
-    expect(r.title).toBe("След к чёрному списку");
     expect(r.plain).toContain("48%");
-    expect(r.plain).toContain("110 адресов из чёрного списка");
+    expect(r.plain).toContain("110 замороженных");
     expect(r.plain).not.toMatch(/прачечн|типология|INFERRED/i);
-    expect(r.note).toMatch(/предположение/);
+    expect(r.glossary).toMatch(/Tether/); // определение «чёрного списка»
+    expect(r.note).toMatch(/косвенный/);
   });
 });
 
@@ -19,7 +19,8 @@ describe("plainReason — хард-коды", () => {
   it("blacklist → критично, без жаргона", () => {
     const r = plainReason({ code: "blacklist", message: "..." });
     expect(r.tone).toBe("critical");
-    expect(r.title).toBe("Чёрный список");
+    expect(r.title).toBe("Кошелёк заморожен");
+    expect(r.plain).toMatch(/Tether/);
   });
   it("clean фильтруется из plainReasons", () => {
     const list = plainReasons([{ code: "clean", message: "Риск-флагов не найдено" }]);

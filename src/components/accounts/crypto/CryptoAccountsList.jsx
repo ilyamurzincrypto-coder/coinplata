@@ -158,6 +158,7 @@ function ReasonPanel({ vm, reasons, onClose }) {
                 <span className="font-medium text-ink">{r.title}</span>
                 {hopLabel(r.hop) && <span className="ml-1 text-[10px] text-muted">· {hopLabel(r.hop)}</span>}
                 <div>{r.plain}</div>
+                {r.glossary && <div className="text-[11px] text-muted-soft">ℹ {r.glossary}</div>}
                 {r.note && <div className="text-[11px] text-muted-soft">{r.note}</div>}
               </li>
             ))}

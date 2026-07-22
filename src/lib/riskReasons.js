@@ -6,13 +6,16 @@
 //   2) парсинг текущего текста reason.message (формат «След к прачечной…»);
 //   3) сырой message как есть.
 
+// Что такое «чёрный список» — определение для пользователя (одно на всё приложение).
+const BLACKLIST_GLOSSARY = "«Чёрный список» — кошельки, замороженные Tether (эмитентом USDT): обычно мошенники, взломы, санкции. Деньги на них заблокированы, вывести нельзя.";
+
 // Прямые хард-факты по коду (одно-хоповые, подтверждённые).
 const CODE_MAP = {
-  blacklist: { tone: "critical", title: "Чёрный список", plain: "Кошелёк в чёрном списке эмитента USDT (Tether). Деньги на нём могут заморозить в любой момент." },
-  sanction: { tone: "critical", title: "Санкции", plain: "Адрес под санкциями (OFAC). Любые операции с ним запрещены." },
-  ban_pending: { tone: "critical", title: "Идёт заморозка", plain: "По кошельку уже запущена заморозка. Скоро может быть заблокирован." },
-  destroyed: { tone: "critical", title: "Скомпрометирован", plain: "Кошелёк помечен как уничтоженный или скомпрометированный." },
-  clean: { tone: "ok", title: "Чисто", plain: "Прямых риск-флагов не найдено." },
+  blacklist: { tone: "critical", title: "Кошелёк заморожен", plain: "Этот кошелёк в чёрном списке Tether (эмитента USDT) — деньги на нём заблокированы. Так бывает, когда адрес связан с мошенничеством, взломом или санкциями.", glossary: null },
+  sanction: { tone: "critical", title: "Под санкциями", plain: "Адрес в санкционных списках (OFAC, США). Любые операции с ним запрещены законом.", glossary: null },
+  ban_pending: { tone: "critical", title: "Идёт заморозка", plain: "По кошельку уже запущена заморозка Tether — скоро средства могут заблокировать.", glossary: null },
+  destroyed: { tone: "critical", title: "Скомпрометирован", plain: "Кошелёк помечен как уничтоженный или скомпрометированный — пользоваться им нельзя.", glossary: null },
+  clean: { tone: "ok", title: "Чисто", plain: "Прямых риск-флагов не найдено.", glossary: null },
 };
 
 // Парсер текущего текста «След к прачечной: 48% средств от узла TJDE… (1 хоп),
@@ -51,7 +54,8 @@ export function plainReason(reason) {
 
   // Хард-код (чистый/блэклист/санкции/…).
   if (CODE_MAP[code] && code !== "risk_factor") {
-    return { tone: CODE_MAP[code].tone, hop: sHop ?? 1, title: CODE_MAP[code].title, plain: CODE_MAP[code].plain, note: null, raw: r.message || null };
+    const m = CODE_MAP[code];
+    return { tone: m.tone, hop: sHop ?? 1, title: m.title, plain: m.plain, glossary: m.glossary || null, note: null, raw: r.message || null };
   }
 
   // 2) funder-trace: структурно либо парсингом текста.
@@ -65,15 +69,16 @@ export function plainReason(reason) {
     const sharePart = share != null ? `${share}% денег на этом кошельке` : "Часть денег";
     const via = hop <= 1 ? "пришло напрямую с адреса" : `пришло через ${hop - 1} посредника с адреса`;
     const onward = cnt != null
-      ? `, который сам отправляет ${onwardPct != null ? onwardPct + "% средств " : ""}на ${cnt} адресов из чёрного списка`
-      : ", связанного с чёрным списком";
+      ? `, который сам активно переводит ${onwardPct != null ? onwardPct + "% своих средств " : "деньги "}на ${cnt} замороженных («чёрных») адресов`
+      : ", связанного с замороженными адресами";
     return {
       tone: "warning",
       hop,
-      title: "След к чёрному списку",
-      plain: `${sharePart} ${via}${onward}.`,
+      title: "Деньги пришли из «грязной» цепочки",
+      plain: `${sharePart} ${via}${onward}. Похоже, через этот адрес отмывают средства.`,
+      glossary: BLACKLIST_GLOSSARY,
       note: inferred
-        ? "Это предположение по цепочке переводов (не прямое совпадение) — стоит проверить источник средств."
+        ? "Прямого совпадения нет — это косвенный след по цепочке переводов. Стоит проверить, откуда пришли деньги."
         : "Связь подтверждена.",
       raw: r.message || null,
     };

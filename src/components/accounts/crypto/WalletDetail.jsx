@@ -220,6 +220,16 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
   const allTx = [...(txData.items || []), ...extra].filter((t) => txFilter === "all" || t.direction === (txFilter === "in" ? "in" : "out"));
   const score = w.riskScore;
 
+  // Сверка: чистый поток по статистике (входы−выходы) должен ≈ балансу. Если сильно
+  // расходится — AEGIS отдал не все транзакции (напр. вывод не пришёл в фид). Показываем
+  // честное предупреждение, чтобы «движения не пиздят», а видно, что фид неполный.
+  const onchainNum = Number(w.balanceUsdEst ?? account.balanceUsdEst);
+  const inSum = stats.in?.sumUsd != null ? Number(stats.in.sumUsd) : null;
+  const outSum = stats.out?.sumUsd != null ? Number(stats.out.sumUsd) : null;
+  const netFlow = inSum != null && outSum != null ? inSum - outSum : null;
+  const reconGap = stats.available && netFlow != null && Number.isFinite(onchainNum) ? netFlow - onchainNum : null;
+  const reconMismatch = reconGap != null && Math.abs(reconGap) > Math.max(10, 0.02 * Math.max(Math.abs(netFlow), Math.abs(onchainNum)));
+
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex md:items-center md:justify-center" onClick={onBack}>
       <div className="bg-bg w-full h-full md:h-auto md:max-h-[92vh] md:w-[760px] md:rounded-[18px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -261,24 +271,40 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
           {state.loading && <div className="text-[13px] text-muted">Загрузка деталей…</div>}
           {state.error && <div className="text-[13px] text-danger">{state.error === "aegis wallet timeout" ? "AEGIS не ответил вовремя — попробуй обновить позже." : state.error}</div>}
 
-          {/* Почему такой риск — человеческим языком, с хопом (на каком шаге грязь) */}
+          {/* Почему такой риск — вердикт (какой именно риск) + причины человеческим языком */}
           {(() => {
             const reasons = plainReasons(w.riskReasons || account.riskReasons);
-            if (!reasons.length) return null;
+            const lvl = w.riskLevel || account.riskLevel;
+            const cap = w.capability || account.aegisCapability;
+            const verdictWord = cap === "degraded" ? "нет оценки" : lvl === "critical" ? "высокий" : lvl === "warning" ? "повышенный" : "низкий";
+            const verdictColor = lvl === "critical" ? "#B91C1C" : lvl === "warning" ? "#B45309" : "#10B981";
+            if (!reasons.length && score == null) return null;
             return (
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Почему такой риск</div>
+                {/* Явный вердикт — чтобы «24/100 зелёный» не путал при наличии флага */}
+                <div className="rounded-[12px] px-3 py-2.5 bg-surface-sunk mb-2">
+                  <div className="text-[13px]">
+                    Общая оценка: <span className="font-semibold" style={{ color: verdictColor }}>{verdictWord} риск</span>
+                    {score != null && <span className="font-mono tabular-nums text-muted"> · {score}/100</span>}
+                  </div>
+                  {reasons.length > 0 && lvl !== "critical" && (
+                    <div className="text-[11px] text-muted mt-1 leading-snug">Скор невысокий, но есть флаг — обрати внимание на пункт ниже.</div>
+                  )}
+                  {reasons.length === 0 && <div className="text-[11px] text-muted mt-1">Флагов не найдено.</div>}
+                </div>
                 <div className="space-y-2">
                   {reasons.map((r, i) => {
                     const c = r.tone === "critical" ? "#B91C1C" : "#B45309";
                     const hl = hopLabel(r.hop);
                     return (
                       <div key={i} className="rounded-[12px] px-3 py-2.5" style={{ background: `${c}0F` }}>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <span className="text-[13px] font-semibold" style={{ color: c }}>{r.title}</span>
                           {hl && <span className="text-[10px] font-semibold rounded-[6px] px-1.5 py-0.5" style={{ color: c, background: `${c}1A` }}>{hl}</span>}
                         </div>
                         <div className="text-[12.5px] text-ink-soft leading-snug">{r.plain}</div>
+                        {r.glossary && <div className="text-[11px] text-muted-soft mt-1 leading-snug">ℹ {r.glossary}</div>}
                         {r.note && <div className="text-[11px] text-muted mt-1 leading-snug">{r.note}</div>}
                       </div>
                     );
@@ -323,6 +349,14 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
                   ))}
                 </div>
               </div>
+              {reconMismatch && (
+                <div className="mb-2 rounded-[10px] px-3 py-2.5 bg-warning-soft">
+                  <div className="text-[12.5px] font-medium text-ink">Движения не сходятся с балансом</div>
+                  <div className="text-[11.5px] text-ink-soft leading-snug mt-0.5">
+                    По операциям чистый поток {netFlow >= 0 ? "+" : "−"}{usd(Math.abs(netFlow))}, а на кошельке {usd(onchainNum)}. Значит фид AEGIS отдал не все транзакции (часть {reconGap > 0 ? "выводов" : "поступлений"} отсутствует). Это ограничение фида, не ошибка учёта.
+                  </div>
+                </div>
+              )}
               {allTx.length === 0 ? (
                 <div className="text-[12.5px] text-muted py-2">Нет движений за период.</div>
               ) : (
