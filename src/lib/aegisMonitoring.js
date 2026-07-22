@@ -47,6 +47,14 @@ export async function fetchWalletDetail(accountId, { live = false } = {}) {
   return body;
 }
 
+// Общая лента крипто-движений (вкладка «Лог») — из кэша, по всем кошелькам.
+export async function fetchCryptoLog(limit = 150) {
+  const r = await fetch(`/api/aegis/log?limit=${limit}`, { headers: await authHeaders() });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `log ${r.status}`), { status: r.status });
+  return { items: body.items || [], total: body.total || 0 };
+}
+
 // Следующая страница движений («показать ещё»).
 export async function fetchWalletTransactions(accountId, cursor) {
   const q = `accountId=${encodeURIComponent(accountId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;

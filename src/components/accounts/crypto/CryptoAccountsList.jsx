@@ -9,10 +9,21 @@
 //    допустимое изменение высоты — раскрытие плашки причины.
 //  • Статус-точка (риск AEGIS) и Δ-бейдж (расхождение учёт↔он-чейн) — РАЗДЕЛЬНЫ.
 //    Он-чейн краснеет только вместе с Δ-бейджем.
-import React, { useMemo, useState } from "react";
-import { Lock, Copy, Check, ChevronRight, X, AlertTriangle } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Lock, Copy, Check, ChevronRight, X, AlertTriangle, ArrowDown, ArrowUp, ExternalLink } from "lucide-react";
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
+import { fetchCryptoLog } from "../../../lib/aegisMonitoring.js";
+
+const EXPLORER = {
+  TRC20: (a) => `https://tronscan.org/#/address/${a}`,
+  ERC20: (a) => `https://etherscan.io/address/${a}`,
+  BEP20: (a) => `https://bscscan.com/address/${a}`,
+  BTC: (a) => `https://blockstream.info/address/${a}`,
+};
+const RISK_COLOR = { critical: "#B91C1C", warning: "#B45309", ok: "#10B981", high: "#B91C1C", medium: "#B45309", low: "#10B981" };
+const levelOfScore = (s) => (s == null ? null : s > 80 ? "critical" : s > 25 ? "warning" : "ok");
+const tokenAmt = (a) => (a && a.amount != null ? Number(a.amount) / 10 ** (a.decimals ?? 6) : null);
 
 const usd = (n) =>
   `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -242,6 +253,86 @@ function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
   );
 }
 
+// ─── Лог: одна строка общей ленты движений (откуда → куда) ───
+const dtRu = (ts) => {
+  const d = ts ? new Date(ts) : null;
+  return d && !Number.isNaN(d.getTime()) ? d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+};
+function LogRow({ t }) {
+  const isIn = t.direction === "in";
+  const amt = tokenAmt(t.amount);
+  const cpScore = t.counterpartyRisk?.score ?? t.riskScore ?? null;
+  const lvl = levelOfScore(cpScore) || t.counterpartyRisk?.level;
+  const color = RISK_COLOR[lvl] || "#B5B9BF";
+  const type = t.counterpartyType && t.counterpartyType !== "unknown" ? t.counterpartyType : null;
+  const explorer = t.counterparty && EXPLORER[t.network]?.(t.counterparty);
+  return (
+    <div className="flex items-start gap-2.5 px-3 py-2.5 border-t-[0.5px] border-border-soft first:border-t-0">
+      <span className={`grid place-items-center w-[26px] h-[26px] rounded-full shrink-0 mt-0.5 ${isIn ? "bg-emerald-soft" : "bg-surface-sunk"}`}>
+        {isIn ? <ArrowDown className="w-3.5 h-3.5 text-success" strokeWidth={2.2} /> : <ArrowUp className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
+      </span>
+      <div className="flex flex-col min-w-0 flex-1 gap-1">
+        <div className="flex items-center gap-2">
+          <span className="font-mono tabular-nums text-[14px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
+          {type && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>}
+        </div>
+        {/* откуда → куда: наш кошелёк + адрес контрагента (полностью) */}
+        <div className="text-[12px] text-ink-soft flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0">
+          <span className="font-medium text-ink">{t.walletName || "—"}</span>
+          <span className="text-muted">{isIn ? "← от" : "→ на"}</span>
+          {t.counterparty ? (
+            <span className="inline-flex items-center gap-1 min-w-0">
+              <span className="font-mono text-[11.5px] break-all">{t.counterparty}</span>
+              {explorer && <a href={explorer} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-3 h-3" /></a>}
+            </span>
+          ) : <span className="text-muted">—</span>}
+        </div>
+        <div className="text-[11px] text-muted">{[t.network, dtRu(t.ts)].filter(Boolean).join(" · ")}</div>
+      </div>
+      {(cpScore != null || lvl) && (
+        <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ color, background: `${color}14` }}>
+          <span className="rounded-full" style={{ width: 5, height: 5, background: color }} /> {cpScore != null ? cpScore : lvl}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function LogFeed() {
+  const [state, setState] = useState({ loading: true, error: null, items: [] });
+  const [dir, setDir] = useState("all"); // all | in | out
+  useEffect(() => {
+    let alive = true;
+    fetchCryptoLog(200).then(
+      (d) => alive && setState({ loading: false, error: null, items: d.items || [] }),
+      (e) => alive && setState({ loading: false, error: e?.message || "Ошибка", items: [] })
+    );
+    return () => { alive = false; };
+  }, []);
+  const shown = state.items.filter((t) => dir === "all" || t.direction === dir);
+  return (
+    <div className="bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b-[0.5px] border-border">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Движения · все кошельки</span>
+        <div className="flex gap-1">
+          {[["all", "Все"], ["in", "Поступления"], ["out", "Отправки"]].map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setDir(k)} className={`px-2 py-0.5 rounded-[7px] text-[11.5px] ${dir === k ? "bg-ink text-white" : "bg-surface-soft text-ink-soft"}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {state.loading ? (
+        <div className="px-3 py-4 text-[13px] text-muted">Загрузка ленты…</div>
+      ) : state.error ? (
+        <div className="px-3 py-4 text-[13px] text-danger">{state.error}</div>
+      ) : shown.length === 0 ? (
+        <div className="px-3 py-4 text-[13px] text-muted">Движений нет.</div>
+      ) : (
+        shown.map((t, i) => <LogRow key={t.txHash || i} t={t} />)
+      )}
+    </div>
+  );
+}
+
 export default function CryptoAccountsList({
   items = [],
   offices = [],
@@ -274,12 +365,10 @@ export default function CryptoAccountsList({
       className={`px-2.5 py-1 rounded-[9px] text-[12px] font-medium whitespace-nowrap transition-colors ${
         filter === key
           ? "bg-ink text-white"
-          : key === "attention"
-          ? "bg-surface border-[0.5px] border-border text-danger hover:bg-surface-soft"
           : "bg-surface border-[0.5px] border-border text-ink-soft hover:text-ink"
       }`}
     >
-      {label} · {n}
+      {label}{n != null ? ` · ${n}` : ""}
     </button>
   );
 
@@ -316,15 +405,16 @@ export default function CryptoAccountsList({
         </div>
         <div className="flex flex-col items-end gap-2">
           {mode === "share" && <span className="inline-flex items-center gap-1 text-[11px] text-muted"><Lock className="w-3 h-3" strokeWidth={2} /> просмотр{asOf ? ` · ${hhmm(asOf)}` : ""}</span>}
-          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("attention", "Внимание", view.counts.attention)}{seg("ok", "OK", view.counts.ok)}</div>
-          {mode !== "share" && asOf && <span className="text-[10.5px] text-muted">обновлено {hhmm(asOf)}</span>}
-          {filter === "attention" && (
-            <span className="text-[10.5px] text-muted text-right max-w-[220px]">статус ≠ OK или расхождение учёта с он-чейном</span>
-          )}
+          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Лог", null)}</div>
+          {mode !== "share" && asOf && filter !== "log" && <span className="text-[10.5px] text-muted">обновлено {hhmm(asOf)}</span>}
         </div>
       </div>
 
+      {/* Лог движений (все кошельки) — вместо секций */}
+      {filter === "log" && <LogFeed />}
+
       {/* Секции по офисам */}
+      {filter !== "log" && (
       <div className="space-y-4">
         {view.sections.map((s) => (
           <div key={s.office.id}>
@@ -380,8 +470,9 @@ export default function CryptoAccountsList({
           </div>
         ))}
       </div>
+      )}
 
-      {view.emptyOffices.length > 0 && <div className="text-[11px] text-muted-soft text-center mt-4">Без счетов: {view.emptyOffices.join(", ")}</div>}
+      {filter !== "log" && view.emptyOffices.length > 0 && <div className="text-[11px] text-muted-soft text-center mt-4">Без счетов: {view.emptyOffices.join(", ")}</div>}
     </div>
   );
 }
