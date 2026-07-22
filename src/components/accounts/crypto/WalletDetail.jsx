@@ -275,15 +275,21 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
     return list.sort((a, b) => b.inUsdt + b.outUsdt - (a.inUsdt + a.outUsdt));
   })();
 
-  // Сверка: чистый поток по статистике (входы−выходы) должен ≈ балансу. Если сильно
-  // расходится — AEGIS отдал не все транзакции (напр. вывод не пришёл в фид). Показываем
-  // честное предупреждение, чтобы «движения не пиздят», а видно, что фид неполный.
+  // Сверка: полный список движений (когда все страницы у нас) должен сходиться с
+  // балансом. getStats у AEGIS местами разъезжается (getTransactions чинят раньше),
+  // поэтому доверяем сумме по транзакциям, а не getStats. Метрики входы/выходы — тоже
+  // из полного списка, когда он полный; иначе фолбэк на getStats.
   const onchainNum = Number(w.balanceUsdEst ?? account.balanceUsdEst);
-  const inSum = stats.in?.sumUsd != null ? Number(stats.in.sumUsd) : null;
-  const outSum = stats.out?.sumUsd != null ? Number(stats.out.sumUsd) : null;
-  const netFlow = inSum != null && outSum != null ? inSum - outSum : null;
-  const reconGap = stats.available && netFlow != null && Number.isFinite(onchainNum) ? netFlow - onchainNum : null;
-  const reconMismatch = reconGap != null && Math.abs(reconGap) > Math.max(10, 0.02 * Math.max(Math.abs(netFlow), Math.abs(onchainNum)));
+  const listIn = rawTx.reduce((s, t) => (t.direction === "in" ? s + (tokenAmt(t.amount) || 0) : s), 0);
+  const listOut = rawTx.reduce((s, t) => (t.direction === "out" ? s + (tokenAmt(t.amount) || 0) : s), 0);
+  const listInN = rawTx.filter((t) => t.direction === "in").length;
+  const listOutN = rawTx.filter((t) => t.direction === "out").length;
+  const listComplete = txData.available && !more; // все страницы движений загружены
+  const listNet = listIn - listOut;
+  const reconGap = listComplete && Number.isFinite(onchainNum) ? listNet - onchainNum : null;
+  const reconMismatch = reconGap != null && Math.abs(reconGap) > Math.max(10, 0.02 * Math.max(Math.abs(listNet), Math.abs(onchainNum)));
+  const inDisp = listComplete ? { sum: listIn, count: listInN } : { sum: stats.in?.sumUsd != null ? Number(stats.in.sumUsd) : null, count: stats.in?.count ?? 0 };
+  const outDisp = listComplete ? { sum: listOut, count: listOutN } : { sum: stats.out?.sumUsd != null ? Number(stats.out.sumUsd) : null, count: stats.out?.count ?? 0 };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/30 flex md:items-center md:justify-center" onClick={onBack}>
@@ -369,13 +375,13 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
             );
           })()}
 
-          {/* Контрагенты · за всё время (только если stats доступны) */}
-          {stats.available && (
+          {/* Контрагенты · за всё время (stats от AEGIS или суммы по полному списку) */}
+          {(stats.available || listComplete) && (
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Контрагенты · за всё время</div>
               <div className="flex gap-2">
-                <Metric label="входы">{stats.in?.sumUsd != null ? usd(stats.in.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.in?.count ?? 0}</span></Metric>
-                <Metric label="выходы">{stats.out?.sumUsd != null ? usd(stats.out.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.out?.count ?? 0}</span></Metric>
+                <Metric label="входы">{inDisp.sum != null ? usd(inDisp.sum) : "—"}<span className="text-[11px] text-muted"> · {inDisp.count ?? 0}</span></Metric>
+                <Metric label="выходы">{outDisp.sum != null ? usd(outDisp.sum) : "—"}<span className="text-[11px] text-muted"> · {outDisp.count ?? 0}</span></Metric>
                 {stats.riskDistribution?.risky_share != null && (() => {
                   const risky = Number(stats.riskDistribution.risky_share) || 0;
                   const assessed = stats.riskDistribution.assessed_share;
@@ -412,7 +418,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
                 <div className="mb-2 rounded-[10px] px-3 py-2.5 bg-warning-soft">
                   <div className="text-[12.5px] font-medium text-ink">Движения не сходятся с балансом</div>
                   <div className="text-[11.5px] text-ink-soft leading-snug mt-0.5">
-                    По операциям чистый поток {netFlow >= 0 ? "+" : "−"}{usd(Math.abs(netFlow))}, а на кошельке {usd(onchainNum)}. Значит фид AEGIS отдал не все транзакции (часть {reconGap > 0 ? "выводов" : "поступлений"} отсутствует). Это ограничение фида, не ошибка учёта.
+                    По движениям чистый поток {listNet >= 0 ? "+" : "−"}{usd(Math.abs(listNet))}, а на кошельке {usd(onchainNum)}. Значит фид AEGIS отдал не все транзакции (часть {reconGap > 0 ? "выводов" : "поступлений"} отсутствует). Это ограничение фида, не ошибка учёта.
                   </div>
                 </div>
               )}
