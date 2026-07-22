@@ -51,7 +51,10 @@ function TxRow({ t, network }) {
   const cpScore = t.counterpartyRisk?.score ?? t.riskScore ?? null;
   const lvl = levelOfScore(cpScore) || t.counterpartyRisk?.level;
   const color = RISK_COLOR[lvl] || "#B5B9BF";
-  const type = t.counterpartyType && t.counterpartyType !== "unknown" ? (TYPE_LABEL[t.counterpartyType] || t.counterpartyType) : null;
+  // По AEGIS: counterparty_type != unknown → по контрагенту ЕСТЬ данные (риск 0 честен);
+  // unknown → меток нет → «нет данных», а не «риск 0».
+  const hasData = !!(t.counterpartyType && t.counterpartyType !== "unknown");
+  const type = hasData ? (TYPE_LABEL[t.counterpartyType] || t.counterpartyType) : null;
   const cats = (t.counterpartyRisk?.categories || []).join(", ");
   const dt = t.ts ? new Date(t.ts) : null;
   const explorer = t.counterparty && EXPLORER[network]?.(t.counterparty);
@@ -75,17 +78,46 @@ function TxRow({ t, network }) {
         )}
         <span className="text-[11px] text-muted truncate">{[cats || null, dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
       </span>
-      {(cpScore != null || lvl) && (
+      {hasData ? (
         <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold" style={{ color, background: `${color}14` }}>
           <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {cpScore != null ? cpScore : lvl}
         </span>
+      ) : (
+        <span className="shrink-0 inline-flex items-center mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[10.5px] text-muted bg-surface-sunk" title="У контрагента нет меток в фиде — риск не оценён">нет данных</span>
       )}
     </div>
   );
 }
 
-// Стек-бар распределения объёма по риску + «рисковые N%» (из stats.risk_distribution).
+// Распределение оборота по риску. По AEGIS честная рамка: «оценено X% оборота,
+// из них Y% рисковых». Низкий бакет = «без high-риска», НЕ «подтверждённо чисто»;
+// остальное — «нет данных» (у контрагента нет меток в фиде, разреженность TRON).
+const pct = (v) => `${(Math.round((Number(v) || 0) * 10) / 10)}%`;
 function RiskDistribution({ dist }) {
+  const assessed = Number(dist?.assessed_share);
+  // Новый формат (assessed_share) → честная рамка; старый кэш → фолбэк на high/medium/low.
+  if (Number.isFinite(assessed)) {
+    const risky = Number(dist?.risky_share) || 0;
+    const clean = Math.max(assessed - risky, 0);
+    const unassessed = Math.max(100 - assessed, 0);
+    const Seg = ({ w, c }) => (w > 0 ? <span style={{ width: `${w}%`, background: c }} /> : null);
+    return (
+      <div className="mt-2.5">
+        <div className="flex h-2 rounded-full overflow-hidden bg-surface-sunk">
+          <Seg w={risky} c={RISK_COLOR.high} />
+          <Seg w={clean} c={RISK_COLOR.low} />
+          <Seg w={unassessed} c="#D9DCE1" />
+        </div>
+        <div className="flex flex-wrap gap-3 mt-1.5 text-[10.5px] text-muted">
+          <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: RISK_COLOR.high }} /> рисковые {pct(risky)}</span>
+          <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: RISK_COLOR.low }} /> без флагов {pct(clean)}</span>
+          <span className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: "#D9DCE1" }} /> нет данных {pct(unassessed)}</span>
+        </div>
+        <div className="text-[10.5px] text-muted-soft mt-1 leading-snug">Оценено {pct(assessed)} оборота — у остальных контрагентов нет меток в фиде (это «нет данных», а не «чисто»).</div>
+      </div>
+    );
+  }
+  // Фолбэк (старый кэш до перепула poll).
   const t = dist?.total || {};
   const seg = (k) => Number(t?.[k]?.share) || 0;
   const parts = [
@@ -220,12 +252,17 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
               <div className="flex gap-2">
                 <Metric label="входы">{stats.in?.sumUsd != null ? usd(stats.in.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.in?.count ?? 0}</span></Metric>
                 <Metric label="выходы">{stats.out?.sumUsd != null ? usd(stats.out.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.out?.count ?? 0}</span></Metric>
-                {stats.riskDistribution?.risky_share != null && (
-                  <div className="flex-1 rounded-[12px] px-3 py-2.5 min-w-0 border-[0.5px]" style={{ borderColor: "#B91C1C" }}>
-                    <div className="text-[10.5px] text-muted">рисковые</div>
-                    <div className="mt-1 font-mono tabular-nums text-[16px]" style={{ color: Number(stats.riskDistribution.risky_share) > 0 ? "#B91C1C" : "#10B981" }}>{stats.riskDistribution.risky_share}%</div>
-                  </div>
-                )}
+                {stats.riskDistribution?.risky_share != null && (() => {
+                  const risky = Number(stats.riskDistribution.risky_share) || 0;
+                  const assessed = stats.riskDistribution.assessed_share;
+                  return (
+                    <div className="flex-1 rounded-[12px] px-3 py-2.5 min-w-0 border-[0.5px]" style={{ borderColor: risky > 0 ? "#B91C1C" : "var(--border, #E7E9EE)" }}>
+                      <div className="text-[10.5px] text-muted">рисковые</div>
+                      <div className="mt-1 font-mono tabular-nums text-[16px]" style={{ color: risky > 0 ? "#B91C1C" : "#10B981" }}>{risky}%</div>
+                      {assessed != null && <div className="text-[10px] text-muted-soft mt-0.5">оценено {pct(assessed)}</div>}
+                    </div>
+                  );
+                })()}
               </div>
               {/* стек-бар распределения объёма по риску (null на EVM — скрыт) */}
               {stats.riskDistribution && <RiskDistribution dist={stats.riskDistribution} />}

@@ -264,7 +264,9 @@ function LogRow({ t }) {
   const cpScore = t.counterpartyRisk?.score ?? t.riskScore ?? null;
   const lvl = levelOfScore(cpScore) || t.counterpartyRisk?.level;
   const color = RISK_COLOR[lvl] || "#B5B9BF";
-  const type = t.counterpartyType && t.counterpartyType !== "unknown" ? t.counterpartyType : null;
+  // unknown → нет меток в фиде → «нет данных», а не «риск 0» (по AEGIS).
+  const hasData = !!(t.counterpartyType && t.counterpartyType !== "unknown");
+  const type = hasData ? t.counterpartyType : null;
   const explorer = t.counterparty && EXPLORER[t.network]?.(t.counterparty);
   return (
     <div className="flex items-start gap-2.5 px-3 py-2.5 border-t-[0.5px] border-border-soft first:border-t-0">
@@ -289,10 +291,12 @@ function LogRow({ t }) {
         </div>
         <div className="text-[11px] text-muted">{[t.network, dtRu(t.ts)].filter(Boolean).join(" · ")}</div>
       </div>
-      {(cpScore != null || lvl) && (
+      {hasData ? (
         <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[10.5px] font-semibold" style={{ color, background: `${color}14` }}>
           <span className="rounded-full" style={{ width: 5, height: 5, background: color }} /> {cpScore != null ? cpScore : lvl}
         </span>
+      ) : (
+        <span className="shrink-0 inline-flex items-center mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[10px] text-muted bg-surface-sunk" title="Нет меток контрагента в фиде">н/д</span>
       )}
     </div>
   );
