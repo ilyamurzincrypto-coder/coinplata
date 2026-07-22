@@ -160,8 +160,11 @@ function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillE
   return (
     <>
       <div
-        className={`flex items-center gap-2.5 px-3 py-2.5 ${first ? "" : "border-t-[0.5px] border-border-soft"} ${drillEnabled ? "active:bg-surface-soft" : ""}`}
+        role={drillEnabled ? "button" : undefined}
+        tabIndex={drillEnabled ? 0 : undefined}
+        className={`flex items-center gap-2.5 px-3 py-2.5 ${first ? "" : "border-t-[0.5px] border-border-soft"} ${drillEnabled ? "cursor-pointer active:bg-surface-soft" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
+        onKeyDown={drillEnabled ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(vm.account); } } : undefined}
       >
         <div className="flex flex-col min-w-0 flex-1 gap-1">
           <span className="text-[14px] text-ink truncate">{vm.name}</span>

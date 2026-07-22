@@ -10,7 +10,6 @@ import { fetchWalletDetail, fetchWalletTransactions } from "../../../lib/aegisMo
 
 const usd = (n) => `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const tokenAmt = (a) => (a && a.amount != null ? Number(a.amount) / 10 ** (a.decimals ?? 6) : null);
-const mid = (s, h = 8, t = 6) => (!s ? "" : s.length > h + t + 1 ? `${s.slice(0, h)}…${s.slice(-t)}` : s);
 const hhmm = (v) => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : ""; };
 
 const EXPLORER = {
@@ -66,10 +65,10 @@ function TxRow({ t, network }) {
           <span className="font-mono tabular-nums text-[14px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
           {type && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>}
         </span>
-        {/* Адрес контрагента — подсвечен (mono ink) + копия + эксплорер */}
+        {/* Адрес контрагента — ПОЛНОСТЬЮ (mono ink) + копия + эксплорер */}
         {t.counterparty && (
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className="font-mono text-[12px] text-ink-soft truncate" title={t.counterparty}>{mid(t.counterparty, 10, 8)}</span>
+          <span className="flex items-center gap-1.5">
+            <span className="font-mono text-[12px] text-ink-soft break-all" title={t.counterparty}>{t.counterparty}</span>
             <CopyBtn value={t.counterparty} />
             {explorer && <a href={explorer} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-3 h-3" /></a>}
           </span>
@@ -191,7 +190,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
           {/* Адрес + эксплорер */}
           <div className="flex items-center gap-2 flex-wrap">
             {account.network && <span className="text-[9.5px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{account.network}</span>}
-            <span className="font-mono text-[12px] text-ink-soft break-all">{mid(account.address, 12, 10)}</span>
+            <span className="font-mono text-[12px] text-ink-soft break-all">{account.address}</span>
             <button type="button" onClick={copy} className="text-muted hover:text-ink" title="Скопировать">{copied ? <Check className="w-4 h-4 text-emerald" /> : <Copy className="w-4 h-4" />}</button>
             {explorer && <a href={explorer} target="_blank" rel="noreferrer" className="text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-4 h-4" /></a>}
           </div>
@@ -210,10 +209,10 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
           {state.loading && <div className="text-[13px] text-muted">Загрузка деталей…</div>}
           {state.error && <div className="text-[13px] text-danger">{state.error === "aegis wallet timeout" ? "AEGIS не ответил вовремя — попробуй обновить позже." : state.error}</div>}
 
-          {/* Контрагенты · 30 дней (только если stats доступны) */}
+          {/* Контрагенты · за всё время (только если stats доступны) */}
           {stats.available && (
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Контрагенты · 30 дней</div>
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Контрагенты · за всё время</div>
               <div className="flex gap-2">
                 <Metric label="входы">{stats.in?.sumUsd != null ? usd(stats.in.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.in?.count ?? 0}</span></Metric>
                 <Metric label="выходы">{stats.out?.sumUsd != null ? usd(stats.out.sumUsd) : "—"}<span className="text-[11px] text-muted"> · {stats.out?.count ?? 0}</span></Metric>

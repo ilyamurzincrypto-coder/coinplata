@@ -15,10 +15,10 @@ import { alertPlan } from './webhook.js'
 // cold getWallet+getStats+getTransactions × 22 кошелька — держим запас времени.
 export const config = { maxDuration: 300 }
 
-function daysAgoIso(n) {
-  const d = new Date()
-  d.setUTCDate(d.getUTCDate() - n)
-  return d.toISOString().slice(0, 10)
+// Статистика/контрагенты — за ВСЁ время (не 30д): from раньше любой USDT-активности.
+const ALL_TIME_FROM = '2018-01-01'
+function todayIso() {
+  return new Date().toISOString().slice(0, 10)
 }
 
 // Мягкий таймаут вокруг AEGIS-вызова: секция не готова → возвращаем fallback,
@@ -39,7 +39,7 @@ async function pollWallet(db, a) {
 
   // Детали — best-effort, деградируют по таймауту, кэш не затирают null-ом.
   const [stats, transactions] = await Promise.all([
-    withTimeout(aegis.getStats(wid, daysAgoIso(30), daysAgoIso(0)), 9000, { available: false }),
+    withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 9000, { available: false }),
     withTimeout(aegis.getTransactions(wid, {}), 9000, { available: false, items: [], cursor: null, hasMore: false }),
   ])
   await applyDetailCache(db, a.id, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
