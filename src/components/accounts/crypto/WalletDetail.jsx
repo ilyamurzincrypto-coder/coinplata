@@ -44,6 +44,39 @@ function CopyBtn({ value }) {
   );
 }
 
+// Строка агрегата по контрагенту: адрес + тип + риск, и «получено/отправлено».
+function PartyRow({ p, network }) {
+  const lvl = levelOfScore(p.riskScore) || null;
+  const color = RISK_COLOR[lvl] || "#B5B9BF";
+  const type = p.hasData ? (TYPE_LABEL[p.type] || p.type) : null;
+  const explorer = p.cp && EXPLORER[network]?.(p.cp);
+  const fmt = (v) => v.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return (
+    <div className="flex items-start gap-2.5 py-2.5 border-t-[0.5px] border-border-soft">
+      <span className="flex flex-col min-w-0 flex-1 gap-1">
+        <span className="flex items-center gap-1.5 flex-wrap">
+          <span className="font-mono text-[12px] text-ink-soft break-all" title={p.cp}>{p.cp}</span>
+          <CopyBtn value={p.cp} />
+          {explorer && <a href={explorer} target="_blank" rel="noreferrer" className="shrink-0 text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-3 h-3" /></a>}
+          {type && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>}
+        </span>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px] font-mono tabular-nums">
+          {p.inUsdt > 0 && <span className="text-success">получено +{fmt(p.inUsdt)}</span>}
+          {p.outUsdt > 0 && <span className="text-muted">отправлено −{fmt(p.outUsdt)}</span>}
+          <span className="text-[11px] text-muted-soft">· {p.count} оп.</span>
+        </span>
+      </span>
+      {p.hasData ? (
+        <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold" style={{ color, background: `${color}14` }}>
+          <span className="rounded-full" style={{ width: 6, height: 6, background: color }} /> риск {p.riskScore != null ? p.riskScore : lvl}
+        </span>
+      ) : (
+        <span className="shrink-0 inline-flex items-center mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[10.5px] text-muted bg-surface-sunk" title="Нет меток контрагента в фиде">нет данных</span>
+      )}
+    </div>
+  );
+}
+
 function TxRow({ t, network }) {
   const isIn = t.direction === "in";
   const amt = tokenAmt(t.amount);
@@ -145,6 +178,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
   const getDetail = fetchDetail || ((id, opts) => fetchWalletDetail(id, opts));
   const [state, setState] = useState({ loading: true, error: null, data: null });
   const [txFilter, setTxFilter] = useState("all");
+  const [txView, setTxView] = useState("list"); // list | party (лентой | по контрагентам)
   const [extra, setExtra] = useState([]);
   const [cursor, setCursor] = useState(null);
   const [more, setMore] = useState(false);
@@ -217,8 +251,29 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
   const w = state.data?.wallet || {};
   const stats = state.data?.stats || {};
   const txData = state.data?.transactions || {};
-  const allTx = [...(txData.items || []), ...extra].filter((t) => txFilter === "all" || t.direction === (txFilter === "in" ? "in" : "out"));
+  const rawTx = [...(txData.items || []), ...extra];
+  const allTx = rawTx.filter((t) => txFilter === "all" || t.direction === (txFilter === "in" ? "in" : "out"));
   const score = w.riskScore;
+
+  // Агрегация по контрагентам (из загруженных движений): кто сколько прислал/вывел.
+  const parties = (() => {
+    const m = new Map();
+    for (const t of rawTx) {
+      const cp = t.counterparty || "—";
+      if (!m.has(cp)) m.set(cp, { cp, inUsdt: 0, outUsdt: 0, count: 0, type: null, riskScore: null, hasData: false });
+      const p = m.get(cp);
+      const amt = tokenAmt(t.amount) || 0;
+      if (t.direction === "in") p.inUsdt += amt; else p.outUsdt += amt;
+      p.count += 1;
+      if (t.counterpartyType && t.counterpartyType !== "unknown") { p.hasData = true; p.type = t.counterpartyType; }
+      const s = t.counterpartyRisk?.score ?? t.riskScore;
+      if (s != null) p.riskScore = Math.max(p.riskScore ?? 0, s);
+    }
+    let list = [...m.values()];
+    if (txFilter === "in") list = list.filter((p) => p.inUsdt > 0);
+    else if (txFilter === "out") list = list.filter((p) => p.outUsdt > 0);
+    return list.sort((a, b) => b.inUsdt + b.outUsdt - (a.inUsdt + a.outUsdt));
+  })();
 
   // Сверка: чистый поток по статистике (входы−выходы) должен ≈ балансу. Если сильно
   // расходится — AEGIS отдал не все транзакции (напр. вывод не пришёл в фид). Показываем
@@ -341,10 +396,14 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
           {/* Движения (только если доступны) */}
           {txData.available ? (
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Движения</span>
+              <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
+                <div className="inline-flex rounded-[8px] bg-surface-soft p-0.5">
+                  {[["list", "Лентой"], ["party", "По контрагентам"]].map(([k, l]) => (
+                    <button key={k} type="button" onClick={() => setTxView(k)} className={`px-2 py-0.5 rounded-[6px] text-[11.5px] font-medium ${txView === k ? "bg-ink text-white" : "text-ink-soft"}`}>{l}</button>
+                  ))}
+                </div>
                 <div className="flex gap-1">
-                  {[["all", "Все"], ["in", "Входы"], ["out", "Выходы"]].map(([k, l]) => (
+                  {[["all", "Все"], ["in", txView === "party" ? "Источники" : "Входы"], ["out", txView === "party" ? "Получатели" : "Выходы"]].map(([k, l]) => (
                     <button key={k} type="button" onClick={() => setTxFilter(k)} className={`px-2 py-0.5 rounded-[7px] text-[11.5px] ${txFilter === k ? "bg-ink text-white" : "bg-surface-soft text-ink-soft"}`}>{l}</button>
                   ))}
                 </div>
@@ -357,12 +416,21 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
                   </div>
                 </div>
               )}
-              {allTx.length === 0 ? (
+              {txView === "party" ? (
+                parties.length === 0 ? (
+                  <div className="text-[12.5px] text-muted py-2">Нет контрагентов за период.</div>
+                ) : (
+                  <>
+                    <div className="text-[11px] text-muted-soft mb-1">По загруженным движениям · {parties.length} контрагентов</div>
+                    <div>{parties.map((p, i) => <PartyRow key={p.cp || i} p={p} network={account.network} />)}</div>
+                  </>
+                )
+              ) : allTx.length === 0 ? (
                 <div className="text-[12.5px] text-muted py-2">Нет движений за период.</div>
               ) : (
                 <div>{allTx.map((t, i) => <TxRow key={t.txHash || i} t={t} network={account.network} />)}</div>
               )}
-              {more && !readOnly && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-2 w-full py-2 rounded-[10px] bg-surface-soft text-[12.5px] text-ink-soft hover:text-ink disabled:opacity-50">{loadingMore ? "Загрузка…" : "Показать ещё"}</button>}
+              {txView === "list" && more && !readOnly && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-2 w-full py-2 rounded-[10px] bg-surface-soft text-[12.5px] text-ink-soft hover:text-ink disabled:opacity-50">{loadingMore ? "Загрузка…" : "Показать ещё"}</button>}
             </div>
           ) : (
             !state.loading && <div className="text-[12.5px] text-muted">Движения и контрагенты появятся, когда AEGIS отдаст данные по кошельку.</div>
