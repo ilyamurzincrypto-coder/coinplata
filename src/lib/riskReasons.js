@@ -9,6 +9,16 @@
 // Что такое «чёрный список» — определение для пользователя (одно на всё приложение).
 const BLACKLIST_GLOSSARY = "«Чёрный список» — кошельки, замороженные Tether (эмитентом USDT): обычно мошенники, взломы, санкции. Деньги на них заблокированы, вывести нельзя.";
 
+// Категория «грязной» цели (AEGIS category) → человеческая формулировка + пояснение.
+const TARGET_CAT = {
+  blacklist: { phrase: "замороженных («чёрных») адресов", gloss: BLACKLIST_GLOSSARY },
+  mixer: { phrase: "адресов-миксеров", gloss: "Миксер — сервис, который «перемешивает» монеты, чтобы скрыть их происхождение. Классический инструмент отмывания." },
+  sanction: { phrase: "санкционных адресов", gloss: "Санкционные адреса — из списков OFAC (США) и др. Операции с ними запрещены законом." },
+  scam: { phrase: "скам-адресов", gloss: "Скам — адреса мошеннических схем (фейк-обмены, пирамиды, фишинг)." },
+  darknet: { phrase: "даркнет-адресов", gloss: "Даркнет — адреса нелегальных площадок в теневой сети." },
+  no_kyc: { phrase: "бирж без верификации (KYC)", gloss: "Биржи без KYC не проверяют личность — популярны для отмывания и вывода грязных средств." },
+};
+
 // Прямые хард-факты по коду (одно-хоповые, подтверждённые).
 const CODE_MAP = {
   blacklist: { tone: "critical", title: "Кошелёк заморожен", plain: "Этот кошелёк в чёрном списке Tether (эмитента USDT) — деньги на нём заблокированы. Так бывает, когда адрес связан с мошенничеством, взломом или санкциями.", glossary: null },
@@ -47,7 +57,7 @@ export function plainReason(reason) {
   const r = typeof reason === "string" ? { message: reason } : reason;
   const code = r.code || "";
 
-  // 1) структурные поля от AEGIS (если появятся) — приоритет.
+  // 1) структурные поля от AEGIS (Tier 1) — приоритет.
   const sHop = r.hop ?? null;
   const sShare = r.share ?? null;
   const sCat = r.category || null;
@@ -58,27 +68,33 @@ export function plainReason(reason) {
     return { tone: m.tone, hop: sHop ?? 1, title: m.title, plain: m.plain, glossary: m.glossary || null, note: null, raw: r.message || null };
   }
 
-  // 2) funder-trace: структурно либо парсингом текста.
-  const ft = parseFunderTrace(r.message);
-  if (ft || sShare != null || sCat === "funder_trace") {
+  // 2) funder-trace: структурно (AEGIS Tier 1) либо парсингом текста (старый кэш).
+  const structured = code === "funder_trace" || sShare != null;
+  const ft = structured ? null : parseFunderTrace(r.message);
+  if (structured || ft) {
     const hop = sHop ?? ft?.hop ?? 1;
     const share = sShare ?? ft?.share ?? null;
-    const cnt = r.onwardBlacklistCount ?? ft?.onwardCount ?? null;
-    const onwardPct = r.onwardBlacklistPct ?? ft?.onwardPct ?? null;
-    const inferred = r.confidence ? r.confidence !== "confirmed" : ft?.inferred !== false;
-    const sharePart = share != null ? `${share}% денег на этом кошельке` : "Часть денег";
-    const via = hop <= 1 ? "пришло напрямую с адреса" : `пришло через ${hop - 1} посредника с адреса`;
+    const cnt = r.onward_blacklist_count ?? r.onwardBlacklistCount ?? ft?.onwardCount ?? null;
+    const onwardPct = r.onward_blacklist_pct ?? r.onwardBlacklistPct ?? ft?.onwardPct ?? null;
+    const inferred = r.confidence ? r.confidence !== "confirmed" : ft ? ft.inferred !== false : true;
+    const inbound = (r.direction || "inbound") !== "outbound";
+    const { phrase: catPhrase, gloss } = TARGET_CAT[sCat] || TARGET_CAT.blacklist;
+    const sharePart = share != null
+      ? `${share}% ${inbound ? "денег на этот кошелёк пришло" : "средств с этого кошелька ушло"}`
+      : (inbound ? "Часть денег пришла" : "Часть средств ушла");
+    const step = hop <= 1 ? "напрямую" : `через ${hop - 1} посредника`;
+    const node = inbound ? "с адреса" : "на адрес";
     const onward = cnt != null
-      ? `, который сам активно переводит ${onwardPct != null ? onwardPct + "% своих средств " : "деньги "}на ${cnt} замороженных («чёрных») адресов`
-      : ", связанного с замороженными адресами";
+      ? `, который сам активно переводит ${onwardPct != null ? onwardPct + "% своих средств " : "деньги "}на ${cnt} ${catPhrase}`
+      : `, связанного с ${catPhrase}`;
     return {
       tone: "warning",
       hop,
-      title: "Деньги пришли из «грязной» цепочки",
-      plain: `${sharePart} ${via}${onward}. Похоже, через этот адрес отмывают средства.`,
-      glossary: BLACKLIST_GLOSSARY,
+      title: inbound ? "Деньги пришли из «грязной» цепочки" : "Деньги ушли в «грязную» цепочку",
+      plain: `${sharePart} ${step} ${node}${onward}. Похоже, через этот адрес отмывают средства.`,
+      glossary: gloss,
       note: inferred
-        ? "Прямого совпадения нет — это косвенный след по цепочке переводов. Стоит проверить, откуда пришли деньги."
+        ? "Прямого совпадения нет — это косвенный след по цепочке переводов. Стоит проверить источник."
         : "Связь подтверждена.",
       raw: r.message || null,
     };
