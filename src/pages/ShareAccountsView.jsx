@@ -12,6 +12,8 @@ import { curSymbol, fmt } from "../utils/money.js";
 import AegisBadge from "../components/accounts/AegisBadge.jsx";
 import { walletDiscrepancy, syncedLabel, isCryptoAccount } from "../utils/accountsRisk.js";
 import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
+import WalletDetail from "../components/accounts/crypto/WalletDetail.jsx";
+import { fetchShareWalletDetail } from "../lib/shareLinks.js";
 
 function CcyChip({ ccy }) {
   const m = ccyMeta(ccy);
@@ -29,6 +31,7 @@ const native = (amt, ccy) => `${curSymbol(ccy)}${fmtRu(amt, ccyMeta(ccy).dp ?? 2
 
 export default function ShareAccountsView({ token }) {
   const [state, setState] = useState({ loading: true, error: null, data: null });
+  const [detailWallet, setDetailWallet] = useState(null); // { account, ledgerUsd } — drill на share
 
   useEffect(() => {
     let alive = true;
@@ -80,14 +83,34 @@ export default function ShareAccountsView({ token }) {
       )
     );
     const offices = tree.map((o) => o.office);
+    const allowDetails = state.data?.allowDetails === true;
     return (
       <div className="min-h-screen bg-bg py-6 px-4">
         <div className="max-w-3xl mx-auto">
-          <CryptoAccountsList items={cryptoItems} offices={offices} mode="share" asOf={state.data?.generatedAt} />
+          <CryptoAccountsList
+            items={cryptoItems}
+            offices={offices}
+            mode="share"
+            asOf={state.data?.generatedAt}
+            shareDetails={allowDetails}
+            onOpenWallet={allowDetails ? (account) => {
+              const it = cryptoItems.find((i) => i.account.id === account.id);
+              setDetailWallet({ account, ledgerUsd: it?.ledgerUsd || 0 });
+            } : undefined}
+          />
           <div className="mt-3 text-[11px] text-muted-soft text-center">
             Живые данные{genAt ? ` · обновлено ${genAt.toLocaleString("ru-RU")}` : ""} · CoinPlata
           </div>
         </div>
+        {detailWallet && (
+          <WalletDetail
+            account={detailWallet.account}
+            ledgerUsd={detailWallet.ledgerUsd}
+            onBack={() => setDetailWallet(null)}
+            fetchDetail={(id) => fetchShareWalletDetail(token, id)}
+            readOnly
+          />
+        )}
       </div>
     );
   }

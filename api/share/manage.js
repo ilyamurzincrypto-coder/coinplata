@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const { data, error } = await db
         .from('share_tokens')
-        .select('id, token, scope, created_at, created_by')
+        .select('id, token, scope, allow_details, created_at, created_by')
         .eq('section', 'accounts')
         .is('revoked_at', null)
         .order('created_at', { ascending: false })
@@ -45,6 +45,7 @@ export default async function handler(req, res) {
           id: r.id,
           token: r.token,
           scope: r.scope,
+          allowDetails: r.allow_details === true,
           createdAt: r.created_at,
           createdBy: r.created_by,
         })),
@@ -55,15 +56,17 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? safeJson(req.body) : req.body || {}
       const scope = String(body.scope || '').trim()
       if (!SCOPES.includes(scope)) return res.status(400).json({ error: 'bad scope' })
+      // allow_details — drill-down по ссылке; только для разрезов с криптой (crypto/all).
+      const allowDetails = body.allowDetails === true && (scope === 'crypto' || scope === 'all')
       // 192 бита энтропии (>128 требования), url-safe.
       const token = randomBytes(24).toString('base64url')
       const { data, error } = await db
         .from('share_tokens')
-        .insert({ token, section: 'accounts', scope, created_by: staff.userId })
-        .select('id, token, scope, created_at')
+        .insert({ token, section: 'accounts', scope, allow_details: allowDetails, created_by: staff.userId })
+        .select('id, token, scope, allow_details, created_at')
         .single()
       if (error) return res.status(500).json({ error: 'create failed' })
-      return res.status(201).json({ id: data.id, token: data.token, scope: data.scope, createdAt: data.created_at })
+      return res.status(201).json({ id: data.id, token: data.token, scope: data.scope, allowDetails: data.allow_details === true, createdAt: data.created_at })
     }
 
     if (req.method === 'DELETE') {

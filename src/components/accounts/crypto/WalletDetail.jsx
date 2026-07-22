@@ -107,7 +107,9 @@ function RiskDistribution({ dist }) {
   );
 }
 
-export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
+export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDetail, readOnly = false }) {
+  // Источник данных: staff-эндпоинт по умолчанию; на share — токен-фетчер (read-only).
+  const getDetail = fetchDetail || ((id, opts) => fetchWalletDetail(id, opts));
   const [state, setState] = useState({ loading: true, error: null, data: null });
   const [txFilter, setTxFilter] = useState("all");
   const [extra, setExtra] = useState([]);
@@ -121,7 +123,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
     let alive = true;
     setState({ loading: true, error: null, data: null });
     setExtra([]);
-    fetchWalletDetail(account.id).then(
+    getDetail(account.id).then(
       (d) => {
         if (!alive) return;
         setState({ loading: false, error: null, data: d });
@@ -138,7 +140,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const d = await fetchWalletDetail(account.id, { live: true });
+      const d = await getDetail(account.id, { live: true });
       setState({ loading: false, error: null, data: d });
       setExtra([]);
       setCursor(d?.transactions?.cursor || null);
@@ -180,9 +182,11 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
           {state.data?.cachedAt && (
             <span className="hidden sm:inline text-[10.5px] text-muted mr-0.5">обновлено {hhmm(state.data.cachedAt)}</span>
           )}
-          <button type="button" onClick={refresh} disabled={refreshing} title="Обновить из AEGIS" className="p-1 text-muted hover:text-ink disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
+          {!readOnly && (
+            <button type="button" onClick={refresh} disabled={refreshing} title="Обновить из AEGIS" className="p-1 text-muted hover:text-ink disabled:opacity-50">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            </button>
+          )}
           <AegisBadge account={account} />
         </div>
 
@@ -244,7 +248,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack }) {
               ) : (
                 <div>{allTx.map((t, i) => <TxRow key={t.txHash || i} t={t} network={account.network} />)}</div>
               )}
-              {more && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-2 w-full py-2 rounded-[10px] bg-surface-soft text-[12.5px] text-ink-soft hover:text-ink disabled:opacity-50">{loadingMore ? "Загрузка…" : "Показать ещё"}</button>}
+              {more && !readOnly && <button type="button" onClick={loadMore} disabled={loadingMore} className="mt-2 w-full py-2 rounded-[10px] bg-surface-soft text-[12.5px] text-ink-soft hover:text-ink disabled:opacity-50">{loadingMore ? "Загрузка…" : "Показать ещё"}</button>}
             </div>
           ) : (
             !state.loading && <div className="text-[12.5px] text-muted">Движения и контрагенты появятся, когда AEGIS отдаст данные по кошельку.</div>

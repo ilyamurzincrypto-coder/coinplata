@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     // 1. Валидация токена: существует, секция accounts, не отозван.
     const { data: tok, error: tokErr } = await db
       .from('share_tokens')
-      .select('scope, section, revoked_at')
+      .select('scope, section, revoked_at, allow_details')
       .eq('token', token)
       .maybeSingle()
     if (tokErr) return res.status(500).json({ error: 'token lookup failed' })
@@ -38,6 +38,7 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: 'link not found or revoked' })
     }
     const scope = ['all', 'fiat', 'crypto'].includes(tok.scope) ? tok.scope : 'all'
+    const allowDetails = tok.allow_details === true
 
     // 2. Живые данные. Счета фильтруем по scope СЕРВЕРНО.
     let accQ = db
@@ -112,6 +113,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       section: 'accounts',
       scope,
+      allowDetails,
       accounts,
       offices,
       balances,

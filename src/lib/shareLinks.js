@@ -26,15 +26,24 @@ export async function listShareLinks() {
   return Array.isArray(body.tokens) ? body.tokens : [];
 }
 
-/** Создать ссылку под разрез scope ∈ all|fiat|crypto. Возвращает { id, token, scope }. */
-export async function createShareLink(scope) {
+/** Создать ссылку под разрез scope ∈ all|fiat|crypto. allowDetails — открыть по
+ *  ссылке drill-down в детали крипто-кошелька. Возвращает { id, token, scope, allowDetails }. */
+export async function createShareLink(scope, allowDetails = false) {
   const r = await fetch("/api/share/manage", {
     method: "POST",
     headers: await authHeaders(true),
-    body: JSON.stringify({ scope }),
+    body: JSON.stringify({ scope, allowDetails }),
   });
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(body?.error || `create ${r.status}`);
+  return body;
+}
+
+/** Публичные детали кошелька по share-токену (read-only, если у ссылки включены детали). */
+export async function fetchShareWalletDetail(token, accountId) {
+  const r = await fetch(`/api/share/wallet?token=${encodeURIComponent(token)}&accountId=${encodeURIComponent(accountId)}`);
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `detail ${r.status}`), { status: r.status });
   return body;
 }
 

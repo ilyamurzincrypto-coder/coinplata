@@ -19,6 +19,8 @@ export default function ShareLinksModal({ scope, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [copiedId, setCopiedId] = useState(null);
+  const [allowDetails, setAllowDetails] = useState(false);
+  const canDetails = scope === "crypto" || scope === "all"; // детали только там, где есть крипта
 
   const reload = async () => {
     setLoading(true);
@@ -40,7 +42,7 @@ export default function ShareLinksModal({ scope, onClose }) {
     setBusy(true);
     setError(null);
     try {
-      const created = await createShareLink(scope);
+      const created = await createShareLink(scope, canDetails && allowDetails);
       await copy(created.token, created.id);
       await reload();
     } catch (e) {
@@ -98,6 +100,20 @@ export default function ShareLinksModal({ scope, onClose }) {
           >
             <Plus className="w-4 h-4" strokeWidth={2.4} /> Создать ссылку · {SCOPE_LABEL[scope] || scope}
           </button>
+          {canDetails && (
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={allowDetails}
+                onChange={(e) => setAllowDetails(e.target.checked)}
+                className="mt-0.5 w-4 h-4 shrink-0 accent-[#5b6cff]"
+              />
+              <span className="text-[12.5px] text-ink-soft leading-snug">
+                Показывать движения и контрагентов по кошелькам
+                <span className="block text-[11px] text-muted">По ссылке будут видны детали крипто-кошелька (транзакции «откуда/куда», риск) — read-only, из кэша.</span>
+              </span>
+            </label>
+          )}
           <p className="text-[12px] text-muted">
             Кто откроет ссылку — увидит раздел в режиме «только просмотр», без логина. Данные живые.
           </p>
@@ -119,6 +135,11 @@ export default function ShareLinksModal({ scope, onClose }) {
                     <span className="inline-flex items-center h-6 px-2 rounded-[7px] bg-[#eef0ff] text-[#5b6cff] text-[11px] font-bold shrink-0">
                       {SCOPE_LABEL[l.scope] || l.scope}
                     </span>
+                    {l.allowDetails && (
+                      <span className="inline-flex items-center h-6 px-2 rounded-[7px] bg-emerald-50 text-emerald-700 text-[11px] font-bold shrink-0" title="По ссылке доступны детали кошельков">
+                        детали
+                      </span>
+                    )}
                     <input
                       readOnly
                       value={shareUrl(l.token)}

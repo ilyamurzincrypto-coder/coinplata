@@ -341,13 +341,14 @@ export default function CryptoAccountsList({
   onOpenWallet,
   reasonsById = {},
   onRequestReasons,
+  shareDetails = false,
 }) {
   const [filter, setFilter] = useState("all");
   const [expandedReason, setExpandedReason] = useState(null);
   const [zeroOpen, setZeroOpen] = useState(false);
 
   const view = useMemo(() => buildCryptoView({ items, offices, filter }), [items, offices, filter]);
-  const drillEnabled = (mode === "authed" || (mode === "share" && SHARE_DRILLDOWN)) && !!onOpenWallet;
+  const drillEnabled = (mode === "authed" || (mode === "share" && (shareDetails || SHARE_DRILLDOWN))) && !!onOpenWallet;
 
   const toggleReason = (id, account) => {
     setExpandedReason((cur) => {
