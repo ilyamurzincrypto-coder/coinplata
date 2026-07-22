@@ -54,7 +54,7 @@ export default async function handler(req, res) {
     // 3. Детали — только из кэша (никакого live).
     const { data: cache } = await db
       .from('wallet_aegis_cache')
-      .select('tx_items, tx_has_more, stats, cached_at')
+      .select('tx_items, tx_has_more, stats, risk_reasons, cached_at')
       .eq('account_id', accountId)
       .maybeSingle()
 
@@ -66,6 +66,7 @@ export default async function handler(req, res) {
         riskScore: acc.risk_score ?? null,
         balanceUsdEst: acc.balance_usd_est != null ? String(acc.balance_usd_est) : null,
         capability: acc.aegis_capability ?? null,
+        riskReasons: (cache && cache.risk_reasons) || [],
       },
       stats: (cache && cache.stats) || STATS_UNAVAIL,
       transactions: cache && cache.tx_items != null

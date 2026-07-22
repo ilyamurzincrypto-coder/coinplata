@@ -14,6 +14,7 @@ import { Lock, Copy, Check, ChevronRight, X, AlertTriangle, ArrowDown, ArrowUp, 
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
 import { fetchCryptoLog } from "../../../lib/aegisMonitoring.js";
+import { plainReasons, hopLabel } from "../../../lib/riskReasons.js";
 
 const EXPLORER = {
   TRC20: (a) => `https://tronscan.org/#/address/${a}`,
@@ -137,7 +138,7 @@ function ReasonPanel({ vm, reasons, onClose }) {
   const badge = riskBadge(vm.account) || {};
   const bg = st.tone === "critical" ? "bg-danger-soft" : st.tone === "warning" ? "bg-warning-soft" : "bg-surface-sunk";
   const discLine = vm.hasOnchain && vm.deltaAbs > 0 ? `Учёт расходится с он-чейном на ${usd(vm.deltaAbs)}.` : null;
-  const msgs = (reasons || []).map((r) => (typeof r === "string" ? r : r?.message)).filter(Boolean);
+  const plain = plainReasons(reasons);
   const hint = badge.hint || (st.tone === "ok" ? "Флагов нет — проверок не требуется." : "Данных о причине нет.");
   return (
     <div className={`${bg} rounded-[10px] px-3 py-2.5 relative`}>
@@ -149,9 +150,18 @@ function ReasonPanel({ vm, reasons, onClose }) {
           </span>
           <span className="text-[12px] font-medium" style={{ color: st.color }}>{st.label}</span>
         </div>
-        {/* реальные причины AEGIS (для warning/critical), иначе — расшифровка уровня */}
-        {msgs.length > 0 ? (
-          <ul className="space-y-1">{msgs.map((m, i) => <li key={i} className="text-[12px] text-ink-soft leading-snug">• {m}</li>)}</ul>
+        {/* причины AEGIS человеческим языком, с хопом; иначе — расшифровка уровня */}
+        {plain.length > 0 ? (
+          <ul className="space-y-1.5">
+            {plain.map((r, i) => (
+              <li key={i} className="text-[12px] text-ink-soft leading-snug">
+                <span className="font-medium text-ink">{r.title}</span>
+                {hopLabel(r.hop) && <span className="ml-1 text-[10px] text-muted">· {hopLabel(r.hop)}</span>}
+                <div>{r.plain}</div>
+                {r.note && <div className="text-[11px] text-muted-soft">{r.note}</div>}
+              </li>
+            ))}
+          </ul>
         ) : (
           <div className="text-[12px] text-ink-soft leading-snug">{hint}</div>
         )}

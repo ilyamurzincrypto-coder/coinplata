@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { ArrowLeft, Copy, Check, ExternalLink, ArrowDown, ArrowUp, RefreshCw } from "lucide-react";
 import AegisBadge from "../AegisBadge.jsx";
 import { fetchWalletDetail, fetchWalletTransactions } from "../../../lib/aegisMonitoring.js";
+import { plainReasons, hopLabel } from "../../../lib/riskReasons.js";
 
 const usd = (n) => `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const tokenAmt = (a) => (a && a.amount != null ? Number(a.amount) / 10 ** (a.decimals ?? 6) : null);
@@ -161,6 +162,21 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
         setState({ loading: false, error: null, data: d });
         setCursor(d?.transactions?.cursor || null);
         setMore(!!d?.transactions?.hasMore);
+        // Свежесть: баланс синкнулся ПОЗЖЕ, чем собран tx-кэш → был перевод после
+        // последнего пула движений (напр. вывод), которого ещё нет в списке →
+        // тянем live, чтобы движение показалось сразу (только staff-кэш, не share).
+        const bSync = account.syncedAt ? new Date(account.syncedAt).getTime() : 0;
+        const txCache = d?.cachedAt ? new Date(d.cachedAt).getTime() : 0;
+        if (d?.source === "cache" && bSync && txCache && bSync > txCache + 60000) {
+          setRefreshing(true);
+          getDetail(account.id, { live: true }).then((live) => {
+            if (!alive) return;
+            setState({ loading: false, error: null, data: live });
+            setExtra([]);
+            setCursor(live?.transactions?.cursor || null);
+            setMore(!!live?.transactions?.hasMore);
+          }).catch(() => {}).finally(() => alive && setRefreshing(false));
+        }
       },
       (e) => alive && setState({ loading: false, error: e?.message || "Ошибка", data: null })
     );
@@ -244,6 +260,33 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
 
           {state.loading && <div className="text-[13px] text-muted">Загрузка деталей…</div>}
           {state.error && <div className="text-[13px] text-danger">{state.error === "aegis wallet timeout" ? "AEGIS не ответил вовремя — попробуй обновить позже." : state.error}</div>}
+
+          {/* Почему такой риск — человеческим языком, с хопом (на каком шаге грязь) */}
+          {(() => {
+            const reasons = plainReasons(w.riskReasons || account.riskReasons);
+            if (!reasons.length) return null;
+            return (
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Почему такой риск</div>
+                <div className="space-y-2">
+                  {reasons.map((r, i) => {
+                    const c = r.tone === "critical" ? "#B91C1C" : "#B45309";
+                    const hl = hopLabel(r.hop);
+                    return (
+                      <div key={i} className="rounded-[12px] px-3 py-2.5" style={{ background: `${c}0F` }}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[13px] font-semibold" style={{ color: c }}>{r.title}</span>
+                          {hl && <span className="text-[10px] font-semibold rounded-[6px] px-1.5 py-0.5" style={{ color: c, background: `${c}1A` }}>{hl}</span>}
+                        </div>
+                        <div className="text-[12.5px] text-ink-soft leading-snug">{r.plain}</div>
+                        {r.note && <div className="text-[11px] text-muted mt-1 leading-snug">{r.note}</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Контрагенты · за всё время (только если stats доступны) */}
           {stats.available && (

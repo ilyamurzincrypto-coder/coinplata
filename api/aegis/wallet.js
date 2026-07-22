@@ -85,14 +85,14 @@ export default async function handler(req, res) {
     if (!live) {
       const { data: cache } = await db
         .from('wallet_aegis_cache')
-        .select('tx_items, tx_cursor, tx_has_more, stats, cached_at')
+        .select('tx_items, tx_cursor, tx_has_more, stats, risk_reasons, cached_at')
         .eq('account_id', accountId)
         .maybeSingle()
       if (cache) {
         res.setHeader('Cache-Control', 'no-store')
         return res.status(200).json({
           account: accountOut,
-          wallet: walletFromAccount,
+          wallet: { ...walletFromAccount, riskReasons: cache.risk_reasons || [] },
           stats: cache.stats || STATS_UNAVAIL,
           transactions: cache.tx_items != null
             ? { available: true, items: cache.tx_items, cursor: cache.tx_cursor, hasMore: !!cache.tx_has_more }
