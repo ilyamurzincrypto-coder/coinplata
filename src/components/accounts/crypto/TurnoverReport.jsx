@@ -118,8 +118,8 @@ export default function TurnoverReport({ accounts = [], onClose }) {
                         </td>
                         <td className="px-2 py-2 font-sans text-muted">{r.network}</td>
                         <td className="text-right px-2 py-2 text-ink-soft">{broken ? "—" : usd(r.opening)}</td>
-                        <td className="text-right px-2 py-2 text-success">{r.turnoverIn != null ? `+${usd(r.turnoverIn).slice(1)}` : "—"}</td>
-                        <td className="text-right px-2 py-2 text-muted">{r.turnoverOut != null ? `−${usd(r.turnoverOut).slice(1)}` : "—"}</td>
+                        <td className="text-right px-2 py-2 text-success">{broken || r.turnoverIn == null ? "—" : `+${usd(r.turnoverIn).slice(1)}`}</td>
+                        <td className="text-right px-2 py-2 text-muted">{broken || r.turnoverOut == null ? "—" : `−${usd(r.turnoverOut).slice(1)}`}</td>
                         <td className="text-right px-3 py-2 font-semibold text-ink">{broken ? "—" : usd(r.closing)}</td>
                         <td className="text-right px-2 py-2 text-muted">{r.count ?? "—"}</td>
                       </tr>
