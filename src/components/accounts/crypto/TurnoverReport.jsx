@@ -147,7 +147,7 @@ export default function TurnoverReport({ accounts = [], onClose }) {
             </div>
           )}
           <div className="text-[11px] text-muted-soft leading-snug">
-            TRON (TRC20) — точно из блокчейна, со сверкой Σнет = баланс. EVM (ERC20/BEP20) — по данным AEGIS (best-effort). Сальдо кон = сальдо нач + поступило − списано.
+            Данные он-чейн через AEGIS (TRON/ETH/BSC), со сверкой: полная история = баланс. Сальдо кон = сальдо нач + поступило − списано. Строки, не сошедшиеся с балансом, помечены и скрыты из «Итого».
           </div>
         </div>
       </div>
