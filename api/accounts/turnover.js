@@ -26,10 +26,18 @@ function dayMs(d, endOfDay = false) {
   return t.getTime()
 }
 
-// TRON: сумма транзакций USDT c min_timestamp=from по now, разложение на период/после.
-async function tronTurnover(address, fromMs, toMs, nowMs) {
-  let url = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20?min_timestamp=${fromMs}&limit=200&only_confirmed=true&contract_address=${USDT_TRC20}`
-  let inPeriod = 0, outPeriod = 0, cnt = 0, netSinceFrom = 0, pages = 0, truncated = false
+// TRON: тянем ПОЛНУЮ историю USDT (с 2019 — до неё USDT-TRON не было), считаем:
+//  - inPeriod/outPeriod — обороты за [from,to];
+//  - netSinceFrom — чистый поток с from по now (для сальдо начального);
+//  - fullNet — чистый поток за всю историю (должен = текущему балансу → сверка).
+// Полная история нужна именно для сверки: если Σнет ≠ баланс, данные не сошлись
+// (лаг индексации TronGrid или усечение) — тогда сальдо ведомости недостоверно.
+const USDT_HISTORY_START = Date.UTC(2019, 0, 1)
+async function tronTurnover(address, fromMs, toMs) {
+  const start = Math.min(fromMs, USDT_HISTORY_START)
+  const mk = (fp) => `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20?min_timestamp=${start}&limit=200&only_confirmed=true&contract_address=${USDT_TRC20}${fp ? `&fingerprint=${fp}` : ''}`
+  let url = mk()
+  let inPeriod = 0, outPeriod = 0, cnt = 0, netSinceFrom = 0, fullNet = 0, pages = 0, truncated = false
   while (url && pages < 25) {
     let j
     try {
@@ -45,18 +53,20 @@ async function tronTurnover(address, fromMs, toMs, nowMs) {
       if (!Number.isFinite(amt)) continue
       const ts = Number(t.block_timestamp)
       const isIn = t.to === address
-      netSinceFrom += isIn ? amt : -amt
+      const signed = isIn ? amt : -amt
+      fullNet += signed
+      if (ts >= fromMs) netSinceFrom += signed
       if (ts >= fromMs && ts <= toMs) {
         if (isIn) inPeriod += amt; else outPeriod += amt
         cnt += 1
       }
     }
     const fp = j.meta && j.meta.fingerprint
-    if (fp && rows.length) { url = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20?min_timestamp=${fromMs}&limit=200&only_confirmed=true&contract_address=${USDT_TRC20}&fingerprint=${fp}` } else { url = null }
+    url = fp && rows.length ? mk(fp) : null
     pages += 1
     if (pages >= 25 && url) truncated = true
   }
-  return { inPeriod, outPeriod, cnt, netSinceFrom, truncated }
+  return { inPeriod, outPeriod, cnt, netSinceFrom, fullNet, truncated }
 }
 
 // Текущий он-чейн баланс USDT из TronGrid.
@@ -91,7 +101,7 @@ export default async function handler(req, res) {
   if (!ids.length || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
     return res.status(400).json({ error: 'accountIds, from, to required' })
   }
-  const fromMs = dayMs(from), toMs = dayMs(to, true), nowMs = Date.now()
+  const fromMs = dayMs(from), toMs = dayMs(to, true)
 
   const db = createClient(supaUrl, svcKey, { auth: { persistSession: false } })
   const { data: accs, error } = await db
@@ -106,11 +116,19 @@ export default async function handler(req, res) {
     const net = a.network_id
     try {
       if (net === 'TRC20' && a.address) {
-        const [t, bal] = await Promise.all([tronTurnover(a.address, fromMs, toMs, nowMs), tronBalance(a.address)])
+        const [t, bal] = await Promise.all([tronTurnover(a.address, fromMs, toMs), tronBalance(a.address)])
         const cur = bal != null ? bal : Number(a.balance_usd_est) || 0
         const opening = cur - t.netSinceFrom
         const closing = opening + (t.inPeriod - t.outPeriod)
-        rows.push({ id: a.id, name: a.name, network: net, opening, turnoverIn: t.inPeriod, turnoverOut: t.outPeriod, closing, count: t.cnt, source: 'tron', note: t.truncated ? 'история усечена (много операций)' : null })
+        // Сверка: полная история должна сойтись с балансом (Σнет = баланс). Не сошлось
+        // (лаг индексации / усечение) ИЛИ отрицательное сальдо → данные недостоверны.
+        const reconciled = !t.truncated && Math.abs(t.fullNet - cur) < 1 && opening >= -1
+        rows.push({
+          id: a.id, name: a.name, network: net,
+          opening, turnoverIn: t.inPeriod, turnoverOut: t.outPeriod, closing, count: t.cnt,
+          source: 'tron', reconciled,
+          note: t.truncated ? 'история длинная — не проверено полностью' : (!reconciled ? 'данные не сошлись (лаг индексации) — обновите' : null),
+        })
       } else if (a.aegis_wallet_id) {
         // EVM — best-effort через AEGIS getStats(period) + getStats(from..now) для сальдо нач.
         const [sp, sAll] = await Promise.all([

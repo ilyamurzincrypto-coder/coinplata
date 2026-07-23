@@ -476,9 +476,9 @@ export default function AccountsPage({ onOpenHelp = null }) {
                 type="button"
                 onClick={() => setTurnoverOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
-                title="Оборотно-сальдовая ведомость он-чейн за период"
+                title="Сальдовая ведомость он-чейн за период"
               >
-                <FileSpreadsheet className="w-4 h-4" strokeWidth={2} /> Оборотка
+                <FileSpreadsheet className="w-4 h-4" strokeWidth={2} /> Сальдовая ведомость
               </button>
             )}
             {(activeTab === "crypto" || activeTab === "all") && (

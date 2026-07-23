@@ -3,7 +3,7 @@
 // Выбор кошельков (галочки) + период → таблица: сальдо нач / поступило / списано /
 // сальдо кон / опер. Источник: TRON — из блокчейна (точно), EVM — AEGIS (best-effort).
 import React, { useMemo, useState } from "react";
-import { X, FileSpreadsheet, Loader2 } from "lucide-react";
+import { X, FileSpreadsheet, Loader2, AlertTriangle } from "lucide-react";
 import { fetchTurnover } from "../../../lib/aegisMonitoring.js";
 
 const usd = (n) => (n == null ? "—" : `$${Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
@@ -38,8 +38,9 @@ export default function TurnoverReport({ accounts = [], onClose }) {
     }
   };
 
+  const brokenCount = (state.data?.rows || []).filter((r) => r.reconciled === false).length;
   const totals = useMemo(() => {
-    const rows = state.data?.rows || [];
+    const rows = (state.data?.rows || []).filter((r) => r.reconciled !== false); // несошедшиеся не суммируем
     return rows.reduce(
       (a, r) => ({
         opening: a.opening + (Number(r.opening) || 0),
@@ -56,7 +57,7 @@ export default function TurnoverReport({ accounts = [], onClose }) {
       <div className="bg-bg w-full h-full md:h-auto md:max-h-[92vh] md:w-[900px] md:rounded-[18px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-bg/95 backdrop-blur border-b-[0.5px] border-border flex items-center gap-2 px-4 h-12">
           <FileSpreadsheet className="w-4 h-4 text-emerald" />
-          <span className="text-[15px] font-semibold text-ink flex-1">Оборотка · он-чейн</span>
+          <span className="text-[15px] font-semibold text-ink flex-1">Сальдовая ведомость · он-чейн</span>
           <button type="button" onClick={onClose} className="p-1 text-muted hover:text-ink"><X className="w-5 h-5" /></button>
         </div>
 
@@ -107,17 +108,23 @@ export default function TurnoverReport({ accounts = [], onClose }) {
                   </tr>
                 </thead>
                 <tbody className="font-mono tabular-nums">
-                  {state.data.rows.map((r) => (
-                    <tr key={r.id} className="border-t-[0.5px] border-border-soft">
-                      <td className="px-3 py-2 font-sans text-ink truncate max-w-[200px]" title={r.note || r.name}>{r.name}{r.note && <span className="block text-[10px] text-muted font-sans">{r.note}</span>}</td>
-                      <td className="px-2 py-2 font-sans text-muted">{r.network}</td>
-                      <td className="text-right px-2 py-2 text-ink-soft">{usd(r.opening)}</td>
-                      <td className="text-right px-2 py-2 text-success">{r.turnoverIn != null ? `+${usd(r.turnoverIn).slice(1)}` : "—"}</td>
-                      <td className="text-right px-2 py-2 text-muted">{r.turnoverOut != null ? `−${usd(r.turnoverOut).slice(1)}` : "—"}</td>
-                      <td className="text-right px-3 py-2 font-semibold text-ink">{usd(r.closing)}</td>
-                      <td className="text-right px-2 py-2 text-muted">{r.count ?? "—"}</td>
-                    </tr>
-                  ))}
+                  {state.data.rows.map((r) => {
+                    const broken = r.reconciled === false;
+                    return (
+                      <tr key={r.id} className={`border-t-[0.5px] border-border-soft ${broken ? "bg-warning-soft" : ""}`}>
+                        <td className="px-3 py-2 font-sans text-ink truncate max-w-[200px]" title={r.note || r.name}>
+                          <span className="inline-flex items-center gap-1">{broken && <AlertTriangle className="w-3 h-3 text-warning shrink-0" />}{r.name}</span>
+                          {r.note && <span className={`block text-[10px] font-sans ${broken ? "text-warning font-medium" : "text-muted"}`}>{r.note}</span>}
+                        </td>
+                        <td className="px-2 py-2 font-sans text-muted">{r.network}</td>
+                        <td className="text-right px-2 py-2 text-ink-soft">{broken ? "—" : usd(r.opening)}</td>
+                        <td className="text-right px-2 py-2 text-success">{r.turnoverIn != null ? `+${usd(r.turnoverIn).slice(1)}` : "—"}</td>
+                        <td className="text-right px-2 py-2 text-muted">{r.turnoverOut != null ? `−${usd(r.turnoverOut).slice(1)}` : "—"}</td>
+                        <td className="text-right px-3 py-2 font-semibold text-ink">{broken ? "—" : usd(r.closing)}</td>
+                        <td className="text-right px-2 py-2 text-muted">{r.count ?? "—"}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-[0.5px] border-border font-mono tabular-nums bg-surface-soft">
@@ -133,8 +140,14 @@ export default function TurnoverReport({ accounts = [], onClose }) {
             </div>
           )}
 
+          {brokenCount > 0 && (
+            <div className="text-[11.5px] text-warning leading-snug flex items-start gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>{brokenCount} строк(и) не сошлись с балансом (лаг индексации блокчейна) — их сальдо скрыто и не в «Итого». Обнови через пару минут.</span>
+            </div>
+          )}
           <div className="text-[11px] text-muted-soft leading-snug">
-            TRON (TRC20) — точно из блокчейна. EVM (ERC20/BEP20) — по данным AEGIS (best-effort). Сальдо кон = сальдо нач + поступило − списано.
+            TRON (TRC20) — точно из блокчейна, со сверкой Σнет = баланс. EVM (ERC20/BEP20) — по данным AEGIS (best-effort). Сальдо кон = сальдо нач + поступило − списано.
           </div>
         </div>
       </div>
