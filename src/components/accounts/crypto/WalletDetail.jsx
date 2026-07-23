@@ -23,6 +23,67 @@ const RISK_COLOR = { critical: "#B91C1C", warning: "#B45309", ok: "#10B981", hig
 // score 0-100 → уровень (пороги AEGIS: ok≤25 / warning 25-80 / critical>80).
 const levelOfScore = (s) => (s == null ? null : s > 80 ? "critical" : s > 25 ? "warning" : "ok");
 const TYPE_LABEL = { exchange: "биржа", p2p_merchant: "P2P", mixer: "микшер", private: "приватный", internal: "свой", bridge: "мост", contract: "контракт" };
+// Категория/тип сущности → лейбл + цвет (для экспозиции и бейджей).
+const CAT_META = {
+  exchange: { label: "биржи", color: "#2563EB" }, cex: { label: "биржи", color: "#2563EB" }, dex: { label: "DEX", color: "#0891B2" },
+  p2p_merchant: { label: "P2P", color: "#7C3AED" }, p2p: { label: "P2P", color: "#7C3AED" },
+  mixer: { label: "микшеры", color: "#B91C1C" }, sanctioned: { label: "санкции", color: "#991B1B" },
+  darknet: { label: "даркнет", color: "#7F1D1D" }, scam: { label: "скам", color: "#DC2626" }, gambling: { label: "гэмблинг", color: "#B45309" },
+  private: { label: "приватные", color: "#6B7280" }, personal: { label: "приватные", color: "#6B7280" },
+  internal: { label: "свои", color: "#10B981" }, bridge: { label: "мосты", color: "#0891B2" }, contract: { label: "контракты", color: "#B45309" },
+  blacklist: { label: "чёрный список", color: "#991B1B" }, unknown: { label: "нет данных", color: "#D9DCE1" },
+};
+const catMeta = (c) => CAT_META[c] || { label: c || "нет данных", color: "#D9DCE1" };
+
+// Экспозиция одной стороны (поступления/отправки): stacked-бар по категориям + топ.
+function ExposureSide({ label, byCat, total }) {
+  if (total <= 0) return null;
+  const parts = Object.entries(byCat).map(([cat, v]) => ({ cat, v, share: (v / total) * 100, ...catMeta(cat) })).sort((a, b) => b.v - a.v);
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-1">
+        <span className="text-[11.5px] text-ink-soft">{label}</span>
+        <span className="text-[11px] font-mono tabular-nums text-muted">{usd(total)}</span>
+      </div>
+      <div className="flex h-2 rounded-full overflow-hidden bg-surface-sunk">
+        {parts.map((p) => <span key={p.cat} style={{ width: `${p.share}%`, background: p.color }} title={`${p.label} ${p.share.toFixed(0)}%`} />)}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10.5px] text-muted">
+        {parts.slice(0, 5).map((p) => (
+          <span key={p.cat} className="inline-flex items-center gap-1"><span className="rounded-full" style={{ width: 6, height: 6, background: p.color }} /> {p.label} {p.share.toFixed(0)}%</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Разбор экспозиции кошелька по типам сущностей. Приоритет — данные AEGIS
+// (w.exposure); фолбэк — агрегируем загруженные движения по типу контрагента.
+function ExposureBlock({ exposure, txs }) {
+  let inbound = {}, outbound = {}, inTotal = 0, outTotal = 0, source = "movements";
+  if (exposure && (Array.isArray(exposure.inbound) || Array.isArray(exposure.outbound))) {
+    source = "aegis";
+    for (const e of exposure.inbound || []) { const v = Number(e.volume_usd) || 0; inbound[e.category || "unknown"] = (inbound[e.category || "unknown"] || 0) + v; inTotal += v; }
+    for (const e of exposure.outbound || []) { const v = Number(e.volume_usd) || 0; outbound[e.category || "unknown"] = (outbound[e.category || "unknown"] || 0) + v; outTotal += v; }
+  } else {
+    for (const t of txs || []) {
+      const amt = tokenAmt(t.amount) || 0;
+      const cat = t.counterpartyEntity?.category || (t.counterpartyType && t.counterpartyType !== "unknown" ? t.counterpartyType : "unknown");
+      if (t.direction === "in") { inbound[cat] = (inbound[cat] || 0) + amt; inTotal += amt; }
+      else { outbound[cat] = (outbound[cat] || 0) + amt; outTotal += amt; }
+    }
+  }
+  if (inTotal <= 0 && outTotal <= 0) return null;
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Экспозиция · по типам {source === "movements" && <span className="normal-case font-normal text-muted-soft">(по загруженным движениям)</span>}</div>
+      <div className="space-y-3">
+        <ExposureSide label="поступления — откуда" byCat={inbound} total={inTotal} />
+        <ExposureSide label="отправки — куда" byCat={outbound} total={outTotal} />
+      </div>
+    </div>
+  );
+}
 
 function Metric({ label, children, valueCls = "" }) {
   return (
@@ -89,7 +150,8 @@ function TxRow({ t, network }) {
   // unknown → меток нет → «нет данных», а не «риск 0».
   const hasData = !!(t.counterpartyType && t.counterpartyType !== "unknown");
   const type = hasData ? (TYPE_LABEL[t.counterpartyType] || t.counterpartyType) : null;
-  const cats = (t.counterpartyRisk?.categories || []).join(", ");
+  const ent = t.counterpartyEntity; // именованная сущность (когда AEGIS отдаст)
+  const cats = t.counterpartyRisk?.categories || [];
   const dt = t.ts ? new Date(t.ts) : null;
   const explorer = t.counterparty && EXPLORER[network]?.(t.counterparty);
   return (
@@ -98,9 +160,17 @@ function TxRow({ t, network }) {
         {isIn ? <ArrowDown className="w-3.5 h-3.5 text-success" strokeWidth={2.2} /> : <ArrowUp className="w-3.5 h-3.5 text-muted" strokeWidth={2.2} />}
       </span>
       <span className="flex flex-col min-w-0 flex-1 gap-1">
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-1.5 flex-wrap">
           <span className="font-mono tabular-nums text-[14px] text-ink">{amt != null ? `${isIn ? "+" : "−"}${amt.toLocaleString("en-US", { maximumFractionDigits: 2 })} USDT` : "—"}</span>
-          {type && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>}
+          {/* Именованная сущность (когда AEGIS отдаст) — иначе тип */}
+          {ent?.name ? (
+            <span className="text-[10.5px] font-semibold rounded-[6px] px-1.5 py-0.5" style={{ color: catMeta(ent.category).color, background: `${catMeta(ent.category).color}14` }}>{ent.name}</span>
+          ) : type ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1.5 py-0.5">{type}</span>
+          ) : null}
+          {ent?.sanctioned && <span className="text-[9.5px] font-bold uppercase rounded-[6px] px-1.5 py-0.5 text-danger bg-danger-soft">санкции</span>}
+          {ent?.kyc === "none" && <span className="text-[9.5px] font-semibold uppercase rounded-[6px] px-1.5 py-0.5 text-warning bg-warning-soft">без KYC</span>}
+          {ent?.jurisdiction && <span className="text-[9.5px] font-semibold uppercase rounded-[6px] px-1 py-0.5 text-muted bg-surface-soft">{ent.jurisdiction}</span>}
         </span>
         {/* Адрес контрагента — ПОЛНОСТЬЮ (mono ink) + копия + эксплорер */}
         {t.counterparty && (
@@ -110,7 +180,13 @@ function TxRow({ t, network }) {
             {explorer && <a href={explorer} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="shrink-0 text-muted hover:text-ink" title="В эксплорере"><ExternalLink className="w-3 h-3" /></a>}
           </span>
         )}
-        <span className="text-[11px] text-muted truncate">{[cats || null, dt ? dt.toLocaleString("ru-RU") : null].filter(Boolean).join(" · ")}</span>
+        {/* Категории риска контрагента — цветными чипами */}
+        {cats.length > 0 && (
+          <span className="flex flex-wrap gap-1">
+            {cats.map((c, i) => <span key={i} className="text-[9.5px] font-semibold uppercase rounded-[5px] px-1.5 py-0.5" style={{ color: catMeta(String(c).toLowerCase()).color, background: `${catMeta(String(c).toLowerCase()).color}14` }}>{c}</span>)}
+          </span>
+        )}
+        <span className="text-[11px] text-muted">{dt ? dt.toLocaleString("ru-RU") : ""}</span>
       </span>
       {hasData ? (
         <span className="shrink-0 inline-flex items-center gap-1 mt-0.5 rounded-[7px] px-1.5 py-0.5 text-[11px] font-semibold" style={{ color, background: `${color}14` }}>
@@ -398,6 +474,9 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
               {stats.riskDistribution && <RiskDistribution dist={stats.riskDistribution} />}
             </div>
           )}
+
+          {/* Экспозиция по типам сущностей (AEGIS w.exposure или из движений) */}
+          {(w.exposure || rawTx.length > 0) && <ExposureBlock exposure={w.exposure} txs={rawTx} />}
 
           {/* Движения (только если доступны) */}
           {txData.available ? (

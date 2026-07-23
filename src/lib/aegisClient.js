@@ -65,6 +65,10 @@ export function normalizeWallet(raw) {
     balanceNative: bal && bal.native ? bal.native : null,
     balanceUsdt: bal && bal.usdt ? bal.usdt : null,
     lastActivityAt: raw.last_activity_at ?? null,
+    // Форвард-совместимо (entity attribution, AEGIS дошлёт): состав экспозиции
+    // кошелька по типам сущностей + топ именованных сущностей. null пока полей нет.
+    exposure: raw.exposure || null, // { inbound:[{category,entity_name?,share,volume_usd}], outbound:[...], unknown_share, assessed_share }
+    topEntities: Array.isArray(raw.top_entities) ? raw.top_entities : null, // [{entity_name,category,direction,volume_usd,tx_count,risk}]
   };
 }
 
@@ -131,6 +135,18 @@ export function normalizeTransactions(raw) {
       counterpartyType: t.counterparty_type ?? null,
       counterpartyRisk: t.counterparty_risk
         ? { level: t.counterparty_risk.level ?? null, score: t.counterparty_risk.score ?? null, categories: t.counterparty_risk.categories || [] }
+        : null,
+      // Именованная сущность контрагента (форвард-совместимо; AEGIS ещё дошлёт —
+      // см. спеку entity attribution). null-безопасно, пока полей нет.
+      counterpartyEntity: t.counterparty_entity
+        ? {
+            name: t.counterparty_entity.name ?? null,
+            category: t.counterparty_entity.category ?? null,
+            kyc: t.counterparty_entity.kyc ?? null,
+            sanctioned: t.counterparty_entity.sanctioned === true,
+            jurisdiction: t.counterparty_entity.jurisdiction ?? null,
+            confidence: t.counterparty_entity.confidence ?? null,
+          }
         : null,
       ts: t.ts,
     })),
