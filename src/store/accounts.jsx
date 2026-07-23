@@ -122,6 +122,7 @@ export function AccountsProvider({ children }) {
                   riskUpdatedAt: r.risk_updated_at ?? a.riskUpdatedAt,
                   balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : a.balanceUsdEst,
                   syncedAt: r.synced_at ?? a.syncedAt,
+                  hidden: r.hidden ?? a.hidden,
                 }
               : a
           )

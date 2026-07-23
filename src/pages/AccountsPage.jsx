@@ -52,7 +52,7 @@ import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
 import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
 import WalletDetail from "../components/accounts/crypto/WalletDetail.jsx";
-import { fetchWalletDetail } from "../lib/aegisMonitoring.js";
+import { fetchWalletDetail, setAccountHidden } from "../lib/aegisMonitoring.js";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
 import { isSupabaseConfigured } from "../lib/supabase.js";
@@ -127,7 +127,7 @@ function DeltaPair({ today, yesterday, currency, size = "xs" }) {
 
 export default function AccountsPage({ onOpenHelp = null }) {
   const { t } = useTranslation();
-  const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount, movements, transfers } = useAccounts();
+  const { accounts, balanceOf, reservedOf, availableOf, deltaOf, deactivateAccount, updateAccount, movements, transfers } = useAccounts();
   const { transactions } = useTransactions();
   const { addEntry: logAudit } = useAudit();
   const { currentUser } = useAuth();
@@ -164,6 +164,12 @@ export default function AccountsPage({ onOpenHelp = null }) {
       () => {}
     );
   }, []);
+  // Глазик: скрыть/показать — оптимистично + запись в БД (общий флаг). Откат при ошибке.
+  const toggleHidden = useCallback((account) => {
+    const next = !account.hidden;
+    updateAccount(account.id, { hidden: next });
+    setAccountHidden(account.id, next).catch(() => updateAccount(account.id, { hidden: account.hidden }));
+  }, [updateAccount]);
   const sym = curSymbol(base);
 
   // Период для delta — сегодня + вчера (для сравнения через слэш).
@@ -490,6 +496,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
               onOpenWallet={openWallet}
               reasonsById={reasonsById}
               onRequestReasons={requestReasons}
+              onToggleHidden={toggleHidden}
             />
           ) : (
             <AccountsTree kindFilter={activeTab} />

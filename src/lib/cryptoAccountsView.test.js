@@ -118,3 +118,18 @@ describe("SHARE_DRILLDOWN", () => {
     expect(SHARE_DRILLDOWN).toBe(false);
   });
 });
+
+describe("скрытые кошельки (глазик)", () => {
+  it("hidden → в hiddenWallets, не в wallets; в итогах остаётся", () => {
+    const withHidden = [
+      { account: { ...acc({ id: "cerc", name: "Center ERC20", officeId: MARK, network: "ERC20", onchain: "572.01" }), hidden: true }, ledgerUsd: 0 },
+      { account: acc({ id: "w88", name: "W88 Mark", officeId: MARK, risk: "warning", onchain: "0.62" }), ledgerUsd: 0 },
+    ];
+    const v = buildCryptoView({ items: withHidden, offices });
+    const mark = v.sections.find((s) => s.office.id === MARK);
+    expect(mark.hiddenWallets.some((w) => w.name === "Center ERC20")).toBe(true);
+    expect(mark.wallets.some((w) => w.name === "Center ERC20")).toBe(false);
+    // он-чейн-сумма офиса включает скрытый (деньги не теряем): 572.01 + 0.62
+    expect(mark.onchainSum).toBeCloseTo(572.63, 2);
+  });
+});

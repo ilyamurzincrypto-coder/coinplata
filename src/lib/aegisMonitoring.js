@@ -47,6 +47,18 @@ export async function fetchWalletDetail(accountId, { live = false } = {}) {
   return body;
 }
 
+// Скрыть/показать счёт в витрине (глазик). Общий флаг, staff-only.
+export async function setAccountHidden(accountId, hidden) {
+  const r = await fetch("/api/accounts/hidden", {
+    method: "POST",
+    headers: await authHeaders(),
+    body: JSON.stringify({ accountId, hidden }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `hide ${r.status}`), { status: r.status });
+  return body;
+}
+
 // Общая лента крипто-движений (вкладка «Лог») — из кэша, по всем кошелькам.
 export async function fetchCryptoLog(limit = 150) {
   const r = await fetch(`/api/aegis/log?limit=${limit}`, { headers: await authHeaders() });

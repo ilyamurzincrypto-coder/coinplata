@@ -114,13 +114,17 @@ export function buildCryptoView({ items = [], offices = [], threshold = DELTA_AL
     const list = byOffice.get(oid) || [];
     // проблемные сверху, затем ok, затем нулевые; внутри — по он-чейн убыв.
     list.sort((a, b) => rank[a.category] - rank[b.category] || (b.onchain ?? 0) - (a.onchain ?? 0));
-    const wallets = list.filter((v) => v.category !== "zero");
-    const zeroWallets = list.filter((v) => v.category === "zero");
+    // Скрытые (глазик) — отдельная группа; в итогах остаются (деньги не теряем).
+    const hiddenWallets = list.filter((v) => v.account?.hidden === true);
+    const visible = list.filter((v) => v.account?.hidden !== true);
+    const wallets = visible.filter((v) => v.category !== "zero");
+    const zeroWallets = visible.filter((v) => v.category === "zero");
     const onchainSum = list.reduce((s, v) => s + (v.onchain ?? 0), 0);
     sections.push({
       office: officeById.get(oid) || { id: oid, name: oid },
       wallets,
       zeroWallets,
+      hiddenWallets,
       onchainSum,
       count: list.length,
     });

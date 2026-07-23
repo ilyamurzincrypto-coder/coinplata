@@ -195,6 +195,7 @@ export async function loadAccounts() {
     riskUpdatedAt: r.risk_updated_at || null,
     balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : null, // строка
     syncedAt: r.synced_at || null,
+    hidden: r.hidden === true, // скрыт из витрины (глазик)
   }));
 }
 

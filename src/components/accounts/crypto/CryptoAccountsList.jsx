@@ -10,7 +10,7 @@
 //  • Статус-точка (риск AEGIS) и Δ-бейдж (расхождение учёт↔он-чейн) — РАЗДЕЛЬНЫ.
 //    Он-чейн краснеет только вместе с Δ-бейджем.
 import React, { useEffect, useMemo, useState } from "react";
-import { Lock, Copy, Check, ChevronRight, X, AlertTriangle, ArrowDown, ArrowUp, ExternalLink } from "lucide-react";
+import { Lock, Copy, Check, ChevronRight, X, AlertTriangle, ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
 import { fetchCryptoLog } from "../../../lib/aegisMonitoring.js";
@@ -85,6 +85,22 @@ function DeltaBadge({ vm, minW = 96 }) {
 // Риск-скор: иконка уровня (точка ok / треугольник warn-crit) + число 0-100.
 // Клик → «почему такой скор» (плашка причины). Нет числа (не пришло от AEGIS) →
 // фолбэк на словесный лейбл, чтобы не показывать пусто.
+// Глазик: скрыть/показать кошелёк из витрины. stopPropagation — не открывает drill.
+function EyeToggle({ account, onToggle }) {
+  if (!onToggle) return null;
+  const hidden = account?.hidden === true;
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); onToggle(account); }}
+      title={hidden ? "Показать кошелёк" : "Скрыть кошелёк"}
+      className="shrink-0 text-muted-soft hover:text-ink"
+    >
+      {hidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+    </button>
+  );
+}
+
 function StatusDot({ account, onClick, small = false }) {
   const st = statusOf(account);
   const Tag = onClick ? "button" : "span";
@@ -176,7 +192,7 @@ function ReasonPanel({ vm, reasons, onClose }) {
 // Как таблица на десктопе, но в 2 строки: имя+адрес слева, он-чейн+риск справа.
 // Один стиль для ok/проблемных (различие — цвет риск-индикатора и Δ), внутри
 // одной карточки на офис с хайрлайнами между строками — без «вакханалии».
-function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled, first }) {
+function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled, first, onToggleHidden }) {
   const red = deficitRed(vm);
   const showDelta = hasDelta(vm);
   return (
@@ -184,12 +200,12 @@ function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillE
       <div
         role={drillEnabled ? "button" : undefined}
         tabIndex={drillEnabled ? 0 : undefined}
-        className={`flex items-center gap-2.5 px-3 py-2.5 ${first ? "" : "border-t-[0.5px] border-border-soft"} ${drillEnabled ? "cursor-pointer active:bg-surface-soft" : ""}`}
+        className={`flex items-center gap-2.5 px-3 py-2.5 ${vm.account?.hidden ? "opacity-60" : ""} ${first ? "" : "border-t-[0.5px] border-border-soft"} ${drillEnabled ? "cursor-pointer active:bg-surface-soft" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
         onKeyDown={drillEnabled ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen?.(vm.account); } } : undefined}
       >
         <div className="flex flex-col min-w-0 flex-1 gap-1">
-          <span className="text-[14px] text-ink truncate">{vm.name}</span>
+          <span className="flex items-center gap-1.5 min-w-0"><EyeToggle account={vm.account} onToggle={onToggleHidden} /><span className="text-[14px] text-ink truncate">{vm.name}</span></span>
           <span className="flex items-center gap-1.5 min-w-0">
             {vm.network && <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[5px] px-1 py-0.5">{vm.network}</span>}
             <CopyAddr address={vm.address} network={null} size={11.5} head={6} tail={5} />
@@ -238,15 +254,15 @@ function DesktopHead() {
   );
 }
 
-function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled }) {
+function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillEnabled, onToggleHidden }) {
   const red = deficitRed(vm);
   return (
     <>
       <tr
-        className={`h-11 border-t-[0.5px] border-border-soft ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
+        className={`h-11 border-t-[0.5px] border-border-soft ${vm.account?.hidden ? "opacity-60" : ""} ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
-        <td className="px-2.5 align-middle"><div className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</div></td>
+        <td className="px-2.5 align-middle"><div className="flex items-center gap-1.5 min-w-0"><EyeToggle account={vm.account} onToggle={onToggleHidden} /><div className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</div></div></td>
         <td className={`${TD} !px-2`}>{vm.network && <span className="inline-block text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</td>
         <td className={TD}><CopyAddr address={vm.address} network={null} size={12} full /></td>
         <td className={TD}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></td>
@@ -357,10 +373,12 @@ export default function CryptoAccountsList({
   reasonsById = {},
   onRequestReasons,
   shareDetails = false,
+  onToggleHidden,
 }) {
   const [filter, setFilter] = useState("all");
   const [expandedReason, setExpandedReason] = useState(null);
   const [zeroOpen, setZeroOpen] = useState(false);
+  const [hiddenOpen, setHiddenOpen] = useState(false);
 
   const view = useMemo(() => buildCryptoView({ items, offices, filter }), [items, offices, filter]);
   const drillEnabled = (mode === "authed" || (mode === "share" && (shareDetails || SHARE_DRILLDOWN))) && !!onOpenWallet;
@@ -445,7 +463,7 @@ export default function CryptoAccountsList({
             {/* Mobile: единый список в одной карточке офиса */}
             <div className="md:hidden bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
               {s.wallets.map((vm, i) => (
-                <MobileRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={i === 0} />
+                <MobileRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={i === 0} onToggleHidden={onToggleHidden} />
               ))}
               {s.zeroWallets.length > 0 && (
                 <>
@@ -453,7 +471,17 @@ export default function CryptoAccountsList({
                     <span className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</span>
                   </button>
                   {zeroOpen && s.zeroWallets.map((vm) => (
-                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} />
+                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
+                  ))}
+                </>
+              )}
+              {s.hiddenWallets.length > 0 && (
+                <>
+                  <button type="button" onClick={() => setHiddenOpen((o) => !o)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length || s.zeroWallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-muted"><EyeOff className="w-3.5 h-3.5" /> Скрытые · {s.hiddenWallets.length}</span>
+                  </button>
+                  {hiddenOpen && s.hiddenWallets.map((vm) => (
+                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
                   ))}
                 </>
               )}
@@ -466,7 +494,7 @@ export default function CryptoAccountsList({
                 <DesktopHead />
                 <tbody>
                   {s.wallets.map((vm) => (
-                    <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
+                    <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
                   ))}
                   {s.zeroWallets.length > 0 && (
                     <>
@@ -476,7 +504,19 @@ export default function CryptoAccountsList({
                         </td>
                       </tr>
                       {zeroOpen && s.zeroWallets.map((vm) => (
-                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} />
+                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
+                      ))}
+                    </>
+                  )}
+                  {s.hiddenWallets.length > 0 && (
+                    <>
+                      <tr className="border-t-[0.5px] border-border-soft">
+                        <td colSpan={8} className="px-3 py-2">
+                          <button type="button" onClick={() => setHiddenOpen((o) => !o)} className="inline-flex items-center gap-1.5 text-[12px] text-muted"><EyeOff className="w-3.5 h-3.5" /> Скрытые · {s.hiddenWallets.length}</button>
+                        </td>
+                      </tr>
+                      {hiddenOpen && s.hiddenWallets.map((vm) => (
+                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
                       ))}
                     </>
                   )}

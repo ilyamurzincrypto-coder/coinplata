@@ -43,7 +43,7 @@ export default async function handler(req, res) {
     // 2. Живые данные. Счета фильтруем по scope СЕРВЕРНО.
     let accQ = db
       .from('accounts')
-      .select('id, office_id, currency_code, kind, name, address, network_id, aegis_wallet_id, aegis_capability, risk_level, risk_score, risk_updated_at, balance_usd_est, synced_at')
+      .select('id, office_id, currency_code, kind, name, address, network_id, aegis_wallet_id, aegis_capability, risk_level, risk_score, risk_updated_at, balance_usd_est, synced_at, hidden')
       .eq('active', true)
     if (scope !== 'all') accQ = accQ.eq('kind', scope)
 
@@ -75,6 +75,7 @@ export default async function handler(req, res) {
       riskUpdatedAt: r.risk_updated_at || null,
       balanceUsdEst: r.balance_usd_est != null ? String(r.balance_usd_est) : null,
       syncedAt: r.synced_at || null,
+      hidden: r.hidden === true,
     }))
     const offices = (offRes.data || []).map((r) => ({ id: r.id, name: r.name }))
 
