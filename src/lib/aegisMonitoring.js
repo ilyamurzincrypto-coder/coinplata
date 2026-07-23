@@ -47,6 +47,18 @@ export async function fetchWalletDetail(accountId, { live = false } = {}) {
   return body;
 }
 
+// Оборотно-сальдовая ведомость он-чейн за период по выбранным счетам.
+export async function fetchTurnover(accountIds, from, to) {
+  const r = await fetch("/api/accounts/turnover", {
+    method: "POST",
+    headers: await authHeaders(),
+    body: JSON.stringify({ accountIds, from, to }),
+  });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `turnover ${r.status}`), { status: r.status });
+  return body;
+}
+
 // Скрыть/показать счёт в витрине (глазик). Общий флаг, staff-only.
 export async function setAccountHidden(accountId, hidden) {
   const r = await fetch("/api/accounts/hidden", {

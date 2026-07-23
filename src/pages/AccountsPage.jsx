@@ -24,6 +24,7 @@ import {
   ChevronDown,
   HelpCircle,
   Share2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useAccounts } from "../store/accounts.jsx";
 import { useTransactions } from "../store/transactions.jsx";
@@ -52,6 +53,7 @@ import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
 import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
 import WalletDetail from "../components/accounts/crypto/WalletDetail.jsx";
+import TurnoverReport from "../components/accounts/crypto/TurnoverReport.jsx";
 import { fetchWalletDetail, setAccountHidden } from "../lib/aegisMonitoring.js";
 import { exportCSV } from "../utils/csv.js";
 import { officeName } from "../store/data.js";
@@ -197,6 +199,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [activeTab, setActiveTab] = useState("all");
   const [shareOpen, setShareOpen] = useState(false);
   const [walletImportOpen, setWalletImportOpen] = useState(false);
+  const [turnoverOpen, setTurnoverOpen] = useState(false);
 
   const handleExportAccounts = () => {
     if (accounts.length === 0) return;
@@ -468,6 +471,16 @@ export default function AccountsPage({ onOpenHelp = null }) {
       {(activeTab === "all" || activeTab === "fiat" || activeTab === "crypto") && (
         <>
           <div className="flex justify-end gap-1 -mb-1">
+            {activeTab === "crypto" && cryptoItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setTurnoverOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
+                title="Оборотно-сальдовая ведомость он-чейн за период"
+              >
+                <FileSpreadsheet className="w-4 h-4" strokeWidth={2} /> Оборотка
+              </button>
+            )}
             {(activeTab === "crypto" || activeTab === "all") && (
               <button
                 type="button"
@@ -508,6 +521,12 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <ShareLinksModal scope={activeTab} onClose={() => setShareOpen(false)} />
       )}
       {walletImportOpen && <ImportWalletsModal onClose={() => setWalletImportOpen(false)} />}
+      {turnoverOpen && (
+        <TurnoverReport
+          accounts={cryptoItems.map((i) => ({ id: i.account.id, name: i.account.name, network: i.account.network }))}
+          onClose={() => setTurnoverOpen(false)}
+        />
+      )}
       {detailWallet && (
         <WalletDetail account={detailWallet.account} ledgerUsd={detailWallet.ledgerUsd} onBack={() => setDetailWallet(null)} />
       )}
