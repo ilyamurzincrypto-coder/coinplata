@@ -523,7 +523,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
       {walletImportOpen && <ImportWalletsModal onClose={() => setWalletImportOpen(false)} />}
       {turnoverOpen && (
         <TurnoverReport
-          accounts={cryptoItems.map((i) => ({ id: i.account.id, name: i.account.name, network: i.account.network }))}
+          accounts={cryptoItems.map((i) => ({ id: i.account.id, name: i.account.name, network: i.account.network, balance: Number(i.account.balanceUsdEst) || 0 }))}
           onClose={() => setTurnoverOpen(false)}
         />
       )}

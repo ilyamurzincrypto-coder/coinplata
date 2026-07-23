@@ -75,8 +75,8 @@ export default async function handler(req, res) {
         const bal = Number(a.balance_usd_est) || 0
         // sPeriod — обороты за [from,to]. sSince — чистый поток с from по сегодня (для
         // сальдо начального). Если to==сегодня, это ОДИН и тот же запрос → не дублируем.
-        const sPeriod = await withTimeout(aegis.getStats(wid, from, to), 15000)
-        const sSince = toIsToday ? sPeriod : await withTimeout(aegis.getStats(wid, from, today), 15000)
+        const sPeriod = await withTimeout(aegis.getStats(wid, from, to), 10000)
+        const sSince = toIsToday ? sPeriod : await withTimeout(aegis.getStats(wid, from, today), 10000)
         if (!sPeriod.available || !sSince.available) {
           return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: bal, count: null, reconciled: false, note: 'обороты недоступны (degraded/таймаут) — обнови' }
         }

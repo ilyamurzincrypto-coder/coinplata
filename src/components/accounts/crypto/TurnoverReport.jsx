@@ -20,7 +20,12 @@ function monthStartIso() {
 export default function TurnoverReport({ accounts = [], onClose }) {
   const [from, setFrom] = useState(monthStartIso());
   const [to, setTo] = useState(todayIso());
-  const [selected, setSelected] = useState(() => new Set(accounts.map((a) => a.id)));
+  // По умолчанию — кошельки с балансом (дормантные $0 не нужны и тормозят отчёт).
+  // Если ни у кого нет баланса — выбираем все.
+  const [selected, setSelected] = useState(() => {
+    const nonzero = accounts.filter((a) => (a.balance || 0) > 0.01).map((a) => a.id);
+    return new Set(nonzero.length ? nonzero : accounts.map((a) => a.id));
+  });
   const [state, setState] = useState({ loading: false, error: null, data: null });
 
   const allOn = selected.size === accounts.length && accounts.length > 0;
