@@ -2,14 +2,15 @@
  * Сальдовая ведомость ОН-ЧЕЙН за период по выбранным крипто-счетам.
  * POST { accountIds:[], from:"YYYY-MM-DD", to:"YYYY-MM-DD" } — requireStaff.
  *
- * Источник — AEGIS getTransactions (полный список; он консистентен с балансом,
- * в отличие от getStats-агрегата, который на активных кошельках отстаёт). AEGIS
- * с ключами → без публичных лимитов. Всё считаем из полного списка движений:
- *   Сальдо нач(from) = чистый поток ДО from  (fullNet − netSinceFrom)
- *   Обороты         = Σ движений в [from,to]
- *   Сальдо кон(to)  = Сальдо нач + вход − выход
- * Сверка: полный чистый поток (fullNet) должен = текущему балансу. Не сошлось /
- * усечено / degraded → строка помечается, цифры не выдаются за правду.
+ * Источник — AEGIS (у него TronGrid/индексеры с ключами, без публичных лимитов).
+ * P1 полнота закрыта → getStats консистентен с getTransactions и балансом.
+ *
+ * Модель (классическая оборотка):
+ *   Сальдо нач(from)  = чистый поток ДО from (= баланс на начало периода)
+ *   Обороты           = getStats(from..to).in / .out
+ *   Сальдо кон(to)    = Сальдо нач + Обороты_вход − Обороты_выход
+ * Сверка: полная история (Σвход−Σвыход за всё время) должна = текущему балансу.
+ * Не сошлось (недоиндекс/degraded) → строка помечается, цифры не выдаются за правду.
  *
  * ENV: SUPABASE_*, AEGIS_API_URL/KEY.
  */
@@ -18,44 +19,18 @@ import { requireStaff } from '../cashdesk/_auth.js'
 import { aegis } from '../../src/lib/aegisClient.js'
 
 export const config = { maxDuration: 60 }
-const MAX_PAGES = 60 // до ~1500 движений; больше — помечаем «история длинная»
 
-function dayMs(d, endOfDay = false) {
-  return new Date(`${d}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}Z`).getTime()
-}
+const HISTORY_START = '2019-01-01' // до этого USDT-TRON/массовой активности не было
 
-// Полный список движений кошелька через AEGIS getTransactions (пагинация по cursor).
-// Считаем обороты периода, чистый поток с from и за всю историю.
-async function walletTurnover(wid, fromMs, toMs) {
-  let cursor = null, pages = 0, truncated = false, ok = true, degraded = false
-  let inPeriod = 0, outPeriod = 0, cnt = 0, netSinceFrom = 0, fullNet = 0
-  do {
-    let r
-    try {
-      r = await aegis.getTransactions(wid, cursor ? { cursor } : {})
-    } catch {
-      ok = false
-      break
-    }
-    if (!r || r.available === false) { degraded = true; break } // сеть/кошелёк без движений в фиде
-    for (const t of r.items || []) {
-      const amt = t.amount ? Number(t.amount.amount) / 10 ** (t.amount.decimals ?? 6) : 0
-      if (!Number.isFinite(amt)) continue
-      const ts = t.ts ? new Date(t.ts).getTime() : 0
-      const signed = t.direction === 'in' ? amt : -amt
-      fullNet += signed
-      if (ts >= fromMs) netSinceFrom += signed
-      if (ts >= fromMs && ts <= toMs) {
-        if (t.direction === 'in') inPeriod += amt; else outPeriod += amt
-        cnt += 1
-      }
-    }
-    cursor = r.hasMore ? r.cursor : null
-    pages += 1
-    if (pages >= MAX_PAGES && cursor) { truncated = true; break }
-  } while (cursor)
-  return { inPeriod, outPeriod, cnt, netSinceFrom, fullNet, truncated, ok, degraded }
+function isoToday() {
+  return new Date().toISOString().slice(0, 10)
 }
+function isoMinusDay(iso) {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().slice(0, 10)
+}
+const netOf = (s) => (s && s.available ? (Number(s.in?.sumUsd) || 0) - (Number(s.out?.sumUsd) || 0) : null)
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' })
@@ -77,39 +52,50 @@ export default async function handler(req, res) {
   if (!ids.length || !/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
     return res.status(400).json({ error: 'accountIds, from, to required' })
   }
-  const fromMs = dayMs(from), toMs = dayMs(to, true)
+  const today = isoToday()
+  const beforeFrom = isoMinusDay(from)
 
   const db = createClient(supaUrl, svcKey, { auth: { persistSession: false } })
   const { data: accs, error } = await db
     .from('accounts')
-    .select('id, name, network_id, aegis_wallet_id, balance_usd_est')
+    .select('id, name, address, network_id, aegis_wallet_id, balance_usd_est')
     .in('id', ids)
     .eq('kind', 'crypto')
   if (error) return res.status(500).json({ error: 'accounts read failed' })
 
   const rows = await Promise.all(
     (accs || []).map(async (a) => {
-      const base = { id: a.id, name: a.name, network: a.network_id }
+      const net = a.network_id
+      const base = { id: a.id, name: a.name, network: net }
       if (!a.aegis_wallet_id) {
         return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: null, count: null, reconciled: false, note: 'нет мониторинга AEGIS' }
       }
       try {
+        const wid = a.aegis_wallet_id
         const bal = Number(a.balance_usd_est) || 0
-        const t = await walletTurnover(a.aegis_wallet_id, fromMs, toMs)
-        if (!t.ok || t.degraded) {
-          return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: bal, count: null, reconciled: false, note: t.degraded ? 'движения недоступны (сеть degraded)' : 'источник недоступен — обнови' }
+        // Обороты периода, сальдо нач (всё ДО from), полная история (для сверки).
+        const [sPeriod, sOpen, sAll] = await Promise.all([
+          aegis.getStats(wid, from, to).catch(() => ({ available: false })),
+          aegis.getStats(wid, HISTORY_START, beforeFrom).catch(() => ({ available: false })),
+          aegis.getStats(wid, HISTORY_START, today).catch(() => ({ available: false })),
+        ])
+        if (!sPeriod.available || !sAll.available) {
+          return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: bal, count: null, reconciled: false, note: 'обороты недоступны (degraded)' }
         }
-        // Всё из полного списка: сальдо нач = поток ДО from, сальдо кон = нач + обороты.
-        const opening = t.fullNet - t.netSinceFrom
-        const closing = opening + (t.inPeriod - t.outPeriod)
-        // Сверка: полный поток списка должен = балансу (список полон и свеж).
-        const reconciled = !t.truncated && Math.abs(t.fullNet - bal) < 1 && opening >= -1 && closing >= -1
-        const note = t.truncated
-          ? 'история длинная — не проверено полностью'
-          : !reconciled
-          ? 'данные не сошлись с балансом — обнови'
-          : null
-        return { ...base, opening, turnoverIn: t.inPeriod, turnoverOut: t.outPeriod, closing, count: t.cnt, reconciled, note }
+        const inP = Number(sPeriod.in?.sumUsd) || 0
+        const outP = Number(sPeriod.out?.sumUsd) || 0
+        const opening = netOf(sOpen) ?? 0 // сальдо на начало периода (баланс до from)
+        const closing = opening + (inP - outP)
+        const fullNet = netOf(sAll)
+        // Сверка: полная история должна сойтись с балансом; сальдо не отрицательное.
+        const reconciled = fullNet != null && Math.abs(fullNet - bal) < 1 && opening >= -1 && closing >= -1
+        return {
+          ...base,
+          opening, turnoverIn: inP, turnoverOut: outP, closing,
+          count: (sPeriod.in?.count || 0) + (sPeriod.out?.count || 0),
+          reconciled,
+          note: reconciled ? null : 'данные не сошлись с балансом (недоиндекс) — обнови',
+        }
       } catch (e) {
         return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: null, count: null, reconciled: false, note: String(e?.message || e).slice(0, 80) }
       }
