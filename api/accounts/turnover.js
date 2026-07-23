@@ -6,11 +6,14 @@
  * P1 полнота закрыта → getStats консистентен с getTransactions и балансом.
  *
  * Модель (классическая оборотка):
- *   Сальдо нач(from)  = чистый поток ДО from (= баланс на начало периода)
- *   Обороты           = getStats(from..to).in / .out
- *   Сальдо кон(to)    = Сальдо нач + Обороты_вход − Обороты_выход
- * Сверка: полная история (Σвход−Σвыход за всё время) должна = текущему балансу.
- * Не сошлось (недоиндекс/degraded) → строка помечается, цифры не выдаются за правду.
+ *   Обороты          = getStats(from..to).in / .out
+ *   Чистый с from    = getStats(from..сегодня).net  (для сальдо начального)
+ *   Сальдо нач(from) = баланс − чистый_с_from
+ *   Сальдо кон(to)   = Сальдо нач + вход − выход
+ * Скорость: для отчёта «по сегодня» getStats(from..to) == getStats(from..сегодня)
+ * → ОДИН запрос на кошелёк. Для прошлого периода — два. Широкий диапазон не тянем.
+ * Сверка: сальдо не отрицательное (getStats-лаг на активных кошельках даёт минус
+ * → ловится). Не сошлось/degraded → строка помечается, цифры не выдаются за правду.
  *
  * ENV: SUPABASE_*, AEGIS_API_URL/KEY.
  */
@@ -20,17 +23,14 @@ import { aegis } from '../../src/lib/aegisClient.js'
 
 export const config = { maxDuration: 60 }
 
-const HISTORY_START = '2019-01-01' // до этого USDT-TRON/массовой активности не было
-
 function isoToday() {
   return new Date().toISOString().slice(0, 10)
 }
-function isoMinusDay(iso) {
-  const d = new Date(`${iso}T00:00:00Z`)
-  d.setUTCDate(d.getUTCDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
 const netOf = (s) => (s && s.available ? (Number(s.in?.sumUsd) || 0) - (Number(s.out?.sumUsd) || 0) : null)
+// Мягкий таймаут на getStats, чтобы один холодный кошелёк не тянул весь отчёт.
+function withTimeout(p, ms) {
+  return Promise.race([Promise.resolve(p).catch(() => ({ available: false })), new Promise((r) => setTimeout(() => r({ available: false }), ms))])
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'method not allowed' })
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'accountIds, from, to required' })
   }
   const today = isoToday()
-  const beforeFrom = isoMinusDay(from)
+  const toIsToday = to >= today
 
   const db = createClient(supaUrl, svcKey, { auth: { persistSession: false } })
   const { data: accs, error } = await db
@@ -73,28 +73,27 @@ export default async function handler(req, res) {
       try {
         const wid = a.aegis_wallet_id
         const bal = Number(a.balance_usd_est) || 0
-        // Обороты периода, сальдо нач (всё ДО from), полная история (для сверки).
-        const [sPeriod, sOpen, sAll] = await Promise.all([
-          aegis.getStats(wid, from, to).catch(() => ({ available: false })),
-          aegis.getStats(wid, HISTORY_START, beforeFrom).catch(() => ({ available: false })),
-          aegis.getStats(wid, HISTORY_START, today).catch(() => ({ available: false })),
-        ])
-        if (!sPeriod.available || !sAll.available) {
-          return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: bal, count: null, reconciled: false, note: 'обороты недоступны (degraded)' }
+        // sPeriod — обороты за [from,to]. sSince — чистый поток с from по сегодня (для
+        // сальдо начального). Если to==сегодня, это ОДИН и тот же запрос → не дублируем.
+        const sPeriod = await withTimeout(aegis.getStats(wid, from, to), 15000)
+        const sSince = toIsToday ? sPeriod : await withTimeout(aegis.getStats(wid, from, today), 15000)
+        if (!sPeriod.available || !sSince.available) {
+          return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: bal, count: null, reconciled: false, note: 'обороты недоступны (degraded/таймаут) — обнови' }
         }
         const inP = Number(sPeriod.in?.sumUsd) || 0
         const outP = Number(sPeriod.out?.sumUsd) || 0
-        const opening = netOf(sOpen) ?? 0 // сальдо на начало периода (баланс до from)
+        const netSince = netOf(sSince) ?? 0
+        const opening = bal - netSince // сальдо на начало периода (баланс − поток после from)
         const closing = opening + (inP - outP)
-        const fullNet = netOf(sAll)
-        // Сверка: полная история должна сойтись с балансом; сальдо не отрицательное.
-        const reconciled = fullNet != null && Math.abs(fullNet - bal) < 1 && opening >= -1 && closing >= -1
+        // Сверка: сальдо не отрицательное. getStats-лаг на активном кошельке завышает
+        // netSince → opening уходит в минус → ловим и помечаем, а не выдаём за правду.
+        const reconciled = opening >= -1 && closing >= -1
         return {
           ...base,
           opening, turnoverIn: inP, turnoverOut: outP, closing,
           count: (sPeriod.in?.count || 0) + (sPeriod.out?.count || 0),
           reconciled,
-          note: reconciled ? null : 'данные не сошлись с балансом (недоиндекс) — обнови',
+          note: reconciled ? null : 'данные не сошлись с балансом (лаг индексации) — обнови',
         }
       } catch (e) {
         return { ...base, opening: null, turnoverIn: null, turnoverOut: null, closing: null, count: null, reconciled: false, note: String(e?.message || e).slice(0, 80) }
