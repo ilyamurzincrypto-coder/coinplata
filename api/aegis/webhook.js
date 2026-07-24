@@ -115,7 +115,9 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       const oldUsd = acc.balance_usd_est != null ? Number(acc.balance_usd_est) : null
       if (oldUsd != null && Number.isFinite(newUsd)) {
         const delta = newUsd - oldUsd
-        const minUsd = Number(process.env.WALLET_MOVE_ALERT_MIN_USD || 50)
+        // Порога НЕТ — видим все платежи. Эпсилон $0.005 гасит только нулевые ре-синки
+        // (баланс не изменился). Env WALLET_MOVE_ALERT_MIN_USD поднимет порог при желании.
+        const minUsd = Math.max(Number(process.env.WALLET_MOVE_ALERT_MIN_USD || 0), 0.005)
         if (Math.abs(delta) >= minUsd) {
           const inbound = delta > 0
           const money = (n) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`

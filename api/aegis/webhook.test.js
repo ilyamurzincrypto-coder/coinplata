@@ -138,9 +138,17 @@ describe('handleAegisEvent', () => {
     expect(payload.text).toMatch(/Списано −\$7,222\.90/)
   })
 
-  it('balance.changed → нет алерта при дельте ниже порога', async () => {
+  it('balance.changed → мелкий платёж ($7.10) ТОЖЕ алертит (порога нет)', async () => {
     const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88', network: 'TRC20', balance_usd_est: '12770.00' }]), notifyMove: vi.fn(async () => true) })
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12770 = 7.10 < $50
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12770 = +7.10
+    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(deps.notifyMove).toHaveBeenCalledTimes(1)
+    expect(deps.notifyMove.mock.calls[0][0].text).toMatch(/Поступило \+\$7\.10/)
+  })
+
+  it('balance.changed → нулевая дельта (ре-синк) → без алерта', async () => {
+    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88', network: 'TRC20', balance_usd_est: '12777.10' }]), notifyMove: vi.fn(async () => true) })
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12777.10 = 0
     await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
     expect(deps.notifyMove).not.toHaveBeenCalled()
   })
