@@ -17,6 +17,10 @@
  */
 import { createHmac, timingSafeEqual } from 'crypto'
 import { svcClient, notifyManagerBot } from './_common.js'
+import { aegis } from '../../src/lib/aegisClient.js'
+
+// Категория контрагента → короткий человеческий лейбл для алерта движения.
+const MOVE_CAT_LABEL = { exchange: 'биржа', cex: 'биржа', p2p: 'P2P', p2p_merchant: 'P2P', mixer: 'микшер', gambling: 'гэмблинг', darknet: 'даркнет', scam: 'скам', sanctioned: 'санкции', personal: 'приватный', private: 'приватный', internal: 'свой', bridge: 'мост', contract: 'контракт' }
 
 export const config = { api: { bodyParser: false } }
 
@@ -115,13 +119,25 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
         if (Math.abs(delta) >= minUsd) {
           const inbound = delta > 0
           const money = (n) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          // Контрагент: последний перевод в ту же сторону (адрес + сущность/категория).
+          let cp = null
+          if (deps.fetchLastCounterparty) {
+            try { cp = await deps.fetchLastCounterparty(walletId, inbound ? 'in' : 'out') } catch { cp = null }
+          }
+          let cpLine = ''
+          if (cp && cp.counterparty) {
+            const a = cp.counterparty
+            const short = a.length > 18 ? `${a.slice(0, 10)}…${a.slice(-6)}` : a
+            const label = cp.entityName || (cp.category ? MOVE_CAT_LABEL[cp.category] || cp.category : '')
+            cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtml(short)}</code>${label ? ` · ${escapeHtml(label)}` : ''}${cp.sanctioned ? ' ⚠️ санкции' : ''}`
+          }
           await deps.notifyMove({
             kind: 'wallet_move',
             text:
               `${inbound ? '💰' : '📤'} <b>${escapeHtml(acc.name || event.address || walletId)}</b>${acc.network ? ` · ${escapeHtml(acc.network)}` : ''}\n` +
               `${inbound ? 'Поступило +' : 'Списано −'}${money(delta)}\n` +
-              `Баланс: ${money(newUsd)}`,
-            meta: { wallet_id: walletId, account_id: acc.id, name: acc.name, direction: inbound ? 'in' : 'out', delta, balance: newUsd },
+              `Баланс: ${money(newUsd)}` + cpLine,
+            meta: { wallet_id: walletId, account_id: acc.id, name: acc.name, direction: inbound ? 'in' : 'out', delta, balance: newUsd, counterparty: cp?.counterparty || null, counterparty_category: cp?.category || null, counterparty_sanctioned: cp?.sanctioned || false },
           })
         }
       }
@@ -182,6 +198,25 @@ export default async function handler(req, res) {
     },
     notifyTelegram: (payload) => notifyManagerBot({ kind: 'wallet_risk', ...payload }),
     notifyMove: (payload) => notifyManagerBot(payload),
+    // Последний перевод кошелька в заданную сторону — для «← от …/→ на …» в алерте.
+    // Мягкий таймаут 5с: не тормозим вебхук, при сбое алерт уйдёт без контрагента.
+    async fetchLastCounterparty(walletId, direction) {
+      const timed = await Promise.race([
+        aegis.getTransactions(walletId, {}).catch(() => null),
+        new Promise((r) => setTimeout(() => r(null), 5000)),
+      ])
+      if (!timed || timed.available === false) return null
+      const tx = (timed.items || [])
+        .filter((t) => t.direction === direction && t.counterparty)
+        .sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')))[0]
+      if (!tx) return null
+      return {
+        counterparty: tx.counterparty,
+        category: tx.counterpartyEntity?.category || (tx.counterpartyType && tx.counterpartyType !== 'unknown' ? tx.counterpartyType : null),
+        entityName: tx.counterpartyEntity?.name || null,
+        sanctioned: tx.counterpartyEntity?.sanctioned === true,
+      }
+    },
   }
 
   try {

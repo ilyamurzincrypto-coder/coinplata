@@ -115,6 +115,20 @@ describe('handleAegisEvent', () => {
     expect(payload.text).toMatch(/W88 Mark/)
   })
 
+  it('balance.changed → алерт с контрагентом (← от … · категория)', async () => {
+    const deps = mkDeps({
+      getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '12000.00' }]),
+      notifyMove: vi.fn(async () => true),
+      fetchLastCounterparty: vi.fn(async () => ({ counterparty: 'TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS', category: 'p2p', entityName: null, sanctioned: false })),
+    })
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
+    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(deps.fetchLastCounterparty).toHaveBeenCalledWith('aegis_w_trc20_001', 'in')
+    const payload = deps.notifyMove.mock.calls[0][0]
+    expect(payload.text).toMatch(/← от <code>TTqKSJbsbx…WV84kS<\/code> · P2P/)
+    expect(payload.meta.counterparty).toBe('TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS')
+  })
+
   it('balance.changed → алерт «Списано» при падении', async () => {
     const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '20000.00' }]), notifyMove: vi.fn(async () => true) })
     const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // новый 12777.10 < 20000 → списано
