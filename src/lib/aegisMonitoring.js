@@ -47,6 +47,14 @@ export async function fetchWalletDetail(accountId, { live = false } = {}) {
   return body;
 }
 
+// AML-обзор портфеля (комплаенс-кокпит) — из кэша, по всем крипто-кошелькам.
+export async function fetchAmlOverview() {
+  const r = await fetch("/api/aegis/aml", { headers: await authHeaders() });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw Object.assign(new Error(body?.error || `aml ${r.status}`), { status: r.status });
+  return body;
+}
+
 // Оборотно-сальдовая ведомость он-чейн за период по выбранным счетам.
 export async function fetchTurnover(accountIds, from, to) {
   const r = await fetch("/api/accounts/turnover", {
