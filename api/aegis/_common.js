@@ -58,6 +58,13 @@ export async function accountsByWalletId(db, walletId) {
 
 // ── Алерты движений по кошельку (поступило/ушло) в менеджер-бот ──
 const MOVE_CAT_LABEL = { exchange: 'биржа', cex: 'биржа', p2p: 'P2P', p2p_merchant: 'P2P', mixer: 'микшер', gambling: 'гэмблинг', darknet: 'даркнет', scam: 'скам', sanctioned: 'санкции', personal: 'приватный', private: 'приватный', internal: 'свой', bridge: 'мост', contract: 'контракт' }
+// Ссылка на транзакцию в блок-эксплорере по сети — «проверить, что перевод реально прошёл».
+const EXPLORER_TX = {
+  TRC20: { name: 'Tronscan', url: (h) => `https://tronscan.org/#/transaction/${h}` },
+  ERC20: { name: 'Etherscan', url: (h) => `https://etherscan.io/tx/${h}` },
+  BEP20: { name: 'BscScan', url: (h) => `https://bscscan.com/tx/${h}` },
+  BTC: { name: 'Blockstream', url: (h) => `https://blockstream.info/tx/${h}` },
+}
 function escapeHtmlA(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -76,10 +83,13 @@ export function formatMoveAlert(account, tx) {
     const short = cp.length > 18 ? `${cp.slice(0, 10)}…${cp.slice(-6)}` : cp
     cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(short)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${sanctioned ? ' ⚠️ санкции' : ''}`
   }
+  // Ссылка на транзакцию в эксплорере — открыть и убедиться, что перевод прошёл.
+  const exp = EXPLORER_TX[account.network_id]
+  const txLink = tx.txHash && exp ? `\n🔗 <a href="${exp.url(tx.txHash)}">Проверить на ${exp.name}</a>` : ''
   const text =
     `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}\n` +
-    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine
-  return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, ts: tx.ts || null } }
+    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine + txLink
+  return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
 
 // Алерты по НОВЫМ транзакциям кошелька (ts новее account.last_alert_tx_ts).

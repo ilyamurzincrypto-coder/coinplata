@@ -11,8 +11,10 @@ describe('formatMoveAlert', () => {
     expect(a.text).toMatch(/💰 <b>W88 Mark<\/b> · TRC20/)
     expect(a.text).toMatch(/Поступило \+\$5,000\.00/)
     expect(a.text).toMatch(/← от <code>TTqKSJbsbx…WV84kS<\/code> · P2P/)
+    expect(a.text).toMatch(/<a href="https:\/\/tronscan\.org\/#\/transaction\/h1">Проверить на Tronscan<\/a>/)
     expect(a.meta.direction).toBe('in')
     expect(a.meta.counterparty).toBe('TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS')
+    expect(a.meta.explorer_url).toBe('https://tronscan.org/#/transaction/h1')
   })
 
   it('списание с санкционным контрагентом', () => {
