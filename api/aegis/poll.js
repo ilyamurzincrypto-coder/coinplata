@@ -9,7 +9,7 @@
  * CRON_SECRET, (+ алерт-каналы).
  */
 import { aegis } from '../../src/lib/aegisClient.js'
-import { svcClient, applyWalletCache, applyDetailCache, notifyManagerBot } from './_common.js'
+import { svcClient, applyWalletCache, applyDetailCache, notifyManagerBot, alertNewTransactions } from './_common.js'
 import { alertPlan } from './webhook.js'
 
 // cold getWallet+getStats+getTransactions × 22 кошелька — держим запас времени.
@@ -44,6 +44,11 @@ async function pollWallet(db, a) {
   ])
   await applyDetailCache(db, a.id, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
 
+  // Алерты движений: по новым транзакциям (независимо от вебхуков), с дедупом.
+  if (transactions && transactions.available) {
+    try { await alertNewTransactions(db, a, transactions.items) } catch { /* не валим пул */ }
+  }
+
   const plan = alertPlan(a.risk_level, wallet.riskLevel)
   if (plan.telegram) {
     await notifyManagerBot({
@@ -68,7 +73,7 @@ export default async function handler(req, res) {
 
   const { data: accts, error } = await db
     .from('accounts')
-    .select('id, name, aegis_wallet_id, risk_level')
+    .select('id, name, network_id, aegis_wallet_id, risk_level, last_alert_tx_ts')
     .not('aegis_wallet_id', 'is', null)
     .eq('active', true)
   if (error) return res.status(500).json({ error: 'account list failed' })

@@ -56,6 +56,56 @@ export async function accountsByWalletId(db, walletId) {
   return data || []
 }
 
+// ── Алерты движений по кошельку (поступило/ушло) в менеджер-бот ──
+const MOVE_CAT_LABEL = { exchange: 'биржа', cex: 'биржа', p2p: 'P2P', p2p_merchant: 'P2P', mixer: 'микшер', gambling: 'гэмблинг', darknet: 'даркнет', scam: 'скам', sanctioned: 'санкции', personal: 'приватный', private: 'приватный', internal: 'свой', bridge: 'мост', contract: 'контракт' }
+function escapeHtmlA(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Одна нормализованная транзакция → payload алерта {kind, text(HTML), meta}.
+export function formatMoveAlert(account, tx) {
+  const inbound = tx.direction === 'in'
+  const amt = tx.amount ? Number(tx.amount.amount) / 10 ** (tx.amount.decimals ?? 6) : null
+  const money = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const cp = tx.counterparty || null
+  const category = tx.counterpartyEntity?.category || (tx.counterpartyType && tx.counterpartyType !== 'unknown' ? tx.counterpartyType : null)
+  const sanctioned = tx.counterpartyEntity?.sanctioned === true
+  const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '')
+  let cpLine = ''
+  if (cp) {
+    const short = cp.length > 18 ? `${cp.slice(0, 10)}…${cp.slice(-6)}` : cp
+    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(short)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${sanctioned ? ' ⚠️ санкции' : ''}`
+  }
+  const text =
+    `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}\n` +
+    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine
+  return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, ts: tx.ts || null } }
+}
+
+// Алерты по НОВЫМ транзакциям кошелька (ts новее account.last_alert_tx_ts).
+// Первый раз (метка null) — ставим baseline без алертов (не спамим историей).
+// Обновляет last_alert_tx_ts. Возвращает число отправленных.
+export async function alertNewTransactions(db, account, items) {
+  const list = (items || []).filter((t) => t && t.ts)
+  if (!list.length) return 0
+  const baseline = account.last_alert_tx_ts ? new Date(account.last_alert_tx_ts).getTime() : null
+  const newestTs = list.reduce((m, t) => (new Date(t.ts).getTime() > m ? new Date(t.ts).getTime() : m), 0)
+  if (baseline == null) {
+    await db.from('accounts').update({ last_alert_tx_ts: new Date(newestTs).toISOString() }).eq('id', account.id)
+    return 0
+  }
+  const fresh = list
+    .filter((t) => new Date(t.ts).getTime() > baseline)
+    .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()) // хронологически
+    .slice(-10) // не заваливаем при пропущенном пуле
+  if (!fresh.length) return 0
+  for (const t of fresh) {
+    try { await notifyManagerBot(formatMoveAlert(account, t)) } catch { /* не валим пул */ }
+  }
+  await db.from('accounts').update({ last_alert_tx_ts: new Date(newestTs).toISOString() }).eq('id', account.id)
+  return fresh.length
+}
+
 // Алерт в менеджерский бот (тот же путь, что rapira/sync): coinpoint-мост
 // (x-cashdesk-secret) с fallback на прямой Telegram. Возвращает bool «доставлено».
 export async function notifyManagerBot({ kind, text, meta = {} }) {

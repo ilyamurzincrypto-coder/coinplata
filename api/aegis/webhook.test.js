@@ -103,54 +103,20 @@ describe('handleAegisEvent', () => {
     expect(deps.updateBalance).toHaveBeenCalledWith('aegis_w_trc20_001', expect.objectContaining({ balance_usd_est: '12777.10' }))
   })
 
-  it('balance.changed → алерт «Поступило» при росте выше порога', async () => {
-    // старый баланс 12000 → новый 12777.10 = поступило +777.10 (> $50)
-    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '12000.00' }]), notifyMove: vi.fn(async () => true) })
+  it('balance.changed → триггерит алерты движений (alertMoves)', async () => {
+    const deps = mkDeps({ alertMoves: vi.fn(async () => 2) })
     const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
-    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(deps.notifyMove).toHaveBeenCalledTimes(1)
-    const payload = deps.notifyMove.mock.calls[0][0]
-    expect(payload.meta.direction).toBe('in')
-    expect(payload.text).toMatch(/Поступило \+\$777\.10/)
-    expect(payload.text).toMatch(/W88 Mark/)
+    const r = await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(deps.alertMoves).toHaveBeenCalledWith('aegis_w_trc20_001')
+    expect(r.body.alerted).toBe(2)
   })
 
-  it('balance.changed → алерт с контрагентом (← от … · категория)', async () => {
-    const deps = mkDeps({
-      getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '12000.00' }]),
-      notifyMove: vi.fn(async () => true),
-      fetchLastCounterparty: vi.fn(async () => ({ counterparty: 'TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS', category: 'p2p', entityName: null, sanctioned: false })),
-    })
+  it('balance.changed → без alertMoves-депа просто обновляет баланс', async () => {
+    const deps = mkDeps() // без alertMoves
     const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
-    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(deps.fetchLastCounterparty).toHaveBeenCalledWith('aegis_w_trc20_001', 'in')
-    const payload = deps.notifyMove.mock.calls[0][0]
-    expect(payload.text).toMatch(/← от <code>TTqKSJbsbx…WV84kS<\/code> · P2P/)
-    expect(payload.meta.counterparty).toBe('TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS')
-  })
-
-  it('balance.changed → алерт «Списано» при падении', async () => {
-    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '20000.00' }]), notifyMove: vi.fn(async () => true) })
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // новый 12777.10 < 20000 → списано
-    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    const payload = deps.notifyMove.mock.calls[0][0]
-    expect(payload.meta.direction).toBe('out')
-    expect(payload.text).toMatch(/Списано −\$7,222\.90/)
-  })
-
-  it('balance.changed → мелкий платёж ($7.10) ТОЖЕ алертит (порога нет)', async () => {
-    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88', network: 'TRC20', balance_usd_est: '12770.00' }]), notifyMove: vi.fn(async () => true) })
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12770 = +7.10
-    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(deps.notifyMove).toHaveBeenCalledTimes(1)
-    expect(deps.notifyMove.mock.calls[0][0].text).toMatch(/Поступило \+\$7\.10/)
-  })
-
-  it('balance.changed → нулевая дельта (ре-синк) → без алерта', async () => {
-    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88', network: 'TRC20', balance_usd_est: '12777.10' }]), notifyMove: vi.fn(async () => true) })
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12777.10 = 0
-    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(deps.notifyMove).not.toHaveBeenCalled()
+    const r = await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(r.status).toBe(200)
+    expect(deps.updateBalance).toHaveBeenCalled()
   })
 
   it('невалидный JSON → 400', async () => {
