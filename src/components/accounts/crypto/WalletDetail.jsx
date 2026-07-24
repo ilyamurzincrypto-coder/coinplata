@@ -93,12 +93,18 @@ function TopEntities({ items, network }) {
 
 // Разбор экспозиции кошелька по типам сущностей. Приоритет — данные AEGIS
 // (getStats.exposure); фолбэк — агрегируем загруженные движения по типу контрагента.
-function ExposureBlock({ exposure, txs }) {
+function ExposureBlock({ exposure, txs, inVol, outVol }) {
   let inbound = {}, outbound = {}, inTotal = 0, outTotal = 0, source = "movements";
   if (exposure && (Array.isArray(exposure.inbound) || Array.isArray(exposure.outbound))) {
     source = "aegis";
-    for (const e of exposure.inbound || []) { const v = Number(e.volume_usd) || 0; inbound[e.category || "unknown"] = (inbound[e.category || "unknown"] || 0) + v; inTotal += v; }
-    for (const e of exposure.outbound || []) { const v = Number(e.volume_usd) || 0; outbound[e.category || "unknown"] = (outbound[e.category || "unknown"] || 0) + v; outTotal += v; }
+    let inAttr = 0, outAttr = 0;
+    for (const e of exposure.inbound || []) { const v = Number(e.volume_usd) || 0; inbound[e.category || "unknown"] = (inbound[e.category || "unknown"] || 0) + v; inAttr += v; }
+    for (const e of exposure.outbound || []) { const v = Number(e.volume_usd) || 0; outbound[e.category || "unknown"] = (outbound[e.category || "unknown"] || 0) + v; outAttr += v; }
+    // Полный оборот стороны — из getStats.in/out; «нет данных» = оборот − атрибутировано.
+    inTotal = Number(inVol) > inAttr ? Number(inVol) : inAttr;
+    outTotal = Number(outVol) > outAttr ? Number(outVol) : outAttr;
+    if (inTotal - inAttr > 0.5) inbound.unknown = (inbound.unknown || 0) + (inTotal - inAttr);
+    if (outTotal - outAttr > 0.5) outbound.unknown = (outbound.unknown || 0) + (outTotal - outAttr);
   } else {
     for (const t of txs || []) {
       const amt = tokenAmt(t.amount) || 0;
@@ -108,7 +114,6 @@ function ExposureBlock({ exposure, txs }) {
     }
   }
   if (inTotal <= 0 && outTotal <= 0) return null;
-  const assessed = exposure && exposure.assessed_share != null ? Number(exposure.assessed_share) : null;
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Экспозиция · по типам {source === "movements" && <span className="normal-case font-normal text-muted-soft">(по загруженным движениям)</span>}</div>
@@ -116,9 +121,6 @@ function ExposureBlock({ exposure, txs }) {
         <ExposureSide label="поступления — откуда" byCat={inbound} total={inTotal} />
         <ExposureSide label="отправки — куда" byCat={outbound} total={outTotal} />
       </div>
-      {assessed != null && (
-        <div className="text-[10.5px] text-muted-soft mt-1.5 leading-snug">Атрибутировано {assessed.toFixed(0)}% оборота — у остального контрагентов нет меток в фиде (не «чисто», а «нет данных»).</div>
-      )}
     </div>
   );
 }
@@ -514,7 +516,7 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
           )}
 
           {/* Экспозиция по типам сущностей (AEGIS getStats.exposure или из движений) */}
-          {(stats.exposure || rawTx.length > 0) && <ExposureBlock exposure={stats.exposure} txs={rawTx} />}
+          {(stats.exposure || rawTx.length > 0) && <ExposureBlock exposure={stats.exposure} txs={rawTx} inVol={stats.in?.sumUsd} outVol={stats.out?.sumUsd} />}
 
           {/* Топ-сущности (именованные, когда AEGIS отдаст) */}
           {Array.isArray(stats.topEntities) && stats.topEntities.length > 0 && <TopEntities items={stats.topEntities} network={account.network} />}
