@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     while (idx < list.length) {
       const a = list[idx++]
       try {
-        const tx = await withTimeout(aegis.getTransactions(a.aegis_wallet_id, {}), 8000, { available: false, items: [] })
+        const tx = await withTimeout(aegis.getTransactions(a.aegis_wallet_id, {}), 15000, { available: false, items: [] })
         if (tx && tx.available) alertsSent += await alertNewTransactions(db, a, tx.items)
       } catch {
         /* один кошелёк не валит крон */
