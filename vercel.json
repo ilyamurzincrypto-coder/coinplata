@@ -6,7 +6,8 @@
     { "path": "/api/cashdesk/sync", "schedule": "* * * * *" },
     { "path": "/api/rapira/sync", "schedule": "*/2 * * * *" },
     { "path": "/api/tolunay/sync", "schedule": "*/10 * * * *" },
-    { "path": "/api/aegis/poll", "schedule": "*/10 * * * *" }
+    { "path": "/api/aegis/poll", "schedule": "*/10 * * * *" },
+    { "path": "/api/aegis/tx-poll", "schedule": "* * * * *" }
   ],
   "headers": [
     {
