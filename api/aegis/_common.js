@@ -101,8 +101,18 @@ export async function alertNewTransactions(db, account, items) {
   const baseline = account.last_alert_tx_ts ? new Date(account.last_alert_tx_ts).getTime() : null
   const newestTs = list.reduce((m, t) => (new Date(t.ts).getTime() > m ? new Date(t.ts).getTime() : m), 0)
   if (baseline == null) {
+    // Первый раз (пустой/новый кошелёк): историей не спамим, НО свежие транзакции
+    // (последние 20 мин) алертим — чтобы ПЕРВЫЙ платёж на кошелёк не потерялся.
+    const graceMs = Date.now() - 20 * 60 * 1000
+    const freshOnFirst = list
+      .filter((t) => new Date(t.ts).getTime() > graceMs)
+      .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
+      .slice(-10)
+    for (const t of freshOnFirst) {
+      try { await notifyManagerBot(formatMoveAlert(account, t)) } catch { /* не валим */ }
+    }
     await db.from('accounts').update({ last_alert_tx_ts: new Date(newestTs).toISOString() }).eq('id', account.id)
-    return 0
+    return freshOnFirst.length
   }
   const fresh = list
     .filter((t) => new Date(t.ts).getTime() > baseline)
