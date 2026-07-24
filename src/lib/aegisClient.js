@@ -104,6 +104,10 @@ export function normalizeStats(raw) {
     // Распределение объёма по риску за период (для стек-бара + «рисковые N%»).
     // { inbound, total:{high/medium/low:{volume,share}}, risky_share }; null на EVM (degraded).
     riskDistribution: raw?.risk_distribution ?? null,
+    // Разбор сущностей (AEGIS положил сюда, не в getWallet): состав экспозиции по
+    // категориям + топ именованных сущностей. null пока нет данных.
+    exposure: raw?.exposure ?? null, // { inbound:[{category,entity_name?,share,volume_usd}], outbound:[…], unknown_share, assessed_share }
+    topEntities: Array.isArray(raw?.top_entities) ? raw.top_entities : null, // [{entity_name,category,direction,volume_usd,tx_count,risk}]
     byDay: Array.isArray(raw?.by_day)
       ? raw.by_day.map((d) => ({
           date: d.date,

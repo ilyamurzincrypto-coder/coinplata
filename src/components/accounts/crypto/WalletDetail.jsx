@@ -57,8 +57,42 @@ function ExposureSide({ label, byCat, total }) {
   );
 }
 
+// Топ-сущности кошелька (AEGIS getStats.top_entities): с кем больше всего работает.
+function TopEntities({ items, network }) {
+  const rows = [...items].sort((a, b) => (Number(b.volume_usd) || 0) - (Number(a.volume_usd) || 0)).slice(0, 8);
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Топ-контрагенты</div>
+      <div className="space-y-1.5">
+        {rows.map((e, i) => {
+          const isIn = e.direction === "in" || e.direction === "inbound";
+          const risk = Number(e.risk);
+          const lvl = levelOfScore(Number.isFinite(risk) ? risk : null);
+          const rc = RISK_COLOR[lvl] || "#B5B9BF";
+          const cm = catMeta(e.category);
+          const name = e.entity_name || cm.label;
+          return (
+            <div key={i} className="flex items-center gap-2">
+              <span className="shrink-0 text-[10px]" style={{ color: isIn ? "#10B981" : "#9AA0A6" }}>{isIn ? "▼ от" : "▲ на"}</span>
+              <span className="text-[12px] text-ink truncate flex-1 min-w-0">
+                <span className="font-medium">{name}</span>
+                {e.entity_name && <span className="text-[10px] ml-1" style={{ color: cm.color }}>{cm.label}</span>}
+                <span className="text-[10.5px] text-muted-soft ml-1">· {e.tx_count ?? 0} оп.</span>
+              </span>
+              <span className="shrink-0 font-mono tabular-nums text-[12px] text-ink-soft">{usd(e.volume_usd)}</span>
+              {Number.isFinite(risk) && risk > 0 && (
+                <span className="shrink-0 inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 text-[10px] font-semibold" style={{ color: rc, background: `${rc}14` }}>{risk}</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // Разбор экспозиции кошелька по типам сущностей. Приоритет — данные AEGIS
-// (w.exposure); фолбэк — агрегируем загруженные движения по типу контрагента.
+// (getStats.exposure); фолбэк — агрегируем загруженные движения по типу контрагента.
 function ExposureBlock({ exposure, txs }) {
   let inbound = {}, outbound = {}, inTotal = 0, outTotal = 0, source = "movements";
   if (exposure && (Array.isArray(exposure.inbound) || Array.isArray(exposure.outbound))) {
@@ -74,6 +108,7 @@ function ExposureBlock({ exposure, txs }) {
     }
   }
   if (inTotal <= 0 && outTotal <= 0) return null;
+  const assessed = exposure && exposure.assessed_share != null ? Number(exposure.assessed_share) : null;
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-muted mb-2">Экспозиция · по типам {source === "movements" && <span className="normal-case font-normal text-muted-soft">(по загруженным движениям)</span>}</div>
@@ -81,6 +116,9 @@ function ExposureBlock({ exposure, txs }) {
         <ExposureSide label="поступления — откуда" byCat={inbound} total={inTotal} />
         <ExposureSide label="отправки — куда" byCat={outbound} total={outTotal} />
       </div>
+      {assessed != null && (
+        <div className="text-[10.5px] text-muted-soft mt-1.5 leading-snug">Атрибутировано {assessed.toFixed(0)}% оборота — у остального контрагентов нет меток в фиде (не «чисто», а «нет данных»).</div>
+      )}
     </div>
   );
 }
@@ -475,8 +513,11 @@ export default function WalletDetail({ account, ledgerUsd = 0, onBack, fetchDeta
             </div>
           )}
 
-          {/* Экспозиция по типам сущностей (AEGIS w.exposure или из движений) */}
-          {(w.exposure || rawTx.length > 0) && <ExposureBlock exposure={w.exposure} txs={rawTx} />}
+          {/* Экспозиция по типам сущностей (AEGIS getStats.exposure или из движений) */}
+          {(stats.exposure || rawTx.length > 0) && <ExposureBlock exposure={stats.exposure} txs={rawTx} />}
+
+          {/* Топ-сущности (именованные, когда AEGIS отдаст) */}
+          {Array.isArray(stats.topEntities) && stats.topEntities.length > 0 && <TopEntities items={stats.topEntities} network={account.network} />}
 
           {/* Движения (только если доступны) */}
           {txData.available ? (
