@@ -98,10 +98,34 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
   if (event.event === 'balance.changed') {
     // §4b: balance = {native, usdt, usd_est}; собственного времени нет → occurred_at.
     const bal = event.balance || {}
+    const newUsd = bal.usd_est != null ? Number(bal.usd_est) : null
+    // Старый баланс ДО апдейта — чтобы посчитать движение (дельту) и назвать кошелёк.
+    const before = deps.getAccounts ? await deps.getAccounts(walletId) : []
     const updated = await deps.updateBalance(walletId, {
       balance_usd_est: bal.usd_est != null ? String(bal.usd_est) : null,
       synced_at: event.occurred_at || new Date().toISOString(),
     })
+    // Алерт в менеджерский бот: поступило/ушло по нашему кошельку (порог от дуста).
+    if (newUsd != null && before.length && deps.notifyMove) {
+      const acc = before[0]
+      const oldUsd = acc.balance_usd_est != null ? Number(acc.balance_usd_est) : null
+      if (oldUsd != null && Number.isFinite(newUsd)) {
+        const delta = newUsd - oldUsd
+        const minUsd = Number(process.env.WALLET_MOVE_ALERT_MIN_USD || 50)
+        if (Math.abs(delta) >= minUsd) {
+          const inbound = delta > 0
+          const money = (n) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+          await deps.notifyMove({
+            kind: 'wallet_move',
+            text:
+              `${inbound ? '💰' : '📤'} <b>${escapeHtml(acc.name || event.address || walletId)}</b>${acc.network ? ` · ${escapeHtml(acc.network)}` : ''}\n` +
+              `${inbound ? 'Поступило +' : 'Списано −'}${money(delta)}\n` +
+              `Баланс: ${money(newUsd)}`,
+            meta: { wallet_id: walletId, account_id: acc.id, name: acc.name, direction: inbound ? 'in' : 'out', delta, balance: newUsd },
+          })
+        }
+      }
+    }
     return { status: 200, body: { ok: true, updated } }
   }
 
@@ -151,7 +175,13 @@ export default async function handler(req, res) {
       if (error) throw new Error(error.message)
       return (data || []).length
     },
+    // Старый баланс + имя/сеть счёта ДО апдейта (для алерта о движении).
+    async getAccounts(walletId) {
+      const { data } = await db.from('accounts').select('id, name, network_id, balance_usd_est').eq('aegis_wallet_id', walletId).eq('active', true)
+      return (data || []).map((r) => ({ id: r.id, name: r.name, network: r.network_id, balance_usd_est: r.balance_usd_est }))
+    },
     notifyTelegram: (payload) => notifyManagerBot({ kind: 'wallet_risk', ...payload }),
+    notifyMove: (payload) => notifyManagerBot(payload),
   }
 
   try {

@@ -103,6 +103,34 @@ describe('handleAegisEvent', () => {
     expect(deps.updateBalance).toHaveBeenCalledWith('aegis_w_trc20_001', expect.objectContaining({ balance_usd_est: '12777.10' }))
   })
 
+  it('balance.changed → алерт «Поступило» при росте выше порога', async () => {
+    // старый баланс 12000 → новый 12777.10 = поступило +777.10 (> $50)
+    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '12000.00' }]), notifyMove: vi.fn(async () => true) })
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
+    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(deps.notifyMove).toHaveBeenCalledTimes(1)
+    const payload = deps.notifyMove.mock.calls[0][0]
+    expect(payload.meta.direction).toBe('in')
+    expect(payload.text).toMatch(/Поступило \+\$777\.10/)
+    expect(payload.text).toMatch(/W88 Mark/)
+  })
+
+  it('balance.changed → алерт «Списано» при падении', async () => {
+    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88 Mark', network: 'TRC20', balance_usd_est: '20000.00' }]), notifyMove: vi.fn(async () => true) })
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // новый 12777.10 < 20000 → списано
+    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    const payload = deps.notifyMove.mock.calls[0][0]
+    expect(payload.meta.direction).toBe('out')
+    expect(payload.text).toMatch(/Списано −\$7,222\.90/)
+  })
+
+  it('balance.changed → нет алерта при дельте ниже порога', async () => {
+    const deps = mkDeps({ getAccounts: vi.fn(async () => [{ id: 'a1', name: 'W88', network: 'TRC20', balance_usd_est: '12770.00' }]), notifyMove: vi.fn(async () => true) })
+    const raw = wrap(FIX_EVENT_BALANCE_CHANGED) // 12777.10 − 12770 = 7.10 < $50
+    await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
+    expect(deps.notifyMove).not.toHaveBeenCalled()
+  })
+
   it('невалидный JSON → 400', async () => {
     const deps = mkDeps()
     const raw = 'not json'
