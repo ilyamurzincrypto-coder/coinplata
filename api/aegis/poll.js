@@ -39,8 +39,8 @@ async function pollWallet(db, a) {
 
   // Детали — best-effort, деградируют по таймауту, кэш не затирают null-ом.
   const [stats, transactions] = await Promise.all([
-    withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 9000, { available: false }),
-    withTimeout(aegis.getTransactions(wid, {}), 9000, { available: false, items: [], cursor: null, hasMore: false }),
+    withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 22000, { available: false }), // exposure/top_entities тяжелее
+    withTimeout(aegis.getTransactions(wid, {}), 15000, { available: false, items: [], cursor: null, hasMore: false }),
   ])
   await applyDetailCache(db, a.id, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
 

@@ -14,8 +14,9 @@ import { requireStaff } from '../cashdesk/_auth.js'
 import { aegis, AegisError } from '../../src/lib/aegisClient.js'
 import { svcClient, authEnv, applyDetailCache } from './_common.js'
 
-// cold getWallet у AEGIS ~12с — даём функции время (Vercel по умолч. режет короче).
-export const config = { maxDuration: 30 }
+// cold getWallet ~12с + getStats с entity-агрегацией (exposure/top_entities) тяжелее
+// — даём функции запас времени.
+export const config = { maxDuration: 60 }
 
 // Статистика/контрагенты — за ВСЁ время (не 30д).
 const ALL_TIME_FROM = '2018-01-01'
@@ -107,8 +108,8 @@ export default async function handler(req, res) {
     // Live: getWallet — cold ~12с (наполняет кэш AEGIS), warm ~1с → таймаут 14с.
     const wallet = await withTimeout(aegis.getWallet(wid), 14000, null)
     const [stats, transactions] = await Promise.all([
-      withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 9000, STATS_UNAVAIL),
-      withTimeout(aegis.getTransactions(wid, {}), 9000, TX_UNAVAIL),
+      withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 22000, STATS_UNAVAIL), // exposure/top_entities тяжелее
+      withTimeout(aegis.getTransactions(wid, {}), 15000, TX_UNAVAIL),
     ])
     // Прогреваем кэш живым ответом (следующее открытие — мгновенно).
     await applyDetailCache(db, accountId, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
