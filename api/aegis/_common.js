@@ -92,40 +92,6 @@ export function formatMoveAlert(account, tx) {
   return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
 
-// Алерты по НОВЫМ транзакциям кошелька (ts новее account.last_alert_tx_ts).
-// Первый раз (метка null) — ставим baseline без алертов (не спамим историей).
-// Обновляет last_alert_tx_ts. Возвращает число отправленных.
-export async function alertNewTransactions(db, account, items) {
-  const list = (items || []).filter((t) => t && t.ts)
-  if (!list.length) return 0
-  const baseline = account.last_alert_tx_ts ? new Date(account.last_alert_tx_ts).getTime() : null
-  const newestTs = list.reduce((m, t) => (new Date(t.ts).getTime() > m ? new Date(t.ts).getTime() : m), 0)
-  if (baseline == null) {
-    // Первый раз (пустой/новый кошелёк): историей не спамим, НО свежие транзакции
-    // (последние 20 мин) алертим — чтобы ПЕРВЫЙ платёж на кошелёк не потерялся.
-    const graceMs = Date.now() - 20 * 60 * 1000
-    const freshOnFirst = list
-      .filter((t) => new Date(t.ts).getTime() > graceMs)
-      .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
-      .slice(-10)
-    for (const t of freshOnFirst) {
-      try { await notifyManagerBot(formatMoveAlert(account, t)) } catch { /* не валим */ }
-    }
-    await db.from('accounts').update({ last_alert_tx_ts: new Date(newestTs).toISOString() }).eq('id', account.id)
-    return freshOnFirst.length
-  }
-  const fresh = list
-    .filter((t) => new Date(t.ts).getTime() > baseline)
-    .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()) // хронологически
-    .slice(-10) // не заваливаем при пропущенном пуле
-  if (!fresh.length) return 0
-  for (const t of fresh) {
-    try { await notifyManagerBot(formatMoveAlert(account, t)) } catch { /* не валим пул */ }
-  }
-  await db.from('accounts').update({ last_alert_tx_ts: new Date(newestTs).toISOString() }).eq('id', account.id)
-  return fresh.length
-}
-
 // Алерт в менеджерский бот (тот же путь, что rapira/sync): coinpoint-мост
 // (x-cashdesk-secret) с fallback на прямой Telegram. Возвращает bool «доставлено».
 export async function notifyManagerBot({ kind, text, meta = {} }) {

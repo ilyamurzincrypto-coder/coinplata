@@ -16,8 +16,7 @@
  *      (+ COINPOINT_API_URL/CASHDESK_API_SECRET или TELEGRAM_* для алертов).
  */
 import { createHmac, timingSafeEqual } from 'crypto'
-import { svcClient, notifyManagerBot, alertNewTransactions } from './_common.js'
-import { aegis } from '../../src/lib/aegisClient.js'
+import { svcClient, notifyManagerBot } from './_common.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -103,11 +102,8 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       balance_usd_est: bal.usd_est != null ? String(bal.usd_est) : null,
       synced_at: event.occurred_at || new Date().toISOString(),
     })
-    // Алерты движений — реал-тайм по новым транзакциям (та же логика, что в poll:
-    // getTransactions → tx новее метки → в бот). Дедуп с poll по last_alert_tx_ts.
-    let alerted = 0
-    if (deps.alertMoves) { try { alerted = await deps.alertMoves(walletId) } catch { alerted = 0 } }
-    return { status: 200, body: { ok: true, updated, alerted } }
+    // Алерты движений вынесены в tx-watch (прямой TronGrid, ≤15с) — вебхук их не шлёт.
+    return { status: 200, body: { ok: true, updated } }
   }
 
   return { status: 200, body: { ok: true, ignored: event.event } }
@@ -156,25 +152,7 @@ export default async function handler(req, res) {
       if (error) throw new Error(error.message)
       return (data || []).length
     },
-    // Старый баланс + имя/сеть счёта ДО апдейта (для алерта о движении).
-    async getAccounts(walletId) {
-      const { data } = await db.from('accounts').select('id, name, network_id, balance_usd_est').eq('aegis_wallet_id', walletId).eq('active', true)
-      return (data || []).map((r) => ({ id: r.id, name: r.name, network: r.network_id, balance_usd_est: r.balance_usd_est }))
-    },
     notifyTelegram: (payload) => notifyManagerBot({ kind: 'wallet_risk', ...payload }),
-    // Реал-тайм алерты движений: свежие транзакции → счета этого wallet_id →
-    // alertNewTransactions (дедуп с poll по last_alert_tx_ts). Таймаут 6с.
-    async alertMoves(walletId) {
-      const timed = await Promise.race([
-        aegis.getTransactions(walletId, {}).catch(() => null),
-        new Promise((r) => setTimeout(() => r(null), 6000)),
-      ])
-      if (!timed || timed.available === false) return 0
-      const { data: accs } = await db.from('accounts').select('id, name, network_id, aegis_wallet_id, last_alert_tx_ts').eq('aegis_wallet_id', walletId).eq('active', true)
-      let n = 0
-      for (const acc of accs || []) n += await alertNewTransactions(db, acc, timed.items)
-      return n
-    },
   }
 
   try {

@@ -103,22 +103,6 @@ describe('handleAegisEvent', () => {
     expect(deps.updateBalance).toHaveBeenCalledWith('aegis_w_trc20_001', expect.objectContaining({ balance_usd_est: '12777.10' }))
   })
 
-  it('balance.changed → триггерит алерты движений (alertMoves)', async () => {
-    const deps = mkDeps({ alertMoves: vi.fn(async () => 2) })
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
-    const r = await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(deps.alertMoves).toHaveBeenCalledWith('aegis_w_trc20_001')
-    expect(r.body.alerted).toBe(2)
-  })
-
-  it('balance.changed → без alertMoves-депа просто обновляет баланс', async () => {
-    const deps = mkDeps() // без alertMoves
-    const raw = wrap(FIX_EVENT_BALANCE_CHANGED)
-    const r = await handleAegisEvent({ raw, signature: sign(raw), secret: SECRET, deps })
-    expect(r.status).toBe(200)
-    expect(deps.updateBalance).toHaveBeenCalled()
-  })
-
   it('невалидный JSON → 400', async () => {
     const deps = mkDeps()
     const raw = 'not json'
