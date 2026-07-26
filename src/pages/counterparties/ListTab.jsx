@@ -17,6 +17,7 @@ import { useWallets } from "../../store/wallets.jsx";
 import { useObligations } from "../../store/obligations.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
 import { useLedger } from "../../store/ledger.jsx";
+import { rpcCreateClientWithLiab } from "../../lib/newLedger.js";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
@@ -45,6 +46,8 @@ export default function ListTab() {
   const sym = curSymbol(base);
   // Ledger-контекст для «Расчётных счетов» клиента в карточке (слайс 1.5.f).
   const { accounts: ledgerAccounts, balances: ledgerBalances, entries: ledgerEntries, transactions: ledgerTransactions } = useLedger();
+  // Валюты, открываемые клиенту — только с позицией в Капитале (гейт 1.5.f).
+  const positionCurrencies = [...new Set((ledgerAccounts || []).filter((a) => a.type === "equity" && a.subtype === "position").map((a) => a.currency))].sort();
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // all | client | partner
@@ -392,21 +395,25 @@ export default function ListTab() {
       <AddClientModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
+        positionCurrencies={positionCurrencies}
         onSubmit={async (data) => {
           if (isSupabaseConfigured) {
+            // 1.5.f: атомарно клиент + Лоро-счета (гейт валют на сервере, человеческий отказ).
             const res = await withToast(
               () =>
-                insertClient({
+                rpcCreateClientWithLiab({
                   nickname: data.nickname,
                   fullName: data.name,
                   telegram: data.telegram,
                   tag: data.tag,
                   note: data.note,
+                  referrerId: data.referrerId,
+                  currencies: data.currencies,
                 }),
-              { success: "Client added", errorPrefix: "Failed to add client" }
+              { success: "Клиент добавлен", errorPrefix: "Не удалось добавить клиента" }
             );
             setAddOpen(false);
-            if (res.ok && res.result?.id) setProfileFor({ kind: "client", id: res.result.id });
+            if (res.ok && res.result?.clientId) setProfileFor({ kind: "client", id: res.result.clientId });
             return;
           }
           const created = addCounterparty(data);

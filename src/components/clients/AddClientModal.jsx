@@ -7,13 +7,16 @@ import Modal from "../ui/Modal.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
 import { useTransactions } from "../../store/transactions.jsx";
 
-export default function AddClientModal({ open, onClose, onSubmit }) {
+export default function AddClientModal({ open, onClose, onSubmit, positionCurrencies = [] }) {
   const { counterparties } = useTransactions();
   const [name, setName] = useState("");
   const [telegram, setTelegram] = useState("");
   const [tag, setTag] = useState("");
   const [note, setNote] = useState("");
   const [referrerId, setReferrerId] = useState("");
+  // 1.5.f: открываемые клиенту валюты (только с позицией в Капитале) + guard от дабл-клика.
+  const [selectedCcy, setSelectedCcy] = useState(() => new Set());
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -22,20 +25,35 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
       setTag("");
       setNote("");
       setReferrerId("");
+      setSelectedCcy(new Set());
+      setBusy(false);
     }
   }, [open]);
 
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    const tg = telegram.trim();
-    onSubmit({
-      nickname: name.trim(),
-      name: name.trim(),
-      telegram: tg && !tg.startsWith("@") ? `@${tg}` : tg,
-      tag,
-      note: note.trim(),
-      referrerId: referrerId || null,
+  const toggleCcy = (c) =>
+    setSelectedCcy((prev) => {
+      const n = new Set(prev);
+      n.has(c) ? n.delete(c) : n.add(c);
+      return n;
     });
+
+  const handleSubmit = async () => {
+    if (!name.trim() || busy) return; // guard: дабл-клик не плодит дубль
+    setBusy(true);
+    const tg = telegram.trim();
+    try {
+      await onSubmit({
+        nickname: name.trim(),
+        name: name.trim(),
+        telegram: tg && !tg.startsWith("@") ? `@${tg}` : tg,
+        tag,
+        note: note.trim(),
+        referrerId: referrerId || null,
+        currencies: [...selectedCcy],
+      });
+    } finally {
+      setBusy(false);
+    }
   };
 
   // Реферер = существующий не-archivedAt клиент, отсортированный по nickname.
@@ -84,6 +102,30 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
             className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body outline-none"
           />
         </FormField>
+        <FormField label="Открыть счета в валютах">
+          {positionCurrencies.length === 0 ? (
+            <p className="text-tiny text-muted">
+              Пока нет валют с балансовым счётом в Капитале — счета можно открыть позже (Добавить валюту в разделе Капитал).
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {positionCurrencies.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => toggleCcy(c)}
+                  className={`px-2.5 py-1 rounded-button text-tiny font-semibold border transition-colors ${
+                    selectedCcy.has(c)
+                      ? "bg-ink text-white border-ink"
+                      : "bg-white text-ink-soft border-border-soft hover:border-border"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          )}
+        </FormField>
         <FormField label="Кого привёл (реферер)">
           <select
             value={referrerId}
@@ -109,14 +151,14 @@ export default function AddClientModal({ open, onClose, onSubmit }) {
         </button>
         <button
           onClick={handleSubmit}
-          disabled={!name.trim()}
+          disabled={!name.trim() || busy}
           className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
-            name.trim()
+            name.trim() && !busy
               ? "bg-ink text-white hover:bg-ink"
               : "bg-surface-sunk text-muted-soft cursor-not-allowed"
           }`}
         >
-          Save
+          {busy ? "Сохраняю…" : "Save"}
         </button>
       </div>
     </Modal>
