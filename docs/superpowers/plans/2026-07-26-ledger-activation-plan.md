@@ -103,7 +103,18 @@
 
 ## Этап 1.5 — структура и инструменты заведения (зеркало CP PAY)
 
-Спека приходит после утверждения в CP PAY: **макет знаков (Фаза 1)** и **мастер валют (Фаза 2)** — общие для обоих продуктов. Кратко (детали — отдельным планом):
+Спеки утверждены (2026-07-26). Решения владельца по 5 пунктам:
+1. **Крипта — network-qualified код, отдельные строки** (USDT-TRC20=0301, USDT-ERC20=0303 — разные валюты; `network`+`smart_contract` — поля; `code` остаётся простым PK, FK `journal_entries.currency_code` не усложняется). НЕ композит.
+2. **Код счёта-позиции Капитала** = `<префикс>+num_segment`; префикс — **конфигом с врем. дефолтом** (напр. 352-серия CP PAY), эксперт задаёт свою нумерацию на заведении нового бизнеса. НЕ хардкодить (запрет Этапа 3е).
+3. **Знаковый канон CP PAY замещает** текущую подачу (Лоро=+raw, Капитал=Ностро−Лоро, панель столбиком с ✓) — display-слой; dr/cr в `journal_entries` неприкосновенны. Замещает [[feedback_kirill_accounting]] (его же более поздним словом, 3-й созвон CP PAY).
+4. **Pre-wipe тест** с throwaway-данными; `create_currency` идемпотентен под ре-сид. TEST-данные помечаются и сносятся в 1.75 (см. инвентаризацию).
+5. **Мастера живут в `treasury_v2`** (кнопка там же, где результат — Капитал; «завёл валюту → счёт виден»).
+
+**⚠️ Вопросы эксперту (README, на заведении нового бизнеса):**
+- Префикс диапазона счетов-позиций Капитала (врем. дефолт конфигом).
+- Обработка фиатов с ISO-номером 300–399 (JPY=392, KZT=398, INR=356, HKD=344…) — они конфликтуют с крипто-диапазоном 0300–0399. Пока таких фиатов в плане нет; при заведении — решить (не-ISO сегмент для такого фиата / сдвиг крипто-диапазона).
+
+Кратко (детали — отдельным планом):
 - **Подача учёта:** группы **Лоро** (клиенты/партнёры — liability) / **Ностро и кассы** (кассы/банки/кошельки офисов — asset) / **Капитал** (позиции/доход/расход — equity/revenue/expense). Единый табличный канон: один строчный компонент, колонки Номер·Имя·Тип·Остаток·₽-эквивалент.
 - **Инструменты из UI:** мастер «Добавить валюту» (авто-позиция в Капитале сразу и видимо; крипте — обязательный смарт-контракт + авто-код 4-значный последовательный; фиату — ISO; символ-подсказка; поля не сбрасываются кликом мимо); заведение касс/ностро/кошельков с балансовым счётом (гейт); заведение клиентов-лоро со счетами чекбоксами.
 - **Критерий:** сольный прогон эксперта без подсказок — валюта → счёт в Капитале виден → касса → клиент → сделка.
@@ -120,7 +131,7 @@
 ## Этап 1.75 — зачистка (границы утверждены)
 
 ### 🔴 СТЕРЕТЬ (сначала архив-бэкапом)
-`ledger.journal_entries`(94, вкл. майский сид), `ledger.transactions`(37), `ledger.balances`(45), `ledger.accounts`(262 план), `ledger.idempotency_keys/fx_position_history(348)/audit_alerts(15)`, `public.manager_orders`(91), `public.cashier_deals`(1), `public.participant_movements`(34)/`participant_accounts`(8), `public.partners/partner_accounts(9)/partner_account_movements(0)`, пустой скелет 13 таблиц (`deals, deal_legs, deal_in_payments, deal_leg_payments, account_movements, transfers, expenses, obligations, balance_adjustments, cash_closures, blockchain_txs, client_wallets`).
+`ledger.journal_entries`(94, вкл. майский сид), `ledger.transactions`(37), `ledger.balances`(45), `ledger.accounts`(262 план), `ledger.idempotency_keys/fx_position_history(348)/audit_alerts(15)`, `public.manager_orders`(91), `public.cashier_deals`(1), `public.participant_movements`(34)/`participant_accounts`(8), `public.partners/partner_accounts(9)/partner_account_movements(0)`, пустой скелет 13 таблиц (`deals, deal_legs, deal_in_payments, deal_leg_payments, account_movements, transfers, expenses, obligations, balance_adjustments, cash_closures, blockchain_txs, client_wallets`). **+ TEST-валюты/позиции из тестов 1.5** (помечены `TEST-`/metadata) — снести гарантированно (решение №4). **+ плоские крипто-строки `ledger.currencies`** (USDT/USDC/BTC/ETH без network, 4 шт.) — заменяются network-qualified при ре-сиде экспертом.
 
 ### 🟢 НЕ ТРОГАТЬ
 `public.users`(11), `public.offices`(7), `public.audit_log`(691), `public.currencies`(17)/`ledger.currencies`(10)/`public.networks`, `public.external_rates`(558k), `public.rate_snapshots`(606), `public.pairs`(66)/`office_rate_overrides`(41)/`special_rates`(6), крипто-мониторинг (`wallet_aegis_cache`(26)/`wallet_move_alerts`/`aegis_webhook_deliveries`(132)/`cashdesk_sync_state`(3)).
