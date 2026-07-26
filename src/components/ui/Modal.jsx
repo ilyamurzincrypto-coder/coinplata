@@ -8,16 +8,22 @@ import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-export default function Modal({ open, onClose, title, subtitle, children, width = "xl" }) {
-  // Close on Escape
+export default function Modal({ open, onClose, title, subtitle, children, width = "xl", dirty = false }) {
+  // Липкость (слайс 1.5.g): клик по фону НЕ закрывает форму. Esc/крестик закрывают,
+  // но при заполненной форме (dirty=true) — с подтверждением. Весь close идёт сюда.
+  const requestClose = () => {
+    if (dirty && typeof window !== "undefined" && !window.confirm("Закрыть форму? Введённые данные не сохранятся.")) return;
+    onClose?.();
+  };
+  // Close on Escape (через requestClose → уважает dirty-подтверждение)
   useEffect(() => {
     if (!open) return;
     const handle = (e) => {
-      if (e.key === "Escape") onClose?.();
+      if (e.key === "Escape") requestClose();
     };
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
-  }, [open, onClose]);
+  }, [open, onClose, dirty]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lock body scroll while open
   useEffect(() => {
@@ -46,9 +52,7 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
     <div
       className="fixed inset-0 flex items-start justify-center p-4 sm:p-6 overflow-y-auto"
       style={{ zIndex: 1000 }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose?.();
-      }}
+      data-testid="modal-overlay"
     >
       {/* backdrop */}
       <div
@@ -73,7 +77,7 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
               )}
             </div>
             <button
-              onClick={onClose}
+              onClick={requestClose}
               className="p-1.5 rounded-button hover:bg-surface-sunk text-muted hover:text-ink transition-colors"
               aria-label="Close"
             >
