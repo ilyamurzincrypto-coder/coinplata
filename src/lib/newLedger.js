@@ -124,6 +124,25 @@ export function formatLedgerError(error) {
   return parts.filter(Boolean).join(" · ") || "Unknown error";
 }
 
+// Слайс 1.5.f: клиент + Лоро-счета атомарно (public.create_client_with_liab —
+// public-схема, плейн rpc). Идемпотентно, гейт валют на сервере. Человеческий message.
+export async function rpcCreateClientWithLiab({ nickname, fullName, telegram, tag, note, referrerId, currencies }) {
+  assertConfigured();
+  const { data, error } = await supabase.rpc("create_client_with_liab", {
+    p_nickname: nickname,
+    p_full_name: fullName ?? null,
+    p_telegram: telegram ?? null,
+    p_tag: tag || null,
+    p_note: note ?? null,
+    p_referrer_id: referrerId ?? null,
+    p_currencies: currencies || [],
+  });
+  if (error) throw new Error(formatLedgerError(error));
+  bumpDataVersion();
+  const row = Array.isArray(data) ? data[0] : data;
+  return { clientId: row?.client_id, created: row?.created, liabEnsured: row?.liab_ensured };
+}
+
 // Wrapper for invoke + error parsing + bumpDataVersion.
 async function invokeLedger(rpcName, params) {
   assertConfigured();
