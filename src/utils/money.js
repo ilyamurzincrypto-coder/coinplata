@@ -15,6 +15,14 @@ export function precisionOf(currency) {
   return PRECISION[currency] ?? 2;
 }
 
+// Курс/число в БД-numeric: "46,2" | "46.2" | 46.2 -> 46.2; мусор/пусто -> null.
+// Для записи в numeric-колонки (manager_orders.rate / cashier_deals.rate, слайс 1.e).
+export function parseRate(value) {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = typeof value === "number" ? value : Number(String(value).replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
 // "123.45" -> 12345 (в минорных единицах при precision=2)
 export function toMinor(value, precision = 2) {
   if (value === "" || value === null || value === undefined) return 0;

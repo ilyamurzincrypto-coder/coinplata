@@ -10,6 +10,7 @@
  */
 import { createClient } from '@supabase/supabase-js'
 import { requireStaff } from './_auth.js'
+import { parseRate } from '../../src/utils/money.js'
 
 const OFFICES = (process.env.CASHDESK_OFFICES || 'ANT,IST,MSK').split(',').map((s) => s.trim()).filter(Boolean)
 
@@ -71,7 +72,7 @@ export default async function handler(req, res) {
           contact: o.contact,
           from_currency: o.from_currency_cashdesk,
           from_amount: o.from_amount,
-          rate: o.rate != null ? String(o.rate) : null,
+          rate: parseRate(o.rate),
           to_currency: o.to_currency_cashdesk,
           to_amount: o.to_amount,
           status: mapStatus(o.status),

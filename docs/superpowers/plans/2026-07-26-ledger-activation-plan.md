@@ -75,7 +75,15 @@
 
 **Хвост фронта — фикс не нужен, путь корректен:** `invokeLedger → formatLedgerError (message · details · hint) → throw → withToast → emitToast('error', 'Create deal failed: <фраза> · <hint>')`. Кассир видит человеческий текст, не `P0001`. `formatLedgerError` экспортирован; тест `src/lib/dealRateReject.test.js` (3/3) — «предъявление», что фраза P0423/P0424 доходит до тоста. Итог: 740 тестов, build зелёные.
 
-**Осталось по Этапу 1:** слайс 1.e (`rate` text→numeric в `manager_orders`/`cashier_deals` + писатель `api/cashdesk/sync.js`).
+#### Слайс 1.e — ВЫПОЛНЕНО (2026-07-26, prod)
+`manager_orders.rate` и `cashier_deals.rate` → `numeric` (ALTER с comma-safe cast: «44,6»→44.6, 70 значений сохранены). Общий хелпер `parseRate` в `src/utils/money.js` (comma-safe, мусор→null), подключён во всех писателях: `api/cashdesk/sync.js`, `src/lib/managerOrders.js`, `src/lib/cashierDeals.js`. Тест `src/utils/parseRate.test.js` (7/7). Читатели уже нормализовали оба типа — не тронуты.
+
+---
+
+## ЭТАП 1 — ЗАКРЫТ ✅ (2026-07-26)
+Дыра курса закрыта до любого потока. Итог: серверный faithful-резолвер (`resolve_market_rate`/`usdt_per`, parity 210/210 vs `getRate`); валидация в живом `create_deal_v2` (порог 5% из config, reject вне-допуска и uncovered, человеческий текст); основание `rate_basis` в metadata; `rate` → numeric. Тест-тройка на живом проде green (net-zero). Фронт: кассир видит фразу отбоя. 747 тестов, build зелёные. Коммиты: `4b6dfdc` (1.a), `ab3dfac` (1.b/1.c), + 1.e.
+
+Дальше по порядку — **Этап 1.5** (структура/инструменты, спека после макета знаков + мастера валют в CP PAY).
 
 ### Слайс 1.d — maker-checker — НЕ строить сейчас
 Пока `enforcement=reject` review-коридор мёртв. В 1.c заложены хуки (статус/SQLSTATE), чтобы 1.d добавлялся без переделки. Вернёмся, если эксперт попросит коридор.

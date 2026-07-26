@@ -5,6 +5,7 @@
 // — сторно (reverse_transaction) + status='cancelled'.
 
 import { supabase } from "./supabase.js";
+import { parseRate } from "../utils/money.js";
 
 function mapRow(r) {
   const outCcy = (r.out_currency || "").toUpperCase();
@@ -48,7 +49,7 @@ export async function createDealDraft(p) {
     client_id: p.clientId || null,
     in_currency: p.inCurrency || null,
     in_amount: p.inAmount ?? null,
-    rate: p.rate || null,
+    rate: parseRate(p.rate),
     out_currency: p.outCurrency || null,
     out_amount: p.outAmount ?? null,
     effective_at: p.effectiveAt || null,

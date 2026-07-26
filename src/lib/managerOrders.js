@@ -5,6 +5,7 @@
 // заявки: общий тип «заявка» для ленты и «Под заявки».
 
 import { supabase } from "./supabase.js";
+import { parseRate } from "../utils/money.js";
 
 export const MANAGER_ORDERS_ENABLED =
   import.meta.env?.VITE_MANAGER_ORDERS_ENABLED === "true";
@@ -71,7 +72,7 @@ export async function createOrder(payload) {
     client_id: payload.clientId || null,
     from_currency: payload.fromCurrency || null,
     from_amount: payload.fromAmount ?? null,
-    rate: payload.rate || null,
+    rate: parseRate(payload.rate),
     to_currency: payload.toCurrency || null,
     to_amount: payload.toAmount ?? null,
     // Заявкам из кассы тоже присваиваем код (если не передан внешний).
