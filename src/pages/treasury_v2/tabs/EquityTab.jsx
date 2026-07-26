@@ -21,6 +21,7 @@ import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 import CurrencyWizard from "../../../components/currencies/CurrencyWizard.jsx";
+import CapitalPanel from "../parts/CapitalPanel.jsx";
 
 const NONZERO_KEY = "coinplata:equity-nonzero";
 const DISPLAY_BASE_KEY = "coinplata:equity-display-base";
@@ -161,6 +162,8 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
           )}
         </div>
       </div>
+
+      <CapitalPanel ctx={{ ...usdCtx, officeFilter }} />
 
       {filteredTree.length === 0 ? (
         <div className="bg-surface rounded-card p-card">

@@ -896,6 +896,34 @@ export function chessTurnover(ctx, period, officeFilter, currency = null) {
   return { currency: currency || ctx.baseCurrency, isNative: native, accounts: accList, rows, rowTotals, colTotals, grandTotal };
 }
 
+// Панель CP PAY «Ностро − Лоро = Капитал» по каждой валюте (слайс 1.5.d).
+// Знаки ДОСЛОВНО по спеке CP PAY: Лоро = +raw (клиент держит у нас → плюс;
+// должник → минус) — сырой Cr-normal баланс, БЕЗ displaySign-негации. Ностро = +raw.
+// Капитал = Ностро − Лоро. Валюты — строками (совпадает с assets-tree каноном).
+// Свойство сходимости: Σ capitalBase по всем валютам = Активы − Пассивы =
+// Капитал+PnL (balanceCheckTotals.equity) — на этом строится «✓» в панели.
+export function capitalByCurrency(ctx) {
+  const { accounts, balances, toBase, officeFilter } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const byCcy = new Map();
+  for (const b of balances) {
+    const acc = accById.get(b.accountId);
+    if (!acc) continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    if (acc.type !== "asset" && acc.type !== "liability") continue;
+    const ccy = b.currency || acc.currency || "?";
+    const rec = byCcy.get(ccy) || { currency: ccy, nostro: 0, loro: 0, nostroBase: 0, loroBase: 0 };
+    const n = Number(b.balance) || 0;
+    const inBase = toBase(n, ccy) || 0;
+    if (acc.type === "asset") { rec.nostro += n; rec.nostroBase += inBase; }
+    else { rec.loro += n; rec.loroBase += inBase; } // liability raw (+ клиент держит, − должник)
+    byCcy.set(ccy, rec);
+  }
+  return [...byCcy.values()]
+    .map((r) => ({ ...r, capital: r.nostro - r.loro, capitalBase: r.nostroBase - r.loroBase }))
+    .sort((a, b) => Math.abs(b.capitalBase) - Math.abs(a.capitalBase));
+}
+
 export function balanceCheckTotals(ctx, officeFilter) {
   const { accounts, balances, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));
