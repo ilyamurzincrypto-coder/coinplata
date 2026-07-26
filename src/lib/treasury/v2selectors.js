@@ -924,6 +924,36 @@ export function capitalByCurrency(ctx) {
     .sort((a, b) => Math.abs(b.capitalBase) - Math.abs(a.capitalBase));
 }
 
+// Расчётные счета клиента для карточки (слайс 1.5.f). Модель A: остаток клиента по
+// валюте = срез (общий customer_liab, client_id, валюта) — но в UI это ПОЛНОЦЕННЫЕ
+// счета клиента (слово «измерение» не показываем). Правила презентации (спека владельца):
+//   • строки = ВСЕ открытые валюты (client.currencies) ∪ валюты с ненулевым остатком;
+//   • порядок ФИКСИРОВАННЫЙ: базовая валюта первой, дальше по коду (НЕ по остатку);
+//   • знак +raw: клиент держит → +, должник → −; ненулевое выделяет UI весом, не позицией;
+//   • валюта с остатком, но НЕ в открытых (легаси) → флаг notOpened=true (деньги не прячем).
+export function clientLedgerRows(ctx, clientId, openedCurrencies = [], baseCurrency = "USD") {
+  const { accounts, balances } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+  const byCcy = new Map();
+  for (const b of balances) {
+    if ((b.clientId || null) !== clientId) continue;
+    const acc = accById.get(b.accountId);
+    if (!acc || acc.type !== "liability" || acc.subtype !== "customer_liab") continue;
+    const ccy = b.currency || acc.currency || "?";
+    byCcy.set(ccy, (byCcy.get(ccy) || 0) + (Number(b.balance) || 0)); // +raw (Cr-normal)
+  }
+  const opened = new Set(openedCurrencies || []);
+  const all = new Set(opened);
+  for (const [ccy, bal] of byCcy) if (Math.abs(bal) > 0.005) all.add(ccy);
+  return [...all]
+    .map((ccy) => ({ currency: ccy, balance: byCcy.get(ccy) || 0, opened: opened.has(ccy), notOpened: !opened.has(ccy) }))
+    .sort((a, b) => {
+      if (a.currency === baseCurrency && b.currency !== baseCurrency) return -1;
+      if (b.currency === baseCurrency && a.currency !== baseCurrency) return 1;
+      return a.currency.localeCompare(b.currency);
+    });
+}
+
 export function balanceCheckTotals(ctx, officeFilter) {
   const { accounts, balances, toBase } = ctx;
   const accById = new Map(accounts.map((a) => [a.id, a]));
