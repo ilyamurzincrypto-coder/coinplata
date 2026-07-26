@@ -112,8 +112,10 @@ export function clearDealAttempt(hash) {
 }
 
 // Standard error formatter. ledger RPC раскидывают ERRCODE: P0422 idempotency,
-// P0001 insufficient balance, 22000 invalid params, P0002 not found.
-function formatLedgerError(error) {
+// P0001 insufficient balance, 22000 invalid params, P0002 not found,
+// P0423 курс вне допуска, P0424 нет рыночного курса. Кассир видит message (+hint),
+// не SQLSTATE-код. Экспортируется для теста «предъявления» отбоя курса.
+export function formatLedgerError(error) {
   if (!error) return "Unknown error";
   const parts = [];
   if (error.message) parts.push(error.message);

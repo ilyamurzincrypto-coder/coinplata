@@ -63,6 +63,20 @@
 - Точечная правка `ledger.create_deal_v2`: записать основание в `transactions.metadata`: `{rate_basis:{base, margin_or_spread, deal_rate, market_rate, source, office_id}}` — «база × наценка/спред = курс», читаемо пост-фактум.
 - **Ворота (тест владельца):** инвертированный курс отбивается; в допуске — книжится с сохранённым основанием. 94 существующие проводки не трогаются.
 
+#### Слайс 1.b + 1.c — ВЫПОЛНЕНО (2026-07-26, prod)
+Применено: `ledger.config` ключи `deal_rate_tolerance_pct=5 / _enforcement=reject / _review_pct=5 / _uncovered=reject`; переписан `ledger.assert_deal_rate_sane` (config-авторитетен, оценка через `usdt_per`, человеческий текст через `format()`); новый `ledger.deal_rate_basis` (`v_deal = round(out/in,10)`, ключ `deal_rate_orientation=OUT_per_IN`); `create_deal_v2` пропатчен **программно** (`pg_get_functiondef` + 2 `replace`: убран хардкод `0.25`, добавлен `rate_basis` в metadata) — тело байт-в-байт, риск транскрипции исключён.
+
+**Тест-тройка 🟢 GREEN (живой прод, net-zero):**
+- *В допуске* (1000 USDT→46200 TRY, Mark Antalya): забукана `posted`; `metadata.rate_basis` читаем — `market_rate 46.2 × spread 0% = deal_rate 46.2`, `usdt_in 1000 = usdt_out 1000`, `primary_pair USDT→TRY`, `orientation OUT_per_IN`, `source ledger.resolve_market_rate`; проводки сбалансированы по валютам → `reverse (cascade)` → **0 счетов с ненулевым сальдо**, статус `reversed`.
+- *Инвертированный* (1000 USDT→100 TRY): `P0423` «Курс сделки отклоняется от рыночного на −99.78% (допуск ±5.00%) — проверьте ввод…» — на assert line 92 **до INSERT**; `tx`/`idempotency` не выросли (0 мусора).
+- *Uncovered* (BTC): `P0424` «Нет рыночного курса для BTC — заведите валютную пару» — **до INSERT**, 0 мусора.
+- Подтверждено: config-авторитетность (текст показал ±5.00% при вызове с 0.25); reject = чистый откат (ни tx, ни idem).
+- *Остаток:* 4 net-zero-транзакции (deal+recognition+2 reversal) — сотрутся в 1.75.
+
+**Хвост фронта — фикс не нужен, путь корректен:** `invokeLedger → formatLedgerError (message · details · hint) → throw → withToast → emitToast('error', 'Create deal failed: <фраза> · <hint>')`. Кассир видит человеческий текст, не `P0001`. `formatLedgerError` экспортирован; тест `src/lib/dealRateReject.test.js` (3/3) — «предъявление», что фраза P0423/P0424 доходит до тоста. Итог: 740 тестов, build зелёные.
+
+**Осталось по Этапу 1:** слайс 1.e (`rate` text→numeric в `manager_orders`/`cashier_deals` + писатель `api/cashdesk/sync.js`).
+
 ### Слайс 1.d — maker-checker — НЕ строить сейчас
 Пока `enforcement=reject` review-коридор мёртв. В 1.c заложены хуки (статус/SQLSTATE), чтобы 1.d добавлялся без переделки. Вернёмся, если эксперт попросит коридор.
 
