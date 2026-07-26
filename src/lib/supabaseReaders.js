@@ -257,6 +257,8 @@ export async function loadClients() {
     id: r.id,
     nickname: r.nickname,
     name: r.full_name || r.nickname,
+    // 1.5.f: открытые клиенту валюты (Расчётные счета в карточке)
+    currencies: Array.isArray(r.currencies) ? r.currencies : [],
     telegram: r.telegram || "",
     tag: r.tag || "",
     note: r.note || "",

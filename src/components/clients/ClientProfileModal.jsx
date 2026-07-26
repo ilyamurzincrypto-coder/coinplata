@@ -7,12 +7,13 @@ import React, { useMemo, useState } from "react";
 import { BarChart3, Wallet, Network as NetworkIcon, UserPlus, Users } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
-import { fmt } from "../../utils/money.js";
+import { fmt, curSymbol } from "../../utils/money.js";
+import { clientLedgerRows } from "../../lib/treasury/v2selectors.js";
 import { toISODate, monthKey, monthLabel } from "../../utils/date.js";
 import { exportCSV } from "../../utils/csv.js";
 import { checkWalletRisk, riskLevelStyle, riskLevelLabel } from "../../utils/aml.js";
 
-export function ClientProfileModal({ clientId, onClose, counterparties, transactions, walletsByClient, updateCounterparty, obligations, base, sym, toBase }) {
+export function ClientProfileModal({ clientId, onClose, counterparties, transactions, walletsByClient, updateCounterparty, obligations, base, sym, toBase, ledgerCtx }) {
   const client = clientId ? counterparties.find((c) => c.id === clientId) : null;
   const [statusFilter, setStatusFilter] = useState("all");
   const [curFilter, setCurFilter] = useState("all");
@@ -155,6 +156,12 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
       .sort((a, b) => (a.nickname || "").localeCompare(b.nickname || ""));
   }, [counterparties, client]);
 
+  // Расчётные счета клиента (Лоро) — все открытые валюты + ненулевые, фикс-порядок.
+  const accountRows = useMemo(() => {
+    if (!client || !ledgerCtx?.accounts) return [];
+    return clientLedgerRows(ledgerCtx, client.id, client.currencies || [], base);
+  }, [client, ledgerCtx, base]);
+
   if (!client) return null;
 
   return (
@@ -231,6 +238,38 @@ export function ClientProfileModal({ clientId, onClose, counterparties, transact
           <StatCard label="First" value={stats.first} small />
           <StatCard label="Last" value={stats.last} small />
         </div>
+
+        {/* Расчётные счета клиента (Лоро) — все открытые валюты (вкл. нулевые) + ненулевые.
+            Порядок фикс (база→код), знак +raw (держит→+, должник→−красным), ненулевое — весом. */}
+        {accountRows.length > 0 && (
+          <div className="border border-border-soft rounded-card p-3">
+            <h3 className="text-caption font-bold uppercase tracking-wider text-ink-soft mb-2">Расчётные счета</h3>
+            <div className="divide-y divide-border-soft">
+              {accountRows.map((r) => {
+                const nz = Math.abs(r.balance) > 0.005;
+                const neg = r.balance < 0;
+                return (
+                  <button
+                    key={r.currency}
+                    onClick={() => setCurFilter(r.currency)}
+                    className="w-full flex items-center justify-between py-1.5 px-1 hover:bg-surface-soft rounded transition-colors text-left"
+                    title="Показать движения по валюте"
+                  >
+                    <span className="flex items-center gap-2 text-body-sm text-ink">
+                      Расчётный счёт <span className="font-semibold tracking-wider">{r.currency}</span>
+                      {r.notOpened && (
+                        <span className="text-tiny text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">не в списке открытых</span>
+                      )}
+                    </span>
+                    <span className={`font-mono tabular-nums ${nz ? "font-bold" : "text-muted-soft font-normal"} ${neg ? "text-danger" : "text-ink"}`}>
+                      {neg ? "−" : ""}{curSymbol(r.currency)}{fmt(Math.abs(r.balance), r.currency)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Obligations — показываем только если есть открытые */}
         {clientObligations.length > 0 && (

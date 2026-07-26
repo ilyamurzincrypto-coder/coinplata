@@ -16,6 +16,7 @@ import { usePartners } from "../../store/partners.jsx";
 import { useWallets } from "../../store/wallets.jsx";
 import { useObligations } from "../../store/obligations.jsx";
 import { useBaseCurrency } from "../../store/baseCurrency.js";
+import { useLedger } from "../../store/ledger.jsx";
 import { useTranslation } from "../../i18n/translations.jsx";
 import { fmt, curSymbol } from "../../utils/money.js";
 import { toISODate } from "../../utils/date.js";
@@ -42,6 +43,8 @@ export default function ListTab() {
   const { obligations } = useObligations();
   const { base, toBase } = useBaseCurrency();
   const sym = curSymbol(base);
+  // Ledger-контекст для «Расчётных счетов» клиента в карточке (слайс 1.5.f).
+  const { accounts: ledgerAccounts, balances: ledgerBalances, entries: ledgerEntries, transactions: ledgerTransactions } = useLedger();
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // all | client | partner
@@ -424,6 +427,7 @@ export default function ListTab() {
         base={base}
         sym={sym}
         toBase={toBase}
+        ledgerCtx={{ accounts: ledgerAccounts, balances: ledgerBalances, entries: ledgerEntries, transactions: ledgerTransactions }}
       />
       <PartnerProfileModal
         partnerId={profileFor?.kind === "partner" ? profileFor.id : null}
