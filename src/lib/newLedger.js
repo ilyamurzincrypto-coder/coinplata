@@ -135,6 +135,32 @@ async function invokeLedger(rpcName, params) {
   return data;
 }
 
+// Мастер валют (слайс 1.5.c): ledger.create_currency напрямую через schema-profile
+// (public-обёртки нет; у authenticated есть EXECUTE — проверено). Заводит валюту +
+// автопозицию в Капитале. Бросает Error с человеческим message (P0424 и т.п.).
+export async function rpcCreateCurrency({ code, name, kind, scale, symbol, network, smartContract, numSegment, isNative }) {
+  assertConfigured();
+  const { data, error } = await supabase.schema("ledger").rpc("create_currency", {
+    p_code: code,
+    p_name: name,
+    p_kind: kind,
+    p_scale: scale,
+    p_symbol: symbol ?? null,
+    p_network: network ?? null,
+    p_smart_contract: smartContract ?? null,
+    p_num_segment: numSegment ?? null,
+    p_is_native: !!isNative,
+  });
+  if (error) throw new Error(formatLedgerError(error));
+  bumpDataVersion();
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    currencyCode: row?.currency_code,
+    numSegment: row?.num_segment,
+    positionAccountCode: row?.position_account_code,
+  };
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // RPC wrappers
 // ─────────────────────────────────────────────────────────────────────

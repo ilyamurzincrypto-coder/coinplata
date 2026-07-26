@@ -20,6 +20,7 @@ import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
+import CurrencyWizard from "../../../components/currencies/CurrencyWizard.jsx";
 
 const NONZERO_KEY = "coinplata:equity-nonzero";
 const DISPLAY_BASE_KEY = "coinplata:equity-display-base";
@@ -56,6 +57,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
 
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [curWizOpen, setCurWizOpen] = useState(false);
   const [detailAccountId, setDetailAccountId] = useState(null);
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
@@ -136,6 +138,17 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
             <Download className="w-3.5 h-3.5" strokeWidth={2.5} />
             CSV
           </button>
+          {can("accounting", "edit") && (
+            <button
+              type="button"
+              onClick={() => setCurWizOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-surface-sunk text-ink text-body-sm font-semibold hover:bg-surface-soft transition-all"
+              title="Добавить валюту — создаёт счёт-позицию в Капитале"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Валюта
+            </button>
+          )}
           {can("accounting", "edit") && (
             <button
               type="button"
@@ -424,6 +437,7 @@ export default function EquityTab({ ctx, officeFilter, formatBase, baseCurrency,
       </div>
 
       {addOpen && <ChartAccountModal open defaultType="equity" lockType onClose={() => setAddOpen(false)} />}
+      {curWizOpen && <CurrencyWizard open onClose={() => setCurWizOpen(false)} />}
 
       <AccountDetailModal
         open={!!detailAccountId}
