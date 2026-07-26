@@ -37,6 +37,23 @@
 - `supabase/migrations/NNNN_ledger_market_rate_resolver.sql` — `ledger.usdt_per(ccy, office_id)` + `ledger.resolve_market_rate(from, to, office_id)`. Повторяет `src/store/rates.jsx` getRate: офис-оверрайд (`public.office_rate_overrides`) → USDT-пивот офиса → глобал-дефолт (`public.pairs is_default`) → глобал USDT-пивот. Ориентация — как `usdtPer` (читаемое >1). Читает `pairs`/`overrides` — они переживают 1.75.
 - **Ворота (стоп-условие):** parity-тест резолвера vs фронтовый `getRate` на фикс-наборе. Расхождение = разбор ДО кода энфорсмента.
 
+#### Слайс 1.a — ВЫПОЛНЕНО (2026-07-26, prod, аддитивно)
+Функции в проде: `ledger.resolve_market_rate(from,to,office)`, `ledger.usdt_per(cur,office)`, `ledger._global_pair_rate(from,to)` — три `CREATE FUNCTION`, ни одного `ALTER`, никто пока не вызывает. Откат = `DROP FUNCTION`.
+
+**Parity 🟢 GREEN.** Матрица 16 активных валют × 5 живых офисов × оба направления = 1200 ячеек, 210 покрытых. JS-оракул = реальные `buildRatesLookup`/`pivotRate`/`getRate` (verbatim из `src/store/rates.jsx` + `src/utils/morningRatesParser.js`) на живом снимке БД. Результат:
+- Расхождений `resolve_market_rate` ↔ `getRate` на 210 покрытых: **0** (относит. eps 1e-6).
+- Перекрытие SQL сверх JS: **0** ячеек. Стоп-условие пройдено.
+
+**Карта слепоты старого `public.effective_rate`** (то, что использует нынешний бэкстоп; для эксперта — «где контроль молчал/врал»):
+- USDT-направление (`effective_rate(office,'USDT',cur)`): расхождений с `getRate` — **0**. Текущий ±25%-бэкстоп на USDT-оценке считает от ВЕРНЫХ эталонов (проблема только в грубости порога).
+- Кросс-пары (non-USDT↔non-USDT): `effective_rate` **врёт на 44 из 210 ячеек** (~21%) — нет офис-пивота и синтеза обратных, берёт битые «=1»-сиды/инверсии. Примеры: Terra City `TRY→RUB` getRate 3672 vs effective_rate 1.75 (×2000); `RUB→CHF` 102.9 vs 1; `TRY→EUR` 53.4 vs 0.019 (инверсия).
+- 10 валют без курса вообще (обе функции слепы, рыночных данных нет): `AED, BTC, BUSD, DAI, ETH, KZT, SOL, TON, UAH, USDC` — сделки в них rate-контролю не поддаются, пока не заведут пары.
+
+**Следствие для 1.c:**
+- USDT-агрегатная проверка (оценка ног через `ledger.usdt_per`) на покрытых валютах = битово идентична старой (USDT-направление 0 расхождений) → просто тайтним порог до 5%.
+- **Основание** (`market_rate` конкретной пары сделки, «база × наценка/спред») читать из `ledger.resolve_market_rate`, НЕ из `effective_rate` — иначе на кросс-парах основание врёт в 44/210.
+- Parity-гарнис лежит в scratchpad (`parity.mjs`); при финализации 1.c оформить как коммит-тест-регресс.
+
 ### Слайс 1.b — порог конфигом
 - `supabase/migrations/NNNN_ledger_deal_rate_config.sql` — сиды `ledger.config`: `deal_rate_tolerance_pct=5`, `deal_rate_enforcement=reject`, `deal_rate_review_pct` (задел).
 
