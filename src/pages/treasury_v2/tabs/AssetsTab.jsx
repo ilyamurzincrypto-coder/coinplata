@@ -21,6 +21,7 @@ import AccountDetailModal from "../parts/AccountDetailModal.jsx";
 import ChartAccountModal from "../parts/ChartAccountModal.jsx";
 import InlineBalanceEditor from "../parts/InlineBalanceEditor.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
+import CashboxWizard from "../parts/CashboxWizard.jsx";
 
 const NONZERO_KEY = "coinplata:assets-nonzero";
 const DISPLAY_BASE_KEY = "coinplata:assets-display-base";
@@ -59,6 +60,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
   const tree = useMemo(() => assetsByOfficeCurrency(usdCtx), [usdCtx]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [addOpen, setAddOpen] = useState(false);
+  const [cashboxOpen, setCashboxOpen] = useState(false);
   const [detailAccountId, setDetailAccountId] = useState(null);
   const [nonZeroOnly, setNonZeroOnly] = useState(() => {
     try { return localStorage.getItem(NONZERO_KEY) === "1"; } catch { return false; }
@@ -135,6 +137,17 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
             <Download className="w-3.5 h-3.5" strokeWidth={2.5} />
             CSV
           </button>
+          {can("accounting", "edit") && (
+            <button
+              type="button"
+              onClick={() => setCashboxOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-button bg-surface-sunk text-ink text-body-sm font-semibold hover:bg-surface-soft transition-all"
+              title="Завести кассу / банк / кошелёк офиса"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Касса
+            </button>
+          )}
           {can("accounting", "edit") && (
             <button
               type="button"
@@ -385,6 +398,14 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
           defaultOfficeId={officeFilter && officeFilter !== "all" ? officeFilter : null}
           defaultType="asset"
           lockType
+        />
+      )}
+      {cashboxOpen && (
+        <CashboxWizard
+          open
+          onClose={() => setCashboxOpen(false)}
+          ctx={ctx}
+          defaultOfficeId={officeFilter}
         />
       )}
 
