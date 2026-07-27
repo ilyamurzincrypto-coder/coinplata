@@ -9,12 +9,12 @@
 //    допустимое изменение высоты — раскрытие плашки причины.
 //  • Статус-точка (риск AEGIS) и Δ-бейдж (расхождение учёт↔он-чейн) — РАЗДЕЛЬНЫ.
 //    Он-чейн краснеет только вместе с Δ-бейджем.
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock, Copy, Check, ChevronRight, X, AlertTriangle, ArrowDown, ArrowUp, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { buildCryptoView, DELTA_ALERT_THRESHOLD_USD, SHARE_DRILLDOWN } from "../../../lib/cryptoAccountsView.js";
 import { riskBadge } from "../../../utils/accountsRisk.js";
-import { fetchCryptoLog } from "../../../lib/aegisMonitoring.js";
 import { plainReasons, hopLabel } from "../../../lib/riskReasons.js";
+import { supabase } from "../../../lib/supabase.js";
 
 const EXPLORER = {
   TRC20: (a) => `https://tronscan.org/#/address/${a}`,
@@ -329,22 +329,55 @@ function LogRow({ t }) {
   );
 }
 
-function LogFeed() {
+// Строка ленты платежей (wallet_move_alerts) → форма LogRow. Имя счёта из accountsById;
+// нет счёта (нераспознанный офис) → адрес, платёж не теряется.
+function mapPayment(r, accountsById) {
+  const acc = r.account_id ? accountsById?.[r.account_id] : null;
+  const short = r.address ? `${r.address.slice(0, 8)}…${r.address.slice(-6)}` : "";
+  return {
+    txHash: r.tx_hash,
+    direction: r.direction,
+    amount: { amount: r.amount_minor, decimals: r.decimals ?? 6 },
+    walletName: acc?.name || (r.address ? `Нераспознан · ${short}` : "Нераспознан"),
+    counterparty: r.counterparty || null,
+    counterpartyType: r.counterparty_label || null, // метка сущности (биржа/приватный/…)
+    network: r.network,
+    ts: r.ts || r.created_at,
+  };
+}
+
+const PAY_COLS = "id, account_id, address, network, tx_hash, direction, counterparty, amount_minor, decimals, usd_est, counterparty_label, ts, created_at";
+
+// Лента «Поступления» — реального времени из wallet_move_alerts (ВСЕ офисы/сети),
+// новые сверху. Источник — webhook(transfer.detected)+tx-watch, дедуп общий.
+function LogFeed({ accountsById }) {
   const [state, setState] = useState({ loading: true, error: null, items: [] });
   const [dir, setDir] = useState("all"); // all | in | out
+  const load = useCallback(async () => {
+    if (!supabase) { setState({ loading: false, error: "Не настроено", items: [] }); return; }
+    const { data, error } = await supabase
+      .from("wallet_move_alerts")
+      .select(PAY_COLS)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) { setState({ loading: false, error: error.message, items: [] }); return; }
+    setState({ loading: false, error: null, items: (data || []).map((r) => mapPayment(r, accountsById)) });
+  }, [accountsById]);
   useEffect(() => {
     let alive = true;
-    fetchCryptoLog(200).then(
-      (d) => alive && setState({ loading: false, error: null, items: d.items || [] }),
-      (e) => alive && setState({ loading: false, error: e?.message || "Ошибка", items: [] })
-    );
-    return () => { alive = false; };
-  }, []);
+    load();
+    if (!supabase) return;
+    const ch = supabase
+      .channel("wma-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "wallet_move_alerts" }, () => { if (alive) load(); })
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+  }, [load]);
   const shown = state.items.filter((t) => dir === "all" || t.direction === dir);
   return (
     <div className="bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 border-b-[0.5px] border-border">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Движения · все кошельки</span>
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Поступления · все офисы</span>
         <div className="flex gap-1">
           {[["all", "Все"], ["in", "Поступления"], ["out", "Отправки"]].map(([k, l]) => (
             <button key={k} type="button" onClick={() => setDir(k)} className={`px-2 py-0.5 rounded-[7px] text-[11.5px] ${dir === k ? "bg-ink text-white" : "bg-surface-soft text-ink-soft"}`}>{l}</button>
@@ -381,6 +414,8 @@ export default function CryptoAccountsList({
   const [hiddenOpen, setHiddenOpen] = useState(false);
 
   const view = useMemo(() => buildCryptoView({ items, offices, filter }), [items, offices, filter]);
+  // Карта счёт→имя для ленты поступлений (резолв офиса по account_id в realtime).
+  const accountsById = useMemo(() => Object.fromEntries((items || []).map((a) => [a.id, a])), [items]);
   const drillEnabled = (mode === "authed" || (mode === "share" && (shareDetails || SHARE_DRILLDOWN))) && !!onOpenWallet;
 
   const toggleReason = (id, account) => {
@@ -444,8 +479,8 @@ export default function CryptoAccountsList({
         </div>
       </div>
 
-      {/* Лог движений (все кошельки) — вместо секций */}
-      {filter === "log" && <LogFeed />}
+      {/* Лента поступлений (все офисы, реального времени) — вместо секций */}
+      {filter === "log" && <LogFeed accountsById={accountsById} />}
 
       {/* Секции по офисам */}
       {filter !== "log" && (

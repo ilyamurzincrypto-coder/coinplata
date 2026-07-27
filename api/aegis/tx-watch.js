@@ -75,9 +75,22 @@ async function sweepWallet(db, w, cursors, key) {
   let newCursor = cursorMs
   for (const t of fresh) {
     const m = tronRowToMove(w, t)
-    // анти-дубль: PK (account_id, tx_hash, direction, counterparty, amount_minor)
+    // Дедуп (tx_hash,direction,counterparty,amount_minor) — общий с webhook. Пишем и
+    // display-поля, чтобы TRON-платежи попадали в ленту «Поступления» (USDT ≈ USD).
+    const dec = m.txObj.amount.decimals ?? 6
     const { error: dupErr } = await db.from('wallet_move_alerts').insert({
-      account_id: w.id, tx_hash: t.transaction_id, direction: m.direction, counterparty: m.counterparty, amount_minor: m.value,
+      account_id: w.id,
+      address: w.address,
+      network: w.network_id,
+      tx_hash: t.transaction_id,
+      direction: m.direction,
+      counterparty: m.counterparty,
+      amount_minor: m.value,
+      decimals: dec,
+      usd_est: Number(m.value) / 10 ** dec,
+      is_incoming: m.direction === 'in',
+      ts: new Date(m.bt).toISOString(),
+      source: 'tx-watch',
     })
     if (dupErr) {
       // 23505 = уже слали → просто двигаем курсор; прочее — пропускаем (перешлём позже)
@@ -132,7 +145,8 @@ export default async function handler(req, res) {
   }
 
   // разовый пруним старого дедупа (не растим таблицу)
-  try { await db.from('wallet_move_alerts').delete().lt('created_at', new Date(Date.now() - 3 * 864e5).toISOString()) } catch { /* некритично */ }
+  // Лента поступлений — держим дольше (90д), а не 3д: это витрина, не только анти-дубль.
+  try { await db.from('wallet_move_alerts').delete().lt('created_at', new Date(Date.now() - 90 * 864e5).toISOString()) } catch { /* некритично */ }
 
   const start = Date.now()
   let totalSent = 0

@@ -16,9 +16,16 @@
  *      (+ COINPOINT_API_URL/CASHDESK_API_SECRET или TELEGRAM_* для алертов).
  */
 import { createHmac, timingSafeEqual } from 'crypto'
-import { svcClient, notifyManagerBot } from './_common.js'
+import { svcClient, notifyManagerBot, formatMoveAlert } from './_common.js'
 
 export const config = { api: { bodyParser: false } }
+
+// Сеть AEGIS → network_id кассы. EVM-адрес общий для ETH/BSC — сеть обязательна для матча.
+const NET_MAP = { TRON: 'TRC20', TRC20: 'TRC20', ETHEREUM: 'ERC20', ETH: 'ERC20', ERC20: 'ERC20', BSC: 'BEP20', BNB: 'BEP20', BEP20: 'BEP20', 'BINANCE-SMART-CHAIN': 'BEP20' }
+export function mapNetwork(n) {
+  if (!n) return null
+  return NET_MAP[String(n).toUpperCase()] || String(n).toUpperCase()
+}
 
 // --- HMAC (чистое, тестируемое) ---
 export function verifyAegisSignature(raw, signature, secret) {
@@ -102,8 +109,55 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       balance_usd_est: bal.usd_est != null ? String(bal.usd_est) : null,
       synced_at: event.occurred_at || new Date().toISOString(),
     })
-    // Алерты движений вынесены в tx-watch (прямой TronGrid, ≤15с) — вебхук их не шлёт.
+    // Движения ловим отдельно (transfer.detected ниже) — по balance.changed не дублируем.
     return { status: 200, body: { ok: true, updated } }
+  }
+
+  // Входящие/исходящие платежи — ГЛАВНЫЙ источник ленты «Поступления» (все сети/офисы).
+  // transaction.created — фолбэк: если transfer.detected по этому tx не пришёл, дедуп-ключ
+  // (tx_hash,direction,counterparty,amount_minor) сам предотвратит дубль/второй алерт.
+  if (event.event === 'transfer.detected' || event.event === 'transaction.created') {
+    if (event.is_spam === true) return { status: 200, body: { ok: true, ignored: 'spam' } }
+    const amount = event.amount || {}
+    const netId = mapNetwork(event.network)
+    // Матч по АДРЕСУ+сети (нормализованно), fallback по aegis_wallet_id. Нет счёта → account_id=null.
+    const acc = await deps.findAccount({ address: event.address || null, network: netId, walletId })
+    const direction = event.direction || 'in'
+    const cp = event.counterparty || ''
+    const amountMinor = amount.amount != null ? String(amount.amount) : ''
+    const cpLabel = event.counterparty_entity?.name || event.counterparty_entity?.category || null
+    const address = event.address || acc?.address || null
+    const network = netId || acc?.network_id || null
+    const ts = event.ts || event.block_ts || event.occurred_at || new Date().toISOString()
+    const saved = await deps.recordPayment({
+      account_id: acc?.id || null,
+      address,
+      network,
+      tx_hash: event.tx_hash,
+      direction,
+      counterparty: cp,
+      amount_minor: amountMinor,
+      decimals: amount.decimals ?? null,
+      usd_est: amount.usd_est != null ? Number(amount.usd_est) : null,
+      counterparty_label: cpLabel,
+      is_incoming: direction === 'in',
+      ts,
+      source: event.event,
+    })
+    if (saved === 'new' && deps.notifyMove) {
+      await deps.notifyMove({
+        account: { id: acc?.id || null, name: acc?.name || address || walletId, network_id: network },
+        tx: {
+          direction,
+          counterparty: cp,
+          txHash: event.tx_hash,
+          amount: { amount: amountMinor, decimals: amount.decimals ?? 6 },
+          ts,
+          counterpartyEntity: event.counterparty_entity || null,
+        },
+      })
+    }
+    return { status: 200, body: { ok: true, saved, account_id: acc?.id || null, recognized: !!acc } }
   }
 
   return { status: 200, body: { ok: true, ignored: event.event } }
@@ -153,6 +207,28 @@ export default async function handler(req, res) {
       return (data || []).length
     },
     notifyTelegram: (payload) => notifyManagerBot({ kind: 'wallet_risk', ...payload }),
+    // Матч счёта/офиса по АДРЕСУ+сети (нормализованно, ilike), fallback по aegis_wallet_id.
+    async findAccount({ address, network, walletId }) {
+      if (address) {
+        let q = db.from('accounts').select('id, name, address, network_id, office_id').ilike('address', address)
+        if (network) q = q.eq('network_id', network)
+        const { data } = await q.limit(1)
+        if (data && data.length) return data[0]
+      }
+      if (walletId) {
+        const { data } = await db.from('accounts').select('id, name, address, network_id, office_id').eq('aegis_wallet_id', walletId).limit(1)
+        if (data && data.length) return data[0]
+      }
+      return null
+    },
+    // Дедуп-запись платежа в ленту (общий ключ с tx-watch). 23505 → duplicate (не двоим/не алертим).
+    async recordPayment(row) {
+      const { error } = await db.from('wallet_move_alerts').insert(row)
+      if (error && error.code === '23505') return 'duplicate'
+      if (error) throw new Error(error.message)
+      return 'new'
+    },
+    notifyMove: ({ account, tx }) => notifyManagerBot(formatMoveAlert(account, tx)),
   }
 
   try {
