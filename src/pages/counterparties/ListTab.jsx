@@ -46,8 +46,6 @@ export default function ListTab() {
   const sym = curSymbol(base);
   // Ledger-контекст для «Расчётных счетов» клиента в карточке (слайс 1.5.f).
   const { accounts: ledgerAccounts, balances: ledgerBalances, entries: ledgerEntries, transactions: ledgerTransactions } = useLedger();
-  // Валюты, открываемые клиенту — только с позицией в Капитале (гейт 1.5.f).
-  const positionCurrencies = [...new Set((ledgerAccounts || []).filter((a) => a.type === "equity" && a.subtype === "position").map((a) => a.currency))].sort();
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // all | client | partner
@@ -395,7 +393,7 @@ export default function ListTab() {
       <AddClientModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        positionCurrencies={positionCurrencies}
+        ledgerCtx={{ accounts: ledgerAccounts, balances: ledgerBalances }}
         onSubmit={async (data) => {
           if (isSupabaseConfigured) {
             // 1.5.f: атомарно клиент + Лоро-счета (гейт валют на сервере, человеческий отказ).

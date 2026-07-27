@@ -2,13 +2,27 @@
 // Извлечён из ClientsPage.jsx — теперь используется в новой Контрагенты-странице.
 // Логика 1:1: имя обязательно, telegram нормализуется к @-префиксу, tag/note опционально.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import Modal from "../ui/Modal.jsx";
 import { CLIENT_TAGS } from "../../store/data.js";
 import { useTransactions } from "../../store/transactions.jsx";
+import CashboxWizard from "../../pages/treasury_v2/parts/CashboxWizard.jsx";
 
-export default function AddClientModal({ open, onClose, onSubmit, positionCurrencies = [] }) {
+export default function AddClientModal({ open, onClose, onSubmit, ledgerCtx }) {
   const { counterparties } = useTransactions();
+  // Двухступенчатый гейт (1.5.f): валюта открываема клиенту, только если есть позиция в
+  // Капитале И хотя бы один наш актив (касса/банк/кошелёк) в валюте (лоро без покрытия нельзя).
+  const positionCurrencies = useMemo(() => {
+    const s = new Set();
+    for (const a of ledgerCtx?.accounts || []) if (a.type === "equity" && a.subtype === "position" && a.currency) s.add(a.currency);
+    return [...s].sort();
+  }, [ledgerCtx]);
+  const assetCurrencies = useMemo(() => {
+    const s = new Set();
+    for (const a of ledgerCtx?.accounts || []) if (a.type === "asset" && a.active !== false && a.currency) s.add(a.currency);
+    return s;
+  }, [ledgerCtx]);
+  const [cashboxCcy, setCashboxCcy] = useState(null);
   const [name, setName] = useState("");
   const [telegram, setTelegram] = useState("");
   const [tag, setTag] = useState("");
@@ -27,6 +41,7 @@ export default function AddClientModal({ open, onClose, onSubmit, positionCurren
       setReferrerId("");
       setSelectedCcy(new Set());
       setBusy(false);
+      setCashboxCcy(null);
     }
   }, [open]);
 
@@ -108,21 +123,38 @@ export default function AddClientModal({ open, onClose, onSubmit, positionCurren
               Пока нет валют с балансовым счётом в Капитале — счета можно открыть позже (Добавить валюту в разделе Капитал).
             </p>
           ) : (
-            <div className="flex flex-wrap gap-1.5">
-              {positionCurrencies.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => toggleCcy(c)}
-                  className={`px-2.5 py-1 rounded-button text-tiny font-semibold border transition-colors ${
-                    selectedCcy.has(c)
-                      ? "bg-ink text-white border-ink"
-                      : "bg-white text-ink-soft border-border-soft hover:border-border"
-                  }`}
-                >
-                  {c}
-                </button>
-              ))}
+            <div className="flex flex-col gap-1.5">
+              {positionCurrencies.map((c) => {
+                const ready = assetCurrencies.has(c); // позиция + актив (двухступенчатый гейт)
+                const on = selectedCcy.has(c);
+                return (
+                  <div key={c} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={!ready}
+                      onClick={() => ready && toggleCcy(c)}
+                      title={ready ? "" : `Нет кассы/счёта в ${c}`}
+                      className={`px-2.5 py-1 rounded-button text-tiny font-semibold border transition-colors min-w-[76px] text-center ${
+                        !ready
+                          ? "bg-surface-sunk text-muted-soft border-border-soft cursor-not-allowed"
+                          : on
+                          ? "bg-ink text-white border-ink"
+                          : "bg-white text-ink-soft border-border-soft hover:border-border"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                    {!ready && (
+                      <span className="text-tiny text-amber-700">
+                        Нет кассы/счёта в {c} —{" "}
+                        <button type="button" onClick={() => setCashboxCcy(c)} className="text-accent font-semibold hover:underline">
+                          откройте
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </FormField>
@@ -161,6 +193,9 @@ export default function AddClientModal({ open, onClose, onSubmit, positionCurren
           {busy ? "Сохраняю…" : "Save"}
         </button>
       </div>
+      {cashboxCcy && ledgerCtx && (
+        <CashboxWizard open ctx={ledgerCtx} onClose={() => setCashboxCcy(null)} />
+      )}
     </Modal>
   );
 }
