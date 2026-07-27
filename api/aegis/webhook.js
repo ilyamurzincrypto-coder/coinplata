@@ -144,20 +144,29 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       ts,
       source: event.event,
     })
+    let notified = false
     if (saved === 'new' && deps.notifyMove) {
-      await deps.notifyMove({
-        account: { id: acc?.id || null, name: acc?.name || address || walletId, network_id: network },
-        tx: {
-          direction,
-          counterparty: cp,
-          txHash: event.tx_hash,
-          amount: { amount: amountMinor, decimals: amount.decimals ?? 6 },
-          ts,
-          counterpartyEntity: event.counterparty_entity || null,
-        },
-      })
+      // Алерт — best-effort: сбой notify НЕ валит webhook (иначе 500 → ретрай дедупится
+      // по delivery_id → алерт теряется навсегда). Платёж уже записан и виден в ленте.
+      try {
+        const r = await deps.notifyMove({
+          account: { id: acc?.id || null, name: acc?.name || address || walletId, network_id: network },
+          tx: {
+            direction,
+            counterparty: cp,
+            txHash: event.tx_hash,
+            amount: { amount: amountMinor, decimals: amount.decimals ?? 6 },
+            ts,
+            counterpartyEntity: event.counterparty_entity || null,
+          },
+        })
+        notified = r !== false // notifyManagerBot → bool «доставлено»
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[webhook] notifyMove failed:', e?.message || e)
+      }
     }
-    return { status: 200, body: { ok: true, saved, account_id: acc?.id || null, recognized: !!acc } }
+    return { status: 200, body: { ok: true, saved, notified, account_id: acc?.id || null, recognized: !!acc } }
   }
 
   return { status: 200, body: { ok: true, ignored: event.event } }
