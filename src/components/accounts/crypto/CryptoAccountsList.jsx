@@ -474,7 +474,7 @@ export default function CryptoAccountsList({
         </div>
         <div className="flex flex-col items-end gap-2">
           {mode === "share" && <span className="inline-flex items-center gap-1 text-[11px] text-muted"><Lock className="w-3 h-3" strokeWidth={2} /> просмотр{asOf ? ` · ${hhmm(asOf)}` : ""}</span>}
-          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Лог", null)}</div>
+          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Поступления", null)}</div>
           {mode !== "share" && asOf && filter !== "log" && <span className="text-[10.5px] text-muted">обновлено {hhmm(asOf)}</span>}
         </div>
       </div>
