@@ -397,6 +397,69 @@ function LogFeed({ accountsById }) {
   );
 }
 
+const RISK_COLS = "alert_id, category, network, risk_address, via_counterparty, via_counterparty_name, office_id, office_label, note, source_created_at, created_at, seen";
+const shortAddr = (a) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || "");
+
+// Лента «EDD / Риск-находки» — реального времени из aegis_risk_findings (HOP2_RISK).
+// Наш контрагент в 1 шаге от грязного адреса → сигнал «проверь контрагента (EDD)».
+function RiskFindingsFeed({ officesById }) {
+  const [state, setState] = useState({ loading: true, error: null, items: [] });
+  const load = useCallback(async () => {
+    if (!supabase) { setState({ loading: false, error: "Не настроено", items: [] }); return; }
+    const { data, error } = await supabase
+      .from("aegis_risk_findings")
+      .select(RISK_COLS)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) { setState({ loading: false, error: error.message, items: [] }); return; }
+    setState({ loading: false, error: null, items: data || [] });
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    load();
+    if (!supabase) return;
+    const ch = supabase
+      .channel("arf-feed")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "aegis_risk_findings" }, () => { if (alive) load(); })
+      .subscribe();
+    return () => { alive = false; supabase.removeChannel(ch); };
+  }, [load]);
+  return (
+    <div className="bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b-[0.5px] border-border">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">EDD · связь контрагента с риском (в 1 шаге)</span>
+      </div>
+      {state.loading ? (
+        <div className="px-3 py-4 text-[13px] text-muted">Загрузка…</div>
+      ) : state.error ? (
+        <div className="px-3 py-4 text-[13px] text-danger">{state.error}</div>
+      ) : state.items.length === 0 ? (
+        <div className="px-3 py-4 text-[13px] text-muted">Находок нет.</div>
+      ) : (
+        state.items.map((r) => {
+          const officeName = officesById[r.office_id]?.name || r.office_label || "нераспознан";
+          const via = r.via_counterparty_name || shortAddr(r.via_counterparty) || "—";
+          return (
+            <div key={r.alert_id} className="flex items-start gap-2 px-3 py-2.5 border-b-[0.5px] border-border last:border-b-0">
+              <span className="text-[15px] leading-none mt-0.5">⚠️</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] text-ink">
+                  Контрагент <span className="font-medium">{via}</span> связан с{" "}
+                  <span className="font-semibold text-danger">{r.category || "риском"}</span> <span className="text-muted">(в 1 шаге)</span>
+                </div>
+                <div className="text-[11.5px] text-muted mt-0.5">
+                  Офис <span className="text-ink-soft">{officeName}</span> · грязный адрес <span className="font-mono">{shortAddr(r.risk_address)}</span> · рекомендуется EDD
+                </div>
+              </div>
+              {hhmm && r.created_at && <span className="text-[10.5px] text-muted whitespace-nowrap mt-0.5">{hhmm(r.created_at)}</span>}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
 export default function CryptoAccountsList({
   items = [],
   offices = [],
@@ -416,6 +479,7 @@ export default function CryptoAccountsList({
   const view = useMemo(() => buildCryptoView({ items, offices, filter }), [items, offices, filter]);
   // Карта счёт→имя для ленты поступлений (резолв офиса по account_id в realtime).
   const accountsById = useMemo(() => Object.fromEntries((items || []).map((a) => [a.id, a])), [items]);
+  const officesById = useMemo(() => Object.fromEntries((offices || []).map((o) => [o.id, o])), [offices]);
   const drillEnabled = (mode === "authed" || (mode === "share" && (shareDetails || SHARE_DRILLDOWN))) && !!onOpenWallet;
 
   const toggleReason = (id, account) => {
@@ -474,7 +538,7 @@ export default function CryptoAccountsList({
         </div>
         <div className="flex flex-col items-end gap-2">
           {mode === "share" && <span className="inline-flex items-center gap-1 text-[11px] text-muted"><Lock className="w-3 h-3" strokeWidth={2} /> просмотр{asOf ? ` · ${hhmm(asOf)}` : ""}</span>}
-          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Поступления", null)}</div>
+          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Поступления", null)}{mode !== "share" && seg("edd", "EDD", null)}</div>
           {mode !== "share" && asOf && filter !== "log" && <span className="text-[10.5px] text-muted">обновлено {hhmm(asOf)}</span>}
         </div>
       </div>
@@ -482,8 +546,11 @@ export default function CryptoAccountsList({
       {/* Лента поступлений (все офисы, реального времени) — вместо секций */}
       {filter === "log" && <LogFeed accountsById={accountsById} />}
 
+      {/* Лента EDD-находок (HOP2_RISK, все офисы, реального времени) */}
+      {filter === "edd" && <RiskFindingsFeed officesById={officesById} />}
+
       {/* Секции по офисам */}
-      {filter !== "log" && (
+      {filter !== "log" && filter !== "edd" && (
       <div className="space-y-4">
         {view.sections.map((s) => (
           <div key={s.office.id}>

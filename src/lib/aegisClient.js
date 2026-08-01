@@ -159,6 +159,26 @@ export function normalizeTransactions(raw) {
   };
 }
 
+// GET /v1/alerts item → внутренняя форма. HOP2_RISK: грязь в 2 хопах через нашего
+// контрагента (via_counterparty). network держим как есть (raw enum о цепочке грязного
+// адреса — это НЕ network_id нашего счёта). Денег тут нет.
+export function normalizeAlert(raw) {
+  if (!raw) return null;
+  return {
+    alertId: raw.alert_id ?? null,
+    type: raw.type ?? null,
+    network: raw.network ?? null,
+    riskAddress: raw.risk_address ?? null,
+    category: raw.category ?? null,
+    viaCounterparty: raw.via_counterparty ?? null,
+    officeWalletId: raw.office_wallet_id ?? null,
+    officeLabel: raw.office_label ?? null,
+    note: raw.note ?? null,
+    status: raw.status ?? null,
+    createdAt: raw.created_at ?? null,
+  };
+}
+
 // --- фабрика клиента (инъекция config+fetch для тестов) ---
 export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
   const base = (apiUrl || process.env.AEGIS_API_URL || "").replace(/\/$/, "");
@@ -238,6 +258,12 @@ export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
     },
     async getTransactions(id, { from, to, cursor, limit } = {}) {
       return normalizeTransactions(await call("GET", `/v1/wallets/${encodeURIComponent(id)}/transactions`, { query: { from, to, cursor, limit } }));
+    },
+    // Тенант-уровневые находки риска (HOP2_RISK и пр.). Тот же X-API-Key.
+    async getAlerts({ limit } = {}) {
+      const raw = await call("GET", "/v1/alerts", { query: { limit } });
+      const arr = Array.isArray(raw?.alerts) ? raw.alerts : [];
+      return { alerts: arr.map(normalizeAlert).filter(Boolean) };
     },
   };
 }

@@ -92,6 +92,28 @@ export function formatMoveAlert(account, tx) {
   return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
 
+// HOP2_RISK-находка → payload EDD-алерта {kind, text(HTML), meta}. Смысл: наш
+// контрагент (via) в 1 шаге от грязного адреса → «проверь контрагента (EDD)».
+// Это НЕ значит что офис коснулся санкций.
+export function formatRiskFinding(alert, officeName, viaName) {
+  const short = (a) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || '')
+  const via = alert.viaCounterparty
+    ? `${viaName ? `${escapeHtmlA(viaName)} · ` : ''}<code>${escapeHtmlA(short(alert.viaCounterparty))}</code>`
+    : '—'
+  const office = officeName ? escapeHtmlA(officeName) : alert.officeLabel ? escapeHtmlA(alert.officeLabel) : '—'
+  const text =
+    `⚠️ <b>EDD: проверьте контрагента</b>\n` +
+    `Контрагент ${via} связан с <b>${escapeHtmlA(alert.category || 'риском')}</b> (в 1 шаге).\n` +
+    `Офис: ${office}\n` +
+    `Грязный адрес: <code>${escapeHtmlA(short(alert.riskAddress))}</code>\n` +
+    `Рекомендуется усиленная проверка (EDD).`
+  return {
+    kind: 'risk_finding',
+    text,
+    meta: { alert_id: alert.alertId, category: alert.category, office: officeName || alert.officeLabel || null, via_counterparty: alert.viaCounterparty, risk_address: alert.riskAddress },
+  }
+}
+
 // Алерт в менеджерский бот (тот же путь, что rapira/sync): coinpoint-мост
 // (x-cashdesk-secret) с fallback на прямой Telegram. Возвращает bool «доставлено».
 export async function notifyManagerBot({ kind, text, meta = {} }) {
