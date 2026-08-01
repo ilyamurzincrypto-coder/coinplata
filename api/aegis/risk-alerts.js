@@ -98,10 +98,15 @@ export default async function handler(req, res) {
       if (error) throw new Error(error.message)
       return 'new'
     },
-    notify: ({ alert, officeName, viaName }) => notifyManagerBot(formatRiskFinding(alert, officeName, viaName)),
-    markNotified: async (id) => {
+  }
+
+  // Бот-уведомление ПОКА ВЫКЛЮЧЕНО (чтобы не дублировать алерты). Находки всё равно
+  // пишутся в таблицу и видны оператору в ленте «EDD». Включить — AEGIS_RISK_NOTIFY=true.
+  if (process.env.AEGIS_RISK_NOTIFY === 'true') {
+    deps.notify = ({ alert, officeName, viaName }) => notifyManagerBot(formatRiskFinding(alert, officeName, viaName))
+    deps.markNotified = async (id) => {
       await db.from('aegis_risk_findings').update({ notified: true }).eq('alert_id', id)
-    },
+    }
   }
 
   try {
