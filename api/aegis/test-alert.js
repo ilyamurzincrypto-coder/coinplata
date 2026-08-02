@@ -13,10 +13,7 @@ import { svcClient, notifyManagerBot, formatMoveAlert, cachedRiskScore } from '.
 
 export default async function handler(req, res) {
   const cronSecret = process.env.CRON_SECRET
-  // ВРЕМЕННЫЙ одноразовый токен для ручного прогона демо-риска (откачу сразу после).
-  const ONESHOT = '327ee1026f0d95d751d14a6e'
-  const authed = (cronSecret && req.headers.authorization === `Bearer ${cronSecret}`) || (req.query?.k === ONESHOT)
-  if (cronSecret && !authed) {
+  if (cronSecret && req.headers.authorization !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ error: 'unauthorized' })
   }
   const db = svcClient()
