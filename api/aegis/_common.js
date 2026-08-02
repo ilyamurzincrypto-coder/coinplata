@@ -115,21 +115,26 @@ export function formatMoveAlert(account, tx) {
   const ownScore = account.riskScore ?? account.risk_score ?? null
   const ownLevel = account.riskLevel ?? account.risk_level ?? null
   const ownRiskStr = ownScore != null ? ` · ${riskEmoji(ownLevel, ownScore)} риск ${ownScore}%` : ''
-  let cpLine = ''
-  if (cp) {
-    // Полный адрес в <code> — Telegram копирует ТЕКСТ, а не реальное значение; усечение
-    // с «…» ломало копирование (копировался «TVYU…GRLjbb»). Показываем/копируем целиком.
-    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(cp)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${riskStr}${sanctioned ? ' ⚠️ санкции' : ''}`
-  }
-  // Ссылка на транзакцию в эксплорере — открыть и убедиться, что перевод прошёл.
+  // Эксплорер + 🔎 деталь риска контрагента — в футер.
   const exp = EXPLORER_TX[account.network_id]
-  const txLink = tx.txHash && exp ? `\n🔗 <a href="${exp.url(tx.txHash)}">Проверить на ${exp.name}</a>` : ''
-  // 🔎 деталь риска контрагента (наша страница, читает /v1/risk/{net}/{addr}). Только при PUBLIC_APP_URL.
+  const txLink = tx.txHash && exp ? `🔗 <a href="${exp.url(tx.txHash)}">Проверить перевод</a>` : ''
   const appUrl = (process.env.PUBLIC_APP_URL || 'https://coinplata.vercel.app').replace(/\/$/, '')
-  const riskLink = cp && appUrl ? `\n🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">риск-раскладка</a>` : ''
-  const text =
-    `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRiskStr}\n` +
-    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine + txLink + riskLink
+  const riskLink = cp && appUrl ? `🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">Риск контрагента</a>` : ''
+
+  // Вёрстка: заголовок (сумма) · наш кошелёк+его риск · контрагент+его риск+адрес · футер.
+  const walletName = escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')
+  const lines = [
+    `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
+    `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRiskStr}`,
+  ]
+  if (cp) {
+    // Полный адрес отдельной строкой в <code> — Telegram копирует ТЕКСТ (усечение с «…» ломало копи).
+    lines.push(`👤 Контрагент${riskStr}${label ? ` · ${escapeHtmlA(label)}` : ''}${sanctioned ? ' ⚠️ санкции' : ''}`)
+    lines.push(`<code>${escapeHtmlA(cp)}</code>`)
+  }
+  const footer = [txLink, riskLink].filter(Boolean).join(' · ')
+  if (footer) lines.push('', footer)
+  const text = lines.join('\n')
   return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, counterparty_risk_score: risk?.score ?? null, counterparty_risk_level: risk?.level ?? null, counterparty_hop2: risk?.hop2 === true, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
 
