@@ -32,7 +32,7 @@ export default async function handler(req, res) {
     }
     const d = DEMOS[demo]
     if (!d) return res.status(400).json({ error: 'demo must be sanctioned|hop2' })
-    const acc = { id: null, name: 'WW-Демо (тест)', network_id: d.net }
+    const acc = { id: null, name: 'WW-Демо (тест)', network_id: d.net, riskScore: 8, riskLevel: 'ok' }
     const counterpartyRisk = await cachedRiskScore(aegis, d.net, d.addr)
     const tx = { direction: 'in', counterparty: d.addr, txHash: '', amount: { amount: '1234000000', decimals: 6 }, ts: new Date().toISOString(), counterpartyRisk }
     const payload = formatMoveAlert(acc, tx)

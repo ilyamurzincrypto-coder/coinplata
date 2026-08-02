@@ -10,7 +10,7 @@ describe('formatMoveAlert', () => {
     expect(a.kind).toBe('wallet_move')
     expect(a.text).toMatch(/💰 <b>W88 Mark<\/b> · TRC20/)
     expect(a.text).toMatch(/Поступило \+\$5,000\.00/)
-    expect(a.text).toMatch(/← от <code>TTqKSJbsbx…WV84kS<\/code> · P2P/)
+    expect(a.text).toMatch(/← от <code>TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS<\/code> · P2P/)
     expect(a.text).toMatch(/<a href="https:\/\/tronscan\.org\/#\/transaction\/h1">Проверить на Tronscan<\/a>/)
     expect(a.meta.direction).toBe('in')
     expect(a.meta.counterparty).toBe('TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS')
@@ -55,5 +55,22 @@ describe('formatMoveAlert · риск-% контрагента', () => {
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TabcDEF' })
     expect(a.text).toMatch(/🔎 <a href="https:\/\/app\.test\/api\/risk\/detail\?net=TRC20&addr=TabcDEF">риск-раскладка<\/a>/)
     process.env.PUBLIC_APP_URL = prev
+  })
+})
+
+describe('formatMoveAlert · риск НАШЕГО кошелька в шапке', () => {
+  it('показывает риск-% нашего счёта (snake_case из accounts)', () => {
+    const dirty = { id: 'a1', name: 'W88 Mark', network_id: 'TRC20', risk_score: 55, risk_level: 'warning' }
+    const a = formatMoveAlert(dirty, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' })
+    expect(a.text).toMatch(/<b>W88 Mark<\/b> · TRC20 · 🟡 риск 55%/)
+  })
+  it('нет кэша риска — шапка без риска', () => {
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' })
+    expect(a.text).toMatch(/<b>W88 Mark<\/b> · TRC20\n/)
+  })
+  it('полный адрес контрагента в <code> (копируется целиком)', () => {
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb' })
+    expect(a.text).toMatch(/<code>TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb<\/code>/)
+    expect(a.text).not.toMatch(/…/)
   })
 })

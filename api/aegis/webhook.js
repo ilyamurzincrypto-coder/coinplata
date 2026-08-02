@@ -157,7 +157,7 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       // по delivery_id → алерт теряется навсегда). Платёж уже записан и виден в ленте.
       try {
         const r = await deps.notifyMove({
-          account: { id: acc?.id || null, name: acc?.name || address || walletId, network_id: network },
+          account: { id: acc?.id || null, name: acc?.name || address || walletId, network_id: network, riskScore: acc?.risk_score ?? null, riskLevel: acc?.risk_level ?? null },
           tx: {
             direction,
             counterparty: cp,
@@ -227,13 +227,13 @@ export default async function handler(req, res) {
     // Матч счёта/офиса по АДРЕСУ+сети (нормализованно, ilike), fallback по aegis_wallet_id.
     async findAccount({ address, network, walletId }) {
       if (address) {
-        let q = db.from('accounts').select('id, name, address, network_id, office_id').ilike('address', address)
+        let q = db.from('accounts').select('id, name, address, network_id, office_id, risk_score, risk_level').ilike('address', address)
         if (network) q = q.eq('network_id', network)
         const { data } = await q.limit(1)
         if (data && data.length) return data[0]
       }
       if (walletId) {
-        const { data } = await db.from('accounts').select('id, name, address, network_id, office_id').eq('aegis_wallet_id', walletId).limit(1)
+        const { data } = await db.from('accounts').select('id, name, address, network_id, office_id, risk_score, risk_level').eq('aegis_wallet_id', walletId).limit(1)
         if (data && data.length) return data[0]
       }
       return null

@@ -129,7 +129,7 @@ export default async function handler(req, res) {
 
   const { data: accts, error } = await db
     .from('accounts')
-    .select('id, name, network_id, address, last_alert_tx_ts')
+    .select('id, name, network_id, address, last_alert_tx_ts, risk_score, risk_level')
     .eq('active', true)
     .eq('kind', 'crypto')
     .eq('network_id', 'TRC20')

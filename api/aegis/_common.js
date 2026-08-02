@@ -68,6 +68,12 @@ const EXPLORER_TX = {
 function escapeHtmlA(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
+// Эмодзи риска по level/score (один порог на весь алерт: свой кошелёк + контрагент).
+function riskEmoji(level, score) {
+  if (level === 'critical' || Number(score) >= 80) return '🔴'
+  if (level === 'warning' || Number(score) >= 25) return '🟡'
+  return '🟢'
+}
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
 // можно на каждое уведомление. Сеть/таймаут → молча null (не показываем/не падаем).
@@ -102,13 +108,18 @@ export function formatMoveAlert(account, tx) {
   const risk = tx.counterpartyRisk
   let riskStr = ''
   if (risk && risk.score != null) {
-    const emoji = risk.level === 'critical' ? '🔴' : risk.level === 'warning' ? '🟡' : '🟢'
-    riskStr = ` · ${emoji} риск ${risk.score}%${risk.hop2 ? ' (в 1 шаге от санкций/ЧС)' : ''}`
+    riskStr = ` · ${riskEmoji(risk.level, risk.score)} риск ${risk.score}%${risk.hop2 ? ' (в 1 шаге от санкций/ЧС)' : ''}`
   }
+  // «Грязнота» НАШЕГО кошелька — показываем каждый раз (из кэша accounts.risk_*, без запроса).
+  // Читаем оба нейминга: tx-watch шлёт сырую строку (risk_score), webhook — объект (riskScore).
+  const ownScore = account.riskScore ?? account.risk_score ?? null
+  const ownLevel = account.riskLevel ?? account.risk_level ?? null
+  const ownRiskStr = ownScore != null ? ` · ${riskEmoji(ownLevel, ownScore)} риск ${ownScore}%` : ''
   let cpLine = ''
   if (cp) {
-    const short = cp.length > 18 ? `${cp.slice(0, 10)}…${cp.slice(-6)}` : cp
-    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(short)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${riskStr}${sanctioned ? ' ⚠️ санкции' : ''}`
+    // Полный адрес в <code> — Telegram копирует ТЕКСТ, а не реальное значение; усечение
+    // с «…» ломало копирование (копировался «TVYU…GRLjbb»). Показываем/копируем целиком.
+    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(cp)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${riskStr}${sanctioned ? ' ⚠️ санкции' : ''}`
   }
   // Ссылка на транзакцию в эксплорере — открыть и убедиться, что перевод прошёл.
   const exp = EXPLORER_TX[account.network_id]
@@ -117,7 +128,7 @@ export function formatMoveAlert(account, tx) {
   const appUrl = (process.env.PUBLIC_APP_URL || 'https://coinplata.vercel.app').replace(/\/$/, '')
   const riskLink = cp && appUrl ? `\n🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">риск-раскладка</a>` : ''
   const text =
-    `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}\n` +
+    `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRiskStr}\n` +
     `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine + txLink + riskLink
   return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, counterparty_risk_score: risk?.score ?? null, counterparty_risk_level: risk?.level ?? null, counterparty_hop2: risk?.hop2 === true, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
@@ -126,16 +137,16 @@ export function formatMoveAlert(account, tx) {
 // контрагент (via) в 1 шаге от грязного адреса → «проверь контрагента (EDD)».
 // Это НЕ значит что офис коснулся санкций.
 export function formatRiskFinding(alert, officeName, viaName) {
-  const short = (a) => (a && a.length > 16 ? `${a.slice(0, 8)}…${a.slice(-6)}` : a || '')
+  // Полные адреса в <code> — тап-копирование Telegram копирует текст, усечение ломало копи.
   const via = alert.viaCounterparty
-    ? `${viaName ? `${escapeHtmlA(viaName)} · ` : ''}<code>${escapeHtmlA(short(alert.viaCounterparty))}</code>`
+    ? `${viaName ? `${escapeHtmlA(viaName)} · ` : ''}<code>${escapeHtmlA(alert.viaCounterparty)}</code>`
     : '—'
   const office = officeName ? escapeHtmlA(officeName) : alert.officeLabel ? escapeHtmlA(alert.officeLabel) : '—'
   const text =
     `⚠️ <b>EDD: проверьте контрагента</b>\n` +
     `Контрагент ${via} связан с <b>${escapeHtmlA(alert.category || 'риском')}</b> (в 1 шаге).\n` +
     `Офис: ${office}\n` +
-    `Грязный адрес: <code>${escapeHtmlA(short(alert.riskAddress))}</code>\n` +
+    `Грязный адрес: <code>${escapeHtmlA(alert.riskAddress || '')}</code>\n` +
     `Рекомендуется усиленная проверка (EDD).`
   return {
     kind: 'risk_finding',
