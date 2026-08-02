@@ -263,3 +263,24 @@ describe("getRiskDetail (GET /v1/risk/{net}/{addr})", () => {
     expect(d.reasons).toEqual(["OFAC SDN"]);
   });
 });
+
+describe("addContacts (POST /v1/contacts деаноним)", () => {
+  it("маппит network→enum, отдаёт {upserted,skipped}", async () => {
+    let sent = null;
+    const c = createAegisClient({ apiUrl: "https://aegis.test", apiKey: "k", fetchImpl: async (_url, opts) => {
+      sent = JSON.parse(opts.body);
+      return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ upserted: 2, skipped: 0 }) };
+    }});
+    const r = await c.addContacts([
+      { network: "TRC20", address: "Taaa", name: "W88", type: "own" },
+      { network: "ERC20", address: "0xbbb", name: "Hot", type: "own" },
+    ]);
+    expect(sent.contacts[0]).toMatchObject({ network: "TRON", address: "Taaa", name: "W88", type: "own" });
+    expect(sent.contacts[1].network).toBe("ETHEREUM");
+    expect(r).toEqual({ upserted: 2, skipped: 0 });
+  });
+  it("пустой список → без запроса", async () => {
+    const c = mk([]);
+    expect(await c.addContacts([])).toEqual({ upserted: 0, skipped: 0 });
+  });
+});

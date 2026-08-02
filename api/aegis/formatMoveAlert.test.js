@@ -46,9 +46,9 @@ describe('formatMoveAlert · риск-% контрагента', () => {
     const tx = { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx', counterpartyRisk: { score: 25, level: 'warning', hop2: false } }
     expect(formatMoveAlert(acc, tx).text).toMatch(/🟡 риск 25%/)
   })
-  it('без риск-данных — строки риска нет', () => {
+  it('без риск-данных — инлайн-строки «риск N%» нет', () => {
     const tx = { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' }
-    expect(formatMoveAlert(acc, tx).text).not.toMatch(/риск/)
+    expect(formatMoveAlert(acc, tx).text).not.toMatch(/риск \d+%/)
   })
   it('🔎 ссылка при PUBLIC_APP_URL', () => {
     const prev = process.env.PUBLIC_APP_URL; process.env.PUBLIC_APP_URL = 'https://app.test'

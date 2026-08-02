@@ -114,7 +114,7 @@ export function formatMoveAlert(account, tx) {
   const exp = EXPLORER_TX[account.network_id]
   const txLink = tx.txHash && exp ? `\n🔗 <a href="${exp.url(tx.txHash)}">Проверить на ${exp.name}</a>` : ''
   // 🔎 деталь риска контрагента (наша страница, читает /v1/risk/{net}/{addr}). Только при PUBLIC_APP_URL.
-  const appUrl = (process.env.PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const appUrl = (process.env.PUBLIC_APP_URL || 'https://coinplata.vercel.app').replace(/\/$/, '')
   const riskLink = cp && appUrl ? `\n🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">риск-раскладка</a>` : ''
   const text =
     `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}\n` +

@@ -312,6 +312,24 @@ export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
       const raw = await call("GET", `/v1/risk/${encodeURIComponent(toAegisNetwork(network))}/${encodeURIComponent(address)}`);
       return normalizeRiskDetail(raw);
     },
+    // Залить контакты (деаноним) — адрес↔имя. network → enum. Батч ≤500. Идемпотентно
+    // на стороне AEGIS (дедуп по network+address). Возвращает {upserted, skipped}.
+    async addContacts(contacts) {
+      const list = (contacts || []).filter((c) => c && c.address && c.network).slice(0, 500);
+      if (!list.length) return { upserted: 0, skipped: 0 };
+      const raw = await call("POST", "/v1/contacts", {
+        body: {
+          contacts: list.map((c) => ({
+            network: toAegisNetwork(c.network),
+            address: c.address,
+            name: c.name,
+            type: c.type,
+            ...(c.telegram ? { telegram: c.telegram } : {}),
+          })),
+        },
+      });
+      return { upserted: raw?.upserted ?? 0, skipped: raw?.skipped ?? 0 };
+    },
   };
 }
 
