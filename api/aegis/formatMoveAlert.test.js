@@ -33,3 +33,27 @@ describe('formatMoveAlert', () => {
     expect(a.text).not.toMatch(/← от/)
   })
 })
+
+describe('formatMoveAlert · риск-% контрагента', () => {
+  it('критический риск + hop2', () => {
+    const tx = { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TDirtyxxxxxxxxxxxxxxxxxxxxxx', counterpartyRisk: { score: 100, level: 'critical', hop2: true } }
+    const a = formatMoveAlert(acc, tx)
+    expect(a.text).toMatch(/🔴 риск 100% \(в 1 шаге от санкций\/ЧС\)/)
+    expect(a.meta.counterparty_risk_score).toBe(100)
+    expect(a.meta.counterparty_hop2).toBe(true)
+  })
+  it('warning 🟡 без hop2', () => {
+    const tx = { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx', counterpartyRisk: { score: 25, level: 'warning', hop2: false } }
+    expect(formatMoveAlert(acc, tx).text).toMatch(/🟡 риск 25%/)
+  })
+  it('без риск-данных — строки риска нет', () => {
+    const tx = { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' }
+    expect(formatMoveAlert(acc, tx).text).not.toMatch(/риск/)
+  })
+  it('🔎 ссылка при PUBLIC_APP_URL', () => {
+    const prev = process.env.PUBLIC_APP_URL; process.env.PUBLIC_APP_URL = 'https://app.test'
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TabcDEF' })
+    expect(a.text).toMatch(/🔎 <a href="https:\/\/app\.test\/api\/risk\/detail\?net=TRC20&addr=TabcDEF">риск-раскладка<\/a>/)
+    process.env.PUBLIC_APP_URL = prev
+  })
+})

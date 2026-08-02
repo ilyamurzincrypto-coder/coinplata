@@ -69,6 +69,25 @@ function escapeHtmlA(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
+// можно на каждое уведомление. Сеть/таймаут → молча null (не показываем/не падаем).
+const RISK_TTL_MS = 10 * 60 * 1000
+const _riskCache = new Map()
+export async function cachedRiskScore(aegisClient, network, address) {
+  if (!address || !aegisClient?.configured?.()) return null
+  const key = `${network}:${address}`
+  const hit = _riskCache.get(key)
+  if (hit && Date.now() - hit.at < RISK_TTL_MS) return hit.risk
+  try {
+    const [r] = await aegisClient.screenRisk({ network, addresses: [address] })
+    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2 } : null
+    _riskCache.set(key, { risk, at: Date.now() })
+    return risk
+  } catch {
+    return null
+  }
+}
+
 // Одна нормализованная транзакция → payload алерта {kind, text(HTML), meta}.
 export function formatMoveAlert(account, tx) {
   const inbound = tx.direction === 'in'
@@ -78,18 +97,29 @@ export function formatMoveAlert(account, tx) {
   const category = tx.counterpartyEntity?.category || (tx.counterpartyType && tx.counterpartyType !== 'unknown' ? tx.counterpartyType : null)
   const sanctioned = tx.counterpartyEntity?.sanctioned === true
   const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '')
+  // Риск-% контрагента (счёт кладёт вызывающий: webhook — из event.counterparty_risk;
+  // tx-watch — из /v1/risk). Только для ВНЕШНИХ контрагентов (own → risk не проставляют).
+  const risk = tx.counterpartyRisk
+  let riskStr = ''
+  if (risk && risk.score != null) {
+    const emoji = risk.level === 'critical' ? '🔴' : risk.level === 'warning' ? '🟡' : '🟢'
+    riskStr = ` · ${emoji} риск ${risk.score}%${risk.hop2 ? ' (в 1 шаге от санкций/ЧС)' : ''}`
+  }
   let cpLine = ''
   if (cp) {
     const short = cp.length > 18 ? `${cp.slice(0, 10)}…${cp.slice(-6)}` : cp
-    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(short)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${sanctioned ? ' ⚠️ санкции' : ''}`
+    cpLine = `\n${inbound ? '← от' : '→ на'} <code>${escapeHtmlA(short)}</code>${label ? ` · ${escapeHtmlA(label)}` : ''}${riskStr}${sanctioned ? ' ⚠️ санкции' : ''}`
   }
   // Ссылка на транзакцию в эксплорере — открыть и убедиться, что перевод прошёл.
   const exp = EXPLORER_TX[account.network_id]
   const txLink = tx.txHash && exp ? `\n🔗 <a href="${exp.url(tx.txHash)}">Проверить на ${exp.name}</a>` : ''
+  // 🔎 деталь риска контрагента (наша страница, читает /v1/risk/{net}/{addr}). Только при PUBLIC_APP_URL.
+  const appUrl = (process.env.PUBLIC_APP_URL || '').replace(/\/$/, '')
+  const riskLink = cp && appUrl ? `\n🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">риск-раскладка</a>` : ''
   const text =
     `${inbound ? '💰' : '📤'} <b>${escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}\n` +
-    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine + txLink
-  return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
+    `${inbound ? 'Поступило +' : 'Списано −'}${money(amt)}` + cpLine + txLink + riskLink
+  return { kind: 'wallet_move', text, meta: { account_id: account.id, name: account.name, direction: inbound ? 'in' : 'out', amount: amt, counterparty: cp, counterparty_category: category, counterparty_sanctioned: sanctioned, counterparty_risk_score: risk?.score ?? null, counterparty_risk_level: risk?.level ?? null, counterparty_hop2: risk?.hop2 === true, tx_hash: tx.txHash || null, explorer_url: tx.txHash && exp ? exp.url(tx.txHash) : null, ts: tx.ts || null } }
 }
 
 // HOP2_RISK-находка → payload EDD-алерта {kind, text(HTML), meta}. Смысл: наш

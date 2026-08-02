@@ -227,3 +227,39 @@ describe("not configured", () => {
     await expect(c.getWallet("x")).rejects.toMatchObject({ code: "not_configured", status: 503 });
   });
 });
+
+describe("screenRisk (POST /v1/risk батч)", () => {
+  it("маппит risks[] + hop2_proximity, шлёт AEGIS enum", async () => {
+    let sentBody = null;
+    const c = createAegisClient({ apiUrl: "https://aegis.test", apiKey: "k", fetchImpl: async (_url, opts) => {
+      sentBody = JSON.parse(opts.body);
+      return { ok: true, status: 200, headers: { get: () => null }, text: async () => JSON.stringify({ risks: [
+        { address: "TDirty", score: 100, level: "critical", categories: ["SANCTION"], hop2_proximity: false },
+        { address: "TVia", score: 25, level: "warning", categories: [], hop2_proximity: true },
+      ] }) };
+    }});
+    const r = await c.screenRisk({ network: "TRC20", addresses: ["TDirty", "TVia"] });
+    expect(sentBody.network).toBe("TRON");
+    expect(r[0]).toMatchObject({ address: "TDirty", score: 100, level: "critical", hop2: false });
+    expect(r[1]).toMatchObject({ score: 25, hop2: true });
+  });
+  it("пустой список → без запроса, []", async () => {
+    const c = mk([]);
+    expect(await c.screenRisk({ network: "TRC20", addresses: [] })).toEqual([]);
+  });
+});
+
+describe("getRiskDetail (GET /v1/risk/{net}/{addr})", () => {
+  it("нормализует breakdown (share_pct null = прямая метка) + флаги", async () => {
+    const c = mk([{ method: "GET", match: "/v1/risk/TRON/TVYU", body: {
+      score: 100, level: "critical", sanctioned: true, blacklisted: true, headline: "OFAC",
+      breakdown: [ { category: "SANCTION", label: "санкции", severity: 100, share_pct: null, direct: true },
+                   { category: "gambling", label: "гемблинг", severity: 40, share_pct: 6.1, direct: false } ],
+      reasons: ["OFAC SDN"] } }]);
+    const d = await c.getRiskDetail("TRC20", "TVYU");
+    expect(d).toMatchObject({ score: 100, level: "critical", sanctioned: true, blacklisted: true });
+    expect(d.breakdown[0]).toMatchObject({ label: "санкции", severity: 100, sharePct: null, direct: true });
+    expect(d.breakdown[1]).toMatchObject({ sharePct: 6.1, direct: false });
+    expect(d.reasons).toEqual(["OFAC SDN"]);
+  });
+});

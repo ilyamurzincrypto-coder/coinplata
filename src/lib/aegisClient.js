@@ -179,6 +179,40 @@ export function normalizeAlert(raw) {
   };
 }
 
+// POST /v1/risk item → внутренняя форма (батч-скрининг адресов, дёшево, DB-only).
+export function normalizeRisk(raw) {
+  if (!raw) return null;
+  return {
+    address: raw.address ?? null,
+    score: raw.score ?? null, // 0..100 | null
+    level: raw.level ?? null, // ok|warning|critical
+    categories: Array.isArray(raw.categories) ? raw.categories : [],
+    hop2: raw.hop2_proximity === true, // контрагент сам в 1 шаге от санкц/ЧС
+  };
+}
+
+// GET /v1/risk/{net}/{addr} → детальная раскладка (дороже — полный screen).
+export function normalizeRiskDetail(raw) {
+  if (!raw) return null;
+  return {
+    score: raw.score ?? null,
+    level: raw.level ?? null,
+    sanctioned: raw.sanctioned === true,
+    blacklisted: raw.blacklisted === true,
+    headline: raw.headline ?? null,
+    breakdown: Array.isArray(raw.breakdown)
+      ? raw.breakdown.map((b) => ({
+          category: b.category ?? null,
+          label: b.label ?? b.category ?? null, // рус-метка
+          severity: b.severity ?? null, // 0..100
+          sharePct: b.share_pct ?? null, // null = прямая метка адреса
+          direct: b.direct === true,
+        }))
+      : [],
+    reasons: Array.isArray(raw.reasons) ? raw.reasons : [],
+  };
+}
+
 // --- фабрика клиента (инъекция config+fetch для тестов) ---
 export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
   const base = (apiUrl || process.env.AEGIS_API_URL || "").replace(/\/$/, "");
@@ -264,6 +298,19 @@ export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
       const raw = await call("GET", "/v1/alerts", { query: { limit } });
       const arr = Array.isArray(raw?.alerts) ? raw.alerts : [];
       return { alerts: arr.map(normalizeAlert).filter(Boolean) };
+    },
+    // Батч-скрининг риска адресов (≤200). Дёшево — можно на каждое уведомление.
+    async screenRisk({ network, addresses } = {}) {
+      const list = (addresses || []).filter(Boolean).slice(0, 200);
+      if (!list.length) return [];
+      const raw = await call("POST", "/v1/risk", { body: { network: toAegisNetwork(network), addresses: list } });
+      const risks = Array.isArray(raw?.risks) ? raw.risks : [];
+      return risks.map(normalizeRisk).filter(Boolean);
+    },
+    // Детальная раскладка риска по одному адресу.
+    async getRiskDetail(network, address) {
+      const raw = await call("GET", `/v1/risk/${encodeURIComponent(toAegisNetwork(network))}/${encodeURIComponent(address)}`);
+      return normalizeRiskDetail(raw);
     },
   };
 }

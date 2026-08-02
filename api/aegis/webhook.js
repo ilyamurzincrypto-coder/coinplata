@@ -144,6 +144,13 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       ts,
       source: event.event,
     })
+    // Риск-% контрагента: из event.counterparty_risk (0 доп-запросов). Только ВНЕШНИЙ
+    // (если counterparty — наш же счёт, риск не показываем).
+    const cpRisk = event.counterparty_risk || null
+    const cpIsOwn = cp ? !!(await deps.findAccount({ address: cp, network: netId })) : false
+    const counterpartyRisk = cpRisk && !cpIsOwn
+      ? { score: cpRisk.score ?? null, level: cpRisk.level ?? null, hop2: cpRisk.hop2_proximity === true }
+      : null
     let notified = false
     if (saved === 'new' && deps.notifyMove) {
       // Алерт — best-effort: сбой notify НЕ валит webhook (иначе 500 → ретрай дедупится
@@ -158,6 +165,7 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
             amount: { amount: amountMinor, decimals: amount.decimals ?? 6 },
             ts,
             counterpartyEntity: event.counterparty_entity || null,
+            counterpartyRisk,
           },
         })
         notified = r !== false // notifyManagerBot → bool «доставлено»

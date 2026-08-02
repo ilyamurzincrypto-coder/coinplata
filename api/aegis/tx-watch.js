@@ -15,7 +15,8 @@
  *      CRON_SECRET, COINPOINT_API_URL + CASHDESK_API_SECRET (или TELEGRAM_* fallback).
  * Гейт CRON_SECRET (Vercel шлёт Bearer при выставленном CRON_SECRET).
  */
-import { svcClient, notifyManagerBot, formatMoveAlert } from './_common.js'
+import { svcClient, notifyManagerBot, formatMoveAlert, cachedRiskScore } from './_common.js'
+import { aegis } from '../../src/lib/aegisClient.js'
 
 export const config = { maxDuration: 60 }
 
@@ -61,7 +62,7 @@ async function tronGridTrc20(address, minTs, key) {
 
 // Один свип одного кошелька: найти новые переводы, отправить, продвинуть курсор.
 // cursors — Map<accountId, block_timestamp(ms)>, обновляется на месте.
-async function sweepWallet(db, w, cursors, key) {
+async function sweepWallet(db, w, cursors, key, ownAddrs) {
   const cursorMs = cursors.get(w.id)
   // окно-кап: не смотрим глубже 20 мин, чем бы ни был курсор
   const minTs = Math.max(cursorMs, Date.now() - REPLAY_CAP_MS)
@@ -96,6 +97,10 @@ async function sweepWallet(db, w, cursors, key) {
       // 23505 = уже слали → просто двигаем курсор; прочее — пропускаем (перешлём позже)
       if (dupErr.code === '23505' && m.bt > newCursor) newCursor = m.bt
       continue
+    }
+    // Риск-% контрагента (у TronGrid скора нет — тянем /v1/risk, кэш 10 мин). Только внешний.
+    if (m.counterparty && !(ownAddrs && ownAddrs.has(m.counterparty))) {
+      m.txObj.counterpartyRisk = await cachedRiskScore(aegis, w.network_id, m.counterparty)
     }
     try { await notifyManagerBot(formatMoveAlert(w, m.txObj)); sent++ } catch { /* не валим свип */ }
     if (m.bt > newCursor) newCursor = m.bt
@@ -148,12 +153,15 @@ export default async function handler(req, res) {
   // Лента поступлений — держим дольше (90д), а не 3д: это витрина, не только анти-дубль.
   try { await db.from('wallet_move_alerts').delete().lt('created_at', new Date(Date.now() - 90 * 864e5).toISOString()) } catch { /* некритично */ }
 
+  // Множество наших TRON-адресов — чтобы не показывать риск-% для своих же переводов.
+  const ownAddrs = new Set(wallets.map((x) => x.address).filter(Boolean))
+
   const start = Date.now()
   let totalSent = 0
   let sweeps = 0
   while (Date.now() - start < RUN_BUDGET_MS) {
     const t0 = Date.now()
-    await runPool(wallets, async (w) => { try { totalSent += await sweepWallet(db, w, cursors, key) } catch { /* один кош не валит */ } })
+    await runPool(wallets, async (w) => { try { totalSent += await sweepWallet(db, w, cursors, key, ownAddrs) } catch { /* один кош не валит */ } })
     sweeps++
     const rest = SWEEP_INTERVAL_MS - (Date.now() - t0)
     if (Date.now() - start + Math.max(0, rest) >= RUN_BUDGET_MS) break
