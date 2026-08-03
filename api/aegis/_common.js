@@ -89,11 +89,11 @@ function cpRiskBlock(risk, sanctioned) {
       : '• фактор риска'
     return `<blockquote expandable>${head}\n${factors}</blockquote>`
   }
-  // Чисто/не проверен — прятать нечего → обычная строка со скором (цитата не нужна).
-  if (risk && risk.assessed === true) {
-    return `🟢 Риск контрагента: 0% — чисто`
-  }
-  return `❔ Риск контрагента: не проверен`
+  // Чисто / не проверен — тоже цитата (единый вид), скор/статус в 1-й строке.
+  const clean = risk && risk.assessed === true
+  const head = clean ? '🟢 Риск контрагента: 0% — чисто' : '❔ Риск контрагента: не проверен'
+  const body = clean ? '• проверен, факторов риска не найдено' : '• данных пока нет — адрес поставлен на классификацию'
+  return `<blockquote expandable>${head}\n${body}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,

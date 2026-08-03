@@ -53,20 +53,18 @@ describe('formatMoveAlert · риск контрагента = expandable-цит
     const t = ext({ counterpartyRisk: { score: 25, level: 'warning', hop2: true, breakdown: [{ label: 'в 1 шаге от санкций/ЧС', pct: 25 }] } })
     expect(t).toMatch(/• в 1 шаге от санкций\/ЧС — 25%/)
   })
-  it('② assessed && score=0 → обычная строка «0% — чисто» (прятать нечего, не цитата)', () => {
+  it('② assessed && score=0 → цитата «0% — чисто»', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: true, breakdown: [] } })
-    expect(t).toMatch(/🟢 Риск контрагента: 0% — чисто/)
-    expect(t).not.toMatch(/<blockquote/)
+    expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: 0% — чисто/)
+    expect(t).toMatch(/• проверен, факторов риска не найдено<\/blockquote>/)
   })
-  it('③ assessed=false → обычная строка «не проверен» (НЕ цитата)', () => {
+  it('③ assessed=false → цитата «не проверен» (единый вид, никогда не пусто)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })
-    expect(t).toMatch(/❔ Риск контрагента: не проверен/)
-    expect(t).not.toMatch(/<blockquote/)
+    expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
   })
-  it('нет объекта риска вообще → тоже «не проверен» (никогда не пусто)', () => {
+  it('нет объекта риска вообще → тоже цитата «не проверен»', () => {
     const t = ext({})
-    expect(t).toMatch(/❔ Риск контрагента: не проверен/)
-    expect(t).not.toMatch(/<blockquote/)
+    expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
   })
   it('🔎 ссылка при PUBLIC_APP_URL', () => {
     const prev = process.env.PUBLIC_APP_URL; process.env.PUBLIC_APP_URL = 'https://app.test'
