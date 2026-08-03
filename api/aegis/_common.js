@@ -107,34 +107,32 @@ function matchCat(b) {
 function riskBlock(risk, sanctioned, title = 'Риск контрагента') {
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
-  if (!(hasScore || sanctioned)) return `❔ ${title}: не проверен`
+  const assessed = (risk && risk.assessed === true) || sanctioned || hasScore
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  const emoji = sanctioned ? '🔴' : riskEmoji(risk?.level, score)
-  const head = `${emoji} ${title}: ${hasScore ? `${score}%` : 'санкции'}`
+  // Заголовок: скор/санкции, иначе (оценён, но 0) «0%», иначе «нет данных». Чек-лист — ВСЕГДА.
+  let head
+  if (hasScore || sanctioned) head = `${sanctioned ? '🔴' : riskEmoji(risk?.level, score)} ${title}: ${hasScore ? `${score}%` : 'санкции'}`
+  else if (assessed) head = `${riskEmoji(risk?.level, score)} ${title}: ${score ?? 0}%`
+  else head = `❔ ${title}: нет данных`
   const byCat = {}
   const extras = []
   for (const b of bd) {
     const cat = matchCat(b)
     const pct = b.pct != null ? Number(b.pct) : null
     if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
-    else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null && pct > 0 ? ` — ${pct}%` : ''}`)
+    else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
   }
-  // Сработавшие категории → «• Name — pct%»; без вклада → компактная строка галочек
-  // «✓ Санкции · ✓ Чёрный список · …» (БЕЗ «— 0%»). verification/прочее — в extras отдельно.
-  const active = []
-  const clean = []
-  for (const [key, name, , short] of AML_CATS) {
+  // ПОЛНЫЙ список категорий с процентами (0% для несработавших) — по выбору владельца.
+  const catLines = AML_CATS.map(([key, name]) => {
     const pct = byCat[key] != null ? byCat[key] : key === 'sanctions' && sanctioned ? 100 : 0
-    if (pct > 0) active.push(`• ${name} — ${pct}%`)
-    else clean.push(`✓ ${short}`)
+    return `• ${name} — ${pct}%`
+  })
+  // Объясняющая строка, если фактора нет: скор>0 → «базовая оценка», нет данных → «не проверен».
+  if (!extras.length) {
+    if (hasScore) extras.push(`• базовая оценка — ${score}%`)
+    else if (!assessed) extras.push('• адрес не проверен (нет данных в AEGIS)')
   }
-  // Скор без единого фактора (AEGIS прислал score, но пустой breakdown) — не оставляем
-  // «N% и всё ✓» без объяснения: добавляем строку базовой оценки.
-  if (hasScore && !active.length && !extras.length) extras.push(`• базовая оценка — ${score}%`)
-  const bodyLines = [...active]
-  if (clean.length) bodyLines.push(clean.join(' · '))
-  bodyLines.push(...extras)
-  return `<blockquote expandable>${[head, ...bodyLines].join('\n')}</blockquote>`
+  return `<blockquote expandable>${[head, ...catLines, ...extras].join('\n')}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
@@ -173,7 +171,6 @@ export function formatMoveAlert(account, tx) {
   // Читаем оба нейминга: tx-watch шлёт сырую строку (risk_score), webhook — объект (riskScore).
   const ownScore = account.riskScore ?? account.risk_score ?? null
   const ownLevel = account.riskLevel ?? account.risk_level ?? null
-  const ownRiskStr = ownScore != null ? ` · ${riskEmoji(ownLevel, ownScore)} риск ${ownScore}%` : ''
   // Эксплорер + 🔎 деталь риска контрагента — в футер.
   const exp = EXPLORER_TX[account.network_id]
   const txLink = tx.txHash && exp ? `🔗 <a href="${exp.url(tx.txHash)}">Проверить перевод</a>` : ''
@@ -182,14 +179,14 @@ export function formatMoveAlert(account, tx) {
 
   // Вёрстка: заголовок (сумма) · наш кошелёк+его риск · контрагент+его риск+адрес · футер.
   const walletName = escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')
-  // Риск НАШЕГО кошелька — чек-лист-цитата, ТОЛЬКО если /v1/risk вернул реальные данные
-  // (score>0 или assessed). Пусто (score 0/assessed=false) → НЕ «не проверен» на своём
-  // мониторимом кошельке, а фолбэк на инлайн-скор из кэша accounts.risk_*.
+  // Риск НАШЕГО кошелька — ВСЕГДА чек-лист: данные /v1/risk (tx.ownRisk), иначе синтез из
+  // кэша accounts.risk_* (чтобы на мониторимом кошельке не пропадал чек-лист на EVM без данных).
   const rawOwn = tx.ownRisk
-  const ownRisk = rawOwn && (Number(rawOwn.score) > 0 || rawOwn.assessed === true) ? rawOwn : null
+  let ownRisk = rawOwn && (Number(rawOwn.score) > 0 || rawOwn.assessed === true) ? rawOwn : null
+  if (!ownRisk && ownScore != null) ownRisk = { score: ownScore, level: ownLevel, breakdown: [] }
   const lines = [
     `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
-    `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRisk ? '' : ownRiskStr}`,
+    `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}`,
   ]
   if (ownRisk) lines.push(riskBlock(ownRisk, false, 'Риск кошелька'))
   if (cp) {
