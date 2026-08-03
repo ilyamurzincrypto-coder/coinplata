@@ -92,12 +92,15 @@ function cpRiskBlock(risk, sanctioned) {
   const hasScore = score != null && score > 0
   // score>0/санкции = адрес ОЦЕНЁН → непокрытые измерения «чисто» (а не «нет данных»).
   const assessed = (risk && risk.assessed === true) || sanctioned || hasScore
+  // Нет данных → короткая спокойная цитата «оценивается» (без чек-листа «нет данных» ×4 = шум).
+  if (!assessed) {
+    return '<blockquote expandable>⏳ Риск контрагента: оценивается\n• адрес пока не классифицирован — данные появятся позже</blockquote>'
+  }
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  // Заголовок (свёрнутый вид): скор / санкции / не проверен.
-  let head
-  if (hasScore || sanctioned) head = `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
-  else if (assessed) head = '🟢 Риск контрагента: 0%'
-  else head = '❔ Риск контрагента: не проверен'
+  // Заголовок (свёрнутый вид): скор / санкции / чисто.
+  const head = hasScore || sanctioned
+    ? `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
+    : '🟢 Риск контрагента: 0%'
   // Статусы измерений из breakdown (макс. pct на измерение) + прочие факторы отдельными строками.
   const byDim = {}
   const extras = []

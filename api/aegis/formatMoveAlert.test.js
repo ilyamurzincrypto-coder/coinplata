@@ -13,7 +13,7 @@ describe('formatMoveAlert · базовое', () => {
     expect(a.text).toMatch(/🏦 Наш кошелёк: <b>W88 Mark<\/b> · TRC20/)
     expect(a.text).toMatch(/👤 Контрагент · P2P/)
     expect(a.text).toMatch(/<code>TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS<\/code>/)
-    expect(a.text).toMatch(/❔ Риск контрагента: не проверен/)
+    expect(a.text).toMatch(/⏳ Риск контрагента: оценивается/)
     expect(a.text).toMatch(/<a href="https:\/\/tronscan\.org\/#\/transaction\/h1">Проверить перевод<\/a>/)
     expect(a.meta.direction).toBe('in')
     expect(a.meta.explorer_url).toBe('https://tronscan.org/#/transaction/h1')
@@ -62,15 +62,15 @@ describe('formatMoveAlert · риск контрагента = expandable-цит
     expect(t).toMatch(/• Санкции — чисто/)
     expect(t).toMatch(/• Близость к санкц\/ЧС — чисто<\/blockquote>/)
   })
-  it('③ assessed=false → цитата «не проверен», измерения «нет данных»', () => {
+  it('③ assessed=false → короткая цитата «оценивается» (без чек-листа «нет данных»)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })
-    expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
-    expect(t).toMatch(/• Санкции — нет данных/)
+    expect(t).toMatch(/<blockquote expandable>⏳ Риск контрагента: оценивается/)
+    expect(t).toMatch(/адрес пока не классифицирован/)
+    expect(t).not.toMatch(/нет данных/)
   })
-  it('нет объекта риска вообще → тоже цитата «не проверен» + «нет данных»', () => {
+  it('нет объекта риска вообще → тоже «оценивается» (никогда не пусто)', () => {
     const t = ext({})
-    expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
-    expect(t).toMatch(/• Поведение — нет данных/)
+    expect(t).toMatch(/<blockquote expandable>⏳ Риск контрагента: оценивается/)
   })
   it('🔎 ссылка при PUBLIC_APP_URL', () => {
     const prev = process.env.PUBLIC_APP_URL; process.env.PUBLIC_APP_URL = 'https://app.test'
