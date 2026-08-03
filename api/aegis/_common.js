@@ -85,13 +85,13 @@ function riskEmoji(level, score) {
 // AML-категории (аудитории) для раскрытой цитаты. Матч фактора breakdown → категория:
 // сперва по стабильному b.category от AEGIS, затем фолбэк по kind/ключевым словам метки.
 const AML_CATS = [
-  ['sanctions', 'Санкции', /санкц|ofac|sanction/i],
-  ['blacklist', 'Чёрный список', /чёрн|черн|blacklist|блэклист/i],
-  ['mixer', 'Миксер', /миксер|mixer|тумблер|tumbler/i],
-  ['darknet', 'Даркнет', /даркнет|darknet|наркоплатформ|market/i],
-  ['gambling', 'Гемблинг', /гемблинг|gambling|казино|casino|ставк|\bbet/i],
-  ['scam', 'Скам/фрод', /скам|scam|фрод|fraud|phish|фишинг|обман/i],
-  ['proximity', 'Близость к санкц/ЧС', /1 шаг|проксимит|близост|proximity/i],
+  ['sanctions', 'Санкции', /санкц|ofac|sanction/i, 'Санкции'],
+  ['blacklist', 'Чёрный список', /чёрн|черн|blacklist|блэклист/i, 'Чёрный список'],
+  ['mixer', 'Миксер', /миксер|mixer|тумблер|tumbler/i, 'Миксер'],
+  ['darknet', 'Даркнет', /даркнет|darknet|наркоплатформ|market/i, 'Даркнет'],
+  ['gambling', 'Гемблинг', /гемблинг|gambling|казино|casino|ставк|\bbet/i, 'Гемблинг'],
+  ['scam', 'Скам/фрод', /скам|scam|фрод|fraud|phish|фишинг|обман/i, 'Скам'],
+  ['proximity', 'Близость к санкц/ЧС', /1 шаг|проксимит|близост|proximity/i, 'Близость'],
 ]
 function matchCat(b) {
   const c = (b?.category || '').toLowerCase()
@@ -119,13 +119,19 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента') 
     if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
     else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
   }
-  // Процент по КАЖДОЙ категории (как у AML-провайдеров): из breakdown, иначе 0% (санкции при
-  // sanctioned без скора — 100%). AEGIS должен слать per-category %; пока нет — показываем 0%.
-  const catLines = AML_CATS.map(([key, name]) => {
+  // Сработавшие категории → «• Name — pct%»; без вклада → компактная строка галочек
+  // «✓ Санкции · ✓ Чёрный список · …» (БЕЗ «— 0%»). verification/прочее — в extras отдельно.
+  const active = []
+  const clean = []
+  for (const [key, name, , short] of AML_CATS) {
     const pct = byCat[key] != null ? byCat[key] : key === 'sanctions' && sanctioned ? 100 : 0
-    return `• ${name} — ${pct}%`
-  })
-  return `<blockquote expandable>${[head, ...catLines, ...extras].join('\n')}</blockquote>`
+    if (pct > 0) active.push(`• ${name} — ${pct}%`)
+    else clean.push(`✓ ${short}`)
+  }
+  const bodyLines = [...active]
+  if (clean.length) bodyLines.push(clean.join(' · '))
+  bodyLines.push(...extras)
+  return `<blockquote expandable>${[head, ...bodyLines].join('\n')}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
