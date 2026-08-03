@@ -25,7 +25,7 @@ describe('formatMoveAlert · базовое', () => {
     expect(a.text).toMatch(/📤 <b>Списание −\$3,000\.00<\/b>/)
     expect(a.text).toMatch(/👤 Контрагент · микшер/)
     expect(a.text).toMatch(/<blockquote expandable>🔴 Риск контрагента: санкции/)
-    expect(a.text).toMatch(/• санкции/)
+    expect(a.text).toMatch(/• Санкции — есть/)
     expect(a.meta.counterparty_sanctioned).toBe(true)
   })
 
@@ -38,33 +38,39 @@ describe('formatMoveAlert · базовое', () => {
 })
 
 describe('formatMoveAlert · риск контрагента = expandable-цитата (три состояния, ВСЕГДА)', () => {
-  it('① score>0 → цитата: скор + факторы breakdown по %', () => {
-    const t = ext({ counterpartyRisk: { score: 100, level: 'critical', breakdown: [{ label: 'санкции', pct: 100 }, { label: 'чёрный список эмитента', pct: 100 }] } })
+  it('① score>0 → цитата: скор + чек-лист измерений по %', () => {
+    const t = ext({ counterpartyRisk: { score: 100, level: 'critical', breakdown: [{ label: 'санкции', pct: 100, kind: 'category' }, { label: 'чёрный список эмитента', pct: 100, kind: 'category' }] } })
     expect(t).toMatch(/<blockquote expandable>🔴 Риск контрагента: 100%/)
-    expect(t).toMatch(/• санкции — 100%/)
-    expect(t).toMatch(/• чёрный список эмитента — 100%<\/blockquote>/)
+    expect(t).toMatch(/• Санкции — 100%/)
+    expect(t).toMatch(/• Чёрный список — 100%/)
+    expect(t).toMatch(/• Поведение — чисто/)
+    expect(t).toMatch(/• Близость к санкц\/ЧС — чисто<\/blockquote>/)
   })
-  it('① warning + gambling breakdown', () => {
-    const t = ext({ counterpartyRisk: { score: 20, level: 'warning', breakdown: [{ label: 'гемблинг (по поведению)', pct: 20 }] } })
+  it('① warning + gambling → измерение «Поведение»', () => {
+    const t = ext({ counterpartyRisk: { score: 20, level: 'warning', breakdown: [{ label: 'гемблинг (по поведению)', pct: 20, kind: 'behavioral' }] } })
     expect(t).toMatch(/<blockquote expandable>🟡 Риск контрагента: 20%/)
-    expect(t).toMatch(/• гемблинг \(по поведению\) — 20%/)
+    expect(t).toMatch(/• Поведение — 20%/)
+    expect(t).toMatch(/• Санкции — чисто/)
   })
-  it('① hop2-фактор из breakdown', () => {
-    const t = ext({ counterpartyRisk: { score: 25, level: 'warning', hop2: true, breakdown: [{ label: 'в 1 шаге от санкций/ЧС', pct: 25 }] } })
-    expect(t).toMatch(/• в 1 шаге от санкций\/ЧС — 25%/)
+  it('① hop2 → измерение «Близость к санкц/ЧС»', () => {
+    const t = ext({ counterpartyRisk: { score: 25, level: 'warning', hop2: true, breakdown: [{ label: 'в 1 шаге от санкций/ЧС', pct: 25, kind: 'proximity' }] } })
+    expect(t).toMatch(/• Близость к санкц\/ЧС — 25%/)
   })
-  it('② assessed && score=0 → цитата «0% — чисто»', () => {
+  it('② assessed && score=0 → цитата «0%», все измерения «чисто»', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: true, breakdown: [] } })
-    expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: 0% — чисто/)
-    expect(t).toMatch(/• проверен, факторов риска не найдено<\/blockquote>/)
+    expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: 0%/)
+    expect(t).toMatch(/• Санкции — чисто/)
+    expect(t).toMatch(/• Близость к санкц\/ЧС — чисто<\/blockquote>/)
   })
-  it('③ assessed=false → цитата «не проверен» (единый вид, никогда не пусто)', () => {
+  it('③ assessed=false → цитата «не проверен», измерения «нет данных»', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })
     expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
+    expect(t).toMatch(/• Санкции — нет данных/)
   })
-  it('нет объекта риска вообще → тоже цитата «не проверен»', () => {
+  it('нет объекта риска вообще → тоже цитата «не проверен» + «нет данных»', () => {
     const t = ext({})
     expect(t).toMatch(/<blockquote expandable>❔ Риск контрагента: не проверен/)
+    expect(t).toMatch(/• Поведение — нет данных/)
   })
   it('🔎 ссылка при PUBLIC_APP_URL', () => {
     const prev = process.env.PUBLIC_APP_URL; process.env.PUBLIC_APP_URL = 'https://app.test'

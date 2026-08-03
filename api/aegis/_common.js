@@ -77,23 +77,43 @@ function riskEmoji(level, score) {
 // Блок риска ВНЕШНЕГО контрагента — ВСЕГДА одно из трёх (никогда не пусто). Требует parse_mode=HTML.
 //  1) score>0/санкции → expandable-цитата: свёрнуто скор, развёрнуто факторы по %;
 //  2) assessed && score=0 → expandable-цитата «чисто»; 3) нет данных → обычная строка «не проверен».
+// Фактор breakdown → измерение чек-листа (по kind, затем по ключевым словам метки).
+function classifyFactor(b) {
+  const lbl = (b?.label || '').toLowerCase()
+  if (b?.kind === 'proximity' || /1 шаг|проксимит|близост/.test(lbl)) return 'proximity'
+  if (/чёрн|черн|blacklist/.test(lbl)) return 'blacklist'
+  if (b?.kind === 'behavioral' || /поведени|гемблинг|gambling|mixer|микшер|казино|darknet|даркнет/.test(lbl)) return 'behavioral'
+  if (/санкц|ofac|sanction/.test(lbl)) return 'sanctions'
+  return 'other'
+}
+const RISK_DIMS = [['sanctions', 'Санкции'], ['blacklist', 'Чёрный список'], ['behavioral', 'Поведение'], ['proximity', 'Близость к санкц/ЧС']]
 function cpRiskBlock(risk, sanctioned) {
   const score = risk?.score ?? null
+  const hasScore = score != null && score > 0
+  // score>0/санкции = адрес ОЦЕНЁН → непокрытые измерения «чисто» (а не «нет данных»).
+  const assessed = (risk && risk.assessed === true) || sanctioned || hasScore
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  if ((score != null && score > 0) || sanctioned) {
-    const head = `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${score != null && score > 0 ? `${score}%` : 'санкции'}`
-    const factors = bd.length
-      ? bd.map((b) => `• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`).join('\n')
-      : sanctioned
-      ? '• санкции'
-      : '• фактор риска'
-    return `<blockquote expandable>${head}\n${factors}</blockquote>`
+  // Заголовок (свёрнутый вид): скор / санкции / не проверен.
+  let head
+  if (hasScore || sanctioned) head = `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
+  else if (assessed) head = '🟢 Риск контрагента: 0%'
+  else head = '❔ Риск контрагента: не проверен'
+  // Статусы измерений из breakdown (макс. pct на измерение) + прочие факторы отдельными строками.
+  const byDim = {}
+  const extras = []
+  for (const b of bd) {
+    const dim = classifyFactor(b)
+    if (dim === 'other') { extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`); continue }
+    const pct = b.pct != null ? Number(b.pct) : null
+    if (byDim[dim] == null || (pct != null && pct > byDim[dim])) byDim[dim] = pct != null ? pct : byDim[dim] ?? 0
   }
-  // Чисто / не проверен — тоже цитата (единый вид), скор/статус в 1-й строке.
-  const clean = risk && risk.assessed === true
-  const head = clean ? '🟢 Риск контрагента: 0% — чисто' : '❔ Риск контрагента: не проверен'
-  const body = clean ? '• проверен, факторов риска не найдено' : '• данных пока нет — адрес поставлен на классификацию'
-  return `<blockquote expandable>${head}\n${body}</blockquote>`
+  const dimLine = ([key, name]) => {
+    if (byDim[key] != null) return `• ${name} — ${byDim[key]}%`
+    if (key === 'sanctions' && sanctioned) return `• ${name} — есть`
+    return `• ${name} — ${assessed ? 'чисто' : 'нет данных'}`
+  }
+  const lines = [head, ...RISK_DIMS.map(dimLine), ...extras]
+  return `<blockquote expandable>${lines.join('\n')}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
