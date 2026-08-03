@@ -70,53 +70,33 @@ function escapeHtmlA(s) {
 }
 // Эмодзи риска по level/score (один порог на весь алерт: свой кошелёк + контрагент).
 function riskEmoji(level, score) {
-  if (level === 'critical' || Number(score) >= 80) return '🔴'
-  if (level === 'warning' || Number(score) >= 25) return '🟡'
+  // Строго по level (🟢 ok / 🟡 warning / 🔴 critical); фолбэк по score, если level нет.
+  if (level === 'critical') return '🔴'
+  if (level === 'warning') return '🟡'
+  if (level === 'ok') return '🟢'
+  if (Number(score) >= 80) return '🔴'
+  if (Number(score) >= 25) return '🟡'
   return '🟢'
 }
-// Блок риска ВНЕШНЕГО контрагента — ВСЕГДА одно из трёх (никогда не пусто). Требует parse_mode=HTML.
-//  1) score>0/санкции → expandable-цитата: свёрнуто скор, развёрнуто факторы по %;
-//  2) assessed && score=0 → expandable-цитата «чисто»; 3) нет данных → обычная строка «не проверен».
-// Фактор breakdown → измерение чек-листа (по kind, затем по ключевым словам метки).
-function classifyFactor(b) {
-  const lbl = (b?.label || '').toLowerCase()
-  if (b?.kind === 'proximity' || /1 шаг|проксимит|близост/.test(lbl)) return 'proximity'
-  if (/чёрн|черн|blacklist/.test(lbl)) return 'blacklist'
-  if (b?.kind === 'behavioral' || /поведени|гемблинг|gambling|mixer|микшер|казино|darknet|даркнет/.test(lbl)) return 'behavioral'
-  if (/санкц|ofac|sanction/.test(lbl)) return 'sanctions'
-  return 'other'
-}
-const RISK_DIMS = [['sanctions', 'Санкции'], ['blacklist', 'Чёрный список'], ['behavioral', 'Поведение'], ['proximity', 'Близость к санкц/ЧС']]
+// Блок риска ВНЕШНЕГО контрагента (parse_mode=HTML). score>0/санкции → expandable-цитата
+// «{emoji по level} Риск контрагента: N%» + breakdown-факторы AEGIS (baseline даёт ≥5 →
+// цитата всегда «высокая» → Telegram сворачивает). Нет оценки (assessed=false) → «❔ не проверен».
+// Baseline 10% приходит level=ok → 🟢 «риск 10%», фактор объяснит («контрагент не верифицирован»).
 function cpRiskBlock(risk, sanctioned) {
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
-  // score>0/санкции = адрес ОЦЕНЁН → непокрытые измерения «чисто» (а не «нет данных»).
-  const assessed = (risk && risk.assessed === true) || sanctioned || hasScore
-  // Нет данных → короткая спокойная цитата «оценивается» (без чек-листа «нет данных» ×4 = шум).
-  if (!assessed) {
-    return '<blockquote expandable>⏳ Риск контрагента: оценивается\n• адрес пока не классифицирован — данные появятся позже</blockquote>'
-  }
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  // Заголовок (свёрнутый вид): скор / санкции / чисто.
-  const head = hasScore || sanctioned
-    ? `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
-    : '🟢 Риск контрагента: 0%'
-  // Статусы измерений из breakdown (макс. pct на измерение) + прочие факторы отдельными строками.
-  const byDim = {}
-  const extras = []
-  for (const b of bd) {
-    const dim = classifyFactor(b)
-    if (dim === 'other') { extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`); continue }
-    const pct = b.pct != null ? Number(b.pct) : null
-    if (byDim[dim] == null || (pct != null && pct > byDim[dim])) byDim[dim] = pct != null ? pct : byDim[dim] ?? 0
+  if (hasScore || sanctioned) {
+    const emoji = sanctioned ? '🔴' : riskEmoji(risk?.level, score)
+    const head = `${emoji} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
+    const factors = bd.length
+      ? bd.map((b) => `• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`).join('\n')
+      : sanctioned
+      ? '• санкции'
+      : '• базовая оценка'
+    return `<blockquote expandable>${head}\n${factors}</blockquote>`
   }
-  const dimLine = ([key, name]) => {
-    if (byDim[key] != null) return `• ${name} — ${byDim[key]}%`
-    if (key === 'sanctions' && sanctioned) return `• ${name} — есть`
-    return `• ${name} — ${assessed ? 'чисто' : 'нет данных'}`
-  }
-  const lines = [head, ...RISK_DIMS.map(dimLine), ...extras]
-  return `<blockquote expandable>${lines.join('\n')}</blockquote>`
+  return '❔ Риск контрагента: не проверен'
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
