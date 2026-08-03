@@ -89,8 +89,9 @@ function cpRiskBlock(risk, sanctioned) {
       : '• фактор риска'
     return `<blockquote expandable>${head}\n${factors}</blockquote>`
   }
+  // Чисто/не проверен — прятать нечего → обычная строка со скором (цитата не нужна).
   if (risk && risk.assessed === true) {
-    return `<blockquote expandable>🟢 Риск контрагента: чисто\n• проверен, факторов риска не найдено</blockquote>`
+    return `🟢 Риск контрагента: 0% — чисто`
   }
   return `❔ Риск контрагента: не проверен`
 }

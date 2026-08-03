@@ -53,10 +53,10 @@ describe('formatMoveAlert · риск контрагента = expandable-цит
     const t = ext({ counterpartyRisk: { score: 25, level: 'warning', hop2: true, breakdown: [{ label: 'в 1 шаге от санкций/ЧС', pct: 25 }] } })
     expect(t).toMatch(/• в 1 шаге от санкций\/ЧС — 25%/)
   })
-  it('② assessed && score=0 → цитата «чисто»', () => {
+  it('② assessed && score=0 → обычная строка «0% — чисто» (прятать нечего, не цитата)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: true, breakdown: [] } })
-    expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: чисто/)
-    expect(t).toMatch(/проверен, факторов риска не найдено<\/blockquote>/)
+    expect(t).toMatch(/🟢 Риск контрагента: 0% — чисто/)
+    expect(t).not.toMatch(/<blockquote/)
   })
   it('③ assessed=false → обычная строка «не проверен» (НЕ цитата)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })
