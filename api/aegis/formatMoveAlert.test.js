@@ -121,3 +121,11 @@ describe('formatMoveAlert · own-риск пустой → фолбэк (не «
     expect(a.text).not.toMatch(/Риск кошелька/)
   })
 })
+
+describe('formatMoveAlert · скор без факторов → фолбэк-строка (не «N% и всё ✓»)', () => {
+  it('score>0, breakdown пустой → добавляет «• базовая оценка — N%»', () => {
+    const t = formatMoveAlert({ id: 'a', name: 'W', network_id: 'TRC20' }, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Tzzz', counterpartyRisk: { score: 10, level: 'ok', breakdown: [] } })
+    expect(t.text).toMatch(/🟢 Риск контрагента: 10%/)
+    expect(t.text).toMatch(/• базовая оценка — 10%<\/blockquote>/)
+  })
+})

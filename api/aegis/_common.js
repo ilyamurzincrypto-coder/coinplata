@@ -128,6 +128,9 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента') 
     if (pct > 0) active.push(`• ${name} — ${pct}%`)
     else clean.push(`✓ ${short}`)
   }
+  // Скор без единого фактора (AEGIS прислал score, но пустой breakdown) — не оставляем
+  // «N% и всё ✓» без объяснения: добавляем строку базовой оценки.
+  if (hasScore && !active.length && !extras.length) extras.push(`• базовая оценка — ${score}%`)
   const bodyLines = [...active]
   if (clean.length) bodyLines.push(clean.join(' · '))
   bodyLines.push(...extras)
