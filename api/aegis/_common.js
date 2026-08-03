@@ -117,7 +117,7 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента') 
     const cat = matchCat(b)
     const pct = b.pct != null ? Number(b.pct) : null
     if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
-    else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
+    else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null && pct > 0 ? ` — ${pct}%` : ''}`)
   }
   // Сработавшие категории → «• Name — pct%»; без вклада → компактная строка галочек
   // «✓ Санкции · ✓ Чёрный список · …» (БЕЗ «— 0%»). verification/прочее — в extras отдельно.
