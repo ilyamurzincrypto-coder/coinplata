@@ -21,7 +21,8 @@ describe('formatMoveAlert · базовое', () => {
     const a = formatMoveAlert(acc, tx)
     expect(a.text).toMatch(/📤 <b>Списание −\$3,000\.00<\/b>/)
     expect(a.text).toMatch(/<blockquote expandable>🔴 Риск контрагента: санкции/)
-    expect(a.text).toMatch(/• санкции/)
+    expect(a.text).toMatch(/• Санкции — есть/)
+    expect(a.text).toMatch(/• Миксер — чисто/)
     expect(a.meta.counterparty_sanctioned).toBe(true)
   })
 
@@ -32,28 +33,33 @@ describe('formatMoveAlert · базовое', () => {
   })
 })
 
-describe('formatMoveAlert · риск контрагента (breakdown в цитате, эмодзи по level)', () => {
-  it('baseline 10% level=ok → 🟢 «риск 10%» + фактор (не «чисто»)', () => {
+describe('formatMoveAlert · риск = цитата с чек-листом по AML-категориям', () => {
+  it('baseline 10% (ok) → 🟢 скор + все категории «чисто» + доп-фактор AEGIS', () => {
     const t = ext({ counterpartyRisk: { score: 10, level: 'ok', assessed: true, breakdown: [{ label: 'контрагент не верифицирован', pct: 10 }] } })
     expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: 10%/)
+    expect(t).toMatch(/• Санкции — чисто/)
+    expect(t).toMatch(/• Гемблинг — чисто/)
     expect(t).toMatch(/• контрагент не верифицирован — 10%<\/blockquote>/)
-    expect(t).not.toMatch(/чисто/)
-    expect(t).not.toMatch(/факторов риска не найдено/)
   })
-  it('critical 100% → 🔴 + факторы breakdown напрямую', () => {
+  it('critical 100% → 🔴 + Санкции/Чёрный список по %, прочие чисто', () => {
     const t = ext({ counterpartyRisk: { score: 100, level: 'critical', breakdown: [{ label: 'санкции', pct: 100 }, { label: 'чёрный список эмитента', pct: 100 }] } })
     expect(t).toMatch(/<blockquote expandable>🔴 Риск контрагента: 100%/)
-    expect(t).toMatch(/• санкции — 100%/)
-    expect(t).toMatch(/• чёрный список эмитента — 100%<\/blockquote>/)
+    expect(t).toMatch(/• Санкции — 100%/)
+    expect(t).toMatch(/• Чёрный список — 100%/)
+    expect(t).toMatch(/• Миксер — чисто/)
   })
-  it('warning → 🟡 (эмодзи по level, не по порогу score)', () => {
+  it('warning gambling → 🟡, Гемблинг по %', () => {
     const t = ext({ counterpartyRisk: { score: 20, level: 'warning', breakdown: [{ label: 'гемблинг (по поведению)', pct: 20 }] } })
     expect(t).toMatch(/<blockquote expandable>🟡 Риск контрагента: 20%/)
-    expect(t).toMatch(/• гемблинг \(по поведению\) — 20%/)
+    expect(t).toMatch(/• Гемблинг — 20%/)
+    expect(t).toMatch(/• Санкции — чисто/)
   })
-  it('level=ok даже при score 30 → 🟢 (level главнее порога)', () => {
-    const t = ext({ counterpartyRisk: { score: 30, level: 'ok', breakdown: [{ label: 'фон', pct: 30 }] } })
-    expect(t).toMatch(/🟢 Риск контрагента: 30%/)
+  it('матч по стабильному b.category (не только по метке)', () => {
+    const t = ext({ counterpartyRisk: { score: 50, level: 'warning', breakdown: [{ label: 'tumbler service', pct: 50, category: 'mixer' }] } })
+    expect(t).toMatch(/• Миксер — 50%/)
+  })
+  it('level=ok при score 30 → 🟢 (level главнее порога)', () => {
+    expect(ext({ counterpartyRisk: { score: 30, level: 'ok', breakdown: [] } })).toMatch(/🟢 Риск контрагента: 30%/)
   })
   it('assessed=false → строка «❔ не проверен» (не цитата)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })

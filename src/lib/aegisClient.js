@@ -192,7 +192,7 @@ export function normalizeRisk(raw) {
     behavioralType: raw.behavioral_type ?? null, // поведенческий тип (для подписи риска)
     // Факторы риска с % (отсорт по pct) — для expandable-цитаты в уведомлении.
     breakdown: Array.isArray(raw.breakdown)
-      ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null }))
+      ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null, category: b.category ?? null }))
       : [],
   };
 }

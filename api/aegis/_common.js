@@ -82,21 +82,48 @@ function riskEmoji(level, score) {
 // «{emoji по level} Риск контрагента: N%» + breakdown-факторы AEGIS (baseline даёт ≥5 →
 // цитата всегда «высокая» → Telegram сворачивает). Нет оценки (assessed=false) → «❔ не проверен».
 // Baseline 10% приходит level=ok → 🟢 «риск 10%», фактор объяснит («контрагент не верифицирован»).
+// AML-категории (аудитории) для раскрытой цитаты. Матч фактора breakdown → категория:
+// сперва по стабильному b.category от AEGIS, затем фолбэк по kind/ключевым словам метки.
+const AML_CATS = [
+  ['sanctions', 'Санкции', /санкц|ofac|sanction/i],
+  ['blacklist', 'Чёрный список', /чёрн|черн|blacklist|блэклист/i],
+  ['mixer', 'Миксер', /миксер|mixer|тумблер|tumbler/i],
+  ['darknet', 'Даркнет', /даркнет|darknet|наркоплатформ|market/i],
+  ['gambling', 'Гемблинг', /гемблинг|gambling|казино|casino|ставк|\bbet/i],
+  ['scam', 'Скам/фрод', /скам|scam|фрод|fraud|phish|фишинг|обман/i],
+  ['proximity', 'Близость к санкц/ЧС', /1 шаг|проксимит|близост|proximity/i],
+]
+function matchCat(b) {
+  const c = (b?.category || '').toLowerCase()
+  if (c && AML_CATS.some(([k]) => k === c)) return c
+  if (b?.kind === 'proximity') return 'proximity'
+  const lbl = b?.label || ''
+  for (const [key, , re] of AML_CATS) if (re.test(lbl)) return key
+  return null // не категория из списка → отдельной строкой (напр. верификация/сущность)
+}
+// Внешний контрагент: score>0/санкции → expandable-цитата (заголовок=скор, тело=риск по
+// ВСЕМ AML-категориям + доп-факторы AEGIS). assessed=false → «❔ не проверен». parse_mode=HTML.
 function cpRiskBlock(risk, sanctioned) {
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
+  if (!(hasScore || sanctioned)) return '❔ Риск контрагента: не проверен'
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  if (hasScore || sanctioned) {
-    const emoji = sanctioned ? '🔴' : riskEmoji(risk?.level, score)
-    const head = `${emoji} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
-    const factors = bd.length
-      ? bd.map((b) => `• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`).join('\n')
-      : sanctioned
-      ? '• санкции'
-      : '• базовая оценка'
-    return `<blockquote expandable>${head}\n${factors}</blockquote>`
+  const emoji = sanctioned ? '🔴' : riskEmoji(risk?.level, score)
+  const head = `${emoji} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
+  const byCat = {}
+  const extras = []
+  for (const b of bd) {
+    const cat = matchCat(b)
+    const pct = b.pct != null ? Number(b.pct) : null
+    if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
+    else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
   }
-  return '❔ Риск контрагента: не проверен'
+  const catLines = AML_CATS.map(([key, name]) => {
+    if (byCat[key] != null) return `• ${name} — ${byCat[key]}%`
+    if (key === 'sanctions' && sanctioned) return `• ${name} — есть`
+    return `• ${name} — чисто`
+  })
+  return `<blockquote expandable>${[head, ...catLines, ...extras].join('\n')}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
