@@ -21,8 +21,8 @@ describe('formatMoveAlert · базовое', () => {
     const a = formatMoveAlert(acc, tx)
     expect(a.text).toMatch(/📤 <b>Списание −\$3,000\.00<\/b>/)
     expect(a.text).toMatch(/<blockquote expandable>🔴 Риск контрагента: санкции/)
-    expect(a.text).toMatch(/• Санкции — есть/)
-    expect(a.text).toMatch(/• Миксер — чисто/)
+    expect(a.text).toMatch(/• Санкции — 100%/)
+    expect(a.text).toMatch(/• Миксер — 0%/)
     expect(a.meta.counterparty_sanctioned).toBe(true)
   })
 
@@ -37,8 +37,8 @@ describe('formatMoveAlert · риск = цитата с чек-листом по
   it('baseline 10% (ok) → 🟢 скор + все категории «чисто» + доп-фактор AEGIS', () => {
     const t = ext({ counterpartyRisk: { score: 10, level: 'ok', assessed: true, breakdown: [{ label: 'контрагент не верифицирован', pct: 10 }] } })
     expect(t).toMatch(/<blockquote expandable>🟢 Риск контрагента: 10%/)
-    expect(t).toMatch(/• Санкции — чисто/)
-    expect(t).toMatch(/• Гемблинг — чисто/)
+    expect(t).toMatch(/• Санкции — 0%/)
+    expect(t).toMatch(/• Гемблинг — 0%/)
     expect(t).toMatch(/• контрагент не верифицирован — 10%<\/blockquote>/)
   })
   it('critical 100% → 🔴 + Санкции/Чёрный список по %, прочие чисто', () => {
@@ -46,13 +46,13 @@ describe('formatMoveAlert · риск = цитата с чек-листом по
     expect(t).toMatch(/<blockquote expandable>🔴 Риск контрагента: 100%/)
     expect(t).toMatch(/• Санкции — 100%/)
     expect(t).toMatch(/• Чёрный список — 100%/)
-    expect(t).toMatch(/• Миксер — чисто/)
+    expect(t).toMatch(/• Миксер — 0%/)
   })
   it('warning gambling → 🟡, Гемблинг по %', () => {
     const t = ext({ counterpartyRisk: { score: 20, level: 'warning', breakdown: [{ label: 'гемблинг (по поведению)', pct: 20 }] } })
     expect(t).toMatch(/<blockquote expandable>🟡 Риск контрагента: 20%/)
     expect(t).toMatch(/• Гемблинг — 20%/)
-    expect(t).toMatch(/• Санкции — чисто/)
+    expect(t).toMatch(/• Санкции — 0%/)
   })
   it('матч по стабильному b.category (не только по метке)', () => {
     const t = ext({ counterpartyRisk: { score: 50, level: 'warning', breakdown: [{ label: 'tumbler service', pct: 50, category: 'mixer' }] } })
@@ -92,5 +92,23 @@ describe('formatMoveAlert · свой кошелёк + шапка', () => {
     const a = formatMoveAlert(acc, { direction: 'out', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TOwnxxxxxxxxxxxxxxxxxxxxxxxxx', counterpartyOwn: true, counterpartyName: 'WW-135 (kit out)' })
     expect(a.text).toMatch(/👤 Контрагент · WW-135 \(kit out\) \(свой\)/)
     expect(a.text).not.toMatch(/Риск контрагента/)
+  })
+})
+
+describe('formatMoveAlert · риск НАШЕГО кошелька — такой же чек-лист', () => {
+  it('tx.ownRisk → отдельная цитата «Риск кошелька» с категориями', () => {
+    const a = formatMoveAlert(acc, {
+      direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx',
+      ownRisk: { score: 10, level: 'ok', assessed: true, breakdown: [{ label: 'наш кошелёк не верифицирован', pct: 10 }] },
+    })
+    expect(a.text).toMatch(/<blockquote expandable>🟢 Риск кошелька: 10%/)
+    expect(a.text).toMatch(/• Санкции — 0%/)
+    expect(a.text).toMatch(/• наш кошелёк не верифицирован — 10%<\/blockquote>/)
+  })
+  it('без ownRisk → фолбэк инлайн-скор в шапке (из accounts кэша)', () => {
+    const dirty = { id: 'a1', name: 'W88 Mark', network_id: 'TRC20', risk_score: 55, risk_level: 'warning' }
+    const a = formatMoveAlert(dirty, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' })
+    expect(a.text).toMatch(/🏦 Наш кошелёк: <b>W88 Mark<\/b> · TRC20 · 🟡 риск 55%/)
+    expect(a.text).not.toMatch(/Риск кошелька/)
   })
 })

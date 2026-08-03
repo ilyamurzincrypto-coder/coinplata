@@ -109,6 +109,8 @@ async function sweepWallet(db, w, cursors, key, ownByAddr) {
         m.txObj.counterpartyRisk = await cachedRiskScore(aegis, w.network_id, m.counterparty)
       }
     }
+    // Риск НАШЕГО кошелька — такой же чек-лист (из /v1/risk по нашему адресу, кэш 10 мин).
+    m.txObj.ownRisk = await cachedRiskScore(aegis, w.network_id, w.address)
     try { await notifyManagerBot(formatMoveAlert(w, m.txObj)); sent++ } catch { /* не валим свип */ }
     if (m.bt > newCursor) newCursor = m.bt
   }

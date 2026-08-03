@@ -101,15 +101,16 @@ function matchCat(b) {
   for (const [key, , re] of AML_CATS) if (re.test(lbl)) return key
   return null // не категория из списка → отдельной строкой (напр. верификация/сущность)
 }
-// Внешний контрагент: score>0/санкции → expandable-цитата (заголовок=скор, тело=риск по
-// ВСЕМ AML-категориям + доп-факторы AEGIS). assessed=false → «❔ не проверен». parse_mode=HTML.
-function cpRiskBlock(risk, sanctioned) {
+// Блок риска (наш кошелёк ИЛИ контрагент): score>0/санкции → expandable-цитата (заголовок=скор,
+// тело=риск по ВСЕМ AML-категориям + доп-факторы AEGIS). assessed=false → «❔ не проверен».
+// title — «Риск кошелька» / «Риск контрагента». parse_mode=HTML.
+function riskBlock(risk, sanctioned, title = 'Риск контрагента') {
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
-  if (!(hasScore || sanctioned)) return '❔ Риск контрагента: не проверен'
+  if (!(hasScore || sanctioned)) return `❔ ${title}: не проверен`
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
   const emoji = sanctioned ? '🔴' : riskEmoji(risk?.level, score)
-  const head = `${emoji} Риск контрагента: ${hasScore ? `${score}%` : 'санкции'}`
+  const head = `${emoji} ${title}: ${hasScore ? `${score}%` : 'санкции'}`
   const byCat = {}
   const extras = []
   for (const b of bd) {
@@ -118,10 +119,11 @@ function cpRiskBlock(risk, sanctioned) {
     if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
     else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
   }
+  // Процент по КАЖДОЙ категории (как у AML-провайдеров): из breakdown, иначе 0% (санкции при
+  // sanctioned без скора — 100%). AEGIS должен слать per-category %; пока нет — показываем 0%.
   const catLines = AML_CATS.map(([key, name]) => {
-    if (byCat[key] != null) return `• ${name} — ${byCat[key]}%`
-    if (key === 'sanctions' && sanctioned) return `• ${name} — есть`
-    return `• ${name} — чисто`
+    const pct = byCat[key] != null ? byCat[key] : key === 'sanctions' && sanctioned ? 100 : 0
+    return `• ${name} — ${pct}%`
   })
   return `<blockquote expandable>${[head, ...catLines, ...extras].join('\n')}</blockquote>`
 }
@@ -171,10 +173,14 @@ export function formatMoveAlert(account, tx) {
 
   // Вёрстка: заголовок (сумма) · наш кошелёк+его риск · контрагент+его риск+адрес · футер.
   const walletName = escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')
+  // Риск НАШЕГО кошелька — такой же чек-лист-цитата, если пришёл полный риск (tx.ownRisk из
+  // /v1/risk по нашему адресу). Иначе фолбэк — инлайн-скор из кэша accounts.risk_*.
+  const ownRisk = tx.ownRisk || null
   const lines = [
     `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
-    `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRiskStr}`,
+    `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRisk ? '' : ownRiskStr}`,
   ]
+  if (ownRisk) lines.push(riskBlock(ownRisk, false, 'Риск кошелька'))
   if (cp) {
     if (tx.counterpartyOwn) {
       // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.
@@ -186,7 +192,7 @@ export function formatMoveAlert(account, tx) {
       // Внешний: идентификация + адрес + блок риска (ВСЕГДА, три состояния).
       lines.push(`👤 Контрагент${label ? ` · ${escapeHtmlA(label)}` : ''}`)
       lines.push(`<code>${escapeHtmlA(cp)}</code>`)
-      lines.push(cpRiskBlock(risk, sanctioned))
+      lines.push(riskBlock(risk, sanctioned, 'Риск контрагента'))
     }
   }
   const footer = [txLink, riskLink].filter(Boolean).join(' · ')

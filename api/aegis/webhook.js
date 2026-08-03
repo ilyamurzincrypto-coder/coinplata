@@ -164,6 +164,8 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
         }
       }
     }
+    // Риск НАШЕГО кошелька (acc — офисный счёт по event.address) — такой же чек-лист.
+    const ownRisk = acc?.address && deps.riskLookup ? await deps.riskLookup(network, acc.address) : null
     let notified = false
     if (saved === 'new' && deps.notifyMove) {
       // Алерт — best-effort: сбой notify НЕ валит webhook (иначе 500 → ретрай дедупится
@@ -181,6 +183,7 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
             counterpartyRisk,
             counterpartyOwn: cpIsOwn,
             counterpartyName: cpAcc?.name || null,
+            ownRisk,
           },
         })
         notified = r !== false // notifyManagerBot → bool «доставлено»
