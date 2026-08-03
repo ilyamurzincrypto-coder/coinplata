@@ -86,7 +86,7 @@ export async function cachedRiskScore(aegisClient, network, address) {
   if (hit && Date.now() - hit.at < RISK_TTL_MS) return hit.risk
   try {
     const [r] = await aegisClient.screenRisk({ network, addresses: [address] })
-    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2 } : null
+    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2, assessed: r.assessed === true, behavioralType: r.behavioralType ?? null } : null
     _riskCache.set(key, { risk, at: Date.now() })
     return risk
   } catch {
@@ -105,10 +105,20 @@ export function formatMoveAlert(account, tx) {
   const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '')
   // Риск-% контрагента (счёт кладёт вызывающий: webhook — из event.counterparty_risk;
   // tx-watch — из /v1/risk). Только для ВНЕШНИХ контрагентов (own → risk не проставляют).
+  // Строка риска контрагента — ВСЕГДА одна из трёх (для ВНЕШНЕГО), никогда не пусто
+  // (регрессия: пропадала при score=0/нет данных). 1) риск N% · 2) проверен·чисто · 3) не проверен.
   const risk = tx.counterpartyRisk
-  let riskStr = ''
-  if (risk && risk.score != null) {
-    riskStr = ` · ${riskEmoji(risk.level, risk.score)} риск ${risk.score}%${risk.hop2 ? ' (в 1 шаге от санкций/ЧС)' : ''}`
+  let cpState
+  if (risk && risk.score > 0) {
+    cpState = `${riskEmoji(risk.level, risk.score)} риск ${risk.score}%`
+    if (risk.behavioralType) cpState += ` (${MOVE_CAT_LABEL[risk.behavioralType] || risk.behavioralType})`
+    if (risk.hop2) cpState += ' (в 1 шаге от санкций/ЧС)'
+  } else if (sanctioned) {
+    cpState = '🔴 санкции'
+  } else if ((risk && risk.assessed === true) || tx.counterpartyEntity) {
+    cpState = '🟢 проверен · чисто'
+  } else {
+    cpState = '❔ не проверен'
   }
   // «Грязнота» НАШЕГО кошелька — показываем каждый раз (из кэша accounts.risk_*, без запроса).
   // Читаем оба нейминга: tx-watch шлёт сырую строку (risk_score), webhook — объект (riskScore).
@@ -128,8 +138,16 @@ export function formatMoveAlert(account, tx) {
     `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRiskStr}`,
   ]
   if (cp) {
+    if (tx.counterpartyOwn) {
+      // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.
+      const ownName = tx.counterpartyName || label || 'свой кошелёк'
+      lines.push(`👤 Контрагент · ${escapeHtmlA(ownName)} (свой)`)
+    } else {
+      // Внешний — строка риска ВСЕГДА (cpState). ⚠️ санкции добавляем только к числовому риску.
+      const extra = sanctioned && risk && risk.score > 0 ? ' ⚠️ санкции' : ''
+      lines.push(`👤 Контрагент · ${cpState}${label ? ` · ${escapeHtmlA(label)}` : ''}${extra}`)
+    }
     // Полный адрес отдельной строкой в <code> — Telegram копирует ТЕКСТ (усечение с «…» ломало копи).
-    lines.push(`👤 Контрагент${riskStr}${label ? ` · ${escapeHtmlA(label)}` : ''}${sanctioned ? ' ⚠️ санкции' : ''}`)
     lines.push(`<code>${escapeHtmlA(cp)}</code>`)
   }
   const footer = [txLink, riskLink].filter(Boolean).join(' · ')

@@ -10,7 +10,7 @@ describe('formatMoveAlert', () => {
     expect(a.kind).toBe('wallet_move')
     expect(a.text).toMatch(/💰 <b>Поступление \+\$5,000\.00<\/b>/)
     expect(a.text).toMatch(/🏦 Наш кошелёк: <b>W88 Mark<\/b> · TRC20/)
-    expect(a.text).toMatch(/👤 Контрагент · P2P/)
+    expect(a.text).toMatch(/👤 Контрагент · ❔ не проверен · P2P/)
     expect(a.text).toMatch(/<code>TTqKSJbsbxTBpKzz1GDoTsDBpDMHWV84kS<\/code>/)
     expect(a.text).toMatch(/<a href="https:\/\/tronscan\.org\/#\/transaction\/h1">Проверить перевод<\/a>/)
     expect(a.meta.direction).toBe('in')
@@ -22,7 +22,7 @@ describe('formatMoveAlert', () => {
     const tx = { direction: 'out', amount: { amount: '3000000000', decimals: 6 }, counterparty: 'TMixerAddrxxxxxxxxxxxxxxxxxxxxx', counterpartyEntity: { category: 'mixer', sanctioned: true }, ts: '2026-07-24T11:00:00Z' }
     const a = formatMoveAlert(acc, tx)
     expect(a.text).toMatch(/📤 <b>Списание −\$3,000\.00<\/b>/)
-    expect(a.text).toMatch(/👤 Контрагент · микшер ⚠️ санкции/)
+    expect(a.text).toMatch(/👤 Контрагент · 🔴 санкции · микшер/)
     expect(a.meta.counterparty_sanctioned).toBe(true)
   })
 
@@ -72,5 +72,28 @@ describe('formatMoveAlert · риск НАШЕГО кошелька в шапк�
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb' })
     expect(a.text).toMatch(/<code>TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb<\/code>/)
     expect(a.text).not.toMatch(/…/)
+  })
+})
+
+describe('formatMoveAlert · три состояния риска ВНЕШНЕГО контрагента (никогда не пусто)', () => {
+  const mk = (over) => formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TExtxxxxxxxxxxxxxxxxxxxxxxxxx', ...over }).text
+  it('score>0 → «риск N%» (+ поведенческий тип рус, + hop2)', () => {
+    expect(mk({ counterpartyRisk: { score: 60, level: 'warning', assessed: true, behavioralType: 'gambling', hop2: true } }))
+      .toMatch(/👤 Контрагент · 🟡 риск 60% \(гэмблинг\) \(в 1 шаге от санкций\/ЧС\)/)
+  })
+  it('assessed=true И score=0 → «🟢 проверен · чисто»', () => {
+    expect(mk({ counterpartyRisk: { score: 0, level: 'ok', assessed: true } })).toMatch(/👤 Контрагент · 🟢 проверен · чисто/)
+  })
+  it('assessed=false → «❔ не проверен»', () => {
+    expect(mk({ counterpartyRisk: { score: 0, level: 'ok', assessed: false } })).toMatch(/👤 Контрагент · ❔ не проверен/)
+  })
+  it('нет объекта риска вообще → тоже «❔ не проверен» (никогда не пусто)', () => {
+    expect(mk({})).toMatch(/👤 Контрагент · ❔ не проверен/)
+  })
+  it('свой контрагент (own) → имя офиса, БЕЗ риска', () => {
+    const a = formatMoveAlert(acc, { direction: 'out', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TOwnxxxxxxxxxxxxxxxxxxxxxxxxx', counterpartyOwn: true, counterpartyName: 'WW-135 (kit out)' })
+    expect(a.text).toMatch(/👤 Контрагент · WW-135 \(kit out\) \(свой\)/)
+    expect(a.text).not.toMatch(/риск/)
+    expect(a.text).not.toMatch(/не проверен/)
   })
 })

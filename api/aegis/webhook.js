@@ -16,7 +16,8 @@
  *      (+ COINPOINT_API_URL/CASHDESK_API_SECRET или TELEGRAM_* для алертов).
  */
 import { createHmac, timingSafeEqual } from 'crypto'
-import { svcClient, notifyManagerBot, formatMoveAlert } from './_common.js'
+import { svcClient, notifyManagerBot, formatMoveAlert, cachedRiskScore } from './_common.js'
+import { aegis } from '../../src/lib/aegisClient.js'
 
 export const config = { api: { bodyParser: false } }
 
@@ -144,13 +145,25 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
       ts,
       source: event.event,
     })
-    // Риск-% контрагента: из event.counterparty_risk (0 доп-запросов). Только ВНЕШНИЙ
-    // (если counterparty — наш же счёт, риск не показываем).
-    const cpRisk = event.counterparty_risk || null
-    const cpIsOwn = cp ? !!(await deps.findAccount({ address: cp, network: netId })) : false
-    const counterpartyRisk = cpRisk && !cpIsOwn
-      ? { score: cpRisk.score ?? null, level: cpRisk.level ?? null, hop2: cpRisk.hop2_proximity === true }
-      : null
+    // Контрагент: свой счёт → имя, без риска; внешний → риск (POST /v1/risk, кэш 10 мин —
+    // точный assessed) с фолбэком на event.counterparty_risk. Строку риска для внешнего
+    // formatMoveAlert рисует ВСЕГДА (три состояния), даже при score=0/нет данных.
+    const cpAcc = cp ? await deps.findAccount({ address: cp, network: netId }) : null
+    const cpIsOwn = !!cpAcc
+    let counterpartyRisk = null
+    if (cp && !cpIsOwn) {
+      counterpartyRisk = deps.riskLookup ? await deps.riskLookup(netId, cp) : null
+      if (!counterpartyRisk && event.counterparty_risk) {
+        const cr = event.counterparty_risk
+        counterpartyRisk = {
+          score: cr.score ?? 0,
+          level: cr.level ?? null,
+          hop2: cr.hop2_proximity === true,
+          assessed: Number(cr.score) > 0 || event.counterparty_entity != null,
+          behavioralType: cr.behavioral_type ?? null,
+        }
+      }
+    }
     let notified = false
     if (saved === 'new' && deps.notifyMove) {
       // Алерт — best-effort: сбой notify НЕ валит webhook (иначе 500 → ретрай дедупится
@@ -166,6 +179,8 @@ export async function handleAegisEvent({ raw, signature, secret, deps }) {
             ts,
             counterpartyEntity: event.counterparty_entity || null,
             counterpartyRisk,
+            counterpartyOwn: cpIsOwn,
+            counterpartyName: cpAcc?.name || null,
           },
         })
         notified = r !== false // notifyManagerBot → bool «доставлено»
@@ -246,6 +261,8 @@ export default async function handler(req, res) {
       return 'new'
     },
     notifyMove: ({ account, tx }) => notifyManagerBot(formatMoveAlert(account, tx)),
+    // Точный риск внешнего контрагента (POST /v1/risk, кэш 10 мин) — assessed/behavioral_type.
+    riskLookup: (net, addr) => cachedRiskScore(aegis, net, addr),
   }
 
   try {

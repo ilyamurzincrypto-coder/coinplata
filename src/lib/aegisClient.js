@@ -188,6 +188,8 @@ export function normalizeRisk(raw) {
     level: raw.level ?? null, // ok|warning|critical
     categories: Array.isArray(raw.categories) ? raw.categories : [],
     hop2: raw.hop2_proximity === true, // контрагент сам в 1 шаге от санкц/ЧС
+    assessed: raw.assessed === true, // есть КОНКРЕТНЫЙ сигнал (иначе «нет данных», не «чисто»)
+    behavioralType: raw.behavioral_type ?? null, // поведенческий тип (для подписи риска)
   };
 }
 
