@@ -112,3 +112,12 @@ describe('formatMoveAlert · риск НАШЕГО кошелька — тако
     expect(a.text).not.toMatch(/Риск кошелька/)
   })
 })
+
+describe('formatMoveAlert · own-риск пустой → фолбэк (не «не проверен»)', () => {
+  it('ownRisk {score:0,assessed:false} + кэш risk_score → инлайн-скор, без «Риск кошелька: не проверен»', () => {
+    const dirty = { id: 'a1', name: 'WW-131', network_id: 'TRC20', risk_score: 10, risk_level: 'ok' }
+    const a = formatMoveAlert(dirty, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx', ownRisk: { score: 0, assessed: false, breakdown: [] } })
+    expect(a.text).toMatch(/🏦 Наш кошелёк: <b>WW-131<\/b> · TRC20 · 🟢 риск 10%/)
+    expect(a.text).not.toMatch(/Риск кошелька/)
+  })
+})

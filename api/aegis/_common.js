@@ -173,9 +173,11 @@ export function formatMoveAlert(account, tx) {
 
   // Вёрстка: заголовок (сумма) · наш кошелёк+его риск · контрагент+его риск+адрес · футер.
   const walletName = escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')
-  // Риск НАШЕГО кошелька — такой же чек-лист-цитата, если пришёл полный риск (tx.ownRisk из
-  // /v1/risk по нашему адресу). Иначе фолбэк — инлайн-скор из кэша accounts.risk_*.
-  const ownRisk = tx.ownRisk || null
+  // Риск НАШЕГО кошелька — чек-лист-цитата, ТОЛЬКО если /v1/risk вернул реальные данные
+  // (score>0 или assessed). Пусто (score 0/assessed=false) → НЕ «не проверен» на своём
+  // мониторимом кошельке, а фолбэк на инлайн-скор из кэша accounts.risk_*.
+  const rawOwn = tx.ownRisk
+  const ownRisk = rawOwn && (Number(rawOwn.score) > 0 || rawOwn.assessed === true) ? rawOwn : null
   const lines = [
     `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
     `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}${ownRisk ? '' : ownRiskStr}`,
