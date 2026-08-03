@@ -74,6 +74,26 @@ function riskEmoji(level, score) {
   if (level === 'warning' || Number(score) >= 25) return '🟡'
   return '🟢'
 }
+// Блок риска ВНЕШНЕГО контрагента — ВСЕГДА одно из трёх (никогда не пусто). Требует parse_mode=HTML.
+//  1) score>0/санкции → expandable-цитата: свёрнуто скор, развёрнуто факторы по %;
+//  2) assessed && score=0 → expandable-цитата «чисто»; 3) нет данных → обычная строка «не проверен».
+function cpRiskBlock(risk, sanctioned) {
+  const score = risk?.score ?? null
+  const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
+  if ((score != null && score > 0) || sanctioned) {
+    const head = `${riskEmoji(risk?.level, score != null ? score : 100)} Риск контрагента: ${score != null && score > 0 ? `${score}%` : 'санкции'}`
+    const factors = bd.length
+      ? bd.map((b) => `• ${escapeHtmlA(b.label || 'фактор')}${b.pct != null ? ` — ${b.pct}%` : ''}`).join('\n')
+      : sanctioned
+      ? '• санкции'
+      : '• фактор риска'
+    return `<blockquote expandable>${head}\n${factors}</blockquote>`
+  }
+  if (risk && risk.assessed === true) {
+    return `<blockquote expandable>🟢 Риск контрагента: чисто\n• проверен, факторов риска не найдено</blockquote>`
+  }
+  return `❔ Риск контрагента: не проверен`
+}
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
 // можно на каждое уведомление. Сеть/таймаут → молча null (не показываем/не падаем).
@@ -86,7 +106,7 @@ export async function cachedRiskScore(aegisClient, network, address) {
   if (hit && Date.now() - hit.at < RISK_TTL_MS) return hit.risk
   try {
     const [r] = await aegisClient.screenRisk({ network, addresses: [address] })
-    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2, assessed: r.assessed === true, behavioralType: r.behavioralType ?? null } : null
+    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2, assessed: r.assessed === true, behavioralType: r.behavioralType ?? null, breakdown: Array.isArray(r.breakdown) ? r.breakdown : [] } : null
     _riskCache.set(key, { risk, at: Date.now() })
     return risk
   } catch {
@@ -105,21 +125,8 @@ export function formatMoveAlert(account, tx) {
   const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '')
   // Риск-% контрагента (счёт кладёт вызывающий: webhook — из event.counterparty_risk;
   // tx-watch — из /v1/risk). Только для ВНЕШНИХ контрагентов (own → risk не проставляют).
-  // Строка риска контрагента — ВСЕГДА одна из трёх (для ВНЕШНЕГО), никогда не пусто
-  // (регрессия: пропадала при score=0/нет данных). 1) риск N% · 2) проверен·чисто · 3) не проверен.
+  // Риск контрагента — рендерим ВСЕГДА для ВНЕШНЕГО (отдельным блоком, см. cpRiskBlock).
   const risk = tx.counterpartyRisk
-  let cpState
-  if (risk && risk.score > 0) {
-    cpState = `${riskEmoji(risk.level, risk.score)} риск ${risk.score}%`
-    if (risk.behavioralType) cpState += ` (${MOVE_CAT_LABEL[risk.behavioralType] || risk.behavioralType})`
-    if (risk.hop2) cpState += ' (в 1 шаге от санкций/ЧС)'
-  } else if (sanctioned) {
-    cpState = '🔴 санкции'
-  } else if ((risk && risk.assessed === true) || tx.counterpartyEntity) {
-    cpState = '🟢 проверен · чисто'
-  } else {
-    cpState = '❔ не проверен'
-  }
   // «Грязнота» НАШЕГО кошелька — показываем каждый раз (из кэша accounts.risk_*, без запроса).
   // Читаем оба нейминга: tx-watch шлёт сырую строку (risk_score), webhook — объект (riskScore).
   const ownScore = account.riskScore ?? account.risk_score ?? null
@@ -129,7 +136,7 @@ export function formatMoveAlert(account, tx) {
   const exp = EXPLORER_TX[account.network_id]
   const txLink = tx.txHash && exp ? `🔗 <a href="${exp.url(tx.txHash)}">Проверить перевод</a>` : ''
   const appUrl = (process.env.PUBLIC_APP_URL || 'https://coinplata.vercel.app').replace(/\/$/, '')
-  const riskLink = cp && appUrl ? `🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">Риск контрагента</a>` : ''
+  const riskLink = cp && appUrl && !tx.counterpartyOwn ? `🔎 <a href="${appUrl}/api/risk/detail?net=${encodeURIComponent(account.network_id || '')}&addr=${encodeURIComponent(cp)}">Риск контрагента</a>` : ''
 
   // Вёрстка: заголовок (сумма) · наш кошелёк+его риск · контрагент+его риск+адрес · футер.
   const walletName = escapeHtmlA(account.name || account.aegis_wallet_id || 'кошелёк')
@@ -142,13 +149,14 @@ export function formatMoveAlert(account, tx) {
       // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.
       const ownName = tx.counterpartyName || label || 'свой кошелёк'
       lines.push(`👤 Контрагент · ${escapeHtmlA(ownName)} (свой)`)
+      // Полный адрес в <code> — Telegram копирует ТЕКСТ (усечение с «…» ломало копи).
+      lines.push(`<code>${escapeHtmlA(cp)}</code>`)
     } else {
-      // Внешний — строка риска ВСЕГДА (cpState). ⚠️ санкции добавляем только к числовому риску.
-      const extra = sanctioned && risk && risk.score > 0 ? ' ⚠️ санкции' : ''
-      lines.push(`👤 Контрагент · ${cpState}${label ? ` · ${escapeHtmlA(label)}` : ''}${extra}`)
+      // Внешний: идентификация + адрес + блок риска (ВСЕГДА, три состояния).
+      lines.push(`👤 Контрагент${label ? ` · ${escapeHtmlA(label)}` : ''}`)
+      lines.push(`<code>${escapeHtmlA(cp)}</code>`)
+      lines.push(cpRiskBlock(risk, sanctioned))
     }
-    // Полный адрес отдельной строкой в <code> — Telegram копирует ТЕКСТ (усечение с «…» ломало копи).
-    lines.push(`<code>${escapeHtmlA(cp)}</code>`)
   }
   const footer = [txLink, riskLink].filter(Boolean).join(' · ')
   if (footer) lines.push('', footer)

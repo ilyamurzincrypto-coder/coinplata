@@ -190,6 +190,10 @@ export function normalizeRisk(raw) {
     hop2: raw.hop2_proximity === true, // контрагент сам в 1 шаге от санкц/ЧС
     assessed: raw.assessed === true, // есть КОНКРЕТНЫЙ сигнал (иначе «нет данных», не «чисто»)
     behavioralType: raw.behavioral_type ?? null, // поведенческий тип (для подписи риска)
+    // Факторы риска с % (отсорт по pct) — для expandable-цитаты в уведомлении.
+    breakdown: Array.isArray(raw.breakdown)
+      ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null }))
+      : [],
   };
 }
 
