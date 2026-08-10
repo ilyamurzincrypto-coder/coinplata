@@ -210,9 +210,11 @@ export function normalizeRiskDetail(raw) {
       ? raw.breakdown.map((b) => ({
           category: b.category ?? null,
           label: b.label ?? b.category ?? null, // рус-метка
+          kind: b.kind ?? null, // category|behavioral|proximity|signal|context|…
+          pct: b.pct ?? null, // вклад в балл
           severity: b.severity ?? null, // 0..100
-          sharePct: b.share_pct ?? null, // null = прямая метка адреса
-          direct: b.direct === true,
+          sharePct: b.share_pct ?? null, // доля потока; null = не долевой фактор
+          direct: b.direct === true, // прямая метка на самом адресе (санкц/ЧС)
         }))
       : [],
     reasons: Array.isArray(raw.reasons) ? raw.reasons : [],
