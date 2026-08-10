@@ -175,3 +175,26 @@ describe("idempotencyKeyForAttempt / clearDealAttempt (B1)", () => {
     }
   });
 });
+
+describe("canonicalIdempotencyKey {op}:{entity}:{request_id}", () => {
+  it("детерминирован: тот же {op,entity,request} → тот же uuid", async () => {
+    const { canonicalIdempotencyKey, canonicalKeyString } = await import("./newLedger.js");
+    const a = await canonicalIdempotencyKey("opening", "office-mark", "req-1");
+    const b = await canonicalIdempotencyKey("opening", "office-mark", "req-1");
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(canonicalKeyString("opening", "office-mark", "req-1")).toBe("opening:office-mark:req-1");
+  });
+  it("разный op/entity/request → разный uuid (нет коллизий трактов)", async () => {
+    const { canonicalIdempotencyKey } = await import("./newLedger.js");
+    const k1 = await canonicalIdempotencyKey("opening", "office-mark", "req-1");
+    const k2 = await canonicalIdempotencyKey("transfer", "office-mark", "req-1");
+    const k3 = await canonicalIdempotencyKey("opening", "office-terra", "req-1");
+    const k4 = await canonicalIdempotencyKey("opening", "office-mark", "req-2");
+    expect(new Set([k1, k2, k3, k4]).size).toBe(4);
+  });
+  it("entity пусто → '-'", async () => {
+    const { canonicalKeyString } = await import("./newLedger.js");
+    expect(canonicalKeyString("deal", null, "r")).toBe("deal:-:r");
+  });
+});

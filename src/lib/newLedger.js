@@ -70,6 +70,25 @@ export async function requestHash(payload) {
   return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Канонический ключ идемпотентности CP PAY: {op}:{entity}:{request_id}.
+//  op         — тип операции (deal|transfer|opening|adjustment|…);
+//  entity     — затрагиваемая сущность (счёт/офис/клиент/сделка), '-' если нет;
+//  requestId  — уникален на ПОПЫТКУ (генерится раз, переиспользуется при РЕТРАЕ).
+// Колонка idempotency_key — uuid, поэтому строку детерминированно сворачиваем в uuid
+// (SHA-256 → v5-подобный): один и тот же {op}:{entity}:{request_id} → тот же uuid.
+export function canonicalKeyString(op, entity, requestId) {
+  return `${op}:${entity ?? "-"}:${requestId}`;
+}
+export async function canonicalIdempotencyKey(op, entity, requestId) {
+  const data = new TextEncoder().encode(canonicalKeyString(op, entity, requestId));
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  const b = new Uint8Array(buf).slice(0, 16);
+  b[6] = (b[6] & 0x0f) | 0x50; // версия 5
+  b[8] = (b[8] & 0x3f) | 0x80; // вариант RFC 4122
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 // Идемпотентность создания сделки (B1). Ключ генерируется ОДИН раз на попытку и
 // переиспользуется при РЕТРАЕ того же payload (та же request-hash), чтобы
 // «ответ потерялся → юзер повторил» не создавало дубль (ledger.transactions
