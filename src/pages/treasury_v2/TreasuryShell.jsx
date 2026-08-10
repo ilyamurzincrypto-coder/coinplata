@@ -14,6 +14,7 @@ import AssetsTab from "./tabs/AssetsTab.jsx";
 import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
 import EquityTab from "./tabs/EquityTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
+import OpeningInventoryTab from "./tabs/OpeningInventoryTab.jsx";
 
 // Treasury — 5 вкладок: Дашборд / Активы / Пассивы / Капитал / Транзакции
 // (Сделки, Платёжный календарь, ДДС, Корр-счета, P&L, Обороты выпилены
@@ -25,6 +26,7 @@ const BASE_TABS = [
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
   { id: "journal", labelKey: "trv2_tab_transactions", component: JournalTab },
+  { id: "opening", labelKey: "trv2_tab_opening", component: OpeningInventoryTab },
 ];
 
 // Manual journal entries used to be a standalone tab; they now live as a "+ Ручная
