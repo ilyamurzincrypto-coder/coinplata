@@ -397,6 +397,38 @@ export async function rpcCreateTransferV2(payload) {
 }
 
 /**
+ * ledger.create_opening_inventory — операция «начальные остатки» из физ. инвентаризации.
+ * Три блока: officeCash (нал) · bankBalances (безнал, Этап 2) · crypto (цифр).
+ * Дата инвентаризации ОБЯЗАТЕЛЬНА (RPC гардит null). Повтор той же кассы → ведущий отказ.
+ * Канон-ключ {op}:{entity}:{request_id} = opening:inventory:{requestId} (ретрай-стабильность).
+ *
+ * @param {Object} payload
+ * @param {string} payload.effectiveDate           — ISO дата инвентаризации (обязательна)
+ * @param {Array}  [payload.officeCash]            — [{office_id, account_code, currency, amount}]
+ * @param {Array}  [payload.bankBalances]          — [{office_id, account_code, currency, amount, statement_ref}]
+ * @param {Array}  [payload.crypto]                — [{office_id, account_code, currency, amount, address}]
+ * @param {string} [payload.enteredBy]             — uuid оператора (в audit)
+ * @param {string} [payload.requestId]             — уник на ПОПЫТКУ (ретрай тем же id = дедуп)
+ * @param {Object} [payload.metadata]
+ * @returns {Promise<string>} opening transaction_id
+ */
+export async function rpcCreateOpeningInventory(payload) {
+  const requestId = payload.requestId || newIdempotencyKey();
+  const key = await canonicalIdempotencyKey("opening", "inventory", requestId);
+  const params = {
+    p_effective_date: payload.effectiveDate,
+    p_office_cash: payload.officeCash ?? [],
+    p_bank_balances: payload.bankBalances ?? [],
+    p_crypto: payload.crypto ?? [],
+    p_entered_by: payload.enteredBy ?? null,
+    p_idempotency_key: key,
+    p_request_hash: await requestHash({ ...payload, requestId: undefined, idempotencyKey: undefined }),
+    p_metadata: payload.metadata ?? {},
+  };
+  return await invokeLedger("create_opening_inventory", params);
+}
+
+/**
  * ledger.create_reservation — hold средств.
  *
  * @param {Object} payload
