@@ -188,7 +188,10 @@ export function formatMoveAlert(account, tx) {
     `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
     `🏦 Наш кошелёк: <b>${walletName}</b>${account.network_id ? ` · ${escapeHtmlA(account.network_id)}` : ''}`,
   ]
-  if (ownRisk) lines.push(riskBlock(ownRisk, false, 'Риск кошелька'))
+  // ВСЕГДА рисуем блок нашего кошелька (симметрично контрагенту): ownRisk=null →
+  // riskBlock даёт «❔ нет данных» + полный чек-лист. Иначе анализ пропадал на
+  // EVM/пустом /v1/risk без кэша (регресс «куда делся анализ нашего кошелька»).
+  lines.push(riskBlock(ownRisk, false, 'Риск кошелька'))
   if (cp) {
     if (tx.counterpartyOwn) {
       // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.

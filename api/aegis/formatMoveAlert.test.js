@@ -84,6 +84,13 @@ describe('formatMoveAlert · наш кошелёк (всегда чек-лист
     expect(a.text).toMatch(/🏦 Наш кошелёк: <b>WW-131<\/b> · ERC20\n<blockquote expandable>🟢 Риск кошелька: 5%/)
     expect(a.text).toMatch(/• базовая оценка — 5%/)
   })
+  it('без ownRisk И без кэша → блок кошелька всё равно есть («нет данных»)', () => {
+    // Регресс «куда делся анализ нашего кошелька»: пустой /v1/risk на нашем адресе
+    // + null-кэш не должен убирать блок — он симметричен контрагенту.
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Txxx' })
+    expect(a.text).toMatch(/🏦 Наш кошелёк: <b>W88 Mark<\/b> · TRC20\n<blockquote expandable>❔ Риск кошелька: нет данных/)
+    expect(a.text).toMatch(/• Санкции — 0%/)
+  })
   it('свой контрагент (own) → имя, БЕЗ риск-блока', () => {
     const a = formatMoveAlert(acc, { direction: 'out', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TOwn', counterpartyOwn: true, counterpartyName: 'WW-135 (kit out)' })
     expect(a.text).toMatch(/👤 Контрагент · WW-135 \(kit out\) \(свой\)/)
