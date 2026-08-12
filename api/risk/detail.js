@@ -53,12 +53,45 @@ export default async function handler(req, res) {
 
   const bd = Array.isArray(d.breakdown) ? d.breakdown : []
   const color = levelColor(d.level, d.score)
+  const preliminary = d.assessment === 'preliminary'
 
-  // 1. Заголовок — уровень + score.
-  const head = `<h1 style="color:${color}">📈 Уровень риска: ${esc(levelWord(d.level))} (${esc(d.score ?? '—')}%)</h1>` +
+  // Бейдж покрытия: typed_pct<60 → «оценено N%» (unknown ≠ чисто).
+  const cov = d.coverage || null
+  const typedPct = cov && Number.isFinite(Number(cov.typedPct)) ? Number(cov.typedPct) : null
+  const covBadge = typedPct != null && typedPct < 60
+    ? ` <span style="font-size:13px;color:#d97706">· оценено ${Math.round(typedPct)}%</span>`
+    : ''
+
+  // 1. Заголовок — уровень + score (+ предв./покрытие).
+  const scoreStr = preliminary && (d.score == null) ? 'предв.' : `${esc(d.score ?? '—')}%`
+  const head = `<h1 style="color:${color}">📈 Уровень риска: ${esc(levelWord(d.level))} (${scoreStr})${preliminary ? ' <span style="font-size:13px;color:#d97706">· уточняется</span>' : ''}${covBadge}</h1>` +
     `<div class="addr">${esc(net)} · ${esc(addr)}</div>`
 
-  // 4. Hard-факты (direct:true) — вверху красным, отдельно от долевой композиции.
+  // Правило 1: прямая санкц/ЧС-метка или critical → ⛔ ОТКАЗ (баннер вверху).
+  const refuse = d.sanctioned || d.blacklisted || d.level === 'critical'
+  const refuseWhy = d.sanctioned ? 'санкционный адрес' : d.blacklisted ? 'адрес в чёрном списке' : 'критический уровень риска'
+  const refuseBanner = refuse
+    ? `<div class="card" style="border-color:#dc2626;background:#fef2f2"><div class="sec" style="color:#991b1b">⛔ Рекомендация: ОТКАЗ</div>` +
+      `<div class="row" style="color:#991b1b;font-weight:600"><span>${esc(refuseWhy)} — сделка не проводится</span></div></div>`
+    : ''
+
+  // Правило 4: preliminary без hard-фактов → предупреждение «не выдавать за чисто».
+  const prelimBanner = preliminary && !refuse
+    ? `<div class="card" style="border-color:#fcd34d;background:#fffbeb"><div class="sec" style="color:#92400e">🟡 Оценка предварительная</div>` +
+      `<div class="row muted" style="display:block">Exposure ещё считается${typedPct != null ? ` (типизировано ${Math.round(typedPct)}%)` : ''}. «Неизвестно» ≠ «чисто» — дождитесь полной оценки.</div></div>`
+    : ''
+
+  // Правило 2: вложенный сервис → блок + авто-EDD.
+  const ns = d.nestedService
+  const nsBlock = ns && (ns.name || ns.license || ns.source)
+    ? `<div class="card" style="border-color:#c7d2fe;background:#eef2ff"><div class="sec" style="color:#3730a3">🏦 Вложенный сервис</div>` +
+      `<div class="row"><span>Название</span><b>${esc(ns.name || '—')}</b></div>` +
+      `<div class="row"><span>Лицензия</span><b>${esc(ns.license || 'нет')}</b></div>` +
+      (ns.source ? `<div class="row"><span>Источник (заявлено)</span><b>${esc(ns.source)}</b></div>` : '') +
+      `<div class="row muted" style="display:block">EDD: кто это · есть ли лицензия · источник средств.</div></div>`
+    : ''
+
+  // 4. Hard-факты (direct:true) — красным, отдельно от долевой композиции.
   const hard = bd.filter((b) => b.direct)
   const hardBlock = hard.length
     ? `<div class="card" style="border-color:#fca5a5;background:#fef2f2">` +
@@ -67,18 +100,40 @@ export default async function handler(req, res) {
       `</div>`
     : ''
 
-  // 2. Композиция «Связи адреса» — share_pct != null (кроме direct), по убыв. < 0.1% в группу.
+  // Правило 3: funds_flow{source[],destination[]} — источник/назначение потока.
+  // Слайс с risk_pct>0 = «грязный» (красным). Если funds_flow есть — он заменяет
+  // старую «Связи адреса» (та же суть, но со стороной потока и usdt).
+  const ff = d.fundsFlow || null
+  const sliceRow = (s) => {
+    const dirty = Number(s.riskPct) > 0
+    const icon = dirty ? '🔴' : '🟢'
+    const cl = dirty ? ' style="color:#991b1b;font-weight:600"' : ''
+    const amt = s.usdt != null ? ` <span class="muted">· ${esc(Number(s.usdt).toLocaleString('en-US', { maximumFractionDigits: 0 }))} USDT</span>` : ''
+    return `<div class="row"${cl}><span>${icon} ${esc(s.label || s.category || '—')}${dirty ? ` <span style="font-size:12px">(риск ${esc(s.riskPct)}%)</span>` : ''}</span><b>${esc(s.sharePct ?? '—')}%${amt}</b></div>`
+  }
+  const flowSide = (title, arr) => {
+    const list = (arr || []).slice().sort((a, b) => (Number(b.sharePct) || 0) - (Number(a.sharePct) || 0))
+    if (!list.length) return ''
+    const anyDirty = list.some((s) => Number(s.riskPct) > 0)
+    return `<div class="card"${anyDirty ? ' style="border-color:#fca5a5"' : ''}><div class="sec"${anyDirty ? ' style="color:#991b1b"' : ''}>${title}</div>` +
+      list.map(sliceRow).join('') + `</div>`
+  }
+  const flowBlock = ff && ((ff.source && ff.source.length) || (ff.destination && ff.destination.length))
+    ? flowSide('Происхождение средств', ff.source) + flowSide('Назначение средств', ff.destination)
+    : ''
+
+  // 2. Композиция «Связи адреса» — только если НЕТ funds_flow (back-compat).
   const comp = bd.filter((b) => b.sharePct != null && !b.direct).sort((a, b) => Number(b.sharePct) - Number(a.sharePct))
   const major = comp.filter((b) => Number(b.sharePct) >= 0.1)
   const minor = comp.filter((b) => Number(b.sharePct) < 0.1)
-  const compBlock = comp.length
+  const compBlock = !flowBlock && comp.length
     ? `<div class="card"><div class="sec">Связи адреса</div>` +
       major.map((b) => `<div class="row"><span>${catIcon(b)} ${esc(b.label || b.category)}</span><b>${esc(b.sharePct)}%</b></div>`).join('') +
       (minor.length ? `<div class="row muted" style="display:block"><b>Менее 0.1%:</b> ${minor.map((b) => esc(b.label || b.category)).join(' · ')}</div>` : '') +
       `</div>`
     : ''
 
-  // 3. «Почему такой балл» — драйверы (kind:signal) и контекст (kind:context), отдельно от композиции.
+  // 3. «Почему такой балл» — драйверы (kind:signal) и контекст (kind:context).
   const drivers = bd.filter((b) => b.kind === 'signal')
   const contexts = bd.filter((b) => b.kind === 'context')
   const whyBlock = drivers.length || contexts.length
@@ -88,6 +143,7 @@ export default async function handler(req, res) {
       `</div>`
     : ''
 
-  const bodyFull = hardBlock || compBlock || whyBlock ? head + hardBlock + compBlock + whyBlock : head + '<div class="card muted">Разбор недоступен.</div>'
+  const blocks = refuseBanner + prelimBanner + nsBlock + hardBlock + flowBlock + compBlock + whyBlock
+  const bodyFull = blocks ? head + blocks : head + '<div class="card muted">Разбор недоступен.</div>'
   return res.status(200).send(page(`Риск ${d.score ?? ''}% · ${addr.slice(0, 8)}…`, bodyFull))
 }

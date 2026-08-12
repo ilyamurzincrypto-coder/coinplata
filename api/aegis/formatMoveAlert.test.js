@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatMoveAlert } from './_common.js'
+import { formatMoveAlert, formatRiskUpgrade } from './_common.js'
 
 const acc = { id: 'a1', name: 'W88 Mark', network_id: 'TRC20', aegis_wallet_id: 'w1' }
 const ext = (over) => formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TExtxxxxxxxxxxxxxxxxxxxxxxxxx', ...over }).text
@@ -99,5 +99,54 @@ describe('formatMoveAlert · наш кошелёк (всегда чек-лист
   it('полный адрес контрагента в <code>', () => {
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb' })
     expect(a.text).toMatch(/<code>TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb<\/code>/)
+  })
+})
+
+describe('formatMoveAlert · новые сигналы AEGIS (unknown ≠ чисто, hard-факты)', () => {
+  it('checked_clean → «✅ Проверено: … — чисто» ВМЕСТО стены «— 0%»', () => {
+    const t = ext({ counterpartyRisk: { score: 5, level: 'ok', checkedClean: ['sanctions', 'blacklist', 'mixer'], breakdown: [] } })
+    // Изолируем блок контрагента (у нашего кошелька без данных — своя стена «— 0%»).
+    const cp = t.slice(t.indexOf('👤 Контрагент'))
+    expect(cp).toMatch(/✅ Проверено: Санкции, Чёрный список, Миксер — чисто/)
+    expect(cp).not.toMatch(/— 0%/) // стена подавлена в блоке контрагента
+  })
+  it('assessment=preliminary → «предв., уточняется», НЕ «чисто»', () => {
+    const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessment: 'preliminary', breakdown: [] } })
+    expect(t).toMatch(/🟡 Риск контрагента: предв\., уточняется/)
+    expect(t).toMatch(/• экспозиция ещё считается — оценка предварительная/)
+  })
+  it('coverage.typed_pct<60 → бейдж «· оценено N%»', () => {
+    const t = ext({ counterpartyRisk: { score: 20, level: 'warning', coverage: { typedPct: 42 }, breakdown: [] } })
+    expect(t).toMatch(/🟡 Риск контрагента: 20% · оценено 42%/)
+  })
+  it('nested_service → видимая строка + авто-EDD', () => {
+    const t = ext({ counterpartyRisk: { score: 30, level: 'warning', nestedService: { name: 'OTC Desk X', license: null, source: 'salary' }, breakdown: [] } })
+    expect(t).toMatch(/🏦 <b>Вложенный сервис:<\/b> OTC Desk X · лиц\.: нет/)
+    expect(t).toMatch(/❓ EDD: кто это · есть ли лицензия · источник средств \(заявлено: salary\)/)
+  })
+  it('level=critical → видимый ⛔ ОТКАЗ', () => {
+    const t = ext({ counterpartyRisk: { score: 90, level: 'critical', breakdown: [] } })
+    expect(t).toMatch(/⛔ <b>ОТКАЗ<\/b> — критический риск/)
+  })
+  it('blacklisted → ⛔ ОТКАЗ (чёрный список)', () => {
+    const t = ext({ counterpartyRisk: { score: 100, level: 'critical', blacklisted: true, breakdown: [] } })
+    expect(t).toMatch(/⛔ <b>ОТКАЗ<\/b> — чёрный список/)
+  })
+  it('funds_flow.source с risk_pct>0 → «⚠️ Происхождение: X% cat»', () => {
+    const t = ext({ counterpartyRisk: { score: 80, level: 'warning', fundsFlow: { source: [{ category: 'mixer', label: 'миксер', sharePct: 12, riskPct: 80 }], destination: [] }, breakdown: [] } })
+    expect(t).toMatch(/⚠️ Происхождение: 12% миксер/)
+  })
+})
+
+describe('formatRiskUpgrade (/v1/alerts RISK_UPGRADE)', () => {
+  it('prev→new + level + причина', () => {
+    const { text } = formatRiskUpgrade({ alertId: 'u1', address: 'TXabc', prevScore: 10, newScore: 46, level: 'warning', category: 'mixer' })
+    expect(text).toMatch(/⚠️ <b>Уточнение риска<\/b>: 10% → <b>46%<\/b> \(warning\)/)
+    expect(text).toMatch(/<code>TXabc<\/code>/)
+    expect(text).toMatch(/Причина: <b>mixer<\/b>/)
+  })
+  it('prev=null → «предв.»', () => {
+    const { text } = formatRiskUpgrade({ alertId: 'u2', address: 'TXd', prevScore: null, newScore: 46, level: 'warning' })
+    expect(text).toMatch(/предв\. → <b>46%<\/b>/)
   })
 })

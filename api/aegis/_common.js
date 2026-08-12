@@ -104,16 +104,31 @@ function matchCat(b) {
 // Блок риска (наш кошелёк ИЛИ контрагент): score>0/санкции → expandable-цитата (заголовок=скор,
 // тело=риск по ВСЕМ AML-категориям + доп-факторы AEGIS). assessed=false → «❔ не проверен».
 // title — «Риск кошелька» / «Риск контрагента». parse_mode=HTML.
+// Метка категории для checked_clean (ключ → рус-название). Берём из AML_CATS/MOVE_CAT_LABEL.
+const CAT_LABEL = Object.fromEntries(AML_CATS.map(([k, name]) => [k, name]))
+const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[String(c).toLowerCase()] || String(c)
+
 function riskBlock(risk, sanctioned, title = 'Риск контрагента') {
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
-  const assessed = (risk && risk.assessed === true) || sanctioned || hasScore
+  const blacklisted = risk?.blacklisted === true
+  // preliminary = exposure ещё не оценён → НЕ низкий score как «чисто».
+  const preliminary = risk?.assessment === 'preliminary'
+  const assessed = (risk && risk.assessed === true) || sanctioned || blacklisted || hasScore
   const bd = Array.isArray(risk?.breakdown) ? risk.breakdown : []
-  // Заголовок: скор/санкции, иначе (оценён, но 0) «0%», иначе «нет данных». Чек-лист — ВСЕГДА.
+  const checkedClean = Array.isArray(risk?.checkedClean) ? risk.checkedClean : []
+  // coverage.typed_pct < 60 → бейдж «оценено N%» (unknown ≠ чисто).
+  const cov = risk?.coverage || null
+  const typedPct = cov && Number.isFinite(Number(cov.typedPct)) ? Number(cov.typedPct) : null
+  const covBadge = typedPct != null && typedPct < 60 ? ` · оценено ${Math.round(typedPct)}%` : ''
+
+  // Заголовок. preliminary → «предв., уточняется» (даже при 0%). Санкции/скор — как раньше.
   let head
-  if (hasScore || sanctioned) head = `${sanctioned ? '🔴' : riskEmoji(risk?.level, score)} ${title}: ${hasScore ? `${score}%` : 'санкции'}`
-  else if (assessed) head = `${riskEmoji(risk?.level, score)} ${title}: ${score ?? 0}%`
+  if (preliminary && !hasScore && !sanctioned && !blacklisted) head = `🟡 ${title}: предв., уточняется${covBadge}`
+  else if (hasScore || sanctioned || blacklisted) head = `${sanctioned || blacklisted ? '🔴' : riskEmoji(risk?.level, score)} ${title}: ${hasScore ? `${score}%` : sanctioned ? 'санкции' : 'чёрный список'}${preliminary ? ' (предв.)' : ''}${covBadge}`
+  else if (assessed) head = `${riskEmoji(risk?.level, score)} ${title}: ${score ?? 0}%${covBadge}`
   else head = `❔ ${title}: нет данных`
+
   const byCat = {}
   const extras = []
   for (const b of bd) {
@@ -122,17 +137,37 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента') 
     if (cat) { if (byCat[cat] == null || (pct != null && pct > byCat[cat])) byCat[cat] = pct != null ? pct : (byCat[cat] ?? 0) }
     else extras.push(`• ${escapeHtmlA(b.label || 'фактор')}${pct != null ? ` — ${pct}%` : ''}`)
   }
-  // ПОЛНЫЙ список категорий с процентами (0% для несработавших) — по выбору владельца.
-  const catLines = AML_CATS.map(([key, name]) => {
-    const pct = byCat[key] != null ? byCat[key] : key === 'sanctions' && sanctioned ? 100 : 0
-    return `• ${name} — ${pct}%`
-  })
-  // Объясняющая строка, если фактора нет: скор>0 → «базовая оценка», нет данных → «не проверен».
-  if (!extras.length) {
-    if (hasScore) extras.push(`• базовая оценка — ${score}%`)
-    else if (!assessed) extras.push('• адрес не проверен (нет данных в AEGIS)')
+
+  // Тело категорий:
+  //  - checked_clean присутствует → сработавшие категории по %, затем ОДНА строка
+  //    «✅ Проверено: … — чисто» вместо стены «— 0%» (по контракту AEGIS);
+  //  - иначе (сервер не прислал checked_clean) → прежний ПОЛНЫЙ список с 0% (back-compat).
+  let catLines
+  if (checkedClean.length) {
+    const hit = AML_CATS.filter(([key]) => (byCat[key] ?? 0) > 0 || (key === 'sanctions' && sanctioned) || (key === 'blacklist' && blacklisted))
+    catLines = hit.map(([key, name]) => `• ${name} — ${byCat[key] != null ? byCat[key] : 100}%`)
+    catLines.push(`✅ Проверено: ${checkedClean.map((c) => escapeHtmlA(cleanLabel(c))).join(', ')} — чисто`)
+  } else {
+    catLines = AML_CATS.map(([key, name]) => {
+      const pct = byCat[key] != null ? byCat[key] : (key === 'sanctions' && sanctioned) || (key === 'blacklist' && blacklisted) ? 100 : 0
+      return `• ${name} — ${pct}%`
+    })
   }
-  return `<blockquote expandable>${[head, ...catLines, ...extras].join('\n')}</blockquote>`
+
+  // funds_flow.source с risk_pct>0 → «Происхождение: X% mixer/scam» (если прогрет).
+  const srcDirty = (risk?.fundsFlow?.source || [])
+    .filter((s) => Number(s.riskPct) > 0)
+    .sort((a, b) => (Number(b.sharePct) || 0) - (Number(a.sharePct) || 0))
+    .slice(0, 3)
+    .map((s) => `⚠️ Происхождение: ${Math.round(Number(s.sharePct) || 0)}% ${escapeHtmlA(s.label || s.category || 'риск')}`)
+
+  // Объясняющая строка. preliminary → явно «ещё считается». Иначе как раньше.
+  if (!extras.length) {
+    if (preliminary) extras.push('• экспозиция ещё считается — оценка предварительная')
+    else if (hasScore && !checkedClean.length) extras.push(`• базовая оценка — ${score}%`)
+    else if (!assessed && !checkedClean.length) extras.push('• адрес не проверен (нет данных в AEGIS)')
+  }
+  return `<blockquote expandable>${[head, ...catLines, ...srcDirty, ...extras].join('\n')}</blockquote>`
 }
 
 // Кэш риска адрес→{score,level,hop2} TTL ~10 мин (in-memory, тёплая лямбда). Дёшево,
@@ -146,7 +181,23 @@ export async function cachedRiskScore(aegisClient, network, address) {
   if (hit && Date.now() - hit.at < RISK_TTL_MS) return hit.risk
   try {
     const [r] = await aegisClient.screenRisk({ network, addresses: [address] })
-    const risk = r ? { score: r.score, level: r.level, hop2: r.hop2, assessed: r.assessed === true, behavioralType: r.behavioralType ?? null, breakdown: Array.isArray(r.breakdown) ? r.breakdown : [] } : null
+    const risk = r
+      ? {
+          score: r.score,
+          level: r.level,
+          hop2: r.hop2,
+          assessed: r.assessed === true,
+          assessment: r.assessment ?? null,
+          blacklisted: r.blacklisted === true,
+          categories: Array.isArray(r.categories) ? r.categories : [],
+          behavioralType: r.behavioralType ?? null,
+          nestedService: r.nestedService ?? null,
+          checkedClean: Array.isArray(r.checkedClean) ? r.checkedClean : [],
+          fundsFlow: r.fundsFlow ?? null,
+          coverage: r.coverage ?? null,
+          breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
+        }
+      : null
     _riskCache.set(key, { risk, at: Date.now() })
     return risk
   } catch {
@@ -203,6 +254,19 @@ export function formatMoveAlert(account, tx) {
       // Внешний: идентификация + адрес + блок риска (ВСЕГДА, три состояния).
       lines.push(`👤 Контрагент${label ? ` · ${escapeHtmlA(label)}` : ''}`)
       lines.push(`<code>${escapeHtmlA(cp)}</code>`)
+      // Правило 1: прямая санкц/ЧС-метка или critical → ⛔ ОТКАЗ (видимой строкой, не в цитате).
+      const cats = (risk?.categories || []).map((c) => String(c).toLowerCase())
+      const refuse = sanctioned || risk?.blacklisted === true || cats.includes('blacklist') || cats.includes('sanctions') || risk?.level === 'critical'
+      if (refuse) {
+        const why = sanctioned ? 'санкции' : risk?.blacklisted === true || cats.includes('blacklist') ? 'чёрный список' : cats.includes('sanctions') ? 'санкции' : 'критический риск'
+        lines.push(`⛔ <b>ОТКАЗ</b> — ${why}`)
+      }
+      // Правило 2: вложенный сервис (незарег. OTC/сервис за адресом) → строка + авто-EDD.
+      const ns = risk?.nestedService
+      if (ns && (ns.name || ns.license || ns.source)) {
+        lines.push(`🏦 <b>Вложенный сервис:</b> ${escapeHtmlA(ns.name || '—')}${ns.license ? ` · лиц.: ${escapeHtmlA(ns.license)}` : ' · лиц.: нет'}`)
+        lines.push(`❓ EDD: кто это · есть ли лицензия · источник средств${ns.source ? ` (заявлено: ${escapeHtmlA(ns.source)})` : ''}`)
+      }
       lines.push(riskBlock(risk, sanctioned, 'Риск контрагента'))
     }
   }
@@ -231,6 +295,27 @@ export function formatRiskFinding(alert, officeName, viaName) {
     kind: 'risk_finding',
     text,
     meta: { alert_id: alert.alertId, category: alert.category, office: officeName || alert.officeLabel || null, via_counterparty: alert.viaCounterparty, risk_address: alert.riskAddress },
+  }
+}
+
+// RISK_UPGRADE-находка (/v1/alerts) → payload коррекции. Смысл: exposure адреса
+// прогрелся, оценка поднялась (напр. предв./10% → 46% warning). Не деньги — уточнение.
+export function formatRiskUpgrade(alert, viaName) {
+  const prev = alert.prevScore
+  const prevStr = prev == null ? 'предв.' : `${prev}%`
+  const nowStr = alert.newScore != null ? `${alert.newScore}%` : '—'
+  const lvl = alert.level ? ` (${escapeHtmlA(alert.level)})` : ''
+  const who = alert.address ? `<code>${escapeHtmlA(alert.address)}</code>` : alert.riskAddress ? `<code>${escapeHtmlA(alert.riskAddress)}</code>` : '—'
+  const via = viaName ? `${escapeHtmlA(viaName)} · ` : ''
+  const text =
+    `⚠️ <b>Уточнение риска</b>: ${prevStr} → <b>${nowStr}</b>${lvl}\n` +
+    `Адрес: ${via}${who}\n` +
+    (alert.category ? `Причина: <b>${escapeHtmlA(alert.category)}</b>\n` : '') +
+    `Оценка поднята после прогрева exposure — пересмотрите контрагента (EDD).`
+  return {
+    kind: 'risk_upgrade',
+    text,
+    meta: { alert_id: alert.alertId, address: alert.address || alert.riskAddress || null, prev_score: prev ?? null, new_score: alert.newScore ?? null, level: alert.level || null, category: alert.category || null },
   }
 }
 

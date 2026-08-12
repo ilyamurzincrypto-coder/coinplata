@@ -10,7 +10,7 @@
  * CRON_SECRET, (+ COINPOINT_API_URL/CASHDESK_API_SECRET или TELEGRAM_* для алерта).
  */
 import { aegis } from '../../src/lib/aegisClient.js'
-import { svcClient, notifyManagerBot, formatRiskFinding } from './_common.js'
+import { svcClient, notifyManagerBot, formatRiskFinding, formatRiskUpgrade } from './_common.js'
 
 export const config = { maxDuration: 60 }
 
@@ -18,26 +18,29 @@ export const config = { maxDuration: 60 }
 // Чистое и тестируемое. Фильтрует HOP2_RISK, дедупит по alert_id, алертит только на новое.
 export async function handleRiskAlerts({ deps, limit = 100 }) {
   const { alerts } = await deps.fetchAlerts(limit)
-  const hop2 = (alerts || []).filter((a) => a.type === 'HOP2_RISK' && a.alertId)
+  // Обрабатываем HOP2_RISK (грязь в 2 хопах) и RISK_UPGRADE (оценка адреса поднялась
+  // после прогрева exposure — коррекция). Прочие типы игнорируем.
+  const relevant = (alerts || []).filter((a) => (a.type === 'HOP2_RISK' || a.type === 'RISK_UPGRADE') && a.alertId)
   let inserted = 0
   let dup = 0
   let notified = 0
   const results = []
-  for (const a of hop2) {
+  for (const a of relevant) {
+    const isUpgrade = a.type === 'RISK_UPGRADE'
     const office = await deps.findOffice(a.officeWalletId) // {id,name} | null
     const viaName = a.viaCounterparty && deps.resolveCounterparty ? await deps.resolveCounterparty(a.viaCounterparty) : null
     const saved = await deps.recordFinding({
       alert_id: a.alertId,
       type: a.type,
       network: a.network,
-      risk_address: a.riskAddress,
-      category: a.category,
+      risk_address: a.riskAddress || a.address || null,
+      category: a.category || (isUpgrade ? 'RISK_UPGRADE' : null),
       via_counterparty: a.viaCounterparty,
       via_counterparty_name: viaName,
       office_wallet_id: a.officeWalletId,
       office_id: office?.id || null,
       office_label: a.officeLabel || office?.name || null,
-      note: a.note,
+      note: isUpgrade ? (a.note || `${a.prevScore == null ? 'предв.' : a.prevScore + '%'} → ${a.newScore ?? '—'}% (${a.level || '—'})`) : a.note,
       status: a.status,
       source_created_at: a.createdAt,
     })
@@ -59,9 +62,17 @@ export async function handleRiskAlerts({ deps, limit = 100 }) {
     } else {
       dup += 1
     }
-    results.push({ alert_id: a.alertId, saved, office_id: office?.id || null, recognized: !!office })
+    results.push({ alert_id: a.alertId, type: a.type, saved, office_id: office?.id || null, recognized: !!office })
   }
-  return { total: (alerts || []).length, hop2: hop2.length, inserted, dup, notified, results }
+  return {
+    total: (alerts || []).length,
+    hop2: relevant.filter((a) => a.type === 'HOP2_RISK').length,
+    upgrades: relevant.filter((a) => a.type === 'RISK_UPGRADE').length,
+    inserted,
+    dup,
+    notified,
+    results,
+  }
 }
 
 export default async function handler(req, res) {
@@ -103,7 +114,8 @@ export default async function handler(req, res) {
   // Бот-уведомление ПОКА ВЫКЛЮЧЕНО (чтобы не дублировать алерты). Находки всё равно
   // пишутся в таблицу и видны оператору в ленте «EDD». Включить — AEGIS_RISK_NOTIFY=true.
   if (process.env.AEGIS_RISK_NOTIFY === 'true') {
-    deps.notify = ({ alert, officeName, viaName }) => notifyManagerBot(formatRiskFinding(alert, officeName, viaName))
+    deps.notify = ({ alert, officeName, viaName }) =>
+      notifyManagerBot(alert.type === 'RISK_UPGRADE' ? formatRiskUpgrade(alert, viaName) : formatRiskFinding(alert, officeName, viaName))
     deps.markNotified = async (id) => {
       await db.from('aegis_risk_findings').update({ notified: true }).eq('alert_id', id)
     }

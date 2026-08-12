@@ -159,17 +159,47 @@ export function normalizeTransactions(raw) {
   };
 }
 
+// funds_flow{source[],destination[]} → нормализованные слайсы. Slice:
+// {category,label,share_pct,usdt,risk_pct}. risk_pct>0 = «грязный» слайс потока.
+// Присутствует ВСЕГДА в GET /v1/risk/{net}/{addr}; в POST /v1/risk — только если прогрет.
+function normalizeSlice(s) {
+  if (!s) return null;
+  return {
+    category: s.category ?? null,
+    label: s.label ?? s.category ?? null,
+    sharePct: s.share_pct ?? null, // доля потока, %
+    usdt: s.usdt ?? null,
+    riskPct: s.risk_pct ?? 0, // >0 → слайс несёт риск (mixer/scam/…)
+  };
+}
+export function normalizeFundsFlow(raw) {
+  if (!raw) return null;
+  const arr = (x) => (Array.isArray(x) ? x.map(normalizeSlice).filter(Boolean) : []);
+  return { source: arr(raw.source), destination: arr(raw.destination) };
+}
+// coverage{typed_pct,unknown_pct} — сколько потока типизировано. unknown ≠ чисто:
+// низкий typed_pct → бейдж «оценено N%», а не «чисто».
+function normalizeCoverage(raw) {
+  if (!raw) return null;
+  return { typedPct: raw.typed_pct ?? null, unknownPct: raw.unknown_pct ?? null };
+}
+
 // GET /v1/alerts item → внутренняя форма. HOP2_RISK: грязь в 2 хопах через нашего
-// контрагента (via_counterparty). network держим как есть (raw enum о цепочке грязного
-// адреса — это НЕ network_id нашего счёта). Денег тут нет.
+// контрагента (via_counterparty). RISK_UPGRADE: оценка адреса поднялась (коррекция
+// после прогрева exposure) — prev_score→new_score. network держим как есть (raw enum
+// о цепочке грязного адреса — это НЕ network_id нашего счёта). Денег тут нет.
 export function normalizeAlert(raw) {
   if (!raw) return null;
   return {
     alertId: raw.alert_id ?? null,
-    type: raw.type ?? null,
+    type: raw.type ?? null, // HOP2_RISK | RISK_UPGRADE | …
     network: raw.network ?? null,
     riskAddress: raw.risk_address ?? null,
+    address: raw.address ?? null, // адрес, чью оценку подняли (RISK_UPGRADE)
     category: raw.category ?? null,
+    level: raw.level ?? null, // новый уровень (RISK_UPGRADE)
+    prevScore: raw.prev_score ?? null, // RISK_UPGRADE: было
+    newScore: raw.new_score ?? null, // RISK_UPGRADE: стало
     viaCounterparty: raw.via_counterparty ?? null,
     officeWalletId: raw.office_wallet_id ?? null,
     officeLabel: raw.office_label ?? null,
@@ -186,10 +216,21 @@ export function normalizeRisk(raw) {
     address: raw.address ?? null,
     score: raw.score ?? null, // 0..100 | null
     level: raw.level ?? null, // ok|warning|critical
+    // assessment: full = exposure оценён; preliminary = ещё считается → НЕ «чисто».
+    assessment: raw.assessment ?? null, // 'full' | 'preliminary' | null
     categories: Array.isArray(raw.categories) ? raw.categories : [],
+    blacklisted: raw.blacklisted === true, // прямая ЧС-метка (для правила «отказ»)
     hop2: raw.hop2_proximity === true, // контрагент сам в 1 шаге от санкц/ЧС
     assessed: raw.assessed === true, // есть КОНКРЕТНЫЙ сигнал (иначе «нет данных», не «чисто»)
     behavioralType: raw.behavioral_type ?? null, // поведенческий тип (для подписи риска)
+    // Незарег. сервис/OTC-деск за адресом → EDD-вопросы (кто, лицензия, источник).
+    nestedService: raw.nested_service
+      ? { name: raw.nested_service.name ?? null, license: raw.nested_service.license ?? null, source: raw.nested_service.source ?? null }
+      : null,
+    // checked_clean[] — категории, проверенные и чистые: позитив вместо стены «— 0%».
+    checkedClean: Array.isArray(raw.checked_clean) ? raw.checked_clean.map(String) : [],
+    fundsFlow: normalizeFundsFlow(raw.funds_flow), // если прогрет, иначе null
+    coverage: normalizeCoverage(raw.coverage), // если прогрет, иначе null
     // Факторы риска с % (отсорт по pct) — для expandable-цитаты в уведомлении.
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null, category: b.category ?? null }))
@@ -203,9 +244,15 @@ export function normalizeRiskDetail(raw) {
   return {
     score: raw.score ?? null,
     level: raw.level ?? null,
+    assessment: raw.assessment ?? null, // 'full' | 'preliminary'
     sanctioned: raw.sanctioned === true,
     blacklisted: raw.blacklisted === true,
     headline: raw.headline ?? null,
+    nestedService: raw.nested_service
+      ? { name: raw.nested_service.name ?? null, license: raw.nested_service.license ?? null, source: raw.nested_service.source ?? null }
+      : null,
+    fundsFlow: normalizeFundsFlow(raw.funds_flow), // ВСЕГДА в detail: {source[],destination[]}
+    coverage: normalizeCoverage(raw.coverage), // {typedPct,unknownPct}
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({
           category: b.category ?? null,

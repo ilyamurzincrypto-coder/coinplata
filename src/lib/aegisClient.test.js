@@ -7,6 +7,10 @@ import {
   walletToCacheRow,
   toAegisNetwork,
   fromAegisNetwork,
+  normalizeRisk,
+  normalizeRiskDetail,
+  normalizeAlert,
+  normalizeFundsFlow,
 } from "./aegisClient.js";
 import {
   FIX_REGISTER_CREATED,
@@ -282,5 +286,45 @@ describe("addContacts (POST /v1/contacts деаноним)", () => {
   it("пустой список → без запроса", async () => {
     const c = mk([]);
     expect(await c.addContacts([])).toEqual({ upserted: 0, skipped: 0 });
+  });
+});
+
+describe("новые структурные поля /v1/risk (unknown ≠ чисто, hard-факты)", () => {
+  it("normalizeRisk: assessment/nested_service/checked_clean/coverage/funds_flow", () => {
+    const r = normalizeRisk({
+      address: "TX", score: 46, level: "warning", assessment: "preliminary", blacklisted: false,
+      nested_service: { name: "OTC Desk X", license: null, source: "salary" },
+      checked_clean: ["sanctions", "blacklist", "mixer"],
+      coverage: { typed_pct: 42, unknown_pct: 58 },
+      funds_flow: { source: [{ category: "mixer", label: "миксер", share_pct: 12, usdt: 1000, risk_pct: 80 }], destination: [] },
+    });
+    expect(r).toMatchObject({ assessment: "preliminary", checkedClean: ["sanctions", "blacklist", "mixer"] });
+    expect(r.nestedService).toMatchObject({ name: "OTC Desk X", source: "salary" });
+    expect(r.coverage).toEqual({ typedPct: 42, unknownPct: 58 });
+    expect(r.fundsFlow.source[0]).toMatchObject({ category: "mixer", sharePct: 12, riskPct: 80 });
+  });
+  it("normalizeRisk: поля отсутствуют → null/[] (не падаем, не «чисто»)", () => {
+    const r = normalizeRisk({ address: "TX", score: 0, level: "ok" });
+    expect(r).toMatchObject({ assessment: null, nestedService: null, checkedClean: [], fundsFlow: null, coverage: null });
+  });
+  it("normalizeFundsFlow: source/destination слайсы, risk_pct дефолт 0", () => {
+    const ff = normalizeFundsFlow({ source: [{ category: "exchange", share_pct: 90 }], destination: [{ category: "scam", share_pct: 5, risk_pct: 100 }] });
+    expect(ff.source[0]).toMatchObject({ category: "exchange", sharePct: 90, riskPct: 0 });
+    expect(ff.destination[0]).toMatchObject({ riskPct: 100 });
+    expect(normalizeFundsFlow(null)).toBe(null);
+  });
+  it("normalizeRiskDetail: funds_flow{source,destination} + coverage", () => {
+    const d = normalizeRiskDetail({
+      score: 70, level: "warning",
+      funds_flow: { source: [{ category: "mixer", label: "миксер", share_pct: 30, usdt: 5000, risk_pct: 100 }], destination: [] },
+      coverage: { typed_pct: 55, unknown_pct: 45 },
+      breakdown: [],
+    });
+    expect(d.fundsFlow.source[0]).toMatchObject({ label: "миксер", sharePct: 30, usdt: 5000, riskPct: 100 });
+    expect(d.coverage).toEqual({ typedPct: 55, unknownPct: 45 });
+  });
+  it("normalizeAlert: RISK_UPGRADE prev/new/level", () => {
+    const a = normalizeAlert({ alert_id: "up-1", type: "RISK_UPGRADE", address: "TX", prev_score: 10, new_score: 46, level: "warning", category: "mixer" });
+    expect(a).toMatchObject({ type: "RISK_UPGRADE", address: "TX", prevScore: 10, newScore: 46, level: "warning", category: "mixer" });
   });
 });
