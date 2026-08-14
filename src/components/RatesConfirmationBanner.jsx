@@ -138,49 +138,38 @@ export default function RatesConfirmationBanner({ currentOffice }) {
   );
 }
 
-// -------- Helpers --------
-function BannerShell({ tone, icon: Icon, children }) {
-  const toneClass =
-    tone === "rose"
-      ? "bg-danger-soft border-danger/20 text-danger"
-      : "bg-warning-soft border-warning/20 text-warning";
+// -------- Helpers (стиль эталона: тёплая оранж-плашка-пилюля) --------
+// Функциональный элемент (не декор): подложка #F6E3D3, квадрат «!» #E8622C,
+// тёмная кнопка «Подтвердить». Оба тона (не подтверждён / изменён после) —
+// один тёплый оранж (в эталоне одна attention-плашка).
+function BannerShell({ children }) {
   return (
-    <div className={`border-b ${toneClass} sticky top-0 z-20`}>
-      <div className="max-w-[1400px] mx-auto px-6 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-caption font-medium">
-          <Icon className="w-3.5 h-3.5 shrink-0" />
-          {children}
-        </div>
+    <div className="max-w-[1680px] mx-auto px-4 pt-3">
+      <div className="inline-flex items-center gap-3 bg-orange-bg rounded-pill pl-[18px] pr-2 py-2 text-orange-ink">
+        <span className="w-[19px] h-[19px] rounded-[6px] bg-orange text-white text-[12px] font-medium flex items-center justify-center shrink-0">
+          !
+        </span>
+        <div className="flex items-center gap-2 text-[13px] font-medium">{children}</div>
       </div>
     </div>
   );
 }
 
-function OfficeChip({ office, tone }) {
-  const cls =
-    tone === "rose"
-      ? "bg-rose-100 text-danger border-danger/20"
-      : "bg-amber-100 text-warning border-warning/20";
+function OfficeChip({ office }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-tiny font-semibold border ${cls}`}
-    >
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-[11px] font-semibold text-orange-ink border border-orange/25 bg-cream/60">
       <Building2 className="w-2.5 h-2.5" />
       {office.name}
     </span>
   );
 }
 
-function ConfirmButton({ tone, onClick, label, disabled = false }) {
-  const cls =
-    tone === "rose"
-      ? "bg-danger hover:bg-rose-700"
-      : "bg-warning hover:bg-warning";
+function ConfirmButton({ onClick, label, disabled = false }) {
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-button text-caption font-semibold text-white transition-colors ${cls} disabled:opacity-60 disabled:cursor-not-allowed`}
+      className="ml-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-pill text-[12px] font-medium text-cream bg-ink hover:bg-black transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <CheckCircle2 className="w-3 h-3" />
       {label}
@@ -188,10 +177,9 @@ function ConfirmButton({ tone, onClick, label, disabled = false }) {
   );
 }
 
-function ManagerHint({ tone }) {
-  const cls = tone === "rose" ? "text-danger" : "text-warning";
+function ManagerHint() {
   return (
-    <span className={`ml-auto text-tiny font-medium italic ${cls}`}>
+    <span className="ml-1 text-[12px] font-medium italic text-orange-ink">
       Coordinate with management
     </span>
   );

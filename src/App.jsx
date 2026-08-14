@@ -197,48 +197,52 @@ function Root() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f5f3] text-ink font-sans">
+    // Тёплый «стол» (крем-2) + рамка-экран 32 со свечением — как в design/reference.html.
+    <div className="min-h-screen bg-[#E5DECD] text-ink font-sans">
       {!isSupabaseConfigured && (
-        <div className="bg-warning text-ink text-caption font-semibold text-center px-4 py-2 border-b border-amber-600">
+        <div className="bg-warning text-ink text-caption font-semibold text-center px-4 py-2">
           {t("demo_banner")}
         </div>
       )}
-      <Header
-        page={page}
-        onPageChange={handlePageChange}
-        currentOffice={currentOffice}
-        onOfficeChange={setCurrentOffice}
-      />
-      {/* Курс-баннеры (sticky top) прячем, когда открыт дровер редактора курсов —
-          иначе просвечивают щелью над ним. */}
-      {exchangeMode !== "rates" && <RateChangeBanner />}
-      {exchangeMode !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
-      {page === "cashier" && canShow("cashier") && (
-        <CashierPage
-          currentOffice={currentOffice}
-          onOfficeChange={setCurrentOffice}
-          mode={exchangeMode}
-          setMode={setExchangeMode}
-          formMounted={formMounted}
-          setFormMounted={setFormMounted}
-          onNavigate={handlePageChange}
-          demoDealSeed={demoDealSeed}
-          onDemoConsumed={() => setDemoDealSeed(null)}
-          onOpenHelp={handleOpenHelp}
-        />
-      )}
-      {page === "accounts" && canShow("accounts") && <AccountsPage onOpenHelp={handleOpenHelp} />}
-      {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage onOpenHelp={handleOpenHelp} />}
-      {page === "treasury" && canShow("capital") && <TreasuryPage onOpenHelp={handleOpenHelp} />}
-      <CommandPalette onNavigate={handlePageChange} />
-      {page === "settings" && canShow("settings") && <SettingsPage onOpenHelp={handleOpenHelp} />}
-      {page === "info" && canShow("info") && (
-        <InfoPage
-          onNavigate={handlePageChange}
-          onTryDeal={handleTryDeal}
-          initialTarget={infoInitialSection}
-        />
-      )}
+      <div className="max-w-[1720px] mx-auto p-2 sm:p-3">
+        <div className="rounded-screen bg-cream bg-frame-glow overflow-hidden min-h-[calc(100vh-1.5rem)] pb-8">
+          <Header
+            page={page}
+            onPageChange={handlePageChange}
+            currentOffice={currentOffice}
+            onOfficeChange={setCurrentOffice}
+          />
+          {/* Курс-баннеры прячем, когда открыт дровер редактора курсов. */}
+          {exchangeMode !== "rates" && <RateChangeBanner />}
+          {exchangeMode !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
+          {page === "cashier" && canShow("cashier") && (
+            <CashierPage
+              currentOffice={currentOffice}
+              onOfficeChange={setCurrentOffice}
+              mode={exchangeMode}
+              setMode={setExchangeMode}
+              formMounted={formMounted}
+              setFormMounted={setFormMounted}
+              onNavigate={handlePageChange}
+              demoDealSeed={demoDealSeed}
+              onDemoConsumed={() => setDemoDealSeed(null)}
+              onOpenHelp={handleOpenHelp}
+            />
+          )}
+          {page === "accounts" && canShow("accounts") && <AccountsPage onOpenHelp={handleOpenHelp} />}
+          {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage onOpenHelp={handleOpenHelp} />}
+          {page === "treasury" && canShow("capital") && <TreasuryPage onOpenHelp={handleOpenHelp} />}
+          <CommandPalette onNavigate={handlePageChange} />
+          {page === "settings" && canShow("settings") && <SettingsPage onOpenHelp={handleOpenHelp} />}
+          {page === "info" && canShow("info") && (
+            <InfoPage
+              onNavigate={handlePageChange}
+              onTryDeal={handleTryDeal}
+              initialTarget={infoInitialSection}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
