@@ -545,34 +545,38 @@ export default function CashierPage({
               {formMounted ? (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center gap-3.5 h-[72px] px-6 rounded-card text-white bg-[linear-gradient(180deg,#23272c,#0d0f11)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.06),0_12px_30px_-16px_rgba(19,20,22,0.55)] hover:-translate-y-px hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),inset_0_1px_0_rgba(255,255,255,0.08),0_18px_42px_-16px_rgba(19,20,22,0.6)] active:translate-y-0 transition-all duration-200 ease-apple"
+                  className="group w-full flex items-center gap-4 min-h-[72px] px-6 py-[18px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
                 >
-                  <span className="flex items-center justify-center w-9 h-9 shrink-0">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                  <span className="flex items-center justify-center w-[46px] h-[46px] rounded-full shrink-0 bg-lime">
+                    <span className="w-2.5 h-2.5 rounded-full bg-lime-ink" />
                   </span>
                   <span className="flex flex-col text-left leading-tight">
-                    <span className="text-[16px] font-semibold tracking-[-0.2px]">
+                    <span className="text-[19px] font-normal">
                       {t("cta_resume_exchange_title")}
                     </span>
-                    <span className="text-[11.5px] font-medium text-white/50">черновик сохранён · N</span>
+                    <span className="text-[12.5px] text-[#8B8676] mt-0.5">черновик сохранён · N</span>
                   </span>
-                  <ArrowRight className="ml-auto w-5 h-5 text-emerald-400 transition-transform duration-200 ease-apple group-hover:translate-x-[3px]" />
+                  <span className="ml-auto w-[34px] h-[34px] rounded-full bg-card text-ink flex items-center justify-center shrink-0">
+                    <ArrowRight className="w-[15px] h-[15px] transition-transform duration-200 ease-apple group-hover:translate-x-[2px]" strokeWidth={1.8} />
+                  </span>
                 </button>
               ) : (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center gap-3.5 h-[72px] px-6 rounded-card text-white bg-[linear-gradient(180deg,#23272c,#0d0f11)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_1px_0_rgba(255,255,255,0.06),0_12px_30px_-16px_rgba(19,20,22,0.55)] hover:-translate-y-px hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12),inset_0_1px_0_rgba(255,255,255,0.08),0_18px_42px_-16px_rgba(19,20,22,0.6)] active:translate-y-0 transition-all duration-200 ease-apple"
+                  className="group w-full flex items-center gap-4 min-h-[72px] px-6 py-[18px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
                 >
-                  <span className="flex items-center justify-center w-9 h-9 rounded-[10px] shrink-0 bg-[linear-gradient(180deg,#10b981,#047857)] shadow-[0_3px_10px_-3px_rgba(16,185,129,0.6)]">
-                    <Plus className="w-[18px] h-[18px] text-white" strokeWidth={2.6} />
+                  <span className="flex items-center justify-center w-[46px] h-[46px] rounded-full shrink-0 bg-lime text-lime-ink">
+                    <Plus className="w-6 h-6" strokeWidth={2} />
                   </span>
                   <span className="flex flex-col text-left leading-tight">
-                    <span className="text-[16px] font-semibold tracking-[-0.2px]">
+                    <span className="text-[19px] font-normal">
                       {t("cta_new_exchange_title")}
                     </span>
-                    <span className="text-[11.5px] font-medium text-white/50">оформить ордер · N</span>
+                    <span className="text-[12.5px] text-[#8B8676] mt-0.5">оформить ордер · N</span>
                   </span>
-                  <ArrowRight className="ml-auto w-5 h-5 text-white/55 transition-transform duration-200 ease-apple group-hover:translate-x-[3px] group-hover:text-white" />
+                  <span className="ml-auto w-[34px] h-[34px] rounded-full bg-card text-ink flex items-center justify-center shrink-0">
+                    <ArrowRight className="w-[15px] h-[15px] transition-transform duration-200 ease-apple group-hover:translate-x-[2px]" strokeWidth={1.8} />
+                  </span>
                 </button>
               )}
 

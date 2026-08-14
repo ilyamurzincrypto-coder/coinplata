@@ -127,21 +127,21 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   }, 0);
   const nerezFresh = nerezAt ? timeAgoShort(new Date(nerezAt), nowMs) : null;
 
-  const cardCls = "bg-white border border-[rgba(18,22,26,0.08)] rounded-[12px] overflow-hidden";
+  const cardCls = "bg-card border border-line rounded-card-2 overflow-hidden";
 
   return (
     <aside className="flex flex-col gap-2">
       {/* ── Контейнер 1: КУРСЫ — белый терминал, офисы аккордеоном ── */}
       <div className={cardCls}>
-        <header className="flex items-center gap-2.5 px-3.5 py-3 border-b border-[rgba(18,22,26,0.08)]">
-          <h2 className="text-[12.5px] font-extrabold tracking-[1.6px] text-[#15191d]">
-            {t("rates") || "КУРСЫ"}
+        <header className="flex items-center gap-2.5 px-4 py-3.5 border-b border-line">
+          <h2 className="text-[15px] font-normal tracking-tight text-ink">
+            {t("rates") || "Курсы"}
           </h2>
           {onOpenRates && (
             <button
               type="button"
               onClick={onOpenRates}
-              className="ml-auto text-[11px] font-medium text-[#6a717a] border-b border-dotted border-[#aeb4bb] pb-px hover:text-[#15191d] hover:border-[#6a717a] transition-colors focus-visible:outline-none focus-visible:text-[#15191d]"
+              className="ml-auto text-[11.5px] font-medium text-muted border-b border-dotted border-line-2 pb-px hover:text-ink hover:border-muted transition-colors focus-visible:outline-none focus-visible:text-ink"
               title={t("edit_rates") || "Редактировать курсы"}
             >
               редактировать
@@ -158,26 +158,26 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           const fresh = timeAgoShort(freshDate, nowMs);
           const isOpen = openSet.has(office.id);
           return (
-            <div key={office.id} className="border-b border-[rgba(18,22,26,0.08)] last:border-b-0">
+            <div key={office.id} className="border-b border-line last:border-b-0">
               <button
                 type="button"
                 onClick={() => toggleOffice(office.id)}
                 aria-expanded={isOpen}
-                className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 hover:bg-[rgba(18,22,26,0.018)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c9c6b]/30 focus-visible:ring-inset"
+                className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 hover:bg-surface-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15 focus-visible:ring-inset"
               >
                 <ChevronRight
-                  className={`w-3 h-3 text-[#aeb4bb] shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                  className={`w-3 h-3 text-muted-soft shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`}
                   strokeWidth={2.4}
                 />
-                <span className="text-[13px] font-bold tracking-tight text-[#15191d] truncate">
+                <span className="text-[13px] font-bold tracking-tight text-ink truncate">
                   {office.name || office.city || "Office"}
                 </span>
                 {office.city && office.name && (
-                  <span className="text-[11px] font-medium text-[#6a717a] truncate">· {office.city}</span>
+                  <span className="text-[11px] font-medium text-muted truncate">· {office.city}</span>
                 )}
-                <span className="ml-auto inline-flex items-center gap-1.5 shrink-0 text-[10px] tracking-[0.3px] text-[#aeb4bb]">
+                <span className="ml-auto inline-flex items-center gap-1.5 shrink-0 text-[10px] tracking-[0.3px] text-muted-soft">
                   <span
-                    className={`w-[5px] h-[5px] rounded-full ${isFresh ? "bg-[#0c9c6b]" : "bg-[#aeb4bb]"}`}
+                    className={`w-[5px] h-[5px] rounded-full ${isFresh ? "bg-lime" : "bg-line-2"}`}
                     aria-hidden
                   />
                   {fresh || "—"}
@@ -207,13 +207,13 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
       {/* Тост копирования */}
       <div
-        className={`fixed left-1/2 bottom-6 -translate-x-1/2 z-50 flex items-center gap-2 bg-ink text-white text-[13px] font-semibold px-4 py-2.5 rounded-[12px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)] transition-all duration-200 ${
+        className={`fixed left-1/2 bottom-6 -translate-x-1/2 z-50 flex items-center gap-2 bg-ink text-cream text-[13px] font-semibold px-4 py-2.5 rounded-card-sm shadow-[0_16px_40px_-12px_rgba(0,0,0,0.45)] transition-all duration-200 ${
           toast ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
         }`}
         role="status"
         aria-live="polite"
       >
-        <Check className="w-4 h-4 text-[#34d399]" strokeWidth={2.6} />
+        <Check className="w-4 h-4 text-lime" strokeWidth={2.6} />
         <span className="font-mono tabular-nums">{toast}</span>
       </div>
     </aside>
