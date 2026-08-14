@@ -10,6 +10,7 @@ import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
 import InfoPage from "./pages/InfoPage.jsx";
 import ShareAccountsView from "./pages/ShareAccountsView.jsx";
+import DesignPreview from "./pages/DesignPreview.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
 
@@ -459,6 +460,15 @@ function AuthGate({ children }) {
 }
 
 export default function App() {
+  // Dev-витрина примитивов редизайна — /design-preview (вне авторизации/провайдеров).
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/design-preview")) {
+    return (
+      <ErrorBoundary>
+        <DesignPreview />
+      </ErrorBoundary>
+    );
+  }
+
   // Публичная read-only ссылка /share/accounts/<token> — рендерим ВНЕ авторизации
   // и провайдеров (нет логина, нет доступа к мутациям). Данные — через share-API.
   const shareMatch =

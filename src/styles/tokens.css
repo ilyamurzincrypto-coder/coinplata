@@ -12,20 +12,22 @@
    * Slot colors (8 ролей, без оттенков). Дополнительные оттенки
    * берутся из Tailwind utility-классов (bg-*, border-*, text-*).
    * ──────────────────────────────────────────────────────────────────*/
-  --color-bg:              #ffffff;
-  --color-text:            theme('colors.slate.900');
-  --color-text-secondary:  theme('colors.slate.700');
-  --color-text-muted:      theme('colors.slate.500');
-  --color-border:          theme('colors.slate.200');
-  --color-border-strong:   theme('colors.slate.300');
-  --color-accent:          theme('colors.indigo.600');
-  --color-success:         theme('colors.emerald.600');
-  --color-danger:          theme('colors.rose.600');
-  --color-warning:         theme('colors.amber.600');
+  /* Редизайн-2026: репойнт на тёплую палитру (эталон design/reference.html).
+     Раньше был slate/indigo — контрил боевую систему; классов ≤9 на репо. */
+  --color-bg:              theme('colors.cream');
+  --color-text:            theme('colors.ink');
+  --color-text-secondary:  theme('colors.ink-soft');
+  --color-text-muted:      theme('colors.muted');
+  --color-border:          theme('colors.line');
+  --color-border-strong:   theme('colors.line-2');
+  --color-accent:          theme('colors.ink');
+  --color-success:         theme('colors.lime-ink');
+  --color-danger:          theme('colors.red');
+  --color-warning:         theme('colors.orange-ink');
 
   /* Brand override hook — при появлении бренда поменяется только это */
   --brand-primary:         var(--color-accent);
-  --brand-primary-hover:   theme('colors.indigo.700');
+  --brand-primary-hover:   theme('colors.dark');
 
   /* ──────────────────────────────────────────────────────────────────
    * Typography — 4 уровня + label для метаданных.

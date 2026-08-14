@@ -2,6 +2,7 @@
 import React, { useMemo } from "react";
 import { Globe } from "lucide-react";
 import Select from "./ui/Select.jsx";
+import { Pill } from "./ui/redesign.jsx";
 import CashClosureBadge from "./CashClosureBadge.jsx";
 import ProfileMenu from "./ProfileMenu.jsx";
 import NotificationsBell from "./NotificationsBell.jsx";
@@ -43,8 +44,8 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   }, [currentOffice, scopedOffices, onOfficeChange]);
 
   return (
-    <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-xl border-b border-border-soft">
-      <div className="max-w-[1680px] mx-auto px-4 h-14 flex items-center gap-4">
+    <header className="sticky top-0 z-40 bg-cream/85 backdrop-blur-xl border-b border-line">
+      <div className="max-w-[1680px] mx-auto px-4 h-14 flex items-center gap-3">
         {/* Logo — coinpoint mark, без текстовой подписи */}
         <div className="flex items-center shrink-0">
           <img
@@ -55,20 +56,17 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           />
         </div>
 
-        {/* Nav */}
-        <nav className="hidden lg:flex items-center gap-0.5">
+        {/* Nav — таблетки: активная тёмная, прочие — контурные */}
+        <nav className="hidden lg:flex items-center gap-1.5">
           {visibleNav.map((p) => (
-            <button
+            <Pill
               key={p.id}
+              variant={page === p.id ? "dark" : "line"}
               onClick={() => onPageChange(p.id)}
-              className={`px-2.5 py-1.5 rounded-button text-body-sm transition-colors ${
-                page === p.id
-                  ? "bg-surface-sunk text-ink font-semibold"
-                  : "text-muted hover:text-ink hover:bg-surface-soft"
-              }`}
+              className="!py-2 !px-4 hover:!border-ink/40"
             >
               {t(p.key)}
-            </button>
+            </Pill>
           ))}
         </nav>
 
@@ -100,19 +98,16 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
       </div>
 
       {/* Mobile nav */}
-      <div className="lg:hidden px-4 pb-2 pt-1 flex items-center gap-2 overflow-x-auto">
+      <div className="lg:hidden px-4 pb-2 pt-1 flex items-center gap-1.5 overflow-x-auto">
         {visibleNav.map((p) => (
-          <button
+          <Pill
             key={p.id}
+            variant={page === p.id ? "dark" : "line"}
             onClick={() => onPageChange(p.id)}
-            className={`px-3 py-1 rounded-button text-caption whitespace-nowrap transition-colors ${
-              page === p.id
-                ? "bg-surface-sunk text-ink font-medium"
-                : "text-muted hover:text-ink"
-            }`}
+            className="!py-1.5 !px-3 !text-[12px]"
           >
             {t(p.key)}
-          </button>
+          </Pill>
         ))}
       </div>
 

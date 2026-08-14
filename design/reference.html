@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoinPlata Касса — целевой дизайн</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F1EBDE; --cream-2:#EAE3D3; --card:#FDFCF8;
+  --ink:#1A1915; --dark:#17150F; --dark-2:#23211A; --dark-3:#2B2820;
+  --muted:#8A8577; --faint:#A39D8C; --line:#E2DBCB; --line-2:#CFC8B8;
+  --orange:#E8622C; --orange-bg:#F6E3D3; --orange-ink:#8A4A22;
+  --blue-1:#93A0B5; --blue-2:#76869E; --blue-ink:#E9EDF2; --blue-soft:#D4DAE3;
+  --lime:#C8D96F; --lime-ink:#2E3312;
+  --red:#C43A2B; --red-bg:#F4DAD4;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:'Onest',system-ui,sans-serif;
+  background:#E5DECD;
+  color:var(--ink);
+  padding:56px 24px 96px;
+  font-feature-settings:"tnum";
+}
+.wrap{max-width:1280px;margin:0 auto}
+.doc-head{max-width:1280px;margin:0 auto 40px}
+.doc-head h1{font-size:26px;font-weight:400;letter-spacing:-0.01em}
+.doc-head p{font-size:14px;color:var(--muted);margin-top:6px;max-width:640px;line-height:1.6}
+.screen-label{
+  font-size:13px;color:var(--muted);margin:64px 0 14px;
+  display:flex;align-items:center;gap:10px;
+}
+.screen-label b{font-weight:500;color:var(--ink)}
+.screen-label::after{content:"";flex:1;height:1px;background:var(--line-2)}
+
+/* ---------- каркас экрана ---------- */
+.frame{
+  background:
+    radial-gradient(900px 420px at 78% -10%, rgba(238,178,92,.28), transparent 62%),
+    radial-gradient(700px 380px at 8% 108%, rgba(238,178,92,.14), transparent 60%),
+    var(--cream);
+  border-radius:32px;
+  padding:24px;
+}
+
+/* ---------- общие элементы ---------- */
+.pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;font-size:13px;padding:9px 18px;white-space:nowrap}
+.pill.dark{background:var(--ink);color:var(--cream)}
+.pill.line{border:1px solid var(--line-2);color:#6B675C}
+.pill.lime{background:var(--lime);color:var(--lime-ink)}
+.pill.warn{background:var(--orange-bg);color:var(--orange-ink)}
+.pill.ghost{color:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+.circle{width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.circle.dark{background:var(--ink);color:var(--cream)}
+.circle.ring{border:1px solid var(--line-2);color:#6B675C}
+.circle.light{background:var(--card);color:var(--ink)}
+.arw{width:13px;height:13px;display:block}
+.badge-alert{
+  position:absolute;top:-6px;right:-6px;width:17px;height:17px;border-radius:6px;
+  background:var(--orange);color:#fff;font-size:12px;font-weight:500;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ---------- верхняя навигация ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.topbar .nav{display:flex;gap:6px;align-items:center}
+.logo{width:38px;height:38px;border-radius:50%;background:var(--ink);color:var(--cream);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:500;margin-right:8px}
+.topbar .side{display:flex;align-items:center;gap:8px}
+.avatar{width:34px;height:34px;border-radius:50%;background:var(--cream-2);border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500}
+
+/* ---------- плашка «не подтверждены» ---------- */
+.confirm-strip{
+  display:flex;align-items:center;gap:12px;
+  background:var(--orange-bg);border-radius:999px;
+  padding:8px 8px 8px 18px;margin-bottom:20px;width:fit-content;
+}
+.confirm-strip .sq{width:19px;height:19px;border-radius:6px;background:var(--orange);color:#fff;font-size:12px;font-weight:500;display:flex;align-items:center;justify-content:center;flex:none}
+.confirm-strip span{font-size:13px;color:var(--orange-ink)}
+
+/* ---------- сетка экрана 1 ---------- */
+.grid-main{display:grid;grid-template-columns:324px 1fr;gap:16px;align-items:start}
+
+/* ---------- левая панель курсов ---------- */
+.rates-head{display:flex;align-items:center;justify-content:space-between;padding:4px 6px 12px}
+.rates-head .t{font-size:17px;font-weight:400}
+.rates-head .v{font-size:12px;color:var(--muted)}
+.bcard{background:var(--card);border-radius:24px;padding:18px;margin-bottom:10px;position:relative}
+.bcard .row-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.bcard .lbl{font-size:13px;color:var(--muted);margin-bottom:4px}
+.num{font-weight:300;line-height:1;letter-spacing:-0.01em}
+.num .big{font-size:40px}
+.num .frac{font-size:21px;color:#6B675C}
+.bcard .foot{font-size:11.5px;color:var(--faint);margin-top:12px}
+.rate-line{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-top:1px solid var(--line)}
+.rate-line:first-of-type{border-top:0;padding-top:0}
+.rate-line .p{font-size:12.5px;color:var(--muted)}
+.rate-line .n{font-weight:300;font-size:24px}
+.rate-line .n small{font-size:14px;color:#6B675C;font-weight:300}
+
+.bcard.accent{
+  background:
+    radial-gradient(220px 160px at 88% -20%, rgba(240,196,130,.55), transparent 70%),
+    linear-gradient(148deg, var(--blue-1), var(--blue-2));
+  color:var(--blue-ink);
+}
+.bcard.accent .lbl{color:var(--blue-soft)}
+.bcard.accent .num .frac{color:var(--blue-soft)}
+.bcard.accent .foot{color:var(--blue-soft)}
+.bcard.accent .circle.ring{border-color:rgba(233,237,242,.45);color:var(--blue-ink)}
+.dots{display:flex;align-items:center;gap:5px;margin-top:12px}
+.dots i{width:5px;height:5px;border-radius:50%;background:rgba(233,237,242,.55);display:block;font-style:normal}
+.dots i.on{width:8px;height:8px;background:var(--blue-ink)}
+.dots span{font-size:11.5px;color:var(--blue-soft);margin-left:5px}
+
+.bcard.accent .chiprow{display:flex;gap:5px;margin:10px 0 4px}
+.chip-b{font-size:11px;padding:5px 12px;border-radius:999px;border:1px solid rgba(233,237,242,.4);color:var(--blue-soft)}
+.chip-b.on{background:var(--blue-ink);color:#3E4C63;border-color:transparent}
+.rate2{display:grid;grid-template-columns:1fr 86px 86px;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid rgba(233,237,242,.22)}
+.rate2 .cur{font-size:12.5px;color:var(--blue-soft)}
+.rate2 .a,.rate2 .b{font-weight:300;font-size:19px;text-align:right;letter-spacing:-0.01em}
+.rate2.h{border-top:0;padding:2px 0}
+.rate2.h span{font-size:10.5px;color:var(--blue-soft);opacity:.85;text-align:right}
+.qr-line{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:baseline;border-top:1px solid rgba(233,237,242,.22);padding:10px 0 0;margin-top:2px}
+.qr-line .cur{font-size:12.5px;color:var(--blue-soft)}
+.bcard.add{
+  background:transparent;border:1.5px dashed var(--line-2);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  color:var(--muted);font-size:13px;padding:16px;
+}
+.btn-edit{
+  width:100%;border-radius:999px;background:var(--ink);color:var(--cream);
+  font-size:14px;padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:2px;
+}
+
+/* ---------- правая колонка ---------- */
+.hero{
+  background:
+    radial-gradient(360px 220px at 90% -30%, rgba(232,98,44,.28), transparent 65%),
+    var(--dark);
+  color:var(--cream);border-radius:24px;padding:22px 24px;
+  display:flex;align-items:center;gap:16px;margin-bottom:14px;
+}
+.hero .plus{width:46px;height:46px;border-radius:50%;background:var(--lime);color:var(--lime-ink);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:300;flex:none}
+.hero .t{font-size:19px;font-weight:400}
+.hero .s{font-size:12.5px;color:#8B8676;margin-top:3px}
+.hero .go{margin-left:auto}
+
+.panel{background:var(--card);border-radius:24px;padding:20px 22px;margin-bottom:14px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.panel-head .t{font-size:15px;font-weight:400}
+.panel-head .s{font-size:12px;color:var(--muted)}
+.bal-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.bal{background:var(--cream);border-radius:18px;padding:14px 16px}
+.bal .c{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.bal .c i{width:6px;height:6px;border-radius:50%;background:var(--faint);display:block;font-style:normal}
+.bal .n{font-weight:300;font-size:24px;letter-spacing:-0.01em}
+.bal .n small{font-size:13px;color:#6B675C}
+.bal .sub{font-size:11px;color:var(--faint);margin-top:6px}
+
+/* ---------- тёмная секция сделок ---------- */
+.deals{
+  background:
+    radial-gradient(500px 260px at 6% -30%, rgba(238,178,92,.10), transparent 60%),
+    var(--dark);
+  border-radius:24px;padding:20px 22px;color:var(--cream);
+}
+.deals-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.deals-head .t{font-size:15px}
+.deals-head .t span{font-size:12px;color:#7A7565;margin-left:8px}
+.deals-head .tabs{display:flex;gap:6px}
+.deal{
+  display:grid;grid-template-columns:44px 1fr 150px 190px 96px;
+  align-items:center;gap:14px;
+  background:var(--dark-2);border-radius:18px;padding:12px 16px;margin-bottom:8px;
+}
+.deal .tm{font-size:11px;color:#7A7565;line-height:1.5}
+.deal .who{font-size:13.5px}
+.deal .who small{display:block;font-size:11px;color:#7A7565;margin-top:2px}
+.deal .amt{font-weight:300;font-size:17px;text-align:right}
+.deal .amt small{font-size:11px;color:#7A7565;font-weight:400;display:block;margin-top:2px}
+.deal .rate{font-size:12px;color:#A39D8C;text-align:right}
+.deal .rate b{display:block;font-weight:300;font-size:17px;color:var(--cream);margin-bottom:2px}
+.deal .act{display:flex;justify-content:flex-end}
+
+/* ---------- экран 2: редактор ---------- */
+.ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.ed-head .t{font-size:19px;font-weight:400}
+.tabs-blocks{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.chips{display:flex;gap:6px;margin-bottom:18px}
+.chip{font-size:12px;padding:7px 15px;border-radius:999px;border:1px solid var(--line-2);color:#6B675C}
+.chip.on{background:var(--ink);color:var(--cream);border-color:var(--ink)}
+.ed-card{background:var(--card);border-radius:24px;padding:22px 24px}
+.src-line{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);margin-bottom:18px}
+.src-line .tag{background:var(--cream);border-radius:999px;padding:5px 13px;font-size:12px;color:#6B675C}
+table.rates{width:100%;border-collapse:collapse;table-layout:fixed}
+table.rates th{font-size:11.5px;color:var(--faint);font-weight:400;text-align:left;padding:0 0 12px}
+table.rates th:last-child,table.rates td:last-child{text-align:right}
+table.rates td{padding:13px 0;border-top:1px solid var(--line);vertical-align:middle}
+table.rates .pair{font-size:14px}
+table.rates .old{font-weight:300;font-size:19px;color:var(--faint)}
+table.rates .client{font-weight:300;font-size:23px}
+table.rates .client small{font-size:13px;color:#6B675C}
+.inp{
+  font-family:'Onest',sans-serif;font-weight:300;font-size:19px;color:var(--ink);
+  background:var(--cream);border:1px solid transparent;border-radius:14px;
+  padding:9px 14px;width:126px;outline:none;
+}
+.inp:focus{border-color:var(--ink)}
+.inp.err{border-color:var(--red);background:var(--red-bg);color:var(--red)}
+.err-note{font-size:12px;color:var(--red);display:inline-flex;align-items:center;gap:6px}
+.guard{
+  display:flex;align-items:center;gap:10px;margin-top:14px;
+  background:var(--red-bg);border-radius:16px;padding:12px 16px;font-size:12.5px;color:var(--red);
+}
+.guard .sq{width:19px;height:19px;border-radius:6px;background:var(--red);color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.pub-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  border-top:1px solid var(--line);margin-top:20px;padding-top:18px;
+}
+.pub-bar .info{font-size:12.5px;color:var(--muted);line-height:1.7}
+.pub-bar .info b{color:var(--ink);font-weight:400}
+.pub-bar .btns{display:flex;gap:8px;flex:none}
+.pill.locked{background:var(--line-2);color:#6B675C}
+
+/* ---------- экран 3: публикация ---------- */
+.flow{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:stretch}
+.ver-card{background:var(--card);border-radius:24px;padding:20px 22px}
+.ver-card .t{font-size:14px;margin-bottom:16px}
+.ver{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line);align-items:baseline}
+.ver:first-of-type{border-top:0;padding-top:0}
+.ver .n{font-weight:300;font-size:19px;width:64px;flex:none}
+.ver .m{font-size:11.5px;color:var(--faint);line-height:1.6}
+.ver.cur .n{color:var(--ink)}
+.ver.cur .m b{color:var(--ink);font-weight:400}
+.ver.draft .n{color:var(--orange)}
+.chan-card{background:var(--dark);border-radius:24px;padding:20px 22px;color:var(--cream)}
+.chan-card .t{font-size:14px;margin-bottom:6px}
+.chan-card .s{font-size:12px;color:#7A7565;margin-bottom:16px}
+.chan-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.chan{background:var(--dark-2);border-radius:18px;padding:14px}
+.chan .ic{width:32px;height:32px;border-radius:50%;border:1px solid #3A372C;color:#A39D8C;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:13px}
+.chan .n{font-size:12.5px;line-height:1.5}
+.chan .st{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--lime);margin-top:8px}
+.chan .st i{width:14px;height:14px;border-radius:50%;background:var(--lime);color:var(--lime-ink);display:flex;align-items:center;justify-content:center;font-size:10px;font-style:normal;flex:none}
+.note-fix{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:#A39D8C}
+.note-fix .sq{width:18px;height:18px;border-radius:6px;background:var(--lime);color:var(--lime-ink);font-size:11px;display:flex;align-items:center;justify-content:center;flex:none}
+
+/* ---------- токены ---------- */
+.tokens{background:var(--card);border-radius:24px;padding:22px 24px}
+.tokens .t{font-size:14px;margin-bottom:16px}
+.sw-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.sw{width:112px}
+.sw i{display:block;height:52px;border-radius:14px;border:1px solid var(--line);font-style:normal;margin-bottom:7px}
+.sw span{font-size:11px;color:var(--muted);display:block;line-height:1.6}
+.type-row{display:flex;gap:32px;align-items:baseline;border-top:1px solid var(--line);padding-top:16px;flex-wrap:wrap}
+.type-row .n{font-weight:300;font-size:40px}
+.type-row .n small{font-size:21px;color:#6B675C}
+.type-row .d{font-size:12px;color:var(--muted);line-height:1.7;max-width:520px}
+
+svg{display:block}
+</style>
+</head>
+<body>
+
+<div class="doc-head">
+  <h1>CoinPlata Касса — целевой дизайн</h1>
+  <p>Три экрана: главный вид с панелью блоков курсов, раскрытие блока с редактором и черновиком, публикация версии во все каналы. Направление — rondesignlab: тёплый крем, тонкие крупные цифры, круглые формы, тёмные секции.</p>
+</div>
+
+<!-- ================= ЭКРАН 1 ================= -->
+<div class="wrap">
+  <div class="screen-label"><b>Экран 1</b> Касса — главный вид. Слева блоки курсов, только чтение</div>
+  <div class="frame">
+
+    <div class="topbar">
+      <div class="nav">
+        <div class="logo">CP</div>
+        <span class="pill dark">Касса</span>
+        <span class="pill line">Счета</span>
+        <span class="pill line">Контрагенты</span>
+        <span class="pill line">Казначейство</span>
+        <span class="pill ghost">Настройки</span>
+      </div>
+      <div class="side">
+        <span class="pill line">RU</span>
+        <span class="pill line"><span class="dot" style="background:var(--orange)"></span>Закрыть кассу</span>
+        <div class="avatar">IM</div>
+      </div>
+    </div>
+
+    <div class="confirm-strip">
+      <span class="sq">!</span>
+      <span>Курсы на сегодня не подтверждены · Istanbul</span>
+      <span class="pill dark" style="padding:7px 15px;font-size:12px">Подтвердить</span>
+    </div>
+
+    <div class="grid-main">
+
+      <!-- левая панель -->
+      <div>
+        <div class="rates-head">
+          <span class="t">Курсы</span>
+          <span class="v">v. 148 · 10:41</span>
+        </div>
+
+        <div class="bcard">
+          <div class="row-top">
+            <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="11" rx="2"/><circle cx="12" cy="12.5" r="2.4"/></svg></span>
+            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+          </div>
+          <div class="lbl">Нал · Толунай</div>
+          <div class="rate-line"><span class="p">USD → TRY</span><span class="n">40<small>,88</small></span></div>
+          <div class="rate-line"><span class="p">EUR → TRY</span><span class="n">47<small>,61</small></span></div>
+          <div class="rate-line"><span class="p">GBP → TRY</span><span class="n">55<small>,02</small></span></div>
+          <div class="foot">Анталия и Стамбул · обновлено 3 мин назад</div>
+        </div>
+
+        <div class="bcard accent">
+          <div class="row-top">
+            <span class="circle ring" style="position:relative">
+              <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6M12 8.5v7"/></svg>
+              <span class="badge-alert">!</span>
+            </span>
+            <span class="circle light"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+          </div>
+          <div class="lbl">USDT · Paramon, с утра</div>
+          <div class="chiprow">
+            <span class="chip-b on">ANT</span>
+            <span class="chip-b">IST</span>
+            <span class="chip-b">MSK</span>
+            <span class="chip-b">SPB</span>
+          </div>
+          <div class="rate2 h"><span></span><span>USDT →</span><span>→ USDT</span></div>
+          <div class="rate2"><span class="cur">USD</span><span class="a">−1,00%</span><span class="b">+0,20%</span></div>
+          <div class="rate2"><span class="cur">TRY</span><span class="a">47,10</span><span class="b">47,95</span></div>
+          <div class="rate2"><span class="cur">EUR</span><span class="a">1,167</span><span class="b">1,147</span></div>
+          <div class="qr-line"><span class="cur">QR ₽ · ЦБ + спред 8%</span><span class="a" style="font-size:21px">90,51</span></div>
+          <div class="foot">всё, что связано с тезером · MSK и SPB — пары к RUB</div>
+        </div>
+
+        <div class="bcard">
+          <div class="row-top">
+            <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></span>
+            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+          </div>
+          <div class="lbl">Перестановки</div>
+          <div class="num"><span class="big">+0</span><span class="frac">,9%</span></div>
+          <div class="foot">от USDT · маржа сверху · согласуется</div>
+        </div>
+
+        <div class="bcard add">
+          <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>
+          Блок 4 · слот свободен
+        </div>
+
+        <div class="btn-edit">
+          <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></svg>
+          Редактировать курсы
+        </div>
+      </div>
+
+      <!-- правая колонка -->
+      <div>
+        <div class="hero">
+          <span class="plus">+</span>
+          <div>
+            <div class="t">Новая сделка</div>
+            <div class="s">оформить ордер · N</div>
+          </div>
+          <span class="circle light go"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <span class="t">Остатки в кассе</span>
+            <span class="s">все офисы · разбивка по клику</span>
+          </div>
+          <div class="bal-grid">
+            <div class="bal"><div class="c"><i></i>USDT</div><div class="n">14 196<small>,10</small></div><div class="sub">под заявки</div></div>
+            <div class="bal"><div class="c"><i></i>USD</div><div class="n">22 975<small>,18</small></div><div class="sub">под заявки</div></div>
+            <div class="bal"><div class="c"><i></i>TRY</div><div class="n">27 993</div><div class="sub">под заявки</div></div>
+            <div class="bal"><div class="c"><i></i>EUR</div><div class="n" style="color:var(--faint)">·</div><div class="sub">нет движений</div></div>
+            <div class="bal"><div class="c"><i></i>RUB</div><div class="n" style="color:var(--faint)">·</div><div class="sub">нет движений</div></div>
+          </div>
+        </div>
+
+        <div class="deals">
+          <div class="deals-head">
+            <span class="t">Сделки<span>24 за день</span></span>
+            <div class="tabs">
+              <span class="pill" style="background:var(--cream);color:var(--dark);font-size:11px;padding:6px 13px">Сегодня</span>
+              <span class="pill" style="border:1px solid #3A372C;color:#A39D8C;font-size:11px;padding:6px 13px">Неделя</span>
+            </div>
+          </div>
+
+          <div class="deal">
+            <div class="tm">13.08<br>12:11</div>
+            <div class="who">@jussy_ju<small>187-147 · встреча 12:10</small></div>
+            <div class="amt">1 020<small>USDT · приход</small></div>
+            <div class="rate"><b>1 000 <span style="font-size:12px;color:#7A7565">USD</span></b>курс 0,99</div>
+            <div class="act"><span class="pill lime" style="font-size:12px;padding:8px 16px">Принять</span></div>
+          </div>
+
+          <div class="deal">
+            <div class="tm">13.08<br>11:41</div>
+            <div class="who">Александр<small>110-444 · встреча 18:40</small></div>
+            <div class="amt">11 731<small>USDT · приход</small></div>
+            <div class="rate"><b>11 731 <span style="font-size:12px;color:#7A7565">USD</span></b>курс 1,00</div>
+            <div class="act"><span class="pill lime" style="font-size:12px;padding:8px 16px">Принять</span></div>
+          </div>
+
+          <div class="deal">
+            <div class="tm">10.08<br>12:05</div>
+            <div class="who">@Nekta_R<small>997-971</small></div>
+            <div class="amt">300<small>USDT · приход</small></div>
+            <div class="rate"><b>13 118 <span style="font-size:12px;color:#7A7565">TRY</span></b>курс 46,85</div>
+            <div class="act"><span class="pill lime" style="font-size:12px;padding:8px 16px">Принять</span></div>
+          </div>
+
+          <div class="deal" style="opacity:.65">
+            <div class="tm">03.08<br>13:07</div>
+            <div class="who">@Zkl0909<small>986-718</small></div>
+            <div class="amt">10 000<small>USD · приход</small></div>
+            <div class="rate"><b>10 010 <span style="font-size:12px;color:#7A7565">USDT</span></b>курс 1,001</div>
+            <div class="act"><span class="pill" style="border:1px solid #3A372C;color:#A39D8C;font-size:12px;padding:8px 16px">Новая</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- ================= ЭКРАН 2 ================= -->
+  <div class="screen-label"><b>Экран 2</b> Раскрытие блока — вкладки, черновик, границы, публикация</div>
+  <div class="frame">
+
+    <div class="ed-head">
+      <span class="t">Курсы · редактирование</span>
+      <span class="pill warn"><span class="dot" style="background:var(--orange)"></span>Черновик · не опубликован</span>
+    </div>
+
+    <div class="tabs-blocks">
+      <span class="pill line">Нал</span>
+      <span class="pill dark">USDT · 4 города</span>
+      <span class="pill line">Перестановки</span>
+      <span class="pill line">QR ₽</span>
+      <span class="pill ghost">+ блок</span>
+    </div>
+
+    <div class="ed-card">
+      <div class="src-line">
+        <span class="tag">Источник: вручную · Paramon, с утра</span>
+        <span class="tag">USD — процент · TRY и EUR — абсолют</span>
+        <span style="margin-left:auto">опубликовано v. 148 · 10:41</span>
+      </div>
+
+      <div class="chips">
+        <span class="chip on">ANT</span>
+        <span class="chip">IST</span>
+        <span class="chip">MSK</span>
+        <span class="chip">SPB</span>
+      </div>
+
+      <table class="rates">
+        <tr><th style="width:30%">Пара</th><th style="width:20%">Было</th><th style="width:28%">Стало</th><th style="width:22%">Клиенту</th></tr>
+        <tr>
+          <td class="pair">USDT → USD</td>
+          <td class="old">−0,90%</td>
+          <td><input class="inp" value="−1,00%"></td>
+          <td class="client">0<small>,990</small></td>
+        </tr>
+        <tr>
+          <td class="pair">USD → USDT</td>
+          <td class="old">0,20%</td>
+          <td><input class="inp" value="0,20%"></td>
+          <td class="client">1<small>,002</small></td>
+        </tr>
+        <tr>
+          <td class="pair">USDT → TRY</td>
+          <td class="old">46,80</td>
+          <td><input class="inp" value="47,10"></td>
+          <td class="client">47<small>,10</small></td>
+        </tr>
+        <tr>
+          <td class="pair">TRY → USDT</td>
+          <td class="old">46,20</td>
+          <td><input class="inp err" value="52,95"></td>
+          <td><span class="err-note">вне границ</span></td>
+        </tr>
+        <tr>
+          <td class="pair">USDT → EUR</td>
+          <td class="old">1,1670</td>
+          <td><input class="inp" value="1,167"></td>
+          <td class="client">1<small>,167</small></td>
+        </tr>
+        <tr>
+          <td class="pair">EUR → USDT</td>
+          <td class="old">1,1470</td>
+          <td><input class="inp" value="1,147"></td>
+          <td class="client">1<small>,147</small></td>
+        </tr>
+      </table>
+
+      <div class="guard">
+        <span class="sq">!</span>
+        TRY → USDT отличается от последней публикации на 14,6% при границе ±5%. Исправьте значение — публикация заблокирована.
+      </div>
+
+      <div class="pub-bar">
+        <div class="info"><b>Изменится 6 курсов в 2 блоках.</b> Перестановки пересчитаются от USDT автоматически.<br>Уйдёт в: сайт · миниапп · клиентский бот · менеджерский бот · админка</div>
+        <div class="btns">
+          <span class="pill line">Отменить</span>
+          <span class="pill locked"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Опубликовать v. 149</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ================= ЭКРАН 3 ================= -->
+  <div class="screen-label"><b>Экран 3</b> Публикация — один снапшот, все каналы, история версий</div>
+  <div class="flow">
+
+    <div class="ver-card">
+      <div class="t">Версии</div>
+      <div class="ver draft"><span class="n">черновик</span><span class="m">правится сейчас · Ilya</span></div>
+      <div class="ver cur"><span class="n">v. 148</span><span class="m"><b>текущая</b> · сегодня 10:41 · Paramon, утро</span></div>
+      <div class="ver"><span class="n">v. 147</span><span class="m">вчера 18:30 · правка TRY</span></div>
+      <div class="ver"><span class="n">v. 146</span><span class="m">вчера 09:12 · утренние курсы</span></div>
+      <div class="ver" style="border-top:1px solid var(--line)"><span class="n" style="font-size:13px;color:var(--muted)">откат</span><span class="m">любая версия возвращается в один клик</span></div>
+    </div>
+
+    <div class="chan-card">
+      <div class="t">Каналы получили v. 148</div>
+      <div class="s">касса считает конечные цифры один раз — наружу уходит готовый прайс, без формул</div>
+      <div class="chan-grid">
+        <div class="chan"><div class="ic">S</div><div class="n">Сайт</div><div class="st"><i>✓</i>10:41</div></div>
+        <div class="chan"><div class="ic">M</div><div class="n">Миниапп</div><div class="st"><i>✓</i>10:41</div></div>
+        <div class="chan"><div class="ic">К</div><div class="n">Клиентский бот</div><div class="st"><i>✓</i>10:41</div></div>
+        <div class="chan"><div class="ic">Б</div><div class="n">Бот менеджеров</div><div class="st"><i>✓</i>10:41</div></div>
+        <div class="chan"><div class="ic">А</div><div class="n">Админка</div><div class="st"><i>✓</i>10:41</div></div>
+      </div>
+      <div class="note-fix"><span class="sq">✓</span>«Зафиксировать курс» в заявке = привязка к номеру версии, а не к плавающему числу</div>
+    </div>
+  </div>
+
+<!-- ================= ТОКЕНЫ ================= -->
+  <div class="screen-label"><b>Токены</b> для передачи в Claude Code</div>
+  <div class="tokens">
+    <div class="sw-row">
+      <div class="sw"><i style="background:#F1EBDE"></i><span>фон · крем<br>#F1EBDE</span></div>
+      <div class="sw"><i style="background:#FDFCF8"></i><span>карточка<br>#FDFCF8</span></div>
+      <div class="sw"><i style="background:#1A1915"></i><span>чернила / кнопки<br>#1A1915</span></div>
+      <div class="sw"><i style="background:#17150F"></i><span>тёмная секция<br>#17150F</span></div>
+      <div class="sw"><i style="background:linear-gradient(148deg,#93A0B5,#76869E)"></i><span>акцент-блок<br>#93A0B5 → #76869E</span></div>
+      <div class="sw"><i style="background:#C8D96F"></i><span>действие / ок<br>#C8D96F</span></div>
+      <div class="sw"><i style="background:#E8622C"></i><span>внимание<br>#E8622C</span></div>
+      <div class="sw"><i style="background:#C43A2B"></i><span>ошибка<br>#C43A2B</span></div>
+    </div>
+    <div class="type-row">
+      <span class="n">47<small>,10</small></span>
+      <div class="d">Onest 300–500, кириллица из коробки. Цифры — герои: 40px / вес 300, дробная часть 21px серым. Радиусы: карточки 24, экран 32, пилюли 999. Тени не используются — глубину дают крем, белый и тёмный. Табличные цифры: font-feature-settings "tnum".</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -18,9 +18,9 @@
   body {
     margin: 0;
     @apply bg-bg text-ink font-sans;
-    /* cv11/ss01/ss03 — улучшают читаемость cyrillic + латиницы (Pretendard
-       и Inter оба поддерживают эти OpenType фичи) */
-    font-feature-settings: "cv11", "ss01", "ss03";
+    /* tnum — табличные цифры для Onest (числа-герои выравниваются по колонкам,
+       как в эталоне). cv11/ss01/ss03 — читаемость кириллицы/латиницы. */
+    font-feature-settings: "tnum", "cv11", "ss01", "ss03";
   }
   button {
     font-family: inherit;
