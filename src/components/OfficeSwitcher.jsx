@@ -49,15 +49,15 @@ export default function OfficeSwitcher({ value, onChange, offices }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`group w-full flex items-center gap-2 px-3 py-1.5 rounded-card border transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${
+        className={`group w-full flex items-center gap-2 px-4 py-2 rounded-pill border transition-colors ${
           open
-            ? "bg-ink border-ink text-white shadow-[0_6px_20px_-8px_rgba(15,23,42,0.45)]"
-            : "bg-white border-border-soft text-ink hover:border-border hover:shadow-sm"
+            ? "bg-ink border-ink text-cream"
+            : "bg-card border-line-2 text-ink hover:border-ink/40"
         }`}
       >
         <Building2
           className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-            open ? "text-success" : "text-muted-soft"
+            open ? "text-cream" : "text-muted-soft"
           }`}
         />
         <span className="text-body-sm font-semibold truncate flex-1 text-left">

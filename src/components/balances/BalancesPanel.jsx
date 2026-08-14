@@ -13,6 +13,7 @@ import { convert } from "../../utils/convert.js";
 import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "./currencyMeta.js";
 import CurrencyByOfficePopover from "./CurrencyByOfficePopover.jsx";
 import { MANAGER_ORDERS_ENABLED, loadPendingOrders, subscribeOrders } from "../../lib/managerOrders.js";
+import { HeroNumber } from "../ui/redesign.jsx";
 
 function Num({ value, dp, className = "" }) {
   const { int, dec } = splitParts(fmtRu(value, dp));
@@ -179,11 +180,10 @@ export default function BalancesPanel({ currentOffice, scope }) {
   return (
     <section
       ref={cardRef}
-      className="relative lg:sticky lg:top-[56px] z-20 bg-surface border border-[#e7e9f1] rounded-[16px]"
-      style={{ boxShadow: "0 1px 2px rgba(16,24,40,.06), 0 14px 34px -16px rgba(16,24,40,.18)" }}
+      className="relative lg:sticky lg:top-[72px] z-20 bg-card border border-line rounded-card-2"
     >
       {/* Шапка */}
-      <div className="flex items-center justify-between gap-3 px-[18px] py-[11px] border-b border-[#e7e9f1]">
+      <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
         <span className="text-[12px] font-extrabold tracking-[1.3px] uppercase text-[#454a66]">
           Остатки в кассе
         </span>
@@ -195,112 +195,62 @@ export default function BalancesPanel({ currentOffice, scope }) {
         </span>
       </div>
 
-      {/* Таблица: валюты в колонки */}
-      <div ref={wrapRef} className="overflow-x-auto px-4 pt-2 pb-1">
-        <table className="border-collapse w-full table-fixed min-w-[680px] select-none">
-          <thead>
-            <tr>
-              <th className="w-[80px] text-left" />
-              {columns.map((c) => {
-                const m = ccyMeta(c.ccy);
-                return (
-                  <th
-                    key={c.ccy}
-                    data-bal-ccy={c.ccy}
-                    onClick={(e) => onCellClick(c.ccy, e)}
-                    className="relative px-[13px] pt-[18px] pb-[9px] align-bottom text-center whitespace-nowrap border-l border-[#e7e9f1] cursor-pointer"
-                  >
-                    {c.allOffices && (
-                      <span className="absolute top-[3px] inset-x-0 text-center text-[8px] font-extrabold tracking-wide uppercase text-[#0b8a54] whitespace-nowrap">
-                        все офисы
-                      </span>
-                    )}
-                    <span className="inline-flex items-center gap-1.5 justify-center">
-                      <span
-                        className="w-5 h-5 rounded-md grid place-items-center font-extrabold text-[10px] leading-none"
-                        style={{ background: m.bg, color: m.fg }}
-                      >
-                        {m.sym}
-                      </span>
-                      <span
-                        className={`text-[12.5px] font-bold tracking-wide transition-colors ${
-                          sel === c.ccy ? "text-[#5b6cff]" : "text-ink"
-                        }`}
-                      >
-                        {c.ccy}
-                      </span>
-                    </span>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Утро */}
-            <tr>
-              <td className="w-[80px] text-left uppercase tracking-wide text-[9.5px] font-extrabold text-muted-soft px-[13px] py-[7px] border-t border-[#e7e9f1]">
-                Утро
-              </td>
-              {columns.map((c) => (
-                <td
-                  key={c.ccy}
-                  data-bal-ccy={c.ccy}
-                  onClick={(e) => onCellClick(c.ccy, e)}
-                  className={`text-center whitespace-nowrap border-l border-t border-[#e7e9f1] px-[13px] py-[7px] font-mono tabular-nums text-[12.5px] font-semibold cursor-pointer ${
-                    c.utro === 0 ? "text-[#b6bacb]" : "text-muted"
-                  }`}
+      {/* Карточки-герои по валютам (клик → разбивка по офисам) */}
+      <div ref={wrapRef} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 p-4">
+        {columns.map((c) => {
+          const m = ccyMeta(c.ccy);
+          const dp = m_dp(c.ccy);
+          const need = orderByCcy[c.ccy] || 0;
+          const delta = c.tek - c.utro;
+          let sub = "без движений сегодня";
+          let subCls = "text-faint";
+          if (MANAGER_ORDERS_ENABLED && need > 0) {
+            sub = `под заявки ${fmtRu(need, dp)}`;
+            subCls = need > c.tek ? "text-danger" : "text-[#9a6b00]";
+          } else if (c.tek === 0) {
+            sub = "нет движений";
+          } else if (Math.abs(delta) > 0.005) {
+            sub = `${delta > 0 ? "+" : "−"}${fmtRu(Math.abs(delta), dp)} сегодня`;
+            subCls = delta > 0 ? "text-success" : "text-danger";
+          }
+          const active = sel === c.ccy;
+          return (
+            <button
+              key={c.ccy}
+              type="button"
+              data-bal-ccy={c.ccy}
+              onClick={(e) => onCellClick(c.ccy, e)}
+              className={`text-left bg-cream rounded-card-sm px-4 py-3 transition-colors hover:bg-cream-2 ${
+                active ? "ring-2 ring-ink/15" : ""
+              }`}
+            >
+              <div className="flex items-center gap-1.5 mb-2">
+                <span
+                  className="w-[22px] h-[22px] rounded-[7px] grid place-items-center font-bold text-[11px] leading-none shrink-0"
+                  style={{ background: m.bg, color: m.fg }}
                 >
-                  <Num value={c.utro} dp={m_dp(c.ccy)} />
-                </td>
-              ))}
-            </tr>
-            {/* Текущий */}
-            <tr>
-              <td className="w-[80px] text-left uppercase tracking-wide text-[10px] font-extrabold text-[#454a66] px-[13px] py-[7px] border-t border-[#e7e9f1]">
-                Текущий
-              </td>
-              {columns.map((c) => (
-                <td
-                  key={c.ccy}
-                  data-bal-ccy={c.ccy}
-                  onClick={(e) => onCellClick(c.ccy, e)}
-                  className={`text-center whitespace-nowrap border-l border-t border-[#e7e9f1] px-[13px] py-[7px] font-mono tabular-nums text-[16.5px] font-bold cursor-pointer bg-[#f6f7fb] ${
-                    c.tek === 0 ? "text-[#b6bacb]" : "text-ink"
-                  }`}
-                >
-                  <Num value={c.tek} dp={m_dp(c.ccy)} />
-                </td>
-              ))}
-            </tr>
-
-            {/* Под заявки — расход по незакрытым заявкам; красное при нехватке */}
-            {MANAGER_ORDERS_ENABLED && hasOrders && (
-              <tr>
-                <td className="w-[80px] text-left uppercase tracking-wide text-[9px] font-extrabold text-[#b86b00] px-[13px] py-[6px] border-t border-dashed border-[#e3c98a]">
-                  Под заявки
-                </td>
-                {columns.map((c) => {
-                  const need = orderByCcy[c.ccy] || 0;
-                  const short = need > 0 && need > c.tek;
-                  return (
-                    <td
-                      key={c.ccy}
-                      className={`text-center whitespace-nowrap border-l border-t border-dashed border-[#e3c98a] px-[13px] py-[6px] font-mono tabular-nums text-[12px] font-semibold ${
-                        need > 0 ? (short ? "text-[#cf3b40]" : "text-[#9a6b00]") : "text-[#c9ccd8]"
-                      }`}
-                    >
-                      {need > 0 ? <Num value={need} dp={m_dp(c.ccy)} /> : "·"}
-                    </td>
-                  );
-                })}
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  {m.sym}
+                </span>
+                <span className="text-[12px] font-semibold text-ink">{c.ccy}</span>
+                {c.allOffices && (
+                  <span className="ml-auto text-[8px] font-extrabold uppercase tracking-wide text-muted-soft">
+                    все офисы
+                  </span>
+                )}
+              </div>
+              <HeroNumber
+                value={fmtRu(c.tek, dp)}
+                size="row"
+                className={c.tek === 0 ? "text-faint" : "text-ink"}
+              />
+              <div className={`text-[11px] mt-1 ${subCls}`}>{sub}</div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="px-[18px] pt-2 pb-3 text-[11px] font-semibold text-muted">
-        Нажмите на валюту — <b className="text-[#0b8a54] font-bold">разбивка по всем офисам</b>
+      <div className="px-5 pt-0 pb-3.5 text-[11px] font-semibold text-muted">
+        Нажмите на валюту — <b className="text-success font-bold">разбивка по всем офисам</b>
       </div>
 
       {sel && popView && (

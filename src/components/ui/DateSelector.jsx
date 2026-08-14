@@ -66,8 +66,8 @@ export default function DateSelector({ value, onChange }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex items-center gap-1.5 h-8 px-3 min-w-[122px] rounded-pill text-caption font-semibold transition-colors ${
-          isToday ? "bg-surface-sunk text-ink hover:bg-surface-soft" : "bg-accent-bg text-accent hover:bg-emerald-100"
+        className={`inline-flex items-center gap-1.5 h-9 px-4 min-w-[122px] rounded-pill text-caption font-medium border transition-colors ${
+          isToday ? "bg-card border-line-2 text-ink hover:border-ink/40" : "bg-orange-bg border-transparent text-orange-ink hover:bg-orange-bg/80"
         }`}
       >
         <Calendar className="w-3.5 h-3.5 opacity-70 shrink-0" strokeWidth={2} />
