@@ -143,13 +143,17 @@ export default function RatesConfirmationBanner({ currentOffice }) {
 // тёмная кнопка «Подтвердить». Оба тона (не подтверждён / изменён после) —
 // один тёплый оранж (в эталоне одна attention-плашка).
 function BannerShell({ children }) {
+  // Липнет под топбаром (top-16 = высота header h-16) внутри рамки-скролл-контейнера.
+  // Фон крем-токеном на всю ширину — чтобы контент не просвечивал под плашкой.
   return (
-    <div className="max-w-[1680px] mx-auto px-4 pt-3">
-      <div className="inline-flex items-center gap-3 bg-orange-bg rounded-pill pl-[18px] pr-2 py-2 text-orange-ink">
-        <span className="w-[19px] h-[19px] rounded-[6px] bg-orange text-white text-[12px] font-medium flex items-center justify-center shrink-0">
-          !
-        </span>
-        <div className="flex items-center gap-2 text-[13px] font-medium">{children}</div>
+    <div className="sticky top-16 z-30 bg-cream/85 backdrop-blur-xl">
+      <div className="max-w-[1680px] mx-auto px-4 pt-3 pb-1">
+        <div className="inline-flex items-center gap-3 bg-orange-bg rounded-pill pl-[18px] pr-2 py-2 text-orange-ink">
+          <span className="w-[19px] h-[19px] rounded-[6px] bg-orange text-white text-[12px] font-medium flex items-center justify-center shrink-0">
+            !
+          </span>
+          <div className="flex items-center gap-2 text-[13px] font-medium">{children}</div>
+        </div>
       </div>
     </div>
   );

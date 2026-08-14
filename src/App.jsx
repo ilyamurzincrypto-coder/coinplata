@@ -198,14 +198,16 @@ function Root() {
 
   return (
     // Тёплый «стол» (крем-2) + рамка-экран 32 со свечением — как в design/reference.html.
-    <div className="min-h-screen bg-[#E5DECD] text-ink font-sans">
+    // Рамка = скролл-контейнер (h-full/overflow-y-auto) → топбар и плашка курсов
+    // липнут к её верху (sticky внутри контейнера), фон крем-токеном.
+    <div className="h-screen bg-[#E5DECD] text-ink font-sans flex flex-col overflow-hidden">
       {!isSupabaseConfigured && (
-        <div className="bg-warning text-ink text-caption font-semibold text-center px-4 py-2">
+        <div className="flex-none bg-warning text-ink text-caption font-semibold text-center px-4 py-2">
           {t("demo_banner")}
         </div>
       )}
-      <div className="max-w-[1720px] mx-auto p-2 sm:p-3">
-        <div className="rounded-screen bg-cream bg-frame-glow overflow-hidden min-h-[calc(100vh-1.5rem)] pb-8">
+      <div className="flex-1 min-h-0 px-2 sm:px-3 pt-2 pb-2 sm:pb-3">
+        <div className="h-full max-w-[1720px] mx-auto rounded-screen bg-cream bg-frame-glow overflow-y-auto pb-8">
           <Header
             page={page}
             onPageChange={handlePageChange}
