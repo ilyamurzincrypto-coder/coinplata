@@ -264,7 +264,7 @@ export default function AccountsTree({ kindFilter = "all" }) {
               <span />
               <span className="text-right text-[12.5px] font-mono font-semibold text-ink">{money(cashBase, fb)}</span>
               <span className="text-right text-[12.5px] font-mono font-semibold text-ink">{money(cryptoBase, fb)}</span>
-              <span className="text-right text-[12.5px] font-mono text-[#0d8f63]">{money(availBase, fb)}</span>
+              <span className="text-right text-[12.5px] font-mono text-[#3E4A16]">{money(availBase, fb)}</span>
               <span className="text-right text-[13px] font-mono font-bold text-ink">{fb(total)}</span>
             </div>
 
@@ -335,7 +335,7 @@ export default function AccountsTree({ kindFilter = "all" }) {
         <span />
         <span className="text-right text-[12.5px] font-mono font-bold text-ink">{money(grand.cash, fb)}</span>
         <span className="text-right text-[12.5px] font-mono font-bold text-ink">{money(grand.crypto, fb)}</span>
-        <span className="text-right text-[12.5px] font-mono font-bold text-[#0d8f63]">{money(grand.avail, fb)}</span>
+        <span className="text-right text-[12.5px] font-mono font-bold text-[#3E4A16]">{money(grand.avail, fb)}</span>
         <span className="text-right text-[14px] font-mono font-extrabold text-ink">{fb(grand.total)}</span>
       </div>
 
