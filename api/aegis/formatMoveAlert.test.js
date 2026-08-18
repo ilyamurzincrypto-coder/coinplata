@@ -138,6 +138,37 @@ describe('formatMoveAlert · новые сигналы AEGIS (unknown ≠ чис
   })
 })
 
+describe('formatMoveAlert · verdict (готовый клиентский вердикт AEGIS)', () => {
+  const V = {
+    emoji: '🔴', levelText: 'ВЫСОКИЙ РИСК', score: 71, action: '❌ Рекомендуем отказ',
+    reasons: ['⚠️ прямые метки', '🔀 миксер в 1 хопе'],
+    sources: [{ emoji: '❓', label: 'Неизвестно', pct: 76, bar: '▓▓▓▓▓▓▓▓░░' }],
+    cleanNote: '✅ Прямых меток нет',
+  }
+  it('контрагент: рендерит вердикт (шапка+action+Почему+Источник+clean), НЕ чек-лист', () => {
+    const t = ext({ counterpartyRisk: { verdict: V, breakdown: [] } })
+    const cp = t.slice(t.indexOf('👤 Контрагент'))
+    expect(cp).toMatch(/🔴 <b>Риск контрагента:<\/b> ВЫСОКИЙ РИСК — 71\/100/)
+    expect(cp).toMatch(/❌ Рекомендуем отказ/)
+    expect(cp).toMatch(/Почему:/)
+    expect(cp).toMatch(/⚠️ прямые метки/)
+    expect(cp).toMatch(/Источник средств:/)
+    expect(cp).toMatch(/❓ Неизвестно ▓▓▓▓▓▓▓▓░░ 76%/)
+    expect(cp).toMatch(/✅ Прямых меток нет/)
+    expect(cp).not.toMatch(/— 0%/) // старого чек-листа нет
+    expect(cp).not.toMatch(/⛔ <b>ОТКАЗ<\/b>/) // отдельная ⛔-строка не дублируется
+  })
+  it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
+    const own = { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 3, action: '✅ ок', reasons: ['x'], sources: [{ emoji: '❓', label: 'y', pct: 1, bar: '░' }], cleanNote: '✅ чисто' }
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Tx', ownRisk: { verdict: own } })
+    const head = a.text.slice(0, a.text.indexOf('👤 Контрагент'))
+    expect(head).toMatch(/🟢 <b>Риск кошелька:<\/b> НИЗКИЙ РИСК — 3\/100/)
+    expect(head).toMatch(/✅ чисто/)
+    expect(head).not.toMatch(/Рекомендуем|✅ ок/) // action скрыт для своего кошелька
+    expect(head).not.toMatch(/Почему:/) // reasons скрыты
+  })
+})
+
 describe('formatRiskUpgrade (/v1/alerts RISK_UPGRADE)', () => {
   it('prev→new + level + причина', () => {
     const { text } = formatRiskUpgrade({ alertId: 'u1', address: 'TXabc', prevScore: 10, newScore: 46, level: 'warning', category: 'mixer' })

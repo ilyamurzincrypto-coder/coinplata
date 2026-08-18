@@ -108,7 +108,37 @@ function matchCat(b) {
 const CAT_LABEL = Object.fromEntries(AML_CATS.map(([k, name]) => [k, name]))
 const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[String(c).toLowerCase()] || String(c)
 
-function riskBlock(risk, sanctioned, title = 'Риск контрагента') {
+// Рендер ГОТОВОГО вердикта AEGIS (как BitOK/AMLBot): шапка (emoji/уровень/скор) +
+// action → «Почему:» reasons → «Источник средств:» sources (bar+pct) → clean_note.
+// Для НАШЕГО кошелька (isOwn) — только шапка + clean_note (action/reasons/источник =
+// решение по КОНТРАГЕНТУ, к своему кошельку не применимо).
+function renderVerdict(v, title, isOwn) {
+  const score = v.score != null ? `${v.score}/100` : '—'
+  const emoji = v.emoji || riskEmoji(null, v.score)
+  const lines = [`${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}`]
+  if (!isOwn && v.action) lines.push(escapeHtmlA(v.action))
+  const detail = []
+  if (!isOwn) {
+    if (Array.isArray(v.reasons) && v.reasons.length) {
+      detail.push('Почему:')
+      for (const r of v.reasons) detail.push(escapeHtmlA(r))
+    }
+    if (Array.isArray(v.sources) && v.sources.length) {
+      detail.push('Источник средств:')
+      for (const s of v.sources) {
+        detail.push([s.emoji, escapeHtmlA(s.label || ''), escapeHtmlA(s.bar || ''), s.pct != null ? `${s.pct}%` : '']
+          .filter(Boolean).join(' '))
+      }
+    }
+  }
+  if (v.cleanNote) detail.push(escapeHtmlA(v.cleanNote))
+  if (detail.length) lines.push(`<blockquote expandable>${detail.join('\n')}</blockquote>`)
+  return lines.join('\n')
+}
+
+function riskBlock(risk, sanctioned, title = 'Риск контрагента', isOwn = false) {
+  // Если AEGIS прислал готовый вердикт — рендерим ЕГО (клиентский вид), не чек-лист.
+  if (risk?.verdict) return renderVerdict(risk.verdict, title, isOwn)
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
   const blacklisted = risk?.blacklisted === true
@@ -195,6 +225,7 @@ export async function cachedRiskScore(aegisClient, network, address) {
           checkedClean: Array.isArray(r.checkedClean) ? r.checkedClean : [],
           fundsFlow: r.fundsFlow ?? null,
           coverage: r.coverage ?? null,
+          verdict: r.verdict ?? null,
           breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
         }
       : null
@@ -233,7 +264,7 @@ export function formatMoveAlert(account, tx) {
   // Риск НАШЕГО кошелька — ВСЕГДА чек-лист: данные /v1/risk (tx.ownRisk), иначе синтез из
   // кэша accounts.risk_* (чтобы на мониторимом кошельке не пропадал чек-лист на EVM без данных).
   const rawOwn = tx.ownRisk
-  let ownRisk = rawOwn && (Number(rawOwn.score) > 0 || rawOwn.assessed === true) ? rawOwn : null
+  let ownRisk = rawOwn && (rawOwn.verdict || Number(rawOwn.score) > 0 || rawOwn.assessed === true) ? rawOwn : null
   if (!ownRisk && ownScore != null) ownRisk = { score: ownScore, level: ownLevel, breakdown: [] }
   const lines = [
     `${inbound ? '💰' : '📤'} <b>${inbound ? 'Поступление' : 'Списание'} ${inbound ? '+' : '−'}${money(amt)}</b>`,
@@ -242,7 +273,7 @@ export function formatMoveAlert(account, tx) {
   // ВСЕГДА рисуем блок нашего кошелька (симметрично контрагенту): ownRisk=null →
   // riskBlock даёт «❔ нет данных» + полный чек-лист. Иначе анализ пропадал на
   // EVM/пустом /v1/risk без кэша (регресс «куда делся анализ нашего кошелька»).
-  lines.push(riskBlock(ownRisk, false, 'Риск кошелька'))
+  lines.push(riskBlock(ownRisk, false, 'Риск кошелька', true))
   if (cp) {
     if (tx.counterpartyOwn) {
       // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.
@@ -254,18 +285,22 @@ export function formatMoveAlert(account, tx) {
       // Внешний: идентификация + адрес + блок риска (ВСЕГДА, три состояния).
       lines.push(`👤 Контрагент${label ? ` · ${escapeHtmlA(label)}` : ''}`)
       lines.push(`<code>${escapeHtmlA(cp)}</code>`)
-      // Правило 1: прямая санкц/ЧС-метка или critical → ⛔ ОТКАЗ (видимой строкой, не в цитате).
-      const cats = (risk?.categories || []).map((c) => String(c).toLowerCase())
-      const refuse = sanctioned || risk?.blacklisted === true || cats.includes('blacklist') || cats.includes('sanctions') || risk?.level === 'critical'
-      if (refuse) {
-        const why = sanctioned ? 'санкции' : risk?.blacklisted === true || cats.includes('blacklist') ? 'чёрный список' : cats.includes('sanctions') ? 'санкции' : 'критический риск'
-        lines.push(`⛔ <b>ОТКАЗ</b> — ${why}`)
-      }
-      // Правило 2: вложенный сервис (незарег. OTC/сервис за адресом) → строка + авто-EDD.
-      const ns = risk?.nestedService
-      if (ns && (ns.name || ns.license || ns.source)) {
-        lines.push(`🏦 <b>Вложенный сервис:</b> ${escapeHtmlA(ns.name || '—')}${ns.license ? ` · лиц.: ${escapeHtmlA(ns.license)}` : ' · лиц.: нет'}`)
-        lines.push(`❓ EDD: кто это · есть ли лицензия · источник средств${ns.source ? ` (заявлено: ${escapeHtmlA(ns.source)})` : ''}`)
+      // Если есть готовый вердикт — он самодостаточен (action/reasons покрывают
+      // отказ и вложенный сервис); отдельные ⛔/EDD-строки не дублируем.
+      if (!risk?.verdict) {
+        // Правило 1: прямая санкц/ЧС-метка или critical → ⛔ ОТКАЗ (видимой строкой, не в цитате).
+        const cats = (risk?.categories || []).map((c) => String(c).toLowerCase())
+        const refuse = sanctioned || risk?.blacklisted === true || cats.includes('blacklist') || cats.includes('sanctions') || risk?.level === 'critical'
+        if (refuse) {
+          const why = sanctioned ? 'санкции' : risk?.blacklisted === true || cats.includes('blacklist') ? 'чёрный список' : cats.includes('sanctions') ? 'санкции' : 'критический риск'
+          lines.push(`⛔ <b>ОТКАЗ</b> — ${why}`)
+        }
+        // Правило 2: вложенный сервис (незарег. OTC/сервис за адресом) → строка + авто-EDD.
+        const ns = risk?.nestedService
+        if (ns && (ns.name || ns.license || ns.source)) {
+          lines.push(`🏦 <b>Вложенный сервис:</b> ${escapeHtmlA(ns.name || '—')}${ns.license ? ` · лиц.: ${escapeHtmlA(ns.license)}` : ' · лиц.: нет'}`)
+          lines.push(`❓ EDD: кто это · есть ли лицензия · источник средств${ns.source ? ` (заявлено: ${escapeHtmlA(ns.source)})` : ''}`)
+        }
       }
       lines.push(riskBlock(risk, sanctioned, 'Риск контрагента'))
     }

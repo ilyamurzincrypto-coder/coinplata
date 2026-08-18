@@ -323,6 +323,18 @@ describe("новые структурные поля /v1/risk (unknown ≠ чи�
     expect(d.fundsFlow.source[0]).toMatchObject({ label: "миксер", sharePct: 30, usdt: 5000, riskPct: 100 });
     expect(d.coverage).toEqual({ typedPct: 55, unknownPct: 45 });
   });
+  it("normalizeRisk: verdict (готовый клиентский вердикт)", () => {
+    const r = normalizeRisk({
+      address: "TX", score: 71,
+      verdict: { emoji: "🔴", level_text: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", reasons: ["a", "b"], sources: [{ emoji: "❓", label: "Неизвестно", pct: 76, bar: "▓░" }], clean_note: "✅ нет" },
+    });
+    expect(r.verdict).toMatchObject({ emoji: "🔴", levelText: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", cleanNote: "✅ нет" });
+    expect(r.verdict.reasons).toEqual(["a", "b"]);
+    expect(r.verdict.sources[0]).toMatchObject({ label: "Неизвестно", pct: 76, bar: "▓░" });
+  });
+  it("normalizeRisk: verdict отсутствует → null", () => {
+    expect(normalizeRisk({ address: "TX", score: 0 }).verdict).toBe(null);
+  });
   it("normalizeAlert: RISK_UPGRADE prev/new/level", () => {
     const a = normalizeAlert({ alert_id: "up-1", type: "RISK_UPGRADE", address: "TX", prev_score: 10, new_score: 46, level: "warning", category: "mixer" });
     expect(a).toMatchObject({ type: "RISK_UPGRADE", address: "TX", prevScore: 10, newScore: 46, level: "warning", category: "mixer" });

@@ -184,6 +184,28 @@ function normalizeCoverage(raw) {
   return { typedPct: raw.typed_pct ?? null, unknownPct: raw.unknown_pct ?? null };
 }
 
+// verdict — ГОТОВЫЙ клиентский вердикт (как BitOK/AMLBot): касса рендерит ЕГО,
+// а не собирает чек-лист из breakdown. Сырой breakdown — только для 🔎/аудита.
+export function normalizeVerdict(raw) {
+  if (!raw) return null;
+  return {
+    emoji: raw.emoji ?? null,
+    levelText: raw.level_text ?? null,
+    score: raw.score ?? null, // 0..100
+    action: raw.action ?? null, // «❌ Рекомендуем отказ» / «✅ …»
+    reasons: Array.isArray(raw.reasons) ? raw.reasons.map(String) : [],
+    sources: Array.isArray(raw.sources)
+      ? raw.sources.map((s) => ({
+          emoji: s?.emoji ?? null,
+          label: s?.label ?? null,
+          pct: s?.pct ?? null,
+          bar: s?.bar ?? null, // «▓▓▓▓▓▓▓▓░░»
+        }))
+      : [],
+    cleanNote: raw.clean_note ?? null,
+  };
+}
+
 // GET /v1/alerts item → внутренняя форма. HOP2_RISK: грязь в 2 хопах через нашего
 // контрагента (via_counterparty). RISK_UPGRADE: оценка адреса поднялась (коррекция
 // после прогрева exposure) — prev_score→new_score. network держим как есть (raw enum
@@ -231,6 +253,7 @@ export function normalizeRisk(raw) {
     checkedClean: Array.isArray(raw.checked_clean) ? raw.checked_clean.map(String) : [],
     fundsFlow: normalizeFundsFlow(raw.funds_flow), // если прогрет, иначе null
     coverage: normalizeCoverage(raw.coverage), // если прогрет, иначе null
+    verdict: normalizeVerdict(raw.verdict), // готовый клиентский вердикт (если есть)
     // Факторы риска с % (отсорт по pct) — для expandable-цитаты в уведомлении.
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null, category: b.category ?? null }))
@@ -253,6 +276,7 @@ export function normalizeRiskDetail(raw) {
       : null,
     fundsFlow: normalizeFundsFlow(raw.funds_flow), // ВСЕГДА в detail: {source[],destination[]}
     coverage: normalizeCoverage(raw.coverage), // {typedPct,unknownPct}
+    verdict: normalizeVerdict(raw.verdict), // готовый вердикт (шапка над breakdown)
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({
           category: b.category ?? null,

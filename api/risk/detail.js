@@ -67,6 +67,18 @@ export default async function handler(req, res) {
   const head = `<h1 style="color:${color}">📈 Уровень риска: ${esc(levelWord(d.level))} (${scoreStr})${preliminary ? ' <span style="font-size:13px;color:#d97706">· уточняется</span>' : ''}${covBadge}</h1>` +
     `<div class="addr">${esc(net)} · ${esc(addr)}</div>`
 
+  // Вердикт (клиентский вид) — шапкой над сырым breakdown. Breakdown ниже = аудит.
+  const v = d.verdict
+  const verdictBlock = v
+    ? `<div class="card" style="border-color:${color}">` +
+      `<div class="row" style="font-weight:600;font-size:16px"><span>${esc(v.emoji || '')} ${esc(v.levelText || '')}</span><b>${v.score != null ? esc(v.score) + '/100' : '—'}</b></div>` +
+      (v.action ? `<div class="row"><span>${esc(v.action)}</span></div>` : '') +
+      (Array.isArray(v.reasons) && v.reasons.length ? `<div class="sec" style="margin-top:8px">Почему</div>` + v.reasons.map((r) => `<div class="row muted" style="display:block">${esc(r)}</div>`).join('') : '') +
+      (Array.isArray(v.sources) && v.sources.length ? `<div class="sec" style="margin-top:8px">Источник средств</div>` + v.sources.map((s) => `<div class="row"><span>${esc(s.emoji || '')} ${esc(s.label || '')}</span><b>${esc(s.bar || '')} ${s.pct != null ? esc(s.pct) + '%' : ''}</b></div>`).join('') : '') +
+      (v.cleanNote ? `<div class="row muted" style="display:block;margin-top:6px">${esc(v.cleanNote)}</div>` : '') +
+      `</div>`
+    : ''
+
   // Правило 1: прямая санкц/ЧС-метка или critical → ⛔ ОТКАЗ (баннер вверху).
   const refuse = d.sanctioned || d.blacklisted || d.level === 'critical'
   const refuseWhy = d.sanctioned ? 'санкционный адрес' : d.blacklisted ? 'адрес в чёрном списке' : 'критический уровень риска'
@@ -143,7 +155,7 @@ export default async function handler(req, res) {
       `</div>`
     : ''
 
-  const blocks = refuseBanner + prelimBanner + nsBlock + hardBlock + flowBlock + compBlock + whyBlock
+  const blocks = verdictBlock + refuseBanner + prelimBanner + nsBlock + hardBlock + flowBlock + compBlock + whyBlock
   const bodyFull = blocks ? head + blocks : head + '<div class="card muted">Разбор недоступен.</div>'
   return res.status(200).send(page(`Риск ${d.score ?? ''}% · ${addr.slice(0, 8)}…`, bodyFull))
 }
