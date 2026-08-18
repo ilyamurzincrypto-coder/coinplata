@@ -77,12 +77,18 @@ export default async function handler(req, res) {
         const rt = typeof r === 'string' ? r : (r?.text || '') // терпим оба формата: строка ИЛИ {text,detail,address}
         const rd = typeof r === 'object' ? (r?.detail || '') : ''
         const ra = typeof r === 'object' ? (r?.address || '') : ''
-        // ra — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидного адреса (allowlist) + экранируем href.
-        const raOk = typeof ra === 'string' && /^[A-Za-z0-9]{10,80}$/.test(ra)
-        const addrLink = raOk ? (net.toUpperCase().includes('TR') ? `https://tronscan.org/#/address/${ra}` : net.toUpperCase().includes('ER') ? `https://etherscan.io/address/${ra}` : net.toUpperCase().includes('BE') ? `https://bscscan.com/address/${ra}` : '') : ''
+        const rtx = typeof r === 'object' ? (r?.tx || '') : ''
+        // ra/rtx — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидных (allowlist) + экранируем href.
+        const ok = (x) => typeof x === 'string' && /^[A-Za-z0-9]{10,120}$/.test(x)
+        const N = net.toUpperCase()
+        const base = N.includes('TR') ? 'https://tronscan.org/#' : N.includes('ER') ? 'https://etherscan.io' : N.includes('BE') ? 'https://bscscan.com' : ''
+        const addrLink = ok(ra) && base ? `${base}${N.includes('TR') ? '/address/' : '/address/'}${ra}` : ''
+        const txLink = ok(rtx) && base ? `${base}${N.includes('TR') ? '/transaction/' : '/tx/'}${rtx}` : ''
+        const short = (x) => `${esc(x.slice(0, 8))}…${esc(x.slice(-4))}`
         return `<div class="row muted" style="display:block">${esc(rt)}</div>` +
           (rd && rd !== rt ? `<div class="row muted" style="display:block;padding-left:14px;opacity:.75">└ ${esc(rd)}</div>` : '') +
-          (ra ? `<div class="row muted" style="display:block;padding-left:14px;opacity:.75">└ адрес: ${addrLink ? `<a href="${esc(addrLink)}">${esc(ra.slice(0, 8))}…${esc(ra.slice(-4))}</a>` : esc(ra)}</div>` : '')
+          (ra ? `<div class="row muted" style="display:block;padding-left:14px;opacity:.75">└ адрес: ${addrLink ? `<a href="${esc(addrLink)}">${short(ra)}</a>` : esc(ra)}</div>` : '') +
+          (rtx ? `<div class="row muted" style="display:block;padding-left:14px;opacity:.75">└ tx: ${txLink ? `<a href="${esc(txLink)}">${short(rtx)}</a>` : esc(rtx)}</div>` : '')
       }).join('') : '') +
       (Array.isArray(v.sources) && v.sources.length ? `<div class="sec" style="margin-top:8px">Источник средств</div>` + v.sources.map((s) => `<div class="row"><span>${esc(s.emoji || '')} ${esc(s.label || '')}</span><b>${esc(s.bar || '')} ${s.pct != null ? esc(s.pct) + '%' : ''}</b></div>`).join('') : '') +
       (v.cleanNote ? `<div class="row muted" style="display:block;margin-top:6px">${esc(v.cleanNote)}</div>` : '') +

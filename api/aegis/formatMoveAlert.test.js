@@ -222,6 +222,11 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(t).toMatch(/└ Почему это миксер: перемешивает монеты/)
     expect(t).toMatch(/└ адрес: <a href="https:\/\/tronscan\.org\/#\/address\/TXdirtyMixer12345678901234567890">TXdirt…7890<\/a>/)
   })
+  it('reason с address+tx → две ссылки: адрес и транзакция', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🚫', levelText: 'ВЫСОКИЙ', score: 100, action: '❌', reasons: [{ text: '🚫 Чёрный список: получал средства напрямую', detail: 'Почему это адрес из чёрного списка: заморожен', address: 'TXblacklistTerminalAddr0001', tx: 'abcTxHash1234567890abcdef' }], sources: [], cleanNote: null }, riskByCategory: rbc } })
+    expect(t).toMatch(/└ адрес: <a href="https:\/\/tronscan\.org\/#\/address\/TXblacklistTerminalAddr0001">/)
+    expect(t).toMatch(/└ tx: <a href="https:\/\/tronscan\.org\/#\/transaction\/abcTxHash1234567890abcdef">/)
+  })
   it('reasons как строки (back-compat) → рендерятся без └', () => {
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ', score: 72, action: '❌', reasons: ['⚠️ близость'], sources: [], cleanNote: null }, riskByCategory: rbc } })
     expect(t).toMatch(/⚠️ близость/)

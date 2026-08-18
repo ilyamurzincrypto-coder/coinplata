@@ -138,15 +138,22 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
       const rt = typeof r === 'string' ? r : (r?.text || '')
       const rd = typeof r === 'object' ? (r?.detail || '') : ''
       const ra = typeof r === 'object' ? (r?.address || '') : ''
+      const rtx = typeof r === 'object' ? (r?.tx || '') : ''
       detail.push(escapeHtmlA(rt))
       if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
-      // Адрес-пруф грязного узла → кликабельная ссылка на эксплорер (проверяемо).
-      // ra — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидного адреса (allowlist) + экранируем href.
+      // Адрес/tx-пруф грязного узла → кликабельные ссылки на эксплорер (проверяемо).
+      // ra/rtx — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидных (allowlist) + экранируем href.
       if (ra) {
         const mk = EXPLORER_ADDR[network]
         detail.push(mk && isPlainAddr(ra)
           ? `   └ адрес: <a href="${escapeHtmlA(mk(ra))}">${escapeHtmlA(shortAddr(ra))}</a>`
           : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
+      }
+      if (rtx) {
+        const tk = EXPLORER_TX[network]
+        detail.push(tk && isPlainAddr(rtx)
+          ? `   └ tx: <a href="${escapeHtmlA(tk.url(rtx))}">${escapeHtmlA(shortAddr(rtx))}</a>`
+          : `   └ tx: <code>${escapeHtmlA(rtx)}</code>`)
       }
     }
   }
