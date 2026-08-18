@@ -26,6 +26,8 @@ export default async function handler(req, res) {
     const DEMOS = {
       sanctioned: { addr: 'TVYUDCLpc9YK5davKeNfGHKGrQaCGRLjbb', net: 'TRC20' },
       hop2: { addr: 'TQ2z8D91j4t1i69pR4X4e8Y2p2UR1h3YRg', net: 'TRC20' },
+      // Хард-пруф: получал напрямую с адреса из чёрного списка → адрес терминала + tx-хеш ссылками.
+      blacklist: { addr: 'TAoLw5yD5XUoHWeBZRSZ1ExK9HMv2CiPvP', net: 'TRC20' },
     }
     const d = DEMOS[demo]
     if (!d) return res.status(400).json({ error: 'demo must be sanctioned|hop2' })
