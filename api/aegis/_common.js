@@ -115,30 +115,31 @@ const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[S
 function renderVerdict(v, title, isOwn, riskByCategory) {
   const score = v.score != null ? `${v.score}/100` : '—'
   const emoji = v.emoji || riskEmoji(null, v.score)
-  const lines = [`${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}`]
+  const prelim = v.preliminary ? ' (предв.)' : '' // экспозиция ещё трассируется — не «ложный зелёный»
+  const lines = [`${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}${prelim}`]
   if (!isOwn && v.action) lines.push(escapeHtmlA(v.action))
   const detail = []
-  if (!isOwn) {
-    if (Array.isArray(v.reasons) && v.reasons.length) {
-      detail.push('Почему:')
-      for (const r of v.reasons) detail.push(escapeHtmlA(r))
+  // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
+  if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
+    detail.push('Почему:')
+    for (const r of v.reasons) detail.push(escapeHtmlA(r))
+  }
+  // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
+  // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,
+  // отступ 2 пробела на строку, 3 пробела перед «⬆️ уходит N%», pct/out_pct как есть.
+  const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
+  if (rbc) {
+    detail.push('⚠️ Риск по категориям:')
+    for (const c of rbc) {
+      const out = c.outPct != null && Number(c.outPct) > 0 ? `   ⬆️ уходит ${c.outPct}%` : ''
+      detail.push(`  ${c.emoji || ''} ${escapeHtmlA(c.label || '')} ${c.bar || ''} ${c.pct != null ? c.pct : 0}%${out}`)
     }
-    // risk_by_category — ВСЕГДА 15 строк (0% честно, не скрываем). out_pct>0 → «⬆️ уходит N%».
-    // Формат по контракту: заголовок «⚠️ Риск по категориям:», отступ 2 пробела на строку.
-    const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
-    if (rbc) {
-      detail.push('⚠️ Риск по категориям:')
-      for (const c of rbc) {
-        const out = c.outPct != null && Number(c.outPct) > 0 ? `   ⬆️ уходит ${c.outPct}%` : ''
-        detail.push(`  ${c.emoji || ''} ${escapeHtmlA(c.label || '')} ${c.bar || ''} ${c.pct != null ? c.pct : 0}%${out}`)
-      }
-    } else if (Array.isArray(v.sources) && v.sources.length) {
-      // Фолбэк на старый sources-пирог, если таблицы категорий нет.
-      detail.push('Источник средств:')
-      for (const s of v.sources) {
-        detail.push([s.emoji, escapeHtmlA(s.label || ''), escapeHtmlA(s.bar || ''), s.pct != null ? `${s.pct}%` : '']
-          .filter(Boolean).join(' '))
-      }
+  } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
+    // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.
+    detail.push('Источник средств:')
+    for (const s of v.sources) {
+      detail.push([s.emoji, escapeHtmlA(s.label || ''), escapeHtmlA(s.bar || ''), s.pct != null ? `${s.pct}%` : '']
+        .filter(Boolean).join(' '))
     }
   }
   if (v.cleanNote) detail.push(escapeHtmlA(v.cleanNote))
