@@ -130,9 +130,14 @@ function renderVerdict(v, title, isOwn, riskByCategory) {
   const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
   if (rbc) {
     detail.push('⚠️ Риск по категориям:')
+    // РОВНОСТЬ: моноширинный <code> на строку + добивка метки пробелами до общей ширины → бары и % встают
+    // в колонку (в пропорц. шрифте TG они «прыгали»). Метка слева (padEnd), бар, % справа (padStart 4: « 0%»/«100%»).
+    const wLabel = Math.max(...rbc.map((c) => (c.label || '').length))
     for (const c of rbc) {
-      const out = c.outPct != null && Number(c.outPct) > 0 ? `   ⬆️ уходит ${c.outPct}%` : ''
-      detail.push(`  ${c.emoji || ''} ${escapeHtmlA(c.label || '')} ${c.bar || ''} ${c.pct != null ? c.pct : 0}%${out}`)
+      const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
+      const pctStr = `${c.pct != null ? c.pct : 0}%`.padStart(4)
+      const row = `${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`
+      detail.push(`<code>${escapeHtmlA(row)}</code>${out}`)
     }
   } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
     // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.

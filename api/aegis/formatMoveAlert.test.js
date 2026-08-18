@@ -167,9 +167,10 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     const t = ext({ counterpartyRisk: { verdict: V, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/⚠️ Риск по категориям:/)
-    expect(cp).toMatch(/⛔️ Санкции ░░░░░░░░░░ 0%/)
-    expect(cp).toMatch(/🎰 Гемблинг ░░░░░░░░░░ 0%\s+⬆️ уходит 12%/)
-    expect(cp).toMatch(/⚠️ Скам ▓░░░░░░░░░ 4%/)
+    // моноширинно: <code>emoji label(добито) bar pct</code>, out — после code
+    expect(cp).toMatch(/<code>⛔️ Санкции\s+░░░░░░░░░░\s+0%<\/code>/)
+    expect(cp).toMatch(/<code>🎰 Гемблинг\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 12%/)
+    expect(cp).toMatch(/<code>⚠️ Скам\s+▓░░░░░░░░░\s+4%<\/code>/)
     expect(cp).not.toMatch(/Источник средств:/) // sources-фолбэк не используется при таблице
   })
   it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
@@ -201,20 +202,21 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     { emoji: '🎰', label: 'Гемблинг', pct: 11, bar: '▓░░░░░░░░░', outPct: 0.4, outBar: '▓░░░░░░░░░' },
     { emoji: '🚫', label: 'Чёрный список', pct: 0, bar: '░░░░░░░░░░', outPct: 1.2, outBar: '▓░░░░░░░░░' },
   ]
-  it('контрагент с verdict → шапка+action+таблица категорий, out_pct рендерится', () => {
+  it('контрагент с verdict → шапка+action+таблица категорий (моноширинно), out_pct рендерится', () => {
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ РИСК', score: 81, action: '❌ Рекомендуем отказ', reasons: ['⚠️ близость к санкц/ЧС'], sources: [], cleanNote: null, preliminary: false }, riskByCategory: rbc } })
     expect(t).toMatch(/🔴 <b>Риск контрагента:<\/b> ВЫСОКИЙ РИСК — 81\/100/)
     expect(t).toMatch(/❌ Рекомендуем отказ/)
     expect(t).toMatch(/⚠️ Риск по категориям:/)
-    expect(t).toMatch(/🎰 Гемблинг ▓░░░░░░░░░ 11%   ⬆️ уходит 0\.4%/)
-    expect(t).toMatch(/🚫 Чёрный список ░░░░░░░░░░ 0%   ⬆️ уходит 1\.2%/)
+    // моноширинная строка: <code>emoji label(добито пробелами) bar pct</code>, out — после code
+    expect(t).toMatch(/<code>🎰 Гемблинг\s+▓░░░░░░░░░\s+11%<\/code> ⬆️ уходит 0\.4%/)
+    expect(t).toMatch(/<code>🚫 Чёрный список\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 1\.2%/)
   })
   it('НАШ кошелёк с verdict → таблица категорий ЕСТЬ, action/reasons НЕТ (решение — по контрагенту)', () => {
     const own = { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 30, action: '✅ Можно работать', reasons: ['не показывать это'], sources: [], cleanNote: '✅ Чисто по всем', preliminary: false }, riskByCategory: rbc }
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: null, ownRisk: own })
     expect(a.text).toMatch(/🟢 <b>Риск кошелька:<\/b> НИЗКИЙ РИСК — 30\/100/)
     expect(a.text).toMatch(/⚠️ Риск по категориям:/)      // таблица показывается и для нашего
-    expect(a.text).toMatch(/🎰 Гемблинг ▓░░░░░░░░░ 11%/)
+    expect(a.text).toMatch(/<code>🎰 Гемблинг\s+▓░░░░░░░░░\s+11%<\/code>/)
     expect(a.text).not.toMatch(/✅ Можно работать/)        // action к своему кошельку не применяется
     expect(a.text).not.toMatch(/не показывать это/)        // reasons — тоже нет
   })
