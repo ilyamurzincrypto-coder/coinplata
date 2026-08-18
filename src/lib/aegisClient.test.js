@@ -335,6 +335,14 @@ describe("новые структурные поля /v1/risk (unknown ≠ чи�
   it("normalizeRisk: verdict отсутствует → null", () => {
     expect(normalizeRisk({ address: "TX", score: 0 }).verdict).toBe(null);
   });
+  it("normalizeRisk: risk_by_category (двунаправленно, out_pct)", () => {
+    const r = normalizeRisk({ address: "TX", risk_by_category: [{ emoji: "🎰", label: "Гемблинг", pct: 0, bar: "░", out_pct: 12, out_bar: "▓" }] });
+    expect(r.riskByCategory[0]).toMatchObject({ emoji: "🎰", label: "Гемблинг", pct: 0, bar: "░", outPct: 12, outBar: "▓" });
+  });
+  it("normalizeRisk: risk_by_category из verdict-фолбэка + outPct=null когда нет", () => {
+    const r = normalizeRisk({ address: "TX", verdict: { risk_by_category: [{ emoji: "x", label: "y", pct: 1, bar: "z" }] } });
+    expect(r.riskByCategory[0]).toMatchObject({ label: "y", pct: 1, outPct: null });
+  });
   it("normalizeAlert: RISK_UPGRADE prev/new/level", () => {
     const a = normalizeAlert({ alert_id: "up-1", type: "RISK_UPGRADE", address: "TX", prev_score: 10, new_score: 46, level: "warning", category: "mixer" });
     expect(a).toMatchObject({ type: "RISK_UPGRADE", address: "TX", prevScore: 10, newScore: 46, level: "warning", category: "mixer" });

@@ -158,6 +158,20 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     expect(cp).not.toMatch(/— 0%/) // старого чек-листа нет
     expect(cp).not.toMatch(/⛔ <b>ОТКАЗ<\/b>/) // отдельная ⛔-строка не дублируется
   })
+  it('risk_by_category: таблица категорий (0% честно) + «⬆️ уходит» для out_pct', () => {
+    const rbc = [
+      { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░' },
+      { emoji: '🎰', label: 'Гемблинг', pct: 0, bar: '░░░░░░░░░░', outPct: 12, outBar: '▓░░░░░░░░░' },
+      { emoji: '⚠️', label: 'Скам', pct: 4, bar: '▓░░░░░░░░░' },
+    ]
+    const t = ext({ counterpartyRisk: { verdict: V, riskByCategory: rbc, breakdown: [] } })
+    const cp = t.slice(t.indexOf('👤 Контрагент'))
+    expect(cp).toMatch(/Риск по категориям:/)
+    expect(cp).toMatch(/⛔️ Санкции ░░░░░░░░░░ 0%/)
+    expect(cp).toMatch(/🎰 Гемблинг ░░░░░░░░░░ 0% ⬆️ уходит 12%/)
+    expect(cp).toMatch(/⚠️ Скам ▓░░░░░░░░░ 4%/)
+    expect(cp).not.toMatch(/Источник средств:/) // sources-фолбэк не используется при таблице
+  })
   it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
     const own = { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 3, action: '✅ ок', reasons: ['x'], sources: [{ emoji: '❓', label: 'y', pct: 1, bar: '░' }], cleanNote: '✅ чисто' }
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: 'Tx', ownRisk: { verdict: own } })

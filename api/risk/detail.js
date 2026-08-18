@@ -155,7 +155,23 @@ export default async function handler(req, res) {
       `</div>`
     : ''
 
-  const blocks = verdictBlock + refuseBanner + prelimBanner + nsBlock + hardBlock + flowBlock + compBlock + whyBlock
+  // risk_by_category — 2-колоночная таблица (первые 7 = левая, следующие 8 = правая),
+  // ВСЕГДА все категории (0% честно). out_pct>0 → «⬆️ уходит N%».
+  const rbc = Array.isArray(d.riskByCategory) ? d.riskByCategory : []
+  const catCell = (c) => {
+    const dirty = Number(c.pct) > 0
+    const out = c.outPct != null && Number(c.outPct) > 0 ? ` <span style="color:#b45309">⬆️ ${esc(c.outPct)}%</span>` : ''
+    return `<div class="row"><span>${esc(c.emoji || '')} ${esc(c.label || '')} <span style="font-family:ui-monospace,monospace;color:${dirty ? '#991b1b' : '#c9ccd8'}">${esc(c.bar || '')}</span></span><b>${esc(c.pct != null ? c.pct : 0)}%${out}</b></div>`
+  }
+  const catTableBlock = rbc.length
+    ? `<div class="card"><div class="sec">Риск по категориям (${rbc.length})</div>` +
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 18px">` +
+      `<div>${rbc.slice(0, 7).map(catCell).join('')}</div>` +
+      `<div>${rbc.slice(7).map(catCell).join('')}</div>` +
+      `</div></div>`
+    : ''
+
+  const blocks = verdictBlock + refuseBanner + prelimBanner + nsBlock + catTableBlock + hardBlock + flowBlock + compBlock + whyBlock
   const bodyFull = blocks ? head + blocks : head + '<div class="card muted">Разбор недоступен.</div>'
   return res.status(200).send(page(`Риск ${d.score ?? ''}% · ${addr.slice(0, 8)}…`, bodyFull))
 }

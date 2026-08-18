@@ -184,6 +184,21 @@ function normalizeCoverage(raw) {
   return { typedPct: raw.typed_pct ?? null, unknownPct: raw.unknown_pct ?? null };
 }
 
+// risk_by_category — ВСЕГДА 15 категорий (фикс. порядок severity↓; первые 7 =
+// левая колонка сетки, следующие 8 = правая). Двунаправленно: pct/bar = входящий
+// источник; out_pct/out_bar = исходящее назначение (есть только когда >0).
+export function normalizeRiskByCategory(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map((c) => ({
+    emoji: c?.emoji ?? null,
+    label: c?.label ?? null,
+    pct: c?.pct ?? 0, // дробное — печатать как есть
+    bar: c?.bar ?? null,
+    outPct: c?.out_pct ?? null, // null = нет исходящего (не рисуем «⬆️ уходит»)
+    outBar: c?.out_bar ?? null,
+  }));
+}
+
 // verdict — ГОТОВЫЙ клиентский вердикт (как BitOK/AMLBot): касса рендерит ЕГО,
 // а не собирает чек-лист из breakdown. Сырой breakdown — только для 🔎/аудита.
 export function normalizeVerdict(raw) {
@@ -254,6 +269,7 @@ export function normalizeRisk(raw) {
     fundsFlow: normalizeFundsFlow(raw.funds_flow), // если прогрет, иначе null
     coverage: normalizeCoverage(raw.coverage), // если прогрет, иначе null
     verdict: normalizeVerdict(raw.verdict), // готовый клиентский вердикт (если есть)
+    riskByCategory: normalizeRiskByCategory(raw.risk_by_category || raw.verdict?.risk_by_category), // всегда 15
     // Факторы риска с % (отсорт по pct) — для expandable-цитаты в уведомлении.
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({ label: b.label ?? null, pct: b.pct ?? null, kind: b.kind ?? null, category: b.category ?? null }))
@@ -277,6 +293,7 @@ export function normalizeRiskDetail(raw) {
     fundsFlow: normalizeFundsFlow(raw.funds_flow), // ВСЕГДА в detail: {source[],destination[]}
     coverage: normalizeCoverage(raw.coverage), // {typedPct,unknownPct}
     verdict: normalizeVerdict(raw.verdict), // готовый вердикт (шапка над breakdown)
+    riskByCategory: normalizeRiskByCategory(raw.risk_by_category || raw.verdict?.risk_by_category), // всегда 15
     breakdown: Array.isArray(raw.breakdown)
       ? raw.breakdown.map((b) => ({
           category: b.category ?? null,

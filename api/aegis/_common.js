@@ -112,7 +112,7 @@ const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[S
 // action → «Почему:» reasons → «Источник средств:» sources (bar+pct) → clean_note.
 // Для НАШЕГО кошелька (isOwn) — только шапка + clean_note (action/reasons/источник =
 // решение по КОНТРАГЕНТУ, к своему кошельку не применимо).
-function renderVerdict(v, title, isOwn) {
+function renderVerdict(v, title, isOwn, riskByCategory) {
   const score = v.score != null ? `${v.score}/100` : '—'
   const emoji = v.emoji || riskEmoji(null, v.score)
   const lines = [`${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}`]
@@ -123,7 +123,19 @@ function renderVerdict(v, title, isOwn) {
       detail.push('Почему:')
       for (const r of v.reasons) detail.push(escapeHtmlA(r))
     }
-    if (Array.isArray(v.sources) && v.sources.length) {
+    // risk_by_category — ВСЕГДА 15 строк (0% честно, не скрываем). out_pct>0 → «⬆️ уходит N%».
+    const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
+    if (rbc) {
+      detail.push('Риск по категориям:')
+      for (const c of rbc) {
+        const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
+        detail.push(
+          [c.emoji, escapeHtmlA(c.label || ''), escapeHtmlA(c.bar || ''), `${c.pct != null ? c.pct : 0}%`]
+            .filter(Boolean).join(' ') + out
+        )
+      }
+    } else if (Array.isArray(v.sources) && v.sources.length) {
+      // Фолбэк на старый sources-пирог, если таблицы категорий нет.
       detail.push('Источник средств:')
       for (const s of v.sources) {
         detail.push([s.emoji, escapeHtmlA(s.label || ''), escapeHtmlA(s.bar || ''), s.pct != null ? `${s.pct}%` : '']
@@ -138,7 +150,7 @@ function renderVerdict(v, title, isOwn) {
 
 function riskBlock(risk, sanctioned, title = 'Риск контрагента', isOwn = false) {
   // Если AEGIS прислал готовый вердикт — рендерим ЕГО (клиентский вид), не чек-лист.
-  if (risk?.verdict) return renderVerdict(risk.verdict, title, isOwn)
+  if (risk?.verdict) return renderVerdict(risk.verdict, title, isOwn, risk.riskByCategory)
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
   const blacklisted = risk?.blacklisted === true
@@ -226,6 +238,7 @@ export async function cachedRiskScore(aegisClient, network, address) {
           fundsFlow: r.fundsFlow ?? null,
           coverage: r.coverage ?? null,
           verdict: r.verdict ?? null,
+          riskByCategory: Array.isArray(r.riskByCategory) ? r.riskByCategory : [],
           breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
         }
       : null
