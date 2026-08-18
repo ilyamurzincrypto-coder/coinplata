@@ -74,6 +74,8 @@ const EXPLORER_ADDR = {
 }
 // Короткий адрес для показа: TXxx…yyyy
 const shortAddr = (a) => (a && a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '')
+// Валидация адреса (allowlist): только буквы/цифры 10..80 — иначе НЕ строим ссылку (защита от XSS через href).
+const isPlainAddr = (a) => typeof a === 'string' && /^[A-Za-z0-9]{10,80}$/.test(a)
 function escapeHtmlA(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -139,9 +141,12 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
       detail.push(escapeHtmlA(rt))
       if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
       // Адрес-пруф грязного узла → кликабельная ссылка на эксплорер (проверяемо).
+      // ra — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидного адреса (allowlist) + экранируем href.
       if (ra) {
         const mk = EXPLORER_ADDR[network]
-        detail.push(mk ? `   └ адрес: <a href="${mk(ra)}">${escapeHtmlA(shortAddr(ra))}</a>` : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
+        detail.push(mk && isPlainAddr(ra)
+          ? `   └ адрес: <a href="${escapeHtmlA(mk(ra))}">${escapeHtmlA(shortAddr(ra))}</a>`
+          : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
       }
     }
   }
