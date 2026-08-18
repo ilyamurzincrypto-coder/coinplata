@@ -210,7 +210,7 @@ export function normalizeVerdict(raw) {
     action: raw.action ?? null, // «❌ Рекомендуем отказ» / «✅ …»
     // reasons: заголовок + detail-доказательство (числа/специфика). Терпим оба формата: строка ИЛИ {text,detail}.
     reasons: Array.isArray(raw.reasons)
-      ? raw.reasons.map((r) => (typeof r === 'string' ? { text: r, detail: null } : { text: String(r?.text ?? ''), detail: r?.detail ?? null }))
+      ? raw.reasons.map((r) => (typeof r === 'string' ? { text: r, detail: null, address: null } : { text: String(r?.text ?? ''), detail: r?.detail ?? null, address: r?.address ?? null }))
       : [],
     sources: Array.isArray(raw.sources)
       ? raw.sources.map((s) => ({

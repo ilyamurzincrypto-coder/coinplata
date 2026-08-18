@@ -216,6 +216,12 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(t).toMatch(/🔀 Кошелёк-прокладка: деньги проходят насквозь/)
     expect(t).toMatch(/└ 95% входящего уходит за ≤ 30 мин \(10 быстрых переводов, медиана 2 мин\)/)
   })
+  it('reason с address → кликабельная ссылка на адрес в эксплорере', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🌀', levelText: 'ВЫСОКИЙ', score: 60, action: '❌', reasons: [{ text: '🌀 Миксер: получал средства напрямую', detail: 'Почему это миксер: перемешивает монеты', address: 'TXdirtyMixer12345678901234567890' }], sources: [], cleanNote: null }, riskByCategory: rbc } })
+    expect(t).toMatch(/🌀 Миксер: получал средства напрямую/)
+    expect(t).toMatch(/└ Почему это миксер: перемешивает монеты/)
+    expect(t).toMatch(/└ адрес: <a href="https:\/\/tronscan\.org\/#\/address\/TXdirtyMixer12345678901234567890">TXdirt…7890<\/a>/)
+  })
   it('reasons как строки (back-compat) → рендерятся без └', () => {
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ', score: 72, action: '❌', reasons: ['⚠️ близость'], sources: [], cleanNote: null }, riskByCategory: rbc } })
     expect(t).toMatch(/⚠️ близость/)

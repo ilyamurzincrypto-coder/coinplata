@@ -330,7 +330,7 @@ describe("новые структурные поля /v1/risk (unknown ≠ чи�
     });
     expect(r.verdict).toMatchObject({ emoji: "🔴", levelText: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", cleanNote: "✅ нет" });
     // reasons нормализуются в {text, detail}; терпим строку (detail=null) и объект
-    expect(r.verdict.reasons).toEqual([{ text: "a", detail: null }, { text: "b", detail: "пруф b" }]);
+    expect(r.verdict.reasons).toEqual([{ text: "a", detail: null, address: null }, { text: "b", detail: "пруф b", address: null }]);
     expect(r.verdict.sources[0]).toMatchObject({ label: "Неизвестно", pct: 76, bar: "▓░" });
   });
   it("normalizeRisk: verdict отсутствует → null", () => {

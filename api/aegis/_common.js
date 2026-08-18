@@ -65,6 +65,15 @@ const EXPLORER_TX = {
   BEP20: { name: 'BscScan', url: (h) => `https://bscscan.com/tx/${h}` },
   BTC: { name: 'Blockstream', url: (h) => `https://blockstream.info/tx/${h}` },
 }
+// Ссылка на АДРЕС в эксплорере (для адреса-пруфа грязного узла в причинах вердикта).
+const EXPLORER_ADDR = {
+  TRC20: (a) => `https://tronscan.org/#/address/${a}`,
+  ERC20: (a) => `https://etherscan.io/address/${a}`,
+  BEP20: (a) => `https://bscscan.com/address/${a}`,
+  BTC: (a) => `https://blockstream.info/address/${a}`,
+}
+// Короткий адрес для показа: TXxx…yyyy
+const shortAddr = (a) => (a && a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '')
 function escapeHtmlA(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
@@ -112,7 +121,7 @@ const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[S
 // action → «Почему:» reasons → «Источник средств:» sources (bar+pct) → clean_note.
 // Для НАШЕГО кошелька (isOwn) — только шапка + clean_note (action/reasons/источник =
 // решение по КОНТРАГЕНТУ, к своему кошельку не применимо).
-function renderVerdict(v, title, isOwn, riskByCategory) {
+function renderVerdict(v, title, isOwn, riskByCategory, network) {
   const score = v.score != null ? `${v.score}/100` : '—'
   const emoji = v.emoji || riskEmoji(null, v.score)
   const prelim = v.preliminary ? ' (предв.)' : '' // экспозиция ещё трассируется — не «ложный зелёный»
@@ -123,11 +132,17 @@ function renderVerdict(v, title, isOwn, riskByCategory) {
   if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
     detail.push('Почему:')
     for (const r of v.reasons) {
-      // Терпим оба формата: строка ИЛИ {text, detail}. detail — доказательство под причиной (отступ «└»).
+      // Терпим оба формата: строка ИЛИ {text, detail, address}. detail/адрес — доказательство под причиной («└»).
       const rt = typeof r === 'string' ? r : (r?.text || '')
       const rd = typeof r === 'object' ? (r?.detail || '') : ''
+      const ra = typeof r === 'object' ? (r?.address || '') : ''
       detail.push(escapeHtmlA(rt))
       if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
+      // Адрес-пруф грязного узла → кликабельная ссылка на эксплорер (проверяемо).
+      if (ra) {
+        const mk = EXPLORER_ADDR[network]
+        detail.push(mk ? `   └ адрес: <a href="${mk(ra)}">${escapeHtmlA(shortAddr(ra))}</a>` : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
+      }
     }
   }
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
@@ -158,9 +173,9 @@ function renderVerdict(v, title, isOwn, riskByCategory) {
   return lines.join('\n')
 }
 
-function riskBlock(risk, sanctioned, title = 'Риск контрагента', isOwn = false) {
+function riskBlock(risk, sanctioned, title = 'Риск контрагента', isOwn = false, network) {
   // Если AEGIS прислал готовый вердикт — рендерим ЕГО (клиентский вид), не чек-лист.
-  if (risk?.verdict) return renderVerdict(risk.verdict, title, isOwn, risk.riskByCategory)
+  if (risk?.verdict) return renderVerdict(risk.verdict, title, isOwn, risk.riskByCategory, network)
   const score = risk?.score ?? null
   const hasScore = score != null && score > 0
   const blacklisted = risk?.blacklisted === true
@@ -296,7 +311,7 @@ export function formatMoveAlert(account, tx) {
   // ВСЕГДА рисуем блок нашего кошелька (симметрично контрагенту): ownRisk=null →
   // riskBlock даёт «❔ нет данных» + полный чек-лист. Иначе анализ пропадал на
   // EVM/пустом /v1/risk без кэша (регресс «куда делся анализ нашего кошелька»).
-  lines.push(riskBlock(ownRisk, false, 'Риск кошелька', true))
+  lines.push(riskBlock(ownRisk, false, 'Риск кошелька', true, account.network_id))
   if (cp) {
     if (tx.counterpartyOwn) {
       // Внутренний перевод (контрагент — НАШ кошелёк, по accounts): имя, риск НЕ показываем.
@@ -325,7 +340,7 @@ export function formatMoveAlert(account, tx) {
           lines.push(`❓ EDD: кто это · есть ли лицензия · источник средств${ns.source ? ` (заявлено: ${escapeHtmlA(ns.source)})` : ''}`)
         }
       }
-      lines.push(riskBlock(risk, sanctioned, 'Риск контрагента'))
+      lines.push(riskBlock(risk, sanctioned, 'Риск контрагента', false, account.network_id))
     }
   }
   const footer = [txLink, riskLink].filter(Boolean).join(' · ')
