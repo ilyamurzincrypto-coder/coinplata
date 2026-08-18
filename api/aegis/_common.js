@@ -133,12 +133,13 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
   // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
   if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
     detail.push('Почему:')
-    for (const r of v.reasons) {
+    v.reasons.forEach((r, i) => {
       // Терпим оба формата: строка ИЛИ {text, detail, address}. detail/адрес — доказательство под причиной («└»).
       const rt = typeof r === 'string' ? r : (r?.text || '')
       const rd = typeof r === 'object' ? (r?.detail || '') : ''
       const ra = typeof r === 'object' ? (r?.address || '') : ''
       const rtx = typeof r === 'object' ? (r?.tx || '') : ''
+      if (i > 0) detail.push('') // пустая строка между причинами — не полотно текста
       detail.push(escapeHtmlA(rt))
       if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
       // Адрес/tx-пруф грязного узла → кликабельные ссылки на эксплорер (проверяемо).
@@ -155,7 +156,7 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
           ? `   └ tx: <a href="${escapeHtmlA(tk.url(rtx))}">${escapeHtmlA(shortAddr(rtx))}</a>`
           : `   └ tx: <code>${escapeHtmlA(rtx)}</code>`)
       }
-    }
+    })
   }
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
   // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,
