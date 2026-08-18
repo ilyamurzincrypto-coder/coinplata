@@ -122,7 +122,13 @@ function renderVerdict(v, title, isOwn, riskByCategory) {
   // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
   if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
     detail.push('Почему:')
-    for (const r of v.reasons) detail.push(escapeHtmlA(r))
+    for (const r of v.reasons) {
+      // Терпим оба формата: строка ИЛИ {text, detail}. detail — доказательство под причиной (отступ «└»).
+      const rt = typeof r === 'string' ? r : (r?.text || '')
+      const rd = typeof r === 'object' ? (r?.detail || '') : ''
+      detail.push(escapeHtmlA(rt))
+      if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
+    }
   }
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
   // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,

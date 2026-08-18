@@ -73,7 +73,11 @@ export default async function handler(req, res) {
     ? `<div class="card" style="border-color:${color}">` +
       `<div class="row" style="font-weight:600;font-size:16px"><span>${esc(v.emoji || '')} ${esc(v.levelText || '')}</span><b>${v.score != null ? esc(v.score) + '/100' : '—'}</b></div>` +
       (v.action ? `<div class="row"><span>${esc(v.action)}</span></div>` : '') +
-      (Array.isArray(v.reasons) && v.reasons.length ? `<div class="sec" style="margin-top:8px">Почему</div>` + v.reasons.map((r) => `<div class="row muted" style="display:block">${esc(r)}</div>`).join('') : '') +
+      (Array.isArray(v.reasons) && v.reasons.length ? `<div class="sec" style="margin-top:8px">Почему</div>` + v.reasons.map((r) => {
+        const rt = typeof r === 'string' ? r : (r?.text || '') // терпим оба формата: строка ИЛИ {text,detail}
+        const rd = typeof r === 'object' ? (r?.detail || '') : ''
+        return `<div class="row muted" style="display:block">${esc(rt)}</div>` + (rd && rd !== rt ? `<div class="row muted" style="display:block;padding-left:14px;opacity:.75">└ ${esc(rd)}</div>` : '')
+      }).join('') : '') +
       (Array.isArray(v.sources) && v.sources.length ? `<div class="sec" style="margin-top:8px">Источник средств</div>` + v.sources.map((s) => `<div class="row"><span>${esc(s.emoji || '')} ${esc(s.label || '')}</span><b>${esc(s.bar || '')} ${s.pct != null ? esc(s.pct) + '%' : ''}</b></div>`).join('') : '') +
       (v.cleanNote ? `<div class="row muted" style="display:block;margin-top:6px">${esc(v.cleanNote)}</div>` : '') +
       `</div>`

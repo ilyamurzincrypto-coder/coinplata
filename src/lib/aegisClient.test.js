@@ -326,10 +326,11 @@ describe("новые структурные поля /v1/risk (unknown ≠ чи�
   it("normalizeRisk: verdict (готовый клиентский вердикт)", () => {
     const r = normalizeRisk({
       address: "TX", score: 71,
-      verdict: { emoji: "🔴", level_text: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", reasons: ["a", "b"], sources: [{ emoji: "❓", label: "Неизвестно", pct: 76, bar: "▓░" }], clean_note: "✅ нет" },
+      verdict: { emoji: "🔴", level_text: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", reasons: ["a", { text: "b", detail: "пруф b" }], sources: [{ emoji: "❓", label: "Неизвестно", pct: 76, bar: "▓░" }], clean_note: "✅ нет" },
     });
     expect(r.verdict).toMatchObject({ emoji: "🔴", levelText: "ВЫСОКИЙ РИСК", score: 71, action: "❌ отказ", cleanNote: "✅ нет" });
-    expect(r.verdict.reasons).toEqual(["a", "b"]);
+    // reasons нормализуются в {text, detail}; терпим строку (detail=null) и объект
+    expect(r.verdict.reasons).toEqual([{ text: "a", detail: null }, { text: "b", detail: "пруф b" }]);
     expect(r.verdict.sources[0]).toMatchObject({ label: "Неизвестно", pct: 76, bar: "▓░" });
   });
   it("normalizeRisk: verdict отсутствует → null", () => {

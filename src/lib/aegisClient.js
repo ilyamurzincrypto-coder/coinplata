@@ -208,7 +208,10 @@ export function normalizeVerdict(raw) {
     levelText: raw.level_text ?? null,
     score: raw.score ?? null, // 0..100
     action: raw.action ?? null, // «❌ Рекомендуем отказ» / «✅ …»
-    reasons: Array.isArray(raw.reasons) ? raw.reasons.map(String) : [],
+    // reasons: заголовок + detail-доказательство (числа/специфика). Терпим оба формата: строка ИЛИ {text,detail}.
+    reasons: Array.isArray(raw.reasons)
+      ? raw.reasons.map((r) => (typeof r === 'string' ? { text: r, detail: null } : { text: String(r?.text ?? ''), detail: r?.detail ?? null }))
+      : [],
     sources: Array.isArray(raw.sources)
       ? raw.sources.map((s) => ({
           emoji: s?.emoji ?? null,

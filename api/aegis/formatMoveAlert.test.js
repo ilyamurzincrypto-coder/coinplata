@@ -211,6 +211,16 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(t).toMatch(/<code>🎰 Гемблинг\s+▓░░░░░░░░░\s+11%<\/code> ⬆️ уходит 0\.4%/)
     expect(t).toMatch(/<code>🚫 Чёрный список\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 1\.2%/)
   })
+  it('reasons с detail → заголовок + строка-доказательство «└ …»', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ РИСК', score: 72, action: '❌ Рекомендуем отказ', reasons: [{ text: '🔀 Кошелёк-прокладка: деньги проходят насквозь', detail: '95% входящего уходит за ≤ 30 мин (10 быстрых переводов, медиана 2 мин)' }], sources: [], cleanNote: null, preliminary: false }, riskByCategory: rbc } })
+    expect(t).toMatch(/🔀 Кошелёк-прокладка: деньги проходят насквозь/)
+    expect(t).toMatch(/└ 95% входящего уходит за ≤ 30 мин \(10 быстрых переводов, медиана 2 мин\)/)
+  })
+  it('reasons как строки (back-compat) → рендерятся без └', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ', score: 72, action: '❌', reasons: ['⚠️ близость'], sources: [], cleanNote: null }, riskByCategory: rbc } })
+    expect(t).toMatch(/⚠️ близость/)
+    expect(t).not.toMatch(/└/)
+  })
   it('НАШ кошелёк с verdict → таблица категорий ЕСТЬ, action/reasons НЕТ (решение — по контрагенту)', () => {
     const own = { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 30, action: '✅ Можно работать', reasons: ['не показывать это'], sources: [], cleanNote: '✅ Чисто по всем', preliminary: false }, riskByCategory: rbc }
     const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: null, ownRisk: own })
