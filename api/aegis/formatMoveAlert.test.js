@@ -195,3 +195,32 @@ describe('formatRiskUpgrade (/v1/alerts RISK_UPGRADE)', () => {
     expect(text).toMatch(/предв\. → <b>46%<\/b>/)
   })
 })
+
+describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
+  const rbc = [
+    { emoji: '🎰', label: 'Гемблинг', pct: 11, bar: '▓░░░░░░░░░', outPct: 0.4, outBar: '▓░░░░░░░░░' },
+    { emoji: '🚫', label: 'Чёрный список', pct: 0, bar: '░░░░░░░░░░', outPct: 1.2, outBar: '▓░░░░░░░░░' },
+  ]
+  it('контрагент с verdict → шапка+action+таблица категорий, out_pct рендерится', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ РИСК', score: 81, action: '❌ Рекомендуем отказ', reasons: ['⚠️ близость к санкц/ЧС'], sources: [], cleanNote: null, preliminary: false }, riskByCategory: rbc } })
+    expect(t).toMatch(/🔴 <b>Риск контрагента:<\/b> ВЫСОКИЙ РИСК — 81\/100/)
+    expect(t).toMatch(/❌ Рекомендуем отказ/)
+    expect(t).toMatch(/⚠️ Риск по категориям:/)
+    expect(t).toMatch(/🎰 Гемблинг ▓░░░░░░░░░ 11%   ⬆️ уходит 0\.4%/)
+    expect(t).toMatch(/🚫 Чёрный список ░░░░░░░░░░ 0%   ⬆️ уходит 1\.2%/)
+  })
+  it('НАШ кошелёк с verdict → таблица категорий ЕСТЬ, action/reasons НЕТ (решение — по контрагенту)', () => {
+    const own = { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 30, action: '✅ Можно работать', reasons: ['не показывать это'], sources: [], cleanNote: '✅ Чисто по всем', preliminary: false }, riskByCategory: rbc }
+    const a = formatMoveAlert(acc, { direction: 'in', amount: { amount: '1000000', decimals: 6 }, counterparty: null, ownRisk: own })
+    expect(a.text).toMatch(/🟢 <b>Риск кошелька:<\/b> НИЗКИЙ РИСК — 30\/100/)
+    expect(a.text).toMatch(/⚠️ Риск по категориям:/)      // таблица показывается и для нашего
+    expect(a.text).toMatch(/🎰 Гемблинг ▓░░░░░░░░░ 11%/)
+    expect(a.text).not.toMatch(/✅ Можно работать/)        // action к своему кошельку не применяется
+    expect(a.text).not.toMatch(/не показывать это/)        // reasons — тоже нет
+  })
+  it('preliminary verdict → бейдж «(предв.)» + честная нота', () => {
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🟡', levelText: 'НИЗКИЙ РИСК', score: 10, action: '⚠️ Повышенное внимание', reasons: [], sources: [], cleanNote: '⏳ Экспозиция ещё трассируется', preliminary: true }, riskByCategory: [{ emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░', outPct: null }] } })
+    expect(t).toMatch(/— 10\/100 \(предв\.\)/)
+    expect(t).toMatch(/⏳ Экспозиция ещё трассируется/)
+  })
+})

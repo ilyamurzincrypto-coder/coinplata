@@ -218,6 +218,7 @@ export function normalizeVerdict(raw) {
         }))
       : [],
     cleanNote: raw.clean_note ?? null,
+    preliminary: raw.preliminary === true, // экспозиция ещё не трассирована → бейдж «(предв.)»
   };
 }
 
