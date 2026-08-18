@@ -166,9 +166,9 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     ]
     const t = ext({ counterpartyRisk: { verdict: V, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
-    expect(cp).toMatch(/Риск по категориям:/)
+    expect(cp).toMatch(/⚠️ Риск по категориям:/)
     expect(cp).toMatch(/⛔️ Санкции ░░░░░░░░░░ 0%/)
-    expect(cp).toMatch(/🎰 Гемблинг ░░░░░░░░░░ 0% ⬆️ уходит 12%/)
+    expect(cp).toMatch(/🎰 Гемблинг ░░░░░░░░░░ 0%\s+⬆️ уходит 12%/)
     expect(cp).toMatch(/⚠️ Скам ▓░░░░░░░░░ 4%/)
     expect(cp).not.toMatch(/Источник средств:/) // sources-фолбэк не используется при таблице
   })

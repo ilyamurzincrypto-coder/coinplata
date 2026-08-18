@@ -124,15 +124,13 @@ function renderVerdict(v, title, isOwn, riskByCategory) {
       for (const r of v.reasons) detail.push(escapeHtmlA(r))
     }
     // risk_by_category — ВСЕГДА 15 строк (0% честно, не скрываем). out_pct>0 → «⬆️ уходит N%».
+    // Формат по контракту: заголовок «⚠️ Риск по категориям:», отступ 2 пробела на строку.
     const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
     if (rbc) {
-      detail.push('Риск по категориям:')
+      detail.push('⚠️ Риск по категориям:')
       for (const c of rbc) {
-        const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
-        detail.push(
-          [c.emoji, escapeHtmlA(c.label || ''), escapeHtmlA(c.bar || ''), `${c.pct != null ? c.pct : 0}%`]
-            .filter(Boolean).join(' ') + out
-        )
+        const out = c.outPct != null && Number(c.outPct) > 0 ? `   ⬆️ уходит ${c.outPct}%` : ''
+        detail.push(`  ${c.emoji || ''} ${escapeHtmlA(c.label || '')} ${c.bar || ''} ${c.pct != null ? c.pct : 0}%${out}`)
       }
     } else if (Array.isArray(v.sources) && v.sources.length) {
       // Фолбэк на старый sources-пирог, если таблицы категорий нет.
