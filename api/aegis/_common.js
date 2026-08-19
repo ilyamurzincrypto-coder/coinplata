@@ -305,10 +305,12 @@ export async function cachedRiskScore(aegisClient, network, address) {
           breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
         }
       : null
-    _riskCache.set(key, { risk, at: Date.now() })
+    // 🔴 НЕ кэшируем null/пустой результат: под burst-нагрузкой один пустой ответ залипал на 10 мин →
+    // «нет данных» даже когда данные уже есть. Кэшируем ТОЛЬКО успешный риск; пусто → следующий поллинг ретраит.
+    if (risk) _riskCache.set(key, { risk, at: Date.now() })
     return risk
   } catch {
-    return null
+    return null // сетевая ошибка/таймаут — тоже НЕ кэшируем (ретрай на след. поллинге)
   }
 }
 
