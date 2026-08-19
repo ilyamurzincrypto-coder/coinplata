@@ -291,9 +291,10 @@ export async function cachedRiskScore(aegisClient, network, address) {
           breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
         }
       : null
-    // 🔴 НЕ кэшируем null/пустой результат: под burst-нагрузкой один пустой ответ залипал на 10 мин →
-    // «нет данных» даже когда данные уже есть. Кэшируем ТОЛЬКО успешный риск; пусто → следующий поллинг ретраит.
-    if (risk) _riskCache.set(key, { risk, at: Date.now() })
+    // 🔴 Кэшируем ТОЛЬКО ГОТОВЫЙ анализ (assessment='full'). НЕ кэшируем null/preliminary: иначе «идёт проверка»
+    // залипало на 10 мин → гейт видел старый preliminary → через 3 мин слал «идёт проверка», которое не резолвится.
+    // Preliminary/пусто → НЕ кэшируем → следующий поллинг ретраит и видит прогретый (full) снапшот.
+    if (risk && risk.assessment === 'full') _riskCache.set(key, { risk, at: Date.now() })
     return risk
   } catch {
     return null // сетевая ошибка/таймаут — тоже НЕ кэшируем (ретрай на след. поллинге)
