@@ -131,11 +131,11 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
   if (!isOwn && v.action) lines.push(escapeHtmlA(v.action))
   const detail = []
   // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
-  // 🔴 ЧЕСТНОСТЬ: делим причины на ФАКТЫ (basis=fact — прямая метка эмитента/санкц-списка ИЛИ реальная он-чейн
-  // связь с подтверждённой грязью) и СИГНАЛЫ (basis=signal — поведенческая/статистическая эвристика: «повод
-  // проверить», НЕ доказательство). Веса нуджей подобраны вручную, не откалиброваны → не выдаём за точность.
+  // 🔴 ФОРМАТ ПРИБИТ (владелец 2026-08-19): плоское «Почему:» + причины с пояснением «└». Скор — только по
+  // фактам (эвристики не надувают цифру, это на стороне AEGIS). НЕ менять структуру без явной просьбы.
   if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
-    const renderReason = (r, i) => {
+    detail.push('Почему:')
+    v.reasons.forEach((r, i) => {
       const rt = typeof r === 'string' ? r : (r?.text || '')
       const rd = typeof r === 'object' ? (r?.detail || '') : ''
       const ra = typeof r === 'object' ? (r?.address || '') : ''
@@ -152,19 +152,7 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
         const tk = EXPLORER_TX[network]
         detail.push(tk && isPlainAddr(rtx) ? `   └ tx: <a href="${escapeHtmlA(tk.url(rtx))}">${escapeHtmlA(shortAddr(rtx))}</a>` : `   └ tx: <code>${escapeHtmlA(rtx)}</code>`)
       }
-    }
-    const isFact = (r) => (typeof r === 'object' && r?.basis === 'fact')
-    const facts = v.reasons.filter(isFact)
-    const signals = v.reasons.filter((r) => !isFact(r))
-    if (facts.length) {
-      detail.push('⛔️ <b>ФАКТЫ</b> (прямая метка / реальная связь):')
-      facts.forEach(renderReason)
-    }
-    if (signals.length) {
-      if (facts.length) detail.push('')
-      detail.push('⚠️ <b>СИГНАЛЫ</b> — эвристика, повод проверить (НЕ доказательство):')
-      signals.forEach(renderReason)
-    }
+    })
   }
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
   // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,
@@ -179,23 +167,23 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
     if (ti) detail.push(`   ⬇️ приходит: ${escapeHtmlA(ti)}`)
     if (to) detail.push(`   ⬆️ уходит: ${escapeHtmlA(to)}`)
   }
+  // 🔴 ТАБЛИЦА ПРИБИТА (владелец 2026-08-19): ВСЕГДА все 15 категорий (0% честно) + пометка ✅/«нет фида» по
+  // каждой + легенда. И для своего кошелька, и для контрагента. НЕ схлопывать, НЕ прятать без явной просьбы.
   const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
-  // Показываем ТОЛЬКО категории с реальным % (вход/выход). Всё по нулям → НЕ заваливаем 15 строками + «нет фида»
-  // (шум, из-за него даже 🔴78 выглядит «пусто»). Риск таких адресов — в «Почему» (близость/поведение/no-KYC).
-  const rbcHot = rbc ? rbc.filter((c) => (Number(c.pct) || 0) > 0 || (c.outPct != null && Number(c.outPct) > 0)) : null
-  if (rbcHot && rbcHot.length) {
+  if (rbc) {
     detail.push('⚠️ Риск по категориям:')
     // РОВНОСТЬ: моноширинный <code> на строку + добивка метки пробелами до общей ширины → бары и % в колонку.
-    const wLabel = Math.max(...rbcHot.map((c) => (c.label || '').length))
-    for (const c of rbcHot) {
+    const wLabel = Math.max(...rbc.map((c) => (c.label || '').length))
+    for (const c of rbc) {
+      const hasPct = (Number(c.pct) || 0) > 0 || (c.outPct != null && Number(c.outPct) > 0)
       const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
       const pctStr = `${c.pct != null ? c.pct : 0}%`.padStart(4)
-      detail.push(`<code>${escapeHtmlA(`${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`)}</code>${out}`)
+      const row = `${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`
+      // 0% + есть источник детекции → «✅» (проверено); 0% + нет источника по TRON → «нет фида». С % — сам % говорит.
+      const mark = hasPct ? out : (c.covered ? ' ✅' : ' <i>нет фида</i>')
+      detail.push(`<code>${escapeHtmlA(row)}</code>${mark}`)
     }
-  } else if (rbc && !v.preliminary) {
-    // Все категории 0% И анализ завершён → одна честная строка вместо 15 нулей (риск, если есть — в «Почему»).
-    // Для preliminary НЕ пишем «чисто» (это «ещё считается») — ниже покажется cleanNote «⏳ трассируется».
-    detail.push('✅ Прямых категорий-меток нет (санкции / ЧС / микшер / скам / гемблинг / … — чисто по проверяемым)')
+    detail.push('<i>✅ — проверяем (метка/поведение); «нет фида» — по TRON нет источника, не путать с «чисто»</i>')
   } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
     // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.
     detail.push('Источник средств:')
@@ -204,9 +192,7 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
         .filter(Boolean).join(' '))
     }
   }
-  // cleanNote не дублируем, если уже показали компактную «✅ Прямых категорий-меток нет» (rbc есть, всё 0%, НЕ preliminary).
-  const shownCompactClean = rbc && !(rbcHot && rbcHot.length) && !v.preliminary
-  if (v.cleanNote && !shownCompactClean) detail.push(escapeHtmlA(v.cleanNote))
+  if (v.cleanNote) detail.push(escapeHtmlA(v.cleanNote))
   if (detail.length) lines.push(`<blockquote expandable>${detail.join('\n')}</blockquote>`)
   return lines.join('\n')
 }

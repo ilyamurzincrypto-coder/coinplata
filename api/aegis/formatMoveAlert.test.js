@@ -150,7 +150,7 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/🔴 <b>Риск контрагента:<\/b> ВЫСОКИЙ РИСК — 71\/100/)
     expect(cp).toMatch(/❌ Рекомендуем отказ/)
-    expect(cp).toMatch(/ФАКТЫ|СИГНАЛЫ/)
+    expect(cp).toMatch(/Почему:/)
     expect(cp).toMatch(/⚠️ прямые метки/)
     expect(cp).toMatch(/Источник средств:/)
     expect(cp).toMatch(/❓ Неизвестно ▓▓▓▓▓▓▓▓░░ 76%/)
@@ -158,32 +158,29 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     expect(cp).not.toMatch(/— 0%/) // старого чек-листа нет
     expect(cp).not.toMatch(/⛔ <b>ОТКАЗ<\/b>/) // отдельная ⛔-строка не дублируется
   })
-  it('risk_by_category: показываем ТОЛЬКО ненулевые (нули схлопнуты, не 15 строк)', () => {
+  it('risk_by_category: ВСЕГДА все строки (0% честно) + «⬆️ уходит» для out_pct', () => {
     const rbc = [
-      { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░' },
-      { emoji: '🎰', label: 'Гемблинг', pct: 0, bar: '░░░░░░░░░░', outPct: 12, outBar: '▓░░░░░░░░░' },
-      { emoji: '⚠️', label: 'Скам', pct: 4, bar: '▓░░░░░░░░░' },
+      { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░', covered: true },
+      { emoji: '🎰', label: 'Гемблинг', pct: 0, bar: '░░░░░░░░░░', outPct: 12, outBar: '▓░░░░░░░░░', covered: true },
+      { emoji: '⚠️', label: 'Скам', pct: 4, bar: '▓░░░░░░░░░', covered: true },
     ]
     const t = ext({ counterpartyRisk: { verdict: V, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/⚠️ Риск по категориям:/)
-    // только категории с реальным % (вход/выход)
+    expect(cp).toMatch(/<code>⛔️ Санкции\s+░░░░░░░░░░\s+0%<\/code> ✅/) // нулевая ПОКАЗАНА (полная таблица) + ✅
     expect(cp).toMatch(/<code>🎰 Гемблинг\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 12%/)
     expect(cp).toMatch(/<code>⚠️ Скам\s+▓░░░░░░░░░\s+4%<\/code>/)
-    expect(cp).not.toMatch(/⛔️ Санкции/) // нулевую категорию НЕ показываем (схлопнута)
-    expect(cp).not.toMatch(/нет фида/) // per-row «нет фида»-шум убран
   })
-  it('все категории 0% → компактная строка вместо 15 нулей', () => {
+  it('все категории 0% → ВСЕ строки с ✅/«нет фида» (полная таблица, не схлопнуто)', () => {
     const rbc = [
       { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░', covered: true },
       { emoji: '🎣', label: 'Фишинг', pct: 0, bar: '░░░░░', covered: false },
     ]
     const t = ext({ counterpartyRisk: { verdict: { ...V, cleanNote: '✅ Чисто по проверяемым …' }, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
-    expect(cp).toMatch(/Прямых категорий-меток нет/)
-    expect(cp).not.toMatch(/⛔️ Санкции/) // не вываливаем 15 нулей
-    expect(cp).not.toMatch(/нет фида/)
-    expect(cp).not.toMatch(/Чисто по проверяемым/) // cleanNote не дублируем при компактной строке
+    expect(cp).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
+    expect(cp).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
+    expect(cp).toMatch(/Чисто по проверяемым/) // cleanNote показывается
   })
   it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
     const own = { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 3, action: '✅ ок', reasons: ['x'], sources: [{ emoji: '❓', label: 'y', pct: 1, bar: '░' }], cleanNote: '✅ чисто' }
@@ -229,9 +226,8 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
       { emoji: '🎣', label: 'Фишинг', pct: 0, bar: '░░░░░', outPct: null, covered: false },
     ]
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 5, action: '✅ Можно работать', reasons: [], sources: [], cleanNote: null }, riskByCategory: rbc2 } })
-    expect(t).toMatch(/Прямых категорий-меток нет/)
-    expect(t).not.toMatch(/⛔️ Санкции/)
-    expect(t).not.toMatch(/нет фида/)
+    expect(t).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
+    expect(t).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
   })
   it('dirt_flow → заголовок направления грязи + «⬇️ приходит / ⬆️ уходит» над таблицей', () => {
     const dirtFlow = { direction: 'both', label: '⬆️⬇️ Грязь и ПРИХОДИТ, и УХОДИТ — деньги идут и с грязных адресов, и на грязные', inPct: 0.4, outPct: 98, topIn: [{ emoji: '🎰', label: 'Гемблинг', pct: 0.4 }], topOut: [{ emoji: '🎰', label: 'Гемблинг', pct: 98 }] }
