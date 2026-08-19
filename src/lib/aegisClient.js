@@ -345,7 +345,7 @@ export function createAegisClient({ apiUrl, apiKey, fetchImpl } = {}) {
     let r;
     // 🔴 Таймаут: зависший AEGIS не должен блокировать свип tx-watch и не должен кэшироваться как «нет данных».
     // Не вернулся за AEGIS_TIMEOUT_MS → бросаем network-ошибку → cachedRiskScore вернёт null (НЕ кэширует) → ретрай.
-    const timeoutMs = Number((typeof process !== "undefined" && process.env?.AEGIS_TIMEOUT_MS) || 12000);
+    const timeoutMs = Number((typeof process !== "undefined" && process.env?.AEGIS_TIMEOUT_MS) || 20000);
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
     try {
