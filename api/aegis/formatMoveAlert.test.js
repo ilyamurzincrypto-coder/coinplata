@@ -211,6 +211,23 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(t).toMatch(/<code>🎰 Гемблинг\s+▓░░░░░░░░░\s+11%<\/code> ⬆️ уходит 0\.4%/)
     expect(t).toMatch(/<code>🚫 Чёрный список\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 1\.2%/)
   })
+  it('covered-аннотация: 0%+покрыто → «✅», 0%+нет источника → «нет фида» (честность нулей)', () => {
+    const rbc2 = [
+      { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░', outPct: null, covered: true },
+      { emoji: '🎣', label: 'Фишинг', pct: 0, bar: '░░░░░', outPct: null, covered: false },
+    ]
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 5, action: '✅ Можно работать', reasons: [], sources: [], cleanNote: null }, riskByCategory: rbc2 } })
+    expect(t).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
+    expect(t).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
+    expect(t).toMatch(/«нет фида» — по TRON нет источника/)
+  })
+  it('dirt_flow → заголовок направления грязи + «⬇️ приходит / ⬆️ уходит» над таблицей', () => {
+    const dirtFlow = { direction: 'both', label: '⬆️⬇️ Грязь и ПРИХОДИТ, и УХОДИТ — деньги идут и с грязных адресов, и на грязные', inPct: 0.4, outPct: 98, topIn: [{ emoji: '🎰', label: 'Гемблинг', pct: 0.4 }], topOut: [{ emoji: '🎰', label: 'Гемблинг', pct: 98 }] }
+    const t = ext({ counterpartyRisk: { verdict: { emoji: '🟠', levelText: 'СРЕДНИЙ РИСК', score: 47, action: '🔍 Проверка', reasons: [], sources: [], dirtFlow, cleanNote: null }, riskByCategory: rbc } })
+    expect(t).toMatch(/Грязь и ПРИХОДИТ, и УХОДИТ/)
+    expect(t).toMatch(/⬇️ приходит: 🎰 Гемблинг 0\.4%/)
+    expect(t).toMatch(/⬆️ уходит: 🎰 Гемблинг 98%/)
+  })
   it('reasons с detail → заголовок + строка-доказательство «└ …»', () => {
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🔴', levelText: 'ВЫСОКИЙ РИСК', score: 72, action: '❌ Рекомендуем отказ', reasons: [{ text: '🔀 Кошелёк-прокладка: деньги проходят насквозь', detail: '95% входящего уходит за ≤ 30 мин (10 быстрых переводов, медиана 2 мин)' }], sources: [], cleanNote: null, preliminary: false }, riskByCategory: rbc } })
     expect(t).toMatch(/🔀 Кошелёк-прокладка: деньги проходят насквозь/)

@@ -161,6 +161,16 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
   // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,
   // отступ 2 пробела на строку, 3 пробела перед «⬆️ уходит N%», pct/out_pct как есть.
+  // dirt_flow — НАПРАВЛЕНИЕ грязи (приходит/уходит/оба), заголовок над таблицей категорий. Для обоих (own/контрагент):
+  // владелец хочет видеть, куда/откуда течёт грязь и по своему кошельку тоже.
+  if (v.dirtFlow && v.dirtFlow.label) {
+    detail.push(escapeHtmlA(v.dirtFlow.label))
+    const fmt = (arr) => (Array.isArray(arr) ? arr : []).map((x) => `${x.emoji || ''} ${x.label || ''} ${x.pct != null ? x.pct + '%' : ''}`.trim()).filter(Boolean).join(', ')
+    const ti = fmt(v.dirtFlow.topIn)
+    const to = fmt(v.dirtFlow.topOut)
+    if (ti) detail.push(`   ⬇️ приходит: ${escapeHtmlA(ti)}`)
+    if (to) detail.push(`   ⬆️ уходит: ${escapeHtmlA(to)}`)
+  }
   const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
   if (rbc) {
     detail.push('⚠️ Риск по категориям:')
@@ -168,11 +178,16 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
     // в колонку (в пропорц. шрифте TG они «прыгали»). Метка слева (padEnd), бар, % справа (padStart 4: « 0%»/«100%»).
     const wLabel = Math.max(...rbc.map((c) => (c.label || '').length))
     for (const c of rbc) {
+      const hasPct = (Number(c.pct) || 0) > 0 || (c.outPct != null && Number(c.outPct) > 0)
       const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
       const pctStr = `${c.pct != null ? c.pct : 0}%`.padStart(4)
       const row = `${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`
-      detail.push(`<code>${escapeHtmlA(row)}</code>${out}`)
+      // Честность нулей: 0% + есть источник детекции → «✅» (проверено, чисто); 0% + НЕТ источника по TRON → «нет фида»
+      // (не ложная уверенность). Категории с реальным % — без пометки (сам % говорит).
+      const mark = hasPct ? out : (c.covered ? ' ✅' : ' <i>нет фида</i>')
+      detail.push(`<code>${escapeHtmlA(row)}</code>${mark}`)
     }
+    detail.push('<i>✅ — проверяем (метка/поведение); «нет фида» — по TRON нет источника, не путать с «чисто»</i>')
   } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
     // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.
     detail.push('Источник средств:')

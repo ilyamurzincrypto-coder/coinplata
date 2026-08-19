@@ -56,8 +56,9 @@ export default async function handler(req, res) {
     if (a && a.length) acc = { id: p.account_id, name: a[0].name, network_id: a[0].network_id || p.network, aegis_wallet_id: a[0].aegis_wallet_id }
   }
 
-  // Живой риск-% контрагента (как в бою: кэш 10 мин).
+  // Живой риск-% контрагента И нашего кошелька (как в бою: кэш 10 мин) — полный разбор обеих сторон.
   const counterpartyRisk = p.counterparty ? await cachedRiskScore(aegis, acc.network_id, p.counterparty) : null
+  const ownRisk = p.address ? await cachedRiskScore(aegis, acc.network_id, p.address) : null
 
   const tx = {
     direction: p.direction,
@@ -66,6 +67,7 @@ export default async function handler(req, res) {
     amount: { amount: p.amount_minor, decimals: p.decimals ?? 6 },
     ts: p.ts,
     counterpartyRisk,
+    ownRisk,
   }
   const payload = formatMoveAlert(acc, tx)
   payload.text = `🧪 <b>ТЕСТ-уведомление</b> (старая платёжка, не реальное движение)\n${payload.text}`

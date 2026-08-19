@@ -28,6 +28,19 @@ const POOL = 8
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// Гейт «не постим неготовый скор»: держим алерт, пока анализ не дозреет (прогрев снапшота ~30-90с), но не
+// дольше MAX_HOLD_MS (иначе движение не потеряем — шлём как есть). < REPLAY_CAP (20мин), иначе окно-кап дропнет.
+const MAX_HOLD_MS = Number(process.env.ALERT_MAX_HOLD_MS || 3 * 60 * 1000)
+
+/** Готов ли риск-анализ к показу: свой кошелёк И внешний контрагент имеют ПОЛНЫЙ (не preliminary) вердикт.
+ *  Внутренний перевод (контрагент — свой) риска не требует. cachedRiskScore.assessment: 'full'|'preliminary'. */
+export function isAlertRiskReady(txObj) {
+  const full = (r) => !!(r && (r.assessment === 'full' || (r.verdict && r.verdict.preliminary !== true && Number(r.score) > 0)))
+  if (!full(txObj.ownRisk)) return false // свой кошелёк ещё «нет данных»/preliminary → держим
+  if (txObj.counterpartyOwn) return true // внутренний перевод — контрагент свой, риск не нужен
+  return full(txObj.counterpartyRisk)
+}
+
 // TronGrid trc20-строка + кошелёк → нормализованное движение (чистое, тестируемое).
 // direction/counterparty от точки зрения нашего кошелька; txObj — вход для formatMoveAlert.
 export function tronRowToMove(wallet, row) {
@@ -76,9 +89,25 @@ async function sweepWallet(db, w, cursors, key, ownByAddr) {
   let newCursor = cursorMs
   for (const t of fresh) {
     const m = tronRowToMove(w, t)
-    // Дедуп (tx_hash,direction,counterparty,amount_minor) — общий с webhook. Пишем и
-    // display-поля, чтобы TRON-платежи попадали в ленту «Поступления» (USDT ≈ USD).
     const dec = m.txObj.amount.decimals ?? 6
+    // 🔴 СНАЧАЛА риск, ПОТОМ решаем слать: не постим НЕГОТОВЫЙ скор (preliminary/«нет данных» вводит в
+    // заблуждение — напр. контрагент показывал 🟢10, а по факту 🟠68). Дешёвый /v1/risk триггерит прогрев
+    // снапшота на сервере → за 1-2 свипа дозреет. Контрагент: свой (по accounts) → имя без риска; внешний → риск.
+    if (m.counterparty) {
+      const ownAcc = ownByAddr && ownByAddr.get(m.counterparty)
+      if (ownAcc) {
+        m.txObj.counterpartyOwn = true
+        m.txObj.counterpartyName = ownAcc.name
+      } else {
+        m.txObj.counterpartyRisk = await cachedRiskScore(aegis, w.network_id, m.counterparty)
+      }
+    }
+    m.txObj.ownRisk = await cachedRiskScore(aegis, w.network_id, w.address)
+    // ГЕЙТ: анализ не готов И движение свежее (< MAX_HOLD) → ДЕРЖИМ (по порядку: не пишем/не шлём/не двигаем
+    // курсор, break → вернёмся следующим свипом, прогрев дозреет). Старше MAX_HOLD → шлём как есть (fallback,
+    // движение не теряем; редкий кейс не-индексируемого контрагента).
+    if (!isAlertRiskReady(m.txObj) && Date.now() - m.bt < MAX_HOLD_MS) break
+    // Дедуп (tx_hash,direction,counterparty,amount_minor) + display-поля для ленты «Поступления».
     const { error: dupErr } = await db.from('wallet_move_alerts').insert({
       account_id: w.id,
       address: w.address,
@@ -98,19 +127,6 @@ async function sweepWallet(db, w, cursors, key, ownByAddr) {
       if (dupErr.code === '23505' && m.bt > newCursor) newCursor = m.bt
       continue
     }
-    // Контрагент: свой кошелёк (по accounts) → имя, без риска; внешний → риск из /v1/risk
-    // (кэш 10 мин). Строку риска для внешнего рисует formatMoveAlert ВСЕГДА (три состояния).
-    if (m.counterparty) {
-      const ownAcc = ownByAddr && ownByAddr.get(m.counterparty)
-      if (ownAcc) {
-        m.txObj.counterpartyOwn = true
-        m.txObj.counterpartyName = ownAcc.name
-      } else {
-        m.txObj.counterpartyRisk = await cachedRiskScore(aegis, w.network_id, m.counterparty)
-      }
-    }
-    // Риск НАШЕГО кошелька — такой же чек-лист (из /v1/risk по нашему адресу, кэш 10 мин).
-    m.txObj.ownRisk = await cachedRiskScore(aegis, w.network_id, w.address)
     try { await notifyManagerBot(formatMoveAlert(w, m.txObj)); sent++ } catch { /* не валим свип */ }
     if (m.bt > newCursor) newCursor = m.bt
   }

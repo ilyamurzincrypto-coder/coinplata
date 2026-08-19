@@ -196,6 +196,7 @@ export function normalizeRiskByCategory(arr) {
     bar: c?.bar ?? null,
     outPct: c?.out_pct ?? null, // null = нет исходящего (не рисуем «⬆️ уходит»)
     outBar: c?.out_bar ?? null,
+    covered: c?.covered === true, // есть ли источник детекции: 0%+covered=«проверено», 0%+!covered=«нет фида»
   }));
 }
 
@@ -220,6 +221,17 @@ export function normalizeVerdict(raw) {
           bar: s?.bar ?? null, // «▓▓▓▓▓▓▓▓░░»
         }))
       : [],
+    // dirt_flow: направление грязи (приходит/уходит/оба) — сводка над таблицей категорий.
+    dirtFlow: raw.dirt_flow
+      ? {
+          direction: raw.dirt_flow.direction ?? null,
+          label: raw.dirt_flow.label ?? null,
+          inPct: raw.dirt_flow.in_pct ?? null,
+          outPct: raw.dirt_flow.out_pct ?? null,
+          topIn: Array.isArray(raw.dirt_flow.top_in) ? raw.dirt_flow.top_in.map((x) => ({ emoji: x?.emoji ?? null, label: x?.label ?? null, pct: x?.pct ?? null })) : [],
+          topOut: Array.isArray(raw.dirt_flow.top_out) ? raw.dirt_flow.top_out.map((x) => ({ emoji: x?.emoji ?? null, label: x?.label ?? null, pct: x?.pct ?? null })) : [],
+        }
+      : null,
     cleanNote: raw.clean_note ?? null,
     preliminary: raw.preliminary === true, // экспозиция ещё не трассирована → бейдж «(предв.)»
   };

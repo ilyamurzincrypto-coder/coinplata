@@ -1,6 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { tronRowToMove } from './tx-watch.js'
+import { tronRowToMove, isAlertRiskReady } from './tx-watch.js'
 import { formatMoveAlert } from './_common.js'
+
+describe('isAlertRiskReady — гейт «не постим неготовый скор»', () => {
+  const full = { assessment: 'full', score: 5, verdict: { emoji: '🟢' } }
+  const prelim = { assessment: 'preliminary', score: 10, verdict: { emoji: '⏳', preliminary: true } }
+  it('свой + внешний контрагент оба full → готов', () => {
+    expect(isAlertRiskReady({ ownRisk: full, counterpartyRisk: full })).toBe(true)
+  })
+  it('свой кошелёк preliminary → НЕ готов (держим)', () => {
+    expect(isAlertRiskReady({ ownRisk: prelim, counterpartyRisk: full })).toBe(false)
+  })
+  it('контрагент preliminary → НЕ готов (держим)', () => {
+    expect(isAlertRiskReady({ ownRisk: full, counterpartyRisk: prelim })).toBe(false)
+  })
+  it('свой «нет данных» (null) → НЕ готов', () => {
+    expect(isAlertRiskReady({ ownRisk: null, counterpartyRisk: full })).toBe(false)
+  })
+  it('внутренний перевод (контрагент свой) → риск контрагента не нужен, готов если свой full', () => {
+    expect(isAlertRiskReady({ ownRisk: full, counterpartyOwn: true })).toBe(true)
+  })
+  it('preliminary с вердиктом но score 0 → НЕ готов', () => {
+    expect(isAlertRiskReady({ ownRisk: { verdict: { preliminary: true }, score: 0 }, counterpartyRisk: full })).toBe(false)
+  })
+})
 
 const wallet = { id: 'a1', name: 'WW-131 · C52', network_id: 'TRC20', address: 'TNruX1DAdvTxqm944yLYGuP6meMRBky9qq' }
 const row = (over = {}) => ({
