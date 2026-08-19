@@ -150,7 +150,7 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/🔴 <b>Риск контрагента:<\/b> ВЫСОКИЙ РИСК — 71\/100/)
     expect(cp).toMatch(/❌ Рекомендуем отказ/)
-    expect(cp).toMatch(/Почему:/)
+    expect(cp).toMatch(/ФАКТЫ|СИГНАЛЫ/)
     expect(cp).toMatch(/⚠️ прямые метки/)
     expect(cp).toMatch(/Источник средств:/)
     expect(cp).toMatch(/❓ Неизвестно ▓▓▓▓▓▓▓▓░░ 76%/)

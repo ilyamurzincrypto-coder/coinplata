@@ -131,10 +131,11 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
   if (!isOwn && v.action) lines.push(escapeHtmlA(v.action))
   const detail = []
   // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
+  // 🔴 ЧЕСТНОСТЬ: делим причины на ФАКТЫ (basis=fact — прямая метка эмитента/санкц-списка ИЛИ реальная он-чейн
+  // связь с подтверждённой грязью) и СИГНАЛЫ (basis=signal — поведенческая/статистическая эвристика: «повод
+  // проверить», НЕ доказательство). Веса нуджей подобраны вручную, не откалиброваны → не выдаём за точность.
   if (!isOwn && Array.isArray(v.reasons) && v.reasons.length) {
-    detail.push('Почему:')
-    v.reasons.forEach((r, i) => {
-      // Терпим оба формата: строка ИЛИ {text, detail, address}. detail/адрес — доказательство под причиной («└»).
+    const renderReason = (r, i) => {
       const rt = typeof r === 'string' ? r : (r?.text || '')
       const rd = typeof r === 'object' ? (r?.detail || '') : ''
       const ra = typeof r === 'object' ? (r?.address || '') : ''
@@ -142,21 +143,28 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
       if (i > 0) detail.push('') // пустая строка между причинами — не полотно текста
       detail.push(escapeHtmlA(rt))
       if (rd && rd !== rt) detail.push(`   └ ${escapeHtmlA(rd)}`)
-      // Адрес/tx-пруф грязного узла → кликабельные ссылки на эксплорер (проверяемо).
-      // ra/rtx — ончейн-данные (недоверенные): ссылку строим ТОЛЬКО для валидных (allowlist) + экранируем href.
+      // Адрес/tx-пруф → кликабельные ссылки (allowlist + экранирование href).
       if (ra) {
         const mk = EXPLORER_ADDR[network]
-        detail.push(mk && isPlainAddr(ra)
-          ? `   └ адрес: <a href="${escapeHtmlA(mk(ra))}">${escapeHtmlA(shortAddr(ra))}</a>`
-          : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
+        detail.push(mk && isPlainAddr(ra) ? `   └ адрес: <a href="${escapeHtmlA(mk(ra))}">${escapeHtmlA(shortAddr(ra))}</a>` : `   └ адрес: <code>${escapeHtmlA(ra)}</code>`)
       }
       if (rtx) {
         const tk = EXPLORER_TX[network]
-        detail.push(tk && isPlainAddr(rtx)
-          ? `   └ tx: <a href="${escapeHtmlA(tk.url(rtx))}">${escapeHtmlA(shortAddr(rtx))}</a>`
-          : `   └ tx: <code>${escapeHtmlA(rtx)}</code>`)
+        detail.push(tk && isPlainAddr(rtx) ? `   └ tx: <a href="${escapeHtmlA(tk.url(rtx))}">${escapeHtmlA(shortAddr(rtx))}</a>` : `   └ tx: <code>${escapeHtmlA(rtx)}</code>`)
       }
-    })
+    }
+    const isFact = (r) => (typeof r === 'object' && r?.basis === 'fact')
+    const facts = v.reasons.filter(isFact)
+    const signals = v.reasons.filter((r) => !isFact(r))
+    if (facts.length) {
+      detail.push('⛔️ <b>ФАКТЫ</b> (прямая метка / реальная связь):')
+      facts.forEach(renderReason)
+    }
+    if (signals.length) {
+      if (facts.length) detail.push('')
+      detail.push('⚠️ <b>СИГНАЛЫ</b> — эвристика, повод проверить (НЕ доказательство):')
+      signals.forEach(renderReason)
+    }
   }
   // risk_by_category — ВСЕГДА 15 строк (0% честно), и для НАШЕГО кошелька, и для контрагента (владелец
   // хочет видеть % и по своему кошельку). Формат по контракту: заголовок «⚠️ Риск по категориям:»,
