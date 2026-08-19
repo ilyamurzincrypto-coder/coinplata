@@ -172,22 +172,22 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
     if (to) detail.push(`   ⬆️ уходит: ${escapeHtmlA(to)}`)
   }
   const rbc = Array.isArray(riskByCategory) && riskByCategory.length ? riskByCategory : null
-  if (rbc) {
+  // Показываем ТОЛЬКО категории с реальным % (вход/выход). Всё по нулям → НЕ заваливаем 15 строками + «нет фида»
+  // (шум, из-за него даже 🔴78 выглядит «пусто»). Риск таких адресов — в «Почему» (близость/поведение/no-KYC).
+  const rbcHot = rbc ? rbc.filter((c) => (Number(c.pct) || 0) > 0 || (c.outPct != null && Number(c.outPct) > 0)) : null
+  if (rbcHot && rbcHot.length) {
     detail.push('⚠️ Риск по категориям:')
-    // РОВНОСТЬ: моноширинный <code> на строку + добивка метки пробелами до общей ширины → бары и % встают
-    // в колонку (в пропорц. шрифте TG они «прыгали»). Метка слева (padEnd), бар, % справа (padStart 4: « 0%»/«100%»).
-    const wLabel = Math.max(...rbc.map((c) => (c.label || '').length))
-    for (const c of rbc) {
-      const hasPct = (Number(c.pct) || 0) > 0 || (c.outPct != null && Number(c.outPct) > 0)
+    // РОВНОСТЬ: моноширинный <code> на строку + добивка метки пробелами до общей ширины → бары и % в колонку.
+    const wLabel = Math.max(...rbcHot.map((c) => (c.label || '').length))
+    for (const c of rbcHot) {
       const out = c.outPct != null && Number(c.outPct) > 0 ? ` ⬆️ уходит ${c.outPct}%` : ''
       const pctStr = `${c.pct != null ? c.pct : 0}%`.padStart(4)
-      const row = `${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`
-      // Честность нулей: 0% + есть источник детекции → «✅» (проверено, чисто); 0% + НЕТ источника по TRON → «нет фида»
-      // (не ложная уверенность). Категории с реальным % — без пометки (сам % говорит).
-      const mark = hasPct ? out : (c.covered ? ' ✅' : ' <i>нет фида</i>')
-      detail.push(`<code>${escapeHtmlA(row)}</code>${mark}`)
+      detail.push(`<code>${escapeHtmlA(`${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`)}</code>${out}`)
     }
-    detail.push('<i>✅ — проверяем (метка/поведение); «нет фида» — по TRON нет источника, не путать с «чисто»</i>')
+  } else if (rbc && !v.preliminary) {
+    // Все категории 0% И анализ завершён → одна честная строка вместо 15 нулей (риск, если есть — в «Почему»).
+    // Для preliminary НЕ пишем «чисто» (это «ещё считается») — ниже покажется cleanNote «⏳ трассируется».
+    detail.push('✅ Прямых категорий-меток нет (санкции / ЧС / микшер / скам / гемблинг / … — чисто по проверяемым)')
   } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
     // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.
     detail.push('Источник средств:')
@@ -196,7 +196,9 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
         .filter(Boolean).join(' '))
     }
   }
-  if (v.cleanNote) detail.push(escapeHtmlA(v.cleanNote))
+  // cleanNote не дублируем, если уже показали компактную «✅ Прямых категорий-меток нет» (rbc есть, всё 0%, НЕ preliminary).
+  const shownCompactClean = rbc && !(rbcHot && rbcHot.length) && !v.preliminary
+  if (v.cleanNote && !shownCompactClean) detail.push(escapeHtmlA(v.cleanNote))
   if (detail.length) lines.push(`<blockquote expandable>${detail.join('\n')}</blockquote>`)
   return lines.join('\n')
 }
@@ -308,9 +310,18 @@ export function formatMoveAlert(account, tx) {
   const amt = tx.amount ? Number(tx.amount.amount) / 10 ** (tx.amount.decimals ?? 6) : null
   const money = (n) => `$${(Number(n) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   const cp = tx.counterparty || null
+  // Поведенческий ТИП контрагента (что это за адрес по on-chain-паттерну) — показываем в шапке, когда нет
+  // имени/метки. Так «👤 Контрагент» не голый: «биржа/P2P/мерчант/транзит по поведению».
+  const BEHAVIORAL_TYPE_LABEL = {
+    PERSONAL: 'приватный · по поведению', MERCHANT: 'мерчант · по поведению', P2P_SERVICE: 'P2P-сервис · по поведению',
+    EXCHANGE: 'биржа · по поведению', SERVICE: 'сервис · по поведению', CONTRACT: 'контракт',
+    GAMBLING: 'гэмблинг · по поведению', MIXER: 'микшер · по поведению', DARKNET: 'даркнет · по поведению', SCAM: 'скам · по поведению',
+  }
+  const behType = tx.counterpartyRisk?.behavioralType
+  const behLabel = behType && behType !== 'UNKNOWN' ? (BEHAVIORAL_TYPE_LABEL[behType] || null) : null
   const category = tx.counterpartyEntity?.category || (tx.counterpartyType && tx.counterpartyType !== 'unknown' ? tx.counterpartyType : null)
   const sanctioned = tx.counterpartyEntity?.sanctioned === true
-  const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '')
+  const label = tx.counterpartyEntity?.name || (category ? MOVE_CAT_LABEL[category] || category : '') || behLabel || ''
   // Риск-% контрагента (счёт кладёт вызывающий: webhook — из event.counterparty_risk;
   // tx-watch — из /v1/risk). Только для ВНЕШНИХ контрагентов (own → risk не проставляют).
   // Риск контрагента — рендерим ВСЕГДА для ВНЕШНЕГО (отдельным блоком, см. cpRiskBlock).

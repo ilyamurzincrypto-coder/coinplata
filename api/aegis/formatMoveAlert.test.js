@@ -158,7 +158,7 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     expect(cp).not.toMatch(/— 0%/) // старого чек-листа нет
     expect(cp).not.toMatch(/⛔ <b>ОТКАЗ<\/b>/) // отдельная ⛔-строка не дублируется
   })
-  it('risk_by_category: таблица категорий (0% честно) + «⬆️ уходит» для out_pct', () => {
+  it('risk_by_category: показываем ТОЛЬКО ненулевые (нули схлопнуты, не 15 строк)', () => {
     const rbc = [
       { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░' },
       { emoji: '🎰', label: 'Гемблинг', pct: 0, bar: '░░░░░░░░░░', outPct: 12, outBar: '▓░░░░░░░░░' },
@@ -167,11 +167,23 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     const t = ext({ counterpartyRisk: { verdict: V, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/⚠️ Риск по категориям:/)
-    // моноширинно: <code>emoji label(добито) bar pct</code>, out — после code
-    expect(cp).toMatch(/<code>⛔️ Санкции\s+░░░░░░░░░░\s+0%<\/code>/)
+    // только категории с реальным % (вход/выход)
     expect(cp).toMatch(/<code>🎰 Гемблинг\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 12%/)
     expect(cp).toMatch(/<code>⚠️ Скам\s+▓░░░░░░░░░\s+4%<\/code>/)
-    expect(cp).not.toMatch(/Источник средств:/) // sources-фолбэк не используется при таблице
+    expect(cp).not.toMatch(/⛔️ Санкции/) // нулевую категорию НЕ показываем (схлопнута)
+    expect(cp).not.toMatch(/нет фида/) // per-row «нет фида»-шум убран
+  })
+  it('все категории 0% → компактная строка вместо 15 нулей', () => {
+    const rbc = [
+      { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░', covered: true },
+      { emoji: '🎣', label: 'Фишинг', pct: 0, bar: '░░░░░', covered: false },
+    ]
+    const t = ext({ counterpartyRisk: { verdict: { ...V, cleanNote: '✅ Чисто по проверяемым …' }, riskByCategory: rbc, breakdown: [] } })
+    const cp = t.slice(t.indexOf('👤 Контрагент'))
+    expect(cp).toMatch(/Прямых категорий-меток нет/)
+    expect(cp).not.toMatch(/⛔️ Санкции/) // не вываливаем 15 нулей
+    expect(cp).not.toMatch(/нет фида/)
+    expect(cp).not.toMatch(/Чисто по проверяемым/) // cleanNote не дублируем при компактной строке
   })
   it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
     const own = { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 3, action: '✅ ок', reasons: ['x'], sources: [{ emoji: '❓', label: 'y', pct: 1, bar: '░' }], cleanNote: '✅ чисто' }
@@ -211,15 +223,15 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(t).toMatch(/<code>🎰 Гемблинг\s+▓░░░░░░░░░\s+11%<\/code> ⬆️ уходит 0\.4%/)
     expect(t).toMatch(/<code>🚫 Чёрный список\s+░░░░░░░░░░\s+0%<\/code> ⬆️ уходит 1\.2%/)
   })
-  it('covered-аннотация: 0%+покрыто → «✅», 0%+нет источника → «нет фида» (честность нулей)', () => {
+  it('все категории 0% → компактная строка, без 15 нулей и «нет фида»', () => {
     const rbc2 = [
       { emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░', outPct: null, covered: true },
       { emoji: '🎣', label: 'Фишинг', pct: 0, bar: '░░░░░', outPct: null, covered: false },
     ]
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 5, action: '✅ Можно работать', reasons: [], sources: [], cleanNote: null }, riskByCategory: rbc2 } })
-    expect(t).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
-    expect(t).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
-    expect(t).toMatch(/«нет фида» — по TRON нет источника/)
+    expect(t).toMatch(/Прямых категорий-меток нет/)
+    expect(t).not.toMatch(/⛔️ Санкции/)
+    expect(t).not.toMatch(/нет фида/)
   })
   it('dirt_flow → заголовок направления грязи + «⬇️ приходит / ⬆️ уходит» над таблицей', () => {
     const dirtFlow = { direction: 'both', label: '⬆️⬇️ Грязь и ПРИХОДИТ, и УХОДИТ — деньги идут и с грязных адресов, и на грязные', inPct: 0.4, outPct: 98, topIn: [{ emoji: '🎰', label: 'Гемблинг', pct: 0.4 }], topOut: [{ emoji: '🎰', label: 'Гемблинг', pct: 98 }] }
