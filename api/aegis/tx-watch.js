@@ -30,7 +30,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 // Гейт «не постим неготовый скор»: держим алерт, пока анализ не дозреет (прогрев снапшота ~30-90с), но не
 // дольше MAX_HOLD_MS (иначе движение не потеряем — шлём как есть). < REPLAY_CAP (20мин), иначе окно-кап дропнет.
-const MAX_HOLD_MS = Number(process.env.ALERT_MAX_HOLD_MS || 3 * 60 * 1000)
+const MAX_HOLD_MS = Number(process.env.ALERT_MAX_HOLD_MS || 6 * 60 * 1000)
 
 /** Готов ли риск-анализ к показу: свой кошелёк И внешний контрагент имеют ПОЛНЫЙ (не preliminary) вердикт.
  *  Внутренний перевод (контрагент — свой) риска не требует. cachedRiskScore.assessment: 'full'|'preliminary'. */

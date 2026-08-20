@@ -110,10 +110,10 @@ describe('formatMoveAlert · новые сигналы AEGIS (unknown ≠ чис
     expect(cp).toMatch(/✅ Проверено: Санкции, Чёрный список, Миксер — чисто/)
     expect(cp).not.toMatch(/— 0%/) // стена подавлена в блоке контрагента
   })
-  it('assessment=preliminary → «предв., уточняется», НЕ «чисто»', () => {
+  it('assessment=preliminary → «проверка не завершена — открой 🔎» (БЕЗ скор-цифры)', () => {
     const t = ext({ counterpartyRisk: { score: 0, level: 'ok', assessment: 'preliminary', breakdown: [] } })
-    expect(t).toMatch(/🟡 Риск контрагента: предв\., уточняется/)
-    expect(t).toMatch(/• экспозиция ещё считается — оценка предварительная/)
+    expect(t).toMatch(/⏳ Риск контрагента: проверка не завершена — открой 🔎/)
+    expect(t).toMatch(/• анализ не завершён — это НЕ оценка риска, открой 🔎 вручную/)
   })
   it('coverage.typed_pct<60 → бейдж «· оценено N%»', () => {
     const t = ext({ counterpartyRisk: { score: 20, level: 'warning', coverage: { typedPct: 42 }, breakdown: [] } })
@@ -179,7 +179,7 @@ describe('formatMoveAlert · verdict (готовый клиентский вер
     const t = ext({ counterpartyRisk: { verdict: { ...V, cleanNote: '✅ Чисто по проверяемым …' }, riskByCategory: rbc, breakdown: [] } })
     const cp = t.slice(t.indexOf('👤 Контрагент'))
     expect(cp).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
-    expect(cp).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
+    expect(cp).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> ❌/)
     expect(cp).toMatch(/Чисто по проверяемым/) // cleanNote показывается
   })
   it('наш кошелёк: только шапка+clean_note (action/Почему/источник скрыты)', () => {
@@ -227,7 +227,7 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     ]
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🟢', levelText: 'НИЗКИЙ РИСК', score: 5, action: '✅ Можно работать', reasons: [], sources: [], cleanNote: null }, riskByCategory: rbc2 } })
     expect(t).toMatch(/<code>⛔️ Санкции\s+░░░░░\s+0%<\/code> ✅/)
-    expect(t).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> <i>нет фида<\/i>/)
+    expect(t).toMatch(/<code>🎣 Фишинг\s+░░░░░\s+0%<\/code> ❌/)
   })
   it('dirt_flow → заголовок направления грязи + «⬇️ приходит / ⬆️ уходит» над таблицей', () => {
     const dirtFlow = { direction: 'both', label: '⬆️⬇️ Грязь и ПРИХОДИТ, и УХОДИТ — деньги идут и с грязных адресов, и на грязные', inPct: 0.4, outPct: 98, topIn: [{ emoji: '🎰', label: 'Гемблинг', pct: 0.4 }], topOut: [{ emoji: '🎰', label: 'Гемблинг', pct: 98 }] }
@@ -266,9 +266,9 @@ describe('formatMoveAlert · verdict-рендер (renderVerdict)', () => {
     expect(a.text).not.toMatch(/✅ Можно работать/)        // action к своему кошельку не применяется
     expect(a.text).not.toMatch(/не показывать это/)        // reasons — тоже нет
   })
-  it('preliminary verdict → бейдж «(предв.)» + честная нота', () => {
+  it('preliminary verdict → «проверка не завершена — открой 🔎» БЕЗ скор-цифры', () => {
     const t = ext({ counterpartyRisk: { verdict: { emoji: '🟡', levelText: 'НИЗКИЙ РИСК', score: 10, action: '⚠️ Повышенное внимание', reasons: [], sources: [], cleanNote: '⏳ Экспозиция ещё трассируется', preliminary: true }, riskByCategory: [{ emoji: '⛔️', label: 'Санкции', pct: 0, bar: '░░░░░░░░░░', outPct: null }] } })
-    expect(t).toMatch(/— 10\/100 \(предв\.\)/)
-    expect(t).toMatch(/⏳ Экспозиция ещё трассируется/)
+    expect(t).toMatch(/⏳ <b>Риск контрагента:<\/b> проверка не завершена — не давай добро, открой 🔎/)
+    expect(t).not.toMatch(/10\/100/)  // скор-цифра НЕ показывается на preliminary
   })
 })

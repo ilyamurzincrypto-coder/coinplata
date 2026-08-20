@@ -126,8 +126,11 @@ const cleanLabel = (c) => CAT_LABEL[String(c).toLowerCase()] || MOVE_CAT_LABEL[S
 function renderVerdict(v, title, isOwn, riskByCategory, network) {
   const score = v.score != null ? `${v.score}/100` : '—'
   const emoji = v.emoji || riskEmoji(null, v.score)
-  const prelim = v.preliminary ? ' (предв.)' : '' // экспозиция ещё трассируется — не «ложный зелёный»
-  const lines = [`${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}${prelim}`]
+  // 🔴 preliminary → НЕ показываем скор-цифру (обновления не будет, «10/100» вводит в заблуждение). Честный
+  // терминальный статус: «проверка не завершена — открой 🔎». Владелец 2026-08-20: preliminary НЕ оценка.
+  const lines = [v.preliminary
+    ? `⏳ <b>${escapeHtmlA(title)}:</b> проверка не завершена — не давай добро, открой 🔎`
+    : `${emoji} <b>${escapeHtmlA(title)}:</b> ${escapeHtmlA(v.levelText || '')} — ${score}`]
   if (!isOwn && v.action) lines.push(escapeHtmlA(v.action))
   const detail = []
   // action/reasons — решение и причины ПО КОНТРАГЕНТУ; к своему кошельку не применяются.
@@ -180,10 +183,10 @@ function renderVerdict(v, title, isOwn, riskByCategory, network) {
       const pctStr = `${c.pct != null ? c.pct : 0}%`.padStart(4)
       const row = `${c.emoji || ''} ${(c.label || '').padEnd(wLabel)} ${c.bar || ''} ${pctStr}`
       // 0% + есть источник детекции → «✅» (проверено); 0% + нет источника по TRON → «нет фида». С % — сам % говорит.
-      const mark = hasPct ? out : (c.covered ? ' ✅' : ' <i>нет фида</i>')
+      const mark = hasPct ? out : (c.covered ? ' ✅' : ' ❌')
       detail.push(`<code>${escapeHtmlA(row)}</code>${mark}`)
     }
-    detail.push('<i>✅ — проверяем (метка/поведение); «нет фида» — по TRON нет источника, не путать с «чисто»</i>')
+    detail.push('<i>✅ проверяем · ❌ нет источника по TRON (не «чисто», просто не проверяется)</i>')
   } else if (!isOwn && Array.isArray(v.sources) && v.sources.length) {
     // Фолбэк на sources-пирог (только контрагент), если таблицы категорий нет.
     detail.push('Источник средств:')
@@ -213,10 +216,12 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента', 
   const typedPct = cov && Number.isFinite(Number(cov.typedPct)) ? Number(cov.typedPct) : null
   const covBadge = typedPct != null && typedPct < 60 ? ` · оценено ${Math.round(typedPct)}%` : ''
 
-  // Заголовок. preliminary → «предв., уточняется» (даже при 0%). Санкции/скор — как раньше.
+  // Заголовок. 🔴 preliminary (кроме прямой санкц/ЧС-метки — та дефинитивна) → НЕ показываем скор-цифру (она
+  // вводит в заблуждение: «10%» читается как «низкий риск», хотя анализ НЕ завершён и обновления не будет).
+  // Честно: «проверка не завершена — не давай добро, открой 🔎». Владелец 2026-08-20: preliminary НЕ шлём как оценку.
   let head
-  if (preliminary && !hasScore && !sanctioned && !blacklisted) head = `🟡 ${title}: предв., уточняется${covBadge}`
-  else if (hasScore || sanctioned || blacklisted) head = `${sanctioned || blacklisted ? '🔴' : riskEmoji(risk?.level, score)} ${title}: ${hasScore ? `${score}%` : sanctioned ? 'санкции' : 'чёрный список'}${preliminary ? ' (предв.)' : ''}${covBadge}`
+  if (preliminary && !sanctioned && !blacklisted) head = `⏳ ${title}: проверка не завершена — открой 🔎${covBadge}`
+  else if (hasScore || sanctioned || blacklisted) head = `${sanctioned || blacklisted ? '🔴' : riskEmoji(risk?.level, score)} ${title}: ${hasScore ? `${score}%` : sanctioned ? 'санкции' : 'чёрный список'}${covBadge}`
   else if (assessed) head = `${riskEmoji(risk?.level, score)} ${title}: ${score ?? 0}%${covBadge}`
   else head = `❔ ${title}: нет данных`
 
@@ -254,7 +259,7 @@ function riskBlock(risk, sanctioned, title = 'Риск контрагента', 
 
   // Объясняющая строка. preliminary → явно «ещё считается». Иначе как раньше.
   if (!extras.length) {
-    if (preliminary) extras.push('• экспозиция ещё считается — оценка предварительная')
+    if (preliminary) extras.push('• анализ не завершён — это НЕ оценка риска, открой 🔎 вручную')
     else if (hasScore && !checkedClean.length) extras.push(`• базовая оценка — ${score}%`)
     else if (!assessed && !checkedClean.length) extras.push('• адрес не проверен (нет данных в AEGIS)')
   }
