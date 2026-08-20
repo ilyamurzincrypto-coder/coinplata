@@ -291,13 +291,21 @@ export async function cachedRiskScore(aegisClient, network, address) {
           breakdown: Array.isArray(r.breakdown) ? r.breakdown : [],
         }
       : null
-    // 🔴 Кэшируем ТОЛЬКО ГОТОВЫЙ анализ (assessment='full'). НЕ кэшируем null/preliminary: иначе «идёт проверка»
-    // залипало на 10 мин → гейт видел старый preliminary → через 3 мин слал «идёт проверка», которое не резолвится.
-    // Preliminary/пусто → НЕ кэшируем → следующий поллинг ретраит и видит прогретый (full) снапшот.
-    if (risk && risk.assessment === 'full') _riskCache.set(key, { risk, at: Date.now() })
+    // 🔴 Кэшируем ТОЛЬКО ГОТОВЫЙ анализ (assessment='full'). НЕ кэшируем preliminary (иначе «идёт проверка»
+    // залипало бы на 10 мин). Свежий full → сохраняем + отдаём.
+    if (risk && risk.assessment === 'full') {
+      if (_riskCache.size > 3000) { const cutoff = Date.now() - 3_600_000; for (const [k, v] of _riskCache) if (v.at < cutoff) _riskCache.delete(k) } // лёгкий GC
+      _riskCache.set(key, { risk, at: Date.now() })
+      return risk
+    }
+    // 🔴 STALE-ON-STALE: свежий ответ НЕ готов (preliminary/пусто), НО есть ПРОШЛЫЙ full — отдаём его, а НЕ
+    // регрессируем свой кошелёк/контрагента в «нет данных»/«идёт проверка». Просроченный full лучше пустоты.
+    if (hit) return hit.risk
     return risk
   } catch {
-    return null // сетевая ошибка/таймаут — тоже НЕ кэшируем (ретрай на след. поллинге)
+    // 🔴 STALE-ON-ERROR: сеть/таймаут — отдаём ПОСЛЕДНИЙ известный full (лучше слегка устаревший скор, чем
+    // «нет данных»). Раз адрес хоть раз дозрел — он больше НЕ покажет «нет данных» из-за разового сбоя.
+    return hit ? hit.risk : null
   }
 }
 
