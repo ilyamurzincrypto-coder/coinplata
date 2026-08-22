@@ -87,6 +87,21 @@ async function sweepWallet(db, w, cursors, key, ownByAddr) {
   if (!fresh.length) return 0
   let sent = 0
   let newCursor = cursorMs
+  // Риск НАШЕГО кошелька одинаков для всех движений этого свипа — тянем ОДИН раз (меньше нагрузки на пул
+  // AEGIS, чем прежний запрос на каждое движение) и, если анализ ГОТОВ, ПЕРСИСТИМ в accounts.risk_* как
+  // durable-фолбэк. Vercel-крон эфемерный: in-memory _riskCache пуст на холодном инстансе, поэтому
+  // stale-on-error там не переживает рестарт — единственный durable-кэш это accounts.risk_score. Раз кошелёк
+  // хоть раз дозрел — он больше НЕ упадёт в «нет данных» из-за разового таймаута под нагрузкой.
+  let ownRisk = await cachedRiskScore(aegis, w.network_id, w.address)
+  const ownFull = !!(ownRisk && (ownRisk.assessment === 'full' || (ownRisk.verdict && ownRisk.verdict.preliminary !== true && Number(ownRisk.score) > 0)))
+  if (ownFull && ownRisk.score != null) {
+    try {
+      await db.from('accounts').update({ risk_score: ownRisk.score, risk_level: ownRisk.level ?? null, risk_updated_at: new Date().toISOString() }).eq('id', w.id)
+    } catch { /* best-effort: запись durable-кэша не валит свип */ }
+  } else if (w.risk_score != null) {
+    // Live не дозрел (таймаут/пул), но прошлый full персистнут — берём его: не держим гейтом и не «нет данных».
+    ownRisk = { score: w.risk_score, level: w.risk_level ?? null, assessment: 'full', breakdown: [] }
+  }
   for (const t of fresh) {
     const m = tronRowToMove(w, t)
     const dec = m.txObj.amount.decimals ?? 6
@@ -102,7 +117,7 @@ async function sweepWallet(db, w, cursors, key, ownByAddr) {
         m.txObj.counterpartyRisk = await cachedRiskScore(aegis, w.network_id, m.counterparty)
       }
     }
-    m.txObj.ownRisk = await cachedRiskScore(aegis, w.network_id, w.address)
+    m.txObj.ownRisk = ownRisk
     // ГЕЙТ: анализ не готов И движение свежее (< MAX_HOLD) → ДЕРЖИМ (по порядку: не пишем/не шлём/не двигаем
     // курсор, break → вернёмся следующим свипом, прогрев дозреет). Старше MAX_HOLD → шлём как есть (fallback,
     // движение не теряем; редкий кейс не-индексируемого контрагента).
