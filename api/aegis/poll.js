@@ -9,7 +9,7 @@
  * CRON_SECRET, (+ алерт-каналы).
  */
 import { aegis } from '../../src/lib/aegisClient.js'
-import { svcClient, applyWalletCache, applyDetailCache, notifyManagerBot } from './_common.js'
+import { svcClient, applyWalletCache, applyDetailCache, notifyManagerBot, cachedRiskScore } from './_common.js'
 import { alertPlan } from './webhook.js'
 
 // cold getWallet+getStats+getTransactions × 22 кошелька — держим запас времени.
@@ -33,28 +33,46 @@ function withTimeout(promise, ms, fallback) {
 // Один кошелёк: риск/баланс (getWallet) + детали в кэш (getStats+getTransactions).
 async function pollWallet(db, a) {
   const wid = a.aegis_wallet_id
-  // getWallet — источник риск/скор/баланс/reasons (обязательный).
-  const wallet = await aegis.getWallet(wid)
-  await applyWalletCache(db, a.id, wallet)
+  let alerted = null
 
-  // Детали — best-effort, деградируют по таймауту, кэш не затирают null-ом.
-  const [stats, transactions] = await Promise.all([
-    withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 22000, { available: false }), // exposure/top_entities тяжелее
-    withTimeout(aegis.getTransactions(wid, {}), 15000, { available: false, items: [], cursor: null, hasMore: false }),
-  ])
-  await applyDetailCache(db, a.id, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
+  // getWallet/детали — только для кошельков, заведённых AEGIS-монитором (wallet_id).
+  if (wid) {
+    // getWallet — источник риск/скор/баланс/reasons.
+    const wallet = await aegis.getWallet(wid)
+    await applyWalletCache(db, a.id, wallet)
 
-  // Алерты движений вынесены в tx-watch (прямой TronGrid, ≤15с) — poll их не шлёт.
-  const plan = alertPlan(a.risk_level, wallet.riskLevel)
-  if (plan.telegram) {
-    await notifyManagerBot({
-      kind: 'wallet_risk',
-      text: `🚨 <b>Кошелёк ${escapeHtml(a.name || wid)}</b> — риск CRITICAL (poll)`,
-      meta: { wallet_id: wid, level: wallet.riskLevel, prev_level: a.risk_level, source: 'poll' },
-    })
-    return { ok: true, alerted: a.id }
+    // Детали — best-effort, деградируют по таймауту, кэш не затирают null-ом.
+    const [stats, transactions] = await Promise.all([
+      withTimeout(aegis.getStats(wid, ALL_TIME_FROM, todayIso()), 22000, { available: false }), // exposure/top_entities тяжелее
+      withTimeout(aegis.getTransactions(wid, {}), 15000, { available: false, items: [], cursor: null, hasMore: false }),
+    ])
+    await applyDetailCache(db, a.id, wid, { stats, transactions, reasons: wallet?.riskReasons || [] })
+
+    // Алерты движений вынесены в tx-watch (прямой TronGrid, ≤15с) — poll их не шлёт.
+    const plan = alertPlan(a.risk_level, wallet.riskLevel)
+    if (plan.telegram) {
+      await notifyManagerBot({
+        kind: 'wallet_risk',
+        text: `🚨 <b>Кошелёк ${escapeHtml(a.name || wid)}</b> — риск CRITICAL (poll)`,
+        meta: { wallet_id: wid, level: wallet.riskLevel, prev_level: a.risk_level, source: 'poll' },
+      })
+      alerted = a.id
+    }
   }
-  return { ok: true }
+
+  // 🔴 АВТОРИТЕТНЫЙ risk_score НАШЕГО кошелька — через screenRisk ПО АДРЕСУ (тот же источник, что алерты
+  // tx-watch), с щедрым таймаутом: у poll бюджет 300с и это НЕ hot-path, в отличие от tx-watch (60с/мин),
+  // где тяжёлый экран TL9ih (4-12с, растёт под нагрузкой) таймаутит. Пишем в accounts.risk_* durable-кэш
+  // ПОСЛЕ applyWalletCache (перекрывая скор getWallet альерт-совместимым). Раз poll записал full — свой
+  // кошелёк больше НЕ падает в «нет данных»: tx-watch отдаёт этот скор, когда его live-запрос не дозрел.
+  if (a.address && a.network_id) {
+    const risk = await withTimeout(cachedRiskScore(aegis, a.network_id, a.address), 28000, null)
+    if (risk && risk.assessment === 'full' && risk.score != null) {
+      await db.from('accounts').update({ risk_score: risk.score, risk_level: risk.level ?? null, risk_updated_at: new Date().toISOString() }).eq('id', a.id)
+    }
+  }
+
+  return alerted ? { ok: true, alerted } : { ok: true }
 }
 
 export default async function handler(req, res) {
@@ -67,11 +85,14 @@ export default async function handler(req, res) {
   if (!db) return res.status(503).json({ error: 'backend not configured' })
   if (!aegis.configured()) return res.status(200).json({ ok: true, skipped: 'aegis not configured', polled: 0 })
 
+  // Все активные крипто-счета (а не только заведённые wallet_id): свой кошелёк для durable risk_score
+  // скринится ПО АДРЕСУ (см. pollWallet), поэтому нужен и адрес, и счета без aegis_wallet_id (иначе
+  // TL9ih без wallet_id выпадал из poll → risk_score никогда не писался → алерт «нет данных»).
   const { data: accts, error } = await db
     .from('accounts')
-    .select('id, name, network_id, aegis_wallet_id, risk_level')
-    .not('aegis_wallet_id', 'is', null)
+    .select('id, name, network_id, address, aegis_wallet_id, risk_level')
     .eq('active', true)
+    .eq('kind', 'crypto')
   if (error) return res.status(500).json({ error: 'account list failed' })
 
   // Пул параллелизма — чтобы 22 кошелька × 3 запроса не шли строго последовательно
