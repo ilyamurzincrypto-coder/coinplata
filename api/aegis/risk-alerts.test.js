@@ -97,3 +97,91 @@ describe('handleRiskAlerts', () => {
     expect(r.notified).toBe(0) // но не доставлены
   })
 })
+
+// Батч-путь — тот, по которому реально идёт прод. Раньше цикл делал 5 round-trip
+// на КАЖДУЮ находку и при limit=100 упирался в maxDuration=60 → 504.
+function mkBatchDeps(overrides = {}) {
+  return {
+    fetchAlerts: vi.fn(async () => ({ alerts: RAW_ALERTS.map(normalizeAlert) })),
+    loadOffices: vi.fn(async (ids) => new Map(ids.filter(Boolean).map((id) => [id, { id: 'office-mark', name: 'Mark Antalya' }]))),
+    loadCounterparties: vi.fn(async () => new Map()),
+    existingAlertIds: vi.fn(async () => new Set()),
+    insertFindings: vi.fn(async () => {}),
+    notify: vi.fn(async () => true),
+    markNotified: vi.fn(async () => {}),
+    ...overrides,
+  }
+}
+
+describe('handleRiskAlerts — батч-путь', () => {
+  it('резолвит офисы и дедуп ОДНИМ вызовом на прогон, а не по находке', async () => {
+    const deps = mkBatchDeps()
+    const r = await handleRiskAlerts({ deps })
+    expect(deps.loadOffices).toHaveBeenCalledTimes(1)
+    expect(deps.loadCounterparties).toHaveBeenCalledTimes(1)
+    expect(deps.existingAlertIds).toHaveBeenCalledTimes(1)
+    expect(deps.insertFindings).toHaveBeenCalledTimes(1)
+    expect(r.inserted).toBe(2)
+  })
+
+  it('вставляет все новые находки одной пачкой', async () => {
+    const deps = mkBatchDeps()
+    await handleRiskAlerts({ deps })
+    const rows = deps.insertFindings.mock.calls[0][0]
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ alert_id: 'al-blacklist-1', category: 'BLACKLIST', office_id: 'office-mark' })
+  })
+
+  it('известные alert_id → duplicate, без вставки и без алерта', async () => {
+    const deps = mkBatchDeps({ existingAlertIds: vi.fn(async () => new Set(['al-blacklist-1', 'al-sanction-1'])) })
+    const r = await handleRiskAlerts({ deps })
+    expect(r.inserted).toBe(0)
+    expect(r.dup).toBe(2)
+    expect(deps.insertFindings).not.toHaveBeenCalled()
+    expect(deps.notify).not.toHaveBeenCalled()
+  })
+
+  it('дубль ВНУТРИ одной пачки не вставляется дважды', async () => {
+    const twice = [RAW_ALERTS[0], RAW_ALERTS[0]].map(normalizeAlert)
+    const deps = mkBatchDeps({ fetchAlerts: vi.fn(async () => ({ alerts: twice })) })
+    const r = await handleRiskAlerts({ deps })
+    expect(r.inserted).toBe(1)
+    expect(r.dup).toBe(1)
+    expect(deps.insertFindings.mock.calls[0][0]).toHaveLength(1)
+  })
+
+  it('нераспознанный кошелёк → office_id=null, находка всё равно пишется', async () => {
+    const deps = mkBatchDeps({ loadOffices: vi.fn(async () => new Map()) })
+    const r = await handleRiskAlerts({ deps })
+    expect(r.inserted).toBe(2)
+    expect(deps.insertFindings.mock.calls[0][0][0]).toMatchObject({ office_id: null })
+  })
+
+  it('имя контрагента подтягивается из батч-мапы', async () => {
+    const deps = mkBatchDeps({
+      loadCounterparties: vi.fn(async () => new Map([['TQ2z8D91j4t1i69pR4X4e8Y2p2UR1h3YRg', 'ООО Ромашка']])),
+    })
+    await handleRiskAlerts({ deps })
+    const rows = deps.insertFindings.mock.calls[0][0]
+    expect(rows.find((r) => r.alert_id === 'al-blacklist-1').via_counterparty_name).toBe('ООО Ромашка')
+    expect(rows.find((r) => r.alert_id === 'al-sanction-1').via_counterparty_name).toBe(null)
+  })
+
+  it('алертит ПОСЛЕ записи — не уведомляем о том, что не легло', async () => {
+    const order = []
+    const deps = mkBatchDeps({
+      insertFindings: vi.fn(async () => { order.push('insert') }),
+      notify: vi.fn(async () => { order.push('notify'); return true }),
+    })
+    const r = await handleRiskAlerts({ deps })
+    expect(order[0]).toBe('insert')
+    expect(order.slice(1)).toEqual(['notify', 'notify'])
+    expect(r.notified).toBe(2)
+  })
+
+  it('падение вставки роняет прогон — молча терять находки нельзя', async () => {
+    const deps = mkBatchDeps({ insertFindings: vi.fn(async () => { throw new Error('db down') }) })
+    await expect(handleRiskAlerts({ deps })).rejects.toThrow('db down')
+    expect(deps.notify).not.toHaveBeenCalled()
+  })
+})
