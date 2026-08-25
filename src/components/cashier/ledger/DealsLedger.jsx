@@ -50,6 +50,14 @@ function todayStartIso() {
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
+// Начало недели = 7 суток назад от начала сегодняшнего дня (не календарный пн —
+// кассиру нужен скользящий хвост, а не «в понедельник лента пустеет»).
+export function weekStartIso(now = new Date()) {
+  const d = new Date(now);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - 6);
+  return d.toISOString();
+}
 function fmtTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -100,11 +108,13 @@ function dealStatus(d) {
 
 // Стадия жизненного цикла заявки: Новая → Принята → Пришёл → Проверено → (Провести).
 // Выводится из локальных меток времени; каждый переход подтверждается поп-апом.
+// Пилюли — светлый текст на тёмной подложке: секция «Сделки» тёмная, прежние
+// тёмные буквы на светлой заливке в ней не читались.
 function orderStage(o) {
-  if (o.checkedAt) return { key: "checked", label: "Проверено", dot: "#0a8f5f", pill: "text-[#0a8f5f] bg-[rgba(10,143,95,.12)]" };
-  if (o.arrivedAt) return { key: "arrived", label: "Пришёл", dot: "#7c3aed", pill: "text-[#6d28d9] bg-[rgba(124,58,237,.12)]" };
-  if (o.seenAt) return { key: "seen", label: "Принята", dot: "#2563eb", pill: "text-[#1d4ed8] bg-[rgba(37,99,235,.12)]" };
-  return { key: "new", label: "Новая", dot: "#e0b04a", pill: "text-[#a9781a] bg-[rgba(224,176,74,.18)]" };
+  if (o.checkedAt) return { key: "checked", label: "Проверено", dot: "#0a8f5f", pill: "text-[#8fd6b0] bg-[rgba(10,143,95,.22)]" };
+  if (o.arrivedAt) return { key: "arrived", label: "Пришёл", dot: "#7c3aed", pill: "text-[#c4b5fd] bg-[rgba(124,58,237,.26)]" };
+  if (o.seenAt) return { key: "seen", label: "Принята", dot: "#2563eb", pill: "text-[#a8c7fa] bg-[rgba(37,99,235,.26)]" };
+  return { key: "new", label: "Новая", dot: "#e0b04a", pill: "text-[#E0B04A] bg-[rgba(224,176,74,.18)]" };
 }
 
 // primary OUT = крупнейшая нога; total — для сортировки; extra — сколько ещё ног.
@@ -125,7 +135,7 @@ function AmtCells({ amount, ccy, extra = 0, tip, onCcy, tdBase, gridR, tone = ""
     <>
       <td className={`${tdBase} ${gridR} text-right ${tone}`} title={tip}>
         {amount != null ? (
-          <span className="font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px]">
+          <span className="font-mono tabular-nums font-light text-[17px] tracking-[-0.01em]">
             <Money amount={amount} ccy={ccy} />
             {extra > 0 && <span className="text-[color:var(--faint)] font-normal text-[11px] ml-1">＋{extra}</span>}
           </span>
@@ -156,7 +166,10 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     });
     return m;
   }, [users]);
-  const fromIso = useMemo(() => todayStartIso(), []);
+  // Период ленты — пилюли «Сегодня / Неделя» в шапке. Ридер уже умеет fromIso,
+  // так что «Неделя» реально расширяет запрос, а не только подсвечивает пилюлю.
+  const [period, setPeriod] = useState("today");
+  const fromIso = useMemo(() => (period === "week" ? weekStartIso() : todayStartIso()), [period]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -439,13 +452,17 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   // ── стили ячеек ──
   const th =
-    "px-2.5 pb-2.5 pt-3 text-[10.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom border-b border-[color:var(--gridh)]";
-  const thBtn = "cursor-pointer hover:text-[color:var(--muted)]";
-  const thGrid = "border-r border-[color:var(--grid)]"; // верт. линии в шапке — как в теле
-  const td = "px-2.5 py-2 text-[12.5px] align-middle whitespace-nowrap overflow-hidden border-b " + G;
-  const amtCls = "text-right font-mono tabular-nums font-semibold text-[13px] tracking-[-0.3px]";
+    "px-2.5 pb-2.5 pt-1 text-[10.5px] font-medium text-[color:var(--faint)] whitespace-nowrap select-none align-bottom";
+  const thBtn = "cursor-pointer hover:text-cream";
+  const thGrid = ""; // внутри карточки вертикальных линий нет (эталон .deal)
+  // Строка = карточка: фон через --row, чтобы заявки могли переопределить его на
+  // своём <tr> без конфликта двух bg-* классов (в Tailwind побеждает порядок в
+  // сгенерированном CSS, а не в атрибуте class).
+  const td =
+    "px-2.5 py-3 text-[12.5px] align-middle whitespace-nowrap overflow-hidden bg-[color:var(--row)] transition-[filter] group-hover:brightness-[1.14]";
+  const amtCls = "text-right font-mono tabular-nums font-light text-[17px] tracking-[-0.01em] text-cream";
   const curCls =
-    "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-[color:var(--muted)] hover:underline underline-offset-2";
+    "text-[10.5px] font-semibold text-[color:var(--faint)] pl-0 cursor-pointer hover:text-cream hover:underline underline-offset-2";
 
   const Arrow = ({ k }) =>
     sortKey === k ? (
@@ -516,53 +533,94 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   return (
     <div
-      className="bg-white border border-[color:var(--grid)] rounded-[16px] overflow-hidden"
+      className="rounded-[24px] overflow-hidden text-cream"
       style={{
-        // Единые тона сетки — правятся одним значением.
-        "--grid": "rgba(18,22,26,.07)",
-        "--gridh": "rgba(18,22,26,.14)",
-        "--muted": "#616873",
-        "--faint": "#9aa0a8",
-        "--faint2": "#c6cbd0",
-        "--accent": "#0c9c6b",
-        "--pos": "#0a8f5f",
-        "--amber": "#a9781a",
-        "--amber-bd": "#e0b04a",
+        // Тёмная секция по эталону (design/reference.html → .deals): тёплый glow
+        // из левого верхнего угла поверх #17150F.
+        background:
+          "radial-gradient(500px 260px at 6% -30%, rgba(238,178,92,.10), transparent 60%), #17150F",
+        // Единые тона сетки — правятся одним значением. На тёмном фоне сетка
+        // светлая с низкой альфой, иначе строки-карточки сливаются в кашу.
+        "--grid": "rgba(255,255,255,.07)",
+        "--gridh": "rgba(255,255,255,.15)",
+        "--muted": "#A39D8C",
+        "--faint": "#7A7565",
+        "--faint2": "#6B675C",
+        "--card": "#23211A",
+        "--row": "#23211A", // фон строки-карточки; заявки переопределяют на своём <tr>
+        "--row-order": "#2A2418", // заявка — та же карточка, но теплее (амбер-подмес)
+        "--accent": "#C8D96F",
+        "--pos": "#C8D96F",
+        "--amber": "#E0B04A",
+        "--amber-bd": "#7a5f22",
       }}
     >
-      {/* Шапка: заголовок · офис/дата · поиск */}
-      <div className="px-[18px] py-2.5 flex items-center gap-3 border-b border-[color:var(--grid)]">
-        <span className="text-[14.5px] font-bold tracking-[-0.3px] text-ink">Сделки</span>
-        <span className="text-[12px] text-[color:var(--faint)]">за день</span>
+      {/* Шапка: заголовок · период · обновить · поиск (эталон → .deals-head) */}
+      <div className="px-[22px] pt-5 pb-3.5 flex items-center gap-3">
+        <span className="text-[15px] text-cream">Сделки</span>
+        <span className="text-[12px] text-[#7A7565]">
+          {dealsView.length ? `${dealsView.length} за ${period === "week" ? "неделю" : "день"}` : `за ${period === "week" ? "неделю" : "день"}`}
+        </span>
         <span className="flex-1" />
+
+        {/* Период — пилюли: активная кремовая, вторая обводкой (эталон .tabs) */}
+        <div className="flex gap-1.5">
+          {[
+            ["today", "Сегодня"],
+            ["week", "Неделя"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPeriod(key)}
+              aria-pressed={period === key}
+              className={`rounded-full text-[11px] px-[13px] py-1.5 transition-colors ${
+                period === key
+                  ? "bg-cream text-[#17150F]"
+                  : "border border-[#3A372C] text-[#A39D8C] hover:text-cream hover:border-[#4a4638]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {MANAGER_ORDERS_ENABLED && (
           <button
             type="button"
             onClick={syncOrders}
             disabled={syncing}
             title="Обновить заявки из бота (подтянуть новые + коды встречи)"
-            className="inline-flex items-center gap-1.5 h-[34px] px-3 rounded-[9px] border border-[color:var(--grid)] text-[12.5px] font-semibold text-[color:var(--muted)] hover:text-ink hover:bg-[rgba(18,22,26,.03)] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full border border-[#3A372C] text-[12px] text-[#A39D8C] hover:text-cream hover:border-[#4a4638] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} strokeWidth={2} />
             {syncing ? "Обновляю…" : "Обновить"}
           </button>
         )}
-        <label className="flex items-center gap-2 border border-[color:var(--grid)] rounded-[9px] px-2.5 h-[34px] w-[230px]">
-          <Search className="w-3.5 h-3.5 text-[color:var(--faint)] shrink-0" strokeWidth={2} />
+        <label className="flex items-center gap-2 rounded-full bg-[#23211A] px-3.5 h-[32px] w-[230px]">
+          <Search className="w-3.5 h-3.5 text-[#7A7565] shrink-0" strokeWidth={2} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск: контрагент, №…"
-            className="w-full bg-transparent outline-none text-[13px] text-ink placeholder:text-[color:var(--faint)]"
+            className="w-full bg-transparent outline-none text-[13px] text-cream placeholder:text-[#7A7565]"
           />
         </label>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* px = внутренние поля тёмной секции (эталон .deals: padding 20px 22px):
+          без них карточки упираются в края и скругления не читаются. */}
+      <div className="overflow-x-auto px-[22px]">
         {/* Фиксированная сетка: ширины колонок не пересчитываются от контента,
             поэтому таблица не «прыгает» при наведении/появлении hover-кнопок.
             Контрагент (3-я, без width) забирает остаток. */}
-        <table className="w-full border-collapse" style={{ tableLayout: "fixed" }}>
+        {/* border-separate + spacing по Y = зазор между строками, из-за которого
+            строки читаются карточками (эталон .deal: margin-bottom 8px).
+            Скругление краёв — на крайних ячейках, иначе карточка «квадратит». */}
+        <table
+          className="w-full border-separate [&_tbody_tr>td:first-child]:rounded-l-[18px] [&_tbody_tr>td:last-child]:rounded-r-[18px]"
+          style={{ tableLayout: "fixed", borderSpacing: "0 8px" }}
+        >
           <colgroup>
             <col style={{ width: "46px" }} />{/* № */}
             <col style={{ width: "64px" }} />{/* Дата */}
@@ -578,24 +636,24 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           <tbody>
             {/* ── Заявки (pending) ── */}
             {ordersView.map((o, oi) => {
-              const zbg = "bg-[rgba(224,176,74,.07)] group-hover:bg-[rgba(224,176,74,.11)]";
+              const zbg = ""; // фон задаётся через --row на <tr> (см. ниже)
               const stage = orderStage(o);
               return (
-                <tr key={`ord_${o.id}`} className="group">
+                <tr key={`ord_${o.id}`} className="group" style={{ "--row": "var(--row-order)" }}>
                   <td
-                    className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
+                    className={`${td} ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
                     style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
                     title={`Статус: ${stage.label}`}
                   >
                     {oi + 1}
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
+                  <td className={`${td} ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
                     <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
                     <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
                   </td>
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-left`}>
+                  <td className={`${td} ${zbg} ${gridR} text-left`}>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-[150px] shrink-0 truncate font-semibold text-ink" title={o.contact}>
+                      <span className="w-[150px] shrink-0 truncate font-semibold text-cream" title={o.contact}>
                         {o.contact || "—"}
                       </span>
                       {o.meetingCode && (
@@ -635,7 +693,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                           type="button"
                           onClick={() => setDetailOrder(o)}
                           title="Открыть и править заявку"
-                          className="text-[11px] font-semibold rounded-md px-2 py-1 text-[color:var(--amber)] hover:text-[#8a5e10] bg-[rgba(224,176,74,0.16)] hover:bg-[rgba(224,176,74,0.26)]"
+                          className="text-[11px] rounded-full px-2.5 py-1 border border-[#3A372C] text-[#A39D8C] hover:text-cream hover:border-[#4a4638]"
                         >
                           Открыть
                         </button>
@@ -643,19 +701,19 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                           type="button"
                           onClick={() => deleteOrder(o)}
                           title="Удалить заявку"
-                          className="text-[11px] font-semibold rounded-md px-2 py-1 text-[#ce463d]/85 hover:text-[#ce463d] bg-[#ce463d]/[0.08] hover:bg-[#ce463d]/[0.16]"
+                          className="text-[11px] rounded-full px-2.5 py-1 border border-[#4a2f2c] text-[#d98078] hover:text-[#f0a49c] hover:border-[#63403c]"
                         >
                           Удалить
                         </button>
                       </div>
                     </div>
                   </td>
-                  <AmtCells amount={o.fromAmount || null} ccy={o.fromCurrency} tdBase={`${td} border-b-[rgba(224,176,74,.3)] ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
+                  <AmtCells amount={o.fromAmount || null} ccy={o.fromCurrency} tdBase={`${td} ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
+                  <td className={`${td} ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {o.rate || ""}
                   </td>
-                  <AmtCells amount={o.toAmount || null} ccy={o.toCurrency} tdBase={`${td} border-b-[rgba(224,176,74,.3)] ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
-                  <td className={`${td} border-b-[rgba(224,176,74,.3)] ${zbg} text-left`}>
+                  <AmtCells amount={o.toAmount || null} ccy={o.toCurrency} tdBase={`${td} ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
+                  <td className={`${td} ${zbg} text-left`}>
                     <div className="flex items-center gap-2">
                       <span className={`text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${stage.pill}`}>
                         {stage.label}
@@ -667,12 +725,13 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                           arrived: { label: "Проверил", onClick: () => askCheck(o) },
                           checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
                         }[stage.key];
+                        // Действие заявки — лайм-пилюля (эталон: .pill.lime).
                         return act ? (
                           <button
                             type="button"
                             onClick={act.onClick}
                             title={act.label}
-                            className="inline-flex items-center gap-1 text-[11.5px] font-bold text-white bg-[#0c9c6b] rounded-[7px] px-2.5 py-[5px] hover:bg-[#0a865c] shrink-0"
+                            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#2E3312] bg-[#C8D96F] rounded-full px-4 py-2 hover:bg-[#d3e084] shrink-0"
                           >
                             <PlayCircle className="w-[15px] h-[15px]" strokeWidth={2.4} />
                             {act.label}
@@ -699,7 +758,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
                   <td className={`${td} ${gridR} text-left`}>
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="w-[150px] shrink-0 truncate font-semibold text-ink tracking-[-0.1px]" title={d.party}>
+                      <span className="w-[150px] shrink-0 truncate font-semibold text-cream tracking-[-0.1px]" title={d.party}>
                         {d.party}
                       </span>
                       {d.deferred?.open && (
@@ -707,7 +766,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                           type="button"
                           onClick={() => settleDeferred(d)}
                           title="Закрыть долг (рассчитались)"
-                          className="shrink-0 inline-flex items-center text-[10px] font-bold text-[color:var(--pos)] bg-[rgba(12,156,107,.1)] rounded-[5px] px-1.5 py-0.5 hover:bg-[rgba(12,156,107,.16)]"
+                          className="shrink-0 inline-flex items-center text-[10.5px] font-semibold text-[#2E3312] bg-[#C8D96F] rounded-full px-2.5 py-1 hover:bg-[#d3e084]"
                         >
                           закрыть
                         </button>
@@ -716,7 +775,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                         type="button"
                         onClick={() => deleteDeal(d)}
                         title="Удалить сделку (сторно)"
-                        className="ml-auto shrink-0 text-[11px] font-semibold rounded-md px-2 py-1 text-[#ce463d]/85 hover:text-[#ce463d] bg-[#ce463d]/[0.08] hover:bg-[#ce463d]/[0.16] opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="ml-auto shrink-0 text-[11px] rounded-full px-2.5 py-1 border border-[#4a2f2c] text-[#d98078] hover:text-[#f0a49c] hover:border-[#63403c] opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         Удалить
                       </button>
@@ -725,11 +784,11 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                       <div className="text-[10px] text-[color:var(--faint)] mt-0.5">до {fmtDue(d.deferred.dueDate)}</div>
                     )}
                   </td>
-                  <AmtCells amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} tdBase={td} gridR={gridR} tone="text-ink" />
+                  <AmtCells amount={d.inAmount || null} ccy={d.inCcy} onCcy={() => setSort("inC")} tdBase={td} gridR={gridR} tone="text-cream" />
                   <td className={`${td} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
                     {d.rate != null ? fmtRu(d.rate, Math.abs(d.rate) > 0 && Math.abs(d.rate) < 1 ? 4 : 2) : "—"}
                   </td>
-                  <AmtCells amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} tdBase={td} gridR={gridR} tone="text-ink" />
+                  <AmtCells amount={out.amount} ccy={out.ccy} extra={out.extra} onCcy={() => setSort("outC")} tip={out.tip} tdBase={td} gridR={gridR} tone="text-cream" />
                   <td className={`${td} text-left text-[12px] ${st.cls}`}>{st.text}</td>
                 </tr>
               );
@@ -738,7 +797,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             {!loading && dealsView.length === 0 && ordersView.length === 0 && (
               <tr>
                 <td colSpan={9} className="px-2.5 py-8 text-center text-[13px] text-[color:var(--faint)]">
-                  {query ? "Ничего не найдено" : "Сделок за день пока нет"}
+                  {query ? "Ничего не найдено" : `Сделок за ${period === "week" ? "неделю" : "день"} пока нет`}
                 </td>
               </tr>
             )}
@@ -747,7 +806,7 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       </div>
 
       {/* Подвал: счётчик. P&L скрыт — профит на сделку не считается (бэклог). */}
-      <div className="px-[18px] py-3.5 flex items-center text-[12px] text-[color:var(--faint)] border-t border-[color:var(--grid)]">
+      <div className="px-[22px] pt-1 pb-5 flex items-center text-[12px] text-[color:var(--faint)]">
         <span>
           {dealsView.length} сделок
           {ordersView.length > 0 ? ` · ${ordersView.length} заявок в ожидании` : ""}

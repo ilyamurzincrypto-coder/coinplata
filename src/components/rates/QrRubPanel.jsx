@@ -44,14 +44,14 @@ export default function QrRubPanel({ cbr, getRate, onCopy }) {
         </span>
         <span className="ml-auto inline-flex items-baseline gap-1 shrink-0 text-[#6a717a]">
           <span className="text-[9px] uppercase tracking-wide text-[#aeb4bb] font-semibold">спред</span>
-          <span className="font-mono tabular-nums text-[12px] font-bold">{spreadStr}</span>
+          <span className="tabular-nums text-[12px] font-bold">{spreadStr}</span>
           <span className="text-[10px] text-[#aeb4bb]">%</span>
         </span>
       </div>
       {/* Якорь: 1 USDT в рублях (ЦБ + спред) */}
       <div className="flex items-baseline justify-between mb-2 text-[10.5px]">
         <span className="text-[#aeb4bb]">1 ₮ = ЦБ {fmt(usdtBase)} +&nbsp;спред</span>
-        <span className="font-mono tabular-nums font-bold text-[#15191d]">{fmt(usdtItog)} ₽</span>
+        <span className="tabular-nums font-bold text-[#15191d]">{fmt(usdtItog)} ₽</span>
       </div>
       <div className="grid items-baseline gap-y-1.5 gap-x-2" style={{ gridTemplateColumns: "minmax(60px,auto) 1fr 1fr" }}>
         <span />
@@ -59,14 +59,14 @@ export default function QrRubPanel({ cbr, getRate, onCopy }) {
         <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">Курс QR&nbsp;₽</span>
         {rows.map((r) => (
           <React.Fragment key={r.cur}>
-            <span className="font-mono text-[12px] font-semibold text-[#15191d] flex items-center gap-1.5">
+            <span className="tabular-nums text-[12px] font-semibold text-[#15191d] flex items-center gap-1.5">
               <span>{r.flag}</span>{r.cur}
             </span>
-            <span className="text-right font-mono tabular-nums text-[12px] text-[#6a717a]">{fmt(r.up, 4)}</span>
+            <span className="text-right tabular-nums text-[12px] text-[#6a717a]">{fmt(r.up, 4)}</span>
             <button
               type="button"
               onClick={() => Number.isFinite(r.qr) && onCopy?.(fmt(r.qr))}
-              className="text-right font-mono tabular-nums text-[13px] font-bold text-[#0c9c6b] hover:opacity-70"
+              className="text-right tabular-nums text-[13px] font-bold text-[#0c9c6b] hover:opacity-70"
               title="Копировать"
             >
               {fmt(r.qr)}

@@ -6,7 +6,7 @@
 // расчёты — без изменений; правка/импорт — на странице «Изм.».
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { ChevronRight, Check } from "lucide-react";
+import { ChevronRight, Check, ArrowUpRight } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -127,24 +127,43 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   }, 0);
   const nerezFresh = nerezAt ? timeAgoShort(new Date(nerezAt), nowMs) : null;
 
+  // Самое свежее обновление среди офисов — метка в шапке «Курсы».
+  const panelFresh = React.useMemo(() => {
+    let latest = null;
+    offices.forEach((o) => {
+      const d = officeFreshness(getOfficeOverride, o.id, quotesForOffice(o));
+      if (d && (!latest || d > latest)) latest = d;
+    });
+    return latest ? timeAgoShort(latest, nowMs) : null;
+  }, [offices, getOfficeOverride, nowMs]);
+
   const cardCls = "bg-card border border-line rounded-card-2 overflow-hidden";
 
   return (
     <aside className="flex flex-col gap-2">
       {/* ── Контейнер 1: КУРСЫ — белый терминал, офисы аккордеоном ── */}
       <div className={cardCls}>
-        <header className="flex items-center gap-2.5 px-4 py-3.5 border-b border-line">
+        <header className="flex items-center gap-2.5 px-5 pt-4 pb-3.5 border-b border-line">
           <h2 className="text-[15px] font-normal tracking-tight text-ink">
             {t("rates") || "Курсы"}
           </h2>
+          {/* Метка свежести вместо номера версии: номера у панели пока нет —
+              он появится вместе со снапшотами (rate_snapshots.version). Пока
+              показываем самое свежее обновление по офисам, а не выдуманный «v.». */}
+          {panelFresh && (
+            <span className="text-[11px] text-muted-soft tabular-nums" title="Самое свежее обновление курсов по офисам">
+              обновлено {panelFresh}
+            </span>
+          )}
           {onOpenRates && (
             <button
               type="button"
               onClick={onOpenRates}
-              className="ml-auto text-[11.5px] font-medium text-muted border-b border-dotted border-line-2 pb-px hover:text-ink hover:border-muted transition-colors focus-visible:outline-none focus-visible:text-ink"
+              className="ml-auto w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full border border-line-2 text-muted hover:text-ink hover:border-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15"
               title={t("edit_rates") || "Редактировать курсы"}
+              aria-label={t("edit_rates") || "Редактировать курсы"}
             >
-              редактировать
+              <ArrowUpRight className="w-4 h-4" strokeWidth={1.8} />
             </button>
           )}
         </header>
@@ -214,7 +233,7 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
         aria-live="polite"
       >
         <Check className="w-4 h-4 text-lime" strokeWidth={2.6} />
-        <span className="font-mono tabular-nums">{toast}</span>
+        <span className="tabular-nums">{toast}</span>
       </div>
     </aside>
   );
