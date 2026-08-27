@@ -380,8 +380,12 @@ function CoverageMatrix({ coverage, onQuickAdd }) {
     switch (status) {
       case "existing":
         return `${base} bg-emerald-400 text-white`;
+      // Красный текст на красноватой заливке давал контраст 1.79:1 — после
+      // перевода rose-* в тёплую шкалу заливка стала насыщеннее и «съела»
+      // text-danger. Переведено на тот же паттерн, что у соседнего
+      // «existing» (насыщенная заливка + белый): 5.27:1, hover 6.83:1.
       case "missing":
-        return `${base} bg-rose-300 text-danger hover:bg-rose-400 cursor-pointer`;
+        return `${base} bg-rose-500 text-white hover:bg-rose-600 cursor-pointer`;
       case "dismissed":
         return `${base} bg-surface-sunk text-muted`;
       case "self":
