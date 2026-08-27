@@ -190,6 +190,30 @@ table.apps{width:100%;table-layout:fixed;border-collapse:collapse;font-feature-s
 tr.stale .meet .d,tr.stale .who2,tr.stale .sum,tr.stale .sum em,tr.stale .rt2{color:#B4AB8D}
 .apps-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;font-size:11px;color:#99916F}
 
+/* ---------- экран 1а: переходная панель ---------- */
+.r2n{display:grid;grid-template-columns:1fr 88px 88px;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
+.r2n .cur{font-size:12.5px;color:var(--muted)}
+.r2n .a,.r2n .b{font-weight:300;font-size:19px;text-align:right;letter-spacing:-0.01em}
+.r2n.h{border-top:0;padding:12px 0 2px}
+.r2n.h span{font-size:10.5px;color:var(--faint);text-align:right}
+.r2n.sm{padding:6px 0}
+.r2n.sm .a,.r2n.sm .b{font-size:14px;color:#6B675C}
+.off-head{display:flex;align-items:baseline;gap:8px}
+.off-head .nm{font-size:14px;font-weight:500}
+.off-head .city{font-size:11.5px;color:var(--faint)}
+.off-head .chev{margin-left:auto;color:var(--faint);font-size:13px}
+.fresh{font-size:11px;color:#B07A3C}
+.off-row{background:var(--card);border-radius:20px;padding:14px 18px;margin-bottom:8px;display:flex;align-items:baseline;gap:8px}
+.off-row .nm{font-size:13.5px;font-weight:500}
+.off-row .city{font-size:11.5px;color:var(--faint)}
+.off-row .chev{margin-left:auto;color:var(--faint);font-size:13px}
+.r3n{display:grid;grid-template-columns:56px 1fr 1fr 1fr;gap:8px;align-items:baseline;padding:7px 0;border-top:1px solid var(--line)}
+.r3n .cur{font-size:12px;color:var(--muted)}
+.r3n b{font-weight:300;font-size:16px;text-align:right}
+.r3n.h{border-top:0;padding:2px 0}
+.r3n.h span{font-size:10.5px;color:var(--faint);text-align:right}
+.amber-note{font-size:11px;color:#B07A3C;margin-top:10px}
+
 /* ---------- экран 2: редактор ---------- */
 .ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .ed-head .t{font-size:19px;font-weight:400}
@@ -305,7 +329,7 @@ svg{display:block}
 
 <div class="doc-head">
   <h1>CoinPlata Касса — целевой дизайн</h1>
-  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 6 · 27.08.2026 · табачные заявки · Экран 4 «Счета · Крипто» · исправлено описание шапки — r5 в репо не попадала, номер похоронен</p>
+  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 7 · 27.08.2026 · добавлен Экран 1а — переходная панель курсов на текущих данных (офисы); блочный Экран 1 остаётся целью фаз 2–3</p>
   <p>Четыре экрана: главный вид с панелью блоков курсов и табачной секцией заявок, раскрытие блока с редактором и черновиком, публикация версии во все каналы, сводная ведомость крипто-счетов. Направление — rondesignlab: тёплый крем, тонкие крупные цифры, круглые формы, табачные рабочие таблицы.</p>
 </div>
 
@@ -493,6 +517,62 @@ svg{display:block}
             <span>курс зафиксирован в заявке · резерв виден в «Остатках»</span>
           </div>
         </div>
+      </div>
+
+    </div>
+  </div>
+
+<!-- ================= ЭКРАН 1а ================= -->
+  <div class="screen-label"><b>Экран 1а</b> Панель курсов — переходный вид на текущих данных (офисы), до блочной модели</div>
+  <div class="frame">
+    <div style="width:340px">
+
+      <div class="rates-head">
+        <span class="t">Курсы</span>
+        <span class="v">обновлено 25.06 · 17:14</span>
+      </div>
+
+      <div class="bcard">
+        <div class="off-head">
+          <span class="nm">Terra City</span><span class="city">Antalya</span>
+          <span class="fresh">63 дня назад</span>
+          <span class="chev">⌃</span>
+        </div>
+        <div class="r2n h"><span></span><span>→ USDT</span><span>USDT →</span></div>
+        <div class="r2n"><span class="cur">USD</span><span class="a">1,001</span><span class="b">1,006</span></div>
+        <div class="r2n"><span class="cur">TRY</span><span class="a">46,80</span><span class="b">46,20</span></div>
+        <div class="r2n"><span class="cur">EUR</span><span class="a">1,1305</span><span class="b">1,142</span></div>
+        <div class="r2n h"><span style="text-align:left;color:var(--faint)">кросс</span><span>→</span><span>←</span></div>
+        <div class="r2n sm"><span class="cur">USD / TRY</span><span class="a">46,479</span><span class="b">0,02152</span></div>
+        <div class="r2n sm"><span class="cur">USD / EUR</span><span class="a">1,1489</span><span class="b">0,8704</span></div>
+        <div class="r2n sm"><span class="cur">TRY / EUR</span><span class="a">0,02472</span><span class="b">40,455</span></div>
+      </div>
+
+      <div class="off-row"><span class="nm">Mark Antalya</span><span class="city">Antalya</span><span class="fresh">63 дня</span><span class="chev">⌄</span></div>
+      <div class="off-row"><span class="nm">Liman</span><span class="city">Antalya</span><span class="city">курсы не заданы</span><span class="chev">⌄</span></div>
+      <div class="off-row"><span class="nm">Istanbul</span><span class="city">Istanbul</span><span class="fresh">63 дня</span><span class="chev">⌄</span></div>
+      <div class="off-row"><span class="nm">Москва Вася</span><span class="city">Москва</span><span class="fresh">63 дня</span><span class="chev">⌄</span></div>
+
+      <div class="bcard" style="margin-top:10px">
+        <div class="off-head"><span class="nm">USDT ↔ RUB</span><span class="city">нерез</span><span class="fresh">63 дня</span></div>
+        <div class="r3n h"><span></span><span>Т-Т</span><span>Т-М</span><span>М-М</span></div>
+        <div class="r3n"><span class="cur">Прод.</span><b>75,80</b><b>75,73</b><b>75,88</b></div>
+        <div class="r3n"><span class="cur">Покуп.</span><b>74,59</b><b>74,48</b><b>74,57</b></div>
+      </div>
+
+      <div class="bcard">
+        <div class="off-head"><span class="nm">QR ₽</span><span class="city">ЦБ + спред 8%</span></div>
+        <div class="r2n h"><span></span><span>₮ за 1</span><span>курс QR ₽</span></div>
+        <div class="r2n"><span class="cur">USDT</span><span class="a">1,0000</span><span class="b">92,83</span></div>
+        <div class="r2n"><span class="cur">USD</span><span class="a">1,0000</span><span class="b">92,83</span></div>
+        <div class="r2n"><span class="cur">EUR</span><span class="a">1,1670</span><span class="b">108,33</span></div>
+        <div class="r2n"><span class="cur">TRY</span><span class="a">0,0224</span><span class="b">2,08</span></div>
+        <div class="amber-note">спред хранится локально в браузере — проверьте значение</div>
+      </div>
+
+      <div class="btn-edit">
+        <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/></svg>
+        Редактировать курсы
       </div>
 
     </div>
