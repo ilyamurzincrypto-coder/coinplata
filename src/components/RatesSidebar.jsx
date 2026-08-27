@@ -128,14 +128,34 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
   const nerezFresh = nerezAt ? timeAgoShort(new Date(nerezAt), nowMs) : null;
 
   // Самое свежее обновление среди офисов — метка в шапке «Курсы».
+  // ЧЕЛОВЕЧЕСКОЕ время вместо «62д»: сегодняшнее — просто HH:MM, более
+  // раннее — с датой. Голое «обновлено 14:03» для двухмесячной давности
+  // было бы враньём, поэтому дата не отбрасывается.
   const panelFresh = React.useMemo(() => {
     let latest = null;
     offices.forEach((o) => {
       const d = officeFreshness(getOfficeOverride, o.id, quotesForOffice(o));
       if (d && (!latest || d > latest)) latest = d;
     });
-    return latest ? timeAgoShort(latest, nowMs) : null;
+    if (!latest) return null;
+    const hhmm = `${String(latest.getHours()).padStart(2, "0")}:${String(latest.getMinutes()).padStart(2, "0")}`;
+    const now = new Date(nowMs);
+    const sameDay =
+      latest.getFullYear() === now.getFullYear() &&
+      latest.getMonth() === now.getMonth() &&
+      latest.getDate() === now.getDate();
+    if (sameDay) return hhmm;
+    const dd = String(latest.getDate()).padStart(2, "0");
+    const mm = String(latest.getMonth() + 1).padStart(2, "0");
+    return `${dd}.${mm} ${hhmm}`;
   }, [offices, getOfficeOverride, nowMs]);
+
+  // СЛОТ под номер версии прайса. Намеренно null: публикаций ещё нет —
+  // rate_publications пуста, publish_rates появится в фазе 2 проекта курсов.
+  // Номер из воздуха не изобретаем; когда снапшоты поедут, сюда придёт
+  // version последней публикации и встанет рядом со временем, как в эталоне
+  // («v. 148 · 10:41»). До тех пор ветка просто не рендерится.
+  const publishedVersion = null;
 
   const cardCls = "bg-card border border-line rounded-card-2 overflow-hidden";
 
@@ -147,12 +167,10 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
           <h2 className="text-[15px] font-normal tracking-tight text-ink">
             {t("rates") || "Курсы"}
           </h2>
-          {/* Метка свежести вместо номера версии: номера у панели пока нет —
-              он появится вместе со снапшотами (rate_snapshots.version). Пока
-              показываем самое свежее обновление по офисам, а не выдуманный «v.». */}
-          {panelFresh && (
-            <span className="text-[11px] text-muted-soft tabular-nums" title="Самое свежее обновление курсов по офисам">
-              обновлено {panelFresh}
+          {(publishedVersion != null || panelFresh) && (
+            <span className="text-[12px] text-muted tabular-nums" title="Самое свежее обновление курсов по офисам">
+              {publishedVersion != null && <>v.&nbsp;{publishedVersion} · </>}
+              {panelFresh && <>обновлено {panelFresh}</>}
             </span>
           )}
           {onOpenRates && (
