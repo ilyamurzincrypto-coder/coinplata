@@ -41,6 +41,7 @@ import {
   cancelOrder,
   subscribeOrders,
 } from "../../../lib/managerOrders.js";
+import { useNow } from "../../../hooks/useNow.js";
 import OrderDetailsModal from "./OrderDetailsModal.jsx";
 import { PlayCircle, Search, RefreshCw } from "lucide-react";
 
@@ -50,13 +51,38 @@ function todayStartIso() {
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
-// Начало недели = 7 суток назад от начала сегодняшнего дня (не календарный пн —
-// кассиру нужен скользящий хвост, а не «в понедельник лента пустеет»).
-export function weekStartIso(now = new Date()) {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - 6);
-  return d.toISOString();
+/**
+ * Колонка «Встреча» (эталон, ревизия 2). Заявка живёт временем встречи, а не
+ * временем создания: кассиру важно «сегодня в 12:00», «завтра», «прошла 13 дней
+ * назад». Просроченные не прячем — они гасятся (stale) и остаются в списке,
+ * иначе забытая заявка исчезает молча.
+ *   kind: today | future | past | none
+ */
+export function meetingView(iso, now = new Date()) {
+  if (!iso) return { kind: "none", label: "—", sub: "", stale: false };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { kind: "none", label: "—", sub: "", stale: false };
+
+  const startOf = (x) => {
+    const c = new Date(x);
+    c.setHours(0, 0, 0, 0);
+    return c;
+  };
+  const days = Math.round((startOf(d) - startOf(now)) / 86400000);
+  const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+
+  if (days === 0) return { kind: "today", label: `сегодня · ${hhmm}`, sub: "", stale: false };
+  if (days === 1) return { kind: "future", label: `завтра · ${hhmm}`, sub: "встреча", stale: false };
+  if (days > 1) {
+    return { kind: "future", label: `${fmtDate(iso)} · ${hhmm}`, sub: "встреча", stale: false };
+  }
+  const ago = Math.abs(days);
+  return {
+    kind: "past",
+    label: `${fmtDate(iso)} · ${hhmm}`,
+    sub: `прошла · ${ago} ${ago === 1 ? "день" : ago < 5 ? "дня" : "дней"}`,
+    stale: true,
+  };
 }
 function fmtTime(iso) {
   if (!iso) return "";
@@ -166,10 +192,14 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
     });
     return m;
   }, [users]);
-  // Период ленты — пилюли «Сегодня / Неделя» в шапке. Ридер уже умеет fromIso,
-  // так что «Неделя» реально расширяет запрос, а не только подсвечивает пилюлю.
+  // Период — вкладки «Сегодня / Все» (эталон, ревизия 2). Ридер умеет fromIso,
+  // поэтому вкладка реально меняет запрос: «Все» = без нижней границы по дате.
+  // Это безопасно — заявок 167 за всё время, сделок в v2-леджере пока ноль.
   const [period, setPeriod] = useState("today");
-  const fromIso = useMemo(() => (period === "week" ? weekStartIso() : todayStartIso()), [period]);
+  // Тикаем раз в минуту: «прошла · N дней» и тег «сегодня» не должны залипать
+  // на открытой вкладке через полночь.
+  const nowTick = useNow(60_000);
+  const fromIso = useMemo(() => (period === "all" ? null : todayStartIso()), [period]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -533,41 +563,37 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   return (
     <div
-      className="rounded-[24px] overflow-hidden text-cream"
+      className="rounded-[24px] bg-surface-apps px-[22px] py-5"
       style={{
-        // Тёмная секция по эталону (design/reference.html → .deals): тёплый glow
-        // из левого верхнего угла поверх #17150F.
-        background:
-          "radial-gradient(500px 260px at 6% -30%, rgba(238,178,92,.10), transparent 60%), #17150F",
-        // Единые тона сетки — правятся одним значением. На тёмном фоне сетка
-        // светлая с низкой альфой, иначе строки-карточки сливаются в кашу.
-        "--grid": "rgba(255,255,255,.07)",
-        "--gridh": "rgba(255,255,255,.15)",
-        "--muted": "#A39D8C",
-        "--faint": "#7A7565",
-        "--faint2": "#6B675C",
-        "--card": "#23211A",
-        "--row": "#23211A", // фон строки-карточки; заявки переопределяют на своём <tr>
-        "--row-order": "#2A2418", // заявка — та же карточка, но теплее (амбер-подмес)
-        "--accent": "#C8D96F",
-        "--pos": "#C8D96F",
-        "--amber": "#E0B04A",
-        "--amber-bd": "#7a5f22",
+        // Светлая секция «Заявки» (эталон ревизии 2 → .deals: #F7F1E1).
+        // Прежняя тёмная #17150F отменена этой ревизией.
+        "--grid": "#E8DFC8", // горизонтальные линии строк
+        "--gridh": "#D9CFB2", // линия под шапкой таблицы
+        "--vline": "#EFE7D3", // вертикальные разделители колонок
+        "--muted": "#99916F",
+        "--faint": "#A39D8C",
+        "--faint2": "#B4AB8D",
+        "--stale": "#B4AB8D", // просроченная встреча — гасим строку целиком
+        "--late": "#B07A3C",
+        "--accent": "#0c9c6b",
+        "--pos": "#0a8f5f",
+        "--amber": "#a9781a",
       }}
     >
-      {/* Шапка: заголовок · период · обновить · поиск (эталон → .deals-head) */}
-      <div className="px-[22px] pt-5 pb-3.5 flex items-center gap-3">
-        <span className="text-[15px] text-cream">Сделки</span>
-        <span className="text-[12px] text-[#7A7565]">
-          {dealsView.length ? `${dealsView.length} за ${period === "week" ? "неделю" : "день"}` : `за ${period === "week" ? "неделю" : "день"}`}
+      {/* Шапка (эталон → .deals-head): «Заявки» + счётчики, справа вкладки.
+          Поиск и «Обновить» в эталоне не нарисованы, но убирать их нельзя —
+          это рабочие инструменты кассира; оставлены в светлом исполнении. */}
+      <div className="flex items-center gap-3 mb-3.5">
+        <span className="text-[15px]">Заявки</span>
+        <span className="text-[12px] text-[color:var(--muted)]">
+          {ordersView.length} в ожидании · сделок сегодня {dealsView.length}
         </span>
         <span className="flex-1" />
 
-        {/* Период — пилюли: активная кремовая, вторая обводкой (эталон .tabs) */}
         <div className="flex gap-1.5">
           {[
             ["today", "Сегодня"],
-            ["week", "Неделя"],
+            ["all", "Все"],
           ].map(([key, label]) => (
             <button
               key={key}
@@ -576,8 +602,8 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
               aria-pressed={period === key}
               className={`rounded-full text-[11px] px-[13px] py-1.5 transition-colors ${
                 period === key
-                  ? "bg-cream text-[#17150F]"
-                  : "border border-[#3A372C] text-[#A39D8C] hover:text-cream hover:border-[#4a4638]"
+                  ? "bg-ink text-cream"
+                  : "border border-[#D9CFB2] text-[#8A8168] hover:text-ink hover:border-[#C0B594]"
               }`}
             >
               {label}
@@ -591,35 +617,174 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             onClick={syncOrders}
             disabled={syncing}
             title="Обновить заявки из бота (подтянуть новые + коды встречи)"
-            className="inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full border border-[#3A372C] text-[12px] text-[#A39D8C] hover:text-cream hover:border-[#4a4638] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 h-[32px] px-3 rounded-full border border-[#D9CFB2] text-[12px] text-[#8A8168] hover:text-ink hover:border-[#C0B594] disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} strokeWidth={2} />
             {syncing ? "Обновляю…" : "Обновить"}
           </button>
         )}
-        <label className="flex items-center gap-2 rounded-full bg-[#23211A] px-3.5 h-[32px] w-[230px]">
-          <Search className="w-3.5 h-3.5 text-[#7A7565] shrink-0" strokeWidth={2} />
+        <label className="flex items-center gap-2 rounded-full bg-[#F0E8D3] px-3.5 h-[32px] w-[210px]">
+          <Search className="w-3.5 h-3.5 text-[color:var(--muted)] shrink-0" strokeWidth={2} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск: контрагент, №…"
-            className="w-full bg-transparent outline-none text-[13px] text-cream placeholder:text-[#7A7565]"
+            className="w-full bg-transparent outline-none text-[13px] text-ink placeholder:text-[color:var(--muted)]"
           />
         </label>
       </div>
 
-      {/* px = внутренние поля тёмной секции (эталон .deals: padding 20px 22px):
-          без них карточки упираются в края и скругления не читаются. */}
-      <div className="overflow-x-auto px-[22px]">
-        {/* Фиксированная сетка: ширины колонок не пересчитываются от контента,
-            поэтому таблица не «прыгает» при наведении/появлении hover-кнопок.
-            Контрагент (3-я, без width) забирает остаток. */}
-        {/* border-separate + spacing по Y = зазор между строками, из-за которого
-            строки читаются карточками (эталон .deal: margin-bottom 8px).
-            Скругление краёв — на крайних ячейках, иначе карточка «квадратит». */}
+      {/* ── ЗАЯВКИ (эталон → table.apps) ────────────────────────────────
+          Строка целиком открывает заявку; удаление — внутри неё, не из
+          списка (так в эталоне, и это заодно снимает старую беду с
+          обрезанной кнопкой «Удалить» в узкой колонке). */}
+      <div className="overflow-x-auto">
         <table
-          className="w-full border-separate [&_tbody_tr>td:first-child]:rounded-l-[18px] [&_tbody_tr>td:last-child]:rounded-r-[18px]"
-          style={{ tableLayout: "fixed", borderSpacing: "0 8px" }}
+          className={
+            "w-full border-collapse " +
+            "[&_th+th]:border-l [&_td+td]:border-l " +
+            "[&_th+th]:border-[color:var(--vline)] [&_td+td]:border-[color:var(--vline)] " +
+            "[&_th:first-child]:pl-0.5 [&_td:first-child]:pl-0.5 " +
+            "[&_th:last-child]:pr-0.5 [&_td:last-child]:pr-0.5"
+          }
+          style={{ tableLayout: "fixed" }}
+        >
+          <colgroup>
+            <col style={{ width: "128px" }} />{/* Встреча */}
+            <col />{/* Контрагент */}
+            <col style={{ width: "168px" }} />{/* Клиент отдаёт */}
+            <col style={{ width: "176px" }} />{/* Клиент получает */}
+            <col style={{ width: "82px" }} />{/* Курс */}
+            <col style={{ width: "128px" }} />{/* Действие */}
+          </colgroup>
+          <thead>
+            <tr>
+              {["Встреча", "Контрагент", "Клиент отдаёт", "Клиент получает", "Курс", ""].map((h, i) => (
+                <th
+                  key={h || i}
+                  className={`text-[11px] font-normal text-[color:var(--muted)] px-3 pb-[9px] whitespace-nowrap border-b border-[color:var(--gridh)] ${
+                    i >= 2 && i <= 4 ? "text-right" : "text-left"
+                  }`}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ordersView.map((o) => {
+              const mv = meetingView(o.meetingAt, new Date(nowTick));
+              const stage = orderStage(o);
+              const act = {
+                new: { label: "Принять", onClick: () => askAccept(o) },
+                seen: { label: "Пришёл", onClick: () => askArrive(o) },
+                arrived: { label: "Проверил", onClick: () => askCheck(o) },
+                checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
+              }[stage.key];
+              // Просроченная встреча гасит всю строку (эталон tr.stale).
+              const tone = mv.stale ? "text-[color:var(--stale)]" : "text-ink";
+              const sub = mv.stale ? "text-[color:var(--stale)]" : "text-[color:var(--muted)]";
+              const tdA = "px-3 py-3 border-t border-[color:var(--grid)] overflow-hidden text-ellipsis whitespace-nowrap align-middle";
+
+              return (
+                <tr
+                  key={`ord_${o.id}`}
+                  onClick={() => setDetailOrder(o)}
+                  className="cursor-pointer hover:bg-[rgba(26,25,21,.03)]"
+                  title="Открыть заявку"
+                >
+                  <td className={`${tdA} ${tone}`}>
+                    {mv.kind === "today" ? (
+                      <span className="inline-block bg-lime text-lime-ink text-[11.5px] font-medium px-2.5 py-1 rounded-full">
+                        {mv.label}
+                      </span>
+                    ) : (
+                      <>
+                        <span className="block text-[13px]">{mv.label}</span>
+                        {mv.sub && (
+                          <small className={`block text-[10.5px] mt-0.5 ${mv.stale ? "text-[color:var(--late)]" : sub}`}>
+                            {mv.sub}
+                          </small>
+                        )}
+                      </>
+                    )}
+                  </td>
+
+                  <td className={`${tdA} ${tone}`}>
+                    <span className="block text-[13px] truncate" title={o.contact}>
+                      {o.contact || "—"}
+                    </span>
+                    {o.meetingCode && (
+                      <small className={`block text-[11px] mt-0.5 ${sub}`}>заявка {o.meetingCode}</small>
+                    )}
+                  </td>
+
+                  <td className={`${tdA} text-right ${tone}`}>
+                    <span className="font-light text-[16.5px] tabular-nums">
+                      {o.fromAmount ? fmtRu(o.fromAmount, ccyMeta(o.fromCurrency)?.dp ?? 2) : "—"}
+                    </span>
+                    <em className={`not-italic text-[11.5px] ml-1.5 ${sub}`}>{o.fromCurrency || ""}</em>
+                  </td>
+
+                  <td className={`${tdA} text-right ${tone}`}>
+                    <span className="font-light text-[16.5px] tabular-nums">
+                      {o.toAmount ? fmtRu(o.toAmount, ccyMeta(o.toCurrency)?.dp ?? 2) : "—"}
+                    </span>
+                    <em className={`not-italic text-[11.5px] ml-1.5 ${sub}`}>{o.toCurrency || ""}</em>
+                  </td>
+
+                  <td className={`${tdA} text-right text-[12.5px] tabular-nums ${mv.stale ? "text-[color:var(--stale)]" : "text-[#6B675C]"}`}>
+                    {o.rate || "—"}
+                  </td>
+
+                  <td className={`${tdA} text-right`}>
+                    {act && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation(); // строка открывает заявку — кнопка не должна её открывать
+                          act.onClick();
+                        }}
+                        className="inline-flex items-center gap-1 text-[12px] font-medium text-lime-ink bg-lime rounded-full px-4 py-2 hover:brightness-[1.04]"
+                      >
+                        {act.label}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+
+            {!loading && ordersView.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-[13px] text-[color:var(--muted)] border-t border-[color:var(--grid)]">
+                  {query ? "Ничего не найдено" : "Заявок в ожидании нет"}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex justify-between items-center mt-[11px] text-[11px] text-[color:var(--muted)]">
+        <span>строка открывает заявку · удаление — внутри заявки, не из списка</span>
+        <span>курс зафиксирован в заявке · резерв виден в «Остатках»</span>
+      </div>
+      {err && <div className="mt-2 text-[12px] text-[#ce463d] font-semibold">⚠ {err}</div>}
+
+      {/* ── СДЕЛКИ ───────────────────────────────────────────────────────
+          Эталон рисует только заявки — потому что сделок в v2-леджере сейчас
+          ноль. Таблицу не выбрасываем (на ней сортировка по 9 колонкам и
+          мульти-OUT): показываем ниже, когда сделки появятся. При нуле экран
+          совпадает с эталоном. */}
+      {dealsView.length > 0 && (
+      <div className="overflow-x-auto mt-6">
+        <div className="text-[13px] mb-2.5">
+          Сделки <span className="text-[12px] text-[color:var(--muted)]">{dealsView.length} за {period === "all" ? "всё время" : "день"}</span>
+        </div>
+        <table
+          className="w-full border-collapse"
+          style={{ tableLayout: "fixed" }}
         >
           <colgroup>
             <col style={{ width: "46px" }} />{/* № */}
@@ -634,115 +799,6 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           </colgroup>
           <Header />
           <tbody>
-            {/* ── Заявки (pending) ── */}
-            {ordersView.map((o, oi) => {
-              const zbg = ""; // фон задаётся через --row на <tr> (см. ниже)
-              const stage = orderStage(o);
-              return (
-                <tr key={`ord_${o.id}`} className="group" style={{ "--row": "var(--row-order)" }}>
-                  <td
-                    className={`${td} ${zbg} ${gridR} text-left font-mono tabular-nums text-[12px] text-[color:var(--faint)]`}
-                    style={{ boxShadow: "inset 3px 0 0 var(--amber-bd)" }}
-                    title={`Статус: ${stage.label}`}
-                  >
-                    {oi + 1}
-                  </td>
-                  <td className={`${td} ${zbg} ${gridR} text-left font-mono tabular-nums leading-[1.35]`}>
-                    <span className="block text-[color:var(--muted)] text-[12.5px]">{fmtDate(o.createdAt)}</span>
-                    <span className="block text-[color:var(--faint2)] text-[11px]">{fmtTime(o.createdAt)}</span>
-                  </td>
-                  <td className={`${td} ${zbg} ${gridR} text-left`}>
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="w-[150px] shrink-0 truncate font-semibold text-cream" title={o.contact}>
-                        {o.contact || "—"}
-                      </span>
-                      {o.meetingCode && (
-                        <>
-                          <span className="shrink-0 self-center w-px h-[15px] bg-[color:var(--gridh)]" aria-hidden="true" />
-                          <span
-                            className="shrink-0 font-mono font-semibold text-[12.5px] text-[#8a5e10]"
-                            title="Код встречи (сделки)"
-                          >
-                            {o.meetingCode}
-                          </span>
-                        </>
-                      )}
-                      {(() => {
-                        // Всё в одну строку (без подстроки) — иначе строки разной
-                        // высоты и контакт «плавает». Автора для ботовых нет.
-                        const creator = o.sourceOrderId ? null : usersById[o.createdBy] || null;
-                        const bits = [];
-                        if (creator) bits.push(`создал ${creator}`);
-                        if (o.meetingAt) {
-                        const md = new Date(o.meetingAt);
-                        const t = new Date();
-                        const sameDay =
-                          md.getFullYear() === t.getFullYear() &&
-                          md.getMonth() === t.getMonth() &&
-                          md.getDate() === t.getDate();
-                        bits.push(`встреча ${sameDay ? "" : fmtDate(o.meetingAt) + " "}${fmtTime(o.meetingAt)}`);
-                      }
-                        return bits.length ? (
-                          <span className="min-w-0 truncate text-[10.5px] text-[color:var(--faint)]">
-                            · {bits.join(" · ")}
-                          </span>
-                        ) : null;
-                      })()}
-                      <div className="ml-auto flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setDetailOrder(o)}
-                          title="Открыть и править заявку"
-                          className="text-[11px] rounded-full px-2.5 py-1 border border-[#3A372C] text-[#A39D8C] hover:text-cream hover:border-[#4a4638]"
-                        >
-                          Открыть
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => deleteOrder(o)}
-                          title="Удалить заявку"
-                          className="text-[11px] rounded-full px-2.5 py-1 border border-[#4a2f2c] text-[#d98078] hover:text-[#f0a49c] hover:border-[#63403c]"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                  <AmtCells amount={o.fromAmount || null} ccy={o.fromCurrency} tdBase={`${td} ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
-                  <td className={`${td} ${zbg} ${gridR} text-right font-mono tabular-nums text-[color:var(--muted)] text-[12.5px]`}>
-                    {o.rate || ""}
-                  </td>
-                  <AmtCells amount={o.toAmount || null} ccy={o.toCurrency} tdBase={`${td} ${zbg}`} gridR={gridR} tone="text-[color:var(--amber)]" />
-                  <td className={`${td} ${zbg} text-left`}>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${stage.pill}`}>
-                        {stage.label}
-                      </span>
-                      {(() => {
-                        const act = {
-                          new: { label: "Принять", onClick: () => askAccept(o) },
-                          seen: { label: "Пришёл", onClick: () => askArrive(o) },
-                          arrived: { label: "Проверил", onClick: () => askCheck(o) },
-                          checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
-                        }[stage.key];
-                        // Действие заявки — лайм-пилюля (эталон: .pill.lime).
-                        return act ? (
-                          <button
-                            type="button"
-                            onClick={act.onClick}
-                            title={act.label}
-                            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#2E3312] bg-[#C8D96F] rounded-full px-4 py-2 hover:bg-[#d3e084] shrink-0"
-                          >
-                            <PlayCircle className="w-[15px] h-[15px]" strokeWidth={2.4} />
-                            {act.label}
-                          </button>
-                        ) : null;
-                      })()}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
 
             {dealsView.map((d) => {
               const st = dealStatus(d);
@@ -803,17 +859,12 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             )}
           </tbody>
         </table>
+        <div className="flex items-center mt-2 text-[11px] text-[color:var(--muted)]">
+          <span>{dealsView.length} сделок</span>
+          <span className="ml-auto">профит на сделку не считается — в бэклоге</span>
+        </div>
       </div>
-
-      {/* Подвал: счётчик. P&L скрыт — профит на сделку не считается (бэклог). */}
-      <div className="px-[22px] pt-1 pb-5 flex items-center text-[12px] text-[color:var(--faint)]">
-        <span>
-          {dealsView.length} сделок
-          {ordersView.length > 0 ? ` · ${ordersView.length} заявок в ожидании` : ""}
-        </span>
-        {err && <span className="ml-3 text-[#ce463d] font-semibold">⚠ {err}</span>}
-        <span className="ml-auto text-[color:var(--faint2)]">профит на сделку не считается — в бэклоге</span>
-      </div>
+      )}
 
       {detailOrder && (
         <OrderDetailsModal order={detailOrder} onClose={() => setDetailOrder(null)} onRefetch={refetchOrders} />

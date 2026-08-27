@@ -32,6 +32,7 @@ export default {
         "card":          "#FDFCF8",  // алиас карточки
         "surface-soft":  "#EAE3D3",  // hover на строках, zebra
         "surface-sunk":  "#EDE6D6",  // inputs в покое
+        "surface-apps":  "#F7F1E1",  // светлая секция «Заявки» (эталон .deals, ревизия 2)
         "surface-dark":  "#17150F",  // тёмные секции/hero
         "dark":          "#17150F",  // тёмная секция
         "dark-2":        "#23211A",  // тёмная карточка (строки в тёмной секции)
