@@ -109,10 +109,10 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-h2 text-ink flex items-center gap-2">
           {t("trv2_tab_assets")}
-          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md tabular-nums tabular">
             {filteredTree.length}
           </span>
-          <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
+          <span className="text-caption text-muted font-normal ml-1 tabular-nums tabular">
             ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalAlt, displayBase)}
           </span>
         </div>
@@ -228,7 +228,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                       className="border-t border-border-soft hover:bg-surface-soft cursor-pointer bg-surface-soft/40 transition-colors"
                       onClick={() => toggle(officeKey)}
                     >
-                      <td className="px-card py-2.5 font-mono text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                      <td className="px-card py-2.5 tabular-nums text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
                         {office.cashboxCode || <span className="text-tiny text-muted-soft">—</span>}
                       </td>
                       <td className="px-card py-2.5 border-r border-border-soft">
@@ -241,10 +241,10 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                       </td>
                       <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                      <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
+                      <td className="text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
                         {fmtIn(office.totalInBase, "USD")}
                       </td>
-                      <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
+                      <td className="text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm text-ink whitespace-nowrap">
                         {fmtIn(office.currencies.reduce((s, c) => s + toAlt(c.total, c.currency), 0), displayBase)}
                       </td>
                     </tr>
@@ -263,7 +263,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                             onClick={() => setDetailAccountId(a.accountId)}
                             title="Открыть детали счёта"
                           >
-                            <td className="px-card py-2 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                            <td className="px-card py-2 tabular-nums text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                             <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
                                 <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
@@ -273,7 +273,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                             </td>
                             <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>
                             <td
-                              className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft"
+                              className="text-right px-card py-2 tabular-nums tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <InlineBalanceEditor
@@ -282,10 +282,10 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 accounts={ctx?.accounts || []}
                               />
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                            <td className="text-right px-card py-2 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
                               {fmtIn(a.balanceInBase, "USD")}
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                            <td className="text-right px-card py-2 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap">
                               {fmtIn(toAlt(a.balance, a.currency), displayBase)}
                             </td>
                           </tr>
@@ -311,13 +311,13 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                               </div>
                             </td>
                             <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">
+                            <td className="text-right px-card py-2 tabular-nums tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">
                               {nativeFmt(cur.total, cur.currency)}
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                            <td className="text-right px-card py-2 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
                               {fmtIn(cur.totalInBase, "USD")}
                             </td>
-                            <td className="text-right px-card py-2 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                            <td className="text-right px-card py-2 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap">
                               {fmtIn(toAlt(cur.total, cur.currency), displayBase)}
                             </td>
                           </tr>
@@ -331,7 +331,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 onClick={() => setDetailAccountId(a.accountId)}
                                 title="Открыть детали счёта"
                               >
-                                <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                                <td className="px-card py-1.5 tabular-nums text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
@@ -340,7 +340,7 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                 </td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{a.currency}</td>
                                 <td
-                                  className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
+                                  className="text-right px-card py-1.5 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft"
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   <InlineBalanceEditor
@@ -355,10 +355,10 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                                     accounts={ctx?.accounts || []}
                                   />
                                 </td>
-                                <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
+                                <td className="text-right px-card py-1.5 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap border-r border-border-soft">
                                   {fmtIn(a.balanceInBase, "USD")}
                                 </td>
-                                <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink-soft whitespace-nowrap">
+                                <td className="text-right px-card py-1.5 tabular-nums tabular text-body-sm text-ink-soft whitespace-nowrap">
                                   {fmtIn(toAlt(a.balance, a.currency), displayBase)}
                                 </td>
                               </tr>
@@ -379,10 +379,10 @@ export default function AssetsTab({ ctx, officeFilter, formatBase, baseCurrency,
                 </td>
                 <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
+                <td className="text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">
                   {fmtIn(grandTotalUsd, "USD")}
                 </td>
-                <td className="text-right px-card py-2.5 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap">
+                <td className="text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm text-ink whitespace-nowrap">
                   {fmtIn(grandTotalAlt, displayBase)}
                 </td>
               </tr>

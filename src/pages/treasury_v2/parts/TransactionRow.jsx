@@ -48,7 +48,7 @@ export default function TransactionRow({ node, onOpenSource, summaryLine, render
           {!expanded && summaryLine && <span className="block text-tiny text-muted-soft truncate">{summaryLine}</span>}
         </span>
         <span className="text-tiny text-muted-soft shrink-0">{t("trv2_journal_entries_count").replace("{n}", String(entries.length))}</span>
-        <span className="font-mono text-tiny text-muted-soft shrink-0">{tx.id.slice(0, 8)}</span>
+        <span className="tabular-nums text-tiny text-muted-soft shrink-0">{tx.id.slice(0, 8)}</span>
       </div>
       {expanded && (
         <div className="bg-surface-soft/60">

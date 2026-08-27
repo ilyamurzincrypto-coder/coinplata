@@ -303,7 +303,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "inflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-tiny font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-button bg-success-soft text-success border border-success/20 hover:bg-emerald-100 text-tiny font-bold"
                                       title="Контрагент внёс — фиксируем только partner-side"
                                     >
                                       <ArrowDownLeft className="w-3 h-3" />
@@ -313,7 +313,7 @@ export default function PartnersTab() {
                                       onClick={() => setSettlementState({
                                         account: a, partnerName: p.name, mode: "outflow",
                                       })}
-                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-[6px] bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-tiny font-bold"
+                                      className="inline-flex items-center gap-1 px-2 py-1 rounded-button bg-danger-soft text-danger border border-danger/20 hover:bg-rose-100 text-tiny font-bold"
                                       title="Контрагент забрал у нас — указываем с какой кассы"
                                     >
                                       <ArrowUpRight className="w-3 h-3" />

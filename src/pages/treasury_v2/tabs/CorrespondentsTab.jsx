@@ -129,7 +129,7 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
           {title}
         </span>
         <span className="text-caption text-muted-soft">{hint}</span>
-        <span className="ml-auto text-body font-bold font-mono tabular text-ink whitespace-nowrap">
+        <span className="ml-auto text-body font-bold tabular-nums tabular text-ink whitespace-nowrap">
           {fmtSignedBase(total, baseCurrency)}
         </span>
       </header>
@@ -159,13 +159,13 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
                       {hasDims && (isOpen ? <ChevronDown className="w-3 h-3 text-muted-soft" strokeWidth={2.2} /> : <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />)}
                     </td>
                     <td className="py-1.5">
-                      <span className="font-mono text-tiny text-muted-soft mr-1.5">{it.account.code}</span>
+                      <span className="tabular-nums text-tiny text-muted-soft mr-1.5">{it.account.code}</span>
                       <span className="font-medium text-ink">{it.account.name}</span>
                     </td>
-                    <td className="py-1.5 text-right font-mono tabular text-ink-soft whitespace-nowrap">
+                    <td className="py-1.5 text-right tabular-nums tabular text-ink-soft whitespace-nowrap">
                       {fmtCur(it.balance * displayMul, it.currency)}
                     </td>
-                    <td className="py-1.5 px-card text-right font-mono tabular font-semibold text-ink whitespace-nowrap">
+                    <td className="py-1.5 px-card text-right tabular-nums tabular font-semibold text-ink whitespace-nowrap">
                       {fmtSignedBase(it.balanceInBase * displayMul, baseCurrency)}
                     </td>
                   </tr>
@@ -181,8 +181,8 @@ function Section({ title, hint, color, items, baseCurrency, ctx, displayMul = 1 
                               <div key={`${id || ""}_${i}`} className="flex items-baseline gap-3 text-caption">
                                 <span className="text-muted-soft text-micro uppercase tracking-wider w-12">{kind}</span>
                                 <span className="text-ink-soft flex-1 truncate">{name || "—"}</span>
-                                <span className="font-mono tabular text-ink-soft w-28 text-right whitespace-nowrap">{fmtCur(d.balance * displayMul, it.currency)}</span>
-                                <span className="font-mono tabular text-muted w-24 text-right whitespace-nowrap">{fmtSignedBase(d.balanceInBase * displayMul, baseCurrency)}</span>
+                                <span className="tabular-nums tabular text-ink-soft w-28 text-right whitespace-nowrap">{fmtCur(d.balance * displayMul, it.currency)}</span>
+                                <span className="tabular-nums tabular text-muted w-24 text-right whitespace-nowrap">{fmtSignedBase(d.balanceInBase * displayMul, baseCurrency)}</span>
                               </div>
                             );
                           })}
@@ -256,7 +256,7 @@ export default function CorrespondentsTab({ ctx, officeFilter, baseCurrency }) {
                 <h3 className="text-h3 text-ink font-semibold">
                   Чистая позиция по валютам
                 </h3>
-                <span className="text-tiny text-muted-soft ml-auto font-mono">NOSTRO − |LORO|</span>
+                <span className="text-tiny text-muted-soft ml-auto tabular-nums">NOSTRO − |LORO|</span>
               </header>
               <table className="w-full text-caption">
                 <thead>
@@ -270,14 +270,14 @@ export default function CorrespondentsTab({ ctx, officeFilter, baseCurrency }) {
                 <tbody>
                   {data.netList.map((row) => (
                     <tr key={row.currency} className="border-t border-border-soft hover:bg-surface-soft transition-colors">
-                      <td className="py-1.5 px-card font-bold text-ink-soft font-mono">{row.currency}</td>
-                      <td className="py-1.5 text-right font-mono tabular text-success whitespace-nowrap">
+                      <td className="py-1.5 px-card font-bold text-ink-soft tabular-nums">{row.currency}</td>
+                      <td className="py-1.5 text-right tabular-nums tabular text-success whitespace-nowrap">
                         {row.nostro > 0 ? `+${fmtCur(row.nostro, row.currency)}` : "—"}
                       </td>
-                      <td className="py-1.5 text-right font-mono tabular text-danger whitespace-nowrap">
+                      <td className="py-1.5 text-right tabular-nums tabular text-danger whitespace-nowrap">
                         {row.loroAbs > 0 ? `−${fmtCur(row.loroAbs, row.currency)}` : "—"}
                       </td>
-                      <td className={`py-1.5 px-card text-right font-mono tabular font-semibold whitespace-nowrap ${row.netBase < 0 ? "text-danger" : "text-success"}`}>
+                      <td className={`py-1.5 px-card text-right tabular-nums tabular font-semibold whitespace-nowrap ${row.netBase < 0 ? "text-danger" : "text-success"}`}>
                         {fmtSignedBase(row.netBase, baseCurrency)}
                       </td>
                     </tr>

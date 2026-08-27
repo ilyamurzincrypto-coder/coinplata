@@ -155,7 +155,7 @@ function LevelCell({ level, onChange, disabled }) {
             type="button"
             disabled={disabled}
             onClick={() => onChange(lv)}
-            className={`px-2 py-0.5 text-tiny font-bold uppercase tracking-wider rounded-[6px] transition-all disabled:cursor-not-allowed ${
+            className={`px-2 py-0.5 text-tiny font-bold uppercase tracking-wider rounded-button transition-all disabled:cursor-not-allowed ${
               isActive
                 ? lv === "edit"
                   ? "bg-success text-white shadow-sm"

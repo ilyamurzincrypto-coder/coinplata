@@ -222,7 +222,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
           value={code}
           onChange={(e) => setCode(e.target.value.trim())}
           placeholder="напр. antalya_lara / ist_taksim / msk_arbat"
-          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
+          className="w-full bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
         />
       )}
       {(!codeKnown && list && list.length > 0) && (
@@ -231,7 +231,7 @@ function SiteOfficeControls({ open, code, setCode, scheduleSource, timezone, onA
           value={code}
           onChange={(e) => setCode(e.target.value.trim())}
           placeholder="код офиса сайта вручную"
-          className="w-full mt-2 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body font-mono outline-none"
+          className="w-full mt-2 bg-surface-soft border border-border-soft focus:bg-white focus:border-accent rounded-card px-3 py-2.5 text-body tabular-nums outline-none"
         />
       )}
       {loadErr && (
@@ -651,7 +651,7 @@ function OfficeFormModal({ open, office, onClose }) {
                   <button
                     type="button"
                     onClick={() => toggleDayOverride(d.n)}
-                    className={`px-2 py-1 rounded-[6px] text-tiny font-bold uppercase tracking-wider ${
+                    className={`px-2 py-1 rounded-button text-tiny font-bold uppercase tracking-wider ${
                       state === "same"
                         ? "bg-surface-sunk text-ink-soft"
                         : state === "closed"
@@ -667,14 +667,14 @@ function OfficeFormModal({ open, office, onClose }) {
                         type="time"
                         value={override.start || ""}
                         onChange={(e) => setDayHours(d.n, "start", e.target.value)}
-                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-caption tabular-nums outline-none"
+                        className="bg-white border border-border-soft rounded-button px-2 py-1 text-caption tabular-nums outline-none"
                       />
                       <span className="text-muted-soft">–</span>
                       <input
                         type="time"
                         value={override.end || ""}
                         onChange={(e) => setDayHours(d.n, "end", e.target.value)}
-                        className="bg-white border border-border-soft rounded-[6px] px-2 py-1 text-caption tabular-nums outline-none"
+                        className="bg-white border border-border-soft rounded-button px-2 py-1 text-caption tabular-nums outline-none"
                       />
                     </>
                   )}
@@ -901,7 +901,7 @@ function LiveClock({ office }) {
     const tzPart = parts.find((p) => p.type === "timeZoneName");
     offset = tzPart?.value || "";
   } catch {
-    return <span className="text-tiny text-danger font-mono">invalid tz</span>;
+    return <span className="text-tiny text-danger tabular-nums">invalid tz</span>;
   }
   const state = getOfficeOpenState(office, now);
   return (

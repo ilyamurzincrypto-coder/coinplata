@@ -12,7 +12,10 @@ export default function OfficePicker({ value, onChange }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="bg-surface-soft border border-border-soft focus:bg-white focus:border-accent focus:ring-2 focus:ring-accent/20 rounded-button px-2.5 py-1.5 text-body-sm outline-none"
+        // Пилюля вместо прямоугольника: единственный неокруглённый контрол на
+        // экране Казначейства. Размеры и плотность те же — меняется радиус и
+        // тон рамки.
+        className="bg-surface-soft border border-line-2 focus:bg-white focus:border-ink focus:ring-2 focus:ring-ink/15 rounded-full px-3.5 py-1.5 text-body-sm outline-none"
       >
         <option value="all">{t("trv2_office_all")}</option>
         {(activeOffices || []).map((o) => (

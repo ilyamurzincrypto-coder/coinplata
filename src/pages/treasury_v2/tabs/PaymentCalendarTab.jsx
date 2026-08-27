@@ -40,15 +40,15 @@ export default function PaymentCalendarTab({ officeFilter }) {
           <section key={k} className="bg-surface rounded-card overflow-hidden">
             <header className={`px-card py-2 border-b text-caption font-bold flex items-center justify-between ${BUCKET_STYLE[k]}`}>
               <span>{t(`trv2_cal_${k}`)}</span>
-              <span className="text-tiny font-mono tabular opacity-80">{t("trv2_cal_count").replace("{n}", String(rows.length))}</span>
+              <span className="text-tiny tabular-nums tabular opacity-80">{t("trv2_cal_count").replace("{n}", String(rows.length))}</span>
             </header>
             <table className="w-full text-caption">
               <tbody>
                 {rows.map((it) => (
                   <tr key={it.id} className="border-t border-border-soft hover:bg-surface-soft transition-colors">
-                    <td className="px-card py-1.5 text-muted w-24 font-mono tabular">{fmtDate(it.due_date)}</td>
+                    <td className="px-card py-1.5 text-muted w-24 tabular-nums tabular">{fmtDate(it.due_date)}</td>
                     <td className="px-2 py-1.5 text-ink-soft">{it.counterparty_name || "—"}</td>
-                    <td className="px-2 py-1.5 text-right font-mono tabular text-ink-soft">
+                    <td className="px-2 py-1.5 text-right tabular-nums tabular text-ink-soft">
                       {obligationLegTotals(it).map((lt, i) => (
                         <span key={lt.currency}>{i > 0 ? " · " : ""}{fmtNum(lt.amount)} {lt.currency}</span>
                       ))}

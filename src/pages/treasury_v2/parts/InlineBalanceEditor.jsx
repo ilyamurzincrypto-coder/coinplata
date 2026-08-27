@@ -225,7 +225,7 @@ export default function InlineBalanceEditor({
   }
 
   const ro = (
-    <span className="font-mono tabular whitespace-nowrap font-semibold">
+    <span className="tabular-nums tabular whitespace-nowrap font-semibold">
       {fmtNum(displayed)}
       {suffix ? <span className="text-muted-soft font-normal"> {suffix}</span> : null}
     </span>
@@ -334,7 +334,7 @@ export default function InlineBalanceEditor({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={submitting}
-            className="w-full h-9 text-right font-mono tabular text-body font-semibold px-2 rounded-input bg-warning-soft text-warning ring-1 ring-inset ring-warning/30 focus:bg-surface focus:ring-warning focus:shadow-[0_0_0_3px_rgba(180,83,9,0.12)] focus:outline-none transition-all"
+            className="w-full h-9 text-right tabular-nums tabular text-body font-semibold px-2 rounded-input bg-warning-soft text-warning ring-1 ring-inset ring-warning/30 focus:bg-surface focus:ring-warning focus:shadow-[0_0_0_3px_rgba(180,83,9,0.12)] focus:outline-none transition-all"
           />
         </label>
 
@@ -361,7 +361,7 @@ export default function InlineBalanceEditor({
             value={dateStr}
             onChange={(e) => setDateStr(e.target.value)}
             disabled={submitting}
-            className="w-full h-9 text-caption font-mono tabular px-2 rounded-input bg-surface-sunk text-ink border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
+            className="w-full h-9 text-caption tabular-nums tabular px-2 rounded-input bg-surface-sunk text-ink border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:shadow-input-focus focus:outline-none transition-all"
           />
         </label>
 

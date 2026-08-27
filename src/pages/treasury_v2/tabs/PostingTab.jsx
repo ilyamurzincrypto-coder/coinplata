@@ -316,7 +316,7 @@ function TemplatePicker({ options, onPick, placeholder, t }) {
                   {opt.lines.map((l, i) => (
                     <span
                       key={i}
-                      className={`inline-flex items-center gap-1 text-tiny font-mono px-1.5 py-0.5 rounded-badge ${
+                      className={`inline-flex items-center gap-1 text-tiny tabular-nums px-1.5 py-0.5 rounded-badge ${
                         l.side === "dr"
                           ? "bg-success-soft text-success"
                           : "bg-danger-soft text-danger"

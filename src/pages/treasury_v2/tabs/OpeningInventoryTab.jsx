@@ -81,11 +81,11 @@ export default function OpeningInventoryTab() {
       <div key={r.id} className="flex items-center justify-between gap-3 py-1.5 text-body-sm">
         <span className="text-ink truncate">{r.name} <span className="text-muted">· {r.cur}</span></span>
         {oo ? (
-          <span className="text-muted whitespace-nowrap">Введено {fmtD(oo.effective_date)} · {userName(oo.entered_by)}: <span className="font-mono tabular-nums text-ink">{Number(oo.amount).toLocaleString("ru-RU")}</span></span>
+          <span className="text-muted whitespace-nowrap">Введено {fmtD(oo.effective_date)} · {userName(oo.entered_by)}: <span className="tabular-nums text-ink">{Number(oo.amount).toLocaleString("ru-RU")}</span></span>
         ) : (
           <input type="number" min="0" inputMode="decimal" disabled={!editable}
             value={amt[r.id] ?? ""} onChange={(e) => setAmt((s) => ({ ...s, [r.id]: e.target.value }))}
-            placeholder="0" className="w-32 text-right font-mono tabular-nums rounded-[8px] border-[0.5px] border-border bg-surface px-2 py-1" />
+            placeholder="0" className="w-32 text-right tabular-nums rounded-[8px] border-[0.5px] border-border bg-surface px-2 py-1" />
         )}
       </div>
     );

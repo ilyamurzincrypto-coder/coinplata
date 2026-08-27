@@ -25,7 +25,7 @@ export default function TransactionEntries({ entries }) {
           {entries.map((e) => (
             <tr key={e.id} className="border-t border-border-soft">
               <td className={`px-2 py-1 font-semibold ${e.direction === "dr" ? "text-success" : "text-danger"}`}>{e.direction === "dr" ? t("trv2_col_dr") : t("trv2_col_cr")}</td>
-              <td className="px-2 py-1"><span className="font-mono text-muted-soft mr-1.5">{e.accountCode}</span>{e.accountName}</td>
+              <td className="px-2 py-1"><span className="tabular-nums text-muted-soft mr-1.5">{e.accountCode}</span>{e.accountName}</td>
               <td className="px-2 py-1 text-right tabular-nums">{Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
               <td className="px-2 py-1 text-muted">{e.currency}</td>
             </tr>

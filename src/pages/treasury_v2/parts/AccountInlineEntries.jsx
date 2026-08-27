@@ -29,13 +29,13 @@ export default function AccountInlineEntries({ ctx, accountId, period, dim, onOp
           const grows = e.direction === incDir;
           return (
             <tr key={e.id} className="border-t border-border-soft hover:bg-surface-sunk/60 transition-colors">
-              <td className="px-card py-1.5 text-muted w-24 font-mono tabular">
+              <td className="px-card py-1.5 text-muted w-24 tabular-nums tabular">
                 {new Date(e.createdAt).toISOString().slice(0, 10)}
               </td>
               <td className="px-2 py-1.5 w-10 font-semibold text-ink-soft uppercase tracking-wider text-tiny">
                 {e.direction === "dr" ? t("trv2_col_dr") : t("trv2_col_cr")}
               </td>
-              <td className={`px-2 py-1.5 font-mono tabular text-right w-28 font-bold ${grows ? "text-success" : "text-danger"}`}>
+              <td className={`px-2 py-1.5 tabular-nums tabular text-right w-28 font-bold ${grows ? "text-success" : "text-danger"}`}>
                 {grows ? "+" : "−"}{Number(e.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {e.currency}
               </td>
               <td className="px-2 py-1.5 text-muted-soft uppercase tracking-wider w-24 text-tiny">{e.txKind}</td>
@@ -43,7 +43,7 @@ export default function AccountInlineEntries({ ctx, accountId, period, dim, onOp
                 <button
                   type="button"
                   onClick={() => onOpenTx?.(e.txId)}
-                  className="text-accent hover:text-accent-hover transition-colors font-mono text-tiny"
+                  className="text-accent hover:text-accent-hover transition-colors tabular-nums text-tiny"
                 >
                   {e.sourceRefId || e.txId.slice(0, 8)} →
                 </button>

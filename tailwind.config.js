@@ -3,13 +3,14 @@
 // COINPLATA Design System — гибрид Stripe Dashboard / Modern Treasury /
 // Apple / Toss. B2B inhouse tool для оператора крипто-обменника.
 //
-// Принципы:
-//   • Тёплый off-white фон, монохром + один зелёный (emerald)
-//   • Без border/shadow на карточках в покое — тени только на hover
-//   • Все числа — JetBrains Mono с tabular numerals
-//   • Body — Pretendard (variable, кириллица + Hangul)
-//   • Anchor CTA «Новая сделка» — emerald glow shadow
-//   • Эмеральд встречается СКУПО — 3-4 места на экран максимум
+// Принципы (редизайн rondesignlab, эталон design/reference.html r6):
+//   • Тёплый крем-фон, монохром-ink + лайм как единственное «действие/ок»
+//   • Тени НЕ используются — глубину дают крем, белый и тёмная секция
+//   • Все числа — Onest с tabular-nums (tnum). JetBrains Mono выведен из
+//     интерфейса: колонки держит tnum самого Onest
+//   • Body — Onest (кириллица из коробки)
+//   • Эмеральд убит: emerald/green/teal переопределены в тёплый олив/лайм,
+//     indigo/violet/sky — в приглушённый сине-серый акцент
 //
 // Старые tailwind utilities (slate-*, gray-*, emerald-* и т.д.) продолжают
 // работать — система мерджится с дефолтами, ничего не ломается.
@@ -110,8 +111,34 @@ export default {
           800: "#242A0E",
           900: "#1B200A",
         },
+        // amber/yellow — тёплый янтарь вместо кислотного Tailwind-жёлтого.
+        amber: {
+          50:  "#F6E3D3", 100: "#F0D6BE", 200: "#E5BE96", 300: "#D9A56E",
+          400: "#C9904E", 500: "#B07A3C", 600: "#96682F", 700: "#7A5426",
+          800: "#5E401D", 900: "#453014",
+        },
+        // rose — красный эталона (#C43A2B), а не розовый Tailwind.
+        rose: {
+          50:  "#F4DAD4", 100: "#EEC6BD", 200: "#E3A294", 300: "#D87E6C",
+          400: "#CE5A44", 500: "#C43A2B", 600: "#A72F22", 700: "#87261B",
+          800: "#661D14", 900: "#4A150F",
+        },
         // indigo/violet — репойнт в приглушённый сине-серый акцент (эталон).
         indigo: {
+          50:  "#EEF1F5",
+          100: "#E9EDF2",
+          200: "#D4DAE3",
+          300: "#B4BECD",
+          400: "#93A0B5",
+          500: "#76869E",
+          600: "#66768E",
+          700: "#55637A",
+          800: "#434F62",
+          900: "#333C4B",
+        },
+        // sky — та же сине-серая шкала: без override text-sky-900 оставался
+        // настоящим синим Tailwind и выпадал из палитры (Настройки).
+        sky: {
           50:  "#EEF1F5",
           100: "#E9EDF2",
           200: "#D4DAE3",
@@ -157,10 +184,10 @@ export default {
         "danger-soft":  "#F4DAD4",
         "red":          "#C43A2B",
         "red-bg":       "#F4DAD4",
-        warning:        "#B45309",
-        "warning-soft": "#FEF3C7",
-        info:           "#3B82F6",
-        "info-soft":    "#DBEAFE",
+        warning:        "#B07A3C",  // тёплый янтарь (был #B45309)
+        "warning-soft": "#F6E3D3",  // тёплая подложка (был кислотный #FEF3C7)
+        info:           "#55637A",  // сине-серый акцент (был синий #3B82F6)
+        "info-soft":    "#E9EDF2",  // его подложка (был #DBEAFE)
 
         // ── Favorite rate-card backgrounds (Шаг 4.12) ────────────────
         "fav-bg":       "#FFFCEF",

@@ -21,7 +21,7 @@ function Section({ titleKey, total, prevTotal, sign, formatBase, baseCurrency, a
     <section className="bg-surface rounded-card overflow-hidden">
       <header className="px-card py-2.5 bg-surface-soft/40 border-b border-border-soft flex items-center justify-between cursor-pointer hover:bg-surface-soft transition-colors" onClick={() => setOpen((v) => !v)}>
         <h3 className="text-h3 text-ink font-semibold">{t(titleKey)}</h3>
-        <span className="text-body-sm font-mono tabular font-bold text-ink flex items-center gap-3">
+        <span className="text-body-sm tabular-nums tabular font-bold text-ink flex items-center gap-3">
           <span>{sign}{formatBase(Math.abs(total), baseCurrency)}</span>
           {compare && (
             <>
@@ -38,11 +38,11 @@ function Section({ titleKey, total, prevTotal, sign, formatBase, baseCurrency, a
           <tbody>
             {(compare ? rows : accounts).map((a) => (
               <tr key={a.code} className="border-t border-border-soft hover:bg-surface-soft transition-colors">
-                <td className="px-card py-2 text-ink"><span className="font-mono text-tiny text-muted-soft mr-2">{a.code}</span>{a.name}</td>
-                <td className="px-card py-2 text-right text-muted-soft text-tiny font-mono w-16">{a.entryCount}</td>
-                <td className="px-card py-2 text-right font-mono tabular font-semibold text-ink w-32">{fmtSigned(formatBase, baseCurrency, a.amountInBase)}</td>
-                {compare && <td className="px-card py-2 text-right font-mono tabular text-muted-soft w-32">{fmtSigned(formatBase, baseCurrency, a.prevInBase)}</td>}
-                {compare && <td className={`px-card py-2 text-right font-mono tabular font-semibold w-28 ${a.delta < 0 ? "text-danger" : "text-success"}`}>Δ {fmtSigned(formatBase, baseCurrency, a.delta)}</td>}
+                <td className="px-card py-2 text-ink"><span className="tabular-nums text-tiny text-muted-soft mr-2">{a.code}</span>{a.name}</td>
+                <td className="px-card py-2 text-right text-muted-soft text-tiny tabular-nums w-16">{a.entryCount}</td>
+                <td className="px-card py-2 text-right tabular-nums tabular font-semibold text-ink w-32">{fmtSigned(formatBase, baseCurrency, a.amountInBase)}</td>
+                {compare && <td className="px-card py-2 text-right tabular-nums tabular text-muted-soft w-32">{fmtSigned(formatBase, baseCurrency, a.prevInBase)}</td>}
+                {compare && <td className={`px-card py-2 text-right tabular-nums tabular font-semibold w-28 ${a.delta < 0 ? "text-danger" : "text-success"}`}>Δ {fmtSigned(formatBase, baseCurrency, a.delta)}</td>}
               </tr>
             ))}
           </tbody>
@@ -145,11 +145,11 @@ export default function PnLTab({ ctx, officeFilter, formatBase, baseCurrency }) 
           <div className="bg-ink text-white rounded-card px-5 py-4 flex items-center justify-between flex-wrap gap-2 shadow-soft-deep">
             <span className="text-body font-bold">{t("trv2_pnl_net_profit")}</span>
             <span className="flex items-center gap-4">
-              <span className={`text-[20px] font-bold font-mono tabular ${pnl.netProfit < 0 ? "text-rose-400" : "text-accent-glow"}`}>{fmtSigned(formatBase, baseCurrency, pnl.netProfit)}</span>
+              <span className={`text-[20px] font-bold tabular-nums tabular ${pnl.netProfit < 0 ? "text-rose-400" : "text-accent-glow"}`}>{fmtSigned(formatBase, baseCurrency, pnl.netProfit)}</span>
               {compare && pnlPrev && (
                 <>
-                  <span className="text-body-sm text-white/60 font-mono tabular">{t("trv2_pnl_col_prev")} {fmtSigned(formatBase, baseCurrency, pnlPrev.netProfit)}</span>
-                  <span className={`text-body-sm font-mono tabular font-semibold ${(pnl.netProfit - pnlPrev.netProfit) < 0 ? "text-rose-400" : "text-accent-glow"}`}>Δ {fmtSigned(formatBase, baseCurrency, pnl.netProfit - pnlPrev.netProfit)}</span>
+                  <span className="text-body-sm text-white/60 tabular-nums tabular">{t("trv2_pnl_col_prev")} {fmtSigned(formatBase, baseCurrency, pnlPrev.netProfit)}</span>
+                  <span className={`text-body-sm tabular-nums tabular font-semibold ${(pnl.netProfit - pnlPrev.netProfit) < 0 ? "text-rose-400" : "text-accent-glow"}`}>Δ {fmtSigned(formatBase, baseCurrency, pnl.netProfit - pnlPrev.netProfit)}</span>
                 </>
               )}
             </span>

@@ -21,7 +21,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
     <label className="flex items-center gap-1.5 text-tiny text-muted">
       {t("trv2_to_chess_currency") || "Валюта"}:
       <select value={cur} onChange={(e) => setCur(e.target.value)}
-        className="bg-surface-soft border border-border-soft rounded-[6px] px-1.5 py-0.5 text-tiny outline-none">
+        className="bg-surface-soft border border-border-soft rounded-button px-1.5 py-0.5 text-tiny outline-none">
         <option value="">{t("trv2_to_chess_currency_base") || "Базовая"} ({baseCurrency})</option>
         {currencies.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -51,7 +51,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
             <tr>
               <th className="sticky left-0 z-10 bg-surface-sunk px-2 py-1.5 border border-border-soft text-muted-soft text-tiny uppercase">Дт ╲ Кт</th>
               {cols.map((c) => (
-                <th key={c.accountId} title={c.name} className="bg-surface-sunk px-2 py-1.5 border border-border-soft font-mono text-tiny text-ink-soft whitespace-nowrap">{c.code}</th>
+                <th key={c.accountId} title={c.name} className="bg-surface-sunk px-2 py-1.5 border border-border-soft tabular-nums text-tiny text-ink-soft whitespace-nowrap">{c.code}</th>
               ))}
               <th className="bg-surface-sunk px-2 py-1.5 border border-border-soft text-tiny text-muted whitespace-nowrap">{t("trv2_to_chess_row_total")}</th>
             </tr>
@@ -59,7 +59,7 @@ export default function ChessSheetTable({ ctx, window: win, officeFilter, format
           <tbody>
             {rowsAccts.map((r) => (
               <tr key={r.accountId}>
-                <th title={r.name} className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft font-mono text-tiny text-ink-soft text-left whitespace-nowrap">{r.code}</th>
+                <th title={r.name} className="sticky left-0 z-10 bg-surface-soft px-2 py-1.5 border border-border-soft tabular-nums text-tiny text-ink-soft text-left whitespace-nowrap">{r.code}</th>
                 {cols.map((c) => (
                   <td key={c.accountId} className="px-2 py-1.5 border border-border-soft text-right tabular-nums">{cell(r.accountId, c.accountId)}</td>
                 ))}

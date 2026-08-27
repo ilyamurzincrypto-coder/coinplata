@@ -315,7 +315,7 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
             const sourceLabel = (row.tx.sourceRefId || row.tx.id).slice(0, 8);
             return (
               <tr key={row.id} className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} hover:bg-surface-soft`}>
-                <td className="px-3 py-1.5 text-muted-soft font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
+                <td className="px-3 py-1.5 text-muted-soft tabular-nums tabular text-tiny whitespace-nowrap border-r border-border-soft">
                   {dt.toISOString().slice(0, 10)}
                 </td>
                 <td className="px-2 py-1.5 border-r border-border-soft">
@@ -323,22 +323,22 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
                 </td>
                 <td className="px-2 py-1.5 border-r border-border-soft overflow-hidden">
                   <span className="flex items-baseline gap-1.5 min-w-0">
-                    <span className="font-mono text-tiny text-muted-soft shrink-0">{row.accountCode || ""}</span>
+                    <span className="tabular-nums text-tiny text-muted-soft shrink-0">{row.accountCode || ""}</span>
                     <span className="text-body-sm text-ink truncate">{row.accountName || row.note || ""}</span>
                   </span>
                 </td>
                 <td className="px-2 py-1.5 border-r border-border-soft overflow-hidden">
                   {row.contra ? (
                     <span className="flex items-baseline gap-1.5 min-w-0">
-                      <span className="font-mono text-tiny text-muted-soft shrink-0">{row.contra.accountCode || ""}</span>
+                      <span className="tabular-nums text-tiny text-muted-soft shrink-0">{row.contra.accountCode || ""}</span>
                       <span className="text-body-sm text-ink-soft truncate">{row.contra.accountName || ""}</span>
                     </span>
                   ) : <span className="text-muted-soft">—</span>}
                 </td>
-                <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${isDr ? "text-success font-bold" : "text-muted-soft"}`}>
+                <td className={`px-2 py-1.5 text-right tabular-nums tabular whitespace-nowrap border-r border-border-soft ${isDr ? "text-success font-bold" : "text-muted-soft"}`}>
                   {isDr ? amtStr : "—"}
                 </td>
-                <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${!isDr ? "text-danger font-bold" : "text-muted-soft"}`}>
+                <td className={`px-2 py-1.5 text-right tabular-nums tabular whitespace-nowrap border-r border-border-soft ${!isDr ? "text-danger font-bold" : "text-muted-soft"}`}>
                   {!isDr ? amtStr : "—"}
                 </td>
                 <td className="px-2 py-1.5 whitespace-nowrap border-r border-border-soft">
@@ -346,12 +346,12 @@ function EntriesTable({ rows, onOpenSource, t, canConfirm = false }) {
                     <button
                       type="button"
                       onClick={() => onOpenSource(row.tx)}
-                      className="text-accent hover:text-accent-hover transition-colors font-mono text-tiny"
+                      className="text-accent hover:text-accent-hover transition-colors tabular-nums text-tiny"
                     >
                       {sourceLabel} →
                     </button>
                   ) : (
-                    <span className="text-muted-soft font-mono text-tiny">{sourceLabel}</span>
+                    <span className="text-muted-soft tabular-nums text-tiny">{sourceLabel}</span>
                   )}
                 </td>
                 <td className="px-2 py-1.5 text-center whitespace-nowrap">

@@ -306,7 +306,7 @@ export default function ListTab() {
                   key={o.id}
                   type="button"
                   onClick={() => setArchiveFilter(o.id)}
-                  className={`px-2.5 py-1 text-tiny font-semibold rounded-[6px] transition-all ${
+                  className={`px-2.5 py-1 text-tiny font-semibold rounded-button transition-all ${
                     archiveFilter === o.id
                       ? "bg-white text-ink shadow-sm"
                       : "text-muted hover:text-ink"

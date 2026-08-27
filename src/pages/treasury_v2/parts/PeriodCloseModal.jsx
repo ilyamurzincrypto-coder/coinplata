@@ -76,7 +76,7 @@ export default function PeriodCloseModal({ open, onClose }) {
               <tbody>
                 {lines.map((l) => (
                   <tr key={l.accountCode} className="border-b border-border-soft">
-                    <td className="py-1.5"><span className="font-mono text-tiny text-muted-soft">{l.accountCode}</span> {l.accountName}</td>
+                    <td className="py-1.5"><span className="tabular-nums text-tiny text-muted-soft">{l.accountCode}</span> {l.accountName}</td>
                     <td className="py-1.5 text-muted">{l.currency}</td>
                     <td className={`py-1.5 text-right tabular-nums ${l.kind === "revenue" ? "text-success" : "text-danger"}`}>{fmtNum(l.balance)}</td>
                     <td className="py-1.5 text-muted-soft">{l.kind === "revenue" ? "→ +" : "→ −"}{fmtNum(l.balance)}</td>

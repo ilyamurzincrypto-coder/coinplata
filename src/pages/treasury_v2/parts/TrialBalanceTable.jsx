@@ -17,7 +17,7 @@ function AccountRow({ ctx, window: win, row, onOpenTx }) {
     <>
       <tr className="border-t border-border-soft hover:bg-surface-soft cursor-pointer" onClick={() => setOpen((v) => !v)}>
         <td className="px-2 py-1.5 w-6 text-muted-soft">{open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</td>
-        <td className="px-2 py-1.5 font-mono text-tiny text-muted-soft w-14">{row.code}</td>
+        <td className="px-2 py-1.5 tabular-nums text-tiny text-muted-soft w-14">{row.code}</td>
         <td className="px-2 py-1.5 text-caption text-ink">{row.name}</td>
         <td className="px-2 py-1.5 text-muted w-12">{row.currency}</td>
         <td className="px-2 py-1.5 text-right tabular-nums w-28">{num(row.opening)}</td>

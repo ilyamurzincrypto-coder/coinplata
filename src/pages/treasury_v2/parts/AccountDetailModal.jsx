@@ -381,7 +381,7 @@ export default function AccountDetailModal({
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="text-[17px] font-bold tracking-tight text-ink">{groupCtx.kassaName}</span>
-              <span className="text-tiny font-mono tabular text-muted-soft">{groupCtx.accounts.length} валют</span>
+              <span className="text-tiny tabular-nums tabular text-muted-soft">{groupCtx.accounts.length} валют</span>
             </div>
             <div className="text-caption text-muted mt-0.5">
               {typeLabel}
@@ -397,7 +397,7 @@ export default function AccountDetailModal({
           <CurrencyIcon ccy={account.currency} size="md" />
           <div>
             <div className="flex items-baseline gap-2 flex-wrap">
-              <span className="font-mono text-tiny text-muted-soft">{account.code}</span>
+              <span className="tabular-nums text-tiny text-muted-soft">{account.code}</span>
               <span className="text-[17px] font-bold tracking-tight text-ink">
                 {cpName ? `${cpName}` : account.name}
               </span>
@@ -423,7 +423,7 @@ export default function AccountDetailModal({
       <div>
         <div className="flex items-center justify-between mb-2 gap-3">
           <div className="text-tiny text-muted uppercase tracking-wider font-semibold">
-            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(cpData.totalInBase, baseCurrency)}</span>
+            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="tabular-nums tabular text-ink">{formatBase(cpData.totalInBase, baseCurrency)}</span>
           </div>
           {canAddAccount && (
             <button
@@ -449,8 +449,8 @@ export default function AccountDetailModal({
                   <CurrencyIcon ccy={c.currency} size="sm" />
                   <span className="text-caption font-bold text-ink-soft tracking-wider">{c.currency}</span>
                 </div>
-                <div className="font-mono tabular text-body font-bold text-ink">{fmtAmount(c.balance)}</div>
-                <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                <div className="tabular-nums tabular text-body font-bold text-ink">{fmtAmount(c.balance)}</div>
+                <div className="tabular-nums tabular text-tiny text-muted-soft mt-0.5">
                   ≈ {formatBase(c.balanceInBase, baseCurrency)}
                 </div>
               </div>
@@ -465,7 +465,7 @@ export default function AccountDetailModal({
       <div>
         <div className="flex items-center justify-between mb-2 gap-3">
           <div className="text-tiny text-muted uppercase tracking-wider font-semibold">
-            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="font-mono tabular text-ink">{formatBase(groupCtx.totalInBase, baseCurrency)}</span>
+            {t("trv2_detail_balance")} · {t("trv2_detail_total")}: <span className="tabular-nums tabular text-ink">{formatBase(groupCtx.totalInBase, baseCurrency)}</span>
           </div>
           {canAddAccount && (
             <button
@@ -487,9 +487,9 @@ export default function AccountDetailModal({
                 <div className="flex items-center gap-1.5 mb-1">
                   <CurrencyIcon ccy={a.currency} size="sm" />
                   <span className="text-caption font-bold text-ink-soft tracking-wider">{a.currency}</span>
-                  <span className="text-tiny text-muted-soft font-mono ml-auto">{a.code}</span>
+                  <span className="text-tiny text-muted-soft tabular-nums ml-auto">{a.code}</span>
                 </div>
-                <div className="font-mono tabular text-body font-bold text-ink" onClick={(e) => e.stopPropagation()}>
+                <div className="tabular-nums tabular text-body font-bold text-ink" onClick={(e) => e.stopPropagation()}>
                   <InlineBalanceEditor
                     account={{
                       code: a.code, currency: a.currency,
@@ -503,7 +503,7 @@ export default function AccountDetailModal({
                   />
                 </div>
                 {!isBase && (
-                  <div className="font-mono tabular text-tiny text-muted-soft mt-0.5">
+                  <div className="tabular-nums tabular text-tiny text-muted-soft mt-0.5">
                     ≈ {formatBase(a.balanceInBase, baseCurrency)}
                   </div>
                 )}
@@ -521,11 +521,11 @@ export default function AccountDetailModal({
           {t("trv2_detail_balance")}
         </div>
         <div className="flex items-baseline gap-4 flex-wrap">
-          <span className="text-[26px] font-bold font-mono tabular text-ink">
+          <span className="text-[26px] font-bold tabular-nums tabular text-ink">
             {fmtAmount(balanceNative)} <span className="text-body-sm text-muted ml-1">{account.currency}</span>
           </span>
           {!isBaseCcy && (
-            <span className="text-body text-muted-soft font-mono tabular">
+            <span className="text-body text-muted-soft tabular-nums tabular">
               ≈ {formatBase(balanceInBase, baseCurrency)}
             </span>
           )}
@@ -620,7 +620,7 @@ export default function AccountDetailModal({
           value={from}
           max={to || undefined}
           onChange={(e) => setFrom(e.target.value)}
-          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+          className="h-7 px-2 text-caption tabular-nums tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
         />
         <span className="text-muted">—</span>
         <input
@@ -628,7 +628,7 @@ export default function AccountDetailModal({
           value={to}
           min={from || undefined}
           onChange={(e) => setTo(e.target.value)}
-          className="h-7 px-2 text-caption font-mono tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
+          className="h-7 px-2 text-caption tabular-nums tabular bg-surface-sunk text-ink rounded-button border border-transparent focus:border-border focus:bg-surface focus:outline-none transition-colors"
         />
         <div className="flex items-center gap-1 ml-1 pl-2 border-l border-border-soft">
           <button type="button" onClick={() => applyPreset(7)} className="h-7 px-2 rounded-button text-caption text-muted-soft hover:text-ink hover:bg-surface-soft transition-colors">{t("trv2_period_week")}</button>
@@ -674,7 +674,7 @@ export default function AccountDetailModal({
         <span className="text-tiny text-muted uppercase tracking-wider font-bold">
           Остаток на {period ? new Date(period.from).toISOString().slice(0, 10) : "начало"}
         </span>
-        <span className="font-mono tabular text-body-sm font-bold text-ink-soft">
+        <span className="tabular-nums tabular text-body-sm font-bold text-ink-soft">
           {!isCpMode && !isGroupMode && account ? (
             <>
               <span>{fmtAmount(osv.openingNative)} {account.currency}</span>
@@ -728,7 +728,7 @@ export default function AccountDetailModal({
                 return (
                   <React.Fragment key={e.id}>
                   <tr className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} ${isExpanded ? "bg-accent-bg" : "hover:bg-surface-soft"}`}>
-                    <td className="px-3 py-1.5 text-muted font-mono tabular text-tiny whitespace-nowrap border-r border-border-soft">
+                    <td className="px-3 py-1.5 text-muted tabular-nums tabular text-tiny whitespace-nowrap border-r border-border-soft">
                       {new Date(e.createdAt).toISOString().slice(0, 10)}
                     </td>
                     <td className="px-2 py-1.5 border-r border-border-soft">
@@ -737,25 +737,25 @@ export default function AccountDetailModal({
                     <td className="px-2 py-1.5 border-r border-border-soft">
                       {contra ? (
                         <span className="flex items-baseline gap-1.5 truncate">
-                          <span className="font-mono text-tiny text-muted-soft shrink-0">{contra.code}</span>
+                          <span className="tabular-nums text-tiny text-muted-soft shrink-0">{contra.code}</span>
                           <span className="text-body-sm text-ink-soft truncate">{contra.name}</span>
                         </span>
                       ) : <span className="text-muted-soft">—</span>}
                     </td>
-                    <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
+                    <td className={`px-2 py-1.5 text-right tabular-nums tabular whitespace-nowrap border-r border-border-soft ${isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
                       {isDr ? amtStr : "—"}
                     </td>
-                    <td className={`px-2 py-1.5 text-right font-mono tabular whitespace-nowrap border-r border-border-soft ${!isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
+                    <td className={`px-2 py-1.5 text-right tabular-nums tabular whitespace-nowrap border-r border-border-soft ${!isDr ? (grows ? "text-success font-bold" : "text-danger font-semibold") : "text-muted-soft"}`}>
                       {!isDr ? amtStr : "—"}
                     </td>
-                    <td className="px-2 py-1.5 text-right font-mono tabular text-muted-soft whitespace-nowrap border-r border-border-soft">
+                    <td className="px-2 py-1.5 text-right tabular-nums tabular text-muted-soft whitespace-nowrap border-r border-border-soft">
                       {baseStr}
                     </td>
                     <td className="px-2 py-1.5 whitespace-nowrap">
                       <button
                         type="button"
                         onClick={() => setExpandedTxId(isExpanded ? null : e.txId)}
-                        className="text-accent hover:text-accent-hover transition-colors font-mono text-tiny"
+                        className="text-accent hover:text-accent-hover transition-colors tabular-nums text-tiny"
                         title={isExpanded ? "Свернуть проводки" : "Показать проводки документа"}
                       >
                         {e.sourceRefId || e.txId.slice(0, 8)} {isExpanded ? "▾" : "→"}
@@ -785,7 +785,7 @@ export default function AccountDetailModal({
         <span className="text-tiny text-muted uppercase tracking-wider font-bold">
           Обороты {period ? `${new Date(period.from).toISOString().slice(0, 10)} — ${new Date(period.to).toISOString().slice(0, 10)}` : "за всё время"} · {filteredEntries.length} проводок
         </span>
-        <div className="flex items-baseline gap-4 font-mono tabular">
+        <div className="flex items-baseline gap-4 tabular-nums tabular">
           {turnover.singleCcy && (
             <>
               <span className="text-muted-soft">Дт: <span className="text-ink font-bold">{fmtAmount(turnover.dr)} {turnover.singleCcy}</span></span>
@@ -802,7 +802,7 @@ export default function AccountDetailModal({
         <span className="text-tiny text-success uppercase tracking-wider font-bold">
           Остаток на {period ? new Date(period.to).toISOString().slice(0, 10) : "конец"}
         </span>
-        <span className="font-mono tabular text-body font-bold text-success">
+        <span className="tabular-nums tabular text-body font-bold text-success">
           {!isCpMode && !isGroupMode && account ? (
             <>
               <span>{fmtAmount(osv.closingNative)} {account.currency}</span>

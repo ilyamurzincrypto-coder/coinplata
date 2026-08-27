@@ -284,7 +284,7 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
                 disabled={submitting || availableCurrencies.length === 0}
-                className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption font-mono border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+                className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption tabular-nums border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
               >
                 {availableCurrencies.length === 0 ? (
                   <option value="">—</option>
@@ -304,7 +304,7 @@ export default function CreateLiabilityDialog({ open, onClose, ctx, clients, par
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={submitting}
                 placeholder="0.00"
-                className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption font-mono tabular border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
+                className="w-full h-9 px-2 rounded-input bg-surface-sunk text-ink text-caption tabular-nums tabular border-0 ring-1 ring-inset ring-transparent focus:bg-surface focus:ring-accent focus:outline-none transition-all"
               />
             </label>
           </div>

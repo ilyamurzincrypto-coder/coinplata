@@ -275,7 +275,7 @@ function CategoryList({ title, toneClass, items, allCategories, onAdd, onAddSub,
             >
               <div className="flex items-center gap-2 min-w-0">
                 {c.depth > 0 && (
-                  <span className="text-muted-soft select-none text-caption font-mono">└</span>
+                  <span className="text-muted-soft select-none text-caption tabular-nums">└</span>
                 )}
                 <div>
                   <div
@@ -802,7 +802,7 @@ function TagsSection() {
     <div className="p-5 space-y-3">
       <div className="text-tiny text-muted bg-surface-soft border border-border-soft rounded-md px-3 py-2 flex items-start gap-2">
         <Info className="w-3 h-3 mt-0.5 text-muted-soft shrink-0" />
-        <div>Built-in set. Extend in <span className="font-mono text-ink-soft">src/store/data.js → CLIENT_TAGS</span>.</div>
+        <div>Built-in set. Extend in <span className="tabular-nums text-ink-soft">src/store/data.js → CLIENT_TAGS</span>.</div>
       </div>
       <div className="flex flex-wrap gap-2">
         {CLIENT_TAGS.map((tag) => (

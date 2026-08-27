@@ -305,16 +305,16 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                             )}
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-right font-mono tabular text-ink whitespace-nowrap border-r border-border-soft">
+                        <td className="px-3 py-2 text-right tabular-nums tabular text-ink whitespace-nowrap border-r border-border-soft">
                           {Math.abs(r.ourNat) > 0.005 ? fmtCur(r.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
                         </td>
-                        <td className="px-3 py-2 text-right font-mono tabular text-ink-soft whitespace-nowrap border-r border-border-soft">
+                        <td className="px-3 py-2 text-right tabular-nums tabular text-ink-soft whitespace-nowrap border-r border-border-soft">
                           {Math.abs(r.ourBase) > 0.005 ? fmtBase(r.ourBase) : <span className="text-muted-soft">—</span>}
                         </td>
-                        <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap border-r border-border-soft">
+                        <td className="px-3 py-2 text-right tabular-nums tabular whitespace-nowrap border-r border-border-soft">
                           {Math.abs(r.clientNat) > 0.005 ? <span className="text-danger">{fmtCur(r.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
                         </td>
-                        <td className="px-3 py-2 text-right font-mono tabular whitespace-nowrap">
+                        <td className="px-3 py-2 text-right tabular-nums tabular whitespace-nowrap">
                           {Math.abs(r.clientBase) > 0.005 ? <span className="text-danger">{fmtBase(r.clientBase)}</span> : <span className="text-muted-soft">—</span>}
                         </td>
                       </tr>
@@ -330,20 +330,20 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                                 <span className="inline-block w-1 h-3 rounded-full bg-accent" aria-hidden />
                                 <span className="text-caption font-semibold text-ink">{officeName}</span>
                                 {share > 0 && (
-                                  <span className="text-tiny font-mono tabular text-accent font-bold">{share.toFixed(0)}%</span>
+                                  <span className="text-tiny tabular-nums tabular text-accent font-bold">{share.toFixed(0)}%</span>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-right font-mono tabular text-caption text-ink whitespace-nowrap border-r border-border-soft">
+                            <td className="px-3 py-2 text-right tabular-nums tabular text-caption text-ink whitespace-nowrap border-r border-border-soft">
                               {Math.abs(o.ourNat) > 0.005 ? fmtCur(o.ourNat, r.ccy) : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono tabular text-caption text-ink-soft whitespace-nowrap border-r border-border-soft">
+                            <td className="px-3 py-2 text-right tabular-nums tabular text-caption text-ink-soft whitespace-nowrap border-r border-border-soft">
                               {Math.abs(o.ourBase) > 0.005 ? fmtBase(o.ourBase) : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono tabular text-caption whitespace-nowrap border-r border-border-soft">
+                            <td className="px-3 py-2 text-right tabular-nums tabular text-caption whitespace-nowrap border-r border-border-soft">
                               {Math.abs(o.clientNat) > 0.005 ? <span className="text-danger font-semibold">{fmtCur(o.clientNat, r.ccy)}</span> : <span className="text-muted-soft">—</span>}
                             </td>
-                            <td className="px-3 py-2 text-right font-mono tabular text-caption whitespace-nowrap">
+                            <td className="px-3 py-2 text-right tabular-nums tabular text-caption whitespace-nowrap">
                               {Math.abs(o.clientBase) > 0.005 ? <span className="text-danger font-semibold">{fmtBase(o.clientBase)}</span> : <span className="text-muted-soft">—</span>}
                             </td>
                           </tr>
@@ -357,13 +357,13 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                   <td className="px-3 py-2 border-r border-border-soft">
                     <span className="text-tiny text-muted-soft">—</span>
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular text-ink whitespace-nowrap border-r border-border-soft">
+                  <td className="px-3 py-2 text-right tabular-nums tabular text-ink whitespace-nowrap border-r border-border-soft">
                     {fmtBase(fundsTable.total.ourBase)}
                   </td>
                   <td className="px-3 py-2 border-r border-border-soft">
                     <span className="text-tiny text-muted-soft">—</span>
                   </td>
-                  <td className="px-3 py-2 text-right font-mono tabular text-danger whitespace-nowrap">
+                  <td className="px-3 py-2 text-right tabular-nums tabular text-danger whitespace-nowrap">
                     {fmtBase(fundsTable.total.clientBase)}
                   </td>
                 </tr>
@@ -390,7 +390,7 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                           <div className="text-tiny text-muted-soft truncate">{it.acc.code} · {officeName}</div>
                         </div>
                       </div>
-                      <span className="font-mono tabular font-bold text-ink whitespace-nowrap">{fmtBase(it.inBase)}</span>
+                      <span className="tabular-nums tabular font-bold text-ink whitespace-nowrap">{fmtBase(it.inBase)}</span>
                     </div>
                   );
                 })}
@@ -411,7 +411,7 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                     <div key={it.label}>
                       <div className="flex items-baseline justify-between text-caption mb-0.5">
                         <span className="font-bold text-ink-soft">{it.label}</span>
-                        <span className="font-mono tabular text-ink">{fmtBase(it.value)} <span className="text-muted-soft">· {pct.toFixed(1)}%</span></span>
+                        <span className="tabular-nums tabular text-ink">{fmtBase(it.value)} <span className="text-muted-soft">· {pct.toFixed(1)}%</span></span>
                       </div>
                       <div className="h-1.5 rounded-full bg-surface-sunk overflow-hidden">
                         <div className={`h-full ${it.color} transition-all`} style={{ width: `${pct}%` }} />
@@ -433,7 +433,7 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                 ].filter((b) => b.n > 0).map((b) => (
                   <div key={b.key} className="flex items-center justify-between text-caption">
                     <span className={b.tone === "danger" ? "text-danger" : b.tone === "warning" ? "text-warning" : "text-ink-soft"}>{b.label}</span>
-                    <span className="font-mono tabular font-bold text-ink">{b.n}</span>
+                    <span className="tabular-nums tabular font-bold text-ink">{b.n}</span>
                   </div>
                 ))}
               </div>
@@ -463,7 +463,7 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                   const confirmed = !!node.tx.metadata?.confirmed_at;
                   return (
                     <tr key={node.tx.id} className="border-b border-border-soft hover:bg-surface-soft transition-colors">
-                      <td className="px-2 py-1.5 text-muted-soft font-mono tabular text-tiny whitespace-nowrap">
+                      <td className="px-2 py-1.5 text-muted-soft tabular-nums tabular text-tiny whitespace-nowrap">
                         {dt.toISOString().slice(0, 10)}
                       </td>
                       <td className="px-2 py-1.5">
@@ -481,11 +481,11 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
                       </td>
                       <td className="px-2 py-1.5 text-right">
                         {node.tx.sourceRefId && onOpenSource ? (
-                          <button type="button" onClick={() => onOpenSource(node.tx)} className="text-accent hover:text-accent-hover font-mono text-tiny">
+                          <button type="button" onClick={() => onOpenSource(node.tx)} className="text-accent hover:text-accent-hover tabular-nums text-tiny">
                             {node.tx.sourceRefId} →
                           </button>
                         ) : (
-                          <span className="text-muted-soft font-mono text-tiny">{node.tx.id.slice(0, 8)}</span>
+                          <span className="text-muted-soft tabular-nums text-tiny">{node.tx.id.slice(0, 8)}</span>
                         )}
                       </td>
                     </tr>
@@ -498,7 +498,7 @@ export default function DashboardTab({ ctx, officeFilter, baseCurrency, formatBa
       </Card>
 
       {/* Identity check */}
-      <div className={`rounded-card-lg px-4 py-3 text-body-sm font-medium font-mono tabular ${
+      <div className={`rounded-card-lg px-4 py-3 text-body-sm font-medium tabular-nums tabular ${
         totals.identityCheck.ok
           ? "bg-success-soft text-success border border-success/20"
           : "bg-danger-soft text-danger border border-danger/20"
@@ -517,7 +517,7 @@ function KPI({ label, value, fullValue, sub, tone }) {
   return (
     <div className="bg-surface rounded-card-lg border border-border-soft p-4 hover:shadow-sm transition-shadow" title={fullValue || undefined}>
       <div className="text-tiny text-muted-soft uppercase tracking-wider font-bold mb-1.5">{label}</div>
-      <div className={`text-[22px] font-bold font-mono tabular leading-tight ${toneCls}`}>{value}</div>
+      <div className={`text-[22px] font-bold tabular-nums tabular leading-tight ${toneCls}`}>{value}</div>
       <div className="text-tiny text-muted-soft mt-1 truncate">{sub}</div>
     </div>
   );

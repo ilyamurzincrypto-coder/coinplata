@@ -10,7 +10,7 @@ export default function ClassSection({ labelKey, totalInBase, formatBase, baseCu
     <section className="bg-surface rounded-card overflow-hidden">
       <header className="px-card py-2.5 border-b border-border-soft flex items-center justify-between bg-surface-soft/40">
         <h3 className="text-h3 text-ink font-semibold">{t(labelKey)}</h3>
-        <span className="text-body-sm font-mono tabular font-bold text-ink">{formatBase(totalInBase * displayMul, baseCurrency)}</span>
+        <span className="text-body-sm tabular-nums tabular font-bold text-ink">{formatBase(totalInBase * displayMul, baseCurrency)}</span>
       </header>
       <div>{children}</div>
     </section>

@@ -40,7 +40,7 @@ export default function CapitalPanel({ ctx }) {
       <div className="px-card py-2.5 border-b border-border-soft flex items-center justify-between">
         <div className="text-h3 text-ink font-semibold">Капитал по валютам <span className="text-caption text-muted font-normal">Ностро − Лоро</span></div>
         <div
-          className={`text-caption font-semibold font-mono tabular px-2 py-0.5 rounded-md ${
+          className={`text-caption font-semibold tabular-nums tabular px-2 py-0.5 rounded-md ${
             reconciled ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
           }`}
           title={reconciled ? "Σ Капитал сходится с учётным капиталом ledger" : "Расхождение с учётным капиталом"}
@@ -74,9 +74,9 @@ export default function CapitalPanel({ ctx }) {
                   <span className="text-body-sm text-ink tracking-wider">{r.currency}</span>
                 </div>
               </td>
-              <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft">{nat(r.nostro, r.currency)}</td>
-              <td className="text-right px-card py-1.5 font-mono tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft">{nat(r.loro, r.currency)}</td>
-              <td className="text-right px-card py-1.5 font-mono tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">{nat(r.capital, r.currency)}</td>
+              <td className="text-right px-card py-1.5 tabular-nums tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft">{nat(r.nostro, r.currency)}</td>
+              <td className="text-right px-card py-1.5 tabular-nums tabular text-body-sm text-ink whitespace-nowrap border-r border-border-soft">{nat(r.loro, r.currency)}</td>
+              <td className="text-right px-card py-1.5 tabular-nums tabular text-body-sm font-semibold text-ink whitespace-nowrap border-r border-border-soft">{nat(r.capital, r.currency)}</td>
               <td className="text-center px-2 py-1.5">
                 <input type="checkbox" checked={isOn(r.currency)} onChange={() => toggle(r.currency)} title="Учитывать в сумме" />
               </td>
@@ -88,7 +88,7 @@ export default function CapitalPanel({ ctx }) {
             <td className="px-card py-2 text-body-sm font-bold text-ink uppercase tracking-wider border-r border-border-soft">Σ выбрано</td>
             <td className="border-r border-border-soft" />
             <td className="border-r border-border-soft" />
-            <td className="text-right px-card py-2 font-mono tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">≈ {usd(selSumBase)}</td>
+            <td className="text-right px-card py-2 tabular-nums tabular font-bold text-body-sm text-ink whitespace-nowrap border-r border-border-soft">≈ {usd(selSumBase)}</td>
             <td className="px-2 py-2 text-center text-caption text-muted">{rows.length - unchecked.size}/{rows.length}</td>
           </tr>
         </tfoot>

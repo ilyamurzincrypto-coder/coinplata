@@ -1015,7 +1015,7 @@ function InviteTokenModal({ data, onClose }) {
           {t("invite_link_label")}
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-ink text-success font-mono text-caption px-3 py-2.5 rounded-card break-all select-all">
+          <div className="flex-1 bg-ink text-success tabular-nums text-caption px-3 py-2.5 rounded-card break-all select-all">
             {fakeLink}
           </div>
           <button
@@ -1097,7 +1097,7 @@ function ActivateUserModal({ user, onClose, onActivate }) {
       <div className="p-5 space-y-3">
         <div className="text-tiny text-ink-soft bg-surface-soft border border-border-soft rounded-md px-3 py-2">
           Mock invite token:{" "}
-          <span className="font-mono text-tiny bg-ink text-success px-1 rounded">
+          <span className="tabular-nums text-tiny bg-ink text-success px-1 rounded">
             {user.inviteToken ? `${user.inviteToken.slice(0, 8)}…` : "—"}
           </span>
         </div>

@@ -127,10 +127,10 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="text-h2 text-ink flex items-center gap-2">
           {t("trv2_tab_liabilities")}
-          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md font-mono tabular">
+          <span className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 bg-surface-sunk text-muted text-caption font-semibold rounded-md tabular-nums tabular">
             {visibleGroups.length}
           </span>
-          <span className="text-caption text-muted font-normal ml-1 font-mono tabular">
+          <span className="text-caption text-muted font-normal ml-1 tabular-nums tabular">
             ≈ {fmtIn(grandTotalUsd, "USD")} · {fmtIn(grandTotalAlt, displayBase)}
           </span>
         </div>
@@ -293,12 +293,12 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                       </td>
                       <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                       <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                      <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
+                      <td className={`text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
                         cp.totalInBase < 0 ? "text-danger" : "text-ink"
                       }`}>
                         {fmtIn(cp.totalInBase, "USD")}
                       </td>
-                      <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
+                      <td className={`text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm whitespace-nowrap ${
                         cpAlt < 0 ? "text-danger" : "text-ink"
                       }`}>
                         {fmtIn(cpAlt, displayBase)}
@@ -321,7 +321,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                             onClick={() => openLeaf(cp, a.accountId)}
                             title="Открыть детали счёта"
                           >
-                            <td className="px-card py-2 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                            <td className="px-card py-2 tabular-nums text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                             <td className="pl-9 pr-card py-2 border-r border-border-soft">
                               <div className="flex items-center gap-2">
                                 <ChevronRight className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2.2} />
@@ -330,17 +330,17 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                               </div>
                             </td>
                             <td className="px-card py-2 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
                               a.balance < 0 ? "text-danger" : "text-ink"
                             }`}>
                               {nativeFmt(a.balance, cur.currency)}
                             </td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                               accUsd < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
                               {fmtIn(accUsd, "USD")}
                             </td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm whitespace-nowrap ${
                               accAlt < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
                               {fmtIn(accAlt, displayBase)}
@@ -368,17 +368,17 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                               </div>
                             </td>
                             <td className="px-card py-2 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm font-semibold whitespace-nowrap border-r border-border-soft ${
                               cur.balance < 0 ? "text-danger" : "text-ink"
                             }`}>
                               {nativeFmt(cur.balance, cur.currency)}
                             </td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                               cur.balanceInBase < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
                               {fmtIn(cur.balanceInBase, "USD")}
                             </td>
-                            <td className={`text-right px-card py-2 font-mono tabular text-body-sm whitespace-nowrap ${
+                            <td className={`text-right px-card py-2 tabular-nums tabular text-body-sm whitespace-nowrap ${
                               toAlt(cur.balance, cur.currency) < 0 ? "text-danger" : "text-ink-soft"
                             }`}>
                               {fmtIn(toAlt(cur.balance, cur.currency), displayBase)}
@@ -396,7 +396,7 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                 onClick={() => openLeaf(cp, a.accountId)}
                                 title="Открыть детали счёта"
                               >
-                                <td className="px-card py-1.5 font-mono text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
+                                <td className="px-card py-1.5 tabular-nums text-body-sm text-ink-soft border-r border-border-soft whitespace-nowrap">{a.code}</td>
                                 <td className="pl-16 pr-card py-1.5 border-r border-border-soft">
                                   <div className="flex items-center gap-2">
                                     <ChevronRight className="w-3 h-3 text-muted-soft" strokeWidth={2.2} />
@@ -404,17 +404,17 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                                   </div>
                                 </td>
                                 <td className="px-card py-1.5 text-body-sm text-ink-soft tracking-wider border-r border-border-soft">{cur.currency}</td>
-                                <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                                <td className={`text-right px-card py-1.5 tabular-nums tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                                   a.balance < 0 ? "text-danger" : "text-ink-soft"
                                 }`}>
                                   {nativeFmt(a.balance, cur.currency)}
                                 </td>
-                                <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
+                                <td className={`text-right px-card py-1.5 tabular-nums tabular text-body-sm whitespace-nowrap border-r border-border-soft ${
                                   accUsd < 0 ? "text-danger" : "text-ink-soft"
                                 }`}>
                                   {fmtIn(accUsd, "USD")}
                                 </td>
-                                <td className={`text-right px-card py-1.5 font-mono tabular text-body-sm whitespace-nowrap ${
+                                <td className={`text-right px-card py-1.5 tabular-nums tabular text-body-sm whitespace-nowrap ${
                                   accAlt < 0 ? "text-danger" : "text-ink-soft"
                                 }`}>
                                   {fmtIn(accAlt, displayBase)}
@@ -437,12 +437,12 @@ export default function LiabilitiesTab({ ctx, formatBase, baseCurrency, onOpenTx
                 </td>
                 <td className="px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
                 <td className="text-right px-card py-2.5 border-r border-border-soft"><span className="text-tiny text-muted-soft">—</span></td>
-                <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
+                <td className={`text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm whitespace-nowrap border-r border-border-soft ${
                   grandTotalUsd < 0 ? "text-danger" : "text-ink"
                 }`}>
                   {fmtIn(grandTotalUsd, "USD")}
                 </td>
-                <td className={`text-right px-card py-2.5 font-mono tabular font-bold text-body-sm whitespace-nowrap ${
+                <td className={`text-right px-card py-2.5 tabular-nums tabular font-bold text-body-sm whitespace-nowrap ${
                   grandTotalAlt < 0 ? "text-danger" : "text-ink"
                 }`}>
                   {fmtIn(grandTotalAlt, displayBase)}

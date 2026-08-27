@@ -228,7 +228,7 @@ export default function AuditLogTab() {
                   <td className="px-3 py-3 text-ink-soft">
                     {entityLabel}
                     {e.entityId && (
-                      <span className="ml-1 text-tiny text-muted-soft font-mono">
+                      <span className="ml-1 text-tiny text-muted-soft tabular-nums">
                         #{String(e.entityId).slice(0, 8)}
                       </span>
                     )}
@@ -236,7 +236,7 @@ export default function AuditLogTab() {
                   <td className="px-3 py-3 text-ink-soft max-w-md truncate" title={e.summary}>
                     {e.summary}
                   </td>
-                  <td className="px-5 py-3 font-mono text-tiny text-muted tabular-nums">{e.ip}</td>
+                  <td className="px-5 py-3 tabular-nums text-tiny text-muted tabular-nums">{e.ip}</td>
                 </tr>
               );
             })}

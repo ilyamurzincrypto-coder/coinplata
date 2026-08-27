@@ -514,7 +514,7 @@ function PrevDelta({ current, previous, baseCurrency }) {
   const toneCls = positive ? "text-success" : (delta < 0 ? "text-danger" : "text-muted");
   return (
     <span
-      className={`inline-flex items-center gap-0.5 text-tiny font-bold font-mono tabular ${toneCls}`}
+      className={`inline-flex items-center gap-0.5 text-tiny font-bold tabular-nums tabular ${toneCls}`}
       title={`Δ vs предыдущий период: ${fmtSignedBase(delta, baseCurrency)}`}
     >
       <Icon className="w-3 h-3" strokeWidth={2.5} />
@@ -542,12 +542,12 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
           <div className="text-tiny text-muted-soft">{meta.hint}</div>
         </div>
         <div className="text-right shrink-0">
-          <div className={`text-[16px] font-bold font-mono tabular inline-flex items-baseline gap-1.5 ${netToneCls}`}>
+          <div className={`text-[16px] font-bold tabular-nums tabular inline-flex items-baseline gap-1.5 ${netToneCls}`}>
             {fmtSignedBase(data.netBase, baseCurrency)}
             {prevNet != null && <PrevDelta current={data.netBase} previous={prevNet} baseCurrency={baseCurrency} />}
           </div>
           {(data.inflowBase > 0 || data.outflowBase > 0) && (
-            <div className="text-tiny text-muted-soft font-mono tabular">
+            <div className="text-tiny text-muted-soft tabular-nums tabular">
               <span className="text-success">+{fmtBaseAmount(data.inflowBase, baseCurrency)}</span>
               <span className="mx-1">·</span>
               <span className="text-danger">−{fmtBaseAmount(data.outflowBase, baseCurrency)}</span>
@@ -584,7 +584,7 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                     <div key={sg} className="flex items-center gap-2 px-1 py-1.5 text-caption">
                       <SgIcon className={`w-3 h-3 shrink-0 ${sgMeta.iconCls}`} strokeWidth={2.5} />
                       <span className="text-ink-soft flex-1">{sgMeta.label}</span>
-                      <span className={`text-right font-mono tabular font-semibold ${net < 0 ? "text-danger" : "text-success"}`}>
+                      <span className={`text-right tabular-nums tabular font-semibold ${net < 0 ? "text-danger" : "text-success"}`}>
                         {fmtSignedBase(net, baseCurrency)}
                       </span>
                     </div>
@@ -616,8 +616,8 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                     return (
                       <tr key={o.officeId || "__none__"} className="border-t border-border-soft">
                         <td className="py-1 text-ink-soft">{name}</td>
-                        <td className="py-1 text-right font-mono tabular text-muted">{o.txCount}</td>
-                        <td className={`py-1 text-right font-mono tabular font-semibold ${o.netBase < 0 ? "text-danger" : "text-success"}`}>
+                        <td className="py-1 text-right tabular-nums tabular text-muted">{o.txCount}</td>
+                        <td className={`py-1 text-right tabular-nums tabular font-semibold ${o.netBase < 0 ? "text-danger" : "text-success"}`}>
                           {fmtSignedBase(o.netBase, baseCurrency)}
                         </td>
                       </tr>
@@ -643,7 +643,7 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                   {[...data.byKind.entries()].sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([kind, net]) => (
                     <tr key={kind} className="border-t border-border-soft">
                       <td className="py-1 text-ink-soft">{kindLabel(kind, t)}</td>
-                      <td className={`py-1 text-right font-mono tabular ${net < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(net, baseCurrency)}</td>
+                      <td className={`py-1 text-right tabular-nums tabular ${net < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(net, baseCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -667,10 +667,10 @@ function CategorySection({ id, meta, data, prevNet, baseCurrency, t, expanded, t
                   {[...data.byCurrency.values()].sort((a, b) => Math.abs(b.netBase) - Math.abs(a.netBase)).map((c) => (
                     <tr key={c.currency} className="border-t border-border-soft">
                       <td className="py-1 font-semibold text-ink-soft">{c.currency}</td>
-                      <td className="py-1 text-right font-mono tabular text-success">+{fmtCur(c.inflow, c.currency)}</td>
-                      <td className="py-1 text-right font-mono tabular text-danger">−{fmtCur(c.outflow, c.currency)}</td>
-                      <td className={`py-1 text-right font-mono tabular ${c.net < 0 ? "text-danger" : "text-ink-soft"}`}>{fmtSignedCur(c.net, c.currency)}</td>
-                      <td className="py-1 text-right font-mono tabular text-muted">{fmtSignedBase(c.netBase, baseCurrency)}</td>
+                      <td className="py-1 text-right tabular-nums tabular text-success">+{fmtCur(c.inflow, c.currency)}</td>
+                      <td className="py-1 text-right tabular-nums tabular text-danger">−{fmtCur(c.outflow, c.currency)}</td>
+                      <td className={`py-1 text-right tabular-nums tabular ${c.net < 0 ? "text-danger" : "text-ink-soft"}`}>{fmtSignedCur(c.net, c.currency)}</td>
+                      <td className="py-1 text-right tabular-nums tabular text-muted">{fmtSignedBase(c.netBase, baseCurrency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -806,7 +806,7 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
               <span className="text-tiny font-bold uppercase tracking-wide text-muted">
                 Чистое изменение денежных средств
               </span>
-              <span className={`text-h2 font-bold font-mono tabular ml-auto ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>
+              <span className={`text-h2 font-bold tabular-nums tabular ml-auto ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>
                 {fmtSignedBase(cf.totalNetBase, baseCurrency)}
               </span>
               <PrevDelta current={cf.totalNetBase} previous={prevCf.totalNetBase} baseCurrency={baseCurrency} />
@@ -814,15 +814,15 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-caption">
               <div className="rounded-card bg-surface-soft px-3 py-2">
                 <div className="text-tiny text-muted uppercase tracking-wide">На начало периода</div>
-                <div className="text-body font-bold font-mono tabular text-ink">{fmtBaseAmount(cf.openingBase, baseCurrency)}</div>
+                <div className="text-body font-bold tabular-nums tabular text-ink">{fmtBaseAmount(cf.openingBase, baseCurrency)}</div>
               </div>
               <div className={`rounded-card px-3 py-2 ${cf.totalNetBase < 0 ? "bg-danger-soft" : "bg-success-soft"}`}>
                 <div className={`text-tiny uppercase tracking-wide ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>Изменение</div>
-                <div className={`text-body font-bold font-mono tabular ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(cf.totalNetBase, baseCurrency)}</div>
+                <div className={`text-body font-bold tabular-nums tabular ${cf.totalNetBase < 0 ? "text-danger" : "text-success"}`}>{fmtSignedBase(cf.totalNetBase, baseCurrency)}</div>
               </div>
               <div className="rounded-card bg-surface-sunk px-3 py-2">
                 <div className="text-tiny text-muted uppercase tracking-wide">На конец периода</div>
-                <div className="text-body font-bold font-mono tabular text-ink">{fmtBaseAmount(cf.closingBase, baseCurrency)}</div>
+                <div className="text-body font-bold tabular-nums tabular text-ink">{fmtBaseAmount(cf.closingBase, baseCurrency)}</div>
               </div>
             </div>
             {/* Прогноз на конец периода: если период не закрыт, и темп ясен */}
@@ -832,11 +832,11 @@ export default function CashFlowTab({ ctx, officeFilter, baseCurrency }) {
                 <span className="font-bold uppercase text-tiny tracking-wider">Прогноз</span>
                 <span>
                   День {forecast.daysElapsed} из {forecast.daysTotal} — при текущем темпе{" "}
-                  <span className="font-semibold font-mono tabular" title={`Дневной пейс: ${fmtSignedBase(forecast.pace, baseCurrency)}`}>
+                  <span className="font-semibold tabular-nums tabular" title={`Дневной пейс: ${fmtSignedBase(forecast.pace, baseCurrency)}`}>
                     {fmtSignedBase(forecast.pace, baseCurrency)}/день
                   </span>
                   {" "}к концу периода будет{" "}
-                  <span className={`font-bold font-mono tabular ${forecast.projectedNet < 0 ? "text-danger" : "text-success"}`}>
+                  <span className={`font-bold tabular-nums tabular ${forecast.projectedNet < 0 ? "text-danger" : "text-success"}`}>
                     {fmtSignedBase(forecast.projectedNet, baseCurrency)}
                   </span>
                 </span>
@@ -932,8 +932,8 @@ function Metric({ icon: Icon, iconWrapCls, label, value, sub, tone = "slate", ti
           {label}
           {tip && <InfoTip text={tip} />}
         </div>
-        <div className={`text-[18px] font-bold font-mono tabular leading-tight ${valueToneCls}`}>{value}</div>
-        <div className="text-tiny text-muted-soft font-mono tabular truncate" title={sub}>{sub}</div>
+        <div className={`text-[18px] font-bold tabular-nums tabular leading-tight ${valueToneCls}`}>{value}</div>
+        <div className="text-tiny text-muted-soft tabular-nums tabular truncate" title={sub}>{sub}</div>
       </div>
     </div>
   );
@@ -1012,8 +1012,8 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
                     <ArrowRight className="w-2.5 h-2.5 text-muted-soft" />
                     {p.toCur}
                   </span>
-                  <span className="text-muted-soft text-tiny font-mono tabular w-10 shrink-0">{p.count}×</span>
-                  <span className="text-muted text-tiny font-mono tabular w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
+                  <span className="text-muted-soft text-tiny tabular-nums tabular w-10 shrink-0">{p.count}×</span>
+                  <span className="text-muted text-tiny tabular-nums tabular w-24 shrink-0 truncate" title={`Оборот ${fmtBaseAmount(p.turnoverBase, baseCurrency)}`}>
                     {fmtBaseAmount(p.turnoverBase, baseCurrency)}
                   </span>
                   <div className="flex-1 h-2 bg-surface-sunk rounded-full overflow-hidden min-w-[60px]">
@@ -1022,11 +1022,11 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
                       style={{ width: `${widthPct}%` }}
                     />
                   </div>
-                  <span className={`text-right font-mono tabular font-semibold w-24 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
+                  <span className={`text-right tabular-nums tabular font-semibold w-24 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
                     {fmtSignedBase(p.marginBase, baseCurrency)}
                   </span>
                   {marginPct != null && (
-                    <span className={`text-right font-mono tabular text-tiny w-12 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
+                    <span className={`text-right tabular-nums tabular text-tiny w-12 shrink-0 ${positive ? "text-success" : "text-danger"}`}>
                       {positive ? "+" : ""}{marginPct.toFixed(2)}%
                     </span>
                   )}
@@ -1040,14 +1040,14 @@ function PairAnalyticsCard({ pairs, baseCurrency }) {
                       <tbody>
                         {p.txs.map((tx) => (
                           <tr key={tx.txId} className="border-t border-border-soft">
-                            <td className="py-1 text-muted font-mono tabular w-20">{tx.effectiveDate.slice(0, 10)}</td>
+                            <td className="py-1 text-muted tabular-nums tabular w-20">{tx.effectiveDate.slice(0, 10)}</td>
                             <td className="py-1 text-ink-soft">
-                              <span className="font-mono tabular">{tx.outBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.outCur}</span>
+                              <span className="tabular-nums tabular">{tx.outBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.outCur}</span>
                               <ArrowRight className="w-2.5 h-2.5 mx-1 inline text-muted-soft" />
-                              <span className="font-mono tabular">{tx.inBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.inCur}</span>
+                              <span className="tabular-nums tabular">{tx.inBase.toLocaleString(undefined, { maximumFractionDigits: 2 })} {tx.inCur}</span>
                               <span className="text-muted-soft text-tiny ml-1">(в base)</span>
                             </td>
-                            <td className={`py-1 text-right font-mono tabular font-semibold ${tx.marginBase < 0 ? "text-danger" : "text-success"}`}>
+                            <td className={`py-1 text-right tabular-nums tabular font-semibold ${tx.marginBase < 0 ? "text-danger" : "text-success"}`}>
                               {fmtSignedBase(tx.marginBase, baseCurrency)}
                             </td>
                           </tr>
@@ -1091,17 +1091,17 @@ function FxExposureCard({ fx, baseCurrency }) {
         {fx.byCurrency.map((b) => (
           <div key={b.currency} className="flex items-center gap-3 text-caption">
             <span className="font-bold text-ink-soft w-12 shrink-0">{b.currency}</span>
-            <span className="font-mono tabular text-ink w-32 shrink-0">{fmtSignedCur(b.native, b.currency)}</span>
+            <span className="tabular-nums tabular text-ink w-32 shrink-0">{fmtSignedCur(b.native, b.currency)}</span>
             <div className="flex-1 h-1.5 bg-surface-sunk rounded-full overflow-hidden min-w-[80px]">
               <div
                 className={`h-full ${b.inBase >= 0 ? "bg-success" : "bg-danger"}`}
                 style={{ width: `${Math.min(100, Math.abs(b.sharePct))}%` }}
               />
             </div>
-            <span className="text-muted text-tiny font-mono tabular w-12 text-right shrink-0">
+            <span className="text-muted text-tiny tabular-nums tabular w-12 text-right shrink-0">
               {b.sharePct.toFixed(0)}%
             </span>
-            <span className="text-muted text-caption font-mono tabular w-24 text-right shrink-0">
+            <span className="text-muted text-caption tabular-nums tabular w-24 text-right shrink-0">
               ≈ {fmtSignedBase(b.inBase, baseCurrency)}
             </span>
           </div>
