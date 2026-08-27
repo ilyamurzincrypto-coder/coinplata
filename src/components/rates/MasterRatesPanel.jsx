@@ -8,17 +8,17 @@ import { formatRateValue } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
 
 const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
-const GRID = { gridTemplateColumns: "1fr 74px 74px" };
+const GRID = { gridTemplateColumns: "1fr 88px 88px" };
 
 export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
   const list = quotes && quotes.length ? quotes : DEFAULT_QUOTES;
   return (
     <div>
       {/* Колонки направлений — нейтральный uppercase (акцент только на live) */}
-      <div className="grid items-center pl-[26px] pr-2 pb-1" style={GRID}>
+      <div className="grid items-center pt-3 pb-0.5" style={GRID}>
         <span />
-        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">→USDT</span>
-        <span className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]">USDT→</span>
+        <span className="text-right text-[10.5px] text-faint">→ USDT</span>
+        <span className="text-right text-[10.5px] text-faint">USDT →</span>
       </div>
 
       {list.map((q) => {
@@ -27,15 +27,14 @@ export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
         return (
           <div
             key={q}
-            className="grid items-baseline pl-[26px] pr-2 py-[5px] hover:bg-[rgba(18,22,26,0.022)] transition-colors"
+            className="grid items-baseline py-2 border-t border-line"
             style={GRID}
           >
-            <span className="text-[12.5px] font-semibold tracking-[-0.1px] text-[#15191d] whitespace-nowrap">
+            <span className="text-[12.5px] text-muted whitespace-nowrap">
               {q}
-              <span className="text-[#aeb4bb] font-medium">/USDT</span>
             </span>
-            <RateNum value={into} onCopy={onCopy} className="text-[13px] text-[#15191d]" />
-            <RateNum value={out} onCopy={onCopy} className="text-[13px] text-[#6a717a]" />
+            <RateNum value={into} onCopy={onCopy} className="text-[17px] text-ink" />
+            <RateNum value={out} onCopy={onCopy} className="text-[17px] text-ink" />
           </div>
         );
       })}

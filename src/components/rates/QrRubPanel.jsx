@@ -74,6 +74,12 @@ export default function QrRubPanel({ cbr, getRate, onCopy }) {
           </React.Fragment>
         ))}
       </div>
+      {/* Боевой параметр ценообразования живёт в localStorage одного браузера:
+          чистка хранилища молча роняет его на дефолт 1%. Пока не переехал в
+          rate_blocks.config (бэклог, СРЕДНЕСРОЧНО) — предупреждаем явно. */}
+      <p className="text-[11px] text-apps-warn mt-2.5">
+        спред хранится локально в браузере — проверьте значение
+      </p>
       <p className="text-[10px] text-[#aeb4bb] mt-2 pt-2 border-t border-[rgba(18,22,26,0.08)] leading-snug">
         {!hasData && <span className="text-warning font-semibold">Курс ЦБ ещё не загрузился. </span>}
         ЦБ — только к рублю (1 ₮ = ЦБ USD/RUB × (1 + спред)). USD/EUR/TRY — через USDT. Спред — в редакторе курсов; в сделки не публикуется.

@@ -6,7 +6,7 @@
 // расчёты — без изменений; правка/импорт — на странице «Изм.».
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { ChevronRight, Check, ArrowUpRight } from "lucide-react";
+import { ChevronRight, Check, Pencil } from "lucide-react";
 import { useRates } from "../store/rates.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useTranslation } from "../i18n/translations.jsx";
@@ -32,6 +32,24 @@ function timeAgoShort(date, nowMs = Date.now()) {
   if (diff < 3600) return `${Math.floor(diff / 60)}м`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}ч`;
   return `${Math.floor(diff / 86400)}д`;
+}
+
+/**
+ * Свежесть офиса для шапки карточки (Экран 1а r7).
+ * Старше суток — ЯНТАРНЫМ «N дней назад»: курсы двухмесячной давности обязаны
+ * тревожить, а не стоять нейтральной серой точкой. Нет курсов вовсе — честный
+ * текст «курсы не заданы», а не прочерк, который читается как «ноль».
+ */
+export function freshnessView(date, nowMs = Date.now()) {
+  if (!date) return { text: "курсы не заданы", amber: false, absent: true };
+  const diff = Math.max(0, nowMs - date.getTime());
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return { text: `${mins} мин назад`, amber: false, absent: false };
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 24) return { text: `${hours} ч назад`, amber: false, absent: false };
+  const days = Math.floor(diff / 86400000);
+  const word = days % 10 === 1 && days % 100 !== 11 ? "день" : days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 12 || days % 100 > 14) ? "дня" : "дней";
+  return { text: `${days} ${word} назад`, amber: true, absent: false };
 }
 
 function officeFreshness(getOfficeOverride, officeId, quotes) {
@@ -161,9 +179,9 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
 
   return (
     <aside className="flex flex-col gap-2">
-      {/* ── Контейнер 1: КУРСЫ — белый терминал, офисы аккордеоном ── */}
-      <div className={cardCls}>
-        <header className="flex items-center gap-2.5 px-5 pt-4 pb-3.5 border-b border-line">
+      {/* ── Курсы: шапка снаружи, офисы — отдельные карточки (Экран 1а r7) ── */}
+      <div>
+        <header className="flex items-center gap-2.5 px-1.5 pt-1 pb-3">
           <h2 className="text-[15px] font-normal tracking-tight text-ink">
             {t("rates") || "Курсы"}
           </h2>
@@ -173,74 +191,84 @@ export default function RatesSidebar({ currentOffice, onOpenRates, onExpandedCha
               {panelFresh && <>обновлено {panelFresh}</>}
             </span>
           )}
-          {onOpenRates && (
-            <button
-              type="button"
-              onClick={onOpenRates}
-              className="ml-auto w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-full border border-line-2 text-muted hover:text-ink hover:border-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15"
-              title={t("edit_rates") || "Редактировать курсы"}
-              aria-label={t("edit_rates") || "Редактировать курсы"}
-            >
-              <ArrowUpRight className="w-4 h-4" strokeWidth={1.8} />
-            </button>
-          )}
         </header>
 
         {offices.map((office) => {
           const quotes = quotesForOffice(office);
           const getRate = (from, to) => getRateRaw(from, to, office.id);
           const freshDate = officeFreshness(getOfficeOverride, office.id, quotes);
-          const ageMs = freshDate ? nowMs - freshDate.getTime() : Infinity;
-          const isFresh = ageMs < FRESH_MS;
-          const fresh = timeAgoShort(freshDate, nowMs);
+          const fv = freshnessView(freshDate, nowMs);
           const isOpen = openSet.has(office.id);
+
+          // Раскрытый офис — карточка 24; свёрнутый — строка-карточка (r7).
           return (
-            <div key={office.id} className="border-b border-line last:border-b-0">
+            <div
+              key={office.id}
+              className={`bg-card ${isOpen ? "rounded-card-2 p-[18px]" : "rounded-[20px] px-[18px] py-3.5"} mb-2.5`}
+            >
               <button
                 type="button"
                 onClick={() => toggleOffice(office.id)}
                 aria-expanded={isOpen}
-                className="flex items-center gap-2.5 w-full text-left px-3.5 py-2.5 hover:bg-surface-soft transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15 focus-visible:ring-inset"
+                className="w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/15 rounded-md"
               >
-                <ChevronRight
-                  className={`w-3 h-3 text-muted-soft shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`}
-                  strokeWidth={2.4}
-                />
-                <span className="text-[13px] font-bold tracking-tight text-ink truncate">
-                  {office.name || office.city || "Office"}
-                </span>
-                {office.city && office.name && (
-                  <span className="text-[11px] font-medium text-muted truncate">· {office.city}</span>
-                )}
-                <span className="ml-auto inline-flex items-center gap-1.5 shrink-0 text-[10px] tracking-[0.3px] text-muted-soft">
-                  <span
-                    className={`w-[5px] h-[5px] rounded-full ${isFresh ? "bg-lime" : "bg-line-2"}`}
-                    aria-hidden
+                {/* Две строки, а не одна: в 324px имя + город + «N дней назад»
+                    не помещаются, и имя резалось в «Mark Ant…». Свежесть важнее
+                    экономии строки. */}
+                <span className="flex items-baseline gap-2">
+                  <span className={`${isOpen ? "text-[14px]" : "text-[13.5px]"} font-medium text-ink truncate`}>
+                    {office.name || office.city || "Office"}
+                  </span>
+                  {office.city && office.name && (
+                    <span className="text-[11.5px] text-faint truncate">{office.city}</span>
+                  )}
+                  <ChevronRight
+                    className={`ml-auto w-3 h-3 text-faint shrink-0 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                    strokeWidth={2.4}
                   />
-                  {fresh || "—"}
+                </span>
+                <span
+                  className={`block text-[11px] mt-0.5 ${
+                    fv.amber ? "text-apps-warn" : fv.absent ? "text-faint" : "text-muted"
+                  }`}
+                >
+                  {fv.text}
                 </span>
               </button>
 
               {isOpen && (
-                <div className="pb-2.5">
+                <>
                   <MasterRatesPanel getRate={getRate} quotes={quotes} onCopy={handleCopy} />
                   <CrossRatesPanel getRate={getRate} ccys={quotes} onCopy={handleCopy} />
-                </div>
+                </>
               )}
             </div>
           );
         })}
       </div>
 
-      {/* ── Контейнер 2: спец-блоки (НЕРЕЗ, QR-рубль) ── */}
+      {/* ── Спец-блоки: НЕРЕЗ и QR ₽ — такие же карточки (r7) ── */}
       {hasNerez && (
-        <div className={`${cardCls} px-3.5 py-3`}>
+        <div className="bg-card rounded-card-2 p-[18px] mb-2.5">
           <NerezPanel specialRates={specialRates} onCopy={handleCopy} fresh={nerezFresh} />
         </div>
       )}
-      <div className={`${cardCls} px-3.5 py-3`}>
+      <div className="bg-card rounded-card-2 p-[18px] mb-2.5">
         <QrRubPanel cbr={cbr || {}} getRate={getRateRaw} onCopy={handleCopy} />
       </div>
+
+      {/* «Редактировать курсы» — тёмная пилюля во всю ширину (r7). Ведёт в
+          СТАРЫЙ редактор: внутрь не лезем, он сносится фазой 3. */}
+      {onOpenRates && (
+        <button
+          type="button"
+          onClick={onOpenRates}
+          className="w-full rounded-full bg-ink text-cream text-[14px] py-3.5 mt-0.5 flex items-center justify-center gap-2 hover:bg-black transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/25"
+        >
+          <Pencil className="w-3.5 h-3.5" strokeWidth={1.8} />
+          {t("edit_rates") || "Редактировать курсы"}
+        </button>
+      )}
 
       {/* Тост копирования */}
       <div
