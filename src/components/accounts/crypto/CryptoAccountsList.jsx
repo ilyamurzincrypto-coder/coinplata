@@ -29,6 +29,14 @@ const tokenAmt = (a) => (a && a.amount != null ? Number(a.amount) / 10 ** (a.dec
 const usd = (n) =>
   `$${(Number(n) || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Склонение счётчика: 1 нулевой · 2 нулевых. Без этого «1 нулевых».
+export function plural(n, one, few, many) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return few;
+  return many;
+}
+
 function midTruncate(addr, head = 6, tail = 5) {
   if (!addr) return "";
   return addr.length > head + tail + 1 ? `${addr.slice(0, head)}…${addr.slice(-tail)}` : addr;
@@ -82,6 +90,18 @@ function DeltaBadge({ vm, minW = 96 }) {
   );
 }
 
+// Δ в ведомости — красный ТЕКСТ без плашки-бейджа (эталон r6 .wal .dlt).
+// Порог «показывать ли» — тот же hasDelta, что и у бейджа: логику расхождения
+// не трогаем, меняется только подача.
+function DeltaText({ vm }) {
+  if (!hasDelta(vm)) return null;
+  return (
+    <span className="whitespace-nowrap tabular-nums text-[12.5px] text-[#C43A2B]">
+      Δ {usd(vm.deltaAbs)}
+    </span>
+  );
+}
+
 // Риск-скор: иконка уровня (точка ok / треугольник warn-crit) + число 0-100.
 // Клик → «почему такой скор» (плашка причины). Нет числа (не пришло от AEGIS) →
 // фолбэк на словесный лейбл, чтобы не показывать пусто.
@@ -101,7 +121,10 @@ function EyeToggle({ account, onToggle }) {
   );
 }
 
-function StatusDot({ account, onClick, small = false }) {
+// dotOnly — подача ведомости (r6): всегда цветная ТОЧКА + число, без
+// треугольника. Уровни и пороги берутся из существующей риск-логики
+// (statusOf → riskBadge), здесь меняется только форма значка.
+function StatusDot({ account, onClick, small = false, dotOnly = false }) {
   const st = statusOf(account);
   const Tag = onClick ? "button" : "span";
   const fs = small ? "text-[12.5px]" : "text-[13px]";
@@ -112,7 +135,7 @@ function StatusDot({ account, onClick, small = false }) {
       className={`inline-flex items-center gap-1.5 shrink-0 ${st.text} ${onClick ? "hover:opacity-80" : ""}`}
       title={onClick ? "Почему такой риск-скор" : undefined}
     >
-      {st.tone === "warning" || st.tone === "critical" ? (
+      {!dotOnly && (st.tone === "warning" || st.tone === "critical") ? (
         <AlertTriangle className="w-3.5 h-3.5 shrink-0" style={{ color: st.color }} strokeWidth={2.2} />
       ) : (
         <span className="rounded-full shrink-0" style={{ width: 7, height: 7, background: st.color }} />
@@ -231,8 +254,12 @@ function MobileRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drillE
 // Один colgroup на ВСЕ офисы → колонки (и суммы) выровнены между таблицами, а не
 // «плывут». table-fixed + truncate → контент не вылезает и Δ не клипается.
 // Колонки: имя | сеть | адрес | риск | он-чейн | учёт | Δ | ›.
-const DCOLW = ["19%", "7%", "21%", "11%", "16%", "11%", "11%", "4%"];
-const TD = "px-2.5 border-l-[0.5px] border-border-soft align-middle";
+// Колонки ведомости по эталону r6 (.wal): Кошелёк | Адрес | Риск | Он-чейн |
+// Учёт | Δ. Сеть уехала припиской в первую колонку, столбец-стрелка убран —
+// клик по строке ведёт туда же, куда вела стрелка.
+const DCOLW = ["216px", "auto", "92px", "140px", "104px", "142px"];
+const TD = "px-3 border-l border-apps-line-v align-middle";
+
 function ColGroup() {
   return <colgroup>{DCOLW.map((w, i) => <col key={i} style={{ width: w }} />)}</colgroup>;
 }
@@ -240,17 +267,45 @@ function ColGroup() {
 function DesktopHead() {
   return (
     <thead>
-      <tr className="text-[10px] font-semibold uppercase tracking-wide text-muted border-b-[0.5px] border-border">
-        <th className="text-left font-semibold px-2.5 py-2">Кошелёк</th>
-        <th className={`${TD} text-left font-semibold py-2`}>Сеть</th>
-        <th className={`${TD} text-left font-semibold py-2`}>Адрес</th>
-        <th className={`${TD} text-left font-semibold py-2`}>Риск</th>
-        <th className={`${TD} text-right font-semibold py-2`}>Он-чейн</th>
-        <th className={`${TD} text-right font-semibold py-2`}>Учёт</th>
-        <th className={`${TD} text-right font-semibold py-2`}>Δ</th>
-        <th className={`${TD} !px-0`} />
+      <tr className="text-[11px] font-normal text-apps-muted">
+        <th className="text-left font-normal px-3 pb-[9px] pl-0.5 border-b border-apps-line-h whitespace-nowrap">Кошелёк</th>
+        <th className={`${TD} text-left font-normal pb-[9px] border-b border-apps-line-h whitespace-nowrap`}>Адрес</th>
+        <th className={`${TD} text-left font-normal pb-[9px] border-b border-apps-line-h whitespace-nowrap`}>Риск</th>
+        <th className={`${TD} text-right font-normal pb-[9px] border-b border-apps-line-h whitespace-nowrap`}>Он-чейн</th>
+        <th className={`${TD} text-right font-normal pb-[9px] border-b border-apps-line-h whitespace-nowrap`}>Учёт</th>
+        <th className={`${TD} text-right font-normal pb-[9px] pr-0.5 border-b border-apps-line-h whitespace-nowrap`}>Δ</th>
       </tr>
     </thead>
+  );
+}
+
+/**
+ * Строка-группа офиса. Клик разворачивает нулевые/скрытые ИМЕННО этой группы
+ * (раньше состояние было одно на всю страницу — клик в одном офисе раскрывал
+ * их во всех). Неактивный офис показывается наравне с прочими, с оранжевой
+ * пометкой: по r6 группы строятся по фактическому офису кошелька.
+ */
+function GroupRow({ name, meta, warn, total, dim = false, onClick }) {
+  return (
+    <tr>
+      <td
+        colSpan={6}
+        className={`bg-apps-group px-3 py-[9px] ${onClick ? "cursor-pointer hover:brightness-[0.985]" : ""}`}
+        onClick={onClick}
+      >
+        <span className="flex items-baseline gap-3">
+          <span className={`text-[13px] ${dim ? "font-normal text-[#A39D8C]" : "font-medium"}`}>{name}</span>
+          {meta && <span className="text-[11px] text-apps-muted">{meta}</span>}
+          {warn && <span className="text-[11px] text-apps-warn">{warn}</span>}
+          {total != null && (
+            <span className="ml-auto font-light text-[16px] tabular-nums">
+              {usd(total)}
+              <small className="text-[11px] text-apps-muted ml-1.5 font-normal">он-чейн</small>
+            </span>
+          )}
+        </span>
+      </td>
+    </tr>
   );
 }
 
@@ -259,21 +314,29 @@ function DesktopRow({ vm, mode, expanded, onToggleReason, reasons, onOpen, drill
   return (
     <>
       <tr
-        className={`h-11 border-t-[0.5px] border-border-soft ${vm.account?.hidden ? "opacity-60" : ""} ${expanded ? "bg-surface-soft" : drillEnabled ? "hover:bg-surface-soft cursor-pointer" : ""}`}
+        className={`border-t border-apps-line ${vm.account?.hidden ? "opacity-60" : ""} ${expanded ? "bg-[rgba(26,25,21,.04)]" : drillEnabled ? "hover:bg-[rgba(26,25,21,.03)] cursor-pointer" : ""}`}
         onClick={drillEnabled ? () => onOpen?.(vm.account) : undefined}
       >
-        <td className="px-2.5 align-middle"><div className="flex items-center gap-1.5 min-w-0"><EyeToggle account={vm.account} onToggle={onToggleHidden} /><div className="text-[13px] text-ink truncate" title={vm.name}>{vm.name}</div></div></td>
-        <td className={`${TD} !px-2`}>{vm.network && <span className="inline-block text-[9px] font-semibold uppercase tracking-wide text-muted bg-surface-soft rounded-[6px] px-1 py-0.5">{vm.network}</span>}</td>
-        <td className={TD}><CopyAddr address={vm.address} network={null} size={12} full /></td>
-        <td className={TD}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small /></td>
-        <td className={`${TD} text-right`}><Amount value={vm.onchain} cls="text-[15px] font-medium text-ink" minW={0} red={red} /></td>
-        <td className={`${TD} text-right`}><Amount value={vm.ledger} cls="text-[13px] text-muted" minW={0} /></td>
-        <td className={`${TD} text-right`}><DeltaBadge vm={vm} minW={0} /></td>
-        <td className={`${TD} !px-0 text-center`}>{drillEnabled ? <ChevronRight className="inline w-4 h-4 text-muted-soft" /> : null}</td>
+        <td className="px-3 pl-0.5 align-middle">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <EyeToggle account={vm.account} onToggle={onToggleHidden} />
+            <div className="text-[13px] truncate" title={vm.name}>
+              {vm.name}
+              {/* Сеть — серой припиской вместо чипа (r6) */}
+              {vm.network && <small className="text-[11px] text-apps-muted ml-2">{vm.network}</small>}
+            </div>
+          </div>
+        </td>
+        <td className={TD}><CopyAddr address={vm.address} network={null} size={11.5} head={5} tail={4} /></td>
+        <td className={TD}><StatusDot account={vm.account} onClick={() => onToggleReason(vm.id)} small dotOnly /></td>
+        <td className={`${TD} text-right`}><Amount value={vm.onchain} cls="text-[16px] font-light" minW={0} red={red} /></td>
+        {/* Нулевой учёт приглушён — он тут норма, а не сигнал */}
+        <td className={`${TD} text-right`}><Amount value={vm.ledger} cls={`text-[12.5px] ${vm.ledger === 0 ? "text-[#A39D8C]" : "text-muted"}`} minW={0} /></td>
+        <td className={`${TD} pr-0.5 text-right`}><DeltaText vm={vm} /></td>
       </tr>
       {expanded && mode === "authed" && (
-        <tr className="bg-surface-soft border-t-[0.5px] border-border-soft">
-          <td colSpan={8} className="px-3 py-2"><div className="max-w-[560px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div></td>
+        <tr className="bg-[rgba(26,25,21,.04)] border-t border-apps-line">
+          <td colSpan={6} className="px-3 py-2"><div className="max-w-[560px]"><ReasonPanel vm={vm} reasons={reasons} onClose={() => onToggleReason(vm.id)} /></div></td>
         </tr>
       )}
     </>
@@ -473,13 +536,24 @@ export default function CryptoAccountsList({
 }) {
   const [filter, setFilter] = useState("all");
   const [expandedReason, setExpandedReason] = useState(null);
-  const [zeroOpen, setZeroOpen] = useState(false);
-  const [hiddenOpen, setHiddenOpen] = useState(false);
+  // Разворот нулевых/скрытых — ПО ОФИСУ. Раньше было два флага на всю
+  // страницу: клик в одном офисе раскрывал скрытые сразу во всех.
+  const [openGroups, setOpenGroups] = useState({});
+  const toggleGroup = useCallback((officeId) => {
+    setOpenGroups((m) => ({ ...m, [officeId]: !m[officeId] }));
+  }, []);
 
   const view = useMemo(() => buildCryptoView({ items, offices, filter }), [items, offices, filter]);
   // Карта счёт→имя для ленты поступлений (резолв офиса по account_id в realtime).
   const accountsById = useMemo(() => Object.fromEntries((items || []).map((a) => [a.id, a])), [items]);
   const officesById = useMemo(() => Object.fromEntries((offices || []).map((o) => [o.id, o])), [offices]);
+  // Офисы без крипто-счетов — берём с id/active, чтобы отрисовать строкой-группой.
+  // Считаем из props, чистую логику buildCryptoView не трогаем.
+  const emptyOfficeRows = useMemo(() => {
+    const withAccounts = new Set(view.sections.map((s) => s.office.id));
+    return (offices || []).filter((o) => !withAccounts.has(o.id));
+  }, [offices, view.sections]);
+
   const drillEnabled = (mode === "authed" || (mode === "share" && (shareDetails || SHARE_DRILLDOWN))) && !!onOpenWallet;
 
   const toggleReason = (id, account) => {
@@ -495,10 +569,10 @@ export default function CryptoAccountsList({
       key={key}
       type="button"
       onClick={() => setFilter(key)}
-      className={`px-2.5 py-1 rounded-[9px] text-[12px] font-medium whitespace-nowrap transition-colors ${
+      className={`rounded-full px-[15px] py-[7px] text-[12px] whitespace-nowrap transition-colors ${
         filter === key
-          ? "bg-ink text-white"
-          : "bg-surface border-[0.5px] border-border text-ink-soft hover:text-ink"
+          ? "bg-ink text-cream"
+          : "border border-line-2 text-[#6B675C] hover:text-ink hover:border-muted"
       }`}
     >
       {label}{n != null ? ` · ${n}` : ""}
@@ -509,37 +583,31 @@ export default function CryptoAccountsList({
 
   return (
     <div className="bg-bg">
-      {/* Шапка */}
-      <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-start gap-5">
-          <div>
-            <span className="text-[10.5px] font-bold uppercase tracking-[0.08em] text-muted">Счета · Крипто</span>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="font-mono tabular-nums text-[36px] leading-none text-ink">{usd(view.totals.onchain)}</span>
-              <span className="text-[12px] text-muted">он-чейн</span>
-            </div>
-            <div className="md:hidden text-[13px] mt-1.5">
-              <span className="text-muted">учёт <span className="font-mono tabular-nums">{usd(view.totals.ledger)}</span></span>
-              {dShowDelta && <span className="text-danger"> · Δ <span className="font-mono tabular-nums">{usd(view.totals.delta)}</span></span>}
-            </div>
+      {/* Герой (эталон r6 .wal-hero): сумма он-чейн крупным тонким, под ней
+          одной строкой учёт · расхождение · обновлено. Три отдельных блока с
+          вертикальными разделителями схлопнуты в эту строку. */}
+      <div className="mb-4 flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-[13px] text-muted mb-1.5">Счета · Крипто · он-чейн</div>
+          <div className="font-light tabular-nums text-[40px] leading-none tracking-[-0.01em]">
+            {usd(view.totals.onchain)}
           </div>
-          <div className="hidden md:flex items-stretch gap-5 pt-4">
-            <div className="pl-5 border-l-[0.5px] border-border">
-              <div className="text-[10.5px] text-muted">учёт</div>
-              <div className="font-mono tabular-nums text-[17px] text-ink">{usd(view.totals.ledger)}</div>
-            </div>
+          <div className="text-[12px] text-[#A39D8C] mt-2">
+            учёт <span className="tabular-nums">{usd(view.totals.ledger)}</span>
             {dShowDelta && (
-              <div className="pl-5 border-l-[0.5px] border-border">
-                <div className="text-[10.5px] text-muted">расхождение</div>
-                <div className="font-mono tabular-nums text-[17px] text-danger">Δ {usd(view.totals.delta)}</div>
-              </div>
+              <> · расхождение <span className="tabular-nums text-[#C43A2B]">Δ {usd(view.totals.delta)}</span></>
             )}
+            {asOf && filter !== "log" && <> · обновлено {hhmm(asOf)}</>}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
           {mode === "share" && <span className="inline-flex items-center gap-1 text-[11px] text-muted"><Lock className="w-3 h-3" strokeWidth={2} /> просмотр{asOf ? ` · ${hhmm(asOf)}` : ""}</span>}
-          <div className="flex items-center gap-1.5">{seg("all", "Все", view.counts.all)}{seg("ok", "OK", view.counts.ok)}{mode !== "share" && seg("log", "Поступления", null)}{mode !== "share" && seg("edd", "EDD", null)}</div>
-          {mode !== "share" && asOf && filter !== "log" && <span className="text-[10.5px] text-muted">обновлено {hhmm(asOf)}</span>}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {seg("all", "Все", view.counts.all)}
+            {seg("ok", "ОК", view.counts.ok)}
+            {mode !== "share" && seg("log", "Поступления", null)}
+            {mode !== "share" && seg("edd", "EDD", null)}
+          </div>
         </div>
       </div>
 
@@ -549,88 +617,106 @@ export default function CryptoAccountsList({
       {/* Лента EDD-находок (HOP2_RISK, все офисы, реального времени) */}
       {filter === "edd" && <RiskFindingsFeed officesById={officesById} />}
 
-      {/* Секции по офисам */}
+      {/* ── ВЕДОМОСТЬ: одна таблица на все офисы (эталон r6, Экран 4) ──
+          Было: карточка на офис со своей шапкой колонок — 26 кошельков
+          растягивались на четыре экрана. Стало: один <table>, офис —
+          строка-группа внутри. Mobile (≤768) остаётся карточками. */}
       {filter !== "log" && filter !== "edd" && (
-      <div className="space-y-4">
-        {view.sections.map((s) => (
-          <div key={s.office.id}>
-            <div className="flex items-end justify-between gap-3 mb-2 px-0.5">
-              <span className="text-[15px] font-bold text-ink truncate">{s.office.name}</span>
-              <span className="flex items-baseline gap-1.5 shrink-0">
-                <span className="font-mono tabular-nums text-[17px] font-semibold text-ink">{usd(s.onchainSum)}</span>
-                <span className="text-[11px] text-muted">он-чейн</span>
-              </span>
+      <>
+        {/* Mobile: как было — карточки по офисам */}
+        <div className="md:hidden space-y-4">
+          {view.sections.map((s) => (
+            <div key={s.office.id}>
+              <div className="flex items-end justify-between gap-3 mb-2 px-0.5">
+                <span className="text-[15px] font-bold text-ink truncate">{s.office.name}</span>
+                <span className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="font-mono tabular-nums text-[17px] font-semibold text-ink">{usd(s.onchainSum)}</span>
+                  <span className="text-[11px] text-muted">он-чейн</span>
+                </span>
+              </div>
+              <div className="bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
+                {s.wallets.map((vm, i) => (
+                  <MobileRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={i === 0} onToggleHidden={onToggleHidden} />
+                ))}
+                {s.zeroWallets.length > 0 && (
+                  <>
+                    <button type="button" onClick={() => toggleGroup(s.office.id)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
+                      <span className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</span>
+                    </button>
+                    {openGroups[s.office.id] && s.zeroWallets.map((vm) => (
+                      <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
+                    ))}
+                  </>
+                )}
+                {s.hiddenWallets.length > 0 && (
+                  <>
+                    <button type="button" onClick={() => toggleGroup(s.office.id)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length || s.zeroWallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-muted"><EyeOff className="w-3.5 h-3.5" /> Скрытые · {s.hiddenWallets.length}</span>
+                    </button>
+                    {openGroups[s.office.id] && s.hiddenWallets.map((vm) => (
+                      <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
+          ))}
+        </div>
 
-            {/* Mobile: единый список в одной карточке офиса */}
-            <div className="md:hidden bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
-              {s.wallets.map((vm, i) => (
-                <MobileRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={i === 0} onToggleHidden={onToggleHidden} />
+        {/* Desktop: ОДНА таблица */}
+        <div className="hidden md:block bg-surface-apps rounded-[24px] px-5 py-[18px]">
+          <table className="w-full table-fixed border-collapse">
+            <ColGroup />
+            <DesktopHead />
+            <tbody>
+              {view.sections.map((s) => {
+                const extra = [
+                  s.zeroWallets.length ? `${s.zeroWallets.length} ${plural(s.zeroWallets.length, "нулевой", "нулевых", "нулевых")}` : null,
+                  s.hiddenWallets.length ? `${s.hiddenWallets.length} скрытых` : null,
+                ].filter(Boolean).join(" · ");
+                const collapsible = s.zeroWallets.length + s.hiddenWallets.length > 0;
+                const open = !!openGroups[s.office.id];
+                return (
+                  <React.Fragment key={s.office.id}>
+                    <GroupRow
+                      name={s.office.name}
+                      meta={extra || null}
+                      warn={s.office.active === false ? "офис неактивен · кошельки вне городов" : null}
+                      total={s.onchainSum}
+                      onClick={collapsible ? () => toggleGroup(s.office.id) : undefined}
+                    />
+                    {s.wallets.map((vm) => (
+                      <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
+                    ))}
+                    {open && s.zeroWallets.map((vm) => (
+                      <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
+                    ))}
+                    {open && s.hiddenWallets.map((vm) => (
+                      <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Офисы без крипто-счетов — приглушённой строкой-группой, а не
+                  строчкой текста в пустоте под таблицей (r6). */}
+              {emptyOfficeRows.map((o) => (
+                <GroupRow key={o.id} name={o.name} meta="счетов нет" dim />
               ))}
-              {s.zeroWallets.length > 0 && (
-                <>
-                  <button type="button" onClick={() => setZeroOpen((o) => !o)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
-                    <span className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</span>
-                  </button>
-                  {zeroOpen && s.zeroWallets.map((vm) => (
-                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
-                  ))}
-                </>
-              )}
-              {s.hiddenWallets.length > 0 && (
-                <>
-                  <button type="button" onClick={() => setHiddenOpen((o) => !o)} className={`w-full text-left px-3 py-2.5 ${s.wallets.length || s.zeroWallets.length ? "border-t-[0.5px] border-border-soft" : ""}`}>
-                    <span className="inline-flex items-center gap-1.5 text-[12px] text-muted"><EyeOff className="w-3.5 h-3.5" /> Скрытые · {s.hiddenWallets.length}</span>
-                  </button>
-                  {hiddenOpen && s.hiddenWallets.map((vm) => (
-                    <MobileRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} first={false} onToggleHidden={onToggleHidden} />
-                  ))}
-                </>
-              )}
-            </div>
+            </tbody>
+          </table>
 
-            {/* Desktop: таблица (table-fixed, общий colgroup → выровнено между офисами) */}
-            <div className="hidden md:block bg-surface rounded-[12px] border-[0.5px] border-border overflow-hidden">
-              <table className="w-full table-fixed border-collapse">
-                <ColGroup />
-                <DesktopHead />
-                <tbody>
-                  {s.wallets.map((vm) => (
-                    <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={expandedReason === vm.id} onToggleReason={(id) => toggleReason(id, vm.account)} reasons={reasonsById[vm.id]} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
-                  ))}
-                  {s.zeroWallets.length > 0 && (
-                    <>
-                      <tr className="border-t-[0.5px] border-border-soft">
-                        <td colSpan={8} className="px-3 py-2">
-                          <button type="button" onClick={() => setZeroOpen((o) => !o)} className="text-[12px] text-muted border-b border-dashed border-muted-soft">Кошельки с нулём · {s.zeroWallets.length}</button>
-                        </td>
-                      </tr>
-                      {zeroOpen && s.zeroWallets.map((vm) => (
-                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
-                      ))}
-                    </>
-                  )}
-                  {s.hiddenWallets.length > 0 && (
-                    <>
-                      <tr className="border-t-[0.5px] border-border-soft">
-                        <td colSpan={8} className="px-3 py-2">
-                          <button type="button" onClick={() => setHiddenOpen((o) => !o)} className="inline-flex items-center gap-1.5 text-[12px] text-muted"><EyeOff className="w-3.5 h-3.5" /> Скрытые · {s.hiddenWallets.length}</button>
-                        </td>
-                      </tr>
-                      {hiddenOpen && s.hiddenWallets.map((vm) => (
-                        <DesktopRow key={vm.id} vm={vm} mode={mode} expanded={false} onToggleReason={() => {}} onOpen={onOpenWallet} drillEnabled={drillEnabled} onToggleHidden={onToggleHidden} />
-                      ))}
-                    </>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="flex justify-between items-center mt-[11px] text-[11px] text-apps-muted">
+            <span>{view.counts.all} кошельков · {view.sections.length} офисов · нулевые и скрытые разворачиваются кликом по офису</span>
+            <span>адрес полностью — по клику · копирование ⧉</span>
           </div>
-        ))}
-      </div>
+        </div>
+      </>
       )}
 
-      {filter !== "log" && view.emptyOffices.length > 0 && <div className="text-[11px] text-muted-soft text-center mt-4">Без счетов: {view.emptyOffices.join(", ")}</div>}
+
+      {/* Строка «Без счетов: …» убрана: офисы без крипто-счетов теперь
+          показываются приглушёнными строками-группами внутри таблицы (r6). */}
     </div>
   );
 }

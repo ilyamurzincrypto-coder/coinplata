@@ -138,7 +138,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const can = useCan();
   const canEditAccount = can("accounting", "edit") || can("settings", "edit");
   const canManageOffices = currentUser?.role === "admin" || currentUser?.role === "owner";
-  const { activeOffices, swapOfficesOrder } = useOffices();
+  const { offices, activeOffices, swapOfficesOrder } = useOffices();
   const { dict: curDict } = useCurrencies();
   const { channels } = useRates();
   const { base, toBase } = useBaseCurrency();
@@ -516,7 +516,10 @@ export default function AccountsPage({ onOpenHelp = null }) {
           {activeTab === "crypto" ? (
             <CryptoAccountsList
               items={cryptoItems}
-              offices={activeOffices}
+              // ВСЕ офисы, не только активные (эталон r6): группы строятся по
+              // фактическому офису кошелька. С activeOffices неактивный офис не
+              // резолвился в имя, и WW-135 падал в группу-заглушку с UUID.
+              offices={offices}
               mode="authed"
               asOf={cryptoAsOf}
               onOpenWallet={openWallet}
