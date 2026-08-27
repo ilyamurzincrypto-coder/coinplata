@@ -2,7 +2,7 @@
 // границах суток, а цена ошибки — забытая заявка: если просроченная перестанет
 // помечаться, она визуально сольётся с актуальными.
 import { describe, it, expect } from "vitest";
-import { meetingView } from "./DealsLedger.jsx";
+import { meetingView, orderInPeriod } from "./DealsLedger.jsx";
 
 // Полдень, чтобы сдвиги на часы не перескакивали через полночь сами по себе.
 const NOW = new Date("2026-08-27T12:00:00");
@@ -72,5 +72,40 @@ describe("meetingView", () => {
     expect(meetingView(null, NOW)).toMatchObject({ kind: "none", label: "—", stale: false });
     expect(meetingView("", NOW)).toMatchObject({ kind: "none" });
     expect(meetingView("не-дата", NOW)).toMatchObject({ kind: "none", label: "—" });
+  });
+});
+
+// ── Семантика вкладки «Сегодня» ────────────────────────────────────────
+// Зафиксировано как РЕШЕНИЕ: просрочка обязана мозолить глаза в дефолтной
+// вкладке, иначе забытая заявка морозит резерв и не попадается на глаза.
+describe("orderInPeriod", () => {
+  const at = (iso) => ({ meetingAt: iso });
+
+  it("«Сегодня» показывает встречи сегодня", () => {
+    expect(orderInPeriod(at("2026-08-27T09:30:00"), "today", NOW)).toBe(true);
+    expect(orderInPeriod(at("2026-08-27T23:00:00"), "today", NOW)).toBe(true);
+  });
+
+  it("«Сегодня» показывает ВСЕ просроченные — они не прячутся во «Все»", () => {
+    expect(orderInPeriod(at("2026-08-26T15:00:00"), "today", NOW)).toBe(true);
+    expect(orderInPeriod(at("2026-08-11T15:47:00"), "today", NOW)).toBe(true);
+    expect(orderInPeriod(at("2026-05-01T10:00:00"), "today", NOW)).toBe(true);
+  });
+
+  it("«Сегодня» скрывает будущее — оно всплывёт само", () => {
+    expect(orderInPeriod(at("2026-08-28T12:27:00"), "today", NOW)).toBe(false);
+    expect(orderInPeriod(at("2026-09-03T10:05:00"), "today", NOW)).toBe(false);
+  });
+
+  it("заявка без времени встречи видна всегда — иначе потеряется молча", () => {
+    expect(orderInPeriod({ meetingAt: null }, "today", NOW)).toBe(true);
+    expect(orderInPeriod({}, "today", NOW)).toBe(true);
+    expect(orderInPeriod({ meetingAt: "мусор" }, "today", NOW)).toBe(true);
+  });
+
+  it("«Все» пропускает всё, включая будущее", () => {
+    expect(orderInPeriod(at("2026-08-28T12:27:00"), "all", NOW)).toBe(true);
+    expect(orderInPeriod(at("2026-08-11T15:47:00"), "all", NOW)).toBe(true);
+    expect(orderInPeriod({ meetingAt: null }, "all", NOW)).toBe(true);
   });
 });

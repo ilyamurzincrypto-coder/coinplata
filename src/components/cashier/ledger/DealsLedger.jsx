@@ -84,6 +84,24 @@ export function meetingView(iso, now = new Date()) {
     stale: true,
   };
 }
+/**
+ * Попадает ли заявка во вкладку периода.
+ *
+ * РЕШЕНИЕ (а не случайность): «Сегодня» = встречи сегодня + ВСЕ просроченные.
+ * Просрочка НЕ прячется во вкладку «Все» — забытая заявка морозит резерв в
+ * «Остатках», и если она исчезнет из дефолтной вкладки, кассир её не увидит
+ * никогда. Прячем из «Сегодня» только будущее (завтра и дальше) — оно ещё
+ * успеет всплыть само.
+ *
+ * Заявки без времени встречи показываем всегда: иначе они пропадут из обеих
+ * вкладок и потеряются молча.
+ */
+export function orderInPeriod(order, period, now = new Date()) {
+  if (period !== "today") return true; // «Все» — без ограничений
+  const kind = meetingView(order?.meetingAt, now).kind;
+  return kind !== "future"; // today | past | none
+}
+
 function fmtTime(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -478,7 +496,10 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       });
   }, [indexed, matchDeal, sortDir, sortKey, sortVal]);
 
-  const ordersView = useMemo(() => orders.filter(matchOrder), [orders, matchOrder]);
+  const ordersView = useMemo(
+    () => orders.filter((o) => matchOrder(o) && orderInPeriod(o, period, new Date(nowTick))),
+    [orders, matchOrder, period, nowTick]
+  );
 
   // ── стили ячеек ──
   const th =
