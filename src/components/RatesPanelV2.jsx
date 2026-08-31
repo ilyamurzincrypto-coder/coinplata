@@ -12,8 +12,15 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Pencil, Plus } from "lucide-react";
-import { loadBlocks, loadPublished, publishedMap } from "../lib/ratesV2.js";
-import { COL_INTO, COL_OUT, Reveal, useRevealHover } from "./rates/hoverReveal.jsx";
+import { loadBlocks, loadPublished, loadSources, publishedMap } from "../lib/ratesV2.js";
+import { computeRowPrice } from "../lib/rateEngine.js";
+import { formatCrossValue } from "../utils/ratesFormat.js";
+import { COL_INTO, COL_OUT, Reveal, makeCols, useRevealHover } from "./rates/hoverReveal.jsx";
+
+// Нал считается к лире ровно теми же правилами, что тезерный блок — к USDT.
+const CASH_COLS_BY_KEY = makeCols("TRY");
+const CASH_COLS = [CASH_COLS_BY_KEY.into, CASH_COLS_BY_KEY.out];
+const CASH_GRID = { gridTemplateColumns: "minmax(0,1fr) 64px 64px" };
 
 // Порядок колонок блочной панели: сначала «USDT →», потом «→ USDT» — обратный
 // переходной панели. Именно поэтому пара берётся из дескриптора (см. hoverReveal).
@@ -76,7 +83,11 @@ export default function RatesPanelV2({ onOpenRates }) {
   const [blocks, setBlocks] = useState(null);
   const [published, setPublished] = useState(null);
   const [err, setErr] = useState("");
+  const [sources, setSources] = useState({});
   const [scopeByBlock, setScopeByBlock] = useState({});
+  // Ховер нала — своё состояние: две карточки на экране не должны
+  // подсвечиваться вместе от одного наведения.
+  const cashHover = useRevealHover();
 
   useEffect(() => {
     let alive = true;
@@ -87,6 +98,12 @@ export default function RatesPanelV2({ onOpenRates }) {
         setBlocks(bs);
         setPublished(pub);
         setScopeByBlock(Object.fromEntries(bs.map((b) => [b.code, b.scopes?.[0] || null])));
+
+        // Котировки нужны auto-блокам (нал, QR). До первой публикации это
+        // ЕДИНСТВЕННЫЙ источник цифр на панели — см. cashRate ниже.
+        const providers = [...new Set(bs.filter((b) => b.kind === "auto").map((b) => b.config?.provider).filter(Boolean))];
+        const { sources: src } = await loadSources(providers);
+        if (alive) setSources(src);
       } catch (e) {
         if (alive) setErr(e.message || String(e));
       }
@@ -118,6 +135,43 @@ export default function RatesPanelV2({ onOpenRates }) {
   // Перестановки: сколько маршрутов со своей маржой против дефолта блока.
   const perOwn = per ? per.rows.filter((r) => r.value != null).length : 0;
 
+  // ── Нал ──────────────────────────────────────────────────────────────
+  // Цена строки: опубликованное, а если публикаций ещё нет — ЖИВОЙ фид через
+  // rateEngine. Панель обещала показывать только опубликованное, и это
+  // отступление: до v.1 карточка иначе стоит с прочерками, хотя Толунай
+  // работает. Формулу считает тот же движок, что и публикация, поэтому
+  // расхождения между «видно в панели» и «уйдёт в каналы» не возникает,
+  // а строка «по фиду, не опубликовано» говорит, что именно на экране.
+  const cashRate = (from, to) => {
+    const pub = rateOf("cash", null, from, to);
+    if (pub != null) return pub;
+    const row = cash?.rows.find((r) => r.from_ccy === from && r.to_ccy === to && r.enabled !== false);
+    if (!row) return null;
+    const price = sources[`${cash.config?.provider}|${from}|${to}`];
+    const res = computeRowPrice({ ...row, value: row.value }, cash, { sourcePrice: price });
+    return res.error ? null : res.rate;
+  };
+  // Валюты нала = всё, что котируется к лире (справочник, не хардкод).
+  const cashCcys = cash
+    ? [...new Set(cash.rows.filter((r) => r.to_ccy === "TRY" && r.enabled !== false).map((r) => r.from_ccy))]
+    : [];
+  const cashLive = cash && !cashCcys.some((c) => rateOf("cash", null, c, "TRY") != null);
+
+  // КРОСС между валютами нала — композиция ДВУХ ЧИСЕЛ, УЖЕ ВИДНЫХ ВЫШЕ:
+  // клиент отдаёт A (нога A→TRY) и получает B (нога TRY→B). Поэтому кросс
+  // проверяется глазами прямо на карточке и не является третьей формулой.
+  const cashCross = [];
+  for (let i = 0; i < cashCcys.length; i++) {
+    for (let j = i + 1; j < cashCcys.length; j++) {
+      const a = cashCcys[i], b = cashCcys[j];
+      const aIn = cashRate(a, "TRY"), bOut = cashRate("TRY", b);
+      const bIn = cashRate(b, "TRY"), aOut = cashRate("TRY", a);
+      const fwd = aIn && bOut ? aIn / bOut : null;
+      const rev = bIn && aOut ? bIn / aOut : null;
+      if (fwd != null || rev != null) cashCross.push({ a, b, fwd, rev });
+    }
+  }
+
   return (
     <aside className="flex flex-col">
       <div className="flex items-center justify-between px-1.5 pt-1 pb-3">
@@ -127,20 +181,72 @@ export default function RatesPanelV2({ onOpenRates }) {
         </span>
       </div>
 
-      {/* 1. Нал */}
+      {/* 1. Нал — обе стороны к лире и кросс между ними, всё от Толуная */}
       {cash && (
         <BlockCard
           onOpen={onOpenRates}
           label={`${cash.title} · ${cash.config?.provider || "авто"}`}
-          foot={`${(cash.scopes || []).join(" и ")} · спред ${cash.config?.spread_pct ?? 0}${cash.config?.spread_mode === "abs" ? " коп." : "%"}`}
+          foot={`${(cash.scopes || []).join(" и ")} · спред ${cash.config?.spread_pct ?? 0}${cash.config?.spread_mode === "abs" ? " коп." : "%"}${cashLive ? " · по фиду, не опубликовано" : ""}`}
           icon={<span className="text-[13px]">₺</span>}
         >
-          {cash.rows.filter((r) => r.to_ccy === "TRY" && r.enabled !== false).map((r) => (
-            <div key={r.id} className="flex justify-between items-baseline py-2.5 border-t border-line first:border-t-0 first:pt-0">
-              <span className="text-[12.5px] text-muted">{r.from_ccy} → {r.to_ccy}</span>
-              <span className="font-light text-[24px] tabular-nums">{fmtNum(rateOf("cash", r.scope, r.from_ccy, r.to_ccy), 2)}</span>
-            </div>
-          ))}
+          <div className="grid gap-2.5 py-0.5" style={CASH_GRID}>
+            <span />
+            {CASH_COLS.map((col) => (
+              <span
+                key={col.key}
+                {...cashHover.bind(col.key)}
+                className={`text-[10.5px] text-right cursor-default transition-colors duration-300 ${
+                  cashHover.revealed === col.key ? "text-ink" : "text-faint"
+                }`}
+              >
+                {col.caption}
+              </span>
+            ))}
+          </div>
+
+          {cashCcys.map((c) => {
+            const shown = CASH_COLS.find((x) => x.key === cashHover.revealed);
+            const byKey = { into: cashRate(c, "TRY"), out: cashRate("TRY", c) };
+            return (
+              <div key={c} className="grid gap-2.5 items-baseline py-2 border-t border-line" style={CASH_GRID}>
+                <Reveal
+                  base={c}
+                  full={shown ? shown.pair(c) : ""}
+                  on={!!shown}
+                  className="text-[12.5px] text-muted"
+                  revealClass="text-ink"
+                />
+                {CASH_COLS.map((col) => (
+                  <span
+                    key={col.key}
+                    className={`font-light text-[19px] text-right tabular-nums whitespace-nowrap transition-opacity duration-[350ms] ${
+                      cashHover.revealed && cashHover.revealed !== col.key ? "opacity-35" : "opacity-100"
+                    }`}
+                  >
+                    {fmtNum(byKey[col.key], 4)}
+                  </span>
+                ))}
+              </div>
+            );
+          })}
+
+          {cashCross.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 pt-3 pb-1">
+                <span className="text-[10px] tracking-[1.3px] uppercase text-faint">Кросс</span>
+                <span className="flex-1 h-px bg-line" />
+              </div>
+              {cashCross.map(({ a, b, fwd, rev }) => (
+                <div key={`${a}_${b}`} className="grid gap-2.5 items-baseline py-1.5 border-t border-line" style={CASH_GRID}>
+                  <span className="text-[11.5px] text-muted whitespace-nowrap">
+                    {a}<span className="text-faint">/{b}</span>
+                  </span>
+                  <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(fwd)}</span>
+                  <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(rev)}</span>
+                </div>
+              ))}
+            </>
+          )}
         </BlockCard>
       )}
 

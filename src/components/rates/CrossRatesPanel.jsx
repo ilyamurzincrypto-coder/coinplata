@@ -6,19 +6,8 @@
 
 import React from "react";
 import { usdtPer } from "../../lib/rates.js";
+import { formatCrossValue as fmtCross } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
-
-function fmtCross(n) {
-  if (!Number.isFinite(n) || n <= 0) return "—";
-  let d;
-  if (n >= 100) d = 2;
-  else if (n >= 10) d = 3;
-  else if (n >= 1) d = 4;
-  else if (n >= 0.1) d = 4;
-  else if (n >= 0.01) d = 5;
-  else d = 6;
-  return n.toFixed(d).replace(/0+$/, "").replace(/\.$/, "").replace(".", ",");
-}
 
 function uniquePairs(ccys) {
   const out = [];

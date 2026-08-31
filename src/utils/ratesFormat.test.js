@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isPercentPair, rateToPercent, percentToRate, displayValue, toStoredRate, formatRateValue } from "./ratesFormat.js";
+import { isPercentPair, rateToPercent, percentToRate, displayValue, toStoredRate, formatRateValue, formatCrossValue } from "./ratesFormat.js";
 
 describe("ratesFormat", () => {
   it("isPercentPair: процент отключён — всё абсолютное", () => {
@@ -31,5 +31,30 @@ describe("ratesFormat", () => {
     expect(toStoredRate("TRY", "USDT", 48, 1 / 46)).toBeCloseTo(1 / 48, 9);
     // USDT→TRY ввели 47, текущий 45 (≥1) → store 47
     expect(toStoredRate("USDT", "TRY", 47, 45)).toBeCloseTo(47, 9);
+  });
+});
+
+describe("formatCrossValue — точность растёт к мелким числам", () => {
+  it("порог знаков зависит от величины", () => {
+    expect(formatCrossValue(140.5)).toBe("140,5");     // ≥100 → 2 знака
+    expect(formatCrossValue(93.2823)).toBe("93,282");  // ≥10  → 3
+    expect(formatCrossValue(80.6122)).toBe("80,612");
+  });
+  it("около единицы — четыре", () => {
+    expect(formatCrossValue(1.1333)).toBe("1,1333");
+    expect(formatCrossValue(0.8427)).toBe("0,8427");
+  });
+  it("мелкие не схлопываются в ноль", () => {
+    // 0,0103 при четырёх знаках ещё живёт, а 0,00089 стало бы «0,0009»
+    expect(formatCrossValue(0.0103305)).toBe("0,01033");
+    expect(formatCrossValue(0.00089)).toBe("0,00089");
+  });
+  it("хвостовые нули не тянутся", () => {
+    expect(formatCrossValue(2.5)).toBe("2,5");
+  });
+  it("мусор — прочерк, а не NaN на экране", () => {
+    expect(formatCrossValue(0)).toBe("—");
+    expect(formatCrossValue(NaN)).toBe("—");
+    expect(formatCrossValue(-1)).toBe("—");
   });
 });

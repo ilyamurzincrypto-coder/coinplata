@@ -4,7 +4,7 @@
 // прошлая механика их съедала на полпути анимации.
 
 import { describe, it, expect } from "vitest";
-import { COL_INTO, COL_OUT } from "./hoverReveal.jsx";
+import { COL_INTO, COL_OUT, makeCols } from "./hoverReveal.jsx";
 
 describe("дескрипторы направлений", () => {
   it("«USDT →» — клиент отдаёт тезер", () => {
@@ -35,5 +35,21 @@ describe("дескрипторы направлений", () => {
 
   it("ключи направлений различимы", () => {
     expect(COL_INTO.key).not.toBe(COL_OUT.key);
+  });
+});
+
+describe("makeCols — база блока задаётся, а не зашита", () => {
+  it("нал считается к лире теми же правилами, что тезер к USDT", () => {
+    const try_ = makeCols("TRY");
+    expect(try_.into.caption).toBe("→ TRY");
+    expect(try_.into.pair("USD")).toBe("USD → TRY");
+    expect(try_.out.caption).toBe("TRY →");
+    expect(try_.out.pair("USD")).toBe("TRY → USD");
+  });
+
+  it("готовые USDT-константы — тот же конструктор, не копия", () => {
+    const u = makeCols("USDT");
+    expect(u.into.pair("EUR")).toBe(COL_INTO.pair("EUR"));
+    expect(u.out.pair("EUR")).toBe(COL_OUT.pair("EUR"));
   });
 });

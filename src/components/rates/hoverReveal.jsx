@@ -24,19 +24,23 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-/** Колонка «X → USDT»: клиент отдаёт валюту, получает тезер. */
-export const COL_INTO = {
-  key: "into",
-  caption: "→ USDT",
-  pair: (ccy) => `${ccy} → USDT`,
-};
+/**
+ * Пара колонок для блока, чья база — `base` (USDT у тезерного блока, TRY у
+ * нала). Подпись и построение пары идут из ОДНОГО места, поэтому колонка
+ * физически не может показать подпись одного направления и пару другого.
+ */
+export function makeCols(base) {
+  return {
+    /** «X → base»: клиент отдаёт валюту, получает базу. */
+    into: { key: "into", caption: `→ ${base}`, pair: (ccy) => `${ccy} → ${base}` },
+    /** «base → X»: клиент отдаёт базу, получает валюту. */
+    out: { key: "out", caption: `${base} →`, pair: (ccy) => `${base} → ${ccy}` },
+  };
+}
 
-/** Колонка «USDT → X»: клиент отдаёт тезер, получает валюту. */
-export const COL_OUT = {
-  key: "out",
-  caption: "USDT →",
-  pair: (ccy) => `USDT → ${ccy}`,
-};
+const USDT_COLS_BY_KEY = makeCols("USDT");
+export const COL_INTO = USDT_COLS_BY_KEY.into;
+export const COL_OUT = USDT_COLS_BY_KEY.out;
 
 /**
  * Состояние наведения на колонку.
