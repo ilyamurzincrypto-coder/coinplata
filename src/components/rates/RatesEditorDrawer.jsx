@@ -55,19 +55,25 @@ export default function RatesEditorDrawer({ open, onClose }) {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Терминальная шапка drawer */}
-        <div className="flex items-center gap-3.5 px-5 py-3 border-b border-[rgba(18,22,26,0.08)] flex-none">
-          <span className="text-[12px] font-extrabold tracking-[1.2px] uppercase text-[#15191d]">
-            Редактирование курсов{v2 ? " · v2" : ""}
-          </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="ml-auto text-[12.5px] font-bold text-white bg-[#0c9c6b] rounded-[9px] px-4 py-2 hover:bg-[#0b8c60] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c9c6b]/40"
-          >
-            Готово
-          </button>
-        </div>
+        {/* Терминальная шапка drawer — ТОЛЬКО для старого редактора.
+            У v2 своя шапка «Курсы · редактирование» с крестиком, и полоса
+            над ней была вторым заголовком одного и того же экрана. У старого
+            редактора собственная страничная шапка в drawer-режиме скрыта,
+            поэтому здесь «Готово» — его единственная видимая кнопка выхода. */}
+        {!v2 && (
+          <div className="flex items-center gap-3.5 px-5 py-3 border-b border-[rgba(18,22,26,0.08)] flex-none">
+            <span className="text-[12px] font-extrabold tracking-[1.2px] uppercase text-[#15191d]">
+              Редактирование курсов
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-auto text-[12.5px] font-bold text-white bg-[#0c9c6b] rounded-[9px] px-4 py-2 hover:bg-[#0b8c60] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0c9c6b]/40"
+            >
+              Готово
+            </button>
+          </div>
+        )}
         {/* Тело — существующий редактор (его табы офисов/секции/поля/save) */}
         <div className="flex-1 overflow-auto">
           {open && (v2 ? <RatesEditorV2 onClose={onClose} /> : <RatesPage onBack={onClose} drawer />)}
