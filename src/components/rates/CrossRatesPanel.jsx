@@ -27,7 +27,12 @@ function uniquePairs(ccys) {
   return out;
 }
 
-const GRID = { gridTemplateColumns: "1fr 88px 88px" };
+// minmax(0,1fr), а НЕ 1fr: у 1fr min-width:auto, поэтому длинная пара
+// «USD / TRY» не даёт колонке сжаться и выталкивает числа за край карточки
+// (замер: +12…15px). Кросс — вспомогательные значения, поэтому колонки
+// уже и шрифт мельче, но число всегда ЦЕЛИКОМ: обрезанная цифра в кассе
+// это неверная цифра перед глазами.
+const GRID = { gridTemplateColumns: "minmax(0,1fr) 82px 82px" };
 
 export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   const fiats = (ccys || []).filter((c) => c !== "USDT");
@@ -45,7 +50,7 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   return (
     <div>
       {/* Секция — мелкий label + hairline на всю ширину */}
-      <div className="flex items-center gap-2 pl-[26px] pr-2 pt-2 pb-1">
+      <div className="flex items-center gap-2 pt-2 pb-1">
         <span className="text-[8.5px] font-bold tracking-[1.3px] uppercase text-[#6a717a]">Кросс</span>
         <span className="flex-1 h-px bg-[rgba(18,22,26,0.08)]" />
       </div>
@@ -55,18 +60,12 @@ export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
           className="grid items-baseline py-1.5 border-t border-line"
           style={GRID}
         >
-          <span className="text-[12px] text-muted whitespace-nowrap">
+          <span className="text-[11.5px] text-muted whitespace-nowrap">
             {a}
-            <span className="text-faint"> / {b}</span>
+            <span className="text-faint">/{b}</span>
           </span>
-          <span className="flex items-baseline justify-end gap-1">
-            
-            <RateNum value={fmtCross(fwd)} onCopy={onCopy} className="text-[14px] text-[#6B675C]" />
-          </span>
-          <span className="flex items-baseline justify-end gap-1">
-            
-            <RateNum value={fmtCross(rev)} onCopy={onCopy} className="text-[14px] text-[#6B675C]" />
-          </span>
+          <RateNum value={fmtCross(fwd)} onCopy={onCopy} className="text-[13px] text-[#6B675C] whitespace-nowrap" />
+          <RateNum value={fmtCross(rev)} onCopy={onCopy} className="text-[13px] text-[#6B675C] whitespace-nowrap" />
         </div>
       ))}
     </div>

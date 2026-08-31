@@ -8,7 +8,9 @@ import { formatRateValue } from "../../utils/ratesFormat.js";
 import RateNum from "./RateNum.jsx";
 
 const DEFAULT_QUOTES = ["USD", "TRY", "EUR"];
-const GRID = { gridTemplateColumns: "1fr 88px 88px" };
+// minmax(0,1fr) по той же причине, что в кроссе: 1fr не сжимается под
+// длинный лейбл и выталкивает числа за край карточки.
+const GRID = { gridTemplateColumns: "minmax(0,1fr) 88px 88px" };
 
 export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
   const list = quotes && quotes.length ? quotes : DEFAULT_QUOTES;
@@ -33,8 +35,8 @@ export default function MasterRatesPanel({ getRate, quotes, onCopy }) {
             <span className="text-[12.5px] text-muted whitespace-nowrap">
               {q}
             </span>
-            <RateNum value={into} onCopy={onCopy} className="text-[17px] text-ink" />
-            <RateNum value={out} onCopy={onCopy} className="text-[17px] text-ink" />
+            <RateNum value={into} onCopy={onCopy} className="text-[17px] text-ink whitespace-nowrap" />
+            <RateNum value={out} onCopy={onCopy} className="text-[17px] text-ink whitespace-nowrap" />
           </div>
         );
       })}
