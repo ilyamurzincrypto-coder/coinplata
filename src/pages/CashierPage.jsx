@@ -6,6 +6,8 @@ import OpenObligationsWidget from "../components/cashier/widgets/OpenObligations
 import RatesBar from "../components/RatesBar.jsx";
 import RatesEditorDrawer from "../components/rates/RatesEditorDrawer.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
+import RatesPanelV2 from "../components/RatesPanelV2.jsx";
+import { isRatesV2Enabled } from "../lib/ratesV2.js";
 import ExchangeForm from "../components/ExchangeForm.jsx";
 import DealForm from "../components/cashier/DealForm.jsx";
 import NewDealForm from "../components/deal-form/NewDealForm.jsx";
@@ -529,11 +531,17 @@ export default function CashierPage({
                 под залипшую карточку «Остатки». Теперь высоту скролла задаёт
                 только колонка сделок. */}
             <aside className="lg:sticky lg:top-[56px] lg:max-h-[calc(100vh-64px)] lg:overflow-y-auto lg:[scrollbar-width:thin]">
-              <RatesSidebar
-                currentOffice={currentOffice}
-                onOpenRates={openRates}
-                onExpandedChange={setSidebarExpanded}
-              />
+              {/* Флаг rates_v2_ui: блочная панель на опубликованных версиях.
+                  Выключен — переходная панель (Экран 1а) как была. */}
+              {isRatesV2Enabled(currentUser) ? (
+                <RatesPanelV2 onOpenRates={openRates} />
+              ) : (
+                <RatesSidebar
+                  currentOffice={currentOffice}
+                  onOpenRates={openRates}
+                  onExpandedChange={setSidebarExpanded}
+                />
+              )}
             </aside>
 
             <div className="min-w-0 space-y-4 relative">
