@@ -3,7 +3,7 @@
 //
 // Magic-link УБРАН с logingPage намеренно: он позволял зайти в систему
 // без когда-либо установленного пароля. Если юзер забыл пароль — есть
-// "Forgot password?" → resetPasswordForEmail (recovery flow), который
+// "Забыли пароль?" → resetPasswordForEmail (recovery flow), который
 // после клика на email link принудительно ведёт на SetPasswordPage.
 //
 // Работает даже когда Supabase не настроен (preview-режим): кнопки
@@ -93,35 +93,35 @@ export default function LoginPage() {
 
   // Человеко-читаемое сообщение вместо supabase error raw.
   const mapAuthError = (e) => {
-    if (!e) return "Unknown error";
+    if (!e) return "Неизвестная ошибка";
     const msg = (e.message || "").toLowerCase();
     if (msg.includes("invalid login credentials"))
-      return "Wrong email or password";
+      return "Неверная почта или пароль";
     if (msg.includes("email not confirmed"))
-      return "Email not verified yet — check your invite link";
+      return "Почта ещё не подтверждена — откройте ссылку из приглашения";
     if (msg.includes("user not found"))
-      return "No user with this email";
+      return "Пользователя с такой почтой нет";
     if (msg.includes("disabled") || msg.includes("banned"))
-      return "This account is disabled. Contact an admin.";
+      return "Аккаунт отключён. Обратитесь к администратору.";
     if (msg.includes("rate limit"))
-      return "Too many attempts — try again in a minute";
-    return e.message || "Sign-in failed";
+      return "Слишком много попыток — повторите через минуту";
+    return e.message || "Не удалось войти";
   };
 
   const handlePasswordSignIn = async (e) => {
     e?.preventDefault?.();
     clearMessages();
     if (!isSupabaseConfigured) {
-      setError("Supabase not configured — demo mode only");
+      setError("Supabase не настроен — только демо-режим");
       return;
     }
     if (!email.trim()) {
-      setError("Enter your email");
+      setError("Введите почту");
       emailRef.current?.focus();
       return;
     }
     if (!password) {
-      setError("Enter your password or use a magic link");
+      setError("Введите пароль");
       passwordRef.current?.focus();
       return;
     }
@@ -164,11 +164,11 @@ export default function LoginPage() {
   const handleForgotPassword = async () => {
     clearMessages();
     if (!isSupabaseConfigured) {
-      setError("Supabase not configured — demo mode only");
+      setError("Supabase не настроен — только демо-режим");
       return;
     }
     if (!email.trim()) {
-      setError("Enter your email first");
+      setError("Сначала введите почту");
       emailRef.current?.focus();
       return;
     }
@@ -197,14 +197,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 relative overflow-hidden flex items-center justify-center px-4 py-10 font-sans">
+    <div className="min-h-screen w-full bg-bg relative overflow-hidden flex items-center justify-center px-4 py-10 font-sans">
       {/* Декоративный background: радиальные пятна + grid */}
       <div
         aria-hidden
         className="absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(ellipse 50% 50% at 50% 0%, rgba(16,185,129,0.12), transparent 70%), radial-gradient(ellipse 60% 60% at 50% 100%, rgba(15,23,42,0), transparent 60%)",
+            "radial-gradient(ellipse 50% 50% at 50% 0%, rgba(200,217,111,0.12), transparent 70%), radial-gradient(ellipse 60% 60% at 50% 100%, rgba(15,23,42,0), transparent 60%)",
         }}
       />
       <div
@@ -242,8 +242,8 @@ export default function LoginPage() {
 
           {/* Сам лого — круглый, ring-2 эмеральдовый, мягкая 60px тень */}
           <div
-            className="relative z-10 w-36 h-36 rounded-full overflow-hidden ring-2 ring-emerald-400/40 shadow-[0_0_80px_-10px_rgba(16,185,129,0.55)] animate-[logoEmerge_900ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
-            style={{ background: "radial-gradient(circle at 50% 45%, #fafafa 0%, #ffffff 60%)" }}
+            className="relative z-10 w-36 h-36 rounded-full overflow-hidden ring-2 ring-emerald-400/40 shadow-[0_0_80px_-10px_rgba(200,217,111,0.55)] animate-[logoEmerge_900ms_cubic-bezier(0.2,0.8,0.2,1)_both]"
+            style={{ background: "radial-gradient(circle at 50% 45%, #FDFCF8 0%, #FDFCF8 60%)" }}
           >
             <img
               src="/logo.png"
@@ -256,7 +256,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div
-          className="relative bg-ink/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+          className="relative bg-ink/70 backdrop-blur-xl border border-line rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 60px -20px rgba(0,0,0,0.7)",
@@ -274,7 +274,7 @@ export default function LoginPage() {
           {/* Проба хранилища — ДО ввода пароля. Раньше человек узнавал о
               проблеме только потратив попытку и увидев вечный спиннер. */}
           {!storageOk && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning/10 border border-amber-500/25 text-amber-300 text-caption">
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-amber-50 border border-amber-200 text-amber-700 text-caption">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-px" strokeWidth={2} />
               <span>
                 Браузер не даёт сохранять данные сайта — вход не переживёт
@@ -286,7 +286,7 @@ export default function LoginPage() {
 
           {/* Notice: Supabase not configured */}
           {!isSupabaseConfigured && (
-            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning/10 border border-amber-500/25 text-amber-300 text-caption">
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-amber-50 border border-amber-200 text-amber-700 text-caption">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <span>
                 Backend not connected yet — this is a UI preview. Inputs are for
@@ -311,7 +311,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 onKeyDown={handleEmailKeyDown}
                 disabled={loading}
-                placeholder="you@company.com"
+                placeholder="вы@компания.com"
                 className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
@@ -319,7 +319,7 @@ export default function LoginPage() {
             {/* Password */}
             <Field
               icon={<Lock className="w-3.5 h-3.5" />}
-              label="Password"
+              label="Пароль"
               htmlFor="password"
               className="mt-3"
               rightSlot={
@@ -328,7 +328,7 @@ export default function LoginPage() {
                   onClick={() => setShowPassword((v) => !v)}
                   className="p-1 text-muted-soft hover:text-white/80 transition-colors"
                   tabIndex={-1}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
                 >
                   {showPassword ? (
                     <EyeOff className="w-3.5 h-3.5" />
@@ -355,7 +355,7 @@ export default function LoginPage() {
             {(error || info) && (
               <div className="mt-4">
                 {error && (
-                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-caption animate-[fadeIn_200ms_ease-out]">
+                  <div className="flex items-start gap-2 px-3 py-2.5 rounded-card bg-rose-50 border border-rose-200 text-rose-700 text-caption animate-[fadeIn_200ms_ease-out]">
                     <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                     <span>{error}</span>
                   </div>
@@ -376,7 +376,7 @@ export default function LoginPage() {
               className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-body transition-all ${
                 loading || recoveryLoading
                   ? "bg-success/60 text-ink/60 cursor-not-allowed"
-                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(16,185,129,0.75)] active:scale-[0.99]"
+                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(200,217,111,0.6)] hover:shadow-[0_12px_28px_-8px_rgba(200,217,111,0.75)] active:scale-[0.99]"
               }`}
             >
               {loading ? (
@@ -406,7 +406,7 @@ export default function LoginPage() {
                     Sending recovery link…
                   </>
                 ) : (
-                  "Forgot password?"
+                  "Забыли пароль?"
                 )}
               </button>
             </div>
@@ -414,7 +414,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-tiny text-muted leading-relaxed">
             Don't have an account?{" "}
-            <span className="text-muted-soft">Access is invite-only — ask an admin.</span>
+            <span className="text-muted-soft">Доступ только по приглашению — попросите администратора.</span>
           </p>
         </div>
 
@@ -473,7 +473,7 @@ export default function LoginPage() {
 function Field({ icon, label, htmlFor, children, className = "", rightSlot }) {
   return (
     <div
-      className={`group relative bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 transition-colors focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 ${className}`}
+      className={`group relative bg-bg/60 border border-line rounded-card px-3 pt-1.5 pb-1 transition-colors focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 ${className}`}
     >
       <label
         htmlFor={htmlFor}

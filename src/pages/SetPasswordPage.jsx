@@ -51,11 +51,11 @@ export default function SetPasswordPage() {
     setError(null);
     if (saving) return;
     if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+      setError("Пароль должен быть не короче 6 символов");
       return;
     }
     if (password !== confirm) {
-      setError("Passwords don't match");
+      setError("Пароли не совпадают");
       return;
     }
 
@@ -64,7 +64,7 @@ export default function SetPasswordPage() {
       // 1. Записываем пароль в Supabase Auth
       const { error: updErr } = await supabase.auth.updateUser({ password });
       if (updErr) {
-        setError(updErr.message || "Could not save password");
+        setError(updErr.message || "Не удалось сохранить пароль");
         setSaving(false);
         return;
       }
@@ -99,25 +99,25 @@ export default function SetPasswordPage() {
       //    и пустит в приложение.
       setTimeout(() => bumpDataVersion(), 400);
     } catch (err) {
-      setError(err?.message || "Something went wrong");
+      setError(err?.message || "Что-то пошло не так");
       setSaving(false);
     }
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 relative overflow-hidden flex items-center justify-center px-4 py-10 font-sans">
+    <div className="min-h-screen w-full bg-bg relative overflow-hidden flex items-center justify-center px-4 py-10 font-sans">
       <div
         aria-hidden
         className="absolute inset-0 opacity-60"
         style={{
           background:
-            "radial-gradient(ellipse 50% 50% at 50% 0%, rgba(16,185,129,0.12), transparent 70%)",
+            "radial-gradient(ellipse 50% 50% at 50% 0%, rgba(200,217,111,0.12), transparent 70%)",
         }}
       />
 
       <div className="relative w-full max-w-[420px] animate-[cardIn_360ms_cubic-bezier(0.2,0.8,0.2,1)_both]">
         <div className="flex items-center justify-center gap-2.5 mb-6">
-          <div className="w-9 h-9 rounded-card bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(16,185,129,0.55)]">
+          <div className="w-9 h-9 rounded-card bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(200,217,111,0.55)]">
             <ArrowLeftRight className="w-4 h-4 text-ink" strokeWidth={2.5} />
           </div>
           <span className="text-[18px] font-bold tracking-tight text-white">
@@ -126,7 +126,7 @@ export default function SetPasswordPage() {
         </div>
 
         <div
-          className="relative bg-ink/70 backdrop-blur-xl border border-slate-800 rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+          className="relative bg-ink/70 backdrop-blur-xl border border-line rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 60px -20px rgba(0,0,0,0.7)",
@@ -143,7 +143,7 @@ export default function SetPasswordPage() {
           </header>
 
           <form onSubmit={handleSubmit} noValidate>
-            <div className="bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
+            <div className="bg-bg/60 border border-line rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
               <label className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> New password
               </label>
@@ -169,7 +169,7 @@ export default function SetPasswordPage() {
               </div>
             </div>
 
-            <div className="mt-3 bg-slate-950/60 border border-slate-800 rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
+            <div className="mt-3 bg-bg/60 border border-line rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
               <label className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase">
                 <Lock className="w-3.5 h-3.5" /> Confirm password
               </label>
@@ -185,7 +185,7 @@ export default function SetPasswordPage() {
             </div>
 
             {error && (
-              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-danger/10 border border-rose-500/25 text-rose-300 text-caption">
+              <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-rose-50 border border-rose-200 text-rose-700 text-caption">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -194,7 +194,7 @@ export default function SetPasswordPage() {
             {success && (
               <div className="mt-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-success/10 border border-emerald-500/25 text-emerald-300 text-caption">
                 <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>Password saved. Loading your workspace…</span>
+                <span>Пароль сохранён. Открываем рабочее место…</span>
               </div>
             )}
 
@@ -204,7 +204,7 @@ export default function SetPasswordPage() {
               className={`mt-5 w-full h-11 rounded-card inline-flex items-center justify-center gap-2 font-semibold text-body transition-all ${
                 saving || success || !password || !confirm
                   ? "bg-success/60 text-ink/60 cursor-not-allowed"
-                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(16,185,129,0.6)] active:scale-[0.99]"
+                  : "bg-gradient-to-b from-emerald-400 to-emerald-600 text-ink hover:from-emerald-300 hover:to-emerald-500 shadow-[0_8px_20px_-8px_rgba(200,217,111,0.6)] active:scale-[0.99]"
               }`}
             >
               {saving ? (
