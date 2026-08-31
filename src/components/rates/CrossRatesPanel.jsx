@@ -32,7 +32,10 @@ function uniquePairs(ccys) {
 // (замер: +12…15px). Кросс — вспомогательные значения, поэтому колонки
 // уже и шрифт мельче, но число всегда ЦЕЛИКОМ: обрезанная цифра в кассе
 // это неверная цифра перед глазами.
-const GRID = { gridTemplateColumns: "minmax(0,1fr) 82px 82px" };
+// 70px — ровно как в MasterRatesPanel: колонки двух таблиц одной карточки
+// обязаны стоять на одной вертикали. Мастер сузился ради ховер-расшифровки
+// (r12), и оставленные 82px увели бы кросс на 12px в сторону.
+const GRID = { gridTemplateColumns: "minmax(0,1fr) 70px 70px" };
 
 export default function CrossRatesPanel({ getRate, ccys, onCopy }) {
   const fiats = (ccys || []).filter((c) => c !== "USDT");

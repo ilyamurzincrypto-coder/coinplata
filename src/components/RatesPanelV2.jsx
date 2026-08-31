@@ -13,6 +13,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowUpRight, Pencil, Plus } from "lucide-react";
 import { loadBlocks, loadPublished, publishedMap } from "../lib/ratesV2.js";
+import { COL_INTO, COL_OUT, Reveal, useRevealHover } from "./rates/hoverReveal.jsx";
+
+// Порядок колонок блочной панели: сначала «USDT →», потом «→ USDT» — обратный
+// переходной панели. Именно поэтому пара берётся из дескриптора (см. hoverReveal).
+const USDT_COLS = [COL_OUT, COL_INTO];
 
 const fmtNum = (v, dp = 4) =>
   v == null || !Number.isFinite(v)
@@ -67,6 +72,7 @@ function BlockCard({ accent = false, icon, label, foot, onOpen, children }) {
 }
 
 export default function RatesPanelV2({ onOpenRates }) {
+  const { revealed, bind } = useRevealHover();
   const [blocks, setBlocks] = useState(null);
   const [published, setPublished] = useState(null);
   const [err, setErr] = useState("");
@@ -161,21 +167,47 @@ export default function RatesPanelV2({ onOpenRates }) {
               </button>
             ))}
           </div>
-          <div className="grid gap-2.5 py-0.5" style={{ gridTemplateColumns: "minmax(0,1fr) 86px 86px" }}>
+          <div className="grid gap-2.5 py-0.5" style={{ gridTemplateColumns: "minmax(0,1fr) 64px 64px" }}>
             <span />
-            <span className="text-[10.5px] text-blue-soft text-right opacity-85">USDT →</span>
-            <span className="text-[10.5px] text-blue-soft text-right opacity-85">→ USDT</span>
+            {USDT_COLS.map((col) => (
+              <span
+                key={col.key}
+                {...bind(col.key)}
+                className={`text-[10.5px] text-right cursor-default transition-colors duration-300 ${
+                  revealed === col.key ? "text-white opacity-100" : "text-blue-soft opacity-85"
+                }`}
+              >
+                {col.caption}
+              </span>
+            ))}
           </div>
           {usdtCcys.map((c) => {
             const out = rateOf("usdt", usdtScope, "USDT", c);
             const into = rateOf("usdt", usdtScope, c, "USDT");
             const isPct = usdt.rows.find((r) => r.scope === usdtScope && r.from_ccy === "USDT" && r.to_ccy === c)?.value_mode === "pct";
             const show = (v) => (v == null ? "—" : isPct ? `${((v - 1) * 100).toFixed(2)}%` : fmtNum(v, 4));
+            const byKey = { out, into };
+            const shown = USDT_COLS.find((x) => x.key === revealed);
             return (
-              <div key={c} className="grid gap-2.5 items-baseline py-2 border-t border-[rgba(233,237,242,.22)]" style={{ gridTemplateColumns: "minmax(0,1fr) 86px 86px" }}>
-                <span className="text-[12.5px] text-blue-soft">{c}</span>
-                <span className="font-light text-[19px] text-right tabular-nums whitespace-nowrap">{show(out)}</span>
-                <span className="font-light text-[19px] text-right tabular-nums whitespace-nowrap">{show(into)}</span>
+              <div key={c} className="grid gap-2.5 items-baseline py-2 border-t border-[rgba(233,237,242,.22)]" style={{ gridTemplateColumns: "minmax(0,1fr) 64px 64px" }}>
+                <Reveal
+                  base={c}
+                  full={shown ? shown.pair(c) : ""}
+                  on={!!shown}
+                  glow
+                  className="text-[12.5px] text-blue-soft"
+                  revealClass="text-white"
+                />
+                {USDT_COLS.map((col) => (
+                  <span
+                    key={col.key}
+                    className={`font-light text-[19px] text-right tabular-nums whitespace-nowrap transition-opacity duration-[350ms] ${
+                      revealed && revealed !== col.key ? "opacity-35" : "opacity-100"
+                    }`}
+                  >
+                    {show(byKey[col.key])}
+                  </span>
+                ))}
               </div>
             );
           })}

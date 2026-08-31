@@ -5,6 +5,7 @@
 
 import React from "react";
 import RateNum from "./RateNum.jsx";
+import { Reveal, useRevealHover } from "./hoverReveal.jsx";
 
 const SETTLES = [
   ["TOD-TOD", "Т-Т"],
@@ -23,6 +24,10 @@ function fmt(v) {
 }
 
 export default function NerezPanel({ specialRates, onCopy, fresh }) {
+  // r12: наведение на сокращение базиса расшифровывает его полным кодом.
+  // Расшифровка берётся из SETTLES — того же массива, что рисует колонки;
+  // второй список «что значит Т-М» разошёлся бы с первым.
+  const { revealed, bind } = useRevealHover();
   const nerez = (specialRates || []).filter((s) => s && s.kind === "nerez");
   if (!nerez.length) return null;
 
@@ -52,10 +57,22 @@ export default function NerezPanel({ specialRates, onCopy, fresh }) {
         {SETTLES.map(([code, label]) => (
           <span
             key={code}
-            className="text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase text-[#aeb4bb]"
+            {...bind(code)}
             title={code}
+            className={`text-right text-[8.5px] font-semibold tracking-[0.8px] uppercase cursor-default transition-colors duration-300 ${
+              revealed === code ? "text-[#15191d]" : "text-[#aeb4bb]"
+            }`}
           >
-            {label}
+            {/* Колонка прижата вправо, поэтому расшифровка растёт ВЛЕВО —
+                в пустое место своей же ячейки. Расти вправо ей некуда: там
+                сразу начинается соседний базис. */}
+            <Reveal
+              base={label}
+              full={revealed === code ? code : ""}
+              on={revealed === code}
+              align="right"
+              revealClass="text-[#15191d]"
+            />
           </span>
         ))}
         {SIDES.map(([key, label]) => (
