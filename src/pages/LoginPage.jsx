@@ -299,7 +299,7 @@ export default function LoginPage() {
             {/* Email */}
             <Field
               icon={<Mail className="w-3.5 h-3.5" />}
-              label="Email"
+              label="Почта"
               htmlFor="email"
             >
               <input
