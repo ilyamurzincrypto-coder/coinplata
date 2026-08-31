@@ -672,19 +672,22 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
         >
           <colgroup>
             <col style={{ width: "128px" }} />{/* Встреча */}
-            <col />{/* Контрагент */}
+            <col style={{ width: "220px" }} />{/* Контрагент */}
+            <col />{/* Код сделки — тянется, забирая пустоту, что была у контрагента */}
             <col style={{ width: "168px" }} />{/* Клиент отдаёт */}
             <col style={{ width: "176px" }} />{/* Клиент получает */}
-            <col style={{ width: "82px" }} />{/* Курс */}
+            <col style={{ width: "104px" }} />{/* Курс — 82px обрезали «0.0210…»; место взято у кода сделки */}
             <col style={{ width: "128px" }} />{/* Действие */}
           </colgroup>
           <thead>
             <tr>
-              {["Встреча", "Контрагент", "Клиент отдаёт", "Клиент получает", "Курс", ""].map((h, i) => (
+              {["Встреча", "Контрагент", "Код сделки", "Клиент отдаёт", "Клиент получает", "Курс", ""].map((h, i) => (
                 <th
                   key={h || i}
                   className={`text-[11px] font-normal text-[color:var(--muted)] px-3 pb-[9px] whitespace-nowrap border-b border-[color:var(--gridh)] ${
-                    i >= 2 && i <= 4 ? "text-right" : "text-left"
+                    // индексы сдвинулись на единицу вместе с новой колонкой:
+                    // право-выравнивание держится за суммы и курс, а не за номер
+                    i >= 3 && i <= 5 ? "text-right" : "text-left"
                   }`}
                 >
                   {h}
@@ -735,9 +738,10 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                     <span className="block text-[13px] truncate" title={o.contact}>
                       {o.contact || "—"}
                     </span>
-                    {o.meetingCode && (
-                      <small className={`block text-[11px] mt-0.5 ${sub}`}>заявка {o.meetingCode}</small>
-                    )}
+                  </td>
+
+                  <td className={`${tdA} ${sub}`}>
+                    <span className="text-[13px] tabular-nums">{o.meetingCode || "—"}</span>
                   </td>
 
                   <td className={`${tdA} text-right ${tone}`}>

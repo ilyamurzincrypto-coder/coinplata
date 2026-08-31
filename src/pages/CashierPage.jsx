@@ -553,7 +553,7 @@ export default function CashierPage({
               {formMounted ? (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center gap-4 min-h-[72px] px-6 py-[18px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
+                  className="group w-full flex items-center gap-4 min-h-[88px] px-6 py-[24px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
                 >
                   <span className="flex items-center justify-center w-[46px] h-[46px] rounded-full shrink-0 bg-lime">
                     <span className="w-2.5 h-2.5 rounded-full bg-lime-ink" />
@@ -571,7 +571,7 @@ export default function CashierPage({
               ) : (
                 <button
                   onClick={openCreate}
-                  className="group w-full flex items-center gap-4 min-h-[72px] px-6 py-[18px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
+                  className="group w-full flex items-center gap-4 min-h-[88px] px-6 py-[24px] rounded-card-2 text-cream bg-dark bg-hero-glow hover:-translate-y-px active:translate-y-0 transition-transform duration-200 ease-apple"
                 >
                   <span className="flex items-center justify-center w-[46px] h-[46px] rounded-full shrink-0 bg-lime text-lime-ink">
                     <Plus className="w-6 h-6" strokeWidth={2} />
