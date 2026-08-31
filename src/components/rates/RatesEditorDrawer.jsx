@@ -6,8 +6,15 @@
 
 import React, { useEffect, useRef } from "react";
 import RatesPage from "../../pages/RatesPage.jsx";
+import RatesEditorV2 from "../../pages/RatesEditorV2.jsx";
+import { isRatesV2Enabled } from "../../lib/ratesV2.js";
+import { useAuth } from "../../store/auth.jsx";
 
 export default function RatesEditorDrawer({ open, onClose }) {
+  // Флаг rates_v2_ui персональный (users.preferences). Выключен — открывается
+  // СТАРЫЙ редактор, ничего не меняется ни для кого.
+  const { currentUser } = useAuth();
+  const v2 = isRatesV2Enabled(currentUser);
   const panelRef = useRef(null);
 
   useEffect(() => {
@@ -51,7 +58,7 @@ export default function RatesEditorDrawer({ open, onClose }) {
         {/* Терминальная шапка drawer */}
         <div className="flex items-center gap-3.5 px-5 py-3 border-b border-[rgba(18,22,26,0.08)] flex-none">
           <span className="text-[12px] font-extrabold tracking-[1.2px] uppercase text-[#15191d]">
-            Редактирование курсов
+            Редактирование курсов{v2 ? " · v2" : ""}
           </span>
           <button
             type="button"
@@ -63,7 +70,7 @@ export default function RatesEditorDrawer({ open, onClose }) {
         </div>
         {/* Тело — существующий редактор (его табы офисов/секции/поля/save) */}
         <div className="flex-1 overflow-auto">
-          {open && <RatesPage onBack={onClose} drawer />}
+          {open && (v2 ? <RatesEditorV2 onClose={onClose} /> : <RatesPage onBack={onClose} drawer />)}
         </div>
       </div>
     </div>
