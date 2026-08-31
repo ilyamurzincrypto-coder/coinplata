@@ -9,6 +9,7 @@
 // на Supabase приложение должно продолжать работать в demo.
 
 import { createClient } from "@supabase/supabase-js";
+import { authStorage } from "./authStorage.js";
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -27,6 +28,12 @@ export const supabase = isSupabaseConfigured
         // в URL hash — работает между устройствами.
         flowType: "implicit",
         persistSession: true,
+        // Бэкенд хранения с in-memory фолбэком: Safari и приватные окна
+        // отдают объект localStorage, но бросают на setItem — тогда сессия
+        // живёт в памяти вкладки вместо того, чтобы молча пропасть.
+        // storageKey НЕ переопределяем: ключ и формат остаются
+        // супабейсовскими, живые сессии переживают деплой.
+        storage: authStorage,
         autoRefreshToken: true,
         detectSessionInUrl: true, // парсит #access_token из hash
       },

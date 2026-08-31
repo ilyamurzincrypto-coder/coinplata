@@ -23,8 +23,27 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { supabase, isSupabaseConfigured } from "../lib/supabase.js";
+import { isPersistentStorageAvailable } from "../lib/authStorage.js";
 
 const REMEMBERED_EMAIL_KEY = "coinplata.loginEmail";
+// Сколько ждём, пока сессия материализуется в клиенте после успешного ответа
+// сервера. Больше секунды человек уже считает, что «висит».
+const SESSION_WAIT_MS = 2500;
+
+/** Ждёт появления сессии; true — появилась, false — истёк таймаут. */
+async function waitForSession(timeoutMs) {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) return true;
+    } catch {
+      /* клиент ещё не готов — пробуем снова */
+    }
+    await new Promise((r) => setTimeout(r, 150));
+  }
+  return false;
+}
 const APP_VERSION = "1.0.0"; // sync с package.json.version
 
 export default function LoginPage() {
@@ -41,6 +60,9 @@ export default function LoginPage() {
   const [recoveryLoading, setRecoveryLoading] = useState(false);
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
+  // Проба хранилища на СТАРТЕ: предупреждение должно стоять до того, как
+  // человек потратит попытку входа, а не после неё.
+  const [storageOk] = useState(() => isPersistentStorageAvailable());
 
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
@@ -107,13 +129,26 @@ export default function LoginPage() {
       });
       if (error) {
         setError(mapAuthError(error));
-        setLoading(false);
         return;
       }
-      // При успехе Supabase обновит session; gate-компонент перерисует App → /cashier.
-      // Здесь дополнительно ничего не делаем.
+      // Успех сервера ≠ вход в приложение: если браузер не дал сохранить
+      // сессию, gate не перерисуется и человек останется на форме. Раньше
+      // это выглядело как вечное «Signing in…» — сервер отвечал 200, а UI
+      // молчал. Ждём материализации сессии и говорим правду, если её нет.
+      const appeared = await waitForSession(SESSION_WAIT_MS);
+      if (!appeared) {
+        setError(
+          storageOk
+            ? "Вход прошёл, но сессия не сохранилась. Обновите страницу; если повторится — проверьте настройки конфиденциальности браузера."
+            : "Браузер не дал сохранить сессию. Отключите блокировку данных сайта или выйдите из приватного окна."
+        );
+      }
+      // Сессия появилась — gate сам перерисует приложение.
     } catch (err) {
       setError(mapAuthError(err));
+    } finally {
+      // ВСЕГДА: раньше loading снимался только в ветках ошибок, и успешный
+      // вход без материализации сессии оставлял спиннер навсегда.
       setLoading(false);
     }
   };
@@ -231,6 +266,19 @@ export default function LoginPage() {
               Secure access to your cashier system
             </p>
           </header>
+
+          {/* Проба хранилища — ДО ввода пароля. Раньше человек узнавал о
+              проблеме только потратив попытку и увидев вечный спиннер. */}
+          {!storageOk && (
+            <div className="mb-4 flex items-start gap-2 px-3 py-2.5 rounded-card bg-warning/10 border border-amber-500/25 text-amber-300 text-caption">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" strokeWidth={2} />
+              <span>
+                Браузер не даёт сохранять данные сайта — вход не переживёт
+                перезагрузку вкладки. Отключите блокировку данных или выйдите
+                из приватного окна.
+              </span>
+            </div>
+          )}
 
           {/* Notice: Supabase not configured */}
           {!isSupabaseConfigured && (
