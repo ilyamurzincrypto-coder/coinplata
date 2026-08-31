@@ -200,3 +200,122 @@ describe("staleSources", () => {
     expect(staleSources({ cbr: {} }, now)[0].reason).toMatch(/нет отметки/);
   });
 });
+
+// ── Фаза 2а: решения владельца ─────────────────────────────────────────
+import { parseRouteScope } from "./rateEngine.js";
+
+const MSK = "12b68624-a75c-4909-a74a-fe108660c33e"; // Москва Вася
+const MARK = "87c87128-9991-4fff-9098-47a4766d8012"; // Mark Antalya
+const LIMAN = "776b07b2-6aa7-4ee2-81c4-d6d9d621a89a"; // Liman
+const OFFICE_CITY = { [MSK]: "MSK", [MARK]: "ANT", [LIMAN]: "ANT" };
+
+describe("parseRouteScope — scope это измерение блока, не всегда город", () => {
+  it("маршрут разбирается", () => {
+    expect(parseRouteScope(`${MSK}→${MARK}`)).toEqual({ from: MSK, to: MARK });
+  });
+  it("город и базис TOD-TOM маршрутом НЕ считаются", () => {
+    expect(parseRouteScope("ANT")).toBe(null);
+    expect(parseRouteScope("TOD-TOM")).toBe(null);
+    expect(parseRouteScope(null)).toBe(null);
+  });
+});
+
+describe("решение №2 — спред нала в копейках (spread_mode)", () => {
+  const cashAbs = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_pct: 0.05, spread_mode: "abs" } };
+  const qrPct = { code: "qr", kind: "auto", config: { provider: "cbr", spread_pct: 8, spread_mode: "pct" } };
+
+  it("abs: цена + 5 копеек, а не +0,1055%", () => {
+    const r = computeRowPrice({ value_mode: "source" }, cashAbs, { sourcePrice: 47.38 });
+    expect(r.rate).toBeCloseTo(47.43, 10);
+  });
+  it("pct: ЦБ × 1,08", () => {
+    const r = computeRowPrice({ value_mode: "source" }, qrPct, { sourcePrice: 86 });
+    expect(r.rate).toBeCloseTo(92.88, 10);
+  });
+  it("без spread_mode поведение прежнее — процент", () => {
+    const legacy = { code: "x", kind: "auto", config: { provider: "p", spread_pct: 10 } };
+    expect(computeRowPrice({ value_mode: "source" }, legacy, { sourcePrice: 100 }).rate).toBeCloseTo(110, 10);
+  });
+  it("отрицательный abs-спред не может увести курс в ноль", () => {
+    const bad = { code: "cash", kind: "auto", config: { spread_pct: -50, spread_mode: "abs" } };
+    expect(computeRowPrice({ value_mode: "source" }, bad, { sourcePrice: 40 }).error).toMatch(/ноль или минус/);
+  });
+});
+
+describe("решение №1 — перестановки по маршрутам офисов", () => {
+  const blocks = [
+    { code: "usdt", kind: "manual", config: {}, position: 2 },
+    { code: "perestanovka", kind: "derived", config: { base_block_code: "usdt", margin_pct: 0.9 }, position: 3 },
+  ];
+  // Реальные числа из разбора владельца: RUB → 77,60 (Москва) → USDT → 46,20 (Анталья)
+  const usdtRows = [
+    { block_code: "usdt", scope: "MSK", from_ccy: "USDT", to_ccy: "RUB", value_mode: "abs", value: 77.6, band_pct: 50 },
+    { block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "TRY", value_mode: "abs", value: 46.2, band_pct: 50 },
+  ];
+
+  it("цепочка через USDT: плечо отправителя и плечо получателя, потом маржа", () => {
+    const rows = [
+      ...usdtRows,
+      { block_code: "perestanovka", scope: `${MSK}→${MARK}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: 0, band_pct: 50 },
+    ];
+    const { prices, errors } = computeAll({ blocks, rows, officeCity: OFFICE_CITY });
+    expect(errors).toEqual([]);
+    const m = pricesToMap(prices);
+    // 46,20 / 77,60 = 0,5954 TRY за 1 RUB — «0,60» из разбора владельца
+    expect(m[`perestanovka|${MSK}→${MARK}|RUB|TRY`]).toBeCloseTo(46.2 / 77.6, 10);
+    expect(m[`perestanovka|${MSK}→${MARK}|RUB|TRY`]).toBeCloseTo(0.5954, 4);
+  });
+
+  it("СВЕРКА со старым редактором: расхождение с его формулой = 0", () => {
+    // Формула RatesAuxPanel:139-142 дословно:
+    //   uDep = usdtPer(deposit, sender) = 1 / (валюта отправителя за 1 USDT)
+    //   uPay = usdtPer(payout, receiver) = 1 / (валюта получателя за 1 USDT)
+    //   v = (uDep / uPay) * (1 + mk/100)
+    const legacy = (depPerUsdt, payPerUsdt, mk) => {
+      const uDep = 1 / depPerUsdt;
+      const uPay = 1 / payPerUsdt;
+      return (uDep / uPay) * (1 + mk / 100);
+    };
+    for (const mk of [0, 1, 0.9, 2.5]) {
+      const rows = [
+        ...usdtRows,
+        { block_code: "perestanovka", scope: `${MSK}→${LIMAN}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: mk, band_pct: 500 },
+      ];
+      const m = pricesToMap(computeAll({ blocks, rows, officeCity: OFFICE_CITY }).prices);
+      const mine = m[`perestanovka|${MSK}→${LIMAN}|RUB|TRY`];
+      expect(mine - legacy(77.6, 46.2, mk)).toBeCloseTo(0, 12);
+    }
+  });
+
+  it("маржа СТРОКИ перекрывает дефолт блока — «Mark 0%» и «Liman 1%» не схлопываются", () => {
+    const rows = [
+      ...usdtRows,
+      { block_code: "perestanovka", scope: `${MSK}→${MARK}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: 0, band_pct: 500 },
+      { block_code: "perestanovka", scope: `${MSK}→${LIMAN}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: 1, band_pct: 500 },
+    ];
+    const m = pricesToMap(computeAll({ blocks, rows, officeCity: OFFICE_CITY }).prices);
+    const mark = m[`perestanovka|${MSK}→${MARK}|RUB|TRY`];
+    const liman = m[`perestanovka|${MSK}→${LIMAN}|RUB|TRY`];
+    expect(mark).not.toBeCloseTo(liman, 6);
+    expect(liman / mark).toBeCloseTo(1.01, 10);
+  });
+
+  it("маршрут без своей маржи берёт дефолт блока (0,9%)", () => {
+    const rows = [
+      ...usdtRows,
+      { block_code: "perestanovka", scope: `${MSK}→${MARK}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: null, band_pct: 500 },
+    ];
+    const m = pricesToMap(computeAll({ blocks, rows, officeCity: OFFICE_CITY }).prices);
+    expect(m[`perestanovka|${MSK}→${MARK}|RUB|TRY`]).toBeCloseTo((46.2 / 77.6) * 1.009, 10);
+  });
+
+  it("нет курса одного из городов → ошибка, а не тихий пропуск", () => {
+    const rows = [
+      usdtRows[0], // только MSK
+      { block_code: "perestanovka", scope: `${MSK}→${MARK}`, from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived", value: 0, band_pct: 50 },
+    ];
+    const { errors } = computeAll({ blocks, rows, officeCity: OFFICE_CITY });
+    expect(errors).toHaveLength(1);
+    expect(errors[0].error).toMatch(/получател/);
+  });
+});

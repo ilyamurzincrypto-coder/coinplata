@@ -27,6 +27,19 @@ export function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Разбор маршрутного scope перестановок: "officeA→officeB" → {from, to}.
+ * Не маршрут (город, базис TOD-TOM, null) → null. Это и есть проверка
+ * «scope — измерение блока, а не обязательно город».
+ */
+export function parseRouteScope(scope) {
+  if (typeof scope !== "string") return null;
+  const parts = scope.split("→");
+  if (parts.length !== 2) return null;
+  const [from, to] = parts.map((x) => x.trim());
+  return from && to ? { from, to } : null;
+}
+
 /** Ключ строки прайса — стабильный, используется для сверки версий. */
 export function priceKey({ block, scope, from, to }) {
   return `${block}|${scope || ""}|${from}|${to}`;
@@ -60,10 +73,27 @@ export function computeRowPrice(row, block, deps = {}) {
   }
 
   if (mode === "derived") {
+    // Маржа строки перекрывает дефолт блока (решение №1): у «Москва → Liman»
+    // своя, у остальных — общая.
+    const m = num(row?.value) ?? num(block?.config?.margin_pct) ?? 0;
+
+    // МАРШРУТ (scope = "officeA→officeB"): цепочка через USDT. Первое плечо
+    // считается по курсу города ОТПРАВИТЕЛЯ, второе — города ПОЛУЧАТЕЛЯ.
+    // Формула снята из старого редактора (RatesAuxPanel: base = uDep/uPay),
+    // где uDep = USDT за 1 валюту отправителя = 1 / (валюта за 1 USDT).
+    // Отсюда base = цена_получателя / цена_отправителя.
+    if (deps.routeLegs) {
+      const { fromPrice, toPrice } = deps.routeLegs;
+      const a = num(fromPrice);
+      const b = num(toPrice);
+      if (a == null || a <= 0) return { error: "derived: нет курса города-отправителя" };
+      if (b == null || b <= 0) return { error: "derived: нет курса города-получателя" };
+      return { rate: (b / a) * (1 + m / 100) };
+    }
+
     const base = num(deps.basePrice);
     if (base == null) return { error: "derived: нет цены базового блока" };
     if (base <= 0) return { error: "derived: базовая цена должна быть > 0" };
-    const m = num(block?.config?.margin_pct) ?? 0;
     return { rate: base * (1 + m / 100) };
   }
 
@@ -72,7 +102,13 @@ export function computeRowPrice(row, block, deps = {}) {
     if (p == null) return { error: "source: нет котировки провайдера" };
     if (p <= 0) return { error: "source: котировка должна быть > 0" };
     const s = num(block?.config?.spread_pct) ?? 0;
-    return { rate: p * (1 + s / 100) };
+    // Решение №2: спред нала — АБСОЛЮТНЫЙ шаг в котируемой валюте (куруши),
+    // а не процент. Меняла думает «плюс 5 копеек», и пересчёт в 0,1055%
+    // потерял бы смысл шага. QR остаётся процентным.
+    const mode2 = block?.config?.spread_mode === "abs" ? "abs" : "pct";
+    const rate = mode2 === "abs" ? p + s : p * (1 + s / 100);
+    if (!(rate > 0)) return { error: "source: спред увёл курс в ноль или минус" };
+    return { rate };
   }
 
   return { error: `неизвестный value_mode: ${mode}` };
@@ -109,11 +145,13 @@ export function isOutOfBand(next, prev, bandPct) {
  *   rows     [{ block_code, scope, from_ccy, to_ccy, value_mode, value, band_pct, enabled }]
  *   sources  { "<provider>|<FROM>|<TO>": price } — котировки провайдеров
  *   previous { "<priceKey>": rate } — прошлая публикация (для границ)
+ *   officeCity { "<office_id>": "ANT" } — маппинг офисов на города-scope
+ *              базового блока; нужен только маршрутным derived-строкам
  *
  * Возвращает { prices, errors, violations }. Ничего не бросает: вызывающий
  * решает, публиковать или показать список проблем.
  */
-export function computeAll({ blocks = [], rows = [], sources = {}, previous = {} } = {}) {
+export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}, officeCity = {} } = {}) {
   const byCode = new Map(blocks.filter((b) => b?.code).map((b) => [b.code, b]));
 
   // derived-блоки считаются после своих базовых: сортируем по глубине
@@ -149,9 +187,23 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
       const deps = {};
       if (block.kind === "derived") {
         const baseCode = block.config?.base_block_code;
-        deps.basePrice = byKey.get(
-          priceKey({ block: baseCode, scope: row.scope, from: row.from_ccy, to: row.to_ccy })
-        );
+        const route = parseRouteScope(row.scope);
+        if (route) {
+          // Маршрут: плечи берём из базового блока по ГОРОДАМ офисов.
+          // officeCity — данные снаружи (чистый модуль офисов не знает).
+          const cityFrom = officeCity[route.from];
+          const cityTo = officeCity[route.to];
+          deps.routeLegs = {
+            // «сколько валюты отправителя за 1 USDT» у города-отправителя
+            fromPrice: byKey.get(priceKey({ block: baseCode, scope: cityFrom, from: "USDT", to: row.from_ccy })),
+            // «сколько валюты получателя за 1 USDT» у города-получателя
+            toPrice: byKey.get(priceKey({ block: baseCode, scope: cityTo, from: "USDT", to: row.to_ccy })),
+          };
+        } else {
+          deps.basePrice = byKey.get(
+            priceKey({ block: baseCode, scope: row.scope, from: row.from_ccy, to: row.to_ccy })
+          );
+        }
       }
       if (block.kind === "auto") {
         const provider = block.config?.provider;
