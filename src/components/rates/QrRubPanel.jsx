@@ -2,16 +2,12 @@
 // QR-рубль (СБП/QR) на дашборде «Курсы», контейнер 2 (под НЕРЕЗ). ОТОБРАЖЕНИЕ.
 // Якорь: 1 USDT в рублях = курс ЦБ USD/RUB (USDT≈USD) × (1 + спред). ЦБ — ТОЛЬКО
 // к рублю. Ниже USD/EUR/TRY считаем через USDT: QR₽ за 1 вал = якорь × usdtPer(вал).
-// Спред задаётся в РЕДАКТОРЕ курсов (общий localStorage); тут только показ.
+// Спред задаётся в РЕДАКТОРЕ курсов и живёт в rate_blocks.config (lib/qrSpread);
+// тут только показ. localStorage больше не источник — см. шапку lib/qrSpread.js.
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { usdtPer } from "../../lib/rates.js";
-
-// Спред QR — общий для дашборда и редактора. Один ключ → правка в редакторе видна тут.
-export const QR_SPREAD_KEY = "qr_spread_pct_v1";
-export const readQrSpread = () => { try { const v = localStorage.getItem(QR_SPREAD_KEY); return v == null ? "1" : v; } catch { return "1"; } };
-export const writeQrSpread = (v) => { try { localStorage.setItem(QR_SPREAD_KEY, String(v)); } catch { /* noop */ } };
-const pnum = (v) => { const n = parseFloat(String(v).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+import { loadQrSpread, QR_SOURCE } from "../../lib/qrSpread.js";
 const fmt = (v, dp = 2) => (Number.isFinite(Number(v)) ? Number(v).toFixed(dp).replace(".", ",") : "—");
 
 const ROWS = [
@@ -22,12 +18,21 @@ const ROWS = [
 ];
 
 export default function QrRubPanel({ cbr, getRate, onCopy }) {
-  // Read-only: спред задаётся в редакторе курсов. Читаем свежим каждый рендер.
-  const spreadStr = readQrSpread();
-  const spread = pnum(spreadStr);
+  // Read-only: спред задаётся в редакторе курсов, источник — база.
+  const [spread, setSpread] = useState(null);
+  const [source, setSource] = useState(QR_SOURCE.NONE);
+  useEffect(() => {
+    let alive = true;
+    loadQrSpread().then((r) => { if (alive) { setSpread(r.value); setSource(r.source); } });
+    return () => { alive = false; };
+  }, []);
+  const spreadStr = spread == null ? "—" : String(spread).replace(".", ",");
   // Якорь: рублей за 1 USDT = ЦБ USD/RUB × (1+спред). ЦБ применяется только тут.
   const usdtBase = Number(cbr?.USD_RUB);
-  const usdtItog = Number.isFinite(usdtBase) && usdtBase > 0 ? usdtBase * (1 + spread / 100) : NaN;
+  // Без спреда курс НЕ считается: показать якорь «как есть» значило бы выдать
+  // ЦБ за курс приёма рублей. Лучше прочерк, чем чужое число.
+  const usdtItog =
+    spread != null && Number.isFinite(usdtBase) && usdtBase > 0 ? usdtBase * (1 + spread / 100) : NaN;
   // Остальное — через USDT: QR₽ за 1 вал = якорь × (USDT за 1 вал).
   const rows = ROWS.map((r) => {
     const up = r.cur === "USDT" ? 1 : usdtPer(r.cur, getRate); // USDT за 1 вал
@@ -74,12 +79,19 @@ export default function QrRubPanel({ cbr, getRate, onCopy }) {
           </React.Fragment>
         ))}
       </div>
-      {/* Боевой параметр ценообразования живёт в localStorage одного браузера:
-          чистка хранилища молча роняет его на дефолт 1%. Пока не переехал в
-          rate_blocks.config (бэклог, СРЕДНЕСРОЧНО) — предупреждаем явно. */}
-      <p className="text-[11px] text-apps-warn mt-2.5">
-        спред хранится локально в браузере — проверьте значение
-      </p>
+      {/* Спред переехал в rate_blocks.config. Плашка остаётся только для двух
+          нештатных случаев: база недоступна (показан кэш) или значения нет
+          вовсе. В норме подписи нет — параметр общий и сомнений не вызывает. */}
+      {source === QR_SOURCE.CACHE && (
+        <p className="text-[11px] text-apps-warn mt-2.5">
+          база недоступна — показано последнее известное значение
+        </p>
+      )}
+      {source === QR_SOURCE.NONE && (
+        <p className="text-[11px] text-apps-warn mt-2.5">
+          спред не загружен — курс QR не рассчитан
+        </p>
+      )}
       <p className="text-[10px] text-[#aeb4bb] mt-2 pt-2 border-t border-[rgba(18,22,26,0.08)] leading-snug">
         {!hasData && <span className="text-warning font-semibold">Курс ЦБ ещё не загрузился. </span>}
         ЦБ — только к рублю (1 ₮ = ЦБ USD/RUB × (1 + спред)). USD/EUR/TRY — через USDT. Спред — в редакторе курсов; в сделки не публикуется.

@@ -5,12 +5,13 @@
 //   3. USDT · Россия      — office_rate_overrides RU (МСК/СПБ); Rapira-цена + оверрайд + ↻; спред в копейках.
 // Локальное состояние; «Опубликовать» коммитит всё через существующие RPC (см. RatesPage).
 // Данные/фиды — из движка кассы (Tolunay/Rapira → external_rates, pairs, overrides).
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Loader2, Globe, Lock, Unlock } from "lucide-react";
 import { officeCityCode } from "../../lib/rapiraSpreads.js";
 import RatesAuxPanel from "./RatesAuxPanel.jsx";
-import { readQrSpread, writeQrSpread } from "./QrRubPanel.jsx";
+import { loadQrSpread, saveQrSpread, canEditQrSpread, QR_SOURCE } from "../../lib/qrSpread.js";
 import { usdtPer } from "../../lib/rates.js";
+import { useAuth } from "../../store/auth.jsx";
 
 // Замки зафиксированных итоговых цен (переживают переоткрытие панели).
 const LOCKS_KEY = "rates_control_locks_v1";
@@ -269,31 +270,79 @@ function RuBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWin
 // ── Блок 4 — QR · РУБ (ЦБ + спред %) ────────────────────────────────────────
 // QR-рубль. Якорь: 1 USDT в рублях = ЦБ USD/RUB × (1 + спред). ЦБ — ТОЛЬКО к рублю.
 // USD/EUR/TRY — через USDT: QR₽ за 1 вал = якорь × usdtPer(вал). Спред общий с
-// дашбордом (localStorage). Правится ТУТ; в сделки пока не публикуется.
+// дашбордом и живёт в rate_blocks.config. Правится ТУТ (owner/admin — так стоит
+// RLS); в сделки пока не публикуется.
 const QR_ROWS = [
   { cur: "USDT", flag: "₮" },
   { cur: "USD", flag: "🇺🇸" },
   { cur: "EUR", flag: "🇪🇺" },
   { cur: "TRY", flag: "🇹🇷" },
 ];
-function QrBlock({ cbr, getRate }) {
-  const [spreadStr, setSpreadStr] = useState(readQrSpread);
-  const spread = pnum(spreadStr);
+function QrBlock({ cbr, getRate, currentUser }) {
+  const [spreadStr, setSpreadStr] = useState("");
+  const [source, setSource] = useState(QR_SOURCE.NONE);
+  const [saveState, setSaveState] = useState(null); // null | "saving" | "saved" | текст ошибки
+  const canEdit = canEditQrSpread(currentUser);
+
+  useEffect(() => {
+    let alive = true;
+    loadQrSpread().then((r) => {
+      if (!alive) return;
+      setSpreadStr(r.value == null ? "" : String(r.value).replace(".", ","));
+      setSource(r.source);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // Сохраняем по уходу из поля, а не на каждый символ: каждая нажатая цифра
+  // писала бы в общий боевой параметр промежуточное значение («8» → «85» → «8,5»).
+  const commit = async () => {
+    if (!canEdit) return;
+    setSaveState("saving");
+    try {
+      await saveQrSpread(spreadStr);
+      setSource(QR_SOURCE.DB);
+      setSaveState("saved");
+    } catch (e) {
+      setSaveState(e.message || String(e));
+    }
+  };
+
+  const spread = spreadStr === "" ? null : pnum(spreadStr);
   const usdtBase = Number(cbr?.USD_RUB);
-  const usdtItog = Number.isFinite(usdtBase) && usdtBase > 0 ? usdtBase * (1 + spread / 100) : NaN;
+  const usdtItog =
+    spread != null && Number.isFinite(usdtBase) && usdtBase > 0 ? usdtBase * (1 + spread / 100) : NaN;
   const rows = QR_ROWS.map((r) => {
     const up = r.cur === "USDT" ? 1 : usdtPer(r.cur, getRate); // USDT за 1 вал
     const itog = Number.isFinite(usdtItog) && Number.isFinite(up) && up > 0 ? usdtItog * up : NaN;
     return { ...r, up, itog };
   });
   return (
-    <Card title="QR · РУБ" badge="ЦБ" badgeColor="bg-info" hint={<>ЦБ — только к рублю: 1 ₮ = ЦБ USD/RUB × (1 + спред). USD/EUR/TRY — через USDT (× курс USDT↔валюта). Спред общий с блоком QR на дашборде. В сделки пока не публикуется.</>}>
+    <Card title="QR · РУБ" badge="ЦБ" badgeColor="bg-info" hint={<>ЦБ — только к рублю: 1 ₮ = ЦБ USD/RUB × (1 + спред). USD/EUR/TRY — через USDT (× курс USDT↔валюта). Спред общий с блоком QR на дашборде и хранится в базе (rate_blocks). В сделки пока не публикуется.</>}>
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5 pb-1.5">
         <span className="text-[10px] text-muted-soft uppercase tracking-wide font-semibold">Спред к ЦБ</span>
         <span className="inline-flex items-center gap-1">
-          <input value={spreadStr} onChange={(e) => { setSpreadStr(e.target.value); writeQrSpread(e.target.value); }} inputMode="decimal" className={`${cellIn} w-[64px]`} title="Спред к курсу ЦБ, %" />
+          <input
+            value={spreadStr}
+            onChange={(e) => { setSpreadStr(e.target.value); setSaveState(null); }}
+            onBlur={commit}
+            disabled={!canEdit}
+            inputMode="decimal"
+            className={`${cellIn} w-[64px] ${canEdit ? "" : "opacity-50 cursor-not-allowed"}`}
+            title={canEdit ? "Спред к курсу ЦБ, % — сохраняется в базу по выходу из поля" : "Менять спред может владелец или админ"}
+          />
           <span className="text-[11px] text-muted-soft">%</span>
         </span>
+      </div>
+      <div className="px-3.5 pb-1 text-[10px] leading-snug">
+        {!canEdit && <span className="text-muted-soft">общий параметр · меняет владелец или админ</span>}
+        {canEdit && saveState === "saving" && <span className="text-muted-soft">сохраняю…</span>}
+        {canEdit && saveState === "saved" && <span className="text-muted-soft">сохранено в базу — видно всем</span>}
+        {canEdit && saveState && !["saving", "saved"].includes(saveState) && (
+          <span className="text-danger">не сохранилось: {saveState}</span>
+        )}
+        {source === QR_SOURCE.CACHE && <span className="text-warning"> · база недоступна, показан кэш</span>}
+        {source === QR_SOURCE.NONE && <span className="text-warning"> · спред не загружен</span>}
       </div>
       <div className="flex items-baseline justify-between px-3.5 pb-1.5 text-[11px]">
         <span className="text-muted-soft">1 ₮ = ЦБ {fmt(usdtBase, 2)} + спред</span>
@@ -315,6 +364,8 @@ function QrBlock({ cbr, getRate }) {
 
 // ── Панель ─────────────────────────────────────────────────────────────────
 export default function RatesControlPanel({ offices, getGP, getRate, getOverride, tol, tolHistory, rapiraHistory, rapira, cbr, cbrAt, competitorSnapshots, saveMargins, saveOverride, onDone }) {
+  // Роль нужна блоку QR: спред — общий параметр в базе, RLS пускает owner/admin.
+  const { currentUser } = useAuth();
   // Разрешаем офисы по городам (для записи overrides).
   const byCity = useMemo(() => {
     const m = { ANT: [], IST: [], MSK: [], SPB: [] };
@@ -521,7 +572,7 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
           <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
           <TrBlock rows={tr} setRows={setTr} />
           <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
-          <QrBlock cbr={cbr} getRate={getRate} />
+          <QrBlock cbr={cbr} getRate={getRate} currentUser={currentUser} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
           <RatesAuxPanel
