@@ -120,7 +120,7 @@ export default function SetPasswordPage() {
           <div className="w-9 h-9 rounded-card bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(200,217,111,0.55)]">
             <ArrowLeftRight className="w-4 h-4 text-ink" strokeWidth={2.5} />
           </div>
-          <span className="text-[18px] font-bold tracking-tight text-white">
+          <span className="text-[18px] font-bold tracking-tight text-ink">
             CoinPlata
           </span>
         </div>
@@ -133,8 +133,8 @@ export default function SetPasswordPage() {
           }}
         >
           <header className="mb-6">
-            <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
-              Set your password
+            <h1 className="text-[22px] font-bold tracking-tight text-ink leading-tight">
+              Задайте пароль
             </h1>
             <p className="text-body-sm text-muted-soft mt-1.5">
               Welcome{currentUser?.name ? `, ${currentUser.name}` : ""}! Choose a
@@ -145,7 +145,7 @@ export default function SetPasswordPage() {
           <form onSubmit={handleSubmit} noValidate>
             <div className="bg-bg/60 border border-line rounded-card px-3 pt-1.5 pb-1 focus-within:border-emerald-500/60 focus-within:ring-4 focus-within:ring-emerald-500/10 transition-colors">
               <label className="flex items-center gap-1.5 text-tiny font-semibold text-muted tracking-[0.1em] uppercase">
-                <Lock className="w-3.5 h-3.5" /> New password
+                <Lock className="w-3.5 h-3.5" /> Новый пароль
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -156,13 +156,13 @@ export default function SetPasswordPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={saving || success}
                   placeholder="••••••••"
-                  className="flex-1 bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                  className="flex-1 bg-transparent outline-none text-body text-ink placeholder:text-muted py-2.5 disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   tabIndex={-1}
-                  className="p-1 text-muted-soft hover:text-white/80 transition-colors"
+                  className="p-1 text-muted-soft hover:text-ink/80 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
@@ -180,7 +180,7 @@ export default function SetPasswordPage() {
                 onChange={(e) => setConfirm(e.target.value)}
                 disabled={saving || success}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-ink placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </div>
 
@@ -210,7 +210,7 @@ export default function SetPasswordPage() {
               {saving ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving…
+                  Сохраняем…
                 </>
               ) : success ? (
                 <>
@@ -230,7 +230,7 @@ export default function SetPasswordPage() {
         <footer className="mt-8 flex flex-col items-center gap-1.5 text-tiny text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-muted" />
-            Secure · Private · Internal system
+            Защищено · Приватно · Внутренняя система
           </div>
         </footer>
       </div>

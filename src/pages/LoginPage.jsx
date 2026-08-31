@@ -33,7 +33,7 @@ const SESSION_WAIT_MS = 2500;
 /**
  * Ждёт появления сессии; true — появилась, false — истёк таймаут.
  * Экспортируется ради теста: если этот таймаут сломать, вернётся вечное
- * «Signing in…» — тот самый баг, из-за которого и затевался auth-PR.
+ * «Вход…» — тот самый баг, из-за которого и затевался auth-PR.
  */
 export async function waitForSession(timeoutMs, client = supabase) {
   const started = Date.now();
@@ -137,7 +137,7 @@ export default function LoginPage() {
       }
       // Успех сервера ≠ вход в приложение: если браузер не дал сохранить
       // сессию, gate не перерисуется и человек останется на форме. Раньше
-      // это выглядело как вечное «Signing in…» — сервер отвечал 200, а UI
+      // это выглядело как вечное «Вход…» — сервер отвечал 200, а UI
       // молчал. Ждём материализации сессии и говорим правду, если её нет.
       const appeared = await waitForSession(SESSION_WAIT_MS);
       if (!appeared) {
@@ -256,18 +256,18 @@ export default function LoginPage() {
 
         {/* Card */}
         <div
-          className="relative bg-ink/70 backdrop-blur-xl border border-line rounded-[20px] px-7 py-8 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.7)]"
+          className="relative bg-card border border-line rounded-card-2 px-7 py-8"
           style={{
             boxShadow:
               "0 0 0 1px rgba(255,255,255,0.04) inset, 0 24px 60px -20px rgba(0,0,0,0.7)",
           }}
         >
           <header className="mb-6">
-            <h1 className="text-[22px] font-bold tracking-tight text-white leading-tight">
-              Sign in to your account
+            <h1 className="text-[22px] font-bold tracking-tight text-ink leading-tight">
+              Вход в кассу
             </h1>
             <p className="text-body-sm text-muted-soft mt-1.5">
-              Secure access to your cashier system
+              Защищённый доступ к рабочему месту
             </p>
           </header>
 
@@ -312,7 +312,7 @@ export default function LoginPage() {
                 onKeyDown={handleEmailKeyDown}
                 disabled={loading}
                 placeholder="вы@компания.com"
-                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-ink placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -326,7 +326,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="p-1 text-muted-soft hover:text-white/80 transition-colors"
+                  className="p-1 text-muted-soft hover:text-ink/80 transition-colors"
                   tabIndex={-1}
                   aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
                 >
@@ -347,7 +347,7 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={loading}
                 placeholder="••••••••"
-                className="w-full bg-transparent outline-none text-body text-white placeholder:text-muted py-2.5 disabled:opacity-60"
+                className="w-full bg-transparent outline-none text-body text-ink placeholder:text-muted py-2.5 disabled:opacity-60"
               />
             </Field>
 
@@ -382,11 +382,11 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Signing in…
+                  Вход…
                 </>
               ) : (
                 <>
-                  Sign in
+                  Войти
                   <ArrowRight className="w-3.5 h-3.5" />
                 </>
               )}
@@ -413,7 +413,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-6 text-center text-tiny text-muted leading-relaxed">
-            Don't have an account?{" "}
+            Нет аккаунта?{" "}
             <span className="text-muted-soft">Доступ только по приглашению — попросите администратора.</span>
           </p>
         </div>
@@ -422,7 +422,7 @@ export default function LoginPage() {
         <footer className="mt-8 flex flex-col items-center gap-1.5 text-tiny text-ink-soft">
           <div className="inline-flex items-center gap-1.5">
             <ShieldCheck className="w-3 h-3 text-muted" />
-            Secure · Private · Internal system
+            Защищено · Приватно · Внутренняя система
           </div>
           <div className="text-ink-soft">v{APP_VERSION}</div>
           {/* Escape hatch — если session cache "залип" и signin ведёт себя странно.
@@ -442,7 +442,7 @@ export default function LoginPage() {
             }}
             className="mt-1 text-ink-soft hover:text-muted-soft underline underline-offset-2 transition-colors"
           >
-            Clear stored session
+            Очистить сохранённую сессию
           </button>
         </footer>
       </div>
