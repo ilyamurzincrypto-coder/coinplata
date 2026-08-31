@@ -126,6 +126,28 @@ body{
 .rate2.h span{font-size:10.5px;color:var(--blue-soft);opacity:.85;text-align:right}
 .qr-line{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:baseline;border-top:1px solid rgba(233,237,242,.22);padding:10px 0 0;margin-top:2px}
 .qr-line .cur{font-size:12.5px;color:var(--blue-soft)}
+/* ховер-расшифровка направлений в карточке USDT — кроссфейд со свечением */
+.bcard.accent .cur{white-space:nowrap;position:relative}
+.bcard.accent .cur i{font-style:normal;transition:opacity .18s ease}
+.bcard.accent .cur::before,.bcard.accent .cur::after{
+  position:absolute;left:0;top:0;white-space:nowrap;color:#fff;opacity:0;
+  text-shadow:0 0 0 rgba(255,255,255,0);pointer-events:none;
+  transition:opacity .45s ease .06s,text-shadow .45s ease .06s;
+}
+.bcard.accent .cur::before{content:attr(data-a)}
+.bcard.accent .cur::after{content:attr(data-b)}
+.bcard.accent .hcap{cursor:default;padding:3px 9px;margin:-3px -9px;border-radius:999px;transition:background .3s ease,color .3s ease}
+.bcard.accent .hcap:hover{background:rgba(233,237,242,.18);color:#fff}
+.bcard.accent .rate2 .a,.bcard.accent .rate2 .b{transition:opacity .35s ease,background .35s ease;border-radius:10px;padding:2px 6px;margin:-2px -6px}
+.bcard.accent:has(.hcap-a:hover) .cur i{opacity:0}
+.bcard.accent:has(.hcap-a:hover) .cur::before{opacity:1;text-shadow:0 0 14px rgba(255,255,255,.5)}
+.bcard.accent:has(.hcap-a:hover) .rate2 .a{background:rgba(233,237,242,.15)}
+.bcard.accent:has(.hcap-a:hover) .rate2 .b{opacity:.35}
+.bcard.accent:has(.hcap-b:hover) .cur i{opacity:0}
+.bcard.accent:has(.hcap-b:hover) .cur::after{opacity:1;text-shadow:0 0 14px rgba(255,255,255,.5)}
+.bcard.accent:has(.hcap-b:hover) .rate2 .b{background:rgba(233,237,242,.15)}
+.bcard.accent:has(.hcap-b:hover) .rate2 .a{opacity:.35}
+
 .bcard.add{
   background:transparent;border:1.5px dashed var(--line-2);
   display:flex;align-items:center;justify-content:center;gap:8px;
@@ -190,6 +212,7 @@ table.apps{width:100%;table-layout:fixed;border-collapse:collapse;font-feature-s
 tr.stale .meet .d,tr.stale .who2,tr.stale .sum,tr.stale .sum em,tr.stale .rt2{color:#B4AB8D}
 .apps-foot{display:flex;justify-content:space-between;align-items:center;margin-top:11px;font-size:11px;color:#99916F}
 
+/* ---------- экран 2: редактор ---------- */
 /* ---------- экран 1а: переходная панель ---------- */
 .r2n{display:grid;grid-template-columns:1fr 88px 88px;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line)}
 .r2n .cur{font-size:12.5px;color:var(--muted)}
@@ -214,7 +237,6 @@ tr.stale .meet .d,tr.stale .who2,tr.stale .sum,tr.stale .sum em,tr.stale .rt2{co
 .r3n.h span{font-size:10.5px;color:var(--faint);text-align:right}
 .amber-note{font-size:11px;color:#B07A3C;margin-top:10px}
 
-/* ---------- экран 2: редактор ---------- */
 .ed-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .ed-head .t{font-size:19px;font-weight:400}
 .tabs-blocks{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
@@ -254,6 +276,7 @@ table.rates .client small{font-size:13px;color:#6B675C}
 .pub-bar .btns{display:flex;gap:8px;flex:none}
 .pill.locked{background:var(--line-2);color:#6B675C}
 
+/* ---------- экран 3: публикация ---------- */
 /* ---------- экран 2а: вставить курсы ---------- */
 .paste-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
 .paste-box{background:var(--cream);border-radius:16px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--ink);white-space:pre;min-height:250px}
@@ -268,7 +291,6 @@ table.rates .client small{font-size:13px;color:#6B675C}
 .rec-line.warn .st{color:#B07A3C}
 .paste-note{font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
 
-/* ---------- экран 3: публикация ---------- */
 .flow{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:stretch}
 .ver-card{background:var(--card);border-radius:24px;padding:20px 22px}
 .ver-card .t{font-size:14px;margin-bottom:16px}
@@ -343,13 +365,13 @@ svg{display:block}
 
 <div class="doc-head">
   <h1>CoinPlata Касса — целевой дизайн</h1>
-  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 8 · 31.08.2026 · пятый блок НЕРЕЗ в панели и вкладках · перестановки — маржа по маршрутам · Экран 2а «Вставить курсы»</p>
+  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 12 · 31.08.2026 · ховер-расшифровка переделана: кроссфейд со свечением вместо выдвижения — макет не шевелится, пробелы вокруг стрелки на месте</p>
   <p>Четыре экрана: главный вид с панелью блоков курсов и табачной секцией заявок, раскрытие блока с редактором и черновиком, публикация версии во все каналы, сводная ведомость крипто-счетов. Направление — rondesignlab: тёплый крем, тонкие крупные цифры, круглые формы, табачные рабочие таблицы.</p>
 </div>
 
 <!-- ================= ЭКРАН 1 ================= -->
 <div class="wrap">
-  <div class="screen-label"><b>Экран 1</b> Касса — главный вид. Слева блоки курсов, только чтение</div>
+  <div class="screen-label"><b>Экран 1</b> Касса — главный вид. Слева блоки курсов, только чтение; карточка блока кликабельна → редактор на вкладке блока, общий вход — кнопка внизу</div>
   <div class="frame">
 
     <div class="topbar">
@@ -386,7 +408,6 @@ svg{display:block}
         <div class="bcard">
           <div class="row-top">
             <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="7" width="18" height="11" rx="2"/><circle cx="12" cy="12.5" r="2.4"/></svg></span>
-            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="lbl">Нал · Толунай</div>
           <div class="rate-line"><span class="p">USD → TRY</span><span class="n">40<small>,88</small></span></div>
@@ -401,7 +422,6 @@ svg{display:block}
               <svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M9 12h6M12 8.5v7"/></svg>
               <span class="badge-alert">!</span>
             </span>
-            <span class="circle light"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="lbl">USDT · Paramon, с утра</div>
           <div class="chiprow">
@@ -410,17 +430,16 @@ svg{display:block}
             <span class="chip-b">MSK</span>
             <span class="chip-b">SPB</span>
           </div>
-          <div class="rate2 h"><span></span><span>USDT →</span><span>→ USDT</span></div>
-          <div class="rate2"><span class="cur">USD</span><span class="a">−1,00%</span><span class="b">+0,20%</span></div>
-          <div class="rate2"><span class="cur">TRY</span><span class="a">47,10</span><span class="b">47,95</span></div>
-          <div class="rate2"><span class="cur">EUR</span><span class="a">1,167</span><span class="b">1,147</span></div>
+          <div class="rate2 h"><span></span><span class="hcap hcap-a">USDT →</span><span class="hcap hcap-b">→ USDT</span></div>
+          <div class="rate2"><span class="cur" data-a="USDT → USD" data-b="USD → USDT"><i>USD</i></span><span class="a">−1,00%</span><span class="b">+0,20%</span></div>
+          <div class="rate2"><span class="cur" data-a="USDT → TRY" data-b="TRY → USDT"><i>TRY</i></span><span class="a">47,10</span><span class="b">47,95</span></div>
+          <div class="rate2"><span class="cur" data-a="USDT → EUR" data-b="EUR → USDT"><i>EUR</i></span><span class="a">1,167</span><span class="b">1,147</span></div>
           <div class="foot">всё, что связано с тезером · MSK и SPB — пары к RUB</div>
         </div>
 
         <div class="bcard">
           <div class="row-top">
             <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg></span>
-            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="lbl">Перестановки</div>
           <div class="num"><span class="big">+0</span><span class="frac">,9%</span></div>
@@ -430,7 +449,6 @@ svg{display:block}
         <div class="bcard">
           <div class="row-top">
             <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M13 13h3v3h-3zM17 17h3v3h-3z"/></svg></span>
-            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="lbl">QR ₽ · ЦБ + спред 8%</div>
           <div style="display:flex;align-items:flex-end;justify-content:space-between">
@@ -443,7 +461,6 @@ svg{display:block}
         <div class="bcard">
           <div class="row-top">
             <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
-            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
           </div>
           <div class="lbl">НЕРЕЗ · USDT ↔ RUB · Paramon, с утра</div>
           <div class="r3n h"><span></span><span>Т-Т</span><span>Т-М</span><span>М-М</span></div>
@@ -776,14 +793,14 @@ RUB -> USDT 88,08
   </div>
 
 <!-- ================= ЭКРАН 4 ================= -->
-  <div class="screen-label"><b>Экран 4</b> Счета · Крипто — сводная ведомость: один экран вместо четырёх</div>
+  <div class="screen-label"><b>Экран 4</b> Счета · Крипто — сводная ведомость. Показано вырожденное состояние: учёт не ведётся → колонки «Учёт» и «Δ» скрыты, вернутся с первой учётной записью</div>
   <div class="frame">
 
     <div class="wal-hero">
       <div>
         <div class="lbl">Счета · Крипто · он-чейн</div>
         <div class="num"><span class="big">290 253</span><span class="frac">,93 $</span></div>
-        <div class="sub">учёт 0,00 $ · расхождение <em>Δ 290 253,93 $</em> · обновлено 17:23</div>
+        <div class="sub">обновлено 17:23 · <span style="color:#B07A3C">учёт не ведётся — сверка и Δ появятся с первыми учётными записями</span></div>
       </div>
       <div class="filters">
         <span class="pill dark" style="font-size:12px;padding:7px 15px">Все · 26</span>
@@ -795,70 +812,58 @@ RUB -> USDT 88,08
 
     <div style="background:#F7F1E1;border-radius:24px;padding:18px 20px">
       <table class="wal">
-        <colgroup><col style="width:216px"><col><col style="width:92px"><col style="width:140px"><col style="width:104px"><col style="width:142px"></colgroup>
+        <colgroup><col style="width:224px"><col><col style="width:104px"><col style="width:168px"></colgroup>
         <thead><tr>
-          <th>Кошелёк</th><th>Адрес</th><th>Риск</th><th class="r">Он-чейн</th><th class="r">Учёт</th><th class="r">Δ</th>
+          <th>Кошелёк</th><th>Адрес</th><th>Риск · из 100</th><th class="r">Он-чейн, $</th>
         </tr></thead>
         <tbody>
-          <tr><td class="grp" colspan="6"><span class="grp-in"><span class="nm">Mark Antalya</span><span class="meta">7 скрытых</span><span class="tot">165 031,17<small>$ он-чейн</small></span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in"><span class="nm">Mark Antalya</span><span class="meta">7 скрытых</span><span class="tot">165 031,17</span></span></td></tr>
           <tr>
             <td class="wn">WW-131 Центр (C52)<small>TRC20</small></td>
             <td class="addr">TNruX…P6me<i>⧉</i></td>
-            <td class="risk"><i class="ok"></i>5/100</td>
+            <td class="risk"><i class="ok"></i>5</td>
             <td class="onch">164 279,52</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 164 279,52</td>
           </tr>
           <tr>
             <td class="wn">WW-131 Центр (C52)<small>ERC20</small></td>
             <td class="addr">0x2B3…6AE3<i>⧉</i></td>
-            <td class="risk"><i class="mid"></i>11/100</td>
+            <td class="risk"><i class="mid"></i>11</td>
             <td class="onch">748,75</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 748,75</td>
           </tr>
 
-          <tr><td class="grp" colspan="6"><span class="grp-in"><span class="nm">Terra City</span><span class="meta">2 нулевых · 5 скрытых</span><span class="tot">21 609,55<small>$ он-чейн</small></span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in"><span class="nm">Terra City</span><span class="meta">2 нулевых · 5 скрытых</span><span class="tot">21 609,55</span></span></td></tr>
           <tr>
             <td class="wn">WW-132 Lara (583)<small>ERC20</small></td>
             <td class="addr">0x3b8…606e<i>⧉</i></td>
-            <td class="risk"><i class="mid"></i>16/100</td>
+            <td class="risk"><i class="mid"></i>16</td>
             <td class="onch">21 010,42</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 21 010,42</td>
           </tr>
 
-          <tr><td class="grp" colspan="6"><span class="grp-in"><span class="nm">Liman</span><span class="meta">1 нулевой</span><span class="tot">81 389,83<small>$ он-чейн</small></span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in"><span class="nm">Liman</span><span class="meta">1 нулевой</span><span class="tot">81 389,83</span></span></td></tr>
           <tr>
             <td class="wn">WW-133 (MS1)<small>TRC20</small></td>
             <td class="addr">TNsFG…zKvs<i>⧉</i></td>
-            <td class="risk"><i class="ok"></i>5/100</td>
+            <td class="risk"><i class="ok"></i>5</td>
             <td class="onch">81 389,83</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 81 389,83</td>
           </tr>
 
-          <tr><td class="grp" colspan="6"><span class="grp-in"><span class="nm">Istanbul</span><span class="meta">1 нулевой · 2 скрытых</span><span class="tot">726,02<small>$ он-чейн</small></span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in"><span class="nm">Istanbul</span><span class="meta">1 нулевой · 2 скрытых</span><span class="tot">726,02</span></span></td></tr>
           <tr>
             <td class="wn">WW-130 (6MC)<small>TRC20</small></td>
             <td class="addr">TGMwS…BLAQ<i>⧉</i></td>
-            <td class="risk"><i class="ok"></i>5/100</td>
+            <td class="risk"><i class="ok"></i>5</td>
             <td class="onch">726,00</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 726,00</td>
           </tr>
 
-          <tr><td class="grp" colspan="6"><span class="grp-in"><span class="nm">International Office</span><span class="warn">офис неактивен · кошельки вне городов</span><span class="tot">21 497,36<small>$ он-чейн</small></span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in"><span class="nm">International Office</span><span class="warn">офис неактивен · кошельки вне городов</span><span class="tot">21 497,36</span></span></td></tr>
           <tr>
             <td class="wn">WW-135 (kit out)<small>TRC20</small></td>
             <td class="addr">TYtC1…vR6b<i>⧉</i></td>
-            <td class="risk"><i class="ok"></i>5/100</td>
+            <td class="risk"><i class="ok"></i>5</td>
             <td class="onch">21 497,36</td>
-            <td class="acct">0,00</td>
-            <td class="dlt">Δ 21 497,36</td>
           </tr>
 
-          <tr><td class="grp" colspan="6"><span class="grp-in dim"><span class="nm">Москва Вася</span><span class="meta">счетов нет</span></span></td></tr>
+          <tr><td class="grp" colspan="4"><span class="grp-in dim"><span class="nm">Москва Вася</span><span class="meta">счетов нет</span></span></td></tr>
         </tbody>
       </table>
 
