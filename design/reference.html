@@ -254,6 +254,20 @@ table.rates .client small{font-size:13px;color:#6B675C}
 .pub-bar .btns{display:flex;gap:8px;flex:none}
 .pill.locked{background:var(--line-2);color:#6B675C}
 
+/* ---------- экран 2а: вставить курсы ---------- */
+.paste-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+.paste-box{background:var(--cream);border-radius:16px;padding:14px 16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.75;color:var(--ink);white-space:pre;min-height:250px}
+.paste-box i{font-style:normal;color:var(--faint)}
+.rec-title{font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.rec-line{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:12.5px}
+.rec-line:first-of-type{border-top:0}
+.rec-line .n{font-weight:300;font-size:17px;white-space:nowrap}
+.rec-line .st{font-size:11.5px;color:#3E4A16;white-space:nowrap}
+.rec-line.mute,.rec-line.mute .n{color:var(--faint)}
+.rec-line.mute .st{color:var(--faint)}
+.rec-line.warn .st{color:#B07A3C}
+.paste-note{font-size:11.5px;color:var(--faint);margin-top:14px;line-height:1.6}
+
 /* ---------- экран 3: публикация ---------- */
 .flow{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:stretch}
 .ver-card{background:var(--card);border-radius:24px;padding:20px 22px}
@@ -329,7 +343,7 @@ svg{display:block}
 
 <div class="doc-head">
   <h1>CoinPlata Касса — целевой дизайн</h1>
-  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 7 · 27.08.2026 · добавлен Экран 1а — переходная панель курсов на текущих данных (офисы); блочный Экран 1 остаётся целью фаз 2–3</p>
+  <p style="font-size:12px;color:var(--faint);margin-top:4px">ревизия 8 · 31.08.2026 · пятый блок НЕРЕЗ в панели и вкладках · перестановки — маржа по маршрутам · Экран 2а «Вставить курсы»</p>
   <p>Четыре экрана: главный вид с панелью блоков курсов и табачной секцией заявок, раскрытие блока с редактором и черновиком, публикация версии во все каналы, сводная ведомость крипто-счетов. Направление — rondesignlab: тёплый крем, тонкие крупные цифры, круглые формы, табачные рабочие таблицы.</p>
 </div>
 
@@ -410,7 +424,7 @@ svg{display:block}
           </div>
           <div class="lbl">Перестановки</div>
           <div class="num"><span class="big">+0</span><span class="frac">,9%</span></div>
-          <div class="foot">от USDT · маржа сверху · согласуется</div>
+          <div class="foot">от USDT · маржа 0,9% по умолчанию · 6 маршрутов со своей</div>
         </div>
 
         <div class="bcard">
@@ -424,6 +438,18 @@ svg{display:block}
             <svg width="76" height="28" viewBox="0 0 76 28"><path d="M2 22C12 9 20 25 30 15S52 5 60 13s10-3 12-6" fill="none" stroke="#1A1915" stroke-width="1.5" stroke-linecap="round"/><circle cx="72" cy="7" r="2.6" fill="#E8622C"/></svg>
           </div>
           <div class="foot">блок 4 · авто от ЦБ · USDT / USD / EUR / TRY → ₽</div>
+        </div>
+
+        <div class="bcard">
+          <div class="row-top">
+            <span class="circle ring"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>
+            <span class="circle dark"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 17 17 7M9 7h8v8"/></svg></span>
+          </div>
+          <div class="lbl">НЕРЕЗ · USDT ↔ RUB · Paramon, с утра</div>
+          <div class="r3n h"><span></span><span>Т-Т</span><span>Т-М</span><span>М-М</span></div>
+          <div class="r3n"><span class="cur">Прод.</span><b>75,80</b><b>75,73</b><b>75,88</b></div>
+          <div class="r3n"><span class="cur">Покуп.</span><b>74,59</b><b>74,48</b><b>74,57</b></div>
+          <div class="foot">блок 5 · TOD/TOM — расчётные базисы, не города</div>
         </div>
 
         <div class="bcard add">
@@ -592,6 +618,7 @@ svg{display:block}
       <span class="pill dark">USDT · 4 города</span>
       <span class="pill line">Перестановки</span>
       <span class="pill line">QR ₽</span>
+      <span class="pill line">НЕРЕЗ</span>
       <span class="pill ghost">+ блок</span>
     </div>
 
@@ -599,7 +626,8 @@ svg{display:block}
       <div class="src-line">
         <span class="tag">Источник: вручную · Paramon, с утра</span>
         <span class="tag">USD — процент · TRY и EUR — абсолют</span>
-        <span style="margin-left:auto">опубликовано v. 148 · 10:41</span>
+        <span class="pill line" style="margin-left:auto;font-size:12px;padding:6px 14px">Вставить курсы</span>
+        <span>опубликовано v. 148 · 10:41</span>
       </div>
 
       <div class="chips">
@@ -659,6 +687,62 @@ svg{display:block}
         <div class="btns">
           <span class="pill line">Отменить</span>
           <span class="pill locked"><svg class="arw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Опубликовать v. 149</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ================= ЭКРАН 2а ================= -->
+  <div class="screen-label"><b>Экран 2а</b> «Вставить курсы» — утреннее сообщение Paramon заполняет черновик, в базу не пишет</div>
+  <div class="frame">
+    <div class="ed-card" style="max-width:860px">
+      <div class="ed-head" style="margin-bottom:14px">
+        <span class="t">Вставить курсы</span>
+        <span style="font-size:12px;color:var(--faint)">блоки USDT и НЕРЕЗ · заполняется черновик, публикация — отдельным шагом</span>
+      </div>
+
+      <div class="paste-grid">
+        <div class="paste-box"><i>[10:39] Paramon:</i> ANT
+USDT -> USD -1,00%
+USD -> USDT 0,20%
+USDT -> TRY 47,10
+TRY -> USDT 47,95
+USDT -> EUR 1,167
+EUR -> USDT 1,147
+
+IST
+USDT -> USD -0,90%
+USD -> USDT 0,00%
+USDT -> TRY 47,10
+TRY -> USDT 47,95
+
+MSK
+USDT -> RUB 86,59
+RUB -> USDT 87,88
+
+SPB
+USDT -> RUB 86,39
+RUB -> USDT 88,08
+
+нерез т-т 75,80 / 74,59</div>
+
+        <div>
+          <div class="rec-title">Распознано</div>
+          <div class="rec-line"><span>ANT · USDT</span><span class="n">6 <span class="st">значений · проценты и абсолют</span></span></div>
+          <div class="rec-line"><span>IST · USDT</span><span class="n">4 <span class="st">EUR не прислан — останется прошлое</span></span></div>
+          <div class="rec-line"><span>MSK · USDT</span><span class="n">2 <span class="st">пары к RUB</span></span></div>
+          <div class="rec-line mute"><span>SPB · USDT</span><span class="n">2 <span class="st">офис неактивен · не публикуется</span></span></div>
+          <div class="rec-line"><span>НЕРЕЗ · Т-Т</span><span class="n">2 <span class="st">прод. / покуп.</span></span></div>
+          <div class="rec-line warn"><span>строка 22</span><span class="n" style="font-size:12.5px;font-weight:400">«нерез т-м» — <span class="st">не распознана, пропущена</span></span></div>
+          <div class="paste-note">Сырые проценты ложатся в поля как есть (−1,00%), пересчёт в курс — только превью «Клиенту». Нераспознанные строки не блокируют вставку — они видны здесь и в черновике не появятся.</div>
+        </div>
+      </div>
+
+      <div class="pub-bar">
+        <div class="info"><b>Заполнится 14 полей в 2 блоках.</b> В базу ничего не уйдёт до кнопки «Опубликовать».</div>
+        <div class="btns">
+          <span class="pill line">Отмена</span>
+          <span class="pill dark">Заполнить черновик</span>
         </div>
       </div>
     </div>
