@@ -187,7 +187,7 @@ export default function RatesPanelV2({ onOpenRates }) {
         <BlockCard
           onOpen={onOpenRates}
           label={per.title}
-          foot={`от USDT · маржа ${per.config?.margin_pct ?? 0}% по умолчанию · ${perOwn} ${perOwn === 1 ? "маршрут" : "маршрутов"} со своей`}
+          foot={`от USDT · маржа ${Number(per.config?.margin_pct ?? 0).toLocaleString("ru-RU")}% по умолчанию · ${perOwn} ${perOwn === 1 ? "маршрут" : "маршрутов"} со своей`}
           icon={<span className="text-[13px]">⇄</span>}
         >
           <div className="font-light leading-none tracking-[-0.01em]">

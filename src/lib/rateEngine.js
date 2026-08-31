@@ -17,7 +17,9 @@
 //   pct     → 1 + v/100        (utils/morningRatesParser.js: resolveRateValue)
 //   abs     → v                (значение уже читаемое)
 //   derived → base × (1 + m/100)
-//   source  → price × (1 + s/100)
+//   source  → price × (1 + s/100)   [spread_mode: pct]
+//   source  → price + s/100         [spread_mode: abs — s в копейках]
+//   замок   → зафиксированный итог, формула не применяется
 
 /** Число или null. Строки с запятой тоже принимаются (утренний ввод). */
 export function num(v) {
@@ -57,6 +59,17 @@ export function priceKey({ block, scope, from, to }) {
  */
 export function computeRowPrice(row, block, deps = {}) {
   const mode = row?.value_mode;
+
+  // ЗАМОК. Меняла зафиксировал итог руками — курс перестаёт ходить за фидом,
+  // пока замок не снят. Это не ещё одна формула, а её ОТСУТСТВИЕ, поэтому
+  // проверка идёт до разбора режима: заперта может быть строка любого вида.
+  // Семантика снята из работающей панели (RatesControlPanel: locks[key] —
+  // зафиксированный итог, правка спреда замок снимает).
+  const locked = num(row?.locked_rate);
+  if (locked != null) {
+    if (locked <= 0) return { error: "замок: курс должен быть > 0" };
+    return { rate: locked, locked: true };
+  }
 
   if (mode === "pct") {
     const v = num(row.value);
@@ -101,12 +114,18 @@ export function computeRowPrice(row, block, deps = {}) {
     const p = num(deps.sourcePrice);
     if (p == null) return { error: "source: нет котировки провайдера" };
     if (p <= 0) return { error: "source: котировка должна быть > 0" };
-    const s = num(block?.config?.spread_pct) ?? 0;
+    // Спред строки перекрывает дефолт блока: у USD→TRY и TRY→USD он разный
+    // (покупка и продажа), а config.spread_pct — общий старт для новых строк.
+    // Для source-строк row.value ничем другим не занят.
+    const s = num(row?.value) ?? num(block?.config?.spread_pct) ?? 0;
     // Решение №2: спред нала — АБСОЛЮТНЫЙ шаг в котируемой валюте (куруши),
     // а не процент. Меняла думает «плюс 5 копеек», и пересчёт в 0,1055%
     // потерял бы смысл шага. QR остаётся процентным.
     const mode2 = block?.config?.spread_mode === "abs" ? "abs" : "pct";
-    const rate = mode2 === "abs" ? p + s : p * (1 + s / 100);
+    // abs — КОПЕЙКИ (куруши), поэтому /100: «5» значит 0,05 TRY. Ровно так
+    // считает работающая панель (RatesControlPanel: price + spread / 100).
+    // Без деления «плюс 5 копеек» превратилось бы в «плюс 5 лир».
+    const rate = mode2 === "abs" ? p + s / 100 : p * (1 + s / 100);
     if (!(rate > 0)) return { error: "source: спред увёл курс в ноль или минус" };
     return { rate };
   }

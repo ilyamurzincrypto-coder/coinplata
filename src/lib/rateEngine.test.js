@@ -221,7 +221,9 @@ describe("parseRouteScope — scope это измерение блока, не �
 });
 
 describe("решение №2 — спред нала в копейках (spread_mode)", () => {
-  const cashAbs = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_pct: 0.05, spread_mode: "abs" } };
+  // Единица abs-спреда — КОПЕЙКА (куруш), как в работающей панели: меняла
+  // печатает «5», а не «0,05». PR-A ошибочно кодировал лиры — исправлено.
+  const cashAbs = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_pct: 5, spread_mode: "abs" } };
   const qrPct = { code: "qr", kind: "auto", config: { provider: "cbr", spread_pct: 8, spread_mode: "pct" } };
 
   it("abs: цена + 5 копеек, а не +0,1055%", () => {
@@ -236,8 +238,12 @@ describe("решение №2 — спред нала в копейках (sprea
     const legacy = { code: "x", kind: "auto", config: { provider: "p", spread_pct: 10 } };
     expect(computeRowPrice({ value_mode: "source" }, legacy, { sourcePrice: 100 }).rate).toBeCloseTo(110, 10);
   });
+  it("спред строки перекрывает блочный: покупка и продажа разные", () => {
+    const r = computeRowPrice({ value_mode: "source", value: 20 }, cashAbs, { sourcePrice: 47.38 });
+    expect(r.rate).toBeCloseTo(47.58, 10); // 20 коп. строки, а не 5 коп. блока
+  });
   it("отрицательный abs-спред не может увести курс в ноль", () => {
-    const bad = { code: "cash", kind: "auto", config: { spread_pct: -50, spread_mode: "abs" } };
+    const bad = { code: "cash", kind: "auto", config: { spread_pct: -5000, spread_mode: "abs" } };
     expect(computeRowPrice({ value_mode: "source" }, bad, { sourcePrice: 40 }).error).toMatch(/ноль или минус/);
   });
 });
@@ -317,5 +323,30 @@ describe("решение №1 — перестановки по маршрута
     const { errors } = computeAll({ blocks, rows, officeCity: OFFICE_CITY });
     expect(errors).toHaveLength(1);
     expect(errors[0].error).toMatch(/получател/);
+  });
+});
+
+describe("замок строки", () => {
+  const cash = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_pct: 5, spread_mode: "abs" } };
+
+  it("заперта — фид игнорируется, отдаётся зафиксированный итог", () => {
+    const r = computeRowPrice({ value_mode: "source", locked_rate: 48.5 }, cash, { sourcePrice: 47.38 });
+    expect(r.rate).toBe(48.5);
+    expect(r.locked).toBe(true);
+  });
+  it("замок работает и там, где котировки нет вовсе", () => {
+    // Смысл замка: курс держится, даже когда фид отвалился.
+    const r = computeRowPrice({ value_mode: "source", locked_rate: 48.5 }, cash, {});
+    expect(r.rate).toBe(48.5);
+  });
+  it("нулевой замок — ошибка, а не тихий возврат к формуле", () => {
+    // Ноль в замке = испорченные данные. Провалиться обратно в формулу значило
+    // бы показать курс, которого меняла не ставил, и молча.
+    expect(computeRowPrice({ value_mode: "abs", value: 10, locked_rate: 0 }, cash).error).toMatch(/> 0/);
+    expect(computeRowPrice({ value_mode: "abs", value: 10, locked_rate: -1 }, cash).error).toMatch(/> 0/);
+  });
+  it("снятый замок возвращает строку под формулу", () => {
+    const r = computeRowPrice({ value_mode: "source", locked_rate: null }, cash, { sourcePrice: 47.38 });
+    expect(r.rate).toBeCloseTo(47.43, 10);
   });
 });

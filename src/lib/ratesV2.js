@@ -79,6 +79,53 @@ export async function publishRates({ inputs, prices, sourceMeta }) {
   return data;
 }
 
+/**
+ * Котировки провайдеров для auto-блоков (нал, QR).
+ *
+ * СТОРОНА ФИДА — порт из работающей панели (RatesControlPanel: «CUR→TRY =
+ * Покупка (bid), TRY→CUR = Продажа (ask)»). Пара фида X_Y раскладывается
+ * в ДВА ключа: X→Y берёт bid, Y→X берёт ask. Оба читаемы > 1 в котируемой
+ * валюте Y — та же конвенция, что у ручных строк, поэтому движку не нужно
+ * ничего инвертировать.
+ *
+ * Возвращает { sources: {"<provider>|<FROM>|<TO>": price},
+ *              meta: {"<provider>": {fetched_at, age_min}} }.
+ */
+export async function loadSources(providers = []) {
+  if (!supabase || providers.length === 0) return { sources: {}, meta: {} };
+  const { data, error } = await supabase
+    .from("external_rates")
+    .select("source, pair, bid, ask, mid, fetched_at")
+    .in("source", providers)
+    .gte("fetched_at", new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString())
+    .order("fetched_at", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(`loadSources: ${error.message}`);
+
+  const sources = {};
+  const meta = {};
+  const seen = new Set(); // берём только САМЫЙ СВЕЖИЙ снимок каждой пары
+  for (const r of data || []) {
+    const tag = `${r.source}|${r.pair}`;
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    const [x, y] = String(r.pair).split("_");
+    if (!x || !y) continue;
+    const mid = Number(r.mid);
+    const bid = Number(r.bid ?? mid);
+    const ask = Number(r.ask ?? mid);
+    if (Number.isFinite(bid)) sources[`${r.source}|${x}|${y}`] = bid;
+    if (Number.isFinite(ask)) sources[`${r.source}|${y}|${x}`] = ask;
+    if (!meta[r.source] || meta[r.source].fetched_at < r.fetched_at) {
+      meta[r.source] = { fetched_at: r.fetched_at };
+    }
+  }
+  for (const m of Object.values(meta)) {
+    m.age_min = Math.round((Date.now() - new Date(m.fetched_at).getTime()) / 60000);
+  }
+  return { sources, meta };
+}
+
 /** Маппинг офис→город-scope для маршрутных строк (перестановки). */
 export function officeCityMap(offices) {
   const CITY = [
