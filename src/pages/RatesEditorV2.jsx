@@ -54,7 +54,10 @@ export default function RatesEditorV2({ onClose }) {
         if (!alive) return;
         setBlocks(bs);
         setPublished(pub);
-        const first = bs.find((b) => b.enabled) || bs[0];
+        // Открываем USDT: в PR-B1 это единственная рабочая вкладка, и
+        // приземляться на заглушку «Нал» (первый по position) — значит
+        // показывать неработающий экран вместо работающего.
+        const first = bs.find((b) => b.code === "usdt") || bs.find((b) => b.enabled) || bs[0];
         setActiveBlock(first?.code || null);
         setActiveScope(first?.scopes?.[0] || null);
       } catch (e) {
