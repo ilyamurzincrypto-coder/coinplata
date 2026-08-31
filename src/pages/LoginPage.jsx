@@ -30,12 +30,16 @@ const REMEMBERED_EMAIL_KEY = "coinplata.loginEmail";
 // сервера. Больше секунды человек уже считает, что «висит».
 const SESSION_WAIT_MS = 2500;
 
-/** Ждёт появления сессии; true — появилась, false — истёк таймаут. */
-async function waitForSession(timeoutMs) {
+/**
+ * Ждёт появления сессии; true — появилась, false — истёк таймаут.
+ * Экспортируется ради теста: если этот таймаут сломать, вернётся вечное
+ * «Signing in…» — тот самый баг, из-за которого и затевался auth-PR.
+ */
+export async function waitForSession(timeoutMs, client = supabase) {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
     try {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await client.auth.getSession();
       if (data?.session) return true;
     } catch {
       /* клиент ещё не готов — пробуем снова */
