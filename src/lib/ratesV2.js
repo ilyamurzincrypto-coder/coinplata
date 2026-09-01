@@ -14,6 +14,7 @@
 // старый путь. rate_publications — append-only журнал (RLS без delete).
 
 import { supabase } from "./supabase.js";
+import { CITY_OFFICE_MATCHERS } from "../utils/morningRatesParser.js";
 
 /** Фича-флаг. Персональный: users.preferences.rates_v2_ui === true. */
 export function isRatesV2Enabled(user) {
@@ -126,19 +127,21 @@ export async function loadSources(providers = []) {
   return { sources, meta };
 }
 
-/** Маппинг офис→город-scope для маршрутных строк (перестановки). */
+/**
+ * Маппинг офис→код города для маршрутных и городских строк.
+ *
+ * Матчер ИМПОРТИРУЕТСЯ, а не копируется. Здесь была своя копия правил, и она
+ * уже разошлась с оригиналом: «St.pt» не подходил под /spb|питер|санкт/ и
+ * питерский офис не резолвился ни в один город. Копия помощника всегда
+ * отстаёт от оригинала — это ровно тот случай, ради которого правило
+ * «импортировать, а не копировать» и записано.
+ */
 export function officeCityMap(offices) {
-  const CITY = [
-    [/antal/i, "ANT"],
-    [/istanbul|стамбул/i, "IST"],
-    [/москв|moscow/i, "MSK"],
-    [/spb|питер|санкт|петербург/i, "SPB"],
-  ];
   const m = {};
   for (const o of offices || []) {
-    const hay = `${o.city || ""} ${o.name || ""}`;
-    const hit = CITY.find(([re]) => re.test(hay));
-    if (hit) m[o.id] = hit[1];
+    for (const [code, match] of Object.entries(CITY_OFFICE_MATCHERS)) {
+      if (match(o)) { m[o.id] = code; break; }
+    }
   }
   return m;
 }

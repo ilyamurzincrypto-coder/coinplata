@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ClipboardPaste, Loader2, Lock, Unlock, X } from "lucide-react";
 import { computeAll, pricesToMap, priceKey, num } from "../lib/rateEngine.js";
 import { pasteToDraft, pasteSummary } from "../lib/ratesPaste.js";
+import { ratesHealth, LEVEL } from "../lib/ratesHealth.js";
 import {
   loadBlocks, loadPublished, loadSources, publishedMap, publishRates,
   officeCityMap, V2_BANNER,
@@ -197,6 +198,13 @@ export default function RatesEditorV2({ onClose }) {
     });
     return { count: changed.length, blocks: new Set(changed.map((c) => c.block)).size };
   }, [computed.prices, prevMap]);
+
+  // Здоровье: чем торгуем и можно ли этому верить. Считается из тех же
+  // данных, что и публикация, — отдельного источника правды нет.
+  const health = useMemo(
+    () => ratesHealth({ sources: sourceMeta, published, computed, bridgeEnabled: false }),
+    [sourceMeta, published, computed]
+  );
 
   const nextVersion = (published?.version || 0) + 1;
   const blocked = computed.violations.length > 0;
@@ -667,6 +675,42 @@ export default function RatesEditorV2({ onClose }) {
             + блок
           </button>
         )}
+      </div>
+
+      {/* Здоровье курсов — одной строкой над картой блока. Неделю дашборд
+          показывал «курс не загрузился», и это считали особенностью фронта:
+          нигде не было написано, что упал фид. Теперь написано. */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap text-[11.5px]">
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${
+          health.level === LEVEL.BAD ? "bg-danger-soft text-danger"
+            : health.level === LEVEL.WARN ? "bg-orange-bg text-orange-ink"
+            : "bg-cream text-[#6B675C]"
+        }`}>
+          <span className={`w-[7px] h-[7px] rounded-full ${
+            health.level === LEVEL.BAD ? "bg-danger" : health.level === LEVEL.WARN ? "bg-orange" : "bg-success"
+          }`} />
+          Здоровье
+        </span>
+        {health.items.map((it) => (
+          <span
+            key={it.key}
+            title={it.kind === "feed" ? `фид ${it.key}` : it.kind === "publication" ? "последняя публикация" : it.kind === "coverage" ? "покрытие модели ценами" : "доставка в каналы"}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 ${
+              it.muted ? "text-faint"
+                : it.level === LEVEL.BAD ? "bg-danger-soft text-danger"
+                : it.level === LEVEL.WARN ? "bg-orange-bg text-orange-ink"
+                : "bg-cream text-[#6B675C]"
+            }`}
+          >
+            {!it.muted && (
+              <span className={`w-[6px] h-[6px] rounded-full ${
+                it.level === LEVEL.BAD ? "bg-danger" : it.level === LEVEL.WARN ? "bg-orange" : "bg-success"
+              }`} />
+            )}
+            {it.kind === "feed" ? it.key : it.kind === "publication" ? "публикация" : it.kind === "coverage" ? "покрытие" : "каналы"}
+            <span className="opacity-70">· {it.note}</span>
+          </span>
+        ))}
       </div>
 
       <div className="bg-card rounded-card-2 px-6 py-5">
