@@ -517,9 +517,86 @@ export default function RatesEditorV2({ onClose }) {
     );
   };
 
+  // ── вкладка: якорный блок (QR) — курс из сообщения + наш подсчёт ────────
+  const renderAnchor = () => {
+    const cfg = block.config?.anchor;
+    const anchorRow = block.rows.find(
+      (r) => r.from_ccy === cfg.from && r.to_ccy === cfg.to && r.enabled !== false
+    );
+    const rest = block.rows.filter((r) => r !== anchorRow && r.enabled !== false);
+    const aKey = anchorRow ? keyOf(anchorRow) : null;
+
+    return (
+      <>
+        {/* ЯКОРЬ — это КУРС, а не маржа. Общий экран производных блоков
+            подписывал поле «Маржа, %» и показывал 93,45 как процент: число
+            верное, подпись врёт, а такая пара опаснее пустого поля. */}
+        <div className="flex items-baseline gap-4 pb-4 border-b border-line">
+          <div className="min-w-0">
+            <div className="text-[14px]">{cfg.from} → {cfg.to}</div>
+            <div className="text-[12px] text-faint mt-0.5">
+              якорь из утреннего сообщения · {cfg.from === "RUB" ? "рублей за 1 USDT" : "курс"}
+            </div>
+          </div>
+          <div className="ml-auto flex items-baseline gap-4 shrink-0">
+            <span className="text-[12px] text-faint">было {fmtRate(prevMap[aKey])}</span>
+            {anchorRow && (
+              <Input
+                wide
+                bad={!!violByKey[aKey]}
+                value={valueOf(anchorRow) ?? ""}
+                onChange={(e) => setValue(anchorRow.id, e.target.value)}
+                placeholder="0,00"
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="text-[12px] text-faint py-3">
+          ниже — наш подсчёт: якорь ÷ курс USDT города. Правится только якорь.
+        </div>
+
+        <table className="w-full border-collapse table-fixed">
+          <thead>
+            <tr className="text-[11.5px] text-faint">
+              <th className="text-left font-normal pb-3 w-[22%]">Город</th>
+              <th className="text-left font-normal pb-3 w-[26%]">Пара</th>
+              <th className="text-left font-normal pb-3 w-[26%]">Курс USDT города</th>
+              <th className="text-right font-normal pb-3 w-[26%]">Клиенту</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rest.map((r) => {
+              const key = keyOf(r);
+              const leg = priceMap[priceKey({
+                block: block.config?.base_block_code, scope: r.scope, from: "USDT", to: r.to_ccy,
+              })];
+              const rowErr = errByKey[key];
+              return (
+                <tr key={r.id}>
+                  <td className="py-3 border-t border-line text-[14px]">{r.scope}</td>
+                  <td className="py-3 border-t border-line text-[13px] text-muted">{r.from_ccy} → {r.to_ccy}</td>
+                  <td className="py-3 border-t border-line text-[13px] text-muted tabular-nums">
+                    {leg == null ? <span className="text-orange-ink">нет курса</span> : `USDT → ${r.to_ccy} = ${fmtRate(leg)}`}
+                  </td>
+                  <td className="py-3 border-t border-line text-right">
+                    {rowErr
+                      ? <span className="text-[19px] text-faint">—</span>
+                      : <span className="font-light text-[23px] tabular-nums">{fmtRate(priceMap[key])}</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </>
+    );
+  };
+
   const renderBody = () => {
     if (!block) return null;
     if (block.code === "nerez") return renderGrid();
+    if (block.config?.anchor) return renderAnchor();
     if (block.kind === "auto") return renderSource();
     if (block.kind === "derived") return renderRoutes();
     return renderPairs();
@@ -532,7 +609,8 @@ export default function RatesEditorV2({ onClose }) {
   // человек вправе был решить, что фильтр сломан. Показываем те же города
   // подписью: блок действительно на них действует, просто выбирать нечего.
   const scopedRows = block?.rows?.some((r) => r.scope != null);
-  const showScopes = block?.scopes?.length > 0 && scopedRows && block.kind !== "derived" && block.code !== "nerez";
+  const showScopes =
+    block?.scopes?.length > 0 && scopedRows && block.kind !== "derived" && block.code !== "nerez" && !block?.config?.anchor;
   const showScopeNote = block?.scopes?.length > 0 && !scopedRows && block.kind !== "derived" && block.code !== "nerez";
 
   return (
