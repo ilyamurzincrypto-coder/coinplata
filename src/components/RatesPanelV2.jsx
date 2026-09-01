@@ -15,6 +15,7 @@ import { ArrowUpRight, Pencil, Plus } from "lucide-react";
 import { loadBlocks, loadPublished, loadSources, publishedMap } from "../lib/ratesV2.js";
 import { computeRowPrice } from "../lib/rateEngine.js";
 import { formatCrossValue } from "../utils/ratesFormat.js";
+import CrossToggle, { crossSummary } from "./rates/CrossToggle.jsx";
 import { COL_INTO, COL_OUT, Reveal, makeCols, useRevealHover } from "./rates/hoverReveal.jsx";
 
 // Нал считается к лире ровно теми же правилами, что тезерный блок — к USDT.
@@ -231,21 +232,23 @@ export default function RatesPanelV2({ onOpenRates }) {
           })}
 
           {cashCross.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 pt-3 pb-1">
-                <span className="text-[10px] tracking-[1.3px] uppercase text-faint">Кросс</span>
-                <span className="flex-1 h-px bg-line" />
-              </div>
-              {cashCross.map(({ a, b, fwd, rev }) => (
-                <div key={`${a}_${b}`} className="grid gap-2.5 items-baseline py-1.5 border-t border-line" style={CASH_GRID}>
-                  <span className="text-[11.5px] text-muted whitespace-nowrap">
-                    {a}<span className="text-faint">/{b}</span>
-                  </span>
-                  <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(fwd)}</span>
-                  <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(rev)}</span>
-                </div>
-              ))}
-            </>
+            <div className="pt-1.5">
+              <CrossToggle
+                blockCode="cash"
+                count={cashCross.length}
+                summary={crossSummary(cashCross, formatCrossValue)}
+              >
+                {cashCross.map(({ a, b, fwd, rev }) => (
+                  <div key={`${a}_${b}`} className="grid gap-2.5 items-baseline py-1.5 border-t border-line" style={CASH_GRID}>
+                    <span className="text-[13px] font-light text-muted whitespace-nowrap">
+                      {a} <span className="text-faint">/ {b}</span>
+                    </span>
+                    <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(fwd)}</span>
+                    <span className="font-light text-[13px] text-right tabular-nums whitespace-nowrap text-[#6B675C]">{formatCrossValue(rev)}</span>
+                  </div>
+                ))}
+              </CrossToggle>
+            </div>
           )}
         </BlockCard>
       )}
