@@ -661,8 +661,13 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
           обрезанной кнопкой «Удалить» в узкой колонке). */}
       <div className="overflow-x-auto">
         <table
+          // min-w: сумма фиксированных колонок (924) плюс место коду сделки.
+          // Без неё table-layout:fixed сжимал колонки внутрь контейнера, и на
+          // 1280 шапка начинала клипать текст — обёртка overflow-x-auto при
+          // w-full не срабатывала никогда. Теперь узкий экран прокручивает
+          // таблицу внутри её собственного контейнера, а страница — нет.
           className={
-            "w-full border-collapse " +
+            "w-full min-w-[1020px] border-collapse " +
             "[&_th+th]:border-l [&_td+td]:border-l " +
             "[&_th+th]:border-[color:var(--vline)] [&_td+td]:border-[color:var(--vline)] " +
             "[&_th:first-child]:pl-0.5 [&_td:first-child]:pl-0.5 " +
