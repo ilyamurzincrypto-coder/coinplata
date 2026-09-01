@@ -5,6 +5,7 @@
 // заявки: общий тип «заявка» для ленты и «Под заявки».
 
 import { supabase } from "./supabase.js";
+import { assertOfficeId } from "./uuid.js";
 import { parseRate } from "../utils/money.js";
 
 export const MANAGER_ORDERS_ENABLED =
@@ -52,6 +53,7 @@ function mapOrder(r) {
 // Незакрытые заявки текущего офиса (для ленты и «Под заявки»).
 export async function loadPendingOrders(officeId) {
   if (!supabase || !MANAGER_ORDERS_ENABLED) return [];
+  assertOfficeId(officeId, "loadPendingOrders");
   let q = supabase
     .from("manager_orders")
     .select("*")

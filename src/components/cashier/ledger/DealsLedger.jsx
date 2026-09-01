@@ -258,13 +258,18 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
   // ── Заявки менеджера (за фиче-флагом) ──
   const [orders, setOrders] = useState([]);
+  // Ошибка загрузки заявок ВИДНА. Раньше она уходила в console.warn, и
+  // список молча показывал «0 в ожидании» при 16 заявках в базе — ровно так
+  // прятался битый id офиса.
+  const [ordersErr, setOrdersErr] = useState("");
   const refetchOrders = useCallback(async () => {
     if (!MANAGER_ORDERS_ENABLED) return;
     try {
       setOrders(await loadPendingOrders(officeId));
+      setOrdersErr("");
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn("[orders] load failed", e);
+      setOrders([]);
+      setOrdersErr(e?.message || String(e));
     }
   }, [officeId]);
   useEffect(() => {
@@ -787,8 +792,18 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
 
             {!loading && ordersView.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-[13px] text-[color:var(--muted)] border-t border-[color:var(--grid)]">
-                  {query ? "Ничего не найдено" : "Заявок в ожидании нет"}
+                <td colSpan={7} className="px-3 py-8 text-center text-[13px] border-t border-[color:var(--grid)]">
+                  {ordersErr ? (
+                    // «Пусто» и «не смогли загрузить» — разные вещи, и путать
+                    // их нельзя: первое успокаивает, второе требует действий.
+                    <span className="text-[color:var(--late)]">
+                      Заявки не загрузились: {ordersErr}
+                    </span>
+                  ) : (
+                    <span className="text-[color:var(--muted)]">
+                      {query ? "Ничего не найдено" : "Заявок в ожидании нет"}
+                    </span>
+                  )}
                 </td>
               </tr>
             )}

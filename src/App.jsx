@@ -13,11 +13,12 @@ import ShareAccountsView from "./pages/ShareAccountsView.jsx";
 import DesignPreview from "./pages/DesignPreview.jsx";
 import RatesConfirmationBanner from "./components/RatesConfirmationBanner.jsx";
 import RateChangeBanner from "./components/RateChangeBanner.jsx";
+import OfficeGate from "./components/OfficeGate.jsx";
 
 import { I18nProvider, useTranslation } from "./i18n/translations.jsx";
 import { RatesProvider } from "./store/rates.jsx";
 import { AuthProvider } from "./store/auth.jsx";
-import { OfficesProvider } from "./store/offices.jsx";
+import { OfficesProvider, useOffices } from "./store/offices.jsx";
 import { CurrenciesProvider } from "./store/currencies.jsx";
 import { TransactionsProvider } from "./store/transactions.jsx";
 import { AccountsProvider } from "./store/accounts.jsx";
@@ -76,11 +77,14 @@ function Root() {
       return "cashier";
     }
   });
+  // Дефолта нет: подставленный сидовый "mark" ронял каждый запрос с фильтром
+  // по офису (заявки, закрытия кассы) в 400, и ошибка глоталась. Пусто —
+  // значит спросим человека, см. OfficeGate.
   const [currentOffice, setCurrentOffice] = useState(() => {
     try {
-      return localStorage.getItem("coinplata.office") || "mark";
+      return localStorage.getItem("coinplata.office") || null;
     } catch {
-      return "mark";
+      return null;
     }
   });
 
@@ -88,8 +92,24 @@ function Root() {
     try { localStorage.setItem("coinplata.page", page); } catch {}
   }, [page]);
   useEffect(() => {
-    try { localStorage.setItem("coinplata.office", currentOffice); } catch {}
+    try {
+      if (currentOffice) localStorage.setItem("coinplata.office", currentOffice);
+      else localStorage.removeItem("coinplata.office");
+    } catch { /* приватное окно */ }
   }, [currentOffice]);
+
+  // Сверка сохранённого выбора с ЖИВЫМ списком офисов. Проверяем не форму id,
+  // а факт существования: в демо-режиме офисы сидовые ("mark") и это законно,
+  // а в проде тот же "mark" — мусор из прошлой жизни.
+  // Сверяем с АКТИВНЫМИ: закрытый офис — тоже повод спросить заново, а не
+  // молча показывать чужие остатки.
+  const { activeOffices } = useOffices();
+  useEffect(() => {
+    if (!activeOffices || activeOffices.length === 0) return; // ещё грузится
+    if (currentOffice && !activeOffices.some((o) => o.id === currentOffice)) {
+      setCurrentOffice(null);
+    }
+  }, [activeOffices, currentOffice]);
   const [exchangeMode, setExchangeMode] = useState("dashboard");
   const [formMounted, setFormMounted] = useState(false);
   // Demo seed from the Справка «Попробовать» button — when set, the Кассa deal
@@ -217,6 +237,13 @@ function Root() {
           {/* Курс-баннеры прячем, когда открыт дровер редактора курсов. */}
           {exchangeMode !== "rates" && <RateChangeBanner />}
           {exchangeMode !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
+          {/* Без офиса страницы не рисуем: считать остатки и заявки не по чему,
+              а угадать офис нельзя — это деньги. Хедер оставляем, чтобы
+              переключатель офиса и выход были доступны. */}
+          {!currentOffice && activeOffices && activeOffices.length > 0 ? (
+            <OfficeGate offices={activeOffices} onPick={setCurrentOffice} />
+          ) : (
+          <>
           {page === "cashier" && canShow("cashier") && (
             <CashierPage
               currentOffice={currentOffice}
@@ -242,6 +269,8 @@ function Root() {
               onTryDeal={handleTryDeal}
               initialTarget={infoInitialSection}
             />
+          )}
+          </>
           )}
         </div>
       </div>

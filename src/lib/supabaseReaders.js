@@ -8,6 +8,7 @@
 // не требовал переделки.
 
 import { supabase } from "./supabase.js";
+import { assertOfficeId } from "./uuid.js";
 
 // ---------- helpers ----------
 const num = (v) => (v == null ? 0 : Number(v));
@@ -944,6 +945,7 @@ export async function loadAccountingDealDetail(dealId) {
 export async function loadLatestCashClosure(officeId) {
   const sb = ensureSupabase();
   if (!officeId) return null;
+  assertOfficeId(officeId, "loadLatestCashClosure");
   const { data, error } = await sb.from("cash_closures")
     .select("id, office_id, manager_id, closure_date, created_at")
     .eq("office_id", officeId)
@@ -968,6 +970,7 @@ export async function loadLatestCashClosure(officeId) {
 // loadCashClosures — список закрытий кассы (для AccountingTab + раскрытия)
 export async function loadCashClosures(filters = {}) {
   const sb = ensureSupabase();
+  assertOfficeId(filters.officeId, "loadCashClosures");
   let query = sb.from("cash_closures").select("*")
     .order("closure_date", { ascending: false })
     .limit(200);

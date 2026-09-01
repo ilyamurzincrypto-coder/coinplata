@@ -35,13 +35,11 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   // балансы ВСЕХ офисов (RLS расширен в 0034). Scoping отключён.
   const scopedOffices = activeOffices;
 
-  // Если currentOffice не совпадает ни с одним активным офисом — падаем
-  // на первый доступный (например офис был закрыт).
-  React.useEffect(() => {
-    if (!scopedOffices.some((o) => o.id === currentOffice) && scopedOffices[0]) {
-      onOfficeChange(scopedOffices[0].id);
-    }
-  }, [currentOffice, scopedOffices, onOfficeChange]);
+  // ЗДЕСЬ БЫЛА АВТОПОДСТАНОВКА «падаем на первый доступный». Она молча
+  // подсовывала кассиру Стамбула Анталью — после чистки хранилища или когда
+  // его офис закрыли. Офис определяет остатки, заявки и закрытие кассы, то
+  // есть деньги: угадывать нельзя, можно только спросить. Решение о сбросе
+  // выбора принимает App (один раз, в одном месте), показывая OfficeGate.
 
   return (
     <header className="sticky top-0 z-40 bg-cream/80 backdrop-blur-xl">

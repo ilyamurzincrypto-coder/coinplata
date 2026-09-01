@@ -78,10 +78,10 @@ function requireUuid(value, field) {
 // Проверка — похоже ли значение на UUID (DB-ID), а не on локальный in-memory
 // префикс (cp_, u_, a_, tx_, ob_, m_, rs_, cat_, ie_, w_, tr_, p_, ch_, office_, evt_).
 // Используется чтобы не слать FK-битые строки в RPC.
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-export function isUuid(value) {
-  return typeof value === "string" && UUID_RE.test(value);
-}
+// Проверка переехала в lib/uuid.js — она же нужна стражу офисных фильтров,
+// и третья копия регулярки была бы лишней. Реэкспорт, чтобы не трогать
+// импорты этого модуля.
+export { isUuid } from "./uuid.js";
 
 // Возвращает value если это UUID, иначе null.
 // Nickname сохранится в client_nickname столбце deal'а — связь не теряется.
