@@ -256,3 +256,36 @@ describe("интеграция — полный документ", () => {
     expect(updates.every((u) => known.includes(u.officeId))).toBe(true);
   });
 });
+
+describe("НЕРЕЗ: прочерк вместо числа", () => {
+  // Живое сообщение 01.09: по TOD-TOD на продажу не торговали, стоял «---».
+  // Раньше эта строка выбрасывала парсер из режима НЕРЕЗ, и ВЕСЬ блок —
+  // включая Buy целиком — терялся молча. Пять значений из пяти.
+  const DOC = `USDT - RUB (НЕРЕЗ)
+Sell
+TOD-TOD ---
+TOD-TOM 87,13
+TOM-TOM 87,23
+Buy
+TOD-TOD 86,34
+TOD-TOM 86,29
+TOM-TOM 86,39`;
+
+  it("прочерк не рвёт блок — остальные значения доходят", () => {
+    const { special } = parseMorningRates(DOC);
+    const nerez = special.filter((s) => s.kind === "nerez");
+    expect(nerez).toHaveLength(5);
+    expect(nerez.filter((s) => s.side === "buy")).toHaveLength(3);
+  });
+
+  it("прочерк назван причиной, а не «unparseable»", () => {
+    const { skipped } = parseMorningRates(DOC);
+    expect(skipped.some((s) => /TOD-TOD: значения нет/.test(s.reason))).toBe(true);
+  });
+
+  it("Sell/Buy без двоеточия понимаются", () => {
+    const { special } = parseMorningRates(DOC);
+    expect(special.find((s) => s.settle === "TOM-TOM" && s.side === "sell")?.value).toBe(87.23);
+    expect(special.find((s) => s.settle === "TOM-TOM" && s.side === "buy")?.value).toBe(86.39);
+  });
+});

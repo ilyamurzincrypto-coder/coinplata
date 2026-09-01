@@ -47,6 +47,10 @@ const SBP_RE = /^([A-Za-z]{2,6})\s+QR\s+СБП\s*>>\s*([A-Za-z]{2,6})\s+([+-]?\d
 const NEREZ_HEADER_RE = /^[A-Za-z]{2,6}\s*[-–]\s*[A-Za-z]{2,6}\s*\(\s*НЕРЕЗ\s*\)/i;
 const NEREZ_SIDE_RE = /^(Sell|Buy)\s*:?\s*$/i;
 const NEREZ_SETTLE_RE = /^(TOD-TOD|TOD-TOM|TOM-TOM)\s+([+-]?\d+(?:[.,]\d+)?)$/i;
+// Строка базиса БЕЗ числа: «TOD-TOD ---» значит «сегодня по этому базису не
+// торгуем». Раньше она роняла разбор: парсер не узнавал её, выходил из режима
+// НЕРЕЗ, и ВСЕ последующие строки блока (включая Buy целиком) терялись молча.
+const NEREZ_SETTLE_ANY_RE = /^(TOD-TOD|TOD-TOM|TOM-TOM)\b\s*(.*)$/i;
 
 function stripMetadata(line) {
   let s = line.replace(META_RE, "");
@@ -111,6 +115,13 @@ export function parseMorningRates(text) {
         } else {
           skipped.push({ line: original, reason: "nerez: нет side/число" });
         }
+        continue;
+      }
+      // Базис есть, числа нет («TOD-TOD ---»): остаёмся в блоке НЕРЕЗ.
+      // Прочерк — это «не торгуем», а не конец блока.
+      const stAny = NEREZ_SETTLE_ANY_RE.exec(line);
+      if (stAny) {
+        skipped.push({ line: original, reason: `НЕРЕЗ ${stAny[1].toUpperCase()}: значения нет` });
         continue;
       }
       // строка не относится к НЕРЕЗ — выходим из режима и обрабатываем обычно
