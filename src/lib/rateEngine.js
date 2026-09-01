@@ -17,6 +17,7 @@
 //   pct     → 1 + v/100        (utils/morningRatesParser.js: resolveRateValue)
 //   abs     → v                (значение уже читаемое)
 //   derived → base × (1 + m/100)
+//   derived → якорь / плечо   [блок с config.anchor: QR]
 //   source  → price × (1 + s/100)   [spread_mode: pct]
 //   source  → price + s/100         [spread_mode: abs — s в копейках]
 //   замок   → зафиксированный итог, формула не применяется
@@ -95,6 +96,19 @@ export function computeRowPrice(row, block, deps = {}) {
     // Формула снята из старого редактора (RatesAuxPanel: base = uDep/uPay),
     // где uDep = USDT за 1 валюту отправителя = 1 / (валюта за 1 USDT).
     // Отсюда base = цена_получателя / цена_отправителя.
+    // ЯКОРНЫЙ БЛОК (QR). Утреннее сообщение даёт ОДНУ строку — сколько рублей
+    // за 1 USDT по СБП (93,45). Всё остальное считаем мы: клиент платит рубли
+    // и получает валюту X, значит цена = якорь / (X за 1 USDT) в ЕГО городе.
+    // Города обязательны: в Анталье USDT стоит одно, в Стамбуле другое, и
+    // общий курс QR на оба города был бы ценой из воздуха.
+    if (deps.anchorLeg) {
+      const a = num(deps.anchorLeg.anchor);
+      const u = num(deps.anchorLeg.unitPrice);
+      if (a == null || a <= 0) return { error: "derived: нет якоря блока" };
+      if (u == null || u <= 0) return { error: `derived: нет курса USDT→${row.to_ccy} в городе` };
+      return { rate: (a / u) * (1 + m / 100) };
+    }
+
     if (deps.routeLegs) {
       const { fromPrice, toPrice } = deps.routeLegs;
       const a = num(fromPrice);
@@ -195,6 +209,19 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
   for (const block of ordered) {
     const blockRows = rows.filter((r) => r?.block_code === block.code && r?.enabled !== false);
 
+    // Якорь блока считается ПЕРВЫМ: его производные строки без него не имеют
+    // смысла, а полагаться на порядок строк в массиве — значит зависеть от
+    // position в базе, который может поменяться при любой правке.
+    const anchorCfg = block.config?.anchor;
+    const anchorRow = anchorCfg
+      ? blockRows.find((r) => r.from_ccy === anchorCfg.from && r.to_ccy === anchorCfg.to)
+      : null;
+    let anchorValue = null;
+    if (anchorRow) {
+      const res = computeRowPrice(anchorRow, block, {});
+      if (!res.error) anchorValue = res.rate;
+    }
+
     for (const row of blockRows) {
       const key = priceKey({
         block: block.code,
@@ -207,7 +234,13 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
       if (block.kind === "derived") {
         const baseCode = block.config?.base_block_code;
         const route = parseRouteScope(row.scope);
-        if (route) {
+        if (anchorCfg && row !== anchorRow) {
+          // Плечо — курс «X за 1 USDT» из базового блока в городе этой строки.
+          deps.anchorLeg = {
+            anchor: anchorValue,
+            unitPrice: byKey.get(priceKey({ block: baseCode, scope: row.scope, from: "USDT", to: row.to_ccy })),
+          };
+        } else if (route) {
           // Маршрут: плечи берём из базового блока по ГОРОДАМ офисов.
           // officeCity — данные снаружи (чистый модуль офисов не знает).
           const cityFrom = officeCity[route.from];
