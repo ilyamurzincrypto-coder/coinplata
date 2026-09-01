@@ -133,6 +133,12 @@ export default function RatesPanelV2({ onOpenRates }) {
     ? [...new Set(usdt.rows.filter((r) => r.scope === usdtScope && r.enabled !== false).map((r) => (r.from_ccy === "USDT" ? r.to_ccy : r.from_ccy)))]
     : [];
 
+  // QR: города и валюты подсчёта (якорь RUB→USDT в список не входит — он герой).
+  const qrScope = scopeByBlock.qr || qr?.scopes?.[0];
+  const qrCcys = qr
+    ? [...new Set(qr.rows.filter((r) => r.scope === qrScope && r.to_ccy !== "USDT" && r.enabled !== false).map((r) => r.to_ccy))]
+    : [];
+
   // Перестановки: сколько маршрутов со своей маржой против дефолта блока.
   const perOwn = per ? per.rows.filter((r) => r.value != null).length : 0;
 
@@ -338,15 +344,45 @@ export default function RatesPanelV2({ onOpenRates }) {
         </BlockCard>
       )}
 
-      {/* 4. QR ₽ */}
+      {/* 4. QR ₽ — якорь из утреннего сообщения и наш подсчёт по городам */}
       {qr && (
         <BlockCard
           onOpen={onOpenRates}
-          label={`${qr.title} · ЦБ + спред ${qr.config?.spread_pct ?? 0}%`}
-          foot={`блок ${qr.position} · авто от ЦБ · ${qr.rows.map((r) => r.from_ccy).join(" / ")} → ₽`}
+          label={`${qr.title} · клиент платит рублями`}
+          foot={`блок ${qr.position} · якорь из утреннего сообщения · остальное — подсчёт по городам`}
           icon={<span className="text-[13px]">▦</span>}
         >
-          <Hero value={rateOf("qr", null, "USDT", "RUB")} />
+          {/* Герой — якорь: сколько рублей за 1 USDT по СБП. Одна строка, которую
+              присылает Paramon; всё остальное на карточке считается от неё. */}
+          <div className="text-[12px] text-muted mb-1">рублей за 1 USDT</div>
+          <Hero value={rateOf("qr", null, "RUB", "USDT")} />
+
+          {qrCcys.length > 0 && (
+            <>
+              <div className="flex gap-1.5 mt-3.5 mb-1">
+                {(qr.scopes || []).map((sc) => (
+                  <button
+                    key={sc}
+                    type="button"
+                    onClick={() => setScopeByBlock((m) => ({ ...m, qr: sc }))}
+                    className={`text-[11px] px-3 py-[5px] rounded-full border transition-colors ${
+                      sc === qrScope ? "bg-ink text-cream border-ink" : "border-line-2 text-[#6B675C]"
+                    }`}
+                  >
+                    {sc}
+                  </button>
+                ))}
+              </div>
+              {qrCcys.map((c) => (
+                <div key={c} className="flex justify-between items-baseline py-2 border-t border-line">
+                  <span className="text-[12.5px] text-muted">RUB → {c}</span>
+                  <span className="font-light text-[19px] tabular-nums">
+                    {fmtNum(rateOf("qr", qrScope, "RUB", c), 4)}
+                  </span>
+                </div>
+              ))}
+            </>
+          )}
         </BlockCard>
       )}
 
