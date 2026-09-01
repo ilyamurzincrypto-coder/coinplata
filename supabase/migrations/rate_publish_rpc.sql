@@ -26,13 +26,18 @@ as $$
     'version', p.version,
     'published_at', p.published_at,
     'prices', p.prices,
+    'inputs', p.inputs,
     'source_meta', p.source_meta
   ) end
   from (select * from public.rate_publications order by version desc limit 1) p;
 $$;
 
 comment on function public.get_published_rates is
-  'Последняя опубликованная версия прайса: {version, published_at, prices, source_meta}. null — публикаций ещё нет.';
+  'Последняя опубликованная версия: {version, published_at, prices, inputs, source_meta}. inputs — введённые значения и замки, от них стартует черновик следующего дня. null — публикаций ещё нет.';
+
+-- ВАЖНО: inputs добавлен 2026-09-01, после публикации v.1. Без него редактор
+-- не видел вчерашних значений и на следующее утро показывал пустые поля —
+-- наследование «не тронутое уходит вчерашним значением» держится на нём.
 
 create or replace function public.publish_rates(
   p_inputs      jsonb,   -- сырые введённые значения (для «Было» и воспроизводимости)
