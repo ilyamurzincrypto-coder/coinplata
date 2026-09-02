@@ -41,8 +41,21 @@ const dayLabel = (iso) => {
   return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
 };
 
-/** Состояние доставки последней версии, приведённое к языку плиток. */
-function channelState(delivery, pricesCount) {
+/**
+ * Состояние доставки последней версии, приведённое к языку плиток.
+ *
+ * СЧИТАЕМ НЕ «СКОЛЬКО ИЗ СКОЛЬКИХ», А «СКОЛЬКО ПОТЕРЯНО». Часть строк прайса
+ * не имеет места на витринах по устройству модели: у перестановок измерение —
+ * маршрут между офисами, у НЕРЕЗ — расчётный базис, а направление CoinPoint
+ * знает только пару валют и город. Такие строки не доезжают всегда, и мерить
+ * успех числом 29 из 42 значит держать плитки вечно жёлтыми. Жёлтый, который
+ * горит каждый раз, перестают замечать — и настоящую потерю тоже.
+ *
+ * Поэтому тревога поднимается ровно на `fixable`: курс, который ДОЛЖЕН был
+ * доехать, но не нашёл валюты или направления. Именно он не появится у
+ * клиента.
+ */
+export function channelState(delivery, pricesCount) {
   const s = delivery?.state;
   if (s === "sent") {
     const applied = Number(delivery.applied);
@@ -53,10 +66,15 @@ function channelState(delivery, pricesCount) {
     if (!Number.isFinite(applied)) {
       return { tone: "warn", label: `${hhmm(delivery.delivered_at)} · состав неизвестен` };
     }
-    if (applied < pricesCount) {
+    const lost = Number(delivery.skipped_fixable);
+    if (Number.isFinite(lost) && lost > 0) {
+      return { tone: "warn", label: `потеряно ${lost} · дошло ${applied}` };
+    }
+    // Старые доставки разбивки не писали: судим по общему числу, как раньше.
+    if (!Number.isFinite(lost) && applied < pricesCount) {
       return { tone: "warn", label: `частично · ${applied} из ${pricesCount}` };
     }
-    return { tone: "ok", label: hhmm(delivery.delivered_at) };
+    return { tone: "ok", label: `${hhmm(delivery.delivered_at)} · ${applied}` };
   }
   if (s === "failed") return { tone: "bad", label: "не дошло" };
   if (s === "skipped") return { tone: "muted", label: "мост выключен" };
@@ -169,7 +187,10 @@ export default function RatesVersionsScreen({ versions, loading, onRollback, rol
         {skipped.length > 0 && (
           <div className="mt-4 bg-dark-3 rounded-[16px] px-4 py-3">
             <div className="text-[12px] text-[#A39D8C] mb-1.5">
-              не доехало {delivery.skipped_count} строк:
+              не доехало {delivery.skipped_count} строк
+              {Number(delivery.skipped_fixable) > 0
+                ? ` (из них потеряно ${delivery.skipped_fixable})`
+                : " — все по устройству модели, витрин для них нет"}:
             </div>
             <ul className="text-[11.5px] text-[#8B8676] space-y-0.5">
               {skipped.map(([reason, n]) => (

@@ -50,15 +50,27 @@ function mapOrder(r) {
   };
 }
 
-// Незакрытые заявки текущего офиса (для ленты и «Под заявки»).
-export async function loadPendingOrders(officeId) {
+/**
+ * Заявки офиса. `all: true` — ВСЕ, включая проведённые и отменённые.
+ *
+ * Раньше запрос был жёстко прибит к `status = 'pending'`, и журнал показывал
+ * 9 заявок при 103 в базе: закрытая заявка исчезала бесследно. Для ленты, где
+ * ищут «а что было с тем клиентом», это потеря истории, а не фильтр.
+ * Лимит стоит осознанно: список рисуется целиком, без подгрузки, и тянуть
+ * из базы больше, чем человек пролистает, незачем. Упёрлись в него — видно
+ * в подвале, а не молча обрезано.
+ */
+export const ORDERS_LIMIT = 500;
+
+export async function loadPendingOrders(officeId, { all = false } = {}) {
   if (!supabase || !MANAGER_ORDERS_ENABLED) return [];
   assertOfficeId(officeId, "loadPendingOrders");
   let q = supabase
     .from("manager_orders")
     .select("*")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(ORDERS_LIMIT);
+  if (!all) q = q.eq("status", "pending");
   if (officeId) q = q.eq("office_id", officeId);
   const { data, error } = await q;
   if (error) throw error;

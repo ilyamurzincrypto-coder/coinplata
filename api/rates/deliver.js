@@ -152,6 +152,14 @@ export default async function handler(req, res) {
       http: last.status,
       applied,
       skipped_count: skipped.length,
+      // Разделяем «строке нет места в модели сайта» (перестановки, НЕРЕЗ) и
+      // «строка должна была лечь, но потерялась» (нет валюты/направления).
+      // Без этого Экран 3 красит штатную доставку в тревожный цвет, а жёлтый,
+      // который горит всегда, перестают замечать — вместе с настоящей потерей.
+      skipped_structural: last.parsed?.skippedStructural
+        ?? skipped.filter((s) => s?.kind === 'structural').length,
+      skipped_fixable: last.parsed?.skippedFixable
+        ?? skipped.filter((s) => s?.kind === 'fixable').length,
       // Причины храним сгруппированно: тридцать одинаковых строк «нет
       // направления» читаются хуже, чем «нет направления — 30».
       skipped_reasons: skipped.reduce((acc, s) => {

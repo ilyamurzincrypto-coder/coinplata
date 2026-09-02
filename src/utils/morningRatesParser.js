@@ -65,6 +65,7 @@ export function parseMorningRates(text) {
   let currentCity = null;
   let nerezPair = null; // напр. "USDT/RUB" когда активен блок НЕРЕЗ
   let nerezSide = null; // "sell" | "buy"
+  let pendingSide = null; // сторона, названная до того, как блок распознан
 
   for (const rawLine of String(text).split(/\r?\n/)) {
     const original = rawLine.trim();
@@ -73,6 +74,12 @@ export function parseMorningRates(text) {
 
     let line = stripMetadata(original);
     if (!line) continue;
+
+    // Сторону запоминаем всегда, даже до открытия блока: в отдельном сообщении
+    // «Sell» стоит ПЕРЕД первой строкой базиса, то есть до того, как мы поймём,
+    // что перед нами НЕРЕЗ.
+    const sideAny = NEREZ_SIDE_RE.exec(line);
+    if (sideAny && !nerezPair) { pendingSide = sideAny[1].toLowerCase(); continue; }
 
     const stand = STANDALONE_CITY_RE.exec(line);
     if (stand) {
@@ -96,6 +103,16 @@ export function parseMorningRates(text) {
         skipped.push({ line: original, reason: "invalid number" });
       }
       continue;
+    }
+    // НЕРЕЗ БЕЗ ЗАГОЛОВКА. Меняла присылает блок и отдельным сообщением — одни
+    // «Sell / TOD-TOD 87,53 / …», без строки «USDT - RUB (НЕРЕЗ)». Раньше такая
+    // вставка распознавалась как ноль значений: строки базиса разбирались
+    // только внутри уже открытого блока. Открываем блок сами по первой строке
+    // базиса — формат «TOD-TOD 87,53» ни на что другое в документе не похож,
+    // а пара у НЕРЕЗ одна, USDT/RUB.
+    if (!nerezPair && (NEREZ_SETTLE_RE.test(line) || NEREZ_SETTLE_ANY_RE.test(line))) {
+      nerezPair = "USDT/RUB";
+      nerezSide = pendingSide;
     }
     // Заголовок блока НЕРЕЗ: «USDT - RUB (НЕРЕЗ)»
     if (NEREZ_HEADER_RE.test(line)) {

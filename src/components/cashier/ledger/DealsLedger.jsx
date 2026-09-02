@@ -154,6 +154,17 @@ function dealStatus(d) {
 // Выводится из локальных меток времени; каждый переход подтверждается поп-апом.
 // Пилюли — светлый текст на тёмной подложке: секция «Сделки» тёмная, прежние
 // тёмные буквы на светлой заливке в ней не читались.
+/**
+ * Заявка закрыта — проведена или отменена. Такие видны только на вкладке
+ * «Все»: это история, по которой ищут «а что было с тем клиентом», и
+ * действий над ней уже нет.
+ */
+export function orderClosed(o) {
+  return o?.status && o.status !== "pending";
+}
+
+const CLOSED_LABEL = { done: "проведена", cancelled: "отменена" };
+
 function orderStage(o) {
   if (o.checkedAt) return { key: "checked", label: "Проверено", dot: "#0a8f5f", pill: "text-[#8fd6b0] bg-[rgba(10,143,95,.22)]" };
   if (o.arrivedAt) return { key: "arrived", label: "Пришёл", dot: "#7c3aed", pill: "text-[#c4b5fd] bg-[rgba(124,58,237,.26)]" };
@@ -265,13 +276,15 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
   const refetchOrders = useCallback(async () => {
     if (!MANAGER_ORDERS_ENABLED) return;
     try {
-      setOrders(await loadPendingOrders(officeId));
+      // На вкладке «Все» тянем ВСЕ статусы: закрытая заявка иначе исчезает
+      // бесследно, и журнал показывает 9 строк там, где их сотня.
+      setOrders(await loadPendingOrders(officeId, { all: period === "all" }));
       setOrdersErr("");
     } catch (e) {
       setOrders([]);
       setOrdersErr(e?.message || String(e));
     }
-  }, [officeId]);
+  }, [officeId, period]);
   useEffect(() => {
     refetchOrders();
   }, [refetchOrders]);
@@ -612,7 +625,9 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
       <div className="flex items-center gap-3 mb-3.5">
         <span className="text-[15px]">Заявки</span>
         <span className="text-[12px] text-[color:var(--muted)]">
-          {ordersView.length} в ожидании · сделок сегодня {dealsView.length}
+          {ordersView.filter((o) => !orderClosed(o)).length} в ожидании
+          {period === "all" && ` · всего заявок ${ordersView.length}`}
+          {" · "}сделок сегодня {dealsView.length}
         </span>
         <span className="flex-1" />
 
@@ -709,15 +724,19 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
             {ordersView.map((o) => {
               const mv = meetingView(o.meetingAt, new Date(nowTick));
               const stage = orderStage(o);
-              const act = {
+              const closed = orderClosed(o);
+              // У закрытой заявки действий нет: кнопка «Принять» на отменённой
+              // — приглашение сделать то, что уже отменено.
+              const act = closed ? null : {
                 new: { label: "Принять", onClick: () => askAccept(o) },
                 seen: { label: "Пришёл", onClick: () => askArrive(o) },
                 arrived: { label: "Проверил", onClick: () => askCheck(o) },
                 checked: onOrderToDeal ? { label: "Провести", onClick: () => onOrderToDeal(o) } : null,
               }[stage.key];
               // Просроченная встреча гасит всю строку (эталон tr.stale).
-              const tone = mv.stale ? "text-[color:var(--stale)]" : "text-ink";
-              const sub = mv.stale ? "text-[color:var(--stale)]" : "text-[color:var(--muted)]";
+              // Закрытая — тоже: она в ленте как история, а не как работа.
+              const tone = mv.stale || closed ? "text-[color:var(--stale)]" : "text-ink";
+              const sub = mv.stale || closed ? "text-[color:var(--stale)]" : "text-[color:var(--muted)]";
               const tdA = "px-3 py-3 border-t border-[color:var(--grid)] overflow-hidden text-ellipsis whitespace-nowrap align-middle";
 
               return (
@@ -773,6 +792,11 @@ export default function DealsLedger({ officeId, onOrderToDeal }) {
                   </td>
 
                   <td className={`${tdA} text-right`}>
+                    {closed && (
+                      <span className="text-[11.5px] text-[color:var(--stale)]">
+                        {CLOSED_LABEL[o.status] || o.status}
+                      </span>
+                    )}
                     {act && (
                       <button
                         type="button"

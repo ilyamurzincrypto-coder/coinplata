@@ -295,3 +295,33 @@ TOM-TOM 86,39`;
     expect(special.find((s) => s.settle === "TOM-TOM" && s.side === "buy")?.value).toBe(86.39);
   });
 });
+
+describe("НЕРЕЗ отдельным сообщением, без заголовка блока", () => {
+  // Меняла присылает НЕРЕЗ вторым сообщением — одни Sell/Buy и базисы. Раньше
+  // вставка показывала «Распознано 0 значений»: строки базиса разбирались
+  // только внутри блока, открытого строкой «USDT - RUB (НЕРЕЗ)».
+  const TEXT = [
+    "Sell", "TOD-TOD 87,53", "TOD-TOM 87,46", "TOM-TOM 87,53",
+    "Buy", "TOD-TOD 86,68", "TOD-TOM 86,56", "TOM-TOM 86,63",
+  ].join("\n");
+
+  it("разбирает все шесть значений и ничего не теряет", () => {
+    const r = parseMorningRates(TEXT);
+    expect(r.skipped).toHaveLength(0);
+    expect(r.special).toHaveLength(6);
+    expect(r.special).toContainEqual(
+      expect.objectContaining({ kind: "nerez", side: "sell", settle: "TOD-TOD", value: 87.53 })
+    );
+    expect(r.special).toContainEqual(
+      expect.objectContaining({ kind: "nerez", side: "buy", settle: "TOM-TOM", value: 86.63 })
+    );
+    expect(r.special.every((s) => s.pair === "USDT/RUB")).toBe(true);
+  });
+
+  it("«не торгуем» остаётся состоянием, а не пропуском", () => {
+    const r = parseMorningRates("Sell\nTOD-TOD ---\nTOD-TOM 87,46");
+    expect(r.special).toContainEqual(
+      expect.objectContaining({ settle: "TOD-TOD", value: null, closed: true })
+    );
+  });
+});
