@@ -73,15 +73,19 @@ export function publicationHealth(published, nowMs = Date.now()) {
  * Пустая строка — это не «ноль», это «курса нет», и витрина обязана её скрыть,
  * а не показать прочерком рядом с ценой.
  */
-export function coverageHealth(pricesCount, errorsCount) {
+export function coverageHealth(pricesCount, errorsCount, closedCount = 0) {
   const total = pricesCount + errorsCount;
-  if (total === 0) return { key: "coverage", kind: "coverage", level: LEVEL.BAD, note: "строк нет" };
-  if (errorsCount === 0) return { key: "coverage", kind: "coverage", level: LEVEL.OK, note: `${pricesCount} строк` };
+  const tail = closedCount > 0 ? ` · ${closedCount} не торгуем` : "";
+  if (total === 0 && closedCount === 0) return { key: "coverage", kind: "coverage", level: LEVEL.BAD, note: "строк нет" };
+  // Закрытая строка — осознанное решение менялы, а не пробел в работе:
+  // жёлтый индикатор из-за неё загорался бы каждый день, когда Paramon
+  // присылает прочерк, и перестал бы что-либо значить.
+  if (errorsCount === 0) return { key: "coverage", kind: "coverage", level: LEVEL.OK, note: `${pricesCount} строк${tail}` };
   return {
     key: "coverage",
     kind: "coverage",
     level: errorsCount > pricesCount ? LEVEL.BAD : LEVEL.WARN,
-    note: `${pricesCount} с ценой · ${errorsCount} без`,
+    note: `${pricesCount} с ценой · ${errorsCount} без${tail}`,
   };
 }
 
@@ -105,7 +109,7 @@ export function ratesHealth({ sources = {}, published = null, computed = { price
   const items = [
     ...Object.entries(sources).map(([p, meta]) => feedHealth(p, meta?.fetched_at, nowMs)),
     publicationHealth(published, nowMs),
-    coverageHealth(computed.prices?.length || 0, computed.errors?.length || 0),
+    coverageHealth(computed.prices?.length || 0, computed.errors?.length || 0, computed.closed?.length || 0),
     deliveryHealth(bridgeEnabled, delivery),
   ];
   return { items, level: worst(items.filter((i) => !i.muted).map((i) => i.level)) };

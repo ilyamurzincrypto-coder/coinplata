@@ -117,11 +117,20 @@ export function parseMorningRates(text) {
         }
         continue;
       }
-      // Базис есть, числа нет («TOD-TOD ---»): остаёмся в блоке НЕРЕЗ.
-      // Прочерк — это «не торгуем», а не конец блока.
+      // Базис есть, числа нет («TOD-TOD ---»). Это НЕ мусор и не конец блока:
+      // меняла сказал «сегодня по этому базису не торгуем». Отдаём записью с
+      // closed:true — состояние, а не пропуск. Пропущенная строка выглядела бы
+      // как «забыли ввести», и панель желтела бы каждый день зря.
       const stAny = NEREZ_SETTLE_ANY_RE.exec(line);
       if (stAny) {
-        skipped.push({ line: original, reason: `НЕРЕЗ ${stAny[1].toUpperCase()}: значения нет` });
+        if (nerezSide) {
+          special.push({
+            kind: "nerez", pair: nerezPair, side: nerezSide,
+            settle: stAny[1].toUpperCase(), value: null, closed: true, raw: original,
+          });
+        } else {
+          skipped.push({ line: original, reason: "НЕРЕЗ: базис без стороны (Sell/Buy)" });
+        }
         continue;
       }
       // строка не относится к НЕРЕЗ — выходим из режима и обрабатываем обычно

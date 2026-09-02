@@ -274,13 +274,19 @@ TOM-TOM 86,39`;
   it("прочерк не рвёт блок — остальные значения доходят", () => {
     const { special } = parseMorningRates(DOC);
     const nerez = special.filter((s) => s.kind === "nerez");
-    expect(nerez).toHaveLength(5);
-    expect(nerez.filter((s) => s.side === "buy")).toHaveLength(3);
+    const withValue = nerez.filter((s) => !s.closed);
+    expect(withValue).toHaveLength(5);
+    expect(withValue.filter((s) => s.side === "buy")).toHaveLength(3);
   });
 
-  it("прочерк назван причиной, а не «unparseable»", () => {
-    const { skipped } = parseMorningRates(DOC);
-    expect(skipped.some((s) => /TOD-TOD: значения нет/.test(s.reason))).toBe(true);
+  it("прочерк — СОСТОЯНИЕ «не торгуем», а не пропуск", () => {
+    // Сначала прочерк рвал разбор; потом стал пропущенной строкой; теперь это
+    // запись со своим смыслом. Пропуск читался бы как «забыли ввести» и желтил
+    // бы панель каждый день, когда Paramon присылает «---».
+    const { special, skipped } = parseMorningRates(DOC);
+    const dash = special.find((s) => s.kind === "nerez" && s.closed);
+    expect(dash).toMatchObject({ settle: "TOD-TOD", side: "sell", value: null, closed: true });
+    expect(skipped.some((s) => /TOD-TOD/.test(s.reason || ""))).toBe(false);
   });
 
   it("Sell/Buy без двоеточия понимаются", () => {

@@ -116,3 +116,17 @@ describe("ageLabel", () => {
     expect(ageMin(null)).toBeNull();
   });
 });
+
+describe("«не торгуем» не портит здоровье", () => {
+  it("закрытые строки не делают покрытие жёлтым", () => {
+    // Paramon присылает прочерк регулярно. Если бы он желтил панель, индикатор
+    // был бы жёлтым каждый день и перестал бы что-либо значить.
+    const h = coverageHealth(42, 0, 1);
+    expect(h.level).toBe(LEVEL.OK);
+    expect(h.note).toBe("42 строк · 1 не торгуем");
+  });
+  it("а настоящий пробел — по-прежнему жёлтый", () => {
+    expect(coverageHealth(42, 1, 1).level).toBe(LEVEL.WARN);
+    expect(coverageHealth(42, 1, 1).note).toMatch(/1 без · 1 не торгуем/);
+  });
+});

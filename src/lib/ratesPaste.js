@@ -42,6 +42,7 @@ function indexRows(blocks) {
  *
  * Возвращает:
  *   draft      { rowId: строковое значение } — готово к setDraft
+ *   closed     { rowId: true } — «сегодня не торгуем» (прочерк в сообщении)
  *   matched    [{ rowId, block, scope, from, to, value, raw }]
  *   unmatched  [{ raw, reason }] — не распознано ИЛИ распознано, но некуда класть
  */
@@ -50,6 +51,7 @@ export function pasteToDraft({ blocks = [], text = "" } = {}) {
   const parsed = parseMorningRates(text);
   const idx = indexRows(blocks);
   const draft = {};
+  const closed = {};   // rowId → true: «сегодня не торгуем»
   const matched = [];
   const unmatched = (parsed.skipped || []).map((s) => ({ raw: s.line, reason: s.reason }));
 
@@ -125,18 +127,35 @@ export function pasteToDraft({ blocks = [], text = "" } = {}) {
       }
       const { from, to } = dir(base, quote);
       const label = `НЕРЕЗ ${s.settle} ${from}→${to}`;
-      if (!put(`nerez|${s.settle}|${from}|${to}`, s.value, { block: "nerez", scope: s.settle, from, to, raw: s.raw, label })) {
+      const hit = idx.get(`nerez|${s.settle}|${from}|${to}`);
+      if (!hit) {
         unmatched.push({ raw: s.raw, reason: `нет строки ${label} в модели` });
+        continue;
       }
+      if (s.closed) {
+        // «Не торгуем»: значение снимаем И помечаем строку закрытой, иначе
+        // вчерашняя цена унаследуется и уедет в публикацию как сегодняшняя.
+        closed[hit.row.id] = true;
+        delete draft[hit.row.id];
+        matched.push({ rowId: hit.row.id, block: "nerez", scope: s.settle, from, to, raw: s.raw, label, value: null, closed: true });
+        continue;
+      }
+      put(`nerez|${s.settle}|${from}|${to}`, s.value, { block: "nerez", scope: s.settle, from, to, raw: s.raw, label });
     }
   }
 
-  return { draft, matched, unmatched };
+  return { draft, closed, matched, unmatched };
 }
 
 /** Сводка распознавания для шапки окна вставки. */
 export function pasteSummary({ matched = [], unmatched = [] } = {}) {
   const byBlock = {};
-  for (const m of matched) byBlock[m.block] = (byBlock[m.block] || 0) + 1;
-  return { total: matched.length, byBlock, unmatched: unmatched.length };
+  const withValue = matched.filter((m) => !m.closed);
+  for (const m of withValue) byBlock[m.block] = (byBlock[m.block] || 0) + 1;
+  return {
+    total: withValue.length,
+    byBlock,
+    unmatched: unmatched.length,
+    closed: matched.length - withValue.length,
+  };
 }

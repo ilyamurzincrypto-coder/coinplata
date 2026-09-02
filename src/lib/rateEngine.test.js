@@ -402,3 +402,33 @@ describe("якорный блок QR — одна строка из сообще
     expect(p.errors.some((e) => /USDT→EUR/.test(e.error))).toBe(true);
   });
 });
+
+describe("«не торгуем сегодня» — состояние, а не пропуск", () => {
+  const BLOCKS = [{ code: "nerez", kind: "manual", config: {}, position: 5 }];
+  const ROWS = [
+    { block_code: "nerez", scope: "TOD-TOD", from_ccy: "USDT", to_ccy: "RUB", value_mode: "abs", value: null, closed: true },
+    { block_code: "nerez", scope: "TOD-TOD", from_ccy: "RUB", to_ccy: "USDT", value_mode: "abs", value: 86.34 },
+    { block_code: "nerez", scope: "TOD-TOM", from_ccy: "USDT", to_ccy: "RUB", value_mode: "abs", value: 87.13 },
+  ];
+
+  it("закрытая строка не попадает ни в цены, ни в ошибки", () => {
+    const r = computeAll({ blocks: BLOCKS, rows: ROWS });
+    expect(r.prices).toHaveLength(2);
+    expect(r.errors).toHaveLength(0);
+    expect(r.closed).toHaveLength(1);
+    expect(r.closed[0]).toMatchObject({ scope: "TOD-TOD", from: "USDT", to: "RUB" });
+  });
+
+  it("вчерашняя цена по закрытой строке НЕ уезжает в публикацию", () => {
+    // Главное: у закрытой строки может остаться унаследованное значение.
+    // Опубликовать его — значит торговать по курсу, которого сегодня нет.
+    const rows = ROWS.map((r) => (r.closed ? { ...r, value: 99.99 } : r));
+    const r = computeAll({ blocks: BLOCKS, rows });
+    expect(r.prices.some((p) => p.rate === 99.99)).toBe(false);
+  });
+
+  it("соседи по базису считаются как обычно", () => {
+    const r = computeAll({ blocks: BLOCKS, rows: ROWS });
+    expect(r.prices.find((p) => p.scope === "TOD-TOD")?.rate).toBe(86.34);
+  });
+});

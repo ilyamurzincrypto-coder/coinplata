@@ -87,6 +87,7 @@ export default function RatesEditorV2({ onClose }) {
   const [activeScope, setActiveScope] = useState(null);
   const [draft, setDraft] = useState({});          // rowId → строка ввода
   const [locks, setLocks] = useState({});          // rowId → зафиксированный итог
+  const [closed, setClosed] = useState({});        // rowId → «сегодня не торгуем»
   const [paste, setPaste] = useState(null);        // окно вставки: { text, parsed }
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -128,7 +129,7 @@ export default function RatesEditorV2({ onClose }) {
   // Наследование: значения и замки последней публикации — старт черновика.
   const inherited = useMemo(() => {
     const inp = published?.inputs || {};
-    return { values: inp.values || {}, locks: inp.locks || {} };
+    return { values: inp.values || {}, locks: inp.locks || {}, closed: inp.closed || {} };
   }, [published]);
 
   const valueOf = useCallback(
@@ -139,6 +140,9 @@ export default function RatesEditorV2({ onClose }) {
     (r) => (Object.prototype.hasOwnProperty.call(locks, r.id) ? locks[r.id] : inherited.locks[r.id] ?? null),
     [locks, inherited]
   );
+  // «Не торгуем» НЕ наследуется: вчерашнее закрытие не должно молча закрывать
+  // строку сегодня. Каждое утро состояние приходит из свежего сообщения.
+  const closedOf = useCallback((r) => closed[r.id] === true, [closed]);
 
   const visibleRows = useMemo(() => {
     if (!block) return [];
@@ -161,12 +165,13 @@ export default function RatesEditorV2({ onClose }) {
         enabled: r.enabled,
         value: valueOf(r),
         locked_rate: lockOf(r),
+        closed: closedOf(r),
       }))
     );
-  }, [blocks, valueOf, lockOf]);
+  }, [blocks, valueOf, lockOf, closedOf]);
 
   const computed = useMemo(() => {
-    if (!blocks) return { prices: [], errors: [], violations: [] };
+    if (!blocks) return { prices: [], errors: [], violations: [], closed: [] };
     return computeAll({
       blocks: (blocks || []).map((b) => ({ ...b, config: b.config || {} })),
       rows: engineRows,
@@ -208,7 +213,7 @@ export default function RatesEditorV2({ onClose }) {
 
   const nextVersion = (published?.version || 0) + 1;
   const blocked = computed.violations.length > 0;
-  const dirty = Object.keys(draft).length > 0 || Object.keys(locks).length > 0;
+  const dirty = Object.keys(draft).length > 0 || Object.keys(locks).length > 0 || Object.keys(closed).length > 0;
 
   const setValue = useCallback((rowId, raw) => {
     setResult(null);
@@ -216,6 +221,11 @@ export default function RatesEditorV2({ onClose }) {
     // Правка спреда/значения снимает замок — как в работающей панели: человек
     // вернулся к живому курсу, и держать поверх зафиксированный итог нечестно.
     setLocks((l) => (Object.prototype.hasOwnProperty.call(l, rowId) ? { ...l, [rowId]: null } : l));
+  }, []);
+
+  const toggleClosed = useCallback((rowId) => {
+    setResult(null);
+    setClosed((c) => ({ ...c, [rowId]: !c[rowId] }));
   }, []);
 
   const toggleLock = useCallback((row, currentRate) => {
@@ -235,16 +245,18 @@ export default function RatesEditorV2({ onClose }) {
       // стартует от них, и потерянный ключ означал бы пустое поле завтра.
       const values = {};
       const lockMap = {};
+      const closedMap = {};
       for (const b of blocks || []) {
         for (const r of b.rows) {
           const v = valueOf(r);
           if (v != null && v !== "") values[r.id] = v;
           const lk = lockOf(r);
           if (lk != null) lockMap[r.id] = lk;
+          if (closedOf(r)) closedMap[r.id] = true;
         }
       }
       const res = await publishRates({
-        inputs: { values, locks: lockMap },
+        inputs: { values, locks: lockMap, closed: closedMap },
         prices: computed.prices,
         sourceMeta: { editor: "v2", shadow: true, sources: sourceMeta },
       });
@@ -252,6 +264,7 @@ export default function RatesEditorV2({ onClose }) {
       if (res?.ok) {
         setDraft({});
         setLocks({});
+        setClosed({});
         setPublished(await loadPublished());
       }
     } catch (e) {
@@ -259,7 +272,7 @@ export default function RatesEditorV2({ onClose }) {
     } finally {
       setBusy(false);
     }
-  }, [blocks, valueOf, lockOf, computed.prices, sourceMeta]);
+  }, [blocks, valueOf, lockOf, closedOf, computed.prices, sourceMeta]);
 
   // ── вставка документа ───────────────────────────────────────────────────
   const onPasteText = useCallback((text) => {
@@ -270,6 +283,7 @@ export default function RatesEditorV2({ onClose }) {
     if (!paste?.parsed) return;
     setResult(null);
     setDraft((d) => ({ ...d, ...paste.parsed.draft }));
+    setClosed((c) => ({ ...c, ...(paste.parsed.closed || {}) }));
     setPaste(null);
   }, [paste]);
 
@@ -432,17 +446,34 @@ export default function RatesEditorV2({ onClose }) {
                 const r = rowFor(basis, s);
                 if (!r) return <td key={s.label} className="py-3 border-t border-line text-[12px] text-faint">нет строки</td>;
                 const key = keyOf(r);
+                const isClosed = closedOf(r);
                 return (
                   <td key={s.label} className="py-3 border-t border-line">
                     <div className="flex items-baseline gap-3">
-                      <Input
-                        wide
-                        bad={!!violByKey[key]}
-                        value={valueOf(r) ?? ""}
-                        onChange={(e) => setValue(r.id, e.target.value)}
-                        placeholder="0,00"
-                      />
-                      <span className="text-[12px] text-faint tabular-nums">было {fmtWas(r, prevMap[key])}</span>
+                      {isClosed ? (
+                        <span className="text-[15px] text-faint w-[126px]">не торгуем</span>
+                      ) : (
+                        <Input
+                          wide
+                          bad={!!violByKey[key]}
+                          value={valueOf(r) ?? ""}
+                          onChange={(e) => setValue(r.id, e.target.value)}
+                          placeholder="0,00"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => toggleClosed(r.id)}
+                        title={isClosed ? "Вернуть в торговлю" : "Сегодня по этому базису не торгуем"}
+                        className={`text-[11.5px] rounded-full px-2.5 py-1 transition-colors ${
+                          isClosed ? "bg-ink text-cream" : "text-faint hover:text-ink"
+                        }`}
+                      >
+                        {isClosed ? "вернуть" : "закрыть"}
+                      </button>
+                      {!isClosed && (
+                        <span className="text-[12px] text-faint tabular-nums">было {fmtWas(r, prevMap[key])}</span>
+                      )}
                     </div>
                   </td>
                 );
@@ -764,6 +795,7 @@ export default function RatesEditorV2({ onClose }) {
         <div className="mt-3 text-[11.5px] text-faint">
           в публикацию войдёт {computed.prices.length} строк
           {computed.errors.length > 0 && ` · ${computed.errors.length} без значений`}
+          {computed.closed?.length > 0 && ` · ${computed.closed.length} не торгуем`}
         </div>
 
         <div className="flex items-center justify-between gap-4 border-t border-line mt-5 pt-4.5">
@@ -777,7 +809,7 @@ export default function RatesEditorV2({ onClose }) {
           <div className="flex gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => { setDraft({}); setLocks({}); setResult(null); }}
+              onClick={() => { setDraft({}); setLocks({}); setClosed({}); setResult(null); }}
               disabled={!dirty}
               className="rounded-full border border-line-2 text-[#6B675C] text-[13px] px-[18px] py-2.5 disabled:opacity-40"
             >

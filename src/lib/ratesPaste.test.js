@@ -131,3 +131,41 @@ describe("pasteToDraft", () => {
     expect(s.total).toBe(4);
   });
 });
+
+describe("«не торгуем сегодня» из прочерка", () => {
+  const NEREZ = `USDT - RUB (НЕРЕЗ)
+Sell
+TOD-TOD ---
+TOD-TOM 87,13
+Buy
+TOD-TOD 86,34`;
+
+  it("прочерк помечает строку закрытой, а не оставляет её пустой", () => {
+    const r = pasteToDraft({ blocks: BLOCKS, text: NEREZ });
+    expect(r.closed["r-nz-sell"]).toBe(true);
+    expect(r.draft["r-nz-sell"]).toBeUndefined();
+  });
+
+  it("вчерашнее значение по закрытой строке снимается", () => {
+    // Иначе унаследованная цена уедет в публикацию как сегодняшняя — это и
+    // есть «торговать по курсу, которого нет».
+    const twice = `USDT - RUB (НЕРЕЗ)
+Sell
+TOD-TOD 81,00
+TOD-TOD ---`;
+    const r = pasteToDraft({ blocks: BLOCKS, text: twice });
+    expect(r.draft["r-nz-sell"]).toBeUndefined();
+    expect(r.closed["r-nz-sell"]).toBe(true);
+  });
+
+  it("соседние базисы и вторая сторона не задеты", () => {
+    const r = pasteToDraft({ blocks: BLOCKS, text: NEREZ });
+    expect(r.draft["r-nz-buy"]).toBe("86,34");
+  });
+
+  it("в сводке закрытые считаются отдельно от распознанных", () => {
+    const s = pasteSummary(pasteToDraft({ blocks: BLOCKS, text: NEREZ }));
+    expect(s.closed).toBe(1);
+    expect(s.byBlock).toEqual({ nerez: 1 });
+  });
+});

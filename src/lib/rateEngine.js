@@ -181,8 +181,13 @@ export function isOutOfBand(next, prev, bandPct) {
  *   officeCity { "<office_id>": "ANT" } — маппинг офисов на города-scope
  *              базового блока; нужен только маршрутным derived-строкам
  *
- * Возвращает { prices, errors, violations }. Ничего не бросает: вызывающий
- * решает, публиковать или показать список проблем.
+ * Возвращает { prices, errors, violations, closed }. Ничего не бросает:
+ * вызывающий решает, публиковать или показать список проблем.
+ *
+ * closed — строки, ПО КОТОРЫМ СЕГОДНЯ НЕ ТОРГУЮТ (row.closed). Это не ошибка
+ * и не пропуск: меняла сказал «нет цены», и её отсутствие осмысленно. Считать
+ * такую строку недоработкой значит каждый день красить панель зря, а выдавать
+ * по ней вчерашнюю цену — торговать по курсу, которого нет.
  */
 export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}, officeCity = {} } = {}) {
   const byCode = new Map(blocks.filter((b) => b?.code).map((b) => [b.code, b]));
@@ -204,6 +209,7 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
   const prices = [];
   const errors = [];
   const violations = [];
+  const closed = [];
   const byKey = new Map(); // priceKey → rate (для derived и для проверки границ)
 
   for (const block of ordered) {
@@ -217,12 +223,19 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
       ? blockRows.find((r) => r.from_ccy === anchorCfg.from && r.to_ccy === anchorCfg.to)
       : null;
     let anchorValue = null;
-    if (anchorRow) {
+    if (anchorRow && !anchorRow.closed) {
       const res = computeRowPrice(anchorRow, block, {});
       if (!res.error) anchorValue = res.rate;
     }
 
     for (const row of blockRows) {
+      if (row.closed) {
+        closed.push({
+          key: priceKey({ block: block.code, scope: row.scope, from: row.from_ccy, to: row.to_ccy }),
+          block: block.code, scope: row.scope ?? null, from: row.from_ccy, to: row.to_ccy,
+        });
+        continue;
+      }
       const key = priceKey({
         block: block.code,
         scope: row.scope,
@@ -293,7 +306,7 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
     }
   }
 
-  return { prices, errors, violations };
+  return { prices, errors, violations, closed };
 }
 
 /** Плоский прайс → мапа priceKey→rate (для сравнения версий и превью). */
