@@ -85,9 +85,8 @@ export async function publishRates({ inputs, prices, sourceMeta }) {
  *
  * СТОРОНА ФИДА — порт из работающей панели (RatesControlPanel: «CUR→TRY =
  * Покупка (bid), TRY→CUR = Продажа (ask)»). Пара фида X_Y раскладывается
- * в ДВА ключа: X→Y берёт bid, Y→X берёт ask. Оба читаемы > 1 в котируемой
- * валюте Y — та же конвенция, что у ручных строк, поэтому движку не нужно
- * ничего инвертировать.
+ * в ДВА ключа: X→Y берёт bid, Y→X берёт 1/ask. Оба — в КАНОНЕ «сколько
+ * второй валюты за 1 первую», как и ручные строки.
  *
  * Возвращает { sources: {"<provider>|<FROM>|<TO>": price},
  *              meta: {"<provider>": {fetched_at, age_min}} }.
@@ -115,8 +114,12 @@ export async function loadSources(providers = []) {
     const mid = Number(r.mid);
     const bid = Number(r.bid ?? mid);
     const ask = Number(r.ask ?? mid);
+    // Канон: значение ключа «A|B» — сколько B за 1 A.
+    // bid пары X_Y уже «Y за 1 X». ask — тоже «Y за 1 X», поэтому для
+    // обратного ключа его надо ПЕРЕВЕРНУТЬ, а не класть как есть: иначе
+    // строка TRY→USD хранила бы «лиры за доллар» под видом «долларов за лиру».
     if (Number.isFinite(bid)) sources[`${r.source}|${x}|${y}`] = bid;
-    if (Number.isFinite(ask)) sources[`${r.source}|${y}|${x}`] = ask;
+    if (Number.isFinite(ask) && ask > 0) sources[`${r.source}|${y}|${x}`] = 1 / ask;
     if (!meta[r.source] || meta[r.source].fetched_at < r.fetched_at) {
       meta[r.source] = { fetched_at: r.fetched_at };
     }

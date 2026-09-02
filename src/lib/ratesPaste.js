@@ -16,6 +16,7 @@
 // «не распознано» и остаётся человеку — вставка всё равно применяется.
 
 import { parseMorningRates } from "../utils/morningRatesParser.js";
+import { toCanonical } from "./rateOrientation.js";
 
 /** Строки НЕРЕЗ: сторона документа → направление пары в модели. */
 const NEREZ_SIDE_DIR = {
@@ -63,9 +64,16 @@ export function pasteToDraft({ blocks = [], text = "" } = {}) {
       unmatched.push({ raw: info.raw, reason: `строка выключена: ${info.label}` });
       return true; // разобрали, но класть некуда — не «не распознано»
     }
-    // В pct-строку кладём сырой процент, в abs — само число. Оба — строкой:
-    // поле ввода работает с текстом, и «−1,00» должно вернуться как введено.
-    draft[row.id] = String(value).replace(".", ",");
+    // В pct-строку кладём сырой процент — у него нет ориентации. В abs-строку
+    // кладём КАНОН: «сколько to за 1 from». Документ пишет «слабая за 1
+    // сильную», и без перевода одна и та же пара уезжала бы в модель в двух
+    // разных единицах (см. lib/rateOrientation).
+    const stored = row.value_mode === "abs" ? toCanonical(info.from, info.to, value) : value;
+    if (stored == null) {
+      unmatched.push({ raw: info.raw, reason: `${info.label}: значение не переводится в курс` });
+      return true;
+    }
+    draft[row.id] = String(stored).replace(".", ",");
     matched.push({ rowId: row.id, ...info, value });
     return true;
   };

@@ -352,18 +352,21 @@ describe("замок строки", () => {
 });
 
 describe("якорный блок QR — одна строка из сообщения, остальное наш подсчёт", () => {
-  // Paramon присылает ОДНУ строку: «RUB QR СБП>> USDT 93,45». Остальные пары
-  // считаются от неё через курс USDT города — и потому РАЗНЫЕ по городам.
+  // ВСЕ значения здесь — КАНОН «сколько to за 1 from» (см. lib/rateOrientation).
+  // Документ Paramon пишет иначе, перевод делает адаптер вставки.
   const BLOCKS = [
     { code: "usdt", kind: "manual", config: {}, position: 2 },
     { code: "qr", kind: "derived", position: 4,
       config: { base_block_code: "usdt", anchor: { from: "RUB", to: "USDT" } } },
   ];
   const ROWS = [
+    // «USDT → TRY 47,40» — лиры за 1 USDT, документ уже в каноне
     { block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "TRY", value_mode: "abs", value: 47.4 },
     { block_code: "usdt", scope: "IST", from_ccy: "USDT", to_ccy: "TRY", value_mode: "abs", value: 48.0 },
-    { block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "EUR", value_mode: "abs", value: 1.173 },
-    { block_code: "qr", scope: null, from_ccy: "RUB", to_ccy: "USDT", value_mode: "abs", value: 93.45 },
+    // «USDT → EUR 1,173» — это USDT за 1 евро, канон = 1/1,173 евро за 1 USDT
+    { block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "EUR", value_mode: "abs", value: 1 / 1.173 },
+    // якорь «RUB QR СБП>> USDT 93,45» — канон = USDT за 1 рубль
+    { block_code: "qr", scope: null, from_ccy: "RUB", to_ccy: "USDT", value_mode: "abs", value: 1 / 93.45 },
     { block_code: "qr", scope: "ANT", from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived" },
     { block_code: "qr", scope: "IST", from_ccy: "RUB", to_ccy: "TRY", value_mode: "derived" },
     { block_code: "qr", scope: "ANT", from_ccy: "RUB", to_ccy: "EUR", value_mode: "derived" },
@@ -373,20 +376,24 @@ describe("якорный блок QR — одна строка из сообще
     p.prices.find((x) => x.block === "qr" && x.scope === scope && x.to === to)?.rate;
 
   it("якорь публикуется как есть", () => {
-    expect(rateOf(run(), null, "USDT")).toBe(93.45);
+    expect(rateOf(run(), null, "USDT")).toBeCloseTo(1 / 93.45, 10);
   });
 
-  it("производная = якорь / курс USDT города", () => {
-    expect(rateOf(run(), "ANT", "TRY")).toBeCloseTo(93.45 / 47.4, 10);
-    expect(rateOf(run(), "ANT", "EUR")).toBeCloseTo(93.45 / 1.173, 10);
+  it("производная = якорь × плечо, одна формула для всех валют", () => {
+    // До канона здесь стояло деление. Оно было верно для лиры и ошибалось на
+    // евро: QR к евро разошёлся с рынком на 20,8%. Умножение канонических
+    // величин работает одинаково для любой валюты.
+    const p = run();
+    expect(1 / rateOf(p, "ANT", "TRY")).toBeCloseTo(1.9715, 3);   // рублей за 1 лиру
+    expect(1 / rateOf(p, "ANT", "EUR")).toBeCloseTo(109.62, 1);   // рублей за 1 евро
   });
 
-  it("ГОРОДА РАЗНЫЕ: в Стамбуле USDT дороже — QR к лире дешевле", () => {
+  it("ГОРОДА РАЗНЫЕ: в Стамбуле USDT дороже — за рубль дают больше лир", () => {
     const p = run();
     const ant = rateOf(p, "ANT", "TRY");
     const ist = rateOf(p, "IST", "TRY");
     expect(ant).not.toBeCloseTo(ist, 6);
-    expect(ist).toBeLessThan(ant); // 93,45/48,0 < 93,45/47,4
+    expect(ist).toBeGreaterThan(ant); // 48,0 лиры за USDT против 47,4
   });
 
   it("без якоря производные не считаются, а не берут случайное число", () => {

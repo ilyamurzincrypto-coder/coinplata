@@ -18,6 +18,7 @@
 //   abs     → v                (значение уже читаемое)
 //   derived → base × (1 + m/100)
 //   derived → якорь / плечо   [блок с config.anchor: QR]
+//   anchor  → якорь × плечо           [канон: обе величины «to за 1 from»]
 //   source  → price × (1 + s/100)   [spread_mode: pct]
 //   source  → price + s/100         [spread_mode: abs — s в копейках]
 //   замок   → зафиксированный итог, формула не применяется
@@ -106,7 +107,14 @@ export function computeRowPrice(row, block, deps = {}) {
       const u = num(deps.anchorLeg.unitPrice);
       if (a == null || a <= 0) return { error: "derived: нет якоря блока" };
       if (u == null || u <= 0) return { error: `derived: нет курса USDT→${row.to_ccy} в городе` };
-      return { rate: (a / u) * (1 + m / 100) };
+      // УМНОЖЕНИЕ, потому что обе величины канонические:
+      //   якорь  = USDT за 1 рубль
+      //   плечо  = X    за 1 USDT
+      //   итог   = X    за 1 рубль
+      // Раньше здесь стояло деление, и оно было верно только для лиры: у евро
+      // ориентация другая, и QR к евро разошёлся с рынком на 20,8%. Канон
+      // убирает разницу между валютами — формула одна.
+      return { rate: a * u * (1 + m / 100) };
     }
 
     if (deps.routeLegs) {

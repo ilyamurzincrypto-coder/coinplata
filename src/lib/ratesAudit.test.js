@@ -71,23 +71,35 @@ describe("auditQuote", () => {
 });
 
 describe("auditOrientation — разнобой единиц в одной публикации", () => {
-  it("одна пара в двух ориентациях — ловится", () => {
+  it("ОДНО НАПРАВЛЕНИЕ в двух единицах из разных блоков — ловится", () => {
     // Именно это и опасно для моста: каждое число само по себе сходится с
-    // рынком, а потребитель читает список по одному правилу.
+    // рынком, а потребитель читает список по одному правилу. Так было до
+    // канона: cash отдавал RUB→TRY как «лир за рубль», qr — как «рублей
+    // за лиру».
     const quotes = [
       auditQuote(q("RUB", "TRY", 0.5, "cash", null), MARKET),
-      auditQuote(q("TRY", "RUB", 1.857, "perestanovka", "a→b"), MARKET),
+      auditQuote(q("RUB", "TRY", 1.9715, "qr", "ANT"), MARKET),
     ];
     const clash = auditOrientation(quotes);
     expect(clash).toHaveLength(1);
-    expect(clash[0].pair).toBe("RUB/TRY");
+    expect(clash[0].pair).toBe("RUB→TRY");
     expect(clash[0].examples).toHaveLength(2);
+  });
+
+  it("разные НАПРАВЛЕНИЯ одной пары — это норма, а не разнобой", () => {
+    // Под каноном RUB→TRY («лир за рубль») и TRY→RUB («рублей за лиру»)
+    // законно смотрят в разные стороны относительно одной котировки рынка.
+    const quotes = [
+      auditQuote(q("RUB", "TRY", 0.5072, "qr", "ANT"), MARKET),
+      auditQuote(q("TRY", "RUB", 1.857, "perestanovka", "a→b"), MARKET),
+    ];
+    expect(auditOrientation(quotes)).toHaveLength(0);
   });
 
   it("единая ориентация — тишина", () => {
     const quotes = [
       auditQuote(q("USDT", "TRY", 47.4), MARKET),
-      auditQuote(q("TRY", "USDT", 48.35), MARKET),
+      auditQuote(q("USDT", "TRY", 47.5, "usdt", "IST"), MARKET),
     ];
     expect(auditOrientation(quotes)).toHaveLength(0);
   });

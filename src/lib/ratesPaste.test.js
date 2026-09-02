@@ -4,6 +4,11 @@
 
 import { describe, it, expect } from "vitest";
 import { pasteToDraft, pasteSummary } from "./ratesPaste.js";
+import { toDocument } from "./rateOrientation.js";
+
+/** Значение строки в том виде, в каком его написал Paramon. */
+const asDocument = (draft, rowId, from, to) =>
+  toDocument(from, to, String(draft[rowId]).replace(",", "."));
 
 // Модель как в проде: USD — процент, TRY/EUR — абсолют, SPB в блоке нет.
 const BLOCKS = [
@@ -94,8 +99,10 @@ describe("pasteToDraft", () => {
 
   it("СБП ложится во все города QR-блока: в документе он без города", () => {
     const { draft } = pasteToDraft({ blocks: BLOCKS, text: "RUB QR СБП>> USDT 75,50" });
-    expect(draft["r-qr-ant"]).toBe("75,5");
-    expect(draft["r-qr-ist"]).toBe("75,5");
+    // В МОДЕЛИ — канон «USDT за 1 рубль», в ДОКУМЕНТЕ — присланные 75,50.
+    expect(asDocument(draft, "r-qr-ant", "RUB", "USDT")).toBeCloseTo(75.5, 10);
+    expect(asDocument(draft, "r-qr-ist", "RUB", "USDT")).toBeCloseTo(75.5, 10);
+    expect(Number(String(draft["r-qr-ant"]).replace(",", "."))).toBeCloseTo(1 / 75.5, 10);
   });
 
   it("НЕРЕЗ: Sell → USDT→RUB, Buy → RUB→USDT", () => {
@@ -103,8 +110,10 @@ describe("pasteToDraft", () => {
       blocks: BLOCKS,
       text: "USDT - RUB (НЕРЕЗ)\nSell:\nTOD-TOD 81,20\nBuy:\nTOD-TOD 80,10",
     });
+    // Продажа: USDT сильнее рубля, документ уже в каноне.
     expect(draft["r-nz-sell"]).toBe("81,2");
-    expect(draft["r-nz-buy"]).toBe("80,1");
+    // Покупка: RUB→USDT — документ перевёрнут, в модели канон.
+    expect(asDocument(draft, "r-nz-buy", "RUB", "USDT")).toBeCloseTo(80.1, 10);
   });
 
   it("НЕРЕЗ с базисом вне модели — в «не распознано»", () => {
@@ -160,7 +169,7 @@ TOD-TOD ---`;
 
   it("соседние базисы и вторая сторона не задеты", () => {
     const r = pasteToDraft({ blocks: BLOCKS, text: NEREZ });
-    expect(r.draft["r-nz-buy"]).toBe("86,34");
+    expect(asDocument(r.draft, "r-nz-buy", "RUB", "USDT")).toBeCloseTo(86.34, 10);
   });
 
   it("в сводке закрытые считаются отдельно от распознанных", () => {

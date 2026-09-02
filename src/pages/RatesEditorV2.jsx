@@ -25,6 +25,7 @@ import { computeAll, pricesToMap, priceKey, num } from "../lib/rateEngine.js";
 import { pasteToDraft, pasteSummary } from "../lib/ratesPaste.js";
 import { ratesHealth, LEVEL } from "../lib/ratesHealth.js";
 import { auditAll, VERDICT } from "../lib/ratesAudit.js";
+import { toCanonical, toDocument, unitLabel } from "../lib/rateOrientation.js";
 import {
   loadBlocks, loadPublished, loadSources, loadMarket, publishedMap, publishRates,
   officeCityMap, V2_BANNER,
@@ -146,6 +147,27 @@ export default function RatesEditorV2({ onClose }) {
   // «Не торгуем» НЕ наследуется: вчерашнее закрытие не должно молча закрывать
   // строку сегодня. Каждое утро состояние приходит из свежего сообщения.
   const closedOf = useCallback((r) => closed[r.id] === true, [closed]);
+
+  // ХРАНИМ КАНОН, ПОКАЗЫВАЕМ ДОКУМЕНТ. Утром кассир сверяет экран с сообщением
+  // Paramon: показать ему 0,8525 вместо присланных 1,173 значит сломать сверку.
+  // Проценты и спреды ориентации не имеют — их не трогаем.
+  const isOriented = (r) => r.value_mode === "abs";
+  const shownValue = useCallback((r) => {
+    const v = valueOf(r);
+    if (v == null || v === "" || !isOriented(r)) return v ?? "";
+    const doc = toDocument(r.from_ccy, r.to_ccy, v);
+    return doc == null ? "" : String(doc).replace(".", ",");
+  }, [valueOf]);
+  const setShown = useCallback((r, raw) => {
+    if (!isOriented(r)) return setValue(r.id, raw);
+    const canon = toCanonical(r.from_ccy, r.to_ccy, raw);
+    setValue(r.id, canon == null ? raw : String(canon).replace(".", ","));
+  }, [setValue]);
+  const shownWas = useCallback((r, prev) => {
+    if (prev == null) return "—";
+    if (r.value_mode === "pct") return fmtWas(r, prev);
+    return fmtRate(toDocument(r.from_ccy, r.to_ccy, prev));
+  }, []);
 
   const visibleRows = useMemo(() => {
     if (!block) return [];
@@ -327,21 +349,22 @@ export default function RatesEditorV2({ onClose }) {
             <tr key={r.id}>
               <td className="py-3 border-t border-line text-[14px]">{r.from_ccy} → {r.to_ccy}</td>
               <td className="py-3 border-t border-line font-light text-[19px] text-faint tabular-nums">
-                {fmtWas(r, prevMap[key])}
+                {shownWas(r, prevMap[key])}
               </td>
               <td className="py-3 border-t border-line">
                 <Input
                   wide
                   bad={!!viol}
-                  value={valueOf(r) ?? ""}
-                  onChange={(e) => setValue(r.id, e.target.value)}
+                  value={shownValue(r)}
+                  onChange={(e) => setShown(r, e.target.value)}
                   placeholder={r.value_mode === "pct" ? "0,00%" : "0,00"}
+                  title={r.value_mode === "abs" ? unitLabel(r.from_ccy, r.to_ccy) : undefined}
                 />
               </td>
               <td className="py-3 border-t border-line text-right">
                 {viol
                   ? <span className="text-[12px] text-danger">вне границ</span>
-                  : <span className="font-light text-[23px] tabular-nums">{fmtRate(priceMap[key])}</span>}
+                  : <span className="font-light text-[23px] tabular-nums" title={unitLabel(r.from_ccy, r.to_ccy)}>{fmtRate(toDocument(r.from_ccy, r.to_ccy, priceMap[key]))}</span>}
               </td>
             </tr>
           );
@@ -466,9 +489,10 @@ export default function RatesEditorV2({ onClose }) {
                         <Input
                           wide
                           bad={!!violByKey[key]}
-                          value={valueOf(r) ?? ""}
-                          onChange={(e) => setValue(r.id, e.target.value)}
+                          value={shownValue(r)}
+                          onChange={(e) => setShown(r, e.target.value)}
                           placeholder="0,00"
+                          title={unitLabel(r.from_ccy, r.to_ccy)}
                         />
                       )}
                       <button
@@ -482,7 +506,7 @@ export default function RatesEditorV2({ onClose }) {
                         {isClosed ? "вернуть" : "закрыть"}
                       </button>
                       {!isClosed && (
-                        <span className="text-[12px] text-faint tabular-nums">было {fmtWas(r, prevMap[key])}</span>
+                        <span className="text-[12px] text-faint tabular-nums">было {shownWas(r, prevMap[key])}</span>
                       )}
                     </div>
                   </td>
@@ -588,14 +612,15 @@ export default function RatesEditorV2({ onClose }) {
             </div>
           </div>
           <div className="ml-auto flex items-baseline gap-4 shrink-0">
-            <span className="text-[12px] text-faint">было {fmtRate(prevMap[aKey])}</span>
+            <span className="text-[12px] text-faint">было {shownWas(anchorRow || {}, prevMap[aKey])}</span>
             {anchorRow && (
               <Input
                 wide
                 bad={!!violByKey[aKey]}
-                value={valueOf(anchorRow) ?? ""}
-                onChange={(e) => setValue(anchorRow.id, e.target.value)}
+                value={shownValue(anchorRow)}
+                onChange={(e) => setShown(anchorRow, e.target.value)}
                 placeholder="0,00"
+                title={unitLabel(anchorRow.from_ccy, anchorRow.to_ccy)}
               />
             )}
           </div>
@@ -626,12 +651,12 @@ export default function RatesEditorV2({ onClose }) {
                   <td className="py-3 border-t border-line text-[14px]">{r.scope}</td>
                   <td className="py-3 border-t border-line text-[13px] text-muted">{r.from_ccy} → {r.to_ccy}</td>
                   <td className="py-3 border-t border-line text-[13px] text-muted tabular-nums">
-                    {leg == null ? <span className="text-orange-ink">нет курса</span> : `USDT → ${r.to_ccy} = ${fmtRate(leg)}`}
+                    {leg == null ? <span className="text-orange-ink">нет курса</span> : `USDT → ${r.to_ccy} = ${fmtRate(toDocument("USDT", r.to_ccy, leg))}`}
                   </td>
                   <td className="py-3 border-t border-line text-right">
                     {rowErr
                       ? <span className="text-[19px] text-faint">—</span>
-                      : <span className="font-light text-[23px] tabular-nums">{fmtRate(priceMap[key])}</span>}
+                      : <span className="font-light text-[23px] tabular-nums" title={unitLabel(r.from_ccy, r.to_ccy)}>{fmtRate(toDocument(r.from_ccy, r.to_ccy, priceMap[key]))}</span>}
                   </td>
                 </tr>
               );

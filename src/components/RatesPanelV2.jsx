@@ -16,6 +16,7 @@ import { loadBlocks, loadPublished, loadSources, publishedMap } from "../lib/rat
 import { computeRowPrice } from "../lib/rateEngine.js";
 import { formatCrossValue } from "../utils/ratesFormat.js";
 import CrossToggle, { crossSummary } from "./rates/CrossToggle.jsx";
+import { toDocument } from "../lib/rateOrientation.js";
 import { COL_INTO, COL_OUT, Reveal, makeCols, useRevealHover } from "./rates/hoverReveal.jsx";
 
 // Нал считается к лире ровно теми же правилами, что тезерный блок — к USDT.
@@ -113,7 +114,10 @@ export default function RatesPanelV2({ onOpenRates }) {
   }, []);
 
   const priceMap = useMemo(() => publishedMap(published), [published]);
-  const rateOf = (block, scope, from, to) => priceMap[`${block}|${scope || ""}|${from}|${to}`];
+  // Панель показывает то же, что кассир видит в сообщении: модель хранит
+  // канон «to за 1 from», человек читает «слабая за 1 сильную».
+  const rateOf = (block, scope, from, to) =>
+    toDocument(from, to, priceMap[`${block}|${scope || ""}|${from}|${to}`]);
 
   if (err) return <aside className="text-[12.5px] text-danger p-2">Панель курсов: {err}</aside>;
   if (!blocks) return <aside className="text-[12.5px] text-muted p-2">Загрузка курсов…</aside>;

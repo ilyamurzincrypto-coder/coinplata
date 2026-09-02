@@ -166,7 +166,10 @@ export function auditOrientation(quotes = []) {
   const byPair = new Map();
   for (const q of quotes) {
     if (q.inverted === undefined || q.verdict === VERDICT.NOREF) continue;
-    const key = pairKey(q.from, q.to);
+    // Ключ НАПРАВЛЕННЫЙ: под каноном RUB→TRY и TRY→RUB законно смотрят в
+    // разные стороны относительно одной рыночной котировки. Ошибка — когда
+    // одно и то же направление приходит из разных блоков в разных единицах.
+    const key = `${q.from}→${q.to}`;
     if (!byPair.has(key)) byPair.set(key, []);
     byPair.get(key).push(q);
   }
@@ -181,7 +184,7 @@ export function auditOrientation(quotes = []) {
     if (groups.size > 1) {
       const [a, b] = [...groups.values()];
       out.push({
-        pair: key.replace("|", "/"),
+        pair: key,
         verdict: VERDICT.BAD,
         examples: [a[0], b[0]].map((q) => `${q.block}${q.scope ? "·" + String(q.scope).slice(0, 8) : ""} ${q.from}→${q.to} = ${q.rate}`),
         note: "одна пара в двух ориентациях — потребитель поймёт половину наоборот",
