@@ -101,12 +101,17 @@ export default async function handler(req, res) {
   const [pub] = await q.json()
   if (!pub) return res.status(404).json({ error: `версии ${version} нет` })
 
+  // force приходит ТОЛЬКО от ручной кнопки «Переотправить»: она обязана
+  // делать то, что написано на ней. Автоматический ретрай ниже его не ставит,
+  // поэтому защита от двойной обработки при сбое сети остаётся на месте.
+  const force = body.force === true
   const payload = {
     version: pub.version,
     published_at: pub.published_at,
     prices: pub.prices,
     source_meta: pub.source_meta,
     sent_by: caller.userId,
+    force,
   }
 
   // ── Рубильник: считаем и показываем, наружу молчим ──────────────────────

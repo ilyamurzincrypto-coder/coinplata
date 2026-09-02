@@ -132,19 +132,38 @@ export async function loadSources(providers = []) {
   return { sources, meta };
 }
 
+/** Лента версий для Экрана 3. */
+export async function loadPublications(limit = 12) {
+  if (!supabase) return [];
+  const { data, error } = await supabase.rpc("get_rate_publications", { p_limit: limit });
+  if (error) throw new Error(`get_rate_publications: ${error.message}`);
+  return data || [];
+}
+
+/**
+ * Откат к версии. Публикует её цены НОВОЙ версией — журнал append-only,
+ * старое не переписывается, и в ленте видно сам факт отката.
+ */
+export async function rollbackRates(version) {
+  if (!supabase) throw new Error("Supabase не настроен");
+  const { data, error } = await supabase.rpc("rollback_rates", { p_version: version });
+  if (error) throw new Error(`rollback_rates: ${error.message}`);
+  return data;
+}
+
 /**
  * Доставка опубликованной версии в каналы. Вызывает серверную функцию —
  * секрет CoinPoint во фронт не попадает. Идемпотентность на номере версии:
  * повтор и ручное «переотправить» используют один ключ.
  */
-export async function deliverPublication(version) {
+export async function deliverPublication(version, { force = false } = {}) {
   if (!supabase) throw new Error("Supabase не настроен");
   const { data } = await supabase.auth.getSession();
   const token = data?.session?.access_token;
   const r = await fetch("/api/rates/deliver", {
     method: "POST",
     headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
-    body: JSON.stringify({ version }),
+    body: JSON.stringify({ version, force }),
   });
   const text = await r.text();
   let json;

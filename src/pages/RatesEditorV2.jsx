@@ -20,7 +20,7 @@
 // ни разу.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardPaste, Loader2, Lock, Unlock, X } from "lucide-react";
+import { ClipboardPaste, History, Loader2, Lock, Unlock, X } from "lucide-react";
 import { computeAll, pricesToMap, priceKey, num } from "../lib/rateEngine.js";
 import { pasteToDraft, pasteSummary } from "../lib/ratesPaste.js";
 import { ratesHealth, LEVEL } from "../lib/ratesHealth.js";
@@ -28,8 +28,9 @@ import { auditAll, VERDICT } from "../lib/ratesAudit.js";
 import { toCanonical, toDocument, unitLabel } from "../lib/rateOrientation.js";
 import {
   loadBlocks, loadPublished, loadSources, loadMarket, publishedMap, publishRates,
-  deliverPublication, officeCityMap, V2_BANNER,
+  deliverPublication, loadPublications, rollbackRates, officeCityMap, V2_BANNER,
 } from "../lib/ratesV2.js";
+import RatesVersionsScreen from "../components/rates/RatesVersionsScreen.jsx";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
 
@@ -94,6 +95,9 @@ export default function RatesEditorV2({ onClose }) {
   const [paste, setPaste] = useState(null);        // окно вставки: { text, parsed }
   const [busy, setBusy] = useState(false);
   const [delivering, setDelivering] = useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState(null);
+  const [rollingBack, setRollingBack] = useState(false);
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);      // ответ RPC
 
@@ -210,14 +214,41 @@ export default function RatesEditorV2({ onClose }) {
     return { count: changed.length, blocks: new Set(changed.map((c) => c.block)).size };
   }, [computed.prices, prevMap]);
 
+  const refreshVersions = useCallback(async () => {
+    try { setVersions(await loadPublications()); } catch (e) { setErr(e.message || String(e)); }
+  }, []);
+
+  useEffect(() => { if (showVersions && versions == null) refreshVersions(); }, [showVersions, versions, refreshVersions]);
+
+  const doRollback = useCallback(async (version) => {
+    setRollingBack(true);
+    setErr("");
+    try {
+      const r = await rollbackRates(version);
+      if (!r?.ok) throw new Error(r?.error || "откат не прошёл");
+      // Откат — это публикация, значит и уехать наружу он обязан так же.
+      try { await deliverPublication(r.version); } catch (e) {
+        setErr(`откат опубликован v. ${r.version}, но не доставлен: ${e.message || e}`);
+      }
+      setPublished(await loadPublished());
+      await refreshVersions();
+    } catch (e) {
+      setErr(e.message || String(e));
+    } finally {
+      setRollingBack(false);
+    }
+  }, [refreshVersions]);
+
   const resend = useCallback(async () => {
     if (!published?.version) return;
     setDelivering(true);
     setErr("");
     try {
-      // Тот же номер версии — тот же ключ идемпотентности. Повтор не создаёт
-      // новый прайс, поэтому кнопку можно жать спокойно.
-      const r = await deliverPublication(published.version);
+      // Кнопка обязана делать то, что написано: force заставляет принимающую
+      // сторону применить прайс заново, даже если версия уже числилась
+      // применённой. Новой версии при этом не появляется — номер тот же,
+      // значения те же, таблица на той стороне append-only.
+      const r = await deliverPublication(published.version, { force: true });
       setResult({ ok: true, resend: true, ...r });
       setPublished(await loadPublished());
     } catch (e) {
@@ -329,6 +360,7 @@ export default function RatesEditorV2({ onClose }) {
           setErr(`опубликовано, но не доставлено: ${e.message || e}`);
         }
         setPublished(await loadPublished());
+        if (showVersions || versions) await refreshVersions();
       }
     } catch (e) {
       setErr(e.message || String(e));
@@ -737,6 +769,15 @@ export default function RatesEditorV2({ onClose }) {
           )}
           <button
             type="button"
+            onClick={() => setShowVersions((v) => !v)}
+            className={`inline-flex items-center gap-2 rounded-full text-[13px] px-[18px] py-2.5 ${
+              showVersions ? "bg-ink text-cream" : "border border-line-2 text-[#6B675C] hover:text-ink"
+            }`}
+          >
+            <History className="w-3.5 h-3.5" /> Версии
+          </button>
+          <button
+            type="button"
             onClick={() => onPasteText("")}
             className="inline-flex items-center gap-2 rounded-full border border-line-2 text-[#6B675C] hover:text-ink text-[13px] px-[18px] py-2.5"
           >
@@ -750,6 +791,16 @@ export default function RatesEditorV2({ onClose }) {
         </div>
       </div>
 
+      {showVersions ? (
+        <RatesVersionsScreen
+          versions={versions}
+          loading={versions == null}
+          onRollback={doRollback}
+          rollingBack={rollingBack}
+          onClose={() => setShowVersions(false)}
+        />
+      ) : (
+      <>
       {/* Вкладки-блоки по position */}
       <div className="flex gap-1.5 mb-4 flex-wrap">
         {blocks.map((b) => (
@@ -942,6 +993,9 @@ export default function RatesEditorV2({ onClose }) {
         )}
         {err && <div className="mt-3 text-[12.5px] text-danger">{err}</div>}
       </div>
+
+      </>
+      )}
 
       {paste && (
         <PasteWindow
