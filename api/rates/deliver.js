@@ -51,7 +51,13 @@ async function attempt(base, secret, payload) {
       signal: ctrl.signal,
     })
     const text = await r.text()
-    return { ok: r.ok, status: r.status, body: text.slice(0, 500) }
+    // Ответ принимающей стороны разбираем: в нём список НЕПРИНЯТЫХ строк с
+    // причинами. Оставить его строкой значило бы прятать главное — какие
+    // курсы не доехали до витрин и почему. Первая боевая доставка легла
+    // на 12 строк из 42, и без этого списка причина искалась бы вручную.
+    let parsed = null
+    try { parsed = JSON.parse(text) } catch { /* не JSON — покажем как есть */ }
+    return { ok: r.ok, status: r.status, body: text.slice(0, 500), parsed }
   } catch (e) {
     // Таймаут и сетевой сбой — кандидаты на повтор, в отличие от 4xx.
     return { ok: false, status: 0, body: String(e?.message || e) }
@@ -130,15 +136,31 @@ export default async function handler(req, res) {
   }
 
   const state = last.ok ? 'sent' : 'failed'
+  const applied = last.parsed?.inserted ?? null
+  const skipped = Array.isArray(last.parsed?.skipped) ? last.parsed.skipped : []
+
   await rpc(supaUrl, svc, 'mark_rate_delivery', {
     p_version: version, p_state: state,
     p_error: last.ok ? null : `${last.status || 'сеть'}: ${last.body}`,
-    p_meta: { prices: pub.prices?.length ?? 0, http: last.status },
+    p_meta: {
+      prices: pub.prices?.length ?? 0,
+      http: last.status,
+      applied,
+      skipped_count: skipped.length,
+      // Причины храним сгруппированно: тридцать одинаковых строк «нет
+      // направления» читаются хуже, чем «нет направления — 30».
+      skipped_reasons: skipped.reduce((acc, s) => {
+        const key = String(s?.reason || 'без причины')
+        acc[key] = (acc[key] || 0) + 1
+        return acc
+      }, {}),
+    },
   }).catch(() => {})
 
   return res.status(last.ok ? 200 : 502).json({
     ok: last.ok, delivered: last.ok, version,
     prices: pub.prices?.length ?? 0,
+    applied, skipped,
     status: last.status,
     error: last.ok ? undefined : last.body,
   })
