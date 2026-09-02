@@ -24,8 +24,9 @@ import { ClipboardPaste, Loader2, Lock, Unlock, X } from "lucide-react";
 import { computeAll, pricesToMap, priceKey, num } from "../lib/rateEngine.js";
 import { pasteToDraft, pasteSummary } from "../lib/ratesPaste.js";
 import { ratesHealth, LEVEL } from "../lib/ratesHealth.js";
+import { auditAll, VERDICT } from "../lib/ratesAudit.js";
 import {
-  loadBlocks, loadPublished, loadSources, publishedMap, publishRates,
+  loadBlocks, loadPublished, loadSources, loadMarket, publishedMap, publishRates,
   officeCityMap, V2_BANNER,
 } from "../lib/ratesV2.js";
 import { useOffices } from "../store/offices.jsx";
@@ -82,6 +83,7 @@ export default function RatesEditorV2({ onClose }) {
   const [blocks, setBlocks] = useState(null);
   const [published, setPublished] = useState(null);
   const [sources, setSources] = useState({});
+  const [market, setMarket] = useState([]);
   const [sourceMeta, setSourceMeta] = useState({});
   const [activeBlock, setActiveBlock] = useState(null);
   const [activeScope, setActiveScope] = useState(null);
@@ -111,6 +113,7 @@ export default function RatesEditorV2({ onClose }) {
         if (!alive) return;
         setSources(src);
         setSourceMeta(meta);
+        setMarket(await loadMarket());
       } catch (e) {
         if (alive) setErr(e.message || String(e));
       }
@@ -204,6 +207,11 @@ export default function RatesEditorV2({ onClose }) {
     return { count: changed.length, blocks: new Set(changed.map((c) => c.block)).size };
   }, [computed.prices, prevMap]);
 
+  // Аудит: каждая котировка против рынка. Здоровье говорит про панель целиком
+  // и остаётся зелёным при одной неверной цифре — а стоит денег именно она.
+  const audit = useMemo(() => auditAll(computed.prices, market), [computed.prices, market]);
+  const auditBad = audit.summary.bad + audit.summary.orientationClashes;
+
   // Здоровье: чем торгуем и можно ли этому верить. Считается из тех же
   // данных, что и публикация, — отдельного источника правды нет.
   const health = useMemo(
@@ -212,7 +220,9 @@ export default function RatesEditorV2({ onClose }) {
   );
 
   const nextVersion = (published?.version || 0) + 1;
-  const blocked = computed.violations.length > 0;
+  // Публикацию блокируют и границы, и спорные котировки: цена, разошедшаяся
+  // с рынком в разы, уедет на сайт и в агрегаторы, где её увидит клиент.
+  const blocked = computed.violations.length > 0 || auditBad > 0;
   const dirty = Object.keys(draft).length > 0 || Object.keys(locks).length > 0 || Object.keys(closed).length > 0;
 
   const setValue = useCallback((rowId, raw) => {
@@ -784,6 +794,27 @@ export default function RatesEditorV2({ onClose }) {
 
         {renderBody()}
 
+        {/* АУДИТ КАЖДОЙ КОТИРОВКИ. Границы band_pct сравнивают со вчерашней
+            ценой и бессильны, если вчера уже было неверно. Рынок — свидетель
+            со стороны, поэтому спорные строки перечислены поимённо. */}
+        {audit.orientation.map((o) => (
+          <div key={o.pair} className="flex items-start gap-2.5 mt-3.5 bg-danger-soft rounded-[16px] px-4 py-3 text-[12.5px] text-danger">
+            <span className="w-[19px] h-[19px] rounded-[6px] bg-danger text-white text-[12px] flex items-center justify-center shrink-0">!</span>
+            <span>
+              <b className="font-normal">{o.pair} уходит в двух разных единицах.</b> {o.note}.
+              <br />
+              {o.examples.join("   ·   ")}
+            </span>
+          </div>
+        ))}
+
+        {audit.quotes.filter((q) => q.verdict === VERDICT.BAD).map((q) => (
+          <div key={`${q.block}|${q.scope}|${q.from}|${q.to}`} className="flex items-center gap-2.5 mt-2 bg-danger-soft rounded-[16px] px-4 py-2.5 text-[12.5px] text-danger">
+            <span className="w-[19px] h-[19px] rounded-[6px] bg-danger text-white text-[12px] flex items-center justify-center shrink-0">!</span>
+            {q.block} {q.scope ? `· ${String(q.scope).slice(0, 8)} ` : ""}{q.from} → {q.to} = {fmtRate(q.rate)} — {q.note}
+          </div>
+        ))}
+
         {computed.violations.map((v) => (
           <div key={v.key} className="flex items-center gap-2.5 mt-3.5 bg-danger-soft rounded-[16px] px-4 py-3 text-[12.5px] text-danger">
             <span className="w-[19px] h-[19px] rounded-[6px] bg-danger text-white text-[12px] flex items-center justify-center shrink-0">!</span>
@@ -819,7 +850,7 @@ export default function RatesEditorV2({ onClose }) {
               type="button"
               onClick={onPublish}
               disabled={blocked || busy || summary.count === 0}
-              title={blocked ? "Есть значения вне границ" : undefined}
+              title={blocked ? (auditBad > 0 ? "Есть котировки, спорные по сверке с рынком" : "Есть значения вне границ") : undefined}
               className={`rounded-full text-[13px] px-[18px] py-2.5 inline-flex items-center gap-2 ${
                 blocked || summary.count === 0
                   ? "bg-line-2 text-[#6B675C] cursor-not-allowed"

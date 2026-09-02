@@ -128,6 +128,19 @@ export async function loadSources(providers = []) {
 }
 
 /**
+ * Живой рынок для аудита котировок — независимый свидетель против наших цен.
+ * Вьюха отдаёт последнюю котировку каждой пары (после фикса skip-scan — 8 мс).
+ */
+export async function loadMarket() {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("v_external_rates_latest")
+    .select("source, pair, bid, ask, mid, fetched_at");
+  if (error) throw new Error(`loadMarket: ${error.message}`);
+  return data || [];
+}
+
+/**
  * Маппинг офис→код города для маршрутных и городских строк.
  *
  * Матчер ИМПОРТИРУЕТСЯ, а не копируется. Здесь была своя копия правил, и она
