@@ -28,7 +28,7 @@ import { auditAll, VERDICT } from "../lib/ratesAudit.js";
 import { toCanonical, toDocument, unitLabel } from "../lib/rateOrientation.js";
 import {
   loadBlocks, loadPublished, loadSources, loadMarket, publishedMap, publishRates,
-  officeCityMap, V2_BANNER,
+  deliverPublication, officeCityMap, V2_BANNER,
 } from "../lib/ratesV2.js";
 import { useOffices } from "../store/offices.jsx";
 import { useAuth } from "../store/auth.jsx";
@@ -93,6 +93,7 @@ export default function RatesEditorV2({ onClose }) {
   const [closed, setClosed] = useState({});        // rowId → «сегодня не торгуем»
   const [paste, setPaste] = useState(null);        // окно вставки: { text, parsed }
   const [busy, setBusy] = useState(false);
+  const [delivering, setDelivering] = useState(false);
   const [err, setErr] = useState("");
   const [result, setResult] = useState(null);      // ответ RPC
 
@@ -148,26 +149,6 @@ export default function RatesEditorV2({ onClose }) {
   // строку сегодня. Каждое утро состояние приходит из свежего сообщения.
   const closedOf = useCallback((r) => closed[r.id] === true, [closed]);
 
-  // ХРАНИМ КАНОН, ПОКАЗЫВАЕМ ДОКУМЕНТ. Утром кассир сверяет экран с сообщением
-  // Paramon: показать ему 0,8525 вместо присланных 1,173 значит сломать сверку.
-  // Проценты и спреды ориентации не имеют — их не трогаем.
-  const isOriented = (r) => r.value_mode === "abs";
-  const shownValue = useCallback((r) => {
-    const v = valueOf(r);
-    if (v == null || v === "" || !isOriented(r)) return v ?? "";
-    const doc = toDocument(r.from_ccy, r.to_ccy, v);
-    return doc == null ? "" : String(doc).replace(".", ",");
-  }, [valueOf]);
-  const setShown = useCallback((r, raw) => {
-    if (!isOriented(r)) return setValue(r.id, raw);
-    const canon = toCanonical(r.from_ccy, r.to_ccy, raw);
-    setValue(r.id, canon == null ? raw : String(canon).replace(".", ","));
-  }, [setValue]);
-  const shownWas = useCallback((r, prev) => {
-    if (prev == null) return "—";
-    if (r.value_mode === "pct") return fmtWas(r, prev);
-    return fmtRate(toDocument(r.from_ccy, r.to_ccy, prev));
-  }, []);
 
   const visibleRows = useMemo(() => {
     if (!block) return [];
@@ -229,6 +210,23 @@ export default function RatesEditorV2({ onClose }) {
     return { count: changed.length, blocks: new Set(changed.map((c) => c.block)).size };
   }, [computed.prices, prevMap]);
 
+  const resend = useCallback(async () => {
+    if (!published?.version) return;
+    setDelivering(true);
+    setErr("");
+    try {
+      // Тот же номер версии — тот же ключ идемпотентности. Повтор не создаёт
+      // новый прайс, поэтому кнопку можно жать спокойно.
+      const r = await deliverPublication(published.version);
+      setResult({ ok: true, resend: true, ...r });
+      setPublished(await loadPublished());
+    } catch (e) {
+      setErr(e.message || String(e));
+    } finally {
+      setDelivering(false);
+    }
+  }, [published]);
+
   // Аудит: каждая котировка против рынка. Здоровье говорит про панель целиком
   // и остаётся зелёным при одной неверной цифре — а стоит денег именно она.
   const audit = useMemo(() => auditAll(computed.prices, market), [computed.prices, market]);
@@ -237,7 +235,11 @@ export default function RatesEditorV2({ onClose }) {
   // Здоровье: чем торгуем и можно ли этому верить. Считается из тех же
   // данных, что и публикация, — отдельного источника правды нет.
   const health = useMemo(
-    () => ratesHealth({ sources: sourceMeta, published, computed, bridgeEnabled: false }),
+    () => ratesHealth({
+      sources: sourceMeta, published, computed,
+      bridgeEnabled: published?.delivery?.state != null && published.delivery.state !== "skipped",
+      delivery: published?.delivery,
+    }),
     [sourceMeta, published, computed]
   );
 
@@ -253,6 +255,27 @@ export default function RatesEditorV2({ onClose }) {
     // Правка спреда/значения снимает замок — как в работающей панели: человек
     // вернулся к живому курсу, и держать поверх зафиксированный итог нечестно.
     setLocks((l) => (Object.prototype.hasOwnProperty.call(l, rowId) ? { ...l, [rowId]: null } : l));
+  }, []);
+
+  // ХРАНИМ КАНОН, ПОКАЗЫВАЕМ ДОКУМЕНТ. Утром кассир сверяет экран с сообщением
+  // Paramon: показать ему 0,8525 вместо присланных 1,173 значит сломать сверку.
+  // Проценты и спреды ориентации не имеют — их не трогаем.
+  const isOriented = (r) => r.value_mode === "abs";
+  const shownValue = useCallback((r) => {
+    const v = valueOf(r);
+    if (v == null || v === "" || !isOriented(r)) return v ?? "";
+    const doc = toDocument(r.from_ccy, r.to_ccy, v);
+    return doc == null ? "" : String(doc).replace(".", ",");
+  }, [valueOf]);
+  const setShown = useCallback((r, raw) => {
+    if (!isOriented(r)) return setValue(r.id, raw);
+    const canon = toCanonical(r.from_ccy, r.to_ccy, raw);
+    setValue(r.id, canon == null ? raw : String(canon).replace(".", ","));
+  }, [setValue]);
+  const shownWas = useCallback((r, prev) => {
+    if (prev == null) return "—";
+    if (r.value_mode === "pct") return fmtWas(r, prev);
+    return fmtRate(toDocument(r.from_ccy, r.to_ccy, prev));
   }, []);
 
   const toggleClosed = useCallback((rowId) => {
@@ -297,6 +320,14 @@ export default function RatesEditorV2({ onClose }) {
         setDraft({});
         setLocks({});
         setClosed({});
+        // Доставка идёт СРАЗУ за публикацией: опубликованный, но не уехавший
+        // прайс — это курсы, которые касса считает актуальными, а витрины не
+        // видели. Ошибка доставки не отменяет публикацию, но видна в здоровье.
+        try {
+          await deliverPublication(res.version);
+        } catch (e) {
+          setErr(`опубликовано, но не доставлено: ${e.message || e}`);
+        }
         setPublished(await loadPublished());
       }
     } catch (e) {
@@ -863,6 +894,18 @@ export default function RatesEditorV2({ onClose }) {
             Уйдёт в: <span className="text-orange-ink">никуда — тестовый режим, мост не включён</span>
           </div>
           <div className="flex gap-2 shrink-0">
+            {published?.delivery && published.delivery.state !== "sent" && (
+              <button
+                type="button"
+                onClick={resend}
+                disabled={delivering}
+                title="Отправить последнюю версию в каналы ещё раз. Номер версии тот же — дубля не будет."
+                className="rounded-full border border-line-2 text-[#6B675C] text-[13px] px-[18px] py-2.5 disabled:opacity-40 inline-flex items-center gap-2"
+              >
+                {delivering && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                Переотправить v. {published.version}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { setDraft({}); setLocks({}); setClosed({}); setResult(null); }}
@@ -891,7 +934,9 @@ export default function RatesEditorV2({ onClose }) {
         {result && (
           <div className={`mt-3.5 rounded-[16px] px-4 py-3 text-[12.5px] ${result.ok ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
             {result.ok
-              ? `Опубликовано v. ${result.version} · ${result.prices_count} цен. В каналы не ушло — тестовый режим.`
+              ? result.resend
+                ? `Отправка v. ${result.version}: ${result.delivered ? "доставлено" : result.dryRun ? "мост выключен — наружу не ушло" : "не доставлено"}.`
+                : `Опубликовано v. ${result.version} · ${result.prices_count} цен.`
               : `${result.error}${result.stale ? `: ${result.stale.map((s) => `${s.provider} (${s.age_min} мин)`).join(", ")}` : ""}`}
           </div>
         )}

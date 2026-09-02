@@ -66,15 +66,31 @@ describe("coverageHealth", () => {
 });
 
 describe("deliveryHealth", () => {
-  it("моста нет — это честное состояние, а не ошибка", () => {
-    const h = deliveryHealth(false, null);
-    expect(h.level).toBe(LEVEL.OK);
-    expect(h.muted).toBe(true);
-    expect(h.note).toBe("мост не включён");
+  it("рубильник выключен — честное состояние, а не ошибка", () => {
+    for (const d of [null, { state: "skipped" }]) {
+      const h = deliveryHealth(false, d);
+      expect(h.level).toBe(LEVEL.OK);
+      expect(h.muted).toBe(true);
+      expect(h.note).toBe("мост не включён");
+    }
   });
-  it("мост включён, но не доставлено — bad", () => {
-    expect(deliveryHealth(true, null).level).toBe(LEVEL.BAD);
-    expect(deliveryHealth(true, { error: "502" }).note).toBe("502");
+
+  it("доставлено — зелено и видно когда", () => {
+    const h = deliveryHealth(true, { state: "sent", delivered_at: agoMin(7) }, NOW);
+    expect(h.level).toBe(LEVEL.OK);
+    expect(h.note).toMatch(/7 мин/);
+  });
+
+  it("не доставлено — плохо, и видно сколько раз пытались", () => {
+    const h = deliveryHealth(true, { state: "failed", attempts: 4, error: "502" });
+    expect(h.level).toBe(LEVEL.BAD);
+    expect(h.note).toMatch(/попыток 4/);
+    expect(h.detail).toBe("502");
+  });
+
+  it("ожидает отправки — предупреждение, а не тишина", () => {
+    // Курсы уже считаются актуальными, а каналы их не видели: молчать нельзя.
+    expect(deliveryHealth(true, { state: "pending" }).level).toBe(LEVEL.WARN);
   });
 });
 

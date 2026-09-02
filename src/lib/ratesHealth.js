@@ -94,10 +94,30 @@ export function coverageHealth(pricesCount, errorsCount, closedCount = 0) {
  * ошибка: показываем серым «мост не включён», чтобы никто не решил, что курсы
  * уже уехали на сайт.
  */
-export function deliveryHealth(bridgeEnabled, delivery) {
-  if (!bridgeEnabled) return { key: "delivery", kind: "delivery", level: LEVEL.OK, muted: true, note: "мост не включён" };
-  if (!delivery?.deliveredAt) return { key: "delivery", kind: "delivery", level: LEVEL.BAD, note: delivery?.error || "не доставлено" };
-  return { key: "delivery", kind: "delivery", level: LEVEL.OK, note: `доставлено ${ageLabel(ageMin(delivery.deliveredAt))} назад` };
+export function deliveryHealth(bridgeEnabled, delivery, nowMs = Date.now()) {
+  const state = delivery?.state;
+
+  // Мост выключен рубильником — ЧЕСТНОЕ состояние, а не ошибка: показываем
+  // серым, чтобы никто не решил, что курсы уже уехали на сайт.
+  if (state === "skipped" || (!bridgeEnabled && !state)) {
+    return { key: "delivery", kind: "delivery", level: LEVEL.OK, muted: true, note: "мост не включён" };
+  }
+  if (state === "sent") {
+    return {
+      key: "delivery", kind: "delivery", level: LEVEL.OK,
+      note: `доставлено ${ageLabel(ageMin(delivery.delivered_at, nowMs))} назад`,
+    };
+  }
+  if (state === "failed") {
+    return {
+      key: "delivery", kind: "delivery", level: LEVEL.BAD,
+      note: `не доставлено${delivery.attempts ? ` · попыток ${delivery.attempts}` : ""}`,
+      detail: delivery.error || null,
+    };
+  }
+  // pending: опубликовано, но отправка ещё не завершилась. Это НЕ норма —
+  // курсы уже считаются актуальными, а каналы их не видели.
+  return { key: "delivery", kind: "delivery", level: LEVEL.WARN, note: "ожидает отправки" };
 }
 
 /**
@@ -110,7 +130,7 @@ export function ratesHealth({ sources = {}, published = null, computed = { price
     ...Object.entries(sources).map(([p, meta]) => feedHealth(p, meta?.fetched_at, nowMs)),
     publicationHealth(published, nowMs),
     coverageHealth(computed.prices?.length || 0, computed.errors?.length || 0, computed.closed?.length || 0),
-    deliveryHealth(bridgeEnabled, delivery),
+    deliveryHealth(bridgeEnabled, delivery, nowMs),
   ];
   return { items, level: worst(items.filter((i) => !i.muted).map((i) => i.level)) };
 }

@@ -21,8 +21,10 @@ export function isRatesV2Enabled(user) {
   return user?.preferences?.rates_v2_ui === true;
 }
 
+// Баннер честно описывает состояние моста: пока рубильник RATES_BRIDGE_ENABLED
+// выключен, публикация считается и сохраняется, но наружу не уходит.
 export const V2_BANNER =
-  "тестовый режим · публикации не уходят в каналы · рабочие курсы — в старом редакторе";
+  "тестовый режим · мост выключен рубильником · рабочие курсы — в старом редакторе";
 
 /** Блоки с их строками, по position. */
 export async function loadBlocks() {
@@ -128,6 +130,27 @@ export async function loadSources(providers = []) {
     m.age_min = Math.round((Date.now() - new Date(m.fetched_at).getTime()) / 60000);
   }
   return { sources, meta };
+}
+
+/**
+ * Доставка опубликованной версии в каналы. Вызывает серверную функцию —
+ * секрет CoinPoint во фронт не попадает. Идемпотентность на номере версии:
+ * повтор и ручное «переотправить» используют один ключ.
+ */
+export async function deliverPublication(version) {
+  if (!supabase) throw new Error("Supabase не настроен");
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  const r = await fetch("/api/rates/deliver", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ version }),
+  });
+  const text = await r.text();
+  let json;
+  try { json = JSON.parse(text); } catch { json = { error: text.slice(0, 200) }; }
+  if (!r.ok) throw new Error(json.error || `доставка: ${r.status}`);
+  return json;
 }
 
 /**
