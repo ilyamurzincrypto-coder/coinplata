@@ -755,7 +755,11 @@ export default function RatesEditorV2({ onClose }) {
       {/* Баннер теневого режима — постоянный, снимается только с мостом */}
       <div className="mb-4 flex items-center gap-2.5 bg-orange-bg rounded-full px-4 py-2.5 w-fit">
         <span className="w-[19px] h-[19px] rounded-[6px] bg-orange text-white text-[12px] flex items-center justify-center shrink-0">!</span>
-        <span className="text-[13px] text-orange-ink">{V2_BANNER}</span>
+        <span className="text-[13px] text-orange-ink">
+          {published?.delivery?.state === "sent" || published?.delivery?.state === "failed"
+            ? "мост включён · публикация уходит в каналы · рабочие курсы пока и в старом редакторе"
+            : V2_BANNER}
+        </span>
       </div>
 
       <div className="flex items-center justify-between mb-5">
@@ -945,7 +949,11 @@ export default function RatesEditorV2({ onClose }) {
             Уйдёт в: <span className="text-orange-ink">никуда — тестовый режим, мост не включён</span>
           </div>
           <div className="flex gap-2 shrink-0">
-            {published?.delivery && published.delivery.state !== "sent" && (
+            {/* Кнопка нужна и после успешной доставки: принимающая сторона
+                могла принять прайс частично, а починка на ЕЁ стороне требует
+                перевыслать то же самое. Прятать её при state='sent' значило
+                бы запирать исправление. */}
+            {published?.delivery && (
               <button
                 type="button"
                 onClick={resend}

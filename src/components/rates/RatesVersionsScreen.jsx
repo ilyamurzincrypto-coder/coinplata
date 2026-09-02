@@ -46,12 +46,17 @@ function channelState(delivery, pricesCount) {
   const s = delivery?.state;
   if (s === "sent") {
     const applied = Number(delivery.applied);
-    const partial = Number.isFinite(applied) && applied > 0 && applied < pricesCount;
-    return {
-      tone: partial ? "warn" : "ok",
-      time: hhmm(delivery.delivered_at),
-      label: partial ? `частично · ${applied} из ${pricesCount}` : hhmm(delivery.delivered_at),
-    };
+    // НЕИЗВЕСТНОЕ ЧИСЛО ПРИНЯТЫХ — НЕ УСПЕХ. Так было у первой доставки: она
+    // легла на 12 строк из 42, метаданных ещё не собирали, и плитки
+    // нарисовали зелёную галочку над наполовину доехавшим прайсом. Молчание
+    // принимающей стороны не повод рисовать галочку.
+    if (!Number.isFinite(applied)) {
+      return { tone: "warn", label: `${hhmm(delivery.delivered_at)} · состав неизвестен` };
+    }
+    if (applied < pricesCount) {
+      return { tone: "warn", label: `частично · ${applied} из ${pricesCount}` };
+    }
+    return { tone: "ok", label: hhmm(delivery.delivered_at) };
   }
   if (s === "failed") return { tone: "bad", label: "не дошло" };
   if (s === "skipped") return { tone: "muted", label: "мост выключен" };
