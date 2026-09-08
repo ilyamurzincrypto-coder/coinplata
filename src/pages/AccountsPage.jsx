@@ -53,6 +53,8 @@ import AccountsTree from "../components/accounts/AccountsTree.jsx";
 import ShareLinksModal from "../components/accounts/ShareLinksModal.jsx";
 import ImportWalletsModal from "../components/accounts/ImportWalletsModal.jsx";
 import CryptoAccountsList from "../components/accounts/crypto/CryptoAccountsList.jsx";
+import AccountsOverview from "../components/accounts/AccountsOverview.jsx";
+import { buildAccountsOverview } from "../lib/accountsOverview.js";
 import WalletDetail from "../components/accounts/crypto/WalletDetail.jsx";
 import TurnoverReport from "../components/accounts/crypto/TurnoverReport.jsx";
 import AmlOverview from "../components/accounts/crypto/AmlOverview.jsx";
@@ -198,7 +200,12 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [editAccountFor, setEditAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
+  // Вкладка страницы. Срез Все/Фиат/Крипто переехал в пилюли тёмной полосы
+  // (эталон accounts-r9) и живёт отдельным состоянием `mode`.
+  const [activeTab, setActiveTab] = useState("accounts");
+  const [mode, setMode] = useState("all"); // all | fiat | crypto
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState("total"); // total | name
   const [shareOpen, setShareOpen] = useState(false);
   const [walletImportOpen, setWalletImportOpen] = useState(false);
   const [turnoverOpen, setTurnoverOpen] = useState(false);
@@ -360,181 +367,86 @@ export default function AccountsPage({ onOpenHelp = null }) {
     0
   );
 
+  // Модель страницы «Счета» (эталон accounts-r9). Все числа пересчитываются
+  // на активный срез внутри buildAccountsOverview — статичных тоталов нет.
+  // Офисы берём ВСЕ (не activeOffices): группа строится по фактическому офису
+  // счёта, иначе закрытый офис с остатком выпадает из итогов.
+  const overview = useMemo(
+    () =>
+      buildAccountsOverview({
+        accounts,
+        offices,
+        balanceOf,
+        deltaOf,
+        toBase,
+        curDict,
+        mode,
+        query,
+        sort,
+        dayStartMs,
+        yesterdayStartMs,
+      }),
+    [accounts, offices, balanceOf, deltaOf, toBase, curDict, mode, query, sort, dayStartMs, yesterdayStartMs]
+  );
+
+  const hasCrypto = overview.offices.some((b) => b.cryptoRows.length > 0);
+
   return (
-    <main className="max-w-[1200px] mx-auto px-6 py-6 space-y-4">
-      {/* Header — title + totals */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-[22px] font-bold tracking-tight">{t("accounts_title")}</h1>
-            {onOpenHelp && (
-              <button
-                type="button"
-                onClick={() => onOpenHelp({ sectionId: "accounts" })}
-                title="Справка по разделу «Счета»"
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-muted-soft hover:text-blue-600 hover:bg-blue-50 transition-colors"
-              >
-                <HelpCircle className="w-4 h-4" strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-          <p className="text-caption text-muted">{t("accounts_subtitle")}</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <CompactTotals total={grandTotal} reserved={grandReserved} sym={sym} />
-          <span
-            className="inline-flex items-center px-2.5 py-1.5 rounded-card bg-surface-soft ring-1 ring-border-soft"
-            title="Сегодня / вчера по всем офисам"
-          >
-            <DeltaPair
-              today={grandDelta}
-              yesterday={grandDeltaYesterday}
-              currency={base}
-              size="sm"
-            />
-          </span>
-        </div>
-      </div>
-
-      {/* Actions bar — primary actions слева, secondary справа */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => {
-              setTransferFrom(null);
-              setTransferOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-card bg-ink text-white text-body-sm font-semibold hover:bg-ink transition-colors shadow-[0_2px_8px_rgba(15,23,42,0.15)]"
-          >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-            {t("acc_transfer") || "Перевод"}
-          </button>
-          <button
-            onClick={() => {
-              setOtcFromAccount(null);
-              setOtcOpen(true);
-            }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-card bg-indigo-600 text-white text-body-sm font-semibold hover:bg-indigo-700 transition-colors shadow-[0_2px_8px_rgba(79,70,229,0.25)]"
-            title="OTC сделка — обмен между счетами / с контрагентом, можно задним числом"
-          >
-            <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-            OTC сделка
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <button
-            onClick={() => setImportOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-caption font-semibold transition-colors"
-            title={t("acc_import_tip") || "Import accounts from CSV"}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            {t("acc_import") || "Импорт"}
-          </button>
-          <button
-            onClick={handleExportAccounts}
-            disabled={accounts.length === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-card bg-white border border-border-soft text-ink-soft hover:text-ink hover:border-border text-caption font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            title={t("acc_export_tip") || "Export accounts to CSV"}
-          >
-            <Download className="w-3.5 h-3.5" />
-            {t("export_csv") || "Экспорт"}
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="bg-white border border-border-soft rounded-card p-1 flex gap-0.5 overflow-x-auto">
+    <main className="max-w-[1400px] mx-auto px-6 pt-3.5 pb-10 space-y-3.5">
+      {/* Вкладки страницы. Срез Все/Фиат/Крипто — пилюли в тёмной полосе
+          (эталон), поэтому здесь остались только соседние разделы; их
+          содержимое не трогалось. */}
+      <div className="flex gap-1 flex-wrap">
         {[
-          { id: "all", label: "Все" },
-          { id: "fiat", label: "Фиат" },
-          { id: "crypto", label: "Крипто" },
+          { id: "accounts", label: "Счета" },
           { id: "otc", label: "История OTC" },
           { id: "transfers", label: "Перемещения" },
           { id: "ledger", label: "Журнал" },
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium whitespace-nowrap transition-colors ${
-                isActive
-                  ? "bg-ink text-white"
-                  : "text-ink-soft hover:bg-surface-soft hover:text-ink"
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 rounded-pill text-body-sm whitespace-nowrap transition-colors motion-reduce:transition-none ${
+              activeTab === tab.id
+                ? "bg-surface border border-line-2 font-semibold"
+                : "border border-line text-ink-soft font-medium hover:bg-cream-2"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* TAB: Все/Фиат/Крипто — дерево счетов офис→валюта→счета, фильтр по типу. */}
-      {(activeTab === "all" || activeTab === "fiat" || activeTab === "crypto") && (
-        <>
-          <div className="flex justify-end gap-1 -mb-1">
-            {activeTab === "crypto" && cryptoItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setAmlOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
-                title="AML-обзор портфеля: риск-кошельки, рисковые движения, санкции"
-              >
-                <ShieldAlert className="w-4 h-4" strokeWidth={2} /> AML-обзор
-              </button>
-            )}
-            {activeTab === "crypto" && cryptoItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setTurnoverOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
-                title="Сальдовая ведомость он-чейн за период"
-              >
-                <FileSpreadsheet className="w-4 h-4" strokeWidth={2} /> Сальдовая ведомость
-              </button>
-            )}
-            {(activeTab === "crypto" || activeTab === "all") && (
-              <button
-                type="button"
-                onClick={() => setWalletImportOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
-                title="Импорт кошельков из CSV (name,address,network) + регистрация в AEGIS"
-              >
-                <Upload className="w-4 h-4" strokeWidth={2} /> Импорт кошельков
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setShareOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button text-body-sm font-medium text-ink-soft hover:bg-surface-soft hover:text-ink transition-colors"
-              title="Создать публичную read-only ссылку на этот разрез"
-            >
-              <Share2 className="w-4 h-4" strokeWidth={2} /> Поделиться
-            </button>
-          </div>
-          {activeTab === "crypto" ? (
-            <CryptoAccountsList
-              items={cryptoItems}
-              // ВСЕ офисы, не только активные (эталон r6): группы строятся по
-              // фактическому офису кошелька. С activeOffices неактивный офис не
-              // резолвился в имя, и WW-135 падал в группу-заглушку с UUID.
-              offices={offices}
-              mode="authed"
-              asOf={cryptoAsOf}
-              onOpenWallet={openWallet}
-              reasonsById={reasonsById}
-              onRequestReasons={requestReasons}
-              onToggleHidden={toggleHidden}
-            />
-          ) : (
-            <AccountsTree kindFilter={activeTab} />
-          )}
-        </>
+      {activeTab === "accounts" && (
+        <AccountsOverview
+          model={overview}
+          base={base}
+          mode={mode}
+          onModeChange={setMode}
+          query={query}
+          onQueryChange={setQuery}
+          sort={sort}
+          onSortChange={setSort}
+          onImportCsv={() => setImportOpen(true)}
+          onExportCsv={accounts.length ? handleExportAccounts : undefined}
+          onImportWallets={() => setWalletImportOpen(true)}
+          onShare={() => setShareOpen(true)}
+          onHelp={onOpenHelp ? () => onOpenHelp({ sectionId: "accounts" }) : undefined}
+          onAmlOverview={hasCrypto ? () => setAmlOpen(true) : undefined}
+          onTurnover={hasCrypto ? () => setTurnoverOpen(true) : undefined}
+          onAddAccount={(office) => setAddAccountFor({ officeId: office.id, officeName: office.name })}
+          onTopUp={setTopUpFor}
+          onAdjust={setAdjustFor}
+          onHistory={setHistoryFor}
+          onEdit={canEditAccount ? setEditAccountFor : undefined}
+          onDelete={handleDeleteAccount}
+          onOpenWallet={openWallet}
+        />
       )}
 
       {shareOpen && (
-        <ShareLinksModal scope={activeTab} onClose={() => setShareOpen(false)} />
+        <ShareLinksModal scope={mode} onClose={() => setShareOpen(false)} />
       )}
       {walletImportOpen && <ImportWalletsModal onClose={() => setWalletImportOpen(false)} />}
       {turnoverOpen && (
