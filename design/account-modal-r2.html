@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoinPlata — Новый счёт · r2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1EBDE; --panel:#EAE3D3; --white:#FDFCF8;
+  --ink:#1A1915; --mut:#8A8577; --mut-soft:#A39D8C;
+  --line:#E2DBCB; --line-2:#CFC8B8;
+  --dark:#17150F; --lime:#C8D96F; --lime-ink:#2E3312;
+  --warn:#B07A3C; --warn-soft:#F6E3D3;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{-webkit-font-smoothing:antialiased}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.45;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select{font:inherit;color:inherit}
+
+/* dimmed backdrop */
+.backdrop{position:fixed;inset:0;background:rgba(23,21,15,.44);display:grid;place-items:center;padding:24px}
+
+/* modal */
+.modal{width:660px;max-width:100%;background:var(--white);border-radius:30px;
+  box-shadow:0 30px 80px rgba(23,21,15,.3);overflow:hidden}
+.m-head{display:flex;align-items:center;gap:12px;padding:30px 32px 0}
+.m-head .t h1{font-size:24px;font-weight:600;letter-spacing:-.015em;line-height:1.2}
+.m-head .t span{font-size:13.5px;color:var(--mut)}
+.x{margin-left:auto;width:38px;height:38px;border-radius:50%;background:var(--panel);display:grid;place-items:center;color:var(--mut)}
+.x:hover{color:var(--ink)}
+.m-body{padding:26px 32px 6px}
+
+.f-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field{min-width:0}
+.lbl{font-size:11.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut);margin-bottom:9px;font-weight:500}
+.lbl em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--mut-soft)}
+.sel{position:relative}
+.sel select{width:100%;appearance:none;-webkit-appearance:none;background:var(--white);
+  border:1px solid var(--line-2);border-radius:16px;padding:14px 40px 14px 16px;font-weight:500;font-size:15px;outline:none;cursor:pointer}
+.sel::after{content:"";position:absolute;right:14px;top:50%;width:8px;height:8px;pointer-events:none;
+  border-right:1.6px solid var(--mut);border-bottom:1.6px solid var(--mut);transform:translateY(-70%) rotate(45deg)}
+.sel select:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(200,217,111,.45)}
+.inp{width:100%;background:var(--white);border:1px solid var(--line-2);border-radius:16px;
+  padding:14px 16px;font-weight:500;font-size:15px;outline:none}
+.inp::placeholder{color:var(--mut-soft);font-weight:400}
+.inp:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(200,217,111,.45)}
+.inp-w{position:relative}
+.inp-w .suf{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--mut);font-weight:500;pointer-events:none}
+.row2{margin-top:20px}
+
+/* duplicates hint */
+.dup{margin-top:14px;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.dup-h{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:12px 16px;background:var(--panel);font-weight:500;color:#6E6858;font-size:13px}
+.dup-h .n{background:var(--white);border-radius:100px;padding:1px 8px;font-weight:600;font-size:11.5px}
+.dup-h .chev{margin-left:auto;width:8px;height:8px;border-right:1.6px solid var(--mut);border-bottom:1.6px solid var(--mut);transform:rotate(45deg);transition:transform .2s}
+.dup.open .dup-h .chev{transform:rotate(-135deg)}
+.dup-list{display:none}
+.dup.open .dup-list{display:block}
+.dup-r{display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--line);font-size:13.5px}
+.dup-r b{font-weight:600}
+.dup-r span{color:var(--mut)}
+.dup-r .use{margin-left:auto;font-size:12px;font-weight:600;color:#6E6858;padding:5px 11px;border-radius:100px;border:1px solid var(--line-2)}
+.dup-r .use:hover{background:var(--panel);color:var(--ink)}
+
+/* footer */
+.m-foot{display:flex;align-items:center;gap:10px;padding:20px 32px 28px;margin-top:18px;border-top:1px solid var(--line)}
+.hint{font-size:12px;color:var(--mut-soft)}
+.b-ghost{margin-left:auto;padding:13px 22px;border-radius:100px;font-weight:500;color:#6E6858}
+.b-ghost:hover{background:var(--panel);color:var(--ink)}
+.b-save{padding:13px 26px;border-radius:100px;font-weight:600;font-size:15px;background:var(--lime);color:var(--lime-ink)}
+.b-save:disabled{background:var(--panel);color:var(--mut-soft);cursor:not-allowed}
+</style>
+</head>
+<body>
+<div class="backdrop">
+  <div class="modal">
+    <div class="m-head">
+      <div class="t"><h1>Новый счёт</h1><span>Mark Antalya</span></div>
+      <button class="x" aria-label="Закрыть">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="m2 2 8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="m-body">
+      <div class="f-grid">
+        <div class="field">
+          <div class="lbl">Валюта</div>
+          <div class="sel"><select>
+            <option>USD · фиат</option><option>EUR · фиат</option><option>TRY · фиат</option><option>USDT · крипто</option>
+          </select></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Канал</div>
+          <div class="sel"><select>
+            <option>Cash · по умолчанию</option><option>Банк</option><option>TRC20</option>
+          </select></div>
+        </div>
+      </div>
+
+      <div class="dup" id="dup">
+        <button class="dup-h" onclick="document.getElementById('dup').classList.toggle('open')">
+          USD · Cash уже есть <span class="n">4</span>
+          <span style="font-weight:400;color:var(--mut-soft)">— можно взять за основу</span>
+          <span class="chev"></span>
+        </button>
+        <div class="dup-list">
+          <div class="dup-r"><b>Cash · USD</b><span>Mark Antalya</span><button class="use">Взять за основу</button></div>
+          <div class="dup-r"><b>Cash · USD</b><span>Terra City</span><button class="use">Взять за основу</button></div>
+          <div class="dup-r"><b>Cash · USD</b><span>Istanbul</span><button class="use">Взять за основу</button></div>
+        </div>
+      </div>
+
+      <div class="row2 field">
+        <div class="lbl">Название</div>
+        <input class="inp" placeholder="Cash · Safe A">
+      </div>
+      <div class="row2 f-grid">
+        <div class="field">
+          <div class="lbl">Начальный баланс <em>· опционально</em></div>
+          <div class="inp-w"><input class="inp" placeholder="0"><span class="suf">USD</span></div>
+        </div>
+        <div class="field">
+          <div class="lbl">Номер счёта <em>· из леджера</em></div>
+          <div class="inp-w"><input class="inp" value="1107" style="font-family:var(--mono);font-size:14.5px" readonly><span class="suf" style="font-size:11px">авто</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="m-foot">
+      <span class="hint">Счёт появится в развороте офиса</span>
+      <button class="b-ghost">Отмена</button>
+      <button class="b-save">Создать счёт</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

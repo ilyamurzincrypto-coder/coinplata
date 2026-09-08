@@ -8,7 +8,13 @@ import React, { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-export default function Modal({ open, onClose, title, subtitle, children, width = "xl", dirty = false }) {
+/**
+ * `panelClassName` — точечная надстройка над панелью для модалок с собственным
+ * эталоном (радиус, ширина, фон). Пустая по умолчанию: у всех существующих
+ * модалок вид не меняется, а Esc, портал, подложка и блокировка прокрутки
+ * остаются общими для всех.
+ */
+export default function Modal({ open, onClose, title, subtitle, children, width = "xl", dirty = false, panelClassName = "" }) {
   // Липкость (слайс 1.5.g): клик по фону НЕ закрывает форму. Esc/крестик закрывают,
   // но при заполненной форме (dirty=true) — с подтверждением. Весь close идёт сюда.
   const requestClose = () => {
@@ -62,7 +68,7 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
       />
       {/* panel — z выше backdrop */}
       <div
-        className={`relative w-full ${widthCls} bg-white rounded-[18px] shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] border border-border-soft mt-8 mb-8 animate-[slideUp_160ms_ease-out]`}
+        className={`relative w-full ${widthCls} bg-white rounded-[18px] shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] border border-border-soft mt-8 mb-8 animate-[slideUp_160ms_ease-out] ${panelClassName}`}
         style={{ zIndex: 1001 }}
         onMouseDown={(e) => e.stopPropagation()}
       >

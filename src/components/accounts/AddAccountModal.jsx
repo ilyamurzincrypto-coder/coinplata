@@ -5,7 +5,7 @@
 // address, network, isDeposit, isWithdrawal прописываются для crypto.
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Copy, Building2 } from "lucide-react";
+import { X, ChevronDown } from "lucide-react";
 import Modal from "../ui/Modal.jsx";
 import { useAccounts } from "../../store/accounts.jsx";
 import { useCurrencies } from "../../store/currencies.jsx";
@@ -91,12 +91,21 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
   const existingSameCurrency = useMemo(() => {
     return accounts
       .filter((a) => a.currency === currency && a.active)
+      // Эталон обещает «{валюта} · {канал} уже есть N» — значит и считать надо
+      // по паре. Счёт на другом канале той же валюты дубликатом не является:
+      // «USD · Cash» и «USD · Банк» — разные вещи, и предлагать второй как
+      // основу для первого значило бы копировать чужие реквизиты.
+      .filter((a) => {
+        if (!channelId) return true;
+        const ch = resolveAccountChannel(a, channels);
+        return ch?.id === channelId;
+      })
       .sort((a, b) => {
         if (a.officeId === officeId && b.officeId !== officeId) return -1;
         if (b.officeId === officeId && a.officeId !== officeId) return 1;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [accounts, currency, officeId]);
+  }, [accounts, currency, officeId, channelId, channels]);
 
   const officeLookup = useMemo(() => {
     const m = new Map();
@@ -119,6 +128,11 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
     setIsWithdrawal(src.isWithdrawal !== false);
     setError("");
   };
+
+  // Блок дубликатов всегда открывается свёрнутым — и сворачивается заново при
+  // смене валюты или канала: раскрытым остался бы список от прошлой пары.
+  const [dupOpen, setDupOpen] = useState(false);
+  useEffect(() => { setDupOpen(false); }, [currency, channelId, open]);
 
   const canSubmit = name.trim().length > 0 && currency && channelId && officeId;
 
@@ -182,227 +196,281 @@ export default function AddAccountModal({ open, officeId, officeName, prefill, o
     onClose?.();
   };
 
+  // ── Общие классы полей (эталон account-modal-r2) ─────────────────────────
+  // Фокус — чернильная рамка плюс мягкое лаймовое свечение. Системное синее
+  // кольцо снимаем здесь же (outline-none): глобальный фокус-стиль на этой
+  // модалке не должен спорить с эталоном.
+  const FIELD =
+    "w-full bg-surface border border-line-2 rounded-[16px] px-4 py-3.5 text-[15px] font-medium " +
+    "outline-none transition-shadow placeholder:text-muted-soft placeholder:font-normal " +
+    "focus:border-ink focus:shadow-[0_0_0_3px_rgba(200,217,111,.45)]";
+  const LABEL = "block text-[11.5px] font-medium uppercase tracking-[0.07em] text-muted mb-2.5";
+  const HINT = "not-italic normal-case tracking-normal text-muted-soft";
+
+  const selectedCurrencyMeta = currencies.find((c) => c.code === currency);
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={t("acc_add_title") || "Add account"}
-      subtitle={officeName}
-      width="md"
+      width="2xl"
+      panelClassName="min-w-0 !max-w-[660px] !rounded-[24px] sm:!rounded-[30px] !bg-surface !border-line shadow-[0_30px_80px_rgba(23,21,15,.30)]"
     >
-      <div className="p-5 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide">
-              Валюта
-            </label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="w-full bg-white border border-[#dde0ea] rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-ink outline-none focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)]"
-            >
-              {currencies.map((c) => (
-                <option key={c.code} value={c.code}>
-                  {c.code} · {c.type}
-                </option>
-              ))}
-            </select>
+      {/* Шапка: название офиса подзаголовком, круглый × на панельном фоне. */}
+      <div className="flex items-center gap-3 px-4 sm:px-8 pt-6 sm:pt-8">
+        <div className="min-w-0">
+          <h1 className="text-[24px] font-semibold tracking-[-0.015em] leading-tight text-ink">
+            {t("acc_add_title") || "Новый счёт"}
+          </h1>
+          {officeName && <span className="text-[13.5px] text-muted">{officeName}</span>}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={t("close") || "Закрыть"}
+          className="ml-auto w-[38px] h-[38px] shrink-0 rounded-full bg-cream-2 grid place-items-center text-muted hover:text-ink transition-colors"
+        >
+          <X className="w-3 h-3" strokeWidth={2.4} />
+        </button>
+      </div>
+
+      <div className="px-4 sm:px-8 pt-6 pb-1.5">
+        {/* Валюта · Канал. На узком экране складываются в столбец. */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="min-w-0">
+            <label className={LABEL}>{t("acc_currency") || "Валюта"}</label>
+            <div className="relative">
+              <select
+                value={currency}
+                onChange={(e) => setCurrency(e.target.value)}
+                className={`${FIELD} appearance-none pr-10 cursor-pointer`}
+              >
+                {currencies.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} · {c.type === "crypto" ? "крипто" : "фиат"}
+                  </option>
+                ))}
+              </select>
+              <Chevron />
+            </div>
           </div>
-          <div>
-            <label className="block text-[10px] font-bold text-muted mb-1.5 uppercase tracking-wide">
-              Канал
-            </label>
-            <select
-              value={channelId}
-              onChange={(e) => setChannelId(e.target.value)}
-              disabled={currencyChannels.length === 0}
-              className="w-full bg-white border border-[#dde0ea] rounded-[8px] px-2.5 py-2 text-[13px] font-semibold text-ink outline-none focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] disabled:opacity-60"
-            >
-              {currencyChannels.length === 0 && <option>— нет каналов —</option>}
-              {currencyChannels.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {channelShortLabel(c)}
-                  {c.isDefaultForCurrency ? " · по умолчанию" : ""}
-                  {c.gasFee != null ? ` (gas $${c.gasFee})` : ""}
-                </option>
-              ))}
-            </select>
+
+          <div className="min-w-0">
+            <label className={LABEL}>{t("acc_channel") || "Канал"}</label>
+            <div className="relative">
+              <select
+                value={channelId}
+                onChange={(e) => setChannelId(e.target.value)}
+                disabled={currencyChannels.length === 0}
+                className={`${FIELD} appearance-none pr-10 cursor-pointer disabled:opacity-60`}
+              >
+                {currencyChannels.length === 0 && <option>— нет каналов —</option>}
+                {currencyChannels.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {channelShortLabel(c)}
+                    {c.isDefaultForCurrency ? " · по умолчанию" : ""}
+                  </option>
+                ))}
+              </select>
+              <Chevron />
+            </div>
             {currencyChannels.length === 0 && (
-              <p className="text-[11px] text-[#b8923a] mt-1">
+              <p className="text-[11.5px] text-warning mt-1.5">
                 Сначала добавь канал для {currency} в Курсы → Изменить.
               </p>
             )}
           </div>
         </div>
 
-        {/* Существующие счета этой валюты — reference + quick clone.
-            Позволяет не плодить дубли имён, быстро создать "такой же" счёт в
-            другом офисе (кнопка Clone — копирует channel/name/address/bankRef,
-            office и opening balance не трогает). */}
+        {/* Дубликаты — одной свёрнутой строкой. Нет дубликатов — нет блока:
+            пустая рамка «ничего не найдено» занимала бы место и внимание. */}
         {existingSameCurrency.length > 0 && (
-          <div className="border border-border-soft rounded-card bg-surface-soft/60 overflow-hidden">
-            <div className="px-3 py-1.5 border-b border-border-soft bg-surface-sunk/60 flex items-center justify-between">
-              <span className="text-tiny font-bold text-muted tracking-[0.12em] uppercase">
-                {currency} · {existingSameCurrency.length} уже есть
+          <div className="mt-3.5 border border-line rounded-[14px] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDupOpen((v) => !v)}
+              aria-expanded={dupOpen}
+              className="flex items-center gap-2.5 w-full min-w-0 text-left px-4 py-3 bg-cream-2 text-[13px] font-medium text-ink-soft"
+            >
+              <span className="truncate">
+                {currency} · {channelShortLabel(selectedChannel)} {t("acc_dup_exists") || "уже есть"}
               </span>
-              <span className="text-tiny text-muted-soft">«Копировать» — взять настройку</span>
-            </div>
-            <div className="max-h-[140px] overflow-y-auto divide-y divide-border-soft">
-              {existingSameCurrency.map((a) => {
-                const ch = resolveAccountChannel(a, channels);
-                const sameOffice = a.officeId === officeId;
-                return (
+              <span className="shrink-0 bg-surface rounded-full px-2 py-[1px] text-[11.5px] font-semibold">
+                {existingSameCurrency.length}
+              </span>
+              <span className="hidden sm:inline font-normal text-muted-soft truncate">{t("acc_dup_tail") || "— можно взять за основу"}</span>
+              <ChevronDown
+                className={`ml-auto shrink-0 w-3.5 h-3.5 text-muted transition-transform ${dupOpen ? "rotate-180" : ""}`}
+                strokeWidth={2.2}
+              />
+            </button>
+
+            {dupOpen && (
+              <div className="max-h-[176px] overflow-y-auto">
+                {existingSameCurrency.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-center gap-2 px-3 py-1.5 text-caption hover:bg-white transition-colors"
+                    className="flex items-center gap-2.5 min-w-0 px-4 py-2.5 border-t border-line text-[13.5px]"
                   >
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-ink truncate">{a.name}</div>
-                      <div className="text-tiny text-muted flex items-center gap-1.5 mt-0.5">
-                        <Building2 className="w-2.5 h-2.5" />
-                        <span className={sameOffice ? "text-accent font-semibold" : ""}>
-                          {officeLookup.get(a.officeId) || "—"}
-                        </span>
-                        <span className="text-muted-soft">·</span>
-                        <span className="font-mono">{channelShortLabel(ch)}</span>
-                        {(a.address || a.bankRef) && (
-                          <>
-                            <span className="text-muted-soft">·</span>
-                            <span className="font-mono truncate">
-                              {(a.address || a.bankRef || "").slice(0, 18)}
-                              {(a.address || a.bankRef || "").length > 18 ? "…" : ""}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
+                    <b className="font-semibold truncate">{a.name}</b>
+                    <span className="text-muted truncate">
+                      {officeLookup.get(a.officeId) || "—"}
+                    </span>
                     <button
                       type="button"
                       onClick={() => handleClone(a)}
-                      className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-tiny font-semibold text-ink-soft bg-white border border-border-soft hover:border-border hover:bg-surface-soft transition-colors"
-                      title="Скопировать конфиг: channel, name, адрес/реквизиты"
+                      className="ml-auto shrink-0 text-[12px] font-semibold text-ink-soft px-2.5 py-1 rounded-full border border-line-2 hover:bg-cream-2 hover:text-ink transition-colors"
                     >
-                      <Copy className="w-3 h-3" />
-                      Копировать
+                      {t("acc_dup_use") || "Взять за основу"}
                     </button>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
-        <div>
-          <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-            {t("acc_name") || "Name"}
-          </label>
+        <div className="mt-5">
+          <label className={LABEL}>{t("acc_name") || "Название"}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={isCryptoChannel ? "TRC20 Main" : "Cash · Safe A"}
             autoFocus
-            className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-body outline-none"
+            className={FIELD}
           />
         </div>
 
+        {/* Крипто-поля эталон не рисует, но без адреса счёт на депозит не
+            создаётся — валидация в handleSubmit его требует. Поэтому они
+            остаются, приведённые к тому же виду. */}
         {isCryptoChannel && (
           <>
-            <div>
-              <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-                Адрес кошелька
-              </label>
+            <div className="mt-5">
+              <label className={LABEL}>Адрес кошелька</label>
               <input
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value.trim())}
                 placeholder={selectedChannel?.network === "ERC20" ? "0x…" : "T…"}
-                className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-caption font-mono outline-none"
+                className={`${FIELD} font-mono text-[14px]`}
               />
-              <p className="text-tiny text-muted mt-1">
-                Used by polling to auto-detect incoming transactions.
+              <p className="text-[11.5px] text-muted-soft mt-1.5">
+                По нему опрос ловит входящие переводы.
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Toggle
-                checked={isDeposit}
-                onChange={setIsDeposit}
-                label="Deposit (monitor incoming)"
-              />
-              <Toggle
-                checked={isWithdrawal}
-                onChange={setIsWithdrawal}
-                label="Withdrawal"
-              />
+            <div className="flex items-center gap-3 mt-3.5">
+              <Toggle checked={isDeposit} onChange={setIsDeposit} label="Приём (следить за входящими)" />
+              <Toggle checked={isWithdrawal} onChange={setIsWithdrawal} label="Выдача" />
             </div>
           </>
         )}
 
         {showBankRefField && (
-          <div>
-            <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-              {isQrChannel ? "QR payload / payment link" : "Bank details (optional)"}
+          <div className="mt-5">
+            <label className={LABEL}>
+              {isQrChannel ? "QR payload / ссылка на оплату" : (
+                <>Реквизиты банка <em className={HINT}>· опционально</em></>
+              )}
             </label>
             <input
               type="text"
               value={bankRef}
               onChange={(e) => setBankRef(e.target.value)}
               placeholder={isQrChannel ? "https://… или строка QR" : "IBAN / номер счёта"}
-              className={`w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 outline-none ${
-                isQrChannel ? "text-caption font-mono" : "text-body-sm"
-              }`}
+              className={`${FIELD} ${isQrChannel ? "font-mono text-[14px]" : ""}`}
             />
-            {isQrChannel && (
-              <p className="text-tiny text-muted mt-1">
-                Сохраняется как идентификатор QR-платежа. Можно вставить URL страницы оплаты
-                или payload QR-кода.
-              </p>
-            )}
           </div>
         )}
 
-        <div>
-          <label className="block text-tiny font-semibold text-muted mb-1.5 uppercase tracking-wide">
-            {t("acc_opening") || "Opening balance (optional)"}
-          </label>
-          <input
-            type="text"
-            value={openingBalance}
-            onChange={(e) =>
-              setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
-            }
-            placeholder="0"
-            className="w-full bg-white border border-[#dde0ea] focus:border-[#5b6cff] focus:shadow-[0_0_0_3px_rgba(91,108,255,.12)] rounded-[8px] px-2.5 py-2 text-body tabular-nums outline-none"
-          />
+        {/* Баланс · Номер счёта */}
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="min-w-0">
+            <label className={LABEL}>
+              {t("acc_opening_label") || "Начальный баланс"} <em className={HINT}>· {t("acc_opening_optional") || "опционально"}</em>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={openingBalance}
+                onChange={(e) =>
+                  setOpeningBalance(e.target.value.replace(/[^\d.,]/g, "").replace(",", "."))
+                }
+                placeholder="0"
+                className={`${FIELD} tabular-nums pr-16`}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted font-medium pointer-events-none">
+                {selectedCurrencyMeta?.code || currency}
+              </span>
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <label className={LABEL}>
+              {t("acc_number_label") || "Номер счёта"} <em className={HINT}>· {t("acc_number_from_ledger") || "из леджера"}</em>
+            </label>
+            <div className="relative">
+              {/* TODO: показать будущий номер. Его присваивает сервер в
+                  create_account_v2 (следующий свободный в диапазоне 19xx), а
+                  эндпоинта предпросмотра нет. Считать номер на клиенте нельзя:
+                  два кассира, открывшие форму одновременно, увидели бы один и
+                  тот же — и один из них неверный. */}
+              <input
+                type="text"
+                value="—"
+                readOnly
+                tabIndex={-1}
+                aria-label="Номер счёта присвоит сервер"
+                className={`${FIELD} font-mono text-[14.5px] text-muted-soft pr-14 cursor-default`}
+              />
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] text-muted pointer-events-none">
+                {t("acc_number_auto") || "авто"}
+              </span>
+            </div>
+          </div>
         </div>
 
         {error && (
-          <div className="text-caption font-medium text-danger bg-danger-soft border border-danger/20 rounded-md px-3 py-2">
+          <div className="mt-4 text-[13px] font-medium text-danger bg-danger-soft border border-danger/20 rounded-[14px] px-4 py-2.5">
             {error}
           </div>
         )}
       </div>
 
-      <div className="px-5 py-4 border-t border-border-soft flex items-center justify-end gap-2">
+      <div className="flex items-center gap-2.5 px-4 sm:px-8 pt-5 pb-6 sm:pb-7 mt-4 border-t border-line">
+        <span className="hidden sm:inline text-[12px] text-muted-soft">{t("acc_add_hint") || "Счёт появится в развороте офиса"}</span>
         <button
+          type="button"
           onClick={onClose}
-          className="px-4 py-2 rounded-card bg-surface-sunk text-ink-soft text-body-sm font-semibold hover:bg-surface-sunk transition-colors"
+          className="ml-auto shrink-0 px-5 py-3 rounded-full font-medium text-ink-soft hover:bg-cream-2 hover:text-ink transition-colors"
         >
-          {t("cancel")}
+          {t("cancel") || "Отмена"}
         </button>
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className={`px-4 py-2 rounded-card text-body-sm font-semibold transition-colors ${
+          className={`shrink-0 px-6 py-3 rounded-full text-[15px] font-semibold transition-colors ${
             canSubmit
-              ? "bg-ink text-white hover:bg-ink"
-              : "bg-surface-sunk text-muted-soft cursor-not-allowed"
+              ? "bg-lime text-lime-ink hover:brightness-[1.04]"
+              : "bg-cream-2 text-muted-soft cursor-not-allowed"
           }`}
         >
-          {t("save") || "Save"}
+          {t("acc_add_submit") || "Создать счёт"}
         </button>
       </div>
     </Modal>
+  );
+}
+
+/** Шеврон селекта — рисуем свой, системный убран через appearance-none. */
+function Chevron() {
+  return (
+    <ChevronDown
+      className="absolute right-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none"
+      strokeWidth={2.2}
+    />
   );
 }
 
