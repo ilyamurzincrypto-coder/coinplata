@@ -9,30 +9,33 @@ import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
 import TransactionDetail from "./parts/TransactionDetail.jsx";
 import FloatingCalculator from "../../components/ui/FloatingCalculator.jsx";
-import DashboardTab from "./tabs/DashboardTab.jsx";
-import AssetsTab from "./tabs/AssetsTab.jsx";
-import LiabilitiesTab from "./tabs/LiabilitiesTab.jsx";
-import EquityTab from "./tabs/EquityTab.jsx";
+import OverviewTab from "./tabs/OverviewTab.jsx";
+import StatementsTab from "./tabs/StatementsTab.jsx";
+import ExchangeIncomeTab from "./tabs/ExchangeIncomeTab.jsx";
 import JournalTab from "./tabs/JournalTab.jsx";
-import OpeningInventoryTab from "./tabs/OpeningInventoryTab.jsx";
 
-// Treasury — 5 вкладок: Дашборд / Активы / Пассивы / Капитал / Транзакции
-// (Сделки, Платёжный календарь, ДДС, Корр-счета, P&L, Обороты выпилены
-// 2026-05-26 по решению Кирилла; ключевые сценарии переехали в детальные
-// модалы и транзакционный журнал).
-const BASE_TABS = [
-  { id: "dashboard", labelKey: "trv2_tab_dashboard", component: DashboardTab },
-  { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
-  { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
-  { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
-  { id: "journal", labelKey: "trv2_tab_transactions", component: JournalTab },
-  { id: "opening", labelKey: "trv2_tab_opening", component: OpeningInventoryTab },
+// Четыре раздела вместо шести вкладок: Обзор, Счета и выписки, Журнал
+// операций, Доход обмена. Активы/Пассивы/Капитал/Начальные остатки не исчезли —
+// они стали подтабами «Счетов и выписок», содержимое не переделывалось.
+export const TABS = [
+  { id: "overview", labelKey: "trv2_tab_overview", component: OverviewTab },
+  { id: "statements", labelKey: "trv2_tab_statements", component: StatementsTab },
+  { id: "journal", labelKey: "trv2_tab_journal_ops", component: JournalTab },
+  { id: "exchange_income", labelKey: "trv2_tab_exchange_income", component: ExchangeIncomeTab },
 ];
 
-// Manual journal entries used to be a standalone tab; they now live as a "+ Ручная
-// проводка" button + modal inside the Журнал tab (so a posted entry appears in the
-// list right away, no tab switch). See JournalTab.jsx.
-const TABS = BASE_TABS;
+/**
+ * Куда ведёт старый id вкладки. Ссылки и привычка живут дольше вёрстки: тот,
+ * кто открывал «Пассивы», должен попасть в пассивы, а не на «раздела нет».
+ */
+export const LEGACY_TAB = {
+  dashboard: { tab: "overview" },
+  assets: { tab: "statements", sub: "assets" },
+  liabilities: { tab: "statements", sub: "liabilities" },
+  equity: { tab: "statements", sub: "equity" },
+  opening: { tab: "statements", sub: "opening" },
+  journal: { tab: "journal" },
+};
 
 export default function TreasuryShell({ onOpenHelp = null }) {
   const { t } = useTranslation();
@@ -49,14 +52,24 @@ export default function TreasuryShell({ onOpenHelp = null }) {
     try { localStorage.setItem("coinplata.treasury_office", v); } catch {}
   };
 
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("overview");
+  const [statementsSub, setStatementsSub] = useState("assets");
 
-  // if the active tab id ever becomes invalid, fall back to dashboard
+  // Старый id (в том числе из сохранённой ссылки) уводим в новый раздел,
+  // а не роняем на «Обзор»: иначе закладка на «Пассивы» тихо открывала бы
+  // не то, что человек сохранял.
   useEffect(() => {
-    if (!TABS.some((x) => x.id === activeTab)) setActiveTab("dashboard");
+    if (TABS.some((x) => x.id === activeTab)) return;
+    const to = LEGACY_TAB[activeTab];
+    if (to) {
+      if (to.sub) setStatementsSub(to.sub);
+      setActiveTab(to.tab);
+      return;
+    }
+    setActiveTab("overview");
   }, [activeTab]);
 
-  const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || DashboardTab;
+  const ActiveComp = TABS.find((x) => x.id === activeTab)?.component || OverviewTab;
 
   const ctx = useMemo(
     () => ({ accounts, balances, transactions, entries, toBase, baseCurrency, officeFilter, sinceIso, extendWindow, counterpartyName, counterpartyOptions, clientById, partnerById, clients, partners }),
@@ -127,9 +140,25 @@ export default function TreasuryShell({ onOpenHelp = null }) {
           })}
         </div>
 
-        <ActiveComp ctx={ctx} officeFilter={officeFilter} formatBase={formatBase} baseCurrency={baseCurrency} onOpenTx={openTx} onOpenSource={openSource} />
+        <ActiveComp
+          ctx={ctx}
+          officeFilter={officeFilter}
+          setOffice={setOffice}
+          formatBase={formatBase}
+          baseCurrency={baseCurrency}
+          totals={totals}
+          freshTime={freshTime}
+          initialSub={statementsSub}
+          onOpenTx={openTx}
+          onOpenSource={openSource}
+        />
       </main>
-      <BalanceCheckBar totals={totals} formatBase={formatBase} baseCurrency={baseCurrency} />
+      {/* На Обзоре сверка стоит первой строкой страницы — дублировать её
+          в подвале значит показывать одно и то же дважды. В остальных
+          разделах подвал остаётся единственным местом, где она видна. */}
+      {activeTab !== "overview" && (
+        <BalanceCheckBar totals={totals} formatBase={formatBase} baseCurrency={baseCurrency} />
+      )}
       <TransactionDetail node={selectedTx} onClose={() => setSelectedTx(null)} />
       <FloatingCalculator />
     </div>

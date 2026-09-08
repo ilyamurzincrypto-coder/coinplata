@@ -55,14 +55,22 @@ vi.mock("../../lib/newLedger.js", () => ({ rpcCreateManualEntryV2: () => Promise
 import TreasuryShell from "./TreasuryShell.jsx";
 
 describe("TreasuryShell integration smoke", () => {
-  it("renders the tabs, opens on the Dashboard, and the Assets tab merges single-account currencies into one row on office click", () => {
+  // Навигация стала четырёхраздельной: Активы/Пассивы/Капитал/Начальные
+  // остатки переехали в подтабы «Счетов и выписок», Транзакции стали
+  // «Журналом операций». Путь до содержимого — на клик длиннее.
+  const openAssets = () => {
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_statements" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
+  };
+
+  it("renders the sections, opens on the Overview, and the Assets subtab merges single-account currencies into one row on office click", () => {
     render(<TreasuryShell />);
-    for (const key of ["trv2_tab_dashboard", "trv2_tab_assets", "trv2_tab_liabilities", "trv2_tab_equity", "trv2_tab_transactions"]) {
+    for (const key of ["trv2_tab_overview", "trv2_tab_statements", "trv2_tab_journal_ops", "trv2_tab_exchange_income"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
     }
-    // Dashboard is the landing tab → видим KPI «Капитал (чистый)» из новой шапки
-    expect(screen.getByText("Капитал (чистый)")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
+    // Обзор — стартовый раздел: видна строка сверки.
+    expect(screen.getByText(/Σ Дт/)).toBeInTheDocument();
+    openAssets();
     // ac_cash has officeId null → "no office" row is the only office row; leaves hidden until expanded
     expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
     expect(screen.queryByText("1110")).toBeNull();
@@ -73,7 +81,7 @@ describe("TreasuryShell integration smoke", () => {
 
   it("clicking a leaf account opens the AccountDetailModal with its source-doc link", () => {
     render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
+    openAssets();
     expect(document.body.textContent).not.toContain("D-7");
     fireEvent.click(screen.getByText("trv2_assets_no_office"));
     // merged-строка → клик по № счёта 1110 → модал
@@ -85,7 +93,7 @@ describe("TreasuryShell integration smoke", () => {
   it("switches to Транзакции и видит ссылку на исходный документ в entries-view", () => {
     render(<TreasuryShell />);
     // дефолтное view — entries (плоская таблица); flatEntries показывают D-7 как doc-ссылку
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal_ops" }));
     expect(document.body.textContent).toContain("D-7");
   });
 });
@@ -101,14 +109,14 @@ describe("TreasuryShell — manual entry inline в Транзакциях", () =
     canAccountingEdit = true;
     try { localStorage.removeItem("coinplata:journal-posting-open"); } catch {}
     render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal_ops" }));
     // PostingTab.Провести виден сразу (inline-card открыта)
     expect(screen.getByRole("button", { name: "trv2_pm_post" })).toBeInTheDocument();
   });
   it("скрывает '+Ручная проводка' card без accounting:edit", () => {
     canAccountingEdit = false;
     render(<TreasuryShell />);
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_transactions" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_journal_ops" }));
     expect(screen.queryByRole("button", { name: "trv2_journal_new_manual" })).toBeNull();
   });
 });

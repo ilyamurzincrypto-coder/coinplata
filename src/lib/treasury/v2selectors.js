@@ -645,6 +645,45 @@ function aggregateClass(ctx, accountType, fromMs, toMs, officeFilter, signFn, tx
   return { total, accounts: [...byAccount.values()].sort((a, b) => Math.abs(b.amountInBase) - Math.abs(a.amountInBase)) };
 }
 
+/**
+ * Доход обмена за период: спред плюс переоценка.
+ *
+ * СЧИТАЕМ ПО ПОДТИПУ, А НЕ ПО КЛАССУ. В плане счетов `fx_gain` заведён как
+ * revenue, а `fx_loss` — как expense; искать их среди equity (как это делает
+ * pnlForPeriod) значит не найти никогда: там их нет, и переоценка молча
+ * растворяется в общей выручке и расходе.
+ *
+ * Знак: доход растёт при кредите (+Cr −Dr), убыток — при дебете, и в сумму он
+ * входит со знаком минус. Поэтому одна и та же формула (+Cr −Dr) даёт и
+ * прибавку от gain, и вычет от loss.
+ */
+export function exchangeIncome(ctx, period, officeFilter) {
+  const fromMs = new Date(period.from).getTime();
+  const toMs = new Date(period.to).getTime();
+  const txEffMs = new Map((ctx.transactions || []).map((t) => [t.id, new Date(t.effectiveDate).getTime()]));
+  const { accounts, entries, toBase } = ctx;
+  const accById = new Map(accounts.map((a) => [a.id, a]));
+
+  let spread = 0;
+  let fx = 0;
+  let entryCount = 0;
+  for (const e of entries || []) {
+    const ts = entryEffMs(e, txEffMs);
+    if (ts < fromMs || ts > toMs) continue;
+    const acc = accById.get(e.accountId);
+    if (!acc) continue;
+    const st = acc.subtype;
+    if (st !== "spread" && st !== "fx_gain" && st !== "fx_loss") continue;
+    if (!passesOfficeFilter(acc, officeFilter)) continue;
+    const signed = e.direction === "cr" ? e.amount : -e.amount;
+    const inBase = toBase(signed, e.currency) || 0;
+    if (st === "spread") spread += inBase;
+    else fx += inBase;
+    entryCount += 1;
+  }
+  return { spread, fx, total: spread + fx, entryCount, hasData: entryCount > 0 };
+}
+
 export function pnlForPeriod(ctx, period, officeFilter) {
   const fromMs = new Date(period.from).getTime();
   const toMs = new Date(period.to).getTime();

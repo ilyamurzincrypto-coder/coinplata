@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>CoinPlata — Казначейство · r3</title>
+<style>
+:root{
+  --bg:#F1EBDE; --panel:#EAE3D3; --white:#FDFCF8;
+  --ink:#1A1915; --mut:#8A8577; --mut-soft:#A39D8C;
+  --line:#E2DBCB; --line-2:#CFC8B8;
+  --dark:#17150F; --lime:#C8D96F; --lime-ink:#2E3312;
+  --warn:#B07A3C; --warn-soft:#F6E3D3; --pos:#5C6B1E;
+  --mono:'JetBrains Mono',monospace;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);font-size:13.5px;line-height:1.4}
+.wrap{max-width:1400px;margin:0 auto;padding:14px 24px 40px}
+.head{display:flex;align-items:flex-end;gap:20px;margin-bottom:12px}
+.head h1{font-size:26px;font-weight:600;letter-spacing:-.02em}
+.head .sub{color:var(--mut);margin-top:5px;font-size:13px}
+.tabs{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.tab{padding:9px 16px;border-radius:100px;font-weight:500;color:#6E6858}
+.tab.on{background:var(--dark);color:#F4F3EC}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:flex;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:100px;padding:3px}
+.seg button{padding:7px 14px;border-radius:100px;font-weight:500;color:#6E6858;font-size:12.5px}
+.seg button.on{background:var(--dark);color:#F4F3EC}
+.right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.lblq{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--mut-soft);font-weight:500}
+.office{display:flex;align-items:center;gap:7px;background:var(--white);border:1px solid var(--line);border-radius:100px;padding:8px 15px;font-weight:500;font-size:12.5px}
+.health{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--line);
+  border-radius:18px;padding:13px 18px;margin-bottom:12px;font-weight:500}
+.health .dot{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 4px rgba(200,217,111,.35);flex:none}
+.health .eq{color:var(--mut);font-weight:400}
+.health .sum{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--mut-soft)}
+.panel{background:var(--panel);border-radius:26px;padding:8px;margin-bottom:14px}
+.grp-h,.t-head,.row,.t-foot{display:grid;gap:12px;align-items:center;
+  grid-template-columns:minmax(190px,1.2fr) 1fr 1fr 1fr 54px;padding:0 18px}
+.grp-h{padding-top:10px;padding-bottom:2px;color:var(--mut);font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:500}
+.t-head{padding-bottom:8px;color:var(--mut);font-size:11.5px}
+.t-head .r,.row .r,.t-foot .r,.grp-h .r{text-align:right}
+.rows{background:var(--white);border-radius:18px;overflow:hidden}
+.row{min-height:58px;padding-top:7px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.cid{display:flex;align-items:center;gap:12px;min-width:0}
+.cc{width:30px;height:30px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:11.5px;font-weight:600;background:var(--panel);color:#5F5A48}
+.cc.usdt{background:#17150F;color:var(--lime)}
+.cnm b{display:block;font-size:13.5px;font-weight:600;white-space:nowrap}
+.cnm span{font-size:11.5px;color:var(--mut)}
+.cell{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cell .n{font-size:13.5px;font-weight:600}
+.cell .u{font-size:12px;color:var(--mut-soft);display:block;font-weight:400}
+.cell.neg .n{color:var(--warn)}
+.ok{width:22px;height:22px;border-radius:50%;background:rgba(200,217,111,.4);display:grid;place-items:center;justify-self:end}
+.ok.warn{background:var(--warn-soft)}
+.t-foot{min-height:52px;background:var(--white);border-radius:18px;margin-top:6px;font-weight:600}
+.note{padding:8px 18px 6px;color:var(--mut-soft);font-size:11.5px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.card{background:var(--white);border:1px solid var(--line);border-radius:22px;padding:18px 20px}
+.card .k{font-size:12.5px;color:var(--mut);margin-bottom:8px}
+.card .v{font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.card .v.pos{color:var(--pos)} .card .v.warn{color:var(--warn)}
+.card .s{font-size:12px;color:var(--mut-soft);margin-top:6px}
+.card.dark{background:var(--dark);border-color:var(--dark);color:#F4F3EC}
+.card.dark .k{color:rgba(244,243,236,.6)} .card.dark .v{color:var(--lime)} .card.dark .s{color:rgba(244,243,236,.5)}
+@media (max-width:1150px){
+  .grp-h,.t-head,.row,.t-foot{grid-template-columns:minmax(150px,1.2fr) 1fr 1fr 40px}
+  .col-cap{display:none}
+  .cards{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div><h1>Казначейство</h1><div class="sub">обновлено 22:15 · база USD</div></div>
+    <div class="tabs">
+      <button class="tab on">Обзор</button>
+      <button class="tab">Счета и выписки</button>
+      <button class="tab">Журнал операций</button>
+      <button class="tab">Доход обмена</button>
+    </div>
+  </div>
+
+  <div class="tools">
+    <div class="right">
+      <span class="lblq">Приведение</span>
+      <div class="seg"><button class="on">USD</button><button>EUR</button><button>TRY</button><button>RUB</button></div>
+      <button class="office">Все офисы</button>
+    </div>
+  </div>
+
+  <div class="health">
+    <span class="dot"></span>
+    Всё сходится <span class="eq">— Капитал <b>$243 231</b> = Активы <b>$305 680</b> − Обязательства <b>$62 449</b></span>
+    <span class="sum">Σ Дт = Σ Кт ✓</span>
+  </div>
+
+  <div class="panel">
+    <div class="grp-h"><div></div><div class="r">Активы · наши</div><div class="r">Обязательства · клиентские</div><div class="r col-cap">Капитал</div><div></div></div>
+    <div class="t-head"><div>Валюта</div><div class="r">в валюте / ≈$</div><div class="r">в валюте / ≈$</div><div class="r col-cap">= А − О</div><div class="r">Баланс</div></div>
+    <div class="rows">
+      <div class="row">
+        <div class="cid"><span class="cc">$</span><div class="cnm"><b>USD</b><span>7 счетов</span></div></div>
+        <div class="cell r"><span class="n">96 340,00</span><span class="u">$96 340</span></div>
+        <div class="cell r"><span class="n">12 400,00</span><span class="u">$12 400</span></div>
+        <div class="cell r col-cap"><span class="n">83 940,00</span><span class="u">$83 940</span></div>
+        <span class="ok">✓</span>
+      </div>
+      <div class="row">
+        <div class="cid"><span class="cc">₽</span><div class="cnm"><b>RUB</b><span>4 счёта</span></div></div>
+        <div class="cell r"><span class="n">742 500,00</span><span class="u">$8 250</span></div>
+        <div class="cell r"><span class="n">1 120 000,00</span><span class="u">$12 444</span></div>
+        <div class="cell r col-cap neg"><span class="n">−377 500,00</span><span class="u">−$4 194</span></div>
+        <span class="ok warn">!</span>
+      </div>
+      <div class="row">
+        <div class="cid"><span class="cc usdt">₮</span><div class="cnm"><b>USDT · TRC20</b><span>5 кошельков</span></div></div>
+        <div class="cell r"><span class="n">142 060,00</span><span class="u">$142 060</span></div>
+        <div class="cell r"><span class="n">28 300,00</span><span class="u">$28 300</span></div>
+        <div class="cell r col-cap"><span class="n">113 760,00</span><span class="u">$113 760</span></div>
+        <span class="ok">✓</span>
+      </div>
+    </div>
+    <div class="t-foot">
+      <div class="lbl2">Итого ≈ $</div>
+      <div class="cell r"><span class="n">305 680</span></div>
+      <div class="cell r"><span class="n">62 449</span></div>
+      <div class="cell r col-cap"><span class="n">243 231</span></div>
+      <div></div>
+    </div>
+    <div class="note">Балансовое равенство: Капитал = Активы − Обязательства по каждой валюте · ⚠ у RUB — клиентских обязательств больше, чем активов в рубле · курс USD/RUB 90,0 от 08.09</div>
+  </div>
+
+  <div class="cards">
+    <div class="card dark"><div class="k">Прибыль · месяц</div><div class="v">+$18 640</div><div class="s">214 транзакций · 1 — 8 сентября</div></div>
+    <div class="card"><div class="k">Доход обмена</div><div class="v pos">+$12 380</div><div class="s">спред + переоценка</div></div>
+    <div class="card"><div class="k">Обязательства перед клиентами</div><div class="v">$62 449</div><div class="s">18 активных клиентов</div></div>
+    <div class="card"><div class="k">Валютная позиция</div><div class="v warn">$4 194</div><div class="s">открыто в RUB · короткая</div></div>
+  </div>
+</div>
+</body>
+</html>
