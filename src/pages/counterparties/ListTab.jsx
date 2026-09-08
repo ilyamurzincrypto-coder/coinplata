@@ -8,9 +8,7 @@
 // подсказкой). Унифицированный профиль будет в 2.2.
 
 import React, { useMemo, useState, useCallback } from "react";
-import {
-  Search, Send, Phone, Users, Handshake, Archive, Trash2, ArchiveRestore, UserPlus,
-} from "lucide-react";
+import { Search, Plus, ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import { useTransactions } from "../../store/transactions.jsx";
 import { usePartners } from "../../store/partners.jsx";
 import { useWallets } from "../../store/wallets.jsx";
@@ -50,6 +48,8 @@ export default function ListTab() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // all | client | partner
   const [archiveFilter, setArchiveFilter] = useState("active"); // active | archived | all
+  const [archiveMenu, setArchiveMenu] = useState(false);
+  const [addMenu, setAddMenu] = useState(false);
   // profileFor: { kind: 'client'|'partner', id } — раздельный модал на тип
   const [profileFor, setProfileFor] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -195,14 +195,22 @@ export default function ListTab() {
     });
   }, [merged, typeFilter, archiveFilter, search]);
 
-  const totalVolume = useMemo(
-    () => clientRows.reduce((s, r) => s + (r.volume || 0), 0),
-    [clientRows]
-  );
-  const totalDeals = useMemo(
-    () => clientRows.reduce((s, r) => s + (r.deals || 0), 0),
-    [clientRows]
-  );
+  // Сводка в шапке — ЗА МЕСЯЦ, как обещает подпись эталона. Считать её по всей
+  // истории значило бы подписать «за месяц» под числом за всё время: цифра
+  // выглядит правдоподобно, и ошибку никто не заметит.
+  const monthStartMs = useMemo(() => Date.now() - 30 * 24 * 3600 * 1000, []);
+  const monthStats = useMemo(() => {
+    let deals = 0;
+    let volume = 0;
+    transactions.forEach((tx) => {
+      if (!(tx.counterparty || "").trim()) return;
+      const ts = new Date(`${toISODate(tx.date)}T${tx.time || "00:00"}`).getTime();
+      if (!Number.isFinite(ts) || ts < monthStartMs) return;
+      deals += 1;
+      volume += toBase(tx.amtIn, tx.curIn);
+    });
+    return { deals, volume };
+  }, [transactions, monthStartMs, toBase]);
 
   const handleArchive = async (row, archive = true) => {
     if (row.kind !== "client") return;
@@ -243,141 +251,169 @@ export default function ListTab() {
     }
   };
 
+  // Колонки убираются по одной, начиная с наименее нужной. Имя не ужимается
+  // никогда: строка без имени бесполезна, а именно оно схлопывается первым,
+  // когда фиксированные колонки не влезают.
+  const GRID =
+    "grid-cols-[minmax(0,1fr)_88px_34px] " +
+    "sm:grid-cols-[minmax(0,1fr)_100px_120px_34px] " +
+    "xl:grid-cols-[minmax(240px,1.6fr)_90px_120px_120px_150px_40px]";
+
   return (
-    <div className="space-y-5">
-      {/* Subtitle row — counts */}
-      <div className="text-caption text-muted">
-        {counts.all} {t("cp_total")} · {counts.client} {t("cp_clients_lc")} · {counts.partner} {t("cp_partners_lc")} · {totalDeals} {t("cp_deals_lc")} · {sym}{fmt(totalVolume, base)} {t("cp_volume_lc")}
+    <div>
+      {/* Сводка — под заголовком страницы, как в эталоне. */}
+      <div className="text-[13px] text-muted -mt-1.5 mb-3.5">
+        <b className="text-ink font-semibold">{counts.all}</b> {t("cp_total")} ·{" "}
+        {counts.client} {t("cp_clients_lc")} · {counts.partner} {t("cp_partners_lc")} ·{" "}
+        {t("cp_per_month") || "за месяц"}{" "}
+        <b className="text-ink font-semibold">{monthStats.deals} {t("cp_deals_lc")}</b> ·{" "}
+        {t("cp_volume_lc")} <b className="text-ink font-semibold">{sym}{fmt(monthStats.volume, base)}</b>
       </div>
 
-      {/* Filters bar */}
-      <section className="bg-white rounded-card-lg border border-border-soft overflow-hidden">
-        <div className="px-5 py-4 border-b border-border-soft flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <TypeChip
-              active={typeFilter === "all"}
-              onClick={() => setTypeFilter("all")}
-              count={counts.all}
-              icon={null}
-            >
-              {t("cp_type_all")}
-            </TypeChip>
-            <TypeChip
-              active={typeFilter === "client"}
-              onClick={() => setTypeFilter("client")}
-              count={counts.client}
-              icon={<Users className="w-3 h-3" />}
-              tone="emerald"
-            >
-              {t("cp_type_clients")}
-            </TypeChip>
-            <TypeChip
-              active={typeFilter === "partner"}
-              onClick={() => setTypeFilter("partner")}
-              count={counts.partner}
-              icon={<Handshake className="w-3 h-3" />}
-              tone="indigo"
-            >
-              {t("cp_type_partners")}
-            </TypeChip>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-muted-soft absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={t("cp_search_ph")}
-                className="pl-8 pr-3 py-1.5 bg-surface-soft border border-border-soft focus:bg-white focus:border-border rounded-button text-body-sm outline-none w-64 transition-colors placeholder:text-muted-soft"
-              />
-            </div>
-            <div className="inline-flex bg-surface-sunk p-0.5 rounded-button gap-0.5">
-              {[
-                { id: "active", label: t("client_filter_active") },
-                {
-                  id: "archived",
-                  label: `${t("client_filter_archived")}${archivedCount > 0 ? ` (${archivedCount})` : ""}`,
-                },
-                { id: "all", label: t("client_filter_all") },
-              ].map((o) => (
+      <section className="bg-cream-2 rounded-[26px] p-2">
+        <div className="flex items-center gap-2 flex-wrap px-2.5 py-2.5">
+          {/* Сегмент типа со счётчиками */}
+          <div className="flex gap-0.5 bg-surface border border-line rounded-full p-[3px]">
+            {[
+              { id: "all", label: t("cp_type_all"), n: counts.all },
+              { id: "client", label: t("cp_type_clients"), n: counts.client },
+              { id: "partner", label: t("cp_type_partners"), n: counts.partner },
+            ].map((o) => {
+              const on = typeFilter === o.id;
+              return (
                 <button
                   key={o.id}
                   type="button"
-                  onClick={() => setArchiveFilter(o.id)}
-                  className={`px-2.5 py-1 text-tiny font-semibold rounded-button transition-all ${
-                    archiveFilter === o.id
-                      ? "bg-white text-ink shadow-sm"
-                      : "text-muted hover:text-ink"
+                  onClick={() => setTypeFilter(o.id)}
+                  className={`px-[15px] py-[7px] rounded-full font-medium transition-colors ${
+                    on ? "bg-dark text-cream" : "text-ink-soft hover:bg-cream-2"
                   }`}
                 >
                   {o.label}
+                  <b className={`ml-1.5 text-[12px] font-semibold ${on ? "text-cream/60" : "text-muted-soft"}`}>
+                    {o.n}
+                  </b>
                 </button>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+
+          <div className="flex-1 min-w-[200px] max-w-[360px] flex items-center gap-2.5 bg-surface border border-line rounded-full px-[15px] py-2.5">
+            <Search className="w-3.5 h-3.5 text-muted shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={t("cp_search_ph")}
+              className="w-full bg-transparent border-none outline-none text-[13px] placeholder:text-muted-soft"
+            />
+          </div>
+
+          {/* Архив — одной кнопкой с меню: три пилюли занимали место ради
+              состояния, которое переключают раз в месяц. */}
+          <div className="relative ml-auto">
             <button
-              onClick={() => setAddOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-emerald-600 text-white text-caption font-semibold hover:bg-emerald-700 transition-colors shadow-[0_4px_14px_-4px_rgba(16,185,129,0.5)]"
-              title="Добавить нового клиента"
+              type="button"
+              onClick={() => setArchiveMenu((v) => !v)}
+              className="flex items-center gap-1.5 text-[12.5px] font-medium text-muted hover:text-ink px-3.5 py-2.5 rounded-full hover:bg-[rgba(26,25,21,.05)] transition-colors"
             >
-              <Users className="w-3 h-3" />
-              + Клиента
+              {archiveFilter === "active"
+                ? t("client_filter_active")
+                : archiveFilter === "archived"
+                ? `${t("client_filter_archived")}${archivedCount > 0 ? ` (${archivedCount})` : ""}`
+                : t("client_filter_all")}
+              <ChevronDown className="w-3 h-3" strokeWidth={2.2} />
             </button>
+            {archiveMenu && (
+              <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[190px] bg-surface border border-line rounded-[18px] shadow-[0_14px_40px_rgba(26,25,21,.16)] p-1.5">
+                {[
+                  { id: "active", label: t("client_filter_active") },
+                  { id: "archived", label: `${t("client_filter_archived")}${archivedCount > 0 ? ` (${archivedCount})` : ""}` },
+                  { id: "all", label: t("client_filter_all") },
+                ].map((o) => (
+                  <button
+                    key={o.id}
+                    type="button"
+                    onClick={() => { setArchiveFilter(o.id); setArchiveMenu(false); }}
+                    className={`flex w-full text-left px-3.5 py-2.5 rounded-xl font-medium transition-colors ${
+                      archiveFilter === o.id ? "bg-cream-2 text-ink" : "text-ink-soft hover:bg-cream-2"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* «Добавить» — одна кнопка на оба типа: клиент и партнёр заводятся
+              разными формами, но для кассира это одно действие. */}
+          <div className="relative">
             <button
-              onClick={() => setAddPartnerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-button bg-indigo-600 text-white text-caption font-semibold hover:bg-indigo-700 transition-colors shadow-[0_4px_14px_-4px_rgba(99,102,241,0.5)]"
-              title="Добавить нового партнёра (контрагента для OTC сделок)"
+              type="button"
+              onClick={() => setAddMenu((v) => !v)}
+              className="inline-flex items-center gap-2 bg-lime text-lime-ink px-5 py-2.5 rounded-full font-semibold hover:brightness-[1.03] transition-[filter]"
             >
-              <Handshake className="w-3 h-3" />
-              + Партнёра
+              <Plus className="w-4 h-4" strokeWidth={2.6} />
+              {t("cp_add") || "Добавить"}
             </button>
+            {addMenu && (
+              <div className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[200px] bg-surface border border-line rounded-[18px] shadow-[0_14px_40px_rgba(26,25,21,.16)] p-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setAddMenu(false); setAddOpen(true); }}
+                  className="flex w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-ink-soft hover:bg-cream-2 hover:text-ink transition-colors"
+                >
+                  {t("cp_add_client") || "Клиента"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddMenu(false); setAddPartnerOpen(true); }}
+                  className="flex w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-ink-soft hover:bg-cream-2 hover:text-ink transition-colors"
+                >
+                  {t("cp_add_partner") || "Партнёра"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-body-sm">
-            <thead>
-              <tr className="text-left text-tiny font-bold text-muted tracking-[0.1em] uppercase border-b border-border-soft">
-                <th className="px-5 py-2.5 font-bold">{t("cp_col_name")}</th>
-                <th className="px-3 py-2.5 font-bold">{t("cp_col_type")}</th>
-                <th className="px-3 py-2.5 font-bold text-right">{t("cp_col_activity")}</th>
-                <th className="px-3 py-2.5 font-bold text-right hidden sm:table-cell">{t("cp_col_volume")}</th>
-                <th className="px-3 py-2.5 font-bold text-right hidden md:table-cell">{t("cp_col_net")}</th>
-                <th className="px-5 py-2.5 font-bold hidden lg:table-cell">{t("cp_col_last_activity")}</th>
-                <th className="px-3 py-2.5 font-bold w-24 text-right"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => (
-                <Row
-                  key={`${r.kind}:${r.id || r.nickname}`}
-                  row={r}
-                  base={base}
-                  sym={sym}
-                  onClick={() => {
-                    if (!r.id) return;
-                    setProfileFor({ kind: r.kind, id: r.id });
-                  }}
-                  onArchive={(archive) => handleArchive(r, archive)}
-                  onDelete={() => handleDelete(r)}
-                  busy={busyId === r.id}
-                  t={t}
-                />
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-5 py-12 text-center text-body-sm text-muted-soft">
-                    {search
-                      ? t("cp_no_match")
-                      : archiveFilter === "archived"
-                      ? t("cp_no_archived")
-                      : t("cp_no_yet")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className={`grid ${GRID} gap-3.5 items-center px-[18px] py-2 text-[11.5px] text-muted`}>
+          <div>{t("cp_col_name")}</div>
+          <div className="text-right hidden xl:block">{t("cp_col_activity")}</div>
+          <div className="text-right hidden xl:block">{t("cp_col_volume")}</div>
+          <div className="text-right">{t("cp_col_net")}</div>
+          <div className="text-right hidden sm:block">{t("cp_col_last_activity")}</div>
+          <div />
+        </div>
+
+        <div className="bg-surface rounded-[18px] overflow-hidden">
+          {filtered.map((r) => (
+            <Row
+              key={`${r.kind}:${r.id || r.nickname}`}
+              row={r}
+              base={base}
+              sym={sym}
+              grid={GRID}
+              onClick={() => {
+                if (!r.id) return;
+                setProfileFor({ kind: r.kind, id: r.id });
+              }}
+              onArchive={(archive) => handleArchive(r, archive)}
+              onDelete={() => handleDelete(r)}
+              busy={busyId === r.id}
+              t={t}
+            />
+          ))}
+          {filtered.length === 0 && (
+            <div className="px-5 py-12 text-center text-[13px] text-muted-soft">
+              {search
+                ? t("cp_no_match")
+                : archiveFilter === "archived"
+                ? t("cp_no_archived")
+                : t("cp_no_yet")}
+            </div>
+          )}
         </div>
       </section>
 
@@ -445,148 +481,149 @@ export default function ListTab() {
   );
 }
 
-function Row({ row, base, sym, onClick, onArchive, onDelete, busy, t }) {
-  const initials = row.name
+/**
+ * Активность по-человечески: «сегодня · 14:03», «вчера», «3 дн назад».
+ *
+ * Сырая метка «2001-04-20 12:58» формально точнее, но по ней не видно
+ * главного — насколько давно это было; а именно за этим в колонку и смотрят.
+ * Дальше месяца показываем дату: «3 дн назад» там уже не помогает.
+ */
+export function formatActivity(raw, t, now = Date.now()) {
+  if (!raw) return "";
+  const iso = String(raw).trim().replace(" ", "T");
+  const ts = new Date(iso.length <= 10 ? `${iso}T00:00` : iso).getTime();
+  if (!Number.isFinite(ts)) return String(raw);
+
+  const dayMs = 86400000;
+  const startOf = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const days = Math.round((startOf(now) - startOf(ts)) / dayMs);
+  const hhmm = new Date(ts).toTimeString().slice(0, 5);
+  const hasTime = String(raw).trim().length > 10 && hhmm !== "00:00";
+
+  if (days === 0) return hasTime ? `${t("cp_today") || "сегодня"} · ${hhmm}` : (t("cp_today") || "сегодня");
+  if (days === 1) return t("cp_yesterday") || "вчера";
+  if (days > 1 && days <= 30) return (t("cp_days_ago") || "{n} дн назад").replace("{n}", String(days));
+  return new Date(ts).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
+
+/**
+ * Строка контрагента.
+ *
+ * Архив и удаление уехали из строки в профиль: hover-иконки на строке, которая
+ * вся кликабельна, — способ архивировать клиента вместо того чтобы его открыть.
+ */
+function Row({ row, base, sym, grid, onClick, onArchive, onDelete, busy, t }) {
+  const [menu, setMenu] = useState(false);
+  const initials = (row.name || row.nickname || "")
     .split(/\s+/)
     .map((w) => w[0] || "")
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  const isClient = row.kind === "client";
-  const clickable = isClient && !!row.id;
-  const showActions = isClient && row.id && isUuid(row.id);
+  const isPartner = row.kind === "partner";
+  const clickable = !!row.id;
+  // Подпись под именем: телеграм или телефон, что есть.
+  const contact = row.telegram
+    ? (row.telegram.startsWith("@") ? row.telegram : `@${row.telegram}`)
+    : row.phone || "";
+  const zero = !row.deals && !row.volume;
+  const showActions = row.kind === "client" && row.id && isUuid(row.id);
 
   return (
-    <tr
+    <div
       onClick={clickable ? onClick : undefined}
-      className={`group border-b border-border-soft hover:bg-surface-soft transition-colors ${
-        clickable ? "cursor-pointer" : "cursor-default"
+      className={`grid ${grid} gap-3.5 items-center px-[18px] py-[5px] min-h-[52px] border-b border-line last:border-b-0 transition-colors ${
+        clickable ? "cursor-pointer hover:bg-[rgba(26,25,21,.02)]" : ""
       } ${row.archived ? "opacity-60" : ""}`}
     >
-      <td className="px-5 py-3">
-        <div className="flex items-center gap-2.5">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center text-tiny font-bold ${
-              isClient
-                ? "bg-gradient-to-br from-surface-sunk to-surface-sunk text-ink-soft"
-                : "bg-gradient-to-br from-indigo-100 to-indigo-200 text-accent"
-            }`}
-          >
-            {initials}
-          </div>
-          <div>
-            <div className="font-semibold text-ink text-body-sm flex items-center gap-1.5">
-              {row.name}
-              {isClient && <ClientTag tag={row.tag} size="xs" />}
-            </div>
-            <div className="flex items-center gap-2 text-tiny text-muted">
-              {row.telegram && (
-                <span className="inline-flex items-center gap-0.5 text-info">
-                  <Send className="w-2.5 h-2.5" />
-                  {row.telegram}
-                </span>
-              )}
-              {row.phone && (
-                <span className="inline-flex items-center gap-0.5">
-                  <Phone className="w-2.5 h-2.5" />
-                  {row.phone}
-                </span>
-              )}
-            </div>
-          </div>
+      <div className="flex items-center gap-3 min-w-0">
+        <span
+          className={`w-8 h-8 shrink-0 rounded-full grid place-items-center text-[11px] font-semibold ${
+            isPartner ? "bg-dark text-lime" : "bg-cream-2 text-ink-soft"
+          }`}
+        >
+          {initials}
+        </span>
+        <div className="min-w-0">
+          <b className="block text-[13.5px] font-semibold truncate">
+            {row.name}
+            {isPartner && (
+              <em className="not-italic font-semibold text-warning ml-2 text-[12px]">
+                {t("cp_type_partner_badge")}
+              </em>
+            )}
+          </b>
+          {contact && (
+            <span className="block text-[11.5px] text-muted font-mono truncate">{contact}</span>
+          )}
         </div>
-      </td>
-      <td className="px-3 py-3">
-        <TypeBadge kind={row.kind} t={t} />
-      </td>
-      <td className="px-3 py-3 text-right tabular-nums font-semibold">
-        {row.deals == null ? <span className="text-muted-soft">—</span> : row.deals}
-      </td>
-      <td className="px-3 py-3 text-right tabular-nums text-ink-soft hidden sm:table-cell">
-        {row.volume == null ? (
+      </div>
+
+      <div className={`text-right tabular-nums text-[13px] hidden xl:block ${zero ? "text-muted-soft" : "text-ink-soft"}`}>
+        {row.deals == null ? "—" : row.deals}
+      </div>
+
+      <div className={`text-right tabular-nums text-[13px] hidden xl:block ${zero ? "text-muted-soft" : "text-ink-soft"}`}>
+        {row.volume == null ? "—" : `${sym}${fmt(row.volume, base)}`}
+      </div>
+
+      <div className="text-right tabular-nums text-[13px] whitespace-nowrap">
+        {row.net == null || zero ? (
           <span className="text-muted-soft">—</span>
         ) : (
-          <>{sym}{fmt(row.volume, base)}</>
-        )}
-      </td>
-      <td className="px-3 py-3 text-right tabular-nums hidden md:table-cell">
-        {row.net == null ? (
-          <span className="text-muted-soft">—</span>
-        ) : (
-          <span
-            className={`inline-flex items-center px-2 py-1 rounded-md text-body-sm font-bold ${
-              row.net >= 0
-                ? "bg-success-soft text-success ring-1 ring-emerald-100"
-                : "bg-danger-soft text-danger ring-1 ring-rose-100"
-            }`}
-          >
-            {row.net >= 0 ? "+" : ""}{sym}{fmt(row.net, base)}
+          <span className={row.net >= 0 ? "text-success font-semibold" : "text-warning font-semibold"}>
+            {row.net >= 0 ? "+" : "−"}{sym}{fmt(Math.abs(row.net), base)}
           </span>
         )}
-      </td>
-      <td className="px-5 py-3 text-muted text-caption tabular-nums whitespace-nowrap hidden lg:table-cell">
-        {row.lastActivity || "—"}
-      </td>
-      <td
-        className="px-3 py-3 text-right whitespace-nowrap"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {showActions ? (
-          <div className="inline-flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-            {row.archived ? (
-              <button
-                onClick={() => onArchive(false)}
-                disabled={busy}
-                title={t("client_restore_tip")}
-                className="p-1.5 rounded-md text-muted-soft hover:text-success hover:bg-success-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ArchiveRestore className="w-3.5 h-3.5" />
-              </button>
-            ) : (
-              <button
-                onClick={() => onArchive(true)}
-                disabled={busy}
-                title={t("client_archive_tip")}
-                className="p-1.5 rounded-md text-muted-soft hover:text-warning hover:bg-warning-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <Archive className="w-3.5 h-3.5" />
-              </button>
-            )}
+      </div>
+
+      <div className={`text-right text-[12.5px] whitespace-nowrap hidden sm:block ${row.lastActivity ? "text-muted" : "text-muted-soft"}`}>
+        {formatActivity(row.lastActivity, t) || "—"}
+      </div>
+
+      {/* В покое — только шеврон, как в эталоне. Архив и удаление живут в
+          меню: убрать их совсем было нельзя — в профиле клиента этих действий
+          нет, и они пропали бы из кассы вовсе. */}
+      <div className="justify-self-end relative" onClick={(e) => e.stopPropagation()}>
+        {showActions && menu && (
+          <div className="absolute right-0 top-[calc(100%+4px)] z-30 min-w-[190px] bg-surface border border-line rounded-[16px] shadow-[0_14px_40px_rgba(26,25,21,.16)] p-1.5">
             <button
-              onClick={onDelete}
-              disabled={busy || (row.deals || 0) > 0}
-              title={
-                (row.deals || 0) > 0
-                  ? t("client_delete_blocked_tip").replace("{n}", String(row.deals))
-                  : t("client_delete_tip")
-              }
-              className="p-1.5 rounded-md text-muted-soft hover:text-danger hover:bg-danger-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              type="button"
+              disabled={busy}
+              onClick={() => { setMenu(false); onArchive(!row.archived ? true : false); }}
+              className="flex w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-ink-soft hover:bg-cream-2 hover:text-ink disabled:opacity-40 transition-colors"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              {row.archived ? t("client_restore_tip") : t("client_archive_tip")}
+            </button>
+            <button
+              type="button"
+              disabled={busy || (row.deals || 0) > 0}
+              title={(row.deals || 0) > 0 ? t("client_delete_blocked_tip").replace("{n}", String(row.deals)) : ""}
+              onClick={() => { setMenu(false); onDelete(); }}
+              className="flex w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-danger hover:bg-danger-soft disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              {t("client_delete_tip")}
             </button>
           </div>
-        ) : (
-          <span className="text-tiny text-muted-soft italic">—</span>
         )}
-      </td>
-    </tr>
-  );
-}
-
-function TypeBadge({ kind, t }) {
-  if (kind === "client") {
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-bold uppercase tracking-wider bg-success-soft text-success ring-1 ring-emerald-200">
-        <Users className="w-2.5 h-2.5" />
-        {t("cp_type_client_badge")}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-tiny font-bold uppercase tracking-wider bg-accent-bg text-accent ring-1 ring-indigo-200">
-      <Handshake className="w-2.5 h-2.5" />
-      {t("cp_type_partner_badge")}
-    </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            if (!showActions) { onClick?.(); return; }
+            e.stopPropagation();
+            setMenu((v) => !v);
+          }}
+          className="w-[26px] h-[26px] rounded-full grid place-items-center bg-[rgba(26,25,21,.045)] hover:bg-[rgba(26,25,21,.09)] transition-colors"
+          aria-label={showActions ? "Действия" : "Открыть"}
+        >
+          {menu ? (
+            <MoreHorizontal className="w-3.5 h-3.5 text-ink" strokeWidth={2} />
+          ) : (
+            <ChevronRight className="w-3 h-3 text-ink" strokeWidth={2} />
+          )}
+        </button>
+      </div>
+    </div>
   );
 }
 
