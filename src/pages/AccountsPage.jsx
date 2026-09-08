@@ -200,9 +200,10 @@ export default function AccountsPage({ onOpenHelp = null }) {
   const [addAccountFor, setAddAccountFor] = useState(null);
   const [editAccountFor, setEditAccountFor] = useState(null);
   const [importOpen, setImportOpen] = useState(false);
-  // Вкладка страницы. Срез Все/Фиат/Крипто переехал в пилюли тёмной полосы
-  // (эталон accounts-r9) и живёт отдельным состоянием `mode`.
-  const [activeTab, setActiveTab] = useState("accounts");
+  // Срез Все/Фиат/Крипто — пилюли тёмной полосы (эталон accounts-r9).
+  // Вкладок «История ОТС / Перемещения / Журнал» на этой странице нет:
+  // убраны по решению владельца. Панели OtcHistoryPanel / TransfersPanel /
+  // LedgerPanel остались в файле неиспользованными — под будущий раздел.
   const [mode, setMode] = useState("all"); // all | fiat | crypto
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("total"); // total | name
@@ -393,57 +394,30 @@ export default function AccountsPage({ onOpenHelp = null }) {
 
   return (
     <main className="max-w-[1400px] mx-auto px-6 pt-3.5 pb-10 space-y-3.5">
-      {/* Вкладки страницы. Срез Все/Фиат/Крипто — пилюли в тёмной полосе
-          (эталон), поэтому здесь остались только соседние разделы; их
-          содержимое не трогалось. */}
-      <div className="flex gap-1 flex-wrap">
-        {[
-          { id: "accounts", label: "Счета" },
-          { id: "otc", label: "История OTC" },
-          { id: "transfers", label: "Перемещения" },
-          { id: "ledger", label: "Журнал" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 rounded-pill text-body-sm whitespace-nowrap transition-colors motion-reduce:transition-none ${
-              activeTab === tab.id
-                ? "bg-surface border border-line-2 font-semibold"
-                : "border border-line text-ink-soft font-medium hover:bg-cream-2"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {activeTab === "accounts" && (
-        <AccountsOverview
-          model={overview}
-          base={base}
-          mode={mode}
-          onModeChange={setMode}
-          query={query}
-          onQueryChange={setQuery}
-          sort={sort}
-          onSortChange={setSort}
-          onImportCsv={() => setImportOpen(true)}
-          onExportCsv={accounts.length ? handleExportAccounts : undefined}
-          onImportWallets={() => setWalletImportOpen(true)}
-          onShare={() => setShareOpen(true)}
-          onHelp={onOpenHelp ? () => onOpenHelp({ sectionId: "accounts" }) : undefined}
-          onAmlOverview={hasCrypto ? () => setAmlOpen(true) : undefined}
-          onTurnover={hasCrypto ? () => setTurnoverOpen(true) : undefined}
-          onAddAccount={(office) => setAddAccountFor({ officeId: office.id, officeName: office.name })}
-          onTopUp={setTopUpFor}
-          onAdjust={setAdjustFor}
-          onHistory={setHistoryFor}
-          onEdit={canEditAccount ? setEditAccountFor : undefined}
-          onDelete={handleDeleteAccount}
-          onOpenWallet={openWallet}
-        />
-      )}
+      <AccountsOverview
+        model={overview}
+        base={base}
+        mode={mode}
+        onModeChange={setMode}
+        query={query}
+        onQueryChange={setQuery}
+        sort={sort}
+        onSortChange={setSort}
+        onImportCsv={() => setImportOpen(true)}
+        onExportCsv={accounts.length ? handleExportAccounts : undefined}
+        onImportWallets={() => setWalletImportOpen(true)}
+        onShare={() => setShareOpen(true)}
+        onHelp={onOpenHelp ? () => onOpenHelp({ sectionId: "accounts" }) : undefined}
+        onAmlOverview={hasCrypto ? () => setAmlOpen(true) : undefined}
+        onTurnover={hasCrypto ? () => setTurnoverOpen(true) : undefined}
+        onAddAccount={(office) => setAddAccountFor({ officeId: office.id, officeName: office.name })}
+        onTopUp={setTopUpFor}
+        onAdjust={setAdjustFor}
+        onHistory={setHistoryFor}
+        onEdit={canEditAccount ? setEditAccountFor : undefined}
+        onDelete={handleDeleteAccount}
+        onOpenWallet={openWallet}
+      />
 
       {shareOpen && (
         <ShareLinksModal scope={mode} onClose={() => setShareOpen(false)} />
@@ -465,7 +439,7 @@ export default function AccountsPage({ onOpenHelp = null }) {
         <WalletDetail account={detailWallet.account} ledgerUsd={detailWallet.ledgerUsd} onBack={() => setDetailWallet(null)} />
       )}
 
-      {false && activeTab === "operations" && officeBlocks.map((block, blockIdx) => {
+      {false && officeBlocks.map((block, blockIdx) => {
         const { office, totals, currencyBlocks, accsCount } = block;
         const isFirstBlock = blockIdx === 0;
         const isLastBlock = blockIdx === officeBlocks.length - 1;
@@ -618,21 +592,6 @@ export default function AccountsPage({ onOpenHelp = null }) {
           </section>
         );
       })}
-
-      {/* TAB: История OTC */}
-      {activeTab === "otc" && (
-        <OtcHistoryPanel transactions={transactions} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
-      )}
-
-      {/* TAB: Перемещения */}
-      {activeTab === "transfers" && (
-        <TransfersPanel transfers={transfers} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
-      )}
-
-      {/* TAB: Журнал — все movements */}
-      {activeTab === "ledger" && (
-        <LedgerPanel movements={movements} accountsById={Object.fromEntries(accounts.map((a) => [a.id, a]))} />
-      )}
 
       <TopUpModal account={topUpFor} onClose={() => setTopUpFor(null)} />
       <BalanceAdjustmentModal
