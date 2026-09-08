@@ -20,6 +20,38 @@ import { presetWindow } from "../PeriodPicker.jsx";
 const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
 const PROFIT_PRESETS = ["today", "week", "month", "quarter", "year"];
 
+/**
+ * Строки балансовой таблицы.
+ *
+ * СТРОКА = ВАЛЮТА, В КОТОРОЙ ОТКРЫТ СЧЁТ, а не «валюта, по которой были
+ * движения». Пустой счёт — это не отсутствие счёта, а ноль на нём; спрятав
+ * его, мы показали бы неполный план счетов, и валюта, в которой офис реально
+ * работает, выглядела бы незаведённой. Тождество на такой строке выполняется
+ * (0 = 0 − 0), поэтому и галочка там зелёная.
+ *
+ * Порядок: сначала валюты с деньгами, дальше пустые по алфавиту — нули не
+ * должны отодвигать вниз то, ради чего страницу открыли.
+ */
+export function balanceRows(moved, accountsByCcy) {
+  const byCcy = new Map((moved || []).map((r) => [r.currency, r]));
+  const zero = (currency) => ({
+    currency, nostro: 0, loro: 0, nostroBase: 0, loroBase: 0, capital: 0, capitalBase: 0,
+  });
+  const all = [...new Set([...(accountsByCcy?.keys() || []), ...byCcy.keys()])];
+  return all
+    .map((c) => byCcy.get(c) || zero(c))
+    .sort((a, b) => {
+      const d = Math.abs(b.capitalBase) - Math.abs(a.capitalBase);
+      return d !== 0 ? d : a.currency.localeCompare(b.currency);
+    });
+}
+
+/** Офисный фильтр — как в селекторах: "all" пропускает всё. */
+function passesOffice(acc, officeFilter) {
+  if (!officeFilter || officeFilter === "all") return true;
+  return acc.officeId === officeFilter;
+}
+
 /** Символ валюты для кружка. Неизвестной — первая буква кода. */
 function ccySymbol(code) {
   return { USD: "$", EUR: "€", TRY: "₺", RUB: "₽", GBP: "£", CHF: "₣", USDT: "₮", USDC: "₮" }[code]
@@ -50,20 +82,24 @@ export default function OverviewTab({
   const [presetOpen, setPresetOpen] = useState(false);
   const profitPeriod = useMemo(() => presetWindow(profitPreset), [profitPreset]);
 
-  const rows = useMemo(() => capitalByCurrency({ ...ctx, officeFilter }), [ctx, officeFilter]);
-
-  // Счетов на валюту — считаем по счетам, а не по остаткам: счёт без движений
+  // Счетов на валюту — по плану счетов, а не по остаткам: счёт без движений
   // всё равно открыт, и в «7 счетов» он входит.
   const accountsByCcy = useMemo(() => {
     const m = new Map();
     for (const a of ctx.accounts || []) {
       if (a.type !== "asset" && a.type !== "liability") continue;
+      if (!passesOffice(a, officeFilter)) continue;
       const c = a.currency;
       if (!c) continue;
       m.set(c, (m.get(c) || 0) + 1);
     }
     return m;
-  }, [ctx.accounts]);
+  }, [ctx.accounts, officeFilter]);
+
+  const rows = useMemo(
+    () => balanceRows(capitalByCurrency({ ...ctx, officeFilter }), accountsByCcy),
+    [ctx, officeFilter, accountsByCcy]
+  );
 
   const profit = useMemo(
     () => pnlForPeriod(ctx, profitPeriod, officeFilter),
@@ -224,9 +260,19 @@ export default function OverviewTab({
             );
           })}
 
+          {/* Пусто только когда счетов нет ВООБЩЕ. «Нет движений» и «нет
+              счетов» — разные состояния: первое чинится сделкой, второе —
+              заведением счёта, и подсказка должна вести в нужное место. */}
           {rows.length === 0 && (
-            <div className="px-5 py-12 text-center text-[13px] text-muted-soft">
-              {t("trv2_ov_empty")}
+            <div className="px-5 py-12 text-center">
+              <p className="text-[13px] text-muted-soft">{t("trv2_ov_no_accounts")}</p>
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent("coinplata:navigate", { detail: "accounts" }))}
+                className="mt-2.5 text-[13px] font-medium text-ink underline underline-offset-4 decoration-line-2 hover:decoration-ink transition-colors"
+              >
+                {t("trv2_ov_go_accounts")}
+              </button>
             </div>
           )}
         </div>

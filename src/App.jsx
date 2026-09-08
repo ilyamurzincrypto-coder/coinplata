@@ -151,6 +151,18 @@ function Root() {
     setPage("info");
   };
 
+  // Переход между разделами из глубины страницы: вкладке не нужен ни роутер,
+  // ни проброс колбэка через три уровня — она просто говорит, куда хочет.
+  // Права проверяет тот же гард ниже, что и для клика по меню.
+  useEffect(() => {
+    const go = (e) => {
+      const next = e?.detail;
+      if (next && PAGE_SECTION[next] !== undefined) handlePageChange(next);
+    };
+    window.addEventListener("coinplata:navigate", go);
+    return () => window.removeEventListener("coinplata:navigate", go);
+  }); // без deps: handlePageChange пересоздаётся каждый рендер
+
   // Если на текущую страницу нет прав — отправляем на cashier.
   // «Капитал» больше не существует как страница — редиректим на Казначейство.
   useEffect(() => {
