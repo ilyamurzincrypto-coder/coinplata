@@ -12,6 +12,7 @@ import RatesAuxPanel from "./RatesAuxPanel.jsx";
 import { loadQrSpread, saveQrSpread, canEditQrSpread, QR_SOURCE } from "../../lib/qrSpread.js";
 import { usdtPer } from "../../lib/rates.js";
 import { useAuth } from "../../store/auth.jsx";
+import { feedStaleness, formatAge } from "../../lib/feedStaleness.js";
 
 // Замки зафиксированных итоговых цен (переживают переоткрытие панели).
 const LOCKS_KEY = "rates_control_locks_v1";
@@ -72,7 +73,7 @@ const NAL_DIRS = NAL_CCYS.flatMap(({ c, dp }) => [
   { from: "TRY", to: c, feed: `${c}_TRY`, dp, key: `TRY_${c}` },
 ]);
 const TREND_WINS = [[30, "30м"], [60, "1ч"], [180, "3ч"]];
-function NalBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWin, setTrendWin }) {
+function NalBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWin, setTrendWin, stale }) {
   return (
     <Card title="Нал" badge="Tolunay" badgeColor="bg-accent" hint={<>Цена Tolunay единая (TRY за 1 валюту). Колонка «{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад» — какой курс был столько времени назад (▲ вырос / ▼ упал / • без изменений). Итог = цена + спред (коп.).</>}>
       <div className="flex items-center gap-1 px-3.5 pt-2">
@@ -103,15 +104,21 @@ function NalBlock({ city, setCity, rows, onSpread, onItog, onToggleLock, trendWi
           ))}
         </div>
       </div>
+      {stale?.stale && (
+        // Источник молчит: цена ниже — последний снимок, а не текущий рынок.
+        <div className="mx-3.5 mt-2 rounded-[6px] bg-warning-soft px-2 py-1 text-[10px] font-semibold leading-tight text-warning">
+          Данные от {stale.lastAt.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })} · источник недоступен {formatAge(stale.ageMin)}
+        </div>
+      )}
       <div className="grid px-3.5 pt-2 pb-1 text-[8.5px] font-semibold uppercase tracking-wide text-muted-soft" style={{ gridTemplateColumns: "66px 50px 64px 48px 74px" }}>
         <span>Напр.</span><span className="text-right">Цена</span><span className="text-right">{TREND_WINS.find(([m]) => m === trendWin)?.[1]} назад</span><span className="text-right">Спр.</span><span className="text-right">Итог</span>
       </div>
       {rows.map((r) => {
-        const delta = r.prev != null && r.price ? r.price - r.prev : null;
+        const delta = stale?.stale || r.prev == null || !r.price ? null : r.price - r.prev;
         return (
           <div key={r.key} className="grid items-center px-3.5 py-2 border-t border-border-soft" style={{ gridTemplateColumns: "66px 50px 64px 48px 74px" }}>
             <div className="font-mono text-[12px] font-semibold text-ink whitespace-nowrap">{r.from}<span className="text-muted-soft">→</span>{r.to}</div>
-            <div className="text-right font-mono tabular-nums text-[12px] text-ink-soft" title="Цена Tolunay (авто)">{r.price ? fmt(r.price, r.dp) : "—"}</div>
+            <div className={`text-right font-mono tabular-nums text-[12px] ${stale?.stale ? "text-muted-soft" : "text-ink-soft"}`} title={stale?.stale ? `Последний снимок Tolunay, ${formatAge(stale.ageMin)} назад` : "Цена Tolunay (авто)"}>{r.price ? fmt(r.price, r.dp) : "—"}</div>
             <div className="text-right pr-3">
               {delta != null ? (
                 <span className={`inline-flex items-center gap-1 font-mono tabular-nums text-[12px] font-semibold ${delta > 0 ? "text-success" : delta < 0 ? "text-danger" : "text-muted-soft"}`} title={`было ${fmt(r.prev, r.dp)} · Δ ${delta > 0 ? "+" : ""}${fmt(delta, r.dp)}`}>
@@ -447,6 +454,9 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
     for (const r of history || []) if (out[r.pair] === undefined) out[r.pair] = r;
     return out;
   };
+  // Свежесть фида Нала. Пересчитывается при обновлении истории (её тянет
+  // поллинг родителя) — отдельного таймера не заводим.
+  const tolStale = useMemo(() => feedStaleness(tolHistory), [tolHistory]);
   const tolCur = useMemo(() => curFromHistory(tolHistory), [tolHistory]);
   const rapiraCur = useMemo(() => curFromHistory(rapiraHistory), [rapiraHistory]);
   const tolPrev = useMemo(() => prevFromHistory(tolHistory), [tolHistory, trendWin]);
@@ -569,9 +579,9 @@ export default function RatesControlPanel({ offices, getGP, getRate, getOverride
 
       <div className="flex gap-4 items-start">
         <div className="flex flex-col gap-3 shrink-0">
-          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
+          <NalBlock city={nalCity} setCity={setNalCity} rows={nalRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} stale={tolStale} />
           <TrBlock rows={tr} setRows={setTr} />
-          <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} />
+          <RuBlock city={ruCity} setCity={setRuCity} rows={ruRows} onSpread={onSpreadEdit} onItog={onItogEdit} onToggleLock={toggleLock} trendWin={trendWin} setTrendWin={setTrendWin} stale={tolStale} />
           <QrBlock cbr={cbr} getRate={getRate} currentUser={currentUser} />
         </div>
         <div className="flex-1 min-w-0 self-stretch">
