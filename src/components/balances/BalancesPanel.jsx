@@ -14,6 +14,18 @@ import { BAL_COLUMNS, ccyMeta, fmtRu, splitParts } from "./currencyMeta.js";
 import CurrencyByOfficePopover from "./CurrencyByOfficePopover.jsx";
 import { MANAGER_ORDERS_ENABLED, loadPendingOrders, subscribeOrders } from "../../lib/managerOrders.js";
 import { HeroNumber } from "../ui/redesign.jsx";
+import { Lock, LockOpen } from "lucide-react";
+
+// Замочек в шапке: закрыт — карточка залипает под топбаром и едет за скроллом,
+// открыт — стоит на месте и уезжает вместе со страницей. Выбор — per-browser.
+const PIN_KEY = "coinplata.balancesPinned";
+function readPinned() {
+  try {
+    return localStorage.getItem(PIN_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
 
 function Num({ value, dp, className = "" }) {
   const { int, dec } = splitParts(fmtRu(value, dp));
@@ -37,6 +49,14 @@ export default function BalancesPanel({ currentOffice, scope }) {
   const wrapRef = useRef(null);
   const [sel, setSel] = useState(null); // выбранная валюта (поповер)
   const [pos, setPos] = useState({ left: 14, top: 0, arrow: 40 });
+  const [pinned, setPinned] = useState(readPinned);
+  const togglePinned = useCallback(() => {
+    setPinned((v) => {
+      const next = !v;
+      try { localStorage.setItem(PIN_KEY, next ? "1" : "0"); } catch { /* приватное окно */ }
+      return next;
+    });
+  }, []);
 
   const dayStartMs = useMemo(() => {
     const d = new Date();
@@ -180,12 +200,25 @@ export default function BalancesPanel({ currentOffice, scope }) {
   return (
     <section
       ref={cardRef}
-      className="relative lg:sticky lg:top-[72px] z-20 bg-card border border-line rounded-card-2"
+      className={`relative ${pinned ? "lg:sticky lg:top-[72px]" : ""} z-20 bg-card border border-line rounded-card-2`}
     >
       {/* Шапка */}
       <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-        <span className="text-[12px] font-extrabold tracking-[1.3px] uppercase text-[#454a66]">
-          Остатки в кассе
+        <span className="flex items-center gap-2">
+          <span className="text-[12px] font-extrabold tracking-[1.3px] uppercase text-[#454a66]">
+            Остатки в кассе
+          </span>
+          <button
+            type="button"
+            onClick={togglePinned}
+            aria-pressed={pinned}
+            title={pinned ? "Закреплено — едет за прокруткой. Нажмите, чтобы открепить" : "Откреплено — стоит на месте. Нажмите, чтобы закрепить"}
+            className={`hidden lg:grid w-6 h-6 place-items-center rounded-full transition-colors ${
+              pinned ? "bg-[rgba(26,25,21,.07)] text-ink" : "text-muted-soft hover:text-ink hover:bg-[rgba(26,25,21,.05)]"
+            }`}
+          >
+            {pinned ? <Lock className="w-3 h-3" strokeWidth={2.2} /> : <LockOpen className="w-3 h-3" strokeWidth={2.2} />}
+          </button>
         </span>
         <span className="font-mono text-[15px] font-bold text-ink tracking-tight whitespace-nowrap">
           ≈ ${fmtRu(Math.round(gT), 0)}
