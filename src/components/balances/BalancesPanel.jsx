@@ -200,7 +200,7 @@ export default function BalancesPanel({ currentOffice, scope }) {
   return (
     <section
       ref={cardRef}
-      className={`relative ${pinned ? "lg:sticky lg:top-[72px]" : ""} z-20 bg-card border border-line rounded-card-2`}
+      className={`relative ${pinned ? "md:sticky md:top-[72px]" : ""} z-20 bg-card border border-line rounded-card-2`}
     >
       {/* Шапка */}
       <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
@@ -213,11 +213,14 @@ export default function BalancesPanel({ currentOffice, scope }) {
             onClick={togglePinned}
             aria-pressed={pinned}
             title={pinned ? "Закреплено — едет за прокруткой. Нажмите, чтобы открепить" : "Откреплено — стоит на месте. Нажмите, чтобы закрепить"}
-            className={`hidden lg:grid w-6 h-6 place-items-center rounded-full transition-colors ${
-              pinned ? "bg-[rgba(26,25,21,.07)] text-ink" : "text-muted-soft hover:text-ink hover:bg-[rgba(26,25,21,.05)]"
+            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] font-semibold transition-colors ${
+              pinned
+                ? "bg-dark border-dark text-cream"
+                : "bg-surface border-line text-muted hover:text-ink hover:border-ink/30"
             }`}
           >
-            {pinned ? <Lock className="w-3 h-3" strokeWidth={2.2} /> : <LockOpen className="w-3 h-3" strokeWidth={2.2} />}
+            {pinned ? <Lock className="w-3.5 h-3.5" strokeWidth={2.2} /> : <LockOpen className="w-3.5 h-3.5" strokeWidth={2.2} />}
+            {pinned ? "закреплено" : "откреплено"}
           </button>
         </span>
         <span className="font-mono text-[15px] font-bold text-ink tracking-tight whitespace-nowrap">
