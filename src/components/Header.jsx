@@ -13,8 +13,7 @@ import { useCan } from "../store/permissions.jsx";
 
 const NAV_PAGES = [
   { id: "cashier", key: "nav_cashier", section: "transactions" },
-  // «Курсы» — не отдельная страница: открывает редактор курсов кассы
-  // (cashier + mode "rates"). Права — те же, что у кассы.
+  // «Курсы» — обычная страница (RatesScreen). Права — те же, что у кассы.
   { id: "rates", key: "nav_rates", section: "transactions" },
   { id: "accounts", key: "nav_accounts", section: "accounts" },
   { id: "counterparties", key: "nav_counterparties", section: "counterparties" },
@@ -24,7 +23,7 @@ const NAV_PAGES = [
   { id: "settings", key: "nav_settings", section: "settings" },
 ];
 
-export default function Header({ currentOffice, onOfficeChange, page, onPageChange, ratesOpen = false }) {
+export default function Header({ currentOffice, onOfficeChange, page, onPageChange }) {
   // onPageChange прокинут из Root — используем для navigate из bell-dropdown
   const { t, lang, setLang } = useTranslation();
   const { activeOffices } = useOffices();
@@ -32,10 +31,6 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
   const can = useCan();
 
   const visibleNav = NAV_PAGES.filter((p) => can(p.section));
-  // Активная таблетка: редактор курсов живёт внутри кассы, поэтому при
-  // открытом редакторе подсвечиваем «Курсы», а не «Касса».
-  const isActive = (id) =>
-    id === "rates" ? ratesOpen : id === "cashier" ? page === "cashier" && !ratesOpen : page === id;
 
   // Раньше manager scoping принудительно ограничивал менеджера его
   // собственным офисом. Задумка пересмотрена: менеджер видит счета и
@@ -66,7 +61,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
           {visibleNav.map((p) => (
             <Pill
               key={p.id}
-              variant={isActive(p.id) ? "dark" : "line"}
+              variant={page === p.id ? "dark" : "line"}
               onClick={() => onPageChange(p.id)}
               className="!py-2 !px-4 hover:!border-ink/40"
             >
@@ -107,7 +102,7 @@ export default function Header({ currentOffice, onOfficeChange, page, onPageChan
         {visibleNav.map((p) => (
           <Pill
             key={p.id}
-            variant={isActive(p.id) ? "dark" : "line"}
+            variant={page === p.id ? "dark" : "line"}
             onClick={() => onPageChange(p.id)}
             className="!py-1.5 !px-3 !text-[12px]"
           >

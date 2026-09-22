@@ -8,6 +8,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import CounterpartiesPage from "./pages/CounterpartiesPage.jsx";
 import TreasuryPage from "./pages/TreasuryPage.jsx";
 import AccountsPage from "./pages/AccountsPage.jsx";
+import RatesScreen from "./pages/RatesScreen.jsx";
 import InfoPage from "./pages/InfoPage.jsx";
 import ShareAccountsView from "./pages/ShareAccountsView.jsx";
 import DesignPreview from "./pages/DesignPreview.jsx";
@@ -49,6 +50,8 @@ import CommandPalette from "./components/CommandPalette.jsx";
 
 const PAGE_SECTION = {
   cashier: "transactions",
+  // «Курсы» — отдельная страница, права те же, что у кассы.
+  rates: "transactions",
   accounts: "accounts",
   counterparties: "counterparties",
   // Казначейство переиспользует permission «capital» — финансовый раздел.
@@ -127,13 +130,6 @@ function Root() {
   // Draft формы переживает, потому что formMounted остаётся true и
   // ExchangeForm пишет в sessionStorage.
   const handlePageChange = (nextPage) => {
-    // «Курсы» в топбаре — не страница, а редактор курсов внутри кассы.
-    if (nextPage === "rates") {
-      if (!canShow("cashier")) return;
-      setPage("cashier");
-      setExchangeMode("rates");
-      return;
-    }
     if (exchangeMode === "create" || exchangeMode === "rates") {
       setExchangeMode("dashboard");
     }
@@ -253,13 +249,12 @@ function Root() {
           <Header
             page={page}
             onPageChange={handlePageChange}
-            ratesOpen={page === "cashier" && exchangeMode === "rates"}
             currentOffice={currentOffice}
             onOfficeChange={setCurrentOffice}
           />
           {/* Курс-баннеры прячем, когда открыт дровер редактора курсов. */}
-          {exchangeMode !== "rates" && <RateChangeBanner />}
-          {exchangeMode !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
+          {page !== "rates" && <RateChangeBanner />}
+          {page !== "rates" && <RatesConfirmationBanner currentOffice={currentOffice} />}
           {/* Без офиса страницы не рисуем: считать остатки и заявки не по чему,
               а угадать офис нельзя — это деньги. Хедер оставляем, чтобы
               переключатель офиса и выход были доступны. */}
@@ -281,6 +276,7 @@ function Root() {
               onOpenHelp={handleOpenHelp}
             />
           )}
+          {page === "rates" && canShow("rates") && <RatesScreen />}
           {page === "accounts" && canShow("accounts") && <AccountsPage onOpenHelp={handleOpenHelp} />}
           {page === "counterparties" && canShow("counterparties") && <CounterpartiesPage onOpenHelp={handleOpenHelp} />}
           {page === "treasury" && canShow("capital") && <TreasuryPage onOpenHelp={handleOpenHelp} />}

@@ -33,7 +33,7 @@ vi.mock("../../i18n/translations.jsx", () => ({ useTranslation: () => ({ t: (k) 
 vi.mock("../../store/offices.jsx", () => ({ useOffices: () => ({ activeOffices: [], findOffice: () => null }) }));
 vi.mock("../../store/openObligations.js", () => ({ useOpenObligations: () => ({ items: [], loading: false }) }));
 vi.mock("../../store/baseCurrency.js", () => ({
-  useBaseCurrency: () => ({ toBase: (a) => Number(a) || 0, formatBase: (a) => `$${Number(a) || 0}`, base: "USD" }),
+  useBaseCurrency: () => ({ toBase: (a) => Number(a) || 0, formatBase: (a) => `$${Number(a) || 0}`, base: "USD", getRateFx: () => 1 }),
 }));
 vi.mock("../../store/rates.jsx", () => ({
   useRates: () => ({ getRate: (from, to) => (from === to ? 1 : 1) }),

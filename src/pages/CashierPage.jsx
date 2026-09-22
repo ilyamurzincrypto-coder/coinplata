@@ -4,7 +4,6 @@ import { Plus, ArrowRight, X, Minus } from "lucide-react";
 import Balances from "../components/Balances.jsx";
 import OpenObligationsWidget from "../components/cashier/widgets/OpenObligationsWidget.jsx";
 import RatesBar from "../components/RatesBar.jsx";
-import RatesEditorDrawer from "../components/rates/RatesEditorDrawer.jsx";
 import RatesSidebar from "../components/RatesSidebar.jsx";
 import RatesPanelV2 from "../components/RatesPanelV2.jsx";
 import { isRatesV2Enabled } from "../lib/ratesV2.js";
@@ -495,10 +494,9 @@ export default function CashierPage({
   // правой колонки (mode==="rates"). Так strip курсов слева остаётся виден.
   const isDashboard = mode !== "create";
   const isCreate = mode === "create";
-  const isRates = mode === "rates";
 
-  const openRates = () => setMode("rates");
-  const closeRates = () => setMode("dashboard");
+  // «Курсы» — отдельная страница топбара; сайдбар курсов ведёт туда же.
+  const openRates = () => onNavigate?.("rates");
 
   return (
     <main className="min-h-screen">
@@ -600,8 +598,6 @@ export default function CashierPage({
               />
               <DealsLedger officeId={currentOffice} onOrderToDeal={handleOrderToDeal} />
               <ObligationsPanel officeId={currentOffice} />
-              {/* Выезжающий редактор курсов — поверх этой колонки */}
-              <RatesEditorDrawer open={isRates} onClose={closeRates} />
             </div>
           </div>
         </div>

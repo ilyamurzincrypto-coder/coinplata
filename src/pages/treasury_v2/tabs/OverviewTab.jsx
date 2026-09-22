@@ -12,12 +12,16 @@
 // принципиальная, когда речь о прибыли и валютной позиции.
 
 import React, { useMemo, useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import { capitalByCurrency, pnlForPeriod, exchangeIncome } from "../../../lib/treasury/v2selectors.js";
 import { presetWindow } from "../PeriodPicker.jsx";
+import { useBaseCurrency } from "../../../store/baseCurrency.js";
+import { convert } from "../../../utils/convert.js";
 
-const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
+// Левая граница группы колонок (Ностро / Лоро / Капитал / Баланс).
+const GROUP = "border-l border-line pl-3";
+
 const PROFIT_PRESETS = ["today", "week", "month", "quarter", "year"];
 
 /**
@@ -122,53 +126,62 @@ export default function OverviewTab({
 
   const clientsCount = (ctx.clients || []).length;
 
+  // Приведение — сразу к $ и € (витрина по курсам на сегодня), без
+  // переключателя: базовая валюта для сверки остаётся из Настроек.
+  const { getRateFx } = useBaseCurrency();
+  const usdOf = (n, ccy) => { const v = convert(n, ccy, "USD", getRateFx); return Number.isFinite(v) ? v : 0; };
+  const eurOf = (n, ccy) => { const v = convert(n, ccy, "EUR", getRateFx); return Number.isFinite(v) ? v : 0; };
+
   const sum = useMemo(() => {
     let assets = 0, liabilities = 0, capital = 0;
+    let nostroUsd = 0, nostroEur = 0, loroUsd = 0, loroEur = 0;
+    const toUsd = (n, c) => { const v = convert(n, c, "USD", getRateFx); return Number.isFinite(v) ? v : 0; };
+    const toEur = (n, c) => { const v = convert(n, c, "EUR", getRateFx); return Number.isFinite(v) ? v : 0; };
     for (const r of rows) {
       assets += r.nostroBase;
       liabilities += r.loroBase;
       capital += r.capitalBase;
+      nostroUsd += toUsd(r.nostro, r.currency);
+      nostroEur += toEur(r.nostro, r.currency);
+      loroUsd += toUsd(r.loro, r.currency);
+      loroEur += toEur(r.loro, r.currency);
     }
-    return { assets, liabilities, capital };
-  }, [rows]);
+    return {
+      assets, liabilities, capital,
+      nostroUsd, nostroEur, loroUsd, loroEur,
+      capitalUsd: nostroUsd - loroUsd, capitalEur: nostroEur - loroEur,
+    };
+  }, [rows, getRateFx]);
+
+  // Раскрытие валюты → её счета (Ностро и Лоро) с остатками.
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggle = (ccy) => setExpanded((prev) => {
+    const next = new Set(prev);
+    if (next.has(ccy)) next.delete(ccy); else next.add(ccy);
+    return next;
+  });
+  const balanceByAcc = useMemo(() => {
+    const m = new Map();
+    for (const b of ctx.balances || []) m.set(b.accountId, (m.get(b.accountId) || 0) + (Number(b.balance) || 0));
+    return m;
+  }, [ctx.balances]);
+  const accountsOf = (ccy) =>
+    (ctx.accounts || [])
+      .filter((a) => (a.type === "asset" || a.type === "liability") && a.currency === ccy && passesOffice(a, officeFilter))
+      .map((a) => ({ ...a, balance: balanceByAcc.get(a.id) || 0 }))
+      .sort((x, y) => (x.type === y.type ? String(x.code || "").localeCompare(String(y.code || "")) : x.type === "asset" ? -1 : 1));
 
   const negativeCcy = rows.filter((r) => r.capital < 0).map((r) => r.currency);
   const ok = totals?.identityCheck?.ok !== false;
   const delta = totals?.identityCheck?.delta || 0;
 
-  // Три ступени. На узком экране в строке остаётся валюта, капитал и значок:
-  // три колонки цифр в 390px не помещаются и наезжают друг на друга — числа
-  // при этом читаются как одно, и ошибиться в них проще, чем не увидеть.
-  const GRID =
-    "grid-cols-[minmax(90px,1fr)_minmax(96px,auto)_28px] " +
-    "sm:grid-cols-[minmax(150px,1.2fr)_1fr_1fr_40px] " +
-    "xl:grid-cols-[minmax(190px,1.2fr)_1fr_1fr_1fr_54px]";
+  // Колонки как в эталоне: валюта | Ностро (родная, $·€) | Лоро (родная, $·€) |
+  // Капитал (родная, $·€) | баланс. На узком экране таблица скроллится
+  // горизонтально, а не сжимает цифры друг в друга.
+  const GRID = "grid-cols-[minmax(210px,1.5fr)_repeat(6,minmax(100px,1fr))_76px] gap-x-3";
 
   return (
     <div className="space-y-3">
-      {/* ── Тулбар: приведение. Фильтр офиса живёт в шапке раздела — второй
-             такой же селектор рядом читался бы как ещё один, независимый. ── */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="ml-auto flex items-center gap-2 flex-wrap">
-          <span className="text-[11px] uppercase tracking-[0.07em] text-muted-soft font-medium">
-            {t("trv2_ov_conversion")}
-          </span>
-          <div className="flex gap-0.5 bg-surface border border-line rounded-full p-[3px]">
-            {BASE_OPTIONS.map((c) => (
-              <span
-                key={c}
-                title={c === baseCurrency ? "" : "Базовая валюта меняется в Настройках"}
-                className={`px-3.5 py-[7px] rounded-full text-[12.5px] font-medium ${
-                  c === baseCurrency ? "bg-dark text-cream" : "text-ink-soft opacity-50"
-                }`}
-              >
-                {c}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── Строка сверки ── */}
       <div className="flex items-center gap-3 flex-wrap bg-surface border border-line rounded-[18px] px-[18px] py-3 font-medium">
         <span
@@ -196,103 +209,150 @@ export default function OverviewTab({
         </span>
       </div>
 
-      {/* ── Балансовая таблица по валютам ── */}
-      <div className="bg-cream-2 rounded-[26px] p-2">
-        <div className={`grid ${GRID} gap-3 items-center px-[18px] pt-2.5 pb-0.5 text-[11px] uppercase tracking-[0.07em] text-muted font-medium`}>
-          <div />
-          <div className="text-right hidden sm:block">{t("trv2_ov_col_assets")}</div>
-          <div className="text-right sm:hidden">{t("trv2_ov_col_capital")}</div>
-          <div className="text-right hidden sm:block">{t("trv2_ov_col_liabilities")}</div>
-          <div className="text-right hidden xl:block">{t("trv2_ov_col_capital")}</div>
-          <div />
-        </div>
-        <div className={`grid ${GRID} gap-3 items-center px-[18px] pb-2 text-[11.5px] text-muted`}>
-          <div>{t("trv2_ov_col_currency")}</div>
-          <div className="text-right">{baseCurrency}</div>
-          <div className="text-right hidden sm:block">{baseCurrency}</div>
-          <div className="text-right hidden xl:block">= А − О</div>
-          <div className="text-right hidden sm:block">{t("trv2_ov_col_balance")}</div>
-        </div>
+      {/* ── Средства по валютам: Ностро · Лоро · Капитал ── */}
+      <div>
+        <div className="text-[13.5px] font-semibold px-1 pb-2">{t("trv2_ov_funds")}</div>
+        <div className="bg-cream-2 rounded-[26px] p-2">
+          <div className="overflow-x-auto">
+            <div className="min-w-[980px]">
+              {/* Шапка в два яруса: группа (Ностро/Лоро/Капитал) и её колонки. */}
+              <div className={`grid ${GRID} items-end px-[18px] pt-2.5 text-[11px] uppercase tracking-[0.07em] text-muted font-medium`}>
+                <div />
+                <div className={`${GROUP} col-span-2 pb-1.5`}>{t("trv2_ov_col_assets")}</div>
+                <div className={`${GROUP} col-span-2 pb-1.5`}>{t("trv2_ov_col_liabilities")}</div>
+                <div className={`${GROUP} col-span-2 pb-1.5`}>{t("trv2_ov_col_capital")}</div>
+                <div className={`${GROUP} text-right pb-1.5`}>{t("trv2_ov_col_balance")}</div>
+              </div>
+              <div className={`grid ${GRID} items-center px-[18px] pb-2 text-[11.5px] text-muted`}>
+                <div className="pl-7">{t("trv2_ov_col_currency")}</div>
+                <div className={`${GROUP} text-right`}>{t("trv2_ov_sub_ours")}</div>
+                <div className="text-right">$ · €</div>
+                <div className={`${GROUP} text-right`}>{t("trv2_ov_sub_clients")}</div>
+                <div className="text-right">$ · €</div>
+                <div className={`${GROUP} text-right`}>{t("trv2_ov_col_capital")}</div>
+                <div className="text-right">$ · €</div>
+                <div className={`${GROUP} text-right font-mono`}>Н−Л−К</div>
+              </div>
 
-        <div className="bg-surface rounded-[18px] overflow-hidden">
-          {rows.map((r) => {
-            const neg = r.capital < 0;
-            const isUsdt = /^USD[TC]$/.test(r.currency);
-            return (
-              <div
-                key={r.currency}
-                className={`grid ${GRID} gap-3 items-center px-[18px] py-[7px] min-h-[58px] border-b border-line last:border-b-0`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className={`w-[30px] h-[30px] shrink-0 rounded-full grid place-items-center text-[11.5px] font-semibold ${
-                      isUsdt ? "bg-dark text-lime" : "bg-cream-2 text-ink-soft"
-                    }`}
-                  >
-                    {ccySymbol(r.currency)}
-                  </span>
-                  <div className="min-w-0">
-                    <b className="block text-[13.5px] font-semibold whitespace-nowrap">{r.currency}</b>
-                    <span className="text-[11.5px] text-muted">
-                      {accountsByCcy.get(r.currency) || 0} {t("trv2_ov_accounts_n")}
-                    </span>
+              <div className="bg-surface rounded-[18px] overflow-hidden">
+                {rows.map((r) => {
+                  const neg = r.capital < 0;
+                  const isUsdt = /^USD[TC]$/.test(r.currency);
+                  const open = expanded.has(r.currency);
+                  const accs = accountsOf(r.currency);
+                  return (
+                    <div key={r.currency} className="border-b border-line last:border-b-0">
+                      <button
+                        type="button"
+                        onClick={() => toggle(r.currency)}
+                        aria-expanded={open}
+                        className={`grid ${GRID} w-full text-left items-center px-[18px] py-[7px] min-h-[62px] hover:bg-[rgba(26,25,21,.02)] transition-colors`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <ChevronRight className={`w-3.5 h-3.5 text-muted-soft shrink-0 transition-transform ${open ? "rotate-90" : ""}`} strokeWidth={2.2} />
+                          <span
+                            className={`w-[30px] h-[30px] shrink-0 rounded-full grid place-items-center text-[11.5px] font-semibold ${
+                              isUsdt ? "bg-dark text-lime" : "bg-cream-2 text-ink-soft"
+                            }`}
+                          >
+                            {ccySymbol(r.currency)}
+                          </span>
+                          <b className="text-[13.5px] font-semibold whitespace-nowrap">{r.currency}</b>
+                          <span className="text-[11.5px] text-muted whitespace-nowrap">
+                            · {accountsByCcy.get(r.currency) || 0} {t("trv2_ov_accounts_n")}
+                          </span>
+                        </div>
+
+                        <Native value={r.nostro} ccy={r.currency} className={GROUP} />
+                        <UsdEur usd={usdOf(r.nostro, r.currency)} eur={eurOf(r.nostro, r.currency)} />
+                        <Native value={r.loro} ccy={r.currency} className={GROUP} />
+                        <UsdEur usd={usdOf(r.loro, r.currency)} eur={eurOf(r.loro, r.currency)} />
+                        <Native value={r.capital} ccy={r.currency} className={GROUP} neg={neg} />
+                        <UsdEur usd={usdOf(r.capital, r.currency)} eur={eurOf(r.capital, r.currency)} />
+
+                        {/* Капитал по валюте считается как Н − Л, поэтому невязка
+                            строки всегда ноль; «!» — предупреждение о минусе. */}
+                        <div className={`${GROUP} text-right`} title={neg ? `${t("trv2_ov_note_neg")} ${r.currency}` : ""}>
+                          <span className={`text-[14px] font-semibold ${neg ? "text-warning" : "text-success"}`}>
+                            {neg ? "!" : "✓"}
+                          </span>
+                        </div>
+                      </button>
+
+                      {open && (
+                        <div className="bg-[rgba(26,25,21,.02)] border-t border-line">
+                          {accs.length === 0 && (
+                            <div className="px-[18px] py-3 pl-[62px] text-[12px] text-muted-soft">{t("trv2_ov_no_accounts")}</div>
+                          )}
+                          {accs.map((a) => (
+                            <div key={a.id} className={`grid ${GRID} items-center px-[18px] py-2 text-[12.5px]`}>
+                              <div className="pl-[62px] min-w-0 truncate text-ink-soft">
+                                {a.code && <span className="font-mono text-[11px] text-muted-soft mr-2">{a.code}</span>}
+                                {a.name}
+                              </div>
+                              {a.type === "asset" ? (
+                                <>
+                                  <Native value={a.balance} ccy={r.currency} className={GROUP} small />
+                                  <UsdEur usd={usdOf(a.balance, r.currency)} eur={eurOf(a.balance, r.currency)} small />
+                                  <div className={GROUP} /><div />
+                                </>
+                              ) : (
+                                <>
+                                  <div className={GROUP} /><div />
+                                  <Native value={a.balance} ccy={r.currency} className={GROUP} small />
+                                  <UsdEur usd={usdOf(a.balance, r.currency)} eur={eurOf(a.balance, r.currency)} small />
+                                </>
+                              )}
+                              <div className={GROUP} /><div /><div className={GROUP} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Пусто только когда счетов нет ВООБЩЕ. «Нет движений» и «нет
+                    счетов» — разные состояния: первое чинится сделкой, второе —
+                    заведением счёта, и подсказка должна вести в нужное место. */}
+                {rows.length === 0 && (
+                  <div className="px-5 py-12 text-center">
+                    <p className="text-[13px] text-muted-soft">{t("trv2_ov_no_accounts")}</p>
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("coinplata:navigate", { detail: "accounts" }))}
+                      className="mt-2.5 text-[13px] font-medium text-ink underline underline-offset-4 decoration-line-2 hover:decoration-ink transition-colors"
+                    >
+                      {t("trv2_ov_go_accounts")}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {rows.length > 0 && (
+                <div className={`grid ${GRID} items-center px-[18px] min-h-[58px] bg-surface rounded-[18px] mt-1.5 font-semibold`}>
+                  <div className="pl-7 text-[12.5px] uppercase tracking-[0.05em] text-ink">
+                    {t("trv2_ov_total")} {t("trv2_ov_in")} $ · €
+                  </div>
+                  <div className={`${GROUP} text-right text-muted-soft font-normal`}>—</div>
+                  <UsdEur usd={sum.nostroUsd} eur={sum.nostroEur} strong />
+                  <div className={`${GROUP} text-right text-muted-soft font-normal`}>—</div>
+                  <UsdEur usd={sum.loroUsd} eur={sum.loroEur} strong />
+                  <div className={`${GROUP} text-right text-muted-soft font-normal`}>—</div>
+                  <UsdEur usd={sum.capitalUsd} eur={sum.capitalEur} strong />
+                  {/* Невязка всей книги (Σ Дт − Σ Кт) — из сверки, не из таблицы. */}
+                  <div className={`${GROUP} text-right tabular-nums whitespace-nowrap ${ok ? "text-success" : "text-danger"}`}>
+                    {ok ? "✓" : formatBase(Math.abs(delta))}
                   </div>
                 </div>
-
-                <Money native={r.nostro} base={r.nostroBase} formatBase={formatBase} className="hidden sm:block" />
-                {/* На узком экране единственная колонка цифр — капитал: это
-                    ответ на вопрос «сколько наше», ради которого сюда заходят. */}
-                <Money native={r.capital} base={r.capitalBase} formatBase={formatBase} neg={neg} className="sm:hidden" />
-                <Money native={r.loro} base={r.loroBase} formatBase={formatBase} className="hidden sm:block" />
-                <Money native={r.capital} base={r.capitalBase} formatBase={formatBase} neg={neg} className="hidden xl:block" />
-
-                <span
-                  className={`w-[22px] h-[22px] rounded-full grid place-items-center justify-self-end ${
-                    neg ? "bg-warning-soft" : "bg-[rgba(200,217,111,.4)]"
-                  }`}
-                  title={neg ? t("trv2_ov_note_neg") : ""}
-                >
-                  <span className={`text-[11px] font-semibold ${neg ? "text-warning" : "text-lime-ink"}`}>
-                    {neg ? "!" : "✓"}
-                  </span>
-                </span>
-              </div>
-            );
-          })}
-
-          {/* Пусто только когда счетов нет ВООБЩЕ. «Нет движений» и «нет
-              счетов» — разные состояния: первое чинится сделкой, второе —
-              заведением счёта, и подсказка должна вести в нужное место. */}
-          {rows.length === 0 && (
-            <div className="px-5 py-12 text-center">
-              <p className="text-[13px] text-muted-soft">{t("trv2_ov_no_accounts")}</p>
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new CustomEvent("coinplata:navigate", { detail: "accounts" }))}
-                className="mt-2.5 text-[13px] font-medium text-ink underline underline-offset-4 decoration-line-2 hover:decoration-ink transition-colors"
-              >
-                {t("trv2_ov_go_accounts")}
-              </button>
+              )}
             </div>
-          )}
-        </div>
-
-        {rows.length > 0 && (
-          <div className={`grid ${GRID} gap-3 items-center px-[18px] min-h-[52px] bg-surface rounded-[18px] mt-1.5 font-semibold`}>
-            <div className="text-[12.5px] uppercase tracking-[0.05em] text-muted">
-              {t("trv2_ov_total")} ≈ {baseCurrency}
-            </div>
-            <div className="text-right tabular-nums text-[14.5px] hidden sm:block">{formatBase(sum.assets)}</div>
-            <div className="text-right tabular-nums text-[14.5px] sm:hidden">{formatBase(sum.capital)}</div>
-            <div className="text-right tabular-nums text-[14.5px] hidden sm:block">{formatBase(sum.liabilities)}</div>
-            <div className="text-right tabular-nums text-[14.5px] hidden xl:block">{formatBase(sum.capital)}</div>
-            <div />
           </div>
-        )}
 
-        <div className="px-[18px] pt-2 pb-1.5 text-[11.5px] text-muted-soft">
-          {t("trv2_ov_note")}
-          {negativeCcy.length > 0 && ` · ⚠ ${t("trv2_ov_note_neg")} ${negativeCcy.join(", ")}`}
+          <div className="px-[18px] pt-2 pb-1.5 text-[11.5px] text-muted-soft">
+            {t("trv2_ov_note")}
+            {negativeCcy.length > 0 && ` · ⚠ ${t("trv2_ov_note_neg")} ${negativeCcy.join(", ")}`}
+          </div>
         </div>
       </div>
 
@@ -371,15 +431,27 @@ export default function OverviewTab({
   );
 }
 
-/** Ячейка суммы: родная жирным, приведённая под ней. */
-function Money({ native, base, formatBase, neg = false, className = "" }) {
-  const zero = !native && !base;
+/** Родная сумма со знаком валюты: «19 591,83 ₽». */
+function Native({ value, ccy, neg = false, small = false, className = "" }) {
+  const zero = !value;
   return (
     <div className={`text-right tabular-nums whitespace-nowrap min-w-0 ${className}`}>
-      <span className={`block text-[13.5px] font-semibold ${neg ? "text-warning" : zero ? "text-muted-soft font-normal" : ""}`}>
-        {fmtNative(native)}
+      <span className={`${small ? "text-[12.5px] font-medium" : "text-[13.5px] font-semibold"} ${neg ? "text-warning" : zero ? "text-muted-soft font-normal" : "text-ink"}`}>
+        {fmtNative(value)}
       </span>
-      <span className="block text-[12px] text-muted-soft font-normal">{formatBase(base)}</span>
+      <span className="text-muted-soft ml-1 text-[12px]">{ccySymbol(ccy)}</span>
+    </div>
+  );
+}
+
+/** Приведение: $ сверху, € под ним. */
+function UsdEur({ usd, eur, strong = false, small = false }) {
+  return (
+    <div className="text-right tabular-nums whitespace-nowrap min-w-0 leading-tight">
+      <span className={`block ${strong ? "text-[14.5px] font-semibold text-ink" : small ? "text-[12px] text-muted" : "text-[13px] text-ink-soft"}`}>
+        {fmtNative(usd)} $
+      </span>
+      <span className="block text-[11px] text-muted-soft font-normal">{fmtNative(eur)} €</span>
     </div>
   );
 }

@@ -484,30 +484,32 @@ export default function AccountsOverview({
         <span className="w-[46px] h-[46px] shrink-0 rounded-full bg-lime text-lime-ink grid place-items-center text-[19px] font-semibold">
           {sym}
         </span>
-        <div className="min-w-0">
-          <div className="text-[12.5px] text-surface/60">{stripLabel}</div>
+        {/* Ширины левой части фиксированы: подпись и сумма меняются при
+            переключении Все/Фиат/Крипто, и без этого блок справа «прыгал». */}
+        <div className="w-[250px] shrink-0 min-w-0">
+          <div className="text-[12.5px] text-surface/60 whitespace-nowrap">{stripLabel}</div>
           <div className="text-[34px] font-semibold tracking-[-0.03em] leading-[1.1] tabular-nums whitespace-nowrap">
             <span className="text-[0.62em] [vertical-align:14%] text-surface/75 mr-px">{sym}</span>
             {fmtSpace(totals.total)}
           </div>
         </div>
 
-        <div className="flex gap-6 pl-6 border-l border-surface/15 flex-wrap">
-          <div className="min-w-0">
+        <div className="flex gap-6 pl-6 border-l border-surface/15 flex-wrap shrink-0">
+          <div className="w-[104px] min-w-0">
             <div className="text-[11.5px] text-surface/55 mb-0.5">Наличные</div>
             <div className="text-[16.5px] font-semibold tabular-nums whitespace-nowrap">
               {sym}
               {fmtSpace(totals.cash)}
             </div>
           </div>
-          <div className="min-w-0">
+          <div className="w-[104px] min-w-0">
             <div className="text-[11.5px] text-surface/55 mb-0.5">Крипто</div>
             <div className="text-[16.5px] font-semibold tabular-nums whitespace-nowrap">
               {sym}
               {fmtSpace(totals.crypto)}
             </div>
           </div>
-          <div className="min-w-0">
+          <div className="w-[104px] min-w-0">
             <div className="text-[11.5px] text-surface/55 mb-0.5">За день</div>
             <span className="inline-flex bg-lime text-lime-ink rounded-pill px-3 py-[5px] text-[12.5px] font-semibold whitespace-nowrap tabular-nums">
               {totals.delta < 0 ? "−" : "+"}
@@ -515,7 +517,7 @@ export default function AccountsOverview({
               {fmtSpace(Math.abs(totals.delta))}
             </span>
           </div>
-          <div className="min-w-0">
+          <div className="w-[104px] min-w-0">
             <div className="text-[11.5px] text-surface/55 mb-0.5">Вчера</div>
             <span className="inline-flex bg-surface/10 text-surface/75 rounded-pill px-3 py-[5px] text-[12.5px] font-medium whitespace-nowrap tabular-nums">
               {totals.deltaYesterday < 0 ? "−" : "+"}
