@@ -387,7 +387,12 @@ export default function ListTab() {
           <div />
         </div>
 
-        <div className="bg-surface rounded-[18px] overflow-hidden">
+        {/* Высота списка не должна схлопываться при переключении «Все → Партнёры»:
+            держим минимум под строки «Все» (52px на строку, не больше 10 строк). */}
+        <div
+          className="bg-surface rounded-[18px] overflow-hidden"
+          style={{ minHeight: Math.min(counts.all, 10) * 52 }}
+        >
           {filtered.map((r) => (
             <Row
               key={`${r.kind}:${r.id || r.nickname}`}

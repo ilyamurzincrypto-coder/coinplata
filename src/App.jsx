@@ -127,6 +127,13 @@ function Root() {
   // Draft формы переживает, потому что formMounted остаётся true и
   // ExchangeForm пишет в sessionStorage.
   const handlePageChange = (nextPage) => {
+    // «Курсы» в топбаре — не страница, а редактор курсов внутри кассы.
+    if (nextPage === "rates") {
+      if (!canShow("cashier")) return;
+      setPage("cashier");
+      setExchangeMode("rates");
+      return;
+    }
     if (exchangeMode === "create" || exchangeMode === "rates") {
       setExchangeMode("dashboard");
     }
@@ -239,10 +246,14 @@ function Root() {
         </div>
       )}
       <div className="flex-1 min-h-0 px-2 sm:px-3 pt-2 pb-2 sm:pb-3">
-        <div className="h-full max-w-[1720px] mx-auto rounded-screen bg-cream bg-frame-glow overflow-y-auto pb-8">
+        {/* scrollbar-gutter: stable — место под полосу прокрутки зарезервировано
+            всегда. Без него короткий список (фильтр «Партнёры») убирает полосу,
+            ширина рамки прыгает на ~15px и таблица «скачет». */}
+        <div className="h-full max-w-[1720px] mx-auto rounded-screen bg-cream bg-frame-glow overflow-y-auto [scrollbar-gutter:stable] pb-8">
           <Header
             page={page}
             onPageChange={handlePageChange}
+            ratesOpen={page === "cashier" && exchangeMode === "rates"}
             currentOffice={currentOffice}
             onOfficeChange={setCurrentOffice}
           />
