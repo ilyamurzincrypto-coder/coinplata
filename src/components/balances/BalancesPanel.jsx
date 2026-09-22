@@ -213,14 +213,14 @@ export default function BalancesPanel({ currentOffice, scope }) {
             onClick={togglePinned}
             aria-pressed={pinned}
             title={pinned ? "Закреплено — едет за прокруткой. Нажмите, чтобы открепить" : "Откреплено — стоит на месте. Нажмите, чтобы закрепить"}
-            className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border text-[11.5px] font-semibold transition-colors ${
+            aria-label={pinned ? "Открепить" : "Закрепить"}
+            className={`w-[26px] h-[26px] shrink-0 rounded-full grid place-items-center transition-colors ${
               pinned
-                ? "bg-dark border-dark text-cream"
-                : "bg-surface border-line text-muted hover:text-ink hover:border-ink/30"
+                ? "bg-dark text-lime hover:brightness-110"
+                : "bg-[rgba(26,25,21,.045)] text-muted hover:bg-[rgba(26,25,21,.09)] hover:text-ink"
             }`}
           >
-            {pinned ? <Lock className="w-3.5 h-3.5" strokeWidth={2.2} /> : <LockOpen className="w-3.5 h-3.5" strokeWidth={2.2} />}
-            {pinned ? "закреплено" : "откреплено"}
+            {pinned ? <Lock className="w-3 h-3" strokeWidth={2.4} /> : <LockOpen className="w-3 h-3" strokeWidth={2.4} />}
           </button>
         </span>
         <span className="font-mono text-[15px] font-bold text-ink tracking-tight whitespace-nowrap">
