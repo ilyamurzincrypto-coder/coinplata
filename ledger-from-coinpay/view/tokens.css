@@ -1,0 +1,471 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   Дизайн-система «Бумага» — токены (утверждены, закон).
+   Единственный источник правды по цвету. Компоненты берут только
+   переменные / Tailwind-алиасы, никаких hex внутри JSX.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --paper: #f5f4ef;
+  --card: #ffffff;
+  --line: #e9e7de;
+  --line-2: #dddace;
+
+  /* текст — глубокий зелёный, НЕ чёрный */
+  --ink: #122b24;
+  --ink-2: #5c6b65;
+  --ink-3: #96a19b;
+
+  /* деньги и главная кнопка */
+  --green: #14352c;
+  --green-hover: #0d261f;
+  --green-tint: #e4eee7;
+
+  /* василёк = hsl(var(--accent-h) 72% 61%) */
+  --accent-h: 233;
+
+  --success: #1e7a4f;
+  --success-tint: #e2f0e8;
+  --danger: #c43d2f;
+  --danger-tint: #f7e3e0;
+  --warn: #9a6a1b;
+  --warn-tint: #f4ead4;
+}
+
+* {
+  border-color: var(--line);
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-golos), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* мягкие радиальные подсветки фона-бумаги */
+body {
+  min-height: 100dvh;
+  background-image:
+    radial-gradient(60rem 60rem at 12% -10%, rgba(20, 53, 44, 0.04), transparent 60%),
+    radial-gradient(48rem 48rem at 100% 0%, hsl(var(--accent-h) 72% 61% / 0.05), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* суммы: tabular-nums, копейки и ₽ приглушены — задаётся компонентом Money,
+   здесь только базовая утилита */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Дерево счетов: мягкое появление контента при смене фильтра Лоро (капсула — мгновенно,
+   анимация только на контенте). prefers-reduced-motion гасится общим guard ниже. */
+@keyframes tree-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.tree-fade {
+  animation: tree-fade 130ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Страница входа CP Pay ── */
+/* Тончайшая сетка «банковской миллиметровки» в дальнем плане левой панели. */
+.cp-grid {
+  background-image:
+    linear-gradient(to right, var(--line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px;
+  opacity: 0.3;
+}
+/* Мягкий радиальный объём: центр чуть светлее бумаги (±3% светлоты). */
+.cp-radial {
+  background:
+    radial-gradient(75% 60% at 50% 42%, #faf9f5 0%, var(--paper) 68%);
+}
+/* Единственное стекло на странице. */
+.cp-glass {
+  background: rgba(255, 255, 255, 0.55);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+/* Появление: fade + подъём на 8px, каскадом (задержка задаётся инлайном). */
+@keyframes cp-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cp-rise { opacity: 0; animation: cp-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+}
+
+/* Галка успеха кассы (M6): поп круга + прорисовка галочки.
+   По умолчанию — статичная полная (reduced-motion / без поддержки видят готовую). */
+@keyframes pos-check-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes pos-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+.pos-check-circle { transform-origin: center; }
+.pos-check-path { stroke-dasharray: 40; stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .pos-check-circle { animation: pos-check-pop 0.36s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .pos-check-path { stroke-dashoffset: 40; animation: pos-check-draw 0.4s 0.18s ease-out forwards; }
+}
+
+/**
+ * (эталон r7) Атмосфера Обзора кабинета мерчанта.
+ *
+ * Пятна взяты из эталона той же прозрачностью, но КЛАДУТСЯ ПОВЕРХ «бумаги» темы, а не заменяют
+ * её собственным тоном: у кабинета один фон на все экраны, и второй оттенок на одной странице
+ * читался бы как рассинхрон, а не как акцент. Отдельного hex фона здесь поэтому нет.
+ */
+.merchant-atmosphere {
+  position: relative;
+}
+.merchant-atmosphere::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(90% 55% at 15% -5%, rgb(198 214 180 / 0.55) 0%, rgb(198 214 180 / 0) 60%),
+    radial-gradient(80% 50% at 100% 10%, rgb(233 196 106 / 0.22) 0%, rgb(233 196 106 / 0) 55%);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   КАБИНЕТ МЕРЧАНТА — свой слой токенов (мобилка И десктоп).
+   ─────────────────────────────────────────────────────────────
+
+   🔴 Почему отдельный слой, а не правка «Бумаги».
+
+   Палитра кабинета с «Бумагой» не пересекается: свой лист (#F3F2ED), свой чернильный (#14201B),
+   фисташковый акцент (#C4D690) вместо василькового и — главное — тёмные зоны ПОЛУПРОЗРАЧНЫЕ,
+   сквозь них просвечивает кремовый фон. Подмени мы --paper/--ink/--green, поехала бы вся админка.
+
+   🔴 Почему слой больше НЕ «мобильный».
+
+   Первая редакция держала два дерева-близнеца: мобильное на этих токенах и нетронутый десктоп на
+   «Бумаге» — под требование «десктоп не должен измениться ни на пиксель». Владелец поправил: та
+   фраза была про МОБИЛКУ (её случайно масштабируют двумя касаниями в браузере), а десктоп кабинета
+   переделывается целиком по новым эталонам. Дерево снова одно, префикс --m- оставлен, чтобы не
+   переименовывать сотню мест разом.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --m-paper: #f3f2ed;
+  --m-card: #ffffff;
+  --m-ink: #14201b;
+  --m-ink-2: #66716b;
+  --m-ink-3: #7c857f;  /* подписи в сайдбаре и под цифрами */
+  --m-hair: #efeee8;   /* тонкие линии ВНУТРИ карточек */
+  --m-line: #e3e1d9;   /* рамки круглых кнопок */
+  --m-line-2: #eceae3; /* рамки белых карточек */
+  --m-line-3: #e6e4dc; /* граница сайдбара и разделители меню */
+
+  --m-green: #1f3a2f;  /* сплошные кнопки — ВСЕГДА непрозрачные */
+  --m-green-dark: #14201b;
+
+  /* Фисташковый, НЕ кислотный лайм. Только: активный пункт, успех, прогресс, таймер, «есть остаток». */
+  --m-accent: #c4d690;
+  --m-accent-soft: #dce7b6;
+  --m-accent-deep: #afc47c;
+
+  --m-amber-bg: #f2c66d;     --m-amber-ink: #10201a;  /* счётчик «Документы» */
+  --m-paid-ink: #4e7a12;   /* оба эталона, мобильный и десктопный, дают именно этот зелёный */
+  --m-expired-ink: #8e958f;
+  --m-cancelled: #b0492f;    --m-cancelled-soft: #e7a08c;
+  --m-waiting-bg: #fbebc7;   --m-waiting-ink: #6e4a0e;
+}
+
+/**
+ * Корень дерева кабинета: семейство, фон, цифры таблицей.
+ *
+ * 🔴 СЕЛЕКТОР В `:where()` — НЕ КОСМЕТИКА, А ПОЧИНКА ТЁМНЫХ ЭКРАНОВ.
+ *
+ * `.m-scope` и `.text-white` имеют ОДИНАКОВУЮ специфичность, а этот блок стоит в файле после
+ * `@tailwind utilities` — значит на элементе с обоими классами побеждал `.m-scope`, и текст
+ * красился в чернильный. Именно так сцены кассы (`m-scope m-stage … text-white`) оказывались
+ * тёмным по тёмному: сумма «200 588,01 ₽» и строка курса были физически не видны, и правка
+ * «покрасить в белое» не помогала — её перебивал этот же селектор. `:where()` обнуляет
+ * специфичность: любая утилита на том же элементе теперь выигрывает, а наследование остаётся.
+ *
+ * 🔴 touch-action: manipulation — это и есть починка «случайно меняют масштаб двумя касаниями».
+ * Гасит ДВОЙНОЙ ТАП-зум (и заодно 300мс задержку клика). Щипок двумя пальцами НЕ трогаем: это
+ * доступность, и iOS запрет всё равно игнорирует — вместо запрета вёрстка держит любой масштаб
+ * (боковые отступы одним внешним слоем, ничего шире экрана).
+ */
+:where(.m-scope) {
+  font-family: var(--font-onest), 'Helvetica Neue', Arial, sans-serif;
+  background: var(--m-paper);
+  color: var(--m-ink);
+  font-variant-numeric: tabular-nums;
+}
+/* touch-action не «перекрывается» утилитами и обязан держаться жёстко — он вне :where. */
+.m-scope {
+  touch-action: manipulation;
+}
+
+/* Видимый фокус по всему кабинету — требование эталона, одно правило вместо повторов. */
+.m-scope :focus-visible {
+  outline: 2px solid var(--m-green);
+  outline-offset: 2px;
+}
+
+/* Номера счетов, адреса, таймеры, клавиши — моноширинным. */
+.m-mono {
+  font-family: var(--font-mono-num), ui-monospace, monospace;
+  font-weight: 500;
+}
+
+/* Большие числа эталона: 56–120px, weight 500, плотный трекинг. */
+.m-big {
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+/**
+ * Сетка точек, тающая вниз, — общий приём всех тёмных зон.
+ * Утилита, а не пять копий градиента: копии разъехались бы при первой правке.
+ */
+.m-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1.2px);
+  background-size: 14px 14px;
+  -webkit-mask-image: linear-gradient(200deg, #000 0%, transparent 60%);
+  mask-image: linear-gradient(200deg, #000 0%, transparent 60%);
+}
+
+/**
+ * 🔴 ПРО АЛЬФУ. Эталон задаёт основу `rgba(24,44,35,0.80)`, и на кремовом листе (#F3F2ED) это
+ * даёт в итоге rgb(68,84,75) — серо-оливковый. Владелец на боевом: «зелёный стал мутный».
+ * Кремовый подмешивается В ЦВЕТ, а не под него, и «полупрозрачность как деталь стиля»
+ * оборачивается грязью. Плотность поднята до 0.94 (итог ≈ rgb(37,56,47) — честный глубокий
+ * зелёный), а глубина, ради которой прозрачность и вводилась, перенесена в свечение: зелёное
+ * пятно слева-сверху стало заметнее и насыщеннее. Сцена кассы — вовсе плотная: там за панелью
+ * ничего нет, и примешивать нечего.
+ *
+ * Тёмная панель сверху экрана (моб. Обзор/Счета/Выплаты, деск. — панель с числом).
+ * Ключевая деталь стиля: сквозь неё просвечивает кремовый лист, поэтому основа с альфой 0.80,
+ * а не плотный цвет.
+ */
+.m-panel {
+  background:
+    radial-gradient(90% 60% at 90% -5%, rgba(196, 214, 144, 0.18) 0%, rgba(196, 214, 144, 0) 55%),
+    radial-gradient(112% 82% at 0% 0%, rgba(74, 132, 103, 0.62) 0%, rgba(74, 132, 103, 0) 64%),
+    rgba(20, 40, 31, 0.94);
+  color: #fff;
+}
+
+/* На десктопе фисташковый блик вдвое тише — панель шире, иначе он читается как пятно. */
+.m-panel-wide {
+  background:
+    radial-gradient(90% 60% at 90% -5%, rgba(196, 214, 144, 0.1) 0%, rgba(196, 214, 144, 0) 55%),
+    radial-gradient(112% 82% at 0% 0%, rgba(74, 132, 103, 0.6) 0%, rgba(74, 132, 103, 0) 64%),
+    rgba(20, 40, 31, 0.94);
+  color: #fff;
+}
+
+/* Сцена кассы (ждём оплату / оплата прошла) — чуть плотнее панели. */
+.m-stage {
+  background:
+    radial-gradient(90% 60% at 90% -5%, rgba(196, 214, 144, 0.16) 0%, rgba(196, 214, 144, 0) 55%),
+    radial-gradient(112% 82% at 0% 0%, rgba(74, 132, 103, 0.58) 0%, rgba(74, 132, 103, 0) 64%),
+    #112a20;
+  color: #fff;
+}
+
+/* Нижние шторки, история выплат, тёмное нижнее меню — стекло с размытием. */
+.m-veil {
+  background: rgba(17, 38, 29, 0.93);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  color: #fff;
+}
+
+/* Штриховка пустых дней: на тёмном — светлая, на светлом — чернильная. */
+.m-hatch {
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.22) 0 1.5px, rgba(255, 255, 255, 0) 1.5px 5px);
+}
+.m-hatch-ink {
+  background: repeating-linear-gradient(135deg, rgba(20, 32, 27, 0.22) 0 1.5px, rgba(20, 32, 27, 0) 1.5px 5px);
+}
+
+/* Столбик с деньгами. Градиент, без свечения — эталон его специально не светит. */
+.m-bar-money {
+  background: linear-gradient(180deg, var(--m-accent-soft) 0%, var(--m-accent) 55%, var(--m-accent-deep) 100%);
+}
+
+/* День с неоплаченными счетами — тонкая розоватая обводка столбика. */
+.m-bar-unpaid {
+  box-shadow: inset 0 0 0 1px rgba(231, 160, 140, 0.55);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-scope *,
+  .m-scope *::before,
+  .m-scope *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ФОРМА «БУМАГИ» ВНУТРИ ПАНЕЛИ КАБИНЕТА (`.m-embed`).
+
+   🔴 Зачем правило снаружи, а не правка самой формы.
+
+   Форма заявки на выплату (`PayoutRequestForm`) — единственная правда о деньгах мерчанта: одни
+   поля, одна валидация, одно серверное действие. Нарисовать её заново по эталону значило бы
+   завести вторую форму выплаты, а переверстать на месте — изменить и МОБИЛЬНЫЙ кабинет, который
+   рендерит тот же компонент. Поэтому в панель эталона встраивается ТА ЖЕ форма, а её собственная
+   карточка («Бумага»: рамка, белый фон, поля, радиус) гасится здесь — панель уже нарисована
+   снаружи, иначе получилась бы карточка в карточке.
+
+   Заголовок формы скрыт: панель названа над ним тем же смыслом («Новая заявка»), два заголовка
+   подряд читались бы как сбой. Правило держится за корневой `div` формы и её первый `h3` —
+   меняется её разметка, правится и это место (другого способа без второй формы нет).
+
+   Класс ставится ТОЛЬКО на десктопной ветке: мобильная ветка рендерит форму вне `.m-embed` и
+   остаётся ровно такой, какой была.
+   ───────────────────────────────────────────────────────────── */
+.m-scope .m-embed > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+.m-scope .m-embed > div > h3:first-child {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ГРАФИК ОБОРОТА С ПОДСКАЗКОЙ (десктопный Обзор, эталон `desktop/DMain.dc.html`).
+
+   Подсказка показывается на ЧИСТОМ CSS — без состояния и без обработчиков. Причина не в
+   экономии: столбиков тридцать, и держать открытый индекс в React значило бы перерисовывать
+   всю панель на каждое движение мыши. `:focus-visible` в том же правиле — подсказка обязана
+   открываться и с клавиатуры, иначе цифры доступны только мышью.
+
+   Крайние столбики прижимают подсказку к своему краю (`tipL`/`tipR`): по центру она вылезала
+   бы за панель и обрезалась.
+   ───────────────────────────────────────────────────────────── */
+.m-scope .m-bar {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  outline: none;
+}
+.m-scope .m-bar .m-tip {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, 6px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 5;
+  white-space: nowrap;
+  background: var(--m-card);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.45);
+}
+.m-scope .m-bar .m-tip.m-tip-l { left: 0; transform: translate(0, 6px); }
+.m-scope .m-bar .m-tip.m-tip-r { left: auto; right: 0; transform: translate(0, 6px); }
+.m-scope .m-bar:hover .m-tip,
+.m-scope .m-bar:focus-visible .m-tip { opacity: 1; transform: translate(-50%, 0); }
+.m-scope .m-bar:hover .m-tip.m-tip-l,
+.m-scope .m-bar:focus-visible .m-tip.m-tip-l,
+.m-scope .m-bar:hover .m-tip.m-tip-r,
+.m-scope .m-bar:focus-visible .m-tip.m-tip-r { transform: translate(0, 0); }
+.m-scope .m-bar:hover .m-fill,
+.m-scope .m-bar:focus-visible .m-fill { filter: brightness(1.35); }
+
+/* ─────────────────────────────────────────────────────────────
+   АНИМАЦИИ КАССЫ (эталон `DKassa.dc.html` / `Kassa.dc.html`).
+
+   Держим здесь, а не инлайном в компонентах: одни и те же `@keyframes` нужны мобильной и
+   десктопной шкуре кассы, а две копии расходятся при первой правке тайминга. Общее правило
+   `prefers-reduced-motion` в слое кабинета глушит их все разом.
+   ───────────────────────────────────────────────────────────── */
+@keyframes m-halo { 0% { transform: scale(1); opacity: 0.5 } 100% { transform: scale(1.22); opacity: 0 } }
+@keyframes m-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }
+@keyframes m-pop { 0% { transform: scale(0.4); opacity: 0 } 55% { transform: scale(1.08); opacity: 1 } 100% { transform: scale(1); opacity: 1 } }
+@keyframes m-wave { 0% { transform: scale(0.9); opacity: 0.55 } 100% { transform: scale(2.6); opacity: 0 } }
+@keyframes m-rise { 0% { transform: translateY(14px); opacity: 0 } 100% { transform: none; opacity: 1 } }
+@keyframes m-drawcheck { 0% { stroke-dashoffset: 30 } 100% { stroke-dashoffset: 0 } }
+
+.m-anim-halo { animation: m-halo 2.6s ease-out infinite; }
+.m-anim-halo-2 { animation: m-halo 2.6s ease-out 1.3s infinite; }
+.m-anim-blink { animation: m-blink 1.6s ease-in-out infinite; }
+.m-anim-pop { animation: m-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.m-anim-wave { animation: m-wave 1.8s ease-out 0.2s 2 both; }
+.m-anim-wave-2 { animation: m-wave 1.8s ease-out 0.7s 2 both; }
+.m-anim-check { animation: m-drawcheck 0.5s ease-out 0.35s both; }
+/* Всплытие по очереди: подпись → сумма → чек. Задержки из эталона. */
+.m-rise-1 { animation: m-rise 0.5s ease-out 0.35s both; }
+.m-rise-2 { animation: m-rise 0.5s ease-out 0.45s both; }
+.m-rise-3 { animation: m-rise 0.5s ease-out 0.55s both; }
+
+/* Клавиша в подсказке «с клавиатуры»: нижняя грань толще — как у настоящей клавиши. */
+.m-key {
+  font-family: var(--font-mono-num), ui-monospace, monospace;
+  font-size: 11.5px;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 7px;
+  border: 1px solid var(--m-line);
+  border-bottom-width: 2px;
+  background: var(--m-card);
+  color: var(--m-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   МОСТ «БУМАГА» → КАБИНЕТ для страниц без своего эталона.
+
+   Настройки, команда, поддержка, вход по коду, карточка счёта нарисованы компонентами общей
+   дизайн-системы (`Card`, `PageHeader`, кнопки). Эталона у них нет — задание прямо говорит
+   «переверстай сам в том же языке». Переписывать пять экранов покомпонентно ради цвета рамки
+   значило бы развести их с админкой, где те же компоненты обязаны остаться прежними.
+
+   Поэтому мост: ВНУТРИ кабинета (`.m-scope`) те же классы получают кабинетные значения.
+   Админки это не касается — там `.m-scope` нет. Когда у экрана появится свой эталон, он просто
+   перестанет пользоваться этими классами, и правило само перестанет на него действовать.
+   ───────────────────────────────────────────────────────────── */
+.m-scope .rounded-card { border-radius: 28px; }
+.m-scope .border-line { border-color: var(--m-line-2); }
+.m-scope .border-line-2 { border-color: var(--m-line); }
+.m-scope .bg-card { background-color: var(--m-card); }
+.m-scope .bg-paper { background-color: var(--m-paper); }
+.m-scope .text-ink { color: var(--m-ink); }
+.m-scope .text-ink-2 { color: var(--m-ink-2); }
+.m-scope .text-ink-3 { color: var(--m-ink-3); }
+/* Ссылки в кабинете — кабинетный зелёный, а не васильковый акцент админки. */
+.m-scope .text-accent { color: #2f5b47; }
+.m-scope .bg-green { background-color: var(--m-green-dark); }
+.m-scope .hover\:bg-green-hover:hover { background-color: #000; }
+.m-scope .text-green { color: var(--m-green); }
+.m-scope .bg-green-tint { background-color: rgba(196, 214, 144, 0.22); }
+.m-scope .text-success { color: var(--m-paid-ink); }
+.m-scope .bg-success-tint { background-color: var(--m-accent-soft); }

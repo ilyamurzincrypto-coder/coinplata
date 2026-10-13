@@ -1,0 +1,28 @@
+{
+  "name": "@coincash/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./money": "./src/money.ts",
+    "./ledger": "./src/ledger.ts",
+    "./statuses": "./src/statuses.ts",
+    "./scope": "./src/scope.ts",
+    "./rbac": "./src/rbac.ts",
+    "./totp": "./src/totp.ts",
+    "./secret-cipher": "./src/secret-cipher.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
