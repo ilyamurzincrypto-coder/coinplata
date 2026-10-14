@@ -13,18 +13,23 @@ import AssetsTab from "./AssetsTab.jsx";
 import LiabilitiesTab from "./LiabilitiesTab.jsx";
 import EquityTab from "./EquityTab.jsx";
 import OpeningInventoryTab from "./OpeningInventoryTab.jsx";
+import RegisterTab from "./RegisterTab.jsx";
 
 const SUB = [
+  // «Реестр» идёт ПЕРВЫМ: это единый вид счетов (Лоро · Ностро и кассы · Капитал одной таблицей,
+  // канон CoinPay). Соседние три вкладки — те же счета тремя разными компонентами с разными
+  // колонками; они оставлены рядом, чтобы сравнить, а не заменены вслепую.
+  { id: "register", labelKey: "trv2_tab_register", component: RegisterTab },
   { id: "assets", labelKey: "trv2_tab_assets", component: AssetsTab },
   { id: "liabilities", labelKey: "trv2_tab_liabilities", component: LiabilitiesTab },
   { id: "equity", labelKey: "trv2_tab_equity", component: EquityTab },
   { id: "opening", labelKey: "trv2_tab_opening", component: OpeningInventoryTab },
 ];
 
-export default function StatementsTab({ initialSub = "assets", ...props }) {
+export default function StatementsTab({ initialSub = "register", ...props }) {
   const { t } = useTranslation();
-  const [sub, setSub] = useState(() => (SUB.some((s) => s.id === initialSub) ? initialSub : "assets"));
-  const Active = SUB.find((s) => s.id === sub)?.component || AssetsTab;
+  const [sub, setSub] = useState(() => (SUB.some((s) => s.id === initialSub) ? initialSub : "register"));
+  const Active = SUB.find((s) => s.id === sub)?.component || RegisterTab;
 
   return (
     <div className="space-y-4">
