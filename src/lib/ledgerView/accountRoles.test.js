@@ -36,9 +36,20 @@ describe("раздел экрана", () => {
     expect(sectionOf({ type: "liability", partnerDimRequired: true })).toBe(SECTION.LORO);
   });
 
-  it("обязательство БЕЗ клиента — не Лоро, а Капитал", () => {
+  it("обязательство БЕЗ клиента и без клиентского подвида — Капитал", () => {
     // Это наше собственное обязательство, а не чужие деньги у нас.
     expect(sectionOf({ type: "liability" })).toBe(SECTION.CAPITAL);
+    expect(sectionOf({ type: "liability", subtype: "accrued_expense" })).toBe(SECTION.CAPITAL);
+  });
+
+  it("🔴 customer_liab — Лоро даже без флага измерения", () => {
+    /**
+     * Долг перед клиентом остаётся долгом перед клиентом, выставлен флаг или нет. Опора только
+     * на флаг прятала такие счета в Капитал — то есть показывала ЧУЖИЕ деньги как свои.
+     * Собственный селектор проекта отбирает их ровно по подвиду.
+     */
+    expect(sectionOf({ type: "liability", subtype: "customer_liab" })).toBe(SECTION.LORO);
+    expect(sectionOf({ type: "liability", subtype: "partner_liab" })).toBe(SECTION.LORO);
   });
 });
 

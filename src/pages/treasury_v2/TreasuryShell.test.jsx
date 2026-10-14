@@ -58,36 +58,55 @@ describe("TreasuryShell integration smoke", () => {
   // Навигация стала четырёхраздельной: Активы/Пассивы/Капитал/Начальные
   // остатки переехали в подтабы «Счетов и выписок», Транзакции стали
   // «Журналом операций». Путь до содержимого — на клик длиннее.
-  const openAssets = () => {
+  // Активы/Пассивы/Капитал больше не отдельные вкладки — это один «Реестр» с переключателем
+  // разделов. Путь: Счета и выписки → Реестр → нужный раздел.
+  const openRegister = (sectionTitle = null) => {
     fireEvent.click(screen.getByRole("button", { name: "trv2_tab_statements" }));
-    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_assets" }));
+    fireEvent.click(screen.getByRole("button", { name: "trv2_tab_register" }));
+    if (sectionTitle) fireEvent.click(screen.getByRole("button", { name: new RegExp(sectionTitle) }));
   };
 
-  it("renders the sections, opens on the Overview, and the Assets subtab merges single-account currencies into one row on office click", () => {
+  it("разделы на месте, старт на Обзоре, а Реестр показывает счёт без разворачиваний", () => {
     render(<TreasuryShell />);
     for (const key of ["trv2_tab_overview", "trv2_tab_statements", "trv2_tab_journal_ops", "trv2_tab_exchange_income"]) {
       expect(screen.getByRole("button", { name: key })).toBeInTheDocument();
     }
     // Обзор — стартовый раздел: видна строка сверки.
     expect(screen.getByText(/Σ Дт/)).toBeInTheDocument();
-    openAssets();
-    // ac_cash has officeId null → "no office" row is the only office row; leaves hidden until expanded
-    expect(screen.getByText("trv2_assets_no_office")).toBeInTheDocument();
-    expect(screen.queryByText("1110")).toBeNull();
-    // expand office → 1 счёт в USD → merged-строка, код 1110 сразу виден
-    fireEvent.click(screen.getByText("trv2_assets_no_office"));
+
+    /**
+     * 🔴 Раньше до счёта надо было сперва развернуть группу офиса: счёт существовал, но его не
+     * было видно. В реестре счета показаны сразу — «страничная навигация, ноль развёрток»
+     * (канон CoinPay). Поэтому тест и проверяет отсутствие лишнего шага.
+     */
+    openRegister("Ностро и кассы");
     expect(screen.getByText("1110")).toBeInTheDocument();
   });
 
-  it("clicking a leaf account opens the AccountDetailModal with its source-doc link", () => {
+  it("клик по номеру счёта в Реестре открывает карточку со ссылкой на документ", () => {
     render(<TreasuryShell />);
-    openAssets();
+    openRegister("Ностро и кассы");
     expect(document.body.textContent).not.toContain("D-7");
-    fireEvent.click(screen.getByText("trv2_assets_no_office"));
-    // merged-строка → клик по № счёта 1110 → модал
+    // Клик по НОМЕРУ счёта — карточка счёта (D-7 это sourceRefId исходной транзакции).
     fireEvent.click(screen.getByText("1110"));
-    // Modal renders entries via portal to document.body — D-7 is the sourceRefId of the seed tx
     expect(document.body.textContent).toContain("D-7");
+  });
+
+  it("🔴 разделы Реестра показывают ОДНИ И ТЕ ЖЕ колонки", () => {
+    /**
+     * Правило владельца: Лоро, Ностро и кассы, Капитал выглядят ИДЕНТИЧНО — различаются только
+     * данные строк. До этого они были тремя компонентами с тремя разными наборами колонок, и
+     * именно это читалось как «куча ненужного мусора».
+     */
+    render(<TreasuryShell />);
+    const headsOf = () => screen.getAllByRole("columnheader").map((h) => h.textContent);
+    openRegister("Ностро и кассы");
+    const nostro = headsOf();
+    fireEvent.click(screen.getByRole("button", { name: /Лоро/ }));
+    expect(headsOf()).toEqual(nostro);
+    fireEvent.click(screen.getByRole("button", { name: /Капитал/ }));
+    expect(headsOf()).toEqual(nostro);
+    expect(nostro).toEqual(["Номер", "Контрагент", "Наименование", "Тип", "Остаток", "Вал", "$", "€"]);
   });
 
   it("switches to Транзакции и видит ссылку на исходный документ в entries-view", () => {

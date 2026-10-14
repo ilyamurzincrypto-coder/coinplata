@@ -30,9 +30,12 @@ export const TABS = [
  */
 export const LEGACY_TAB = {
   dashboard: { tab: "overview" },
-  assets: { tab: "statements", sub: "assets" },
-  liabilities: { tab: "statements", sub: "liabilities" },
-  equity: { tab: "statements", sub: "equity" },
+  // Активы/Пассивы/Капитал больше не отдельные вкладки — все трое ведут в «Реестр», где эти
+  // счета и лежат, просто одним видом. Ссылка и привычка живут дольше вёрстки: тот, кто
+  // открывал «Пассивы», должен попасть к пассивам, а не на «раздела нет».
+  assets: { tab: "statements", sub: "register" },
+  liabilities: { tab: "statements", sub: "register" },
+  equity: { tab: "statements", sub: "register" },
   opening: { tab: "statements", sub: "opening" },
   journal: { tab: "journal" },
 };

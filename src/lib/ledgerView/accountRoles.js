@@ -61,18 +61,29 @@ export function roleOf(account) {
 }
 
 /**
+ * Подвиды, которые ПО СМЫСЛУ являются обязательством перед контрагентом. Их же отбирает
+ * собственный селектор проекта (`liabilitiesByCounterparty`), и это важнее флага измерения:
+ * `customer_liab` — долг перед клиентом независимо от того, выставлен ли `client_dim_required`.
+ * Опираться только на флаг значило бы прятать такие счета в Капитал — то есть показывать чужие
+ * деньги как свои.
+ */
+const COUNTERPARTY_SUBTYPES = new Set(["customer_liab", "partner_liab", "unearned"]);
+
+/**
  * В какой раздел попадает счёт.
  *
- * Лоро — обязательства ПЕРЕД КЛИЕНТАМИ: их отличает требование клиентского измерения
- * (`client_dim_required`), то есть остаток такого счёта всегда «чей-то». Обязательство без
- * клиента — не Лоро, а наше собственное обязательство, и ему место в Капитале.
+ * Лоро — обязательства перед КОНТРАГЕНТАМИ: чужие деньги, которые у нас лежат. Обязательство,
+ * которое ничьё конкретно, — наше собственное, и ему место в Капитале.
  */
 export function sectionOf(account) {
   const role = roleOf(account);
   if (role === ROLE.UNKNOWN) return SECTION.UNSORTED;
   if (role === ROLE.ASSET) return SECTION.NOSTRO;
   if (role === ROLE.LIABILITY) {
-    return account?.clientDimRequired || account?.partnerDimRequired ? SECTION.LORO : SECTION.CAPITAL;
+    const sub = String(account?.subtype || "").toLowerCase();
+    const isCounterparty =
+      account?.clientDimRequired || account?.partnerDimRequired || COUNTERPARTY_SUBTYPES.has(sub);
+    return isCounterparty ? SECTION.LORO : SECTION.CAPITAL;
   }
   return SECTION.CAPITAL;
 }

@@ -57,7 +57,7 @@ function counterpartyName(account, balancesOfAccount, names) {
  * Сравнение по МОДУЛЮ остатка: «пассив с минусом — тоже крупные деньги, прятать его в конец
  * списка нельзя».
  */
-export function buildRegisterRows({ accounts, balances, names, section }) {
+export function buildRegisterRows({ accounts, balances, names, section, officeFilter = "all" }) {
   const byAccount = balanceByAccount(balances);
   const ownersByAccount = new Map();
   for (const b of balances || []) {
@@ -70,6 +70,10 @@ export function buildRegisterRows({ accounts, balances, names, section }) {
   const rows = [];
   for (const acc of accounts || []) {
     if (acc?.active === false) continue;
+    // 🔴 Фильтр офиса обязателен: он был в убранных вкладках, и терять его при переходе на
+    // единый вид нельзя — в мультиофисном бизнесе «все офисы» вместо одного это не косметика,
+    // а другие деньги на экране.
+    if (officeFilter && officeFilter !== "all" && acc?.officeId !== officeFilter) continue;
     if (section && sectionOf(acc) !== section) continue;
     const role = roleOf(acc);
     const perCurrency = byAccount.get(acc.id) || [];

@@ -14,10 +14,18 @@ describe("редиректы старых вкладок Казначейств�
     }
   });
 
-  it("четыре бывшие вкладки открывают свой подтаб «Счетов и выписок»", () => {
-    expect(LEGACY_TAB.assets).toEqual({ tab: "statements", sub: "assets" });
-    expect(LEGACY_TAB.liabilities).toEqual({ tab: "statements", sub: "liabilities" });
-    expect(LEGACY_TAB.equity).toEqual({ tab: "statements", sub: "equity" });
+  /**
+   * Активы, Пассивы и Капитал перестали быть отдельными вкладками: это были три разных
+   * компонента, показывавших одни и те же счета по-разному. Теперь все трое ведут в «Реестр» —
+   * те же счета там и лежат, просто одним видом. Это и есть «попасть в пассивы», а не подмена.
+   */
+  it("бывшие Активы/Пассивы/Капитал ведут в единый Реестр", () => {
+    expect(LEGACY_TAB.assets).toEqual({ tab: "statements", sub: "register" });
+    expect(LEGACY_TAB.liabilities).toEqual({ tab: "statements", sub: "register" });
+    expect(LEGACY_TAB.equity).toEqual({ tab: "statements", sub: "register" });
+  });
+
+  it("начальные остатки остались своим подтабом — это ввод, а не вид тех же счетов", () => {
     expect(LEGACY_TAB.opening).toEqual({ tab: "statements", sub: "opening" });
   });
 
