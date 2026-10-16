@@ -117,6 +117,23 @@ export function computeRowPrice(row, block, deps = {}) {
       return { rate: a * u * (1 + m / 100) };
     }
 
+    // КРОСС ЧЕРЕЗ ТРЕТЬЮ ВАЛЮТУ (config.via). Пара, которой нет ни в
+    // документе, ни в фиде, но обе её ноги у нас уже есть: USD→EUR = USD→TRY
+    // × TRY→EUR, обе строки — из блока «Нал» по Толунаю. Без этого режима
+    // пара жила на витрине отдельной жизнью: usd-eur на сайте не менялся с
+    // 1 октября, потому что касса его просто не публиковала.
+    //
+    // УМНОЖЕНИЕ, как и у якоря: обе ноги канонические («сколько to за 1
+    // from»), поэтому TRY за 1 USD × EUR за 1 TRY = EUR за 1 USD.
+    if (deps.viaLegs) {
+      const a = num(deps.viaLegs.first);
+      const b = num(deps.viaLegs.second);
+      const via = deps.viaLegs.via || "?";
+      if (a == null || a <= 0) return { error: `derived: нет курса ${row.from_ccy}→${via}` };
+      if (b == null || b <= 0) return { error: `derived: нет курса ${via}→${row.to_ccy}` };
+      return { rate: a * b * (1 + m / 100) };
+    }
+
     if (deps.routeLegs) {
       const { fromPrice, toPrice } = deps.routeLegs;
       const a = num(fromPrice);
@@ -255,7 +272,16 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
       if (block.kind === "derived") {
         const baseCode = block.config?.base_block_code;
         const route = parseRouteScope(row.scope);
-        if (anchorCfg && row !== anchorRow) {
+        const via = block.config?.via;
+        if (via && row.from_ccy !== via && row.to_ccy !== via) {
+          // Обе ноги — строки базового блока В ТОМ ЖЕ scope: курс нала общий
+          // (scope null), городской блок взял бы свой город.
+          deps.viaLegs = {
+            via,
+            first: byKey.get(priceKey({ block: baseCode, scope: row.scope, from: row.from_ccy, to: via })),
+            second: byKey.get(priceKey({ block: baseCode, scope: row.scope, from: via, to: row.to_ccy })),
+          };
+        } else if (anchorCfg && row !== anchorRow) {
           // Плечо — курс «X за 1 USDT» из базового блока в городе этой строки.
           deps.anchorLeg = {
             anchor: anchorValue,

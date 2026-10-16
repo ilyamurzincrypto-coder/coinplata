@@ -439,3 +439,58 @@ describe("«не торгуем сегодня» — состояние, а не
     expect(r.prices.find((p) => p.scope === "TOD-TOD")?.rate).toBe(86.34);
   });
 });
+
+describe("кросс через третью валюту (config.via)", () => {
+  // Пара USD↔EUR: в документе её нет, в фиде Толуная тоже — но обе ноги к
+  // лире мы уже публикуем. Это тот случай, из-за которого usd-eur на сайте
+  // стоял с 1 октября.
+  const cashBlock = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_mode: "abs" }, enabled: true, position: 1 };
+  const crossBlock = { code: "cross", kind: "derived", config: { base_block_code: "cash", via: "TRY", margin_pct: 0 }, enabled: true, position: 2 };
+  const cashRows = [
+    { id: "r1", block_code: "cash", scope: null, from_ccy: "USD", to_ccy: "TRY", value_mode: "source", value: 0 },
+    { id: "r2", block_code: "cash", scope: null, from_ccy: "TRY", to_ccy: "USD", value_mode: "source", value: 0 },
+    { id: "r3", block_code: "cash", scope: null, from_ccy: "EUR", to_ccy: "TRY", value_mode: "source", value: 0 },
+    { id: "r4", block_code: "cash", scope: null, from_ccy: "TRY", to_ccy: "EUR", value_mode: "source", value: 0 },
+  ];
+  const crossRows = [
+    { id: "x1", block_code: "cross", scope: null, from_ccy: "USD", to_ccy: "EUR", value_mode: "derived", value: null },
+    { id: "x2", block_code: "cross", scope: null, from_ccy: "EUR", to_ccy: "USD", value_mode: "derived", value: null },
+  ];
+  // Толунай 16.10: USD 48,65/49,65 · EUR 54,50/55,75 (покупка/продажа).
+  const sources = {
+    "tolunay|USD|TRY": 48.65,
+    "tolunay|TRY|USD": 1 / 49.65,
+    "tolunay|EUR|TRY": 54.5,
+    "tolunay|TRY|EUR": 1 / 55.75,
+  };
+
+  it("считает обе стороны из плеч к лире", () => {
+    const { prices, errors } = computeAll({
+      blocks: [cashBlock, crossBlock], rows: [...cashRows, ...crossRows], sources,
+    });
+    expect(errors).toEqual([]);
+    const map = pricesToMap(prices);
+    // USD→EUR = 48,65 TRY за 1 USD × (1/55,75) EUR за 1 TRY
+    expect(map["cross||USD|EUR"]).toBeCloseTo(48.65 / 55.75, 10);
+    // EUR→USD = 54,50 × (1/49,65)
+    expect(map["cross||EUR|USD"]).toBeCloseTo(54.5 / 49.65, 10);
+    // Результат читается как курс: за 1 EUR дают больше доллара.
+    expect(map["cross||EUR|USD"]).toBeGreaterThan(1);
+    expect(map["cross||USD|EUR"]).toBeLessThan(1);
+  });
+
+  it("маржа блока применяется к кроссу", () => {
+    const withMargin = { ...crossBlock, config: { ...crossBlock.config, margin_pct: 1 } };
+    const { prices } = computeAll({ blocks: [cashBlock, withMargin], rows: [...cashRows, ...crossRows], sources });
+    expect(pricesToMap(prices)["cross||USD|EUR"]).toBeCloseTo((48.65 / 55.75) * 1.01, 10);
+  });
+
+  it("нет плеча — строка в ошибки, а не в цены: молча отдать половину кросса нельзя", () => {
+    const partial = { "tolunay|USD|TRY": 48.65, "tolunay|TRY|USD": 1 / 49.65 };
+    const { prices, errors } = computeAll({
+      blocks: [cashBlock, crossBlock], rows: [...cashRows, ...crossRows], sources: partial,
+    });
+    expect(pricesToMap(prices)["cross||USD|EUR"]).toBeUndefined();
+    expect(errors.some((e) => /TRY→EUR|EUR→TRY/.test(e.error))).toBe(true);
+  });
+});
