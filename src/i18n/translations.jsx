@@ -378,8 +378,8 @@ const DICT = {
     no_channels: "No channels configured",
 
     // Accounts page
-    nav_accounts: "Accounts",
-    accounts_title: "Accounts",
+    nav_accounts: "Cash desks",
+    accounts_title: "Cash desks",
     accounts_subtitle: "Office cash & wallets",
     acc_type_bank: "Bank",
     acc_type_cash: "Cash",
@@ -1945,8 +1945,8 @@ const DICT = {
     channel_gas: "Gas (USD)",
     no_channels: "Каналы не настроены",
 
-    nav_accounts: "Счета",
-    accounts_title: "Счета",
+    nav_accounts: "Кассы",
+    accounts_title: "Кассы",
     accounts_subtitle: "Касса и кошельки офисов",
     acc_type_bank: "Банк",
     acc_type_cash: "Касса",
@@ -3495,8 +3495,8 @@ const DICT = {
     channel_gas: "Gas (USD)",
     no_channels: "Kanal yok",
 
-    nav_accounts: "Hesaplar",
-    accounts_title: "Hesaplar",
+    nav_accounts: "Kasalar",
+    accounts_title: "Kasalar",
     accounts_subtitle: "Ofis kasaları ve cüzdanları",
     acc_type_bank: "Banka",
     acc_type_cash: "Nakit",
