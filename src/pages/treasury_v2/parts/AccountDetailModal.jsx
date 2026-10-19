@@ -29,6 +29,7 @@ import InlineBalanceEditor from "./InlineBalanceEditor.jsx";
 import TransactionEntries from "./TransactionEntries.jsx";
 import ChartAccountModal from "./ChartAccountModal.jsx";
 import CreateLiabilityDialog from "./CreateLiabilityDialog.jsx";
+import WalletRequisites from "./WalletRequisites.jsx";
 import CurrencyIcon from "../../../components/ui/CurrencyIcon.jsx";
 
 const BASE_OPTIONS = ["USD", "EUR", "TRY", "RUB"];
@@ -607,6 +608,13 @@ export default function AccountDetailModal({
       {/* Balance block */}
       <div className="px-5 py-4 border-b border-border-soft bg-surface-soft/40">
         {balanceNode}
+        {/* Реквизиты кошелька — там же, где остаток: у криптосчёта «где лежит» часть
+            ответа на «сколько лежит». Компонент сам молчит для фиатных счетов. */}
+        {!isCpMode && !isGroupMode && account && (
+          <div className="mt-3">
+            <WalletRequisites account={account} />
+          </div>
+        )}
       </div>
 
       {currencyTabs}

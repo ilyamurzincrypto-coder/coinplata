@@ -35,6 +35,30 @@ export async function loadLedgerAccounts() {
   }));
 }
 
+/**
+ * Адреса криптокошельков счёта (ledger.wallet_addresses).
+ *
+ * Канон CoinPay: кошелёк — это обычный счёт-ностро в валюте токена, а адрес, сеть и тип
+ * хранения — его РЕКВИЗИТЫ, как банковские у фиатного ностро. Поэтому читаем их точечно
+ * по счёту, а не тянем в общий стор: реквизиты нужны одной карточке, а не каждому экрану.
+ */
+export async function loadWalletAddresses(accountId) {
+  if (!isSupabaseConfigured || !accountId) return [];
+  const { data, error } = await ledger()
+    .from("wallet_addresses")
+    .select("id, account_id, address, label, network, active")
+    .eq("account_id", accountId);
+  if (error) throw new Error(`loadWalletAddresses: ${error.message}`);
+  return (data || []).map((r) => ({
+    id: r.id,
+    accountId: r.account_id,
+    address: r.address,
+    label: r.label || null,
+    network: r.network || null,
+    active: r.active !== false,
+  }));
+}
+
 export async function loadLedgerBalances() {
   if (!isSupabaseConfigured) return [];
   const { data, error } = await ledger()

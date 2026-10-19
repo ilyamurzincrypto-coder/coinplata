@@ -17,9 +17,11 @@ import React, { useState } from "react";
 import { useTranslation } from "../../../i18n/translations.jsx";
 import OpeningInventoryTab from "./OpeningInventoryTab.jsx";
 import RegisterTab from "./RegisterTab.jsx";
+import TurnoverTab from "./TurnoverTab.jsx";
 
 const SUB = [
   { id: "register", labelKey: "trv2_tab_register", component: RegisterTab },
+  { id: "turnover", labelKey: "trv2_tab_turnover", component: TurnoverTab },
   { id: "opening", labelKey: "trv2_tab_opening", component: OpeningInventoryTab },
 ];
 
