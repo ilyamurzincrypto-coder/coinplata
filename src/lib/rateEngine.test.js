@@ -494,3 +494,53 @@ describe("кросс через третью валюту (config.via)", () => {
     expect(errors.some((e) => /TRY→EUR|EUR→TRY/.test(e.error))).toBe(true);
   });
 });
+
+describe("кросс из РАЗНЫХ блоков (USDT ↔ фунт/франк)", () => {
+  // USDT→GBP собирается из плеча блока USDT (TRY за 1 USDT, своё в каждом
+  // городе) и плеча нала (GBP за 1 TRY, общее). Обратная сторона — наоборот.
+  const cash = { code: "cash", kind: "auto", config: { provider: "tolunay", spread_mode: "abs" }, enabled: true, position: 1 };
+  const usdt = {
+    code: "usdt", kind: "manual",
+    config: { cross: { via: "TRY", leg_blocks: ["usdt", "cash"] } },
+    scopes: ["ANT", "IST"], enabled: true, position: 2,
+  };
+  const rows = [
+    { id: "c1", block_code: "cash", scope: null, from_ccy: "GBP", to_ccy: "TRY", value_mode: "source", value: 0 },
+    { id: "c2", block_code: "cash", scope: null, from_ccy: "TRY", to_ccy: "GBP", value_mode: "source", value: 0 },
+    { id: "u1", block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "TRY", value_mode: "abs", value: 48.8 },
+    { id: "u2", block_code: "usdt", scope: "ANT", from_ccy: "TRY", to_ccy: "USDT", value_mode: "abs", value: 1 / 49.75 },
+    { id: "u3", block_code: "usdt", scope: "IST", from_ccy: "USDT", to_ccy: "TRY", value_mode: "abs", value: 48.95 },
+    { id: "u4", block_code: "usdt", scope: "IST", from_ccy: "TRY", to_ccy: "USDT", value_mode: "abs", value: 1 / 49.75 },
+    { id: "x1", block_code: "usdt", scope: "ANT", from_ccy: "USDT", to_ccy: "GBP", value_mode: "derived", value: null },
+    { id: "x2", block_code: "usdt", scope: "ANT", from_ccy: "GBP", to_ccy: "USDT", value_mode: "derived", value: null },
+    { id: "x3", block_code: "usdt", scope: "IST", from_ccy: "USDT", to_ccy: "GBP", value_mode: "derived", value: null },
+  ];
+  // Толунай 19.10: GBP 65,00 / 65,985.
+  const sources = { "tolunay|GBP|TRY": 65, "tolunay|TRY|GBP": 1 / 65.985 };
+
+  it("берёт городское плечо USDT и общее плечо нала", () => {
+    const { prices, errors } = computeAll({ blocks: [cash, usdt], rows, sources });
+    expect(errors).toEqual([]);
+    const map = pricesToMap(prices);
+    expect(map["usdt|ANT|USDT|GBP"]).toBeCloseTo(48.8 / 65.985, 12);
+    expect(map["usdt|ANT|GBP|USDT"]).toBeCloseTo(65 / 49.75, 12);
+  });
+
+  it("города не смешиваются: у Стамбула свой USDT→TRY", () => {
+    const { prices } = computeAll({ blocks: [cash, usdt], rows, sources });
+    const map = pricesToMap(prices);
+    expect(map["usdt|IST|USDT|GBP"]).toBeCloseTo(48.95 / 65.985, 12);
+    expect(map["usdt|IST|USDT|GBP"]).not.toBeCloseTo(map["usdt|ANT|USDT|GBP"], 8);
+  });
+
+  it("abs и pct строки того же блока считаются как раньше", () => {
+    const { prices } = computeAll({ blocks: [cash, usdt], rows, sources });
+    expect(pricesToMap(prices)["usdt|ANT|USDT|TRY"]).toBe(48.8);
+  });
+
+  it("нет плеча нала — строка в ошибки, а не в цены", () => {
+    const { prices, errors } = computeAll({ blocks: [cash, usdt], rows, sources: {} });
+    expect(pricesToMap(prices)["usdt|ANT|USDT|GBP"]).toBeUndefined();
+    expect(errors.some((e) => e.key === "usdt|ANT|USDT|GBP")).toBe(true);
+  });
+});

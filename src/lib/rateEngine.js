@@ -214,6 +214,34 @@ export function isOutOfBand(next, prev, bandPct) {
  * такую строку недоработкой значит каждый день красить панель зря, а выдавать
  * по ней вчерашнюю цену — торговать по курсу, которого нет.
  */
+/**
+ * Плечи кросса: «from → via» и «via → to».
+ *
+ * Ноги ищутся в нескольких блоках по очереди (`leg_blocks`), потому что одна
+ * пара может собираться из РАЗНЫХ блоков и в разных направлениях по-разному:
+ *   USDT → GBP = (TRY за 1 USDT, блок usdt) × (GBP за 1 TRY, блок нала)
+ *   GBP → USDT = (TRY за 1 GBP,  блок нала) × (USDT за 1 TRY, блок usdt)
+ * Фиксированный «базовый блок» покрыл бы только одну сторону пары.
+ *
+ * Scope: сначала город строки, потом общий (null). Курс нала один на оба
+ * города, курс USDT — свой у каждого; падение на общий курс нужно, чтобы
+ * городская строка могла взять общее плечо, но не наоборот.
+ */
+function crossLegs(byKey, cfg, ownBlockCode, row) {
+  const via = cfg.via;
+  const blocks = (cfg.leg_blocks && cfg.leg_blocks.length ? cfg.leg_blocks : [ownBlockCode]);
+  const find = (from, to) => {
+    for (const code of blocks) {
+      for (const scope of [row.scope, null]) {
+        const v = byKey.get(priceKey({ block: code, scope, from, to }));
+        if (num(v) != null) return v;
+      }
+    }
+    return undefined;
+  };
+  return { via, first: find(row.from_ccy, via), second: find(via, row.to_ccy) };
+}
+
 export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}, officeCity = {} } = {}) {
   const byCode = new Map(blocks.filter((b) => b?.code).map((b) => [b.code, b]));
 
@@ -269,18 +297,28 @@ export function computeAll({ blocks = [], rows = [], sources = {}, previous = {}
       });
 
       const deps = {};
+
+      // КРОСС ВНУТРИ НЕ-DERIVED БЛОКА. Строка `derived` в ручном блоке (USDT→GBP
+      // в блоке USDT) считается по тем же правилам кросса. Так пара остаётся в
+      // своём блоке — а значит, и в своём ГОРОДЕ: витрина CoinPoint различает
+      // городские блоки по коду, и вынести эти строки в отдельный блок значило
+      // бы отдать Стамбулу курс Антальи.
+      const crossCfg = block.config?.cross;
+      if (crossCfg?.via && block.kind !== "derived" && row.value_mode === "derived") {
+        deps.viaLegs = crossLegs(byKey, crossCfg, block.code, row);
+      }
+
       if (block.kind === "derived") {
         const baseCode = block.config?.base_block_code;
         const route = parseRouteScope(row.scope);
         const via = block.config?.via;
         if (via && row.from_ccy !== via && row.to_ccy !== via) {
-          // Обе ноги — строки базового блока В ТОМ ЖЕ scope: курс нала общий
-          // (scope null), городской блок взял бы свой город.
-          deps.viaLegs = {
-            via,
-            first: byKey.get(priceKey({ block: baseCode, scope: row.scope, from: row.from_ccy, to: via })),
-            second: byKey.get(priceKey({ block: baseCode, scope: row.scope, from: via, to: row.to_ccy })),
-          };
+          deps.viaLegs = crossLegs(
+            byKey,
+            { via, leg_blocks: block.config?.leg_blocks || [baseCode] },
+            block.code,
+            row
+          );
         } else if (anchorCfg && row !== anchorRow) {
           // Плечо — курс «X за 1 USDT» из базового блока в городе этой строки.
           deps.anchorLeg = {
