@@ -20,7 +20,7 @@
 // ни разу.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ClipboardPaste, History, Loader2, Lock, Unlock, X } from "lucide-react";
+import { ClipboardPaste, History, Loader2, Lock, Sigma, Unlock, X } from "lucide-react";
 import { computeAll, pricesToMap, priceKey, num } from "../lib/rateEngine.js";
 import { pasteToDraft, pasteSummary } from "../lib/ratesPaste.js";
 import { ratesHealth, LEVEL } from "../lib/ratesHealth.js";
@@ -415,14 +415,24 @@ export default function RatesEditorV2({ onClose }) {
                 {shownWas(r, prevMap[key])}
               </td>
               <td className="py-3 border-t border-line">
-                <Input
-                  wide
-                  bad={!!viol}
-                  value={shownValue(r)}
-                  onChange={(e) => setShown(r, e.target.value)}
-                  placeholder={r.value_mode === "pct" ? "0,00%" : "0,00"}
-                  title={r.value_mode === "abs" ? unitLabel(r.from_ccy, r.to_ccy) : undefined}
-                />
+                {/* Считаемая строка (кросс через лиру: USDT↔GBP/CHF) поля ввода НЕ имеет.
+                    Пустое поле с подсказкой «0,00» выглядело как незаполненный курс, который
+                    надо вбить руками, — а вбитый ноль ушёл бы в публикацию настоящим нулём. */}
+                {r.value_mode === "derived" ? (
+                  <span className="inline-flex items-center gap-2 text-[13px] text-muted">
+                    <Sigma className="w-3.5 h-3.5 text-muted-soft" strokeWidth={2} />
+                    считается
+                  </span>
+                ) : (
+                  <Input
+                    wide
+                    bad={!!viol}
+                    value={shownValue(r)}
+                    onChange={(e) => setShown(r, e.target.value)}
+                    placeholder={r.value_mode === "pct" ? "0,00%" : "0,00"}
+                    title={r.value_mode === "abs" ? unitLabel(r.from_ccy, r.to_ccy) : undefined}
+                  />
+                )}
               </td>
               <td className="py-3 border-t border-line text-right">
                 {viol
