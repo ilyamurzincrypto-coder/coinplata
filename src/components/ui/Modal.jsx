@@ -52,6 +52,10 @@ export default function Modal({ open, onClose, title, subtitle, children, width 
     "3xl": "max-w-3xl",
     "4xl": "max-w-4xl",
     "5xl": "max-w-5xl",
+    // Карточка счёта — это выписка: шесть колонок цифр и сумма в базовой валюте
+    // рядом с родной. На max-w-4xl они жались в треть экрана, а справа и слева
+    // стояла пустота. Канон CoinPay держит выписку страницей во всю ширину.
+    full: "max-w-[min(1680px,96vw)]",
   }[width] || "max-w-xl";
 
   const modalTree = (

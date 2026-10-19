@@ -3,7 +3,7 @@
 // безопасную точность multiplyAmount (находка при разборе B7).
 
 import { describe, expect, it } from "vitest";
-import { multiplyAmount, computeProfitFromRates } from "./money.js";
+import { multiplyAmount, computeProfitFromRates, fmt } from "./money.js";
 
 // getRate(from,to): outCurrency за 1 curIn. Market USD→TRY = 46.
 const getRate = (from, to) => ({ "USD>TRY": 46, "USD>USD": 1 })[`${from}>${to}`];
@@ -61,5 +61,27 @@ describe("multiplyAmount — безопасная точность (находк
   it("прочие крупные входы без артефакта", () => {
     expect(multiplyAmount(88888888, 1.125, 8)).toBe(99999999);
     expect(multiplyAmount(12345678, 8.7, 4)).toBe(107407398.6);
+  });
+});
+
+describe("минус-ноль не печатается", () => {
+  // Строка балансового тождества показывала «Пассивы $-0» на пустой книге:
+  // 0 и −0 в JS разные числа, и Intl честно печатал минус.
+  it("−0 печатается как 0", () => {
+    expect(fmt(-0)).toBe("0");
+  });
+
+  it("минус у остатка, который округляется в ноль, тоже не появляется", () => {
+    expect(fmt(-0.004)).toBe("0");
+    expect(fmt(-0.004, "USD")).toBe("0");
+  });
+
+  it("настоящий минус остаётся минусом", () => {
+    expect(fmt(-12.5)).toBe("-12.5");
+    expect(fmt(-0.02)).toBe("-0.02");
+  });
+
+  it("ноль остаётся нулём", () => {
+    expect(fmt(0)).toBe("0");
   });
 });

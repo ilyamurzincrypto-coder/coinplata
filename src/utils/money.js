@@ -99,6 +99,16 @@ export function applyMinFee(fee, minFee = 10) {
 export function fmt(n, currency) {
   if (n === "" || n === null || n === undefined || isNaN(n)) return "—";
   const precision = currency === "TRY" ? 0 : 2;
+  // Минус-ноль: 0 и −0 в JS разные числа, и Intl честно печатает «-0».
+  // На витрине это читается как «немного меньше нуля» — в строке балансового
+  // тождества выходило «Пассивы $-0» при пустой книге.
+  if (Object.is(n, -0) || (typeof n === "number" && n === 0)) n = 0;
+  // Округление до разрядности ДО форматирования: −0,004 иначе печаталось как
+  // «-0,00» — тот же минус у нуля, только из-за точности.
+  if (typeof n === "number") {
+    const rounded = Number(n.toFixed(precision));
+    n = rounded === 0 ? 0 : rounded;
+  }
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: precision,
     minimumFractionDigits: 0,

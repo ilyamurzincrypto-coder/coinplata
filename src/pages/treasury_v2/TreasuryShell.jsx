@@ -8,7 +8,6 @@ import { balanceCheckTotals, transactionTree } from "../../lib/treasury/v2select
 import OfficePicker from "./OfficePicker.jsx";
 import BalanceCheckBar from "./BalanceCheckBar.jsx";
 import TransactionDetail from "./parts/TransactionDetail.jsx";
-import FloatingCalculator from "../../components/ui/FloatingCalculator.jsx";
 import OverviewTab from "./tabs/OverviewTab.jsx";
 import StatementsTab from "./tabs/StatementsTab.jsx";
 import ExchangeIncomeTab from "./tabs/ExchangeIncomeTab.jsx";
@@ -163,7 +162,6 @@ export default function TreasuryShell({ onOpenHelp = null }) {
         <BalanceCheckBar totals={totals} formatBase={formatBase} baseCurrency={baseCurrency} />
       )}
       <TransactionDetail node={selectedTx} onClose={() => setSelectedTx(null)} />
-      <FloatingCalculator />
     </div>
   );
 }

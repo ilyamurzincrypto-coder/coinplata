@@ -46,6 +46,10 @@ export default function InlineBalanceEditor({
   clientId = null,
   partnerId = null,
   balanceOverride = null,
+  // showValue=false — на триггере только карандаш со словом «Править».
+  // Нужен там, где остаток УЖЕ напечатан рядом крупно (карточка счёта): две
+  // одинаковые суммы в одной строке читаются как два разных числа.
+  showValue = true,
   // mode="newDim" — режим добавления НОВОГО субконто (контрагент ещё не
   // записан на этом счёте). В попровере появляется пикер клиента/партнёра
   // первым полем. balance стартует с 0. Триггер — "+ Контрагент" кнопка.
@@ -224,11 +228,13 @@ export default function InlineBalanceEditor({
     }
   }
 
-  const ro = (
+  const ro = showValue ? (
     <span className="tabular-nums tabular whitespace-nowrap font-semibold">
       {fmtNum(displayed)}
       {suffix ? <span className="text-muted-soft font-normal"> {suffix}</span> : null}
     </span>
+  ) : (
+    <span className="whitespace-nowrap text-tiny font-semibold text-muted">Править</span>
   );
 
   if (!editable) {

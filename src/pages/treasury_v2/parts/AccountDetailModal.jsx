@@ -54,6 +54,27 @@ function fmtAmount(n) {
   return Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/**
+ * Дата по-человечески: «19.10.2026». ISO-вид («2026-10-19») в шапке выписки читался как
+ * технический идентификатор, а не как день, за который считали остаток.
+ */
+function dmy(d) {
+  const t = d ? new Date(d) : null;
+  return t && Number.isFinite(t.getTime())
+    ? t.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" })
+    : "";
+}
+
+/** «1 проводка · 2 проводки · 5 проводок» — счёт строк не должен выглядеть как опечатка. */
+function plural(n, one, few, many) {
+  const a = Math.abs(n) % 100;
+  const b = a % 10;
+  if (a > 10 && a < 20) return many;
+  if (b > 1 && b < 5) return few;
+  if (b === 1) return one;
+  return many;
+}
+
 export default function AccountDetailModal({
   open, onClose, ctx, formatBase, baseCurrency, onOpenTx,
   accountId = null, clientId = null, partnerId = null,
@@ -545,6 +566,7 @@ export default function AccountDetailModal({
               clientId={clientId}
               partnerId={partnerId}
               balanceOverride={balanceNative}
+              showValue={false}
             />
           </span>
         </div>
@@ -593,7 +615,7 @@ export default function AccountDetailModal({
     : account.currency;
 
   return (
-    <Modal open={open} onClose={onClose} width="4xl">
+    <Modal open={open} onClose={onClose} width="full">
       <div className="px-5 py-4 border-b border-border-soft flex items-start justify-between gap-3">
         <div>{titleNode}</div>
         <button
@@ -680,7 +702,7 @@ export default function AccountDetailModal({
       {/* Остаток на начало периода — горизонтальная полоса как в 1С */}
       <div className="px-5 py-2 border-b border-border-soft bg-surface-soft/40 flex items-baseline justify-between gap-3 flex-wrap">
         <span className="text-tiny text-muted uppercase tracking-wider font-bold">
-          Остаток на {period ? new Date(period.from).toISOString().slice(0, 10) : "начало"}
+          Остаток на {period ? dmy(period.from) : "начало"}
         </span>
         <span className="tabular-nums tabular text-body-sm font-bold text-ink-soft">
           {!isCpMode && !isGroupMode && account ? (
@@ -737,7 +759,7 @@ export default function AccountDetailModal({
                   <React.Fragment key={e.id}>
                   <tr className={`border-b border-border-soft transition-colors ${idx % 2 === 1 ? "bg-surface-soft/40" : ""} ${isExpanded ? "bg-accent-bg" : "hover:bg-surface-soft"}`}>
                     <td className="px-3 py-1.5 text-muted tabular-nums tabular text-tiny whitespace-nowrap border-r border-border-soft">
-                      {new Date(e.createdAt).toISOString().slice(0, 10)}
+                      {dmy(e.createdAt)}
                     </td>
                     <td className="px-2 py-1.5 border-r border-border-soft">
                       <span className="text-body-sm text-ink truncate block">{e.note || e.txKind}</span>
@@ -791,7 +813,7 @@ export default function AccountDetailModal({
       {/* Обороты за период — компактная строка */}
       <div className="px-5 py-2 border-t border-border-soft bg-surface-soft/40 flex items-baseline justify-between gap-3 flex-wrap text-caption">
         <span className="text-tiny text-muted uppercase tracking-wider font-bold">
-          Обороты {period ? `${new Date(period.from).toISOString().slice(0, 10)} — ${new Date(period.to).toISOString().slice(0, 10)}` : "за всё время"} · {filteredEntries.length} проводок
+          Обороты {period ? `${dmy(period.from)} — ${dmy(period.to)}` : "за всё время"} · {filteredEntries.length} {plural(filteredEntries.length, "проводка", "проводки", "проводок")}
         </span>
         <div className="flex items-baseline gap-4 tabular-nums tabular">
           {turnover.singleCcy && (
@@ -808,7 +830,7 @@ export default function AccountDetailModal({
       {/* Остаток на конец периода — финальная подсветка как в 1С */}
       <div className="px-5 py-2.5 border-t border-border-soft bg-success-soft flex items-baseline justify-between gap-3 flex-wrap">
         <span className="text-tiny text-success uppercase tracking-wider font-bold">
-          Остаток на {period ? new Date(period.to).toISOString().slice(0, 10) : "конец"}
+          Остаток на {period ? dmy(period.to) : "конец"}
         </span>
         <span className="tabular-nums tabular text-body font-bold text-success">
           {!isCpMode && !isGroupMode && account ? (
